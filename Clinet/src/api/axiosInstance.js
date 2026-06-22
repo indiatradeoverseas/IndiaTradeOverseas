@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-let API_BASE_URL = 'https://india-i1di.onrender.com/api';
+let API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 if (API_BASE_URL.endsWith('/api/v1')) {
   API_BASE_URL = API_BASE_URL.replace('/api/v1', '/api');
 } else if (API_BASE_URL.endsWith('/api/v1/')) {
@@ -12,7 +12,7 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000,
+  timeout: 10000,
 });
 
 

@@ -3,14 +3,10 @@ const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const rawMongoUri = process.env.MONGO_URI || '';
-const isLocalhost = rawMongoUri.includes('localhost') || rawMongoUri.includes('127.0.0.1') || rawMongoUri === '';
-const defaultAtlasUri = 'mongodb+srv://manjeetmaurya7785_db_user:f9Q4YLCbY2Y26jSX@alldata.a9zrfm3.mongodb.net/ito';
-
 const env = {
   NODE_ENV: process.env.NODE_ENV,
   PORT: parseInt(process.env.PORT, 10),
-  MONGO_URI: (process.env.RENDER && isLocalhost) ? defaultAtlasUri : (process.env.MONGO_URI || defaultAtlasUri),
+  MONGO_URI: process.env.MONGO_URI,
   JWT_SECRET: process.env.JWT_SECRET,
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
   JWT_EXPIRY: process.env.JWT_EXPIRY,
