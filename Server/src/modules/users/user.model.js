@@ -29,13 +29,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['ADMIN', 'MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'IT', 'FINANCE', 'SOFTWARE_ENGINEER', 'SYSTEM', 'AI'],
       required: true,
-      default: 'SALES'
+      default: ''
     },
     department: {
       type: String,
       enum: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES', 'CRM', 'FINANCE'],
       required: true,
-      default: 'SALES'
+      default: ''
     },
     isActive: {
       type: Boolean,

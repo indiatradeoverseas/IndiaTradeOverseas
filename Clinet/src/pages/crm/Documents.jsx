@@ -52,7 +52,7 @@ export default function Documents() {
     data.append('accessLevel', formData.accessLevel);
 
     try {
-      
+
       const response = await documentsApi.uploadDocument(data);
       if (response.success) {
         toast.success('Document uploaded successfully');
@@ -114,7 +114,7 @@ export default function Documents() {
     }
   };
 
-  
+
   const getAccessLevelBadge = (level) => {
     const badgeStyles = {
       PUBLIC: 'bg-green-100 text-green-800 border-green-200',
@@ -144,7 +144,7 @@ export default function Documents() {
 
   return (
     <div className="space-y-6 p-4 max-w-7xl mx-auto">
-      
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Documents</h1>
@@ -188,7 +188,7 @@ export default function Documents() {
                     <td className="py-4 px-5"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">{doc.ownerType}</span></td>
                     <td className="py-4 px-5 font-mono text-xs text-gray-500">{doc.ownerId}</td>
 
-                    
+
                     <td className="py-4 px-5">
                       <div className="flex flex-col space-y-1.5 items-start">
                         {getAccessLevelBadge(doc.accessLevel)}
@@ -272,14 +272,14 @@ export default function Documents() {
 
               {formData.ownerType !== 'PUBLIC' && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Owner ID *</label>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Owner Email / Gmail *</label>
                   <input
                     type="text"
                     required
                     value={formData.ownerId}
                     onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
                     className="w-full text-sm border border-gray-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    placeholder="Enter exact MongoDB object _id"
+                    placeholder="Enter Gmail / email address (or exact ID)"
                   />
                 </div>
               )}

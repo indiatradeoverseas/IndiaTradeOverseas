@@ -53,17 +53,17 @@ async function register(req, res, next) {
           status: 'PENDING'
         });
       } catch (clientErr) {
-        
+
         await User.deleteOne({ _id: user._id });
         throw clientErr;
       }
     }
 
-    
+
     const otp = generateOtp();
     const otpHash = await bcrypt.hash(otp, 10);
 
-    
+
     await otpModel.deleteMany({ email: user.email });
     await otpModel.create({
       email: user.email,
@@ -71,10 +71,10 @@ async function register(req, res, next) {
       otpHash
     });
 
-    
+
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp));
 
-    
+
     const ip = req.ip || req.headers['x-forwarded-for'] || '';
     const userAgent = req.headers['user-agent'] || 'unknown';
     const crypto = require('crypto');
@@ -134,7 +134,7 @@ async function login(req, res, next) {
 
     const user = await authService.login({ email, password, ipAddress, deviceHash });
 
-    
+
     if (!user.isEmailVerified) {
       const otp = generateOtp();
       const otpHash = await bcrypt.hash(otp, 10);
@@ -151,7 +151,7 @@ async function login(req, res, next) {
 
     const accessToken = tokenService.generateAccessToken(user);
 
-    
+
     const crypto = require('crypto');
     const rawRefreshToken = crypto.randomBytes(40).toString('hex');
     const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
@@ -171,7 +171,7 @@ async function login(req, res, next) {
       { expiresIn: '7d' }
     );
 
-    
+
     let requiresDeviceApproval = false;
     const isClient = user.employeeId && user.employeeId.startsWith('CL_');
     const isBypassedRole = ['ADMIN', 'MANAGER', 'HR'].includes(user.role);
@@ -213,12 +213,12 @@ async function requestOtp(req, res, next) {
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.otp = otp;
-    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); 
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
 
     await recordAudit({
       actorId: user._id,
-      actionType: 'DEVICE_APPROVAL_REQUEST', 
+      actionType: 'DEVICE_APPROVAL_REQUEST',
       entityType: 'USER',
       entityId: user._id.toString(),
       severity: 'LOW',
@@ -246,12 +246,12 @@ async function verifyOtp(req, res, next) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid or expired OTP');
     }
 
-    
+
     user.otp = null;
     user.otpExpires = null;
     await user.save();
 
-    
+
     let requiresDeviceApproval = false;
     const isClient = user.employeeId && user.employeeId.startsWith('CL_');
     const isBypassedRole = ['ADMIN', 'MANAGER', 'HR'].includes(user.role);
@@ -270,7 +270,7 @@ async function verifyOtp(req, res, next) {
 
     const accessToken = tokenService.generateAccessToken(user);
 
-    
+
     const crypto = require('crypto');
     const rawRefreshToken = crypto.randomBytes(40).toString('hex');
     const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
@@ -314,7 +314,7 @@ async function verifyEmail(req, res, next) {
       return fail(res, 400, 'INVALID_OTP', 'No OTP request found for this email');
     }
 
-    
+
     const elapsed = Date.now() - new Date(otpRecord.createdAt).getTime();
     if (elapsed > 15 * 60 * 1000) {
       return fail(res, 400, 'EXPIRED_OTP', 'OTP has expired. Please log in to request a new one.');
@@ -333,10 +333,10 @@ async function verifyEmail(req, res, next) {
     user.isEmailVerified = true;
     await user.save();
 
-    
+
     await otpModel.deleteOne({ _id: otpRecord._id });
 
-    
+
     const ip = req.ip || req.headers['x-forwarded-for'] || '';
     const userAgent = req.headers['user-agent'] || 'unknown';
     const crypto = require('crypto');
@@ -413,7 +413,7 @@ async function refreshToken(req, res, next) {
       return fail(res, 401, 'AUTH_TOKEN_EXPIRED', 'Session credentials invalid');
     }
 
-    
+
     session.revoked = true;
     await session.save();
 
@@ -422,7 +422,7 @@ async function refreshToken(req, res, next) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User is deactivated or invalid');
     }
 
-    
+
     const crypto = require('crypto');
     const rawRefreshToken = crypto.randomBytes(40).toString('hex');
     const newRefreshTokenHash = await bcrypt.hash(rawRefreshToken, 10);
@@ -451,7 +451,7 @@ async function refreshToken(req, res, next) {
 }
 
 async function refresh(req, res, next) {
-  
+
   return refreshToken(req, res, next);
 }
 
@@ -483,7 +483,7 @@ async function logoutAll(req, res, next) {
   try {
     await sessionModel.updateMany({ user: req.user._id }, { revoked: true });
 
-    
+
     const RefreshToken = require('./refreshToken.model');
     await RefreshToken.updateMany({ userId: req.user._id }, { isRevoked: true });
 

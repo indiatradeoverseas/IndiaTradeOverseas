@@ -15,7 +15,6 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-
   useEffect(() => {
     const savedSessionId = sessionStorage.getItem('chatSessionId');
     if (savedSessionId) {
@@ -151,52 +150,57 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 font-sans">
-
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 font-sans antialiased">
+      {/* Floating Trigger Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-2xl hover:scale-105 transition-all duration-200 hover:shadow-xl"
+          aria-label="Open support chat"
+          className="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
         >
-          <FiMessageCircle size={22} className="sm:size-26" />
+          <FiMessageCircle size={26} />
         </button>
       )}
 
+      {/* Chat Window Container */}
       {isOpen && (
-        <div className="w-[90vw] sm:w-96 h-[80vh] sm:h-[550px] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="w-[calc(100vw-2rem)] sm:w-96 h-[80vh] max-h-[600px] sm:h-[550px] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
 
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between shadow-md">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between shadow-md shrink-0">
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <div className="w-2.5 h-2.5 bg-green-400 rounded-full"></div>
                 <div className="absolute inset-0 w-2.5 h-2.5 bg-green-400 rounded-full animate-ping opacity-75"></div>
               </div>
               <div>
-                <h4 className="font-bold text-sm sm:text-base">ITO AI Support</h4>
-                <p className="text-[10px] sm:text-xs text-blue-100 font-medium">Grow With ITO</p>
+                <h4 className="font-bold text-sm sm:text-base leading-tight">ITO AI Support</h4>
+                <p className="text-[10px] sm:text-xs text-blue-100 font-medium tracking-wide">Grow With ITO</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all duration-200"
+              aria-label="Close chat"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200"
             >
               <FiX size={18} />
             </button>
           </div>
 
-          <div className="flex-1 p-3 sm:p-4 overflow-y-auto bg-gradient-to-b from-slate-50 to-white flex flex-col space-y-3 sm:space-y-4 custom-scrollbar">
+          {/* Chat Logs / Welcome Screen */}
+          <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-slate-50 to-white flex flex-col space-y-4 custom-scrollbar">
             {!session ? (
-              <form onSubmit={handleStartChat} className="space-y-4 my-auto">
-                <div className="text-center mb-4">
+              <form onSubmit={handleStartChat} className="space-y-4 my-auto w-full max-w-sm mx-auto">
+                <div className="text-center mb-5">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
                     <FiMessageCircle size={28} className="text-white" />
                   </div>
-                  <h5 className="font-bold text-slate-800 text-base sm:text-lg">Welcome! 👋</h5>
+                  <h5 className="font-bold text-slate-800 text-lg">Welcome! 👋</h5>
                   <p className="text-slate-500 text-xs sm:text-sm mt-1">Let's start our conversation!</p>
                 </div>
 
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -204,20 +208,20 @@ export default function ChatWidget() {
                     required
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 text-sm"
                     placeholder="Enter your name"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                    Email Address <span className="text-gray-400 text-xs">(Optional)</span>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Email Address <span className="text-gray-400 text-[11px] font-normal">(Optional)</span>
                   </label>
                   <input
                     type="email"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 text-sm"
                     placeholder="name@company.com"
                   />
                 </div>
@@ -225,7 +229,7 @@ export default function ChatWidget() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-xl text-sm sm:text-base shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-xl text-sm shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[42px]"
                 >
                   {loading ? (
                     <div className="flex items-center justify-center space-x-2">
@@ -245,8 +249,8 @@ export default function ChatWidget() {
 
                   if (isSystem) {
                     return (
-                      <div key={msg._id || index} className="flex justify-center px-4 py-1">
-                        <span className="inline-block bg-slate-200/80 text-[10px] sm:text-xs text-slate-600 px-3 py-1 rounded-full font-medium">
+                      <div key={msg._id || index} className="flex justify-center px-2 py-1">
+                        <span className="inline-block bg-slate-200/80 text-[10px] sm:text-xs text-slate-600 px-3 py-1 rounded-full font-medium text-center">
                           {msg.message}
                         </span>
                       </div>
@@ -256,16 +260,16 @@ export default function ChatWidget() {
                   return (
                     <div
                       key={msg._id || index}
-                      className={`flex flex-col animate-in slide-in-from-bottom-2 duration-200 ${isClient ? 'items-end' : 'items-start'
+                      className={`flex flex-col animate-in slide-in-from-bottom-2 duration-200 max-w-[85%] ${isClient ? 'items-end ml-auto' : 'items-start mr-auto'
                         }`}
                     >
                       <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium mb-0.5 px-1">
                         {isClient ? 'You' : msg.senderName}
                       </span>
                       <div
-                        className={`max-w-[85%] rounded-2xl px-3 sm:px-4 py-2 text-xs sm:text-sm leading-relaxed shadow-sm ${isClient
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none'
-                          : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
+                        className={`rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-sm break-words w-full ${isClient
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none'
+                            : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                           }`}
                       >
                         {msg.message}
@@ -277,64 +281,67 @@ export default function ChatWidget() {
               </>
             )}
           </div>
+
+          {/* Quick Actions Panel */}
           {session && (
-            <div className="px-3 sm:px-4 py-2 sm:py-3 bg-slate-50 border-t border-slate-200 space-y-1.5">
-              <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center">
+            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 space-y-2 shrink-0">
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center">
                 <FiCornerDownLeft size={10} className="mr-1" />
                 Quick Actions
               </p>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto custom-scrollbar">
                 <button
                   type="button"
                   onClick={() => handleQuickOptionClick("I want to inquire about Stone Aggregates delivery.")}
-                  className="px-2 py-1 text-[9px] sm:text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
+                  className="px-2.5 py-1 text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 active:bg-slate-200 transition-all duration-150"
                 >
                   🪨 Stone Aggregates
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickOptionClick("I need Coal bulk pricing.")}
-                  className="px-2 py-1 text-[9px] sm:text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
+                  className="px-2.5 py-1 text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 active:bg-slate-200 transition-all duration-150"
                 >
                   🔥 Coal Bulk
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickOptionClick("I need a quote for minerals.")}
-                  className="px-2 py-1 text-[9px] sm:text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
+                  className="px-2.5 py-1 text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 active:bg-slate-200 transition-all duration-150"
                 >
                   💎 Minerals Quote
                 </button>
                 <button
                   type="button"
                   onClick={handleCreateCrmLeadFromChat}
-                  className="px-2 py-1 text-[9px] sm:text-[10px] bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-full text-blue-700 hover:from-blue-100 hover:to-indigo-100 font-semibold transition-all duration-200"
+                  className="px-2.5 py-1 text-[10px] bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-full text-blue-700 hover:from-blue-100 hover:to-indigo-100 font-semibold transition-all duration-150"
                 >
                   🚀 Create CRM Lead
                 </button>
-                <button
-                  type="button"
-                  className="px-2 py-1 text-[9px] sm:text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
+                <Link
+                  to="/contact"
+                  className="px-2.5 py-1 text-[10px] bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-100 hover:border-slate-300 active:bg-slate-200 transition-all duration-150 text-center"
                 >
-                  <Link to="/contact">Contact US</Link>
-                </button>
+                  Contact Us
+                </Link>
               </div>
             </div>
           )}
 
+          {/* Input Form Footer */}
           {session && (
-            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center space-x-2">
+            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center space-x-2 shrink-0">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type your message here..."
-                className="flex-1 px-3 sm:px-4 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-sm sm:text-base transition-all duration-200"
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
               />
               <button
                 type="submit"
                 disabled={!newMessage.trim()}
-                className="p-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+                className="p-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-md flex items-center justify-center min-w-[38px] min-h-[38px]"
               >
                 <FiSend size={14} />
               </button>

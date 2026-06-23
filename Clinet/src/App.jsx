@@ -8,6 +8,7 @@ import Home from './pages/public/Home';
 import Products from './pages/public/Products';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
+import Careers from './pages/public/Careers';
 import QuoteRequest from './pages/public/QuoteRequest';
 import Login from './pages/public/Login';
 import ClientLogin from './pages/public/ClientLogin';
@@ -211,6 +212,7 @@ function AppLayout() {
           <Route path="/products" element={<Products />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
         </Routes>
       </main>

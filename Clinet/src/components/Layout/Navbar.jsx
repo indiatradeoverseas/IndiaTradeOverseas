@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-import { FiMenu, FiX, FiUser, FiLogOut, FiHome, FiPackage, FiInfo, FiPhone, FiFileText, FiSettings, FiBell, FiChevronDown } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiLogOut, FiHome, FiPackage, FiInfo, FiPhone, FiBriefcase, FiFileText, FiSettings, FiBell, FiChevronDown } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function Navbar() {
@@ -57,6 +57,7 @@ export default function Navbar() {
     { to: '/products', label: 'Products', icon: FiPackage },
     { to: '/about', label: 'About', icon: FiInfo },
     { to: '/contact', label: 'Contact', icon: FiPhone },
+    { to: '/careers', label: 'Careers', icon: FiBriefcase },
     { to: '/quote-request', label: 'Get Quote', icon: FiFileText },
   ];
 

@@ -12,7 +12,7 @@ export const dispatchesApi = {
   },
 
   async updateDispatchStatus(id, status) {
-    const response = await axiosInstance.patch(`/dispatch/${id}`, { dispatchStatus: status });
+    const response = await axiosInstance.patch(`/dispatch/${id}`, { status });
     return response.data;
   }
 };

@@ -8,7 +8,7 @@ const { recordAudit } = require('../security-audit/auditLog.service');
 async function getDocuments(req, res, next) {
   try {
     const documents = await documentService.getDocumentsForUser(req.user);
-    
+
     return ok(res, { documents }, 'Documents retrieved successfully', 200, req);
   } catch (error) {
     next(error);
@@ -24,14 +24,82 @@ async function uploadDocument(req, res, next) {
       return fail(res, 400, 'VALIDATION_FAILED', 'ownerType is required');
     }
 
+    let resolvedOwnerId = ownerId;
     if (ownerType !== 'PUBLIC') {
       if (!ownerId) {
         fs.unlinkSync(req.file.path);
         return fail(res, 400, 'VALIDATION_FAILED', 'ownerId is required for this ownerType');
       }
-      if (!mongoose.Types.ObjectId.isValid(ownerId)) {
-        fs.unlinkSync(req.file.path);
-        return fail(res, 400, 'VALIDATION_FAILED', 'ownerId must be a valid ObjectId');
+
+      const isEmail = String(ownerId).includes('@');
+      if (isEmail) {
+        const User = require('../users/user.model');
+        const Lead = require('../leads/lead.model');
+        const { hashText } = require('../../utils/crypto');
+
+        if (ownerType === 'USER') {
+          const userObj = await User.findOne({ email: String(ownerId).trim().toLowerCase() });
+          if (!userObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `User with email ${ownerId} not found`);
+          }
+          resolvedOwnerId = userObj._id;
+        } else if (ownerType === 'LEAD') {
+          const emailHash = hashText(String(ownerId).trim().toLowerCase());
+          const leadObj = await Lead.findOne({ emailHash });
+          if (!leadObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `Lead with email ${ownerId} not found`);
+          }
+          resolvedOwnerId = leadObj._id;
+        } else if (ownerType === 'QUOTATION') {
+          const emailHash = hashText(String(ownerId).trim().toLowerCase());
+          const leadObj = await Lead.findOne({ emailHash });
+          if (!leadObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `Lead with email ${ownerId} not found`);
+          }
+          const Quotation = require('../quotations/quotation.model');
+          const quotationObj = await Quotation.findOne({ leadId: leadObj._id }).sort({ createdAt: -1 });
+          if (!quotationObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `No quotation found for lead with email ${ownerId}`);
+          }
+          resolvedOwnerId = quotationObj._id;
+        } else if (ownerType === 'DISPATCH') {
+          const emailHash = hashText(String(ownerId).trim().toLowerCase());
+          const leadObj = await Lead.findOne({ emailHash });
+          if (!leadObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `Lead with email ${ownerId} not found`);
+          }
+          const Dispatch = require('../dispatch/dispatch.model');
+          const dispatchObj = await Dispatch.findOne({ leadId: leadObj._id }).sort({ createdAt: -1 });
+          if (!dispatchObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `No dispatch found for lead with email ${ownerId}`);
+          }
+          resolvedOwnerId = dispatchObj._id;
+        } else if (ownerType === 'PAYMENT') {
+          const emailHash = hashText(String(ownerId).trim().toLowerCase());
+          const leadObj = await Lead.findOne({ emailHash });
+          if (!leadObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `Lead with email ${ownerId} not found`);
+          }
+          const Payment = require('../payments/payment.model');
+          const paymentObj = await Payment.findOne({ leadId: leadObj._id }).sort({ createdAt: -1 });
+          if (!paymentObj) {
+            fs.unlinkSync(req.file.path);
+            return fail(res, 404, 'NOT_FOUND', `No payment found for lead with email ${ownerId}`);
+          }
+          resolvedOwnerId = paymentObj._id;
+        }
+      } else {
+        if (!mongoose.Types.ObjectId.isValid(ownerId)) {
+          fs.unlinkSync(req.file.path);
+          return fail(res, 400, 'VALIDATION_FAILED', 'ownerId must be a valid ObjectId or email address');
+        }
       }
     } else if (accessLevel !== 'PUBLIC') {
       fs.unlinkSync(req.file.path);
@@ -40,7 +108,7 @@ async function uploadDocument(req, res, next) {
 
     const doc = await documentService.uploadDoc({
       ownerType,
-      ownerId,
+      ownerId: resolvedOwnerId,
       accessLevel,
       file: req.file,
       user: req.user
@@ -138,20 +206,20 @@ async function changeAccessLevel(req, res, next) {
     const { accessLevel } = req.body;
     if (!accessLevel) return fail(res, 400, 'VALIDATION_FAILED', 'accessLevel is required');
 
-    
+
     const originalDoc = await Document.findById(req.params.id);
     if (!originalDoc || originalDoc.isDeleted) {
       return fail(res, 404, 'VALIDATION_FAILED', 'Document not found');
     }
 
-    
+
     const updatedDoc = await Document.findByIdAndUpdate(
       req.params.id,
       { accessLevel },
       { new: true, runValidators: true }
     );
 
-    
+
     await recordAudit({
       actorId: req.user._id,
       actionType: 'DOCUMENT_ACCESS_UPDATED',
@@ -166,7 +234,7 @@ async function changeAccessLevel(req, res, next) {
       }
     });
 
-    
+
     return ok(res, { success: true, document: updatedDoc }, 'Access level updated successfully', 200, req);
   } catch (error) {
     next(error);

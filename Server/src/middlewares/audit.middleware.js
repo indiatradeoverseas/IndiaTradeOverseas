@@ -1,7 +1,7 @@
 const { recordAudit } = require('../modules/security-audit/auditLog.service');
 
 async function auditRequest(req, res, next) {
-  
+
   req.auditAction = async ({ actionType, entityType, entityId, severity = 'LOW', metadata = {} }) => {
     return recordAudit({
       actorId: req.user ? req.user._id : null,

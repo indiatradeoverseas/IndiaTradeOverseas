@@ -71,7 +71,8 @@ async function getDispatches(req, res, next) {
 
 async function updateStatus(req, res, next) {
   try {
-    const { status, remarks } = req.body;
+    const status = req.body.status || req.body.dispatchStatus;
+    const { remarks } = req.body;
     if (!status) return fail(res, 400, 'VALIDATION_FAILED', 'status is required');
 
     const dispatch = await dispatchService.updateDispatchStatus({
