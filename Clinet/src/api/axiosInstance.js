@@ -7,8 +7,6 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-
-  timeout: 10000,
 });
 
 // const API_BASE_URL = 'https://india-i1di.onrender.com/api' || 'http://localhost:5000/api';
