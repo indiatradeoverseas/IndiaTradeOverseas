@@ -73,7 +73,7 @@ const EmployeeLogin = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Email address"
+                placeholder="Enter Your Email address"
                 className="block w-full pl-10 pr-3 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
               />
             </div>
@@ -86,7 +86,7 @@ const EmployeeLogin = () => {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Password"
+                placeholder="Enter Your Password"
                 className="block w-full pl-10 pr-12 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
               />
               <button
@@ -96,11 +96,6 @@ const EmployeeLogin = () => {
               >
                 {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
               </button>
-            </div>
-            <div className="flex justify-end text-xs">
-              <Link to="/forgot-password" className="font-semibold text-sky-600 hover:text-sky-500 transition">
-                Forgot password?
-              </Link>
             </div>
           </div>
 
@@ -122,12 +117,6 @@ const EmployeeLogin = () => {
             {' / '}
             <Link to="/client-signup" className="font-semibold text-sky-600 hover:text-sky-500">
               Client signup
-            </Link>
-          </p>
-          <p className="mt-3">
-            New employee?{' '}
-            <Link to="/signup" className="font-semibold text-sky-600 hover:text-sky-500">
-              Create employee account
             </Link>
           </p>
         </div>
