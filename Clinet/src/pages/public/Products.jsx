@@ -76,44 +76,44 @@ export default function Products() {
     fetchDbProducts();
   }, []);
 
-  const staticProducts = [
-    {
-      id: 1,
-      origin: 'India',
-      price: '20-50/kg',
-      name: 'RM Natural Unpolished Decorative Pebbles for Home & Garden Decor',
-      image: 'https://m.media-amazon.com/images/I/61FSFnx6r-L._SL1024_.jpg',
-      category: 'construction',
-      description: 'RM Natural Unpolished Decorative Pebbles for Home & Garden Decor (5kg, Rainbow, 20-50mm) | Raw Natural Stones for Landscaping, Plant Pots, Fillers, Aquarium, Pathways, Indoor Outdoor Use'
-    },
-    {
-      id: 2,
-      origin: 'India',
-      price: '20-50/kg',
-      name: 'Solid Natural Stone ',
-      image: 'https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSwiWjzogncwMWMQlEe7c4SMhst0Rle2wP7KS9PYFWU0FmAqF4zXlPU0XT9fKdA1v4MDDMoqhkqnthlc5Qwnada7xkk1BMW',
-      category: 'construction',
-      description: 'Solid Natural Stone- 60 mm Size, Heat-Resistant and Durable for Building Applications'
-    },
-    {
-      id: 3,
-      origin: 'India',
-      price: '20-50/kg',
-      name: 'Reflectix Expansion Joint',
-      image: 'https://m.media-amazon.com/images/I/41AWyJc1pWL._AC_UF1000,1000_QL80_.jpg',
-      category: 'construction',
-      description: 'Reflectix Expansion Joint.'
-    },
-    {
-      id: 4,
-      origin: "India",
-      price: '20-50/kg',
-      name: 'Gfrp Fiberglass Bar, Epoxy Composite Fiberglass Rebar',
-      image: "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTz7SO8-Tud-Feg53A0TptPFRY6zRCkI7Z5Abg_KC4fCccB7MSJWB9rDk7yZr-to8vgPoVt42xMlRJP6YY4JTVhuM0WUBDM",
-      category: 'fiberglass_rebar',
-      description: 'Gfrp Fiberglass Bar, Epoxy Composite Fiberglass Rebar'
-    }
-  ];
+//  const staticProducts = [
+  //  {
+    //  id: 1,
+    // origin: 'India',
+//     price: '20-50/kg',
+//     name: 'RM Natural Unpolished Decorative Pebbles for Home & Garden Decor',
+//     image: 'https://m.media-amazon.com/images/I/61FSFnx6r-L._SL1024_.jpg',
+//     category: 'construction',
+//     description: 'RM Natural Unpolished Decorative Pebbles for Home & Garden Decor (5kg, Rainbow, 20-50mm) | Raw Natural Stones for Landscaping, Plant Pots, Fillers, Aquarium, Pathways, Indoor Outdoor Use'
+//  },
+//  {
+//    id: 2,
+//    origin: 'India',
+//    price: '20-50/kg',
+//    name: 'Solid Natural Stone ',
+//    image: 'https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSwiWjzogncwMWMQlEe7c4SMhst0Rle2wP7KS9PYFWU0FmAqF4zXlPU0XT9fKdA1v4MDDMoqhkqnthlc5Qwnada7xkk1BMW',
+//    category: 'construction',
+//    description: 'Solid Natural Stone- 60 mm Size, Heat-Resistant and Durable for Building Applications'
+//   },
+//    {
+//      id: 3,
+//      origin: 'India',
+//      price: '20-50/kg',
+//      name: 'Reflectix Expansion Joint',
+//      image: 'https://m.media-amazon.com/images/I/41AWyJc1pWL._AC_UF1000,1000_QL80_.jpg',
+//      category: 'construction',
+//      description: 'Reflectix Expansion Joint.'
+//    },
+//    {
+//      id: 4,
+//      origin: "India",
+//      price: '20-50/kg',
+//      name: 'Gfrp Fiberglass Bar, Epoxy Composite Fiberglass Rebar',
+//      image: "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTz7SO8-Tud-Feg53A0TptPFRY6zRCkI7Z5Abg_KC4fCccB7MSJWB9rDk7yZr-to8vgPoVt42xMlRJP6YY4JTVhuM0WUBDM",
+//      category: 'fiberglass_rebar',
+//      description: 'Gfrp Fiberglass Bar, Epoxy Composite Fiberglass Rebar'
+//    }
+//  ];
 
   const categories = [
     { value: 'all', label: 'All Products' },
