@@ -76,7 +76,7 @@ export default function Navbar() {
               <div className="h-8 w-8 bg-[#0f4c75] rounded-lg flex items-center justify-center transition-transform group-hover:scale-105">
                 <span className="text-white font-bold text-sm">ITO</span>
               </div>
-              <span className="hidden sm:inline font-semibold text-[#0f4c75] text-lg">ITO Exim</span>
+              <span className="hidden sm:inline font-semibold text-[#0f4c75] text-lg">India Trade Center</span>
             </Link>
           </div>
 

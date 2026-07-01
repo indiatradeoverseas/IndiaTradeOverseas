@@ -87,3 +87,20 @@ textarea {
 .btn-accent {
   @apply bg-[#f5a524] hover:bg-[#d4a220] text-[#102a43];
 }
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}

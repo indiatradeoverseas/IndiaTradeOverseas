@@ -7,14 +7,74 @@ import { useAuth } from '../../hooks/useAuth';
 
 const imagesByCategory = {
   stone: '/images/natural_stones.png',
-  coal: '/images/industrial_coal.png',
+  white_stone: '/images/natural_stones.png',
   tea: '/images/premium_tea.png',
   rice: '/images/basmati_rice.png',
   vegetable: '/images/premium_tea.png',
-  fruit: '/images/premium_tea.png',
-  wheat: '/images/basmati_rice.png',
-  construction: '/images/natural_stones.png',
-  fiberglass_rebar: '/images/natural_stones.png'
+  fruit: '/images/premium_tea.png'
+};
+
+const categoryLabels = {
+  stone: 'Natural Stone',
+  white_stone: 'White Stone',
+  tea: 'Tea Premium',
+  rice: 'Premium Rice',
+  fruit: 'Fresh Fruits',
+  vegetable: 'Fresh Vegetable'
+};
+
+const renderFormattedDescription = (description) => {
+  if (!description) return null;
+  
+  const lines = description.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+  
+  if (lines.length <= 1) {
+    return <p className="text-slate-600 leading-relaxed text-xs whitespace-pre-wrap">{description}</p>;
+  }
+
+  return (
+    <div className="space-y-1 text-slate-600">
+      {lines.map((line, index) => {
+        const isHeader = line === line.toUpperCase() && line.length > 4 && !line.includes(':');
+        if (isHeader) {
+          return (
+            <div key={index} className="font-bold text-slate-900 tracking-wider uppercase border-b border-slate-100 pb-0.5 mt-2 first:mt-0 text-[10px]">
+              {line}
+            </div>
+          );
+        }
+
+        if (line.includes(':') || line.includes(' - ')) {
+          const delimiter = line.includes(':') ? ':' : ' - ';
+          const parts = line.split(delimiter);
+          const key = parts[0].trim();
+          const value = parts.slice(1).join(delimiter).trim();
+          return (
+            <div key={index} className="flex justify-between items-baseline gap-2 py-0.5 border-b border-slate-50">
+              <span className="text-slate-500 text-[10px] font-medium shrink-0">{key}</span>
+              <span className="text-slate-800 text-[10px] font-semibold text-right">{value}</span>
+            </div>
+          );
+        }
+
+        if (line.startsWith('-')) {
+          const content = line.substring(1).trim();
+          return (
+            <div key={index} className="flex items-start space-x-1.5 text-[10px] py-0.5">
+              <span className="text-indigo-500 font-bold">•</span>
+              <span className="text-slate-700">{content}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p key={index} className="text-slate-600 text-[10px] leading-relaxed py-0.5">
+            {line}
+          </p>
+        );
+      })}
+    </div>
+  );
 };
 
 export default function ProductUpload() {
@@ -164,17 +224,16 @@ export default function ProductUpload() {
                   <div className="flex justify-between items-start mb-2 gap-2 min-w-0">
                     <h3 className="text-xl font-semibold text-gray-900 break-all flex-1 min-w-0">{product.name}</h3>
                     <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
-                      {product.category}
+                      {categoryLabels[product.category] || product.category}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-sm mb-4 leading-relaxed line-clamp-3 break-all">
-                    {product.description}
-                  </p>
+                  <div className="max-h-36 overflow-y-auto pr-1.5 custom-scrollbar mb-4 border border-slate-50 rounded-lg p-2 bg-slate-50/50">
+                    {renderFormattedDescription(product.description)}
+                  </div>
                 </div>
                 <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-sm text-gray-500">
                   <div className="flex flex-col">
                     <span>Origin: <strong>{product.origin}</strong></span>
-                    <span>FOB Price: <strong className="text-green-600">{product.price}</strong></span>
                   </div>
                   {canDelete && (
                     <button
@@ -235,15 +294,12 @@ export default function ProductUpload() {
                     className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm cursor-pointer placeholder:text-slate-400"
                   >
                     <option value="">Select Category *</option>
-                    <option value="stone">Natural Stones</option>
-                    <option value="coal">Industrial Coal</option>
-                    <option value="tea">Premium Tea</option>
-                    <option value="rice">Rice Commodities</option>
-                    <option value="vegetable">Vegetables</option>
-                    <option value="fruit">Fruits</option>
-                    <option value="wheat">Wheat</option>
-                    <option value="construction">Construction Material</option>
-                    <option value="fiberglass_rebar">Fiberglass Rebar</option>
+                    <option value="stone">Natural Stone</option>
+                    <option value="white_stone">White Stone</option>
+                    <option value="tea">Tea Premium</option>
+                    <option value="rice">Premium Rice</option>
+                    <option value="fruit">Fresh Fruits</option>
+                    <option value="vegetable">Fresh Vegetable</option>
                   </select>
                 </div>
 
@@ -265,74 +321,53 @@ export default function ProductUpload() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    FOB Price Range *
-                  </label>
-                  <div className="relative">
-                    <FiDollarSign className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Image URL or File *
+                </label>
+                <div className="flex space-x-2">
+                  <div className="relative flex-1">
+                    <FiImage className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       required
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      value={formData.image}
+                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                       className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                      placeholder="Enter Your Product Price Range"
+                      placeholder="URL or Upload File"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Image URL or File *
+                  {/* Choose File Styled Label Button */}
+                  <label
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 rounded-xl flex items-center justify-center shrink-0 border border-slate-200 cursor-pointer text-xs font-medium transition active:scale-95"
+                    title="Upload image from your device"
+                  >
+                    <FiUpload className="mr-1" size={14} />
+                    File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
                   </label>
-                  <div className="flex space-x-2">
-                    <div className="relative flex-1">
-                      <FiImage className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        required
-                        value={formData.image}
-                        onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                        className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                        placeholder="URL or Upload File"
-                      />
-                    </div>
-
-                    {/* Choose File Styled Label Button */}
-                    <label
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 rounded-xl flex items-center justify-center shrink-0 border border-slate-200 cursor-pointer text-xs font-medium transition active:scale-95"
-                      title="Upload image from your device"
-                    >
-                      <FiUpload className="mr-1" size={14} />
-                      File
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                      />
-                    </label>
-                  </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center">
+                  <FiFileText className="mr-1.5" size={14} />
                   Product Description *
                 </label>
-                <div className="relative">
-                  <FiFileText className="absolute left-3.5 top-3.5 text-gray-400" />
-                  <textarea
-                    required
-                    rows="3"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                    placeholder="Enter Product Description"
-                  />
-                </div>
+                <textarea
+                  required
+                  rows="6"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
+                  placeholder="Enter Product Description. Use 'Key: Value' format (e.g. 'Net Weight: 5 kg') and uppercase titles (e.g. 'TERMS & CONDITIONS') on new lines for premium styling."
+                />
               </div>
 
               <div className="flex space-x-3 pt-4 border-t border-slate-100 shrink-0">

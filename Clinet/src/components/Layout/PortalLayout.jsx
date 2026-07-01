@@ -8,7 +8,7 @@ export default function PortalLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  
+
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -36,7 +36,7 @@ export default function PortalLayout({ children }) {
           >
             <FiMenu size={22} />
           </button>
-          <div className="text-base font-semibold text-slate-900">ITO Exim Portal</div>
+          <div className="text-base font-semibold text-slate-900">India Trade Center</div>
           <div className="w-8" />
         </div>
       </div>

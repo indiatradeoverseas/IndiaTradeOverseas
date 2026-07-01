@@ -55,8 +55,21 @@ async function deleteProduct(req, res, next) {
   }
 }
 
+async function getProduct(req, res, next) {
+  try {
+    const product = await productService.getProductById(req.params.id);
+    if (!product) {
+      return fail(res, 404, 'NOT_FOUND', 'Product not found');
+    }
+    return ok(res, { product }, 'Product retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getProducts,
   createProduct,
-  deleteProduct
+  deleteProduct,
+  getProduct
 };

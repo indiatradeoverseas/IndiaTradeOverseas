@@ -6,6 +6,7 @@ import { useAuth } from './hooks/useAuth';
 
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
+import ProductDetail from './pages/public/ProductDetail';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Careers from './pages/public/Careers';
@@ -210,6 +211,7 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />

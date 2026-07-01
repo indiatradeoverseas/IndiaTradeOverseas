@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { leadsApi } from '../../api/leads';
 import { FiSend, FiCheckCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function QuoteRequest() {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     customerName: '',
     companyName: '',
@@ -15,6 +17,33 @@ export default function QuoteRequest() {
     message: ''
   });
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    const productNameParam = searchParams.get('productName');
+
+    if (categoryParam || productNameParam) {
+      const categoryMapping = {
+        stone: 'STONE',
+        natural_stone: 'STONE',
+        white_stone: 'WHITE_STONE',
+        tea: 'TEA',
+        rice: 'RICE',
+        fruit: 'FRUIT',
+        vegetable: 'VEGETABLE'
+      };
+
+      const mappedCategory = categoryMapping[categoryParam?.toLowerCase()] || '';
+
+      setFormData(prev => ({
+        ...prev,
+        productCategory: mappedCategory || prev.productCategory,
+        message: productNameParam 
+          ? `I am interested in requesting a quote for "${productNameParam}". Please provide CIF/FOB pricing and availability details.`
+          : prev.message
+      }));
+    }
+  }, [searchParams]);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -138,11 +167,13 @@ export default function QuoteRequest() {
                 onChange={(e) => setFormData({ ...formData, productCategory: e.target.value })}
                 className="block w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition duration-150 ease-in-out text-sm bg-white"
               >
-                <option value="">Select a product</option>
-                <option value="STONE">Natural Stones</option>
-                <option value="COAL">Coal</option>
-                <option value="TEA">Tea</option>
-                <option value="RICE">Rice</option>
+                <option value="">Select a category</option>
+                <option value="STONE">Natural Stone</option>
+                <option value="WHITE_STONE">White Stone</option>
+                <option value="TEA">Tea Premium</option>
+                <option value="RICE">Premium Rice</option>
+                <option value="FRUIT">Fresh Fruits</option>
+                <option value="VEGETABLE">Fresh Vegetable</option>
               </select>
             </div>
             <div>

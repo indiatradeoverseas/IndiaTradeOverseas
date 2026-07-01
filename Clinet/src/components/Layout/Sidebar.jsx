@@ -43,7 +43,7 @@ export default function Sidebar({ onClose }) {
     <aside className="h-full bg-[#0f4c75] text-white flex flex-col">
       <div className="p-6 border-b border-[#144c7c] flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">ITO Exim CRM</h1>
+          <h1 className="text-xl font-bold">India Trade Center</h1>
           <p className="text-sm text-[#cbd5e1] mt-1">{user?.role}</p>
         </div>
         {onClose && (
