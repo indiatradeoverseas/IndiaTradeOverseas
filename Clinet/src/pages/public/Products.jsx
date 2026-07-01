@@ -76,7 +76,7 @@ export default function Products() {
     fetchDbProducts();
   }, []);
 
-  const staticProducts = [
+ const staticProducts = [
     {
       id: 1,
       origin: 'India',
@@ -103,6 +103,8 @@ export default function Products() {
     },
 
   ];
+
+
 
   const categories = [
     { value: 'all', label: 'All Products' },
