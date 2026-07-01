@@ -33,7 +33,7 @@ export default function Contact() {
         'dist - kishanganj, Near imambada pani bagh, Kishanganj, Bihar - 855107'
       ]
     },
-    { icon: FiPhone, title: 'Call Us', details: ['+91 8043857653'] },
+    { icon: FiPhone, title: 'Call Us', details: ['+91 8250614079'] },
     { icon: FiMail, title: 'Email Us', details: ['indiatradeoverseas@gmail.com'] },
     { icon: FiClock, title: 'Working Hours', details: ['Mon-Fri: 9:00 AM - 6:00 PM', 'Sat: 10:00 AM - 2:00 PM'] }
   ];
