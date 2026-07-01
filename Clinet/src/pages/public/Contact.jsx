@@ -34,7 +34,7 @@ export default function Contact() {
       ]
     },
     { icon: FiPhone, title: 'Call Us', details: ['+91 8250614079'] },
-    { icon: FiMail, title: 'Email Us', details: ['indiatradeoverseas@gmail.com'] },
+    { icon: FiMail, title: 'Email Us', details: ['info@indiatraaddeoverseas.com'] },
     { icon: FiClock, title: 'Working Hours', details: ['Mon-Fri: 9:00 AM - 6:00 PM', 'Sat: 10:00 AM - 2:00 PM'] }
   ];
 
