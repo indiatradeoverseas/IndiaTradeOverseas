@@ -171,9 +171,10 @@ export default function QuoteRequest() {
                 <option value="STONE">Natural Stone</option>
                 <option value="WHITE_STONE">White Stone</option>
                 <option value="TEA">Tea Premium</option>
-                <option value="RICE">Premium Rice</option>
+                <option value="RICE"> Rice</option>
                 <option value="FRUIT">Fresh Fruits</option>
                 <option value="VEGETABLE">Fresh Vegetable</option>
+                 <option value="COAL">Coal</option>
               </select>
             </div>
             <div>
