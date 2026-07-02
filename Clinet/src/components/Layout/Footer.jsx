@@ -49,8 +49,8 @@ export default function Footer() {
                 Vill-Deramari, Tola-Maujabari, panch-Deramari, Block-Khochadham,<br />
                 dist - kishanganj, Near imambada pani bagh, Kishanganj, Bihar - 855107
               </li>
-              <li>+91 8043857653</li>
-              <li>indiatradeoverseas@gmail.com</li>
+              <li>+91 8250614079</li>
+              <li>info@indiatraaddeoverseas.com</li>
             </ul>
           </div>
         </div>
