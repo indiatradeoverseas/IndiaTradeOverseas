@@ -14,7 +14,7 @@ export default function Footer() {
               <a href="#" className="text-gray-400 hover:text-white"><FiFacebook size={20} /></a>
               <a href="#" className="text-gray-400 hover:text-white"><FiTwitter size={20} /></a>
               <a href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white"><FiLinkedin size={20} /></a>
-              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white"><FiInstagram size={20} /></a>
+              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" className="text-gray-400 hover:text-white"><FiInstagram size={20} /></a>
             </div>
           </div>
 
