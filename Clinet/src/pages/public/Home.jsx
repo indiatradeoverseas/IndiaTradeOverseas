@@ -1,36 +1,28 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FiTruck,
-  FiShield,
-  FiClock,
-  FiUsers,
-  FiGlobe,
   FiAnchor,
   FiChevronRight,
   FiCheckCircle,
   FiCopy,
-  FiPhone,
-  FiMail,
   FiLayers,
-  FiMapPin,
-  FiGrid
+  FiMapPin
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function Home() {
   const [activeStep, setActiveStep] = useState(0);
 
-  // Mandated Trust Badge Set [cite: 360]
+  // Mandated Trust Badge Set[cite: 2]
   const trustBadges = [
     'EXPORTER', 'IMPORTER', 'BULK SUPPLIER', 'ITO TRANSPORT',
     'TRADE SOLUTIONS', 'GST REGISTERED', 'IEC HOLDER', 'MSME / UDYAM', 'FSSAI REGISTERED'
   ];
 
-  // Mandated Location Chips [cite: 377, 378]
+  // Mandated Location Chips[cite: 2]
   const locations = ['Kishanganj', 'Siliguri', 'Jaigaon', 'Noida'];
 
-  // Mandated Full Clipboard Dataset [cite: 379]
+  // Mandated Full Clipboard Dataset[cite: 2]
   const companyDetailsText = `India Trade Overseas
 Motto: Empowering Trade. Enabling Growth.
 Brand Line: Where Quality Meets Global Demand.
@@ -42,7 +34,7 @@ Registered Office: Kishanganj, Bihar, India
 Branch Office: Pradhan Nagar, Siliguri, West Bengal, India
 Factory: Deramari, Kishanganj, Bihar, India`;
 
-  // Mandated Six Commercial Business Verticals [cite: 327, 444]
+  // Mandated Six Commercial Business Verticals[cite: 2]
   const verticals = [
     {
       num: '01',
@@ -110,67 +102,73 @@ Factory: Deramari, Kishanganj, Bihar, India`;
   return (
     <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900 font-sans">
       
-      {/* Non-Negotiable Double Gold Frame Top Divider Accent [cite: 314] */}
+      {/* Non-Negotiable Double Gold Frame Top Divider Accent[cite: 2] */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
-      {/* 03 HOME HERO SECTION [cite: 345] */}
-      <section className="relative bg-[#0B2D5B] text-white py-24 md:py-32 overflow-hidden border-b border-[#C99B38]">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#FAF9F5_1px,transparent_1px),linear-gradient(to_bottom,#FAF9F5_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+      {/* 03 HOME HERO SECTION - WITH CINEMATIC VESSEL BG OVERLAY[cite: 2] */}
+      <section className="relative min-h-[85vh] flex items-center bg-[#0B2D5B] text-white py-24 md:py-32 overflow-hidden border-b border-[#C99B38]">
+        
+        {/* Cinematic Backdrop Image Layer */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1920&q=80" 
+            alt="Cinematic Container Vessel" 
+            className="w-full h-full object-cover object-center transform scale-105 animate-[subtle-zoom_20s_infinite_alternate]"
+          />
+          {/* Brand-Directive Gradient Shield (Ensures Premium Contrast)[cite: 2] */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0B2D5B]/95 via-[#0B2D5B]/90 to-[#102F60]/80 mix-blend-multiply"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B2D5B] via-transparent to-transparent"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center w-full">
           <div className="max-w-4xl mx-auto">
             
-            {/* Context Badge [cite: 350] */}
-            <span className="inline-flex items-center space-x-2 bg-[#102F60] text-blue-200 border border-[#C99B38]/30 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-6">
+            {/* Context Badge[cite: 2] */}
+            <span className="inline-flex items-center space-x-2 bg-[#102F60]/80 backdrop-blur-xs text-blue-200 border border-[#C99B38]/30 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-6">
               <FiAnchor className="text-[#C99B38]" /> <span>India Trade Overseas</span>
             </span>
 
-            {/* Mandated Hero Heading Text [cite: 350] */}
+            {/* Mandated Hero Heading Text[cite: 2] */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif text-white tracking-tight font-normal leading-tight mb-4">
               INDIA TRADE OVERSEAS <br />
-              <span className="text-slate-300 text-3xl sm:text-4xl block mt-2 font-sans font-light tracking-wide">
+              <span className="text-slate-200 text-2xl sm:text-3xl block mt-2 font-sans font-light tracking-wide">
                 Trade. Supply. Logistics. Growth.
               </span>
             </h1>
 
             <div className="w-16 h-[1px] bg-[#C99B38] mx-auto mb-6"></div>
 
-            {/* Motto & Supporting Brand Lines [cite: 350, 351] */}
-            <p className="text-xl sm:text-2xl uppercase tracking-[0.2em] font-sans text-[#C99B38] font-bold mb-2">
+            {/* Motto & Supporting Brand Lines[cite: 2] */}
+            <p className="text-xl sm:text-2xl uppercase tracking-[0.15em] font-sans text-[#C99B38] font-bold mb-2">
               Empowering Trade. Enabling Growth.
             </p>
             <p className="text-sm sm:text-base italic font-serif text-slate-300 tracking-wider mb-8 block">
               Where Quality Meets Global Demand.
             </p>
 
-            {/* Mandated Hero Narrative Copy [cite: 353] */}
-            <p className="text-slate-300 font-sans font-light text-sm sm:text-base max-w-3xl mx-auto leading-relaxed mb-12">
+            {/* Mandated Hero Narrative Copy[cite: 2] */}
+            <p className="text-slate-300 font-sans font-light text-sm sm:text-base max-w-3xl mx-auto leading-relaxed mb-12 backdrop-blur-xs py-2">
               India Trade Overseas is a multi-dimensional trade enterprise providing domestic and international sourcing, bulk supply, logistics coordination, industrial materials, construction materials, food commodities and consumer product solutions.
             </p>
 
-            {/* Mandated Hero Multi-Action Interface Matrix [cite: 354] */}
+            {/* Mandated Hero Multi-Action Interface Matrix[cite: 2] */}
             <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 max-w-4xl mx-auto">
               <Link to="/products" className="bg-[#C99B38] hover:bg-amber-600 text-white text-xs tracking-widest uppercase font-semibold px-6 py-3.5 rounded-sm shadow-md transition-colors">
                 Explore Products
               </Link>
-              <Link to="/quote-request" className="bg-transparent border border-white/30 hover:border-white text-white text-xs tracking-widest uppercase font-semibold px-6 py-3.5 rounded-sm transition-colors">
+              <Link to="/quote-request" className="bg-transparent border border-white/40 hover:border-white text-white text-xs tracking-widest uppercase font-semibold px-6 py-3.5 rounded-sm transition-colors">
                 Request Bulk Quote
               </Link>
               <a href="https://wa.me/918250614079" target="_blank" rel="noreferrer" className="bg-[#102F60] hover:bg-slate-800 text-white text-xs tracking-widest uppercase font-semibold px-6 py-3.5 rounded-sm border border-[#C99B38]/20 transition-all">
                 WhatsApp Us
               </a>
-              <Link to="/quote-request" className="bg-[#FAF9F5] text-[#0B2D5B] text-xs tracking-widest uppercase font-bold px-6 py-3.5 rounded-sm border border-transparent transition-colors">
-                Get a Quote
-              </Link>
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* MANDATED BRAND TRUST SIGNALS STRIP [cite: 360] */}
+      {/* MANDATED BRAND TRUST SIGNALS STRIP[cite: 2] */}
       <section className="bg-[#F5EEDF] py-5 border-b border-[#C99B38]/10 overflow-x-auto select-none">
         <div className="max-w-7xl mx-auto px-4 flex flex-wrap justify-center items-center gap-3 md:gap-5 whitespace-nowrap">
           {trustBadges.map((badge, index) => (
@@ -181,18 +179,18 @@ Factory: Deramari, Kishanganj, Bihar, India`;
         </div>
       </section>
 
-      {/* CORE INFO MATRIX: QUICK CONTACT & LOCATION CHIPS [cite: 370] */}
+      {/* CORE INFO MATRIX: QUICK CONTACT & LOCATION CHIPS[cite: 2] */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
           
-          {/* Quick Contact Card Panel [cite: 370] */}
+          {/* Quick Contact Card Panel[cite: 2] */}
           <div className="lg:col-span-7 bg-white border border-[#F5EEDF] p-8 rounded-sm shadow-md flex flex-col justify-between relative">
             <div className="absolute inset-0 border border-[#C99B38]/5 scale-[0.98] pointer-events-none"></div>
             <div>
               <h3 className="text-2xl font-serif text-[#0B2D5B] mb-6">Quick Contact Card</h3>
               <div className="space-y-4 font-sans text-xs">
                 
-                {/* Conduits: WhatsApp / Call [cite: 371] */}
+                {/* Conduits: WhatsApp / Call[cite: 2] */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-[#FAF9F5] border border-slate-100 rounded-sm gap-3">
                   <div>
                     <span className="text-[10px] tracking-wider uppercase font-bold text-slate-400 block mb-0.5">WhatsApp / Call Conduits</span>
@@ -201,11 +199,10 @@ Factory: Deramari, Kishanganj, Bihar, India`;
                   <div className="flex gap-2 shrink-0">
                     <a href="tel:+918250614079" className="bg-[#0B2D5B] hover:bg-[#102F60] text-white px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors">Call Now</a>
                     <a href="https://wa.me/918250614079" target="_blank" rel="noreferrer" className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors">WhatsApp Us</a>
-                    <button onClick={() => copyToClipboard('+91 82506 14079')} className="bg-slate-200 text-slate-700 hover:bg-slate-300 px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors">Copy Number</button>
                   </div>
                 </div>
 
-                {/* Conduits: Email [cite: 372] */}
+                {/* Conduits: Email[cite: 2] */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-[#FAF9F5] border border-slate-100 rounded-sm gap-3">
                   <div>
                     <span className="text-[10px] tracking-wider uppercase font-bold text-slate-400 block mb-0.5">Secure Document Transmission</span>
@@ -213,11 +210,10 @@ Factory: Deramari, Kishanganj, Bihar, India`;
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <a href="mailto:info.indiatradeoverseas@gmail.com" className="bg-[#0B2D5B] hover:bg-[#102F60] text-white px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors">Send Email</a>
-                    <button onClick={() => copyToClipboard('info.indiatradeoverseas@gmail.com')} className="bg-slate-200 text-slate-700 hover:bg-slate-300 px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors">Copy Email</button>
                   </div>
                 </div>
 
-                {/* Conduits: Hours [cite: 374] */}
+                {/* Conduits: Hours[cite: 2] */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-[#FAF9F5] border border-slate-100 rounded-sm gap-3">
                   <div>
                     <span className="text-[10px] tracking-wider uppercase font-bold text-slate-400 block mb-0.5">Operational Availability</span>
@@ -229,12 +225,12 @@ Factory: Deramari, Kishanganj, Bihar, India`;
             </div>
           </div>
 
-          {/* Location Chips Panel [cite: 377] */}
+          {/* Location Chips Panel[cite: 2] */}
           <div className="lg:col-span-5 bg-white border border-[#F5EEDF] p-8 rounded-sm shadow-md flex flex-col justify-center">
             <span className="text-amber-700 font-medium tracking-[0.2em] text-xs uppercase block mb-1">Corporate Corridor Presence</span>
             <h4 className="text-xl font-serif text-[#0B2D5B] mb-3">Location Chips</h4>
             <p className="text-xs text-slate-500 font-sans font-light leading-relaxed mb-6">
-              Our active multi-category physical footprints maintain operational hubs inside the following major regional logistics corridors[cite: 396]:
+              Our active multi-category physical footprints maintain operational hubs inside the following major regional logistics corridors[cite: 2]:
             </p>
             <div className="flex flex-wrap gap-2 mb-6">
               {locations.map((city) => (
@@ -243,12 +239,13 @@ Factory: Deramari, Kishanganj, Bihar, India`;
                 </span>
               ))}
             </div>
+
           </div>
 
         </div>
       </section>
 
-      {/* 05-BUSINESS VERTICALS PRESENTATION PANELS [cite: 444] */}
+      {/* 05-BUSINESS VERTICALS PRESENTATION PANELS[cite: 2] */}
       <section className="py-20 bg-[#F5EEDF] border-y border-[#C99B38]/10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           
@@ -268,9 +265,8 @@ Factory: Deramari, Kishanganj, Bihar, India`;
                   <h4 className="text-lg font-serif font-medium text-[#0B2D5B] mb-2">{v.title}</h4>
                   <p className="text-slate-600 text-xs font-sans font-light leading-relaxed mb-6">{v.desc}</p>
                 </div>
-                {/* Specific CTA handling configured to use non-reload routes [cite: 465] */}
                 <Link to="/products" className="w-full inline-flex items-center justify-center text-center bg-[#FAF9F5] hover:bg-[#F5EEDF] border border-slate-100 text-[#0B2D5B] font-sans text-xs uppercase tracking-widest py-2.5 font-bold transition-colors">
-                  {v.cta}
+                  {v.cta}[cite: 2]
                 </Link>
               </div>
             ))}
@@ -333,7 +329,7 @@ Factory: Deramari, Kishanganj, Bihar, India`;
         </div>
       </section>
 
-      {/* INSTITUTIONAL COUPLING CALL-TO-ACTION BAR */}
+      {/* PARTNER WITH INDIA TRADE OVERSEAS (MODERN CTA) */}
       <section className="bg-slate-900 text-white py-16 border-t border-slate-800 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <h2 className="text-3xl font-serif text-white tracking-tight">Partner with India Trade Overseas</h2>
@@ -351,9 +347,9 @@ Factory: Deramari, Kishanganj, Bihar, India`;
         </div>
       </section>
 
-      {/* MANDATED BRAND DICTATED FOOTER STRUCTURE [cite: 823] */}
+      {/* CORPORATE HANDOFF FOOTER SEAL */}
       <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center font-sans">
-        <div className="max-w-4xl mx-auto space-y-4">
+        <div className="max-w-3xl mx-auto space-y-4">
           <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
             India Trade Overseas &bull; Empowering Trade. Enabling Growth.
           </p>
@@ -361,7 +357,7 @@ Factory: Deramari, Kishanganj, Bihar, India`;
             "Where Quality Meets Global Demand."
           </p>
           <div className="text-[10px] text-slate-400 font-light max-w-2xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
-            Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation[cite: 828].
+            Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>
       </footer>
