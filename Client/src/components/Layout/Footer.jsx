@@ -85,12 +85,12 @@ export default function Footer() {
               <div className="space-y-1.5 pt-1  relative group">
                 <div className="flex items-center justify-between">
                   <a href="tel:+918250614079" className="hover:text-white transition-colors block text-xs tracking-wide">
-                    Phone: <span className="font-medium text-slate-300">+91 82506 14079</span>
+                    {/* Phone: <span className="font-medium text-slate-300">+000000000000</span> */}
                   </a>
                 </div>
                 <div className="flex items-center justify-between">
                   <a href="mailto:info.indiatradeoverseas@gmail.com" className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[190px]">
-                    Email: <span className="font-medium text-slate-300">info.indiatradeoverseas@gmail.com</span>
+                    Email: <span className="font-medium text-slate-300">info@indiatradeoverseas.com</span>
                   </a>
                 </div>
               </div>
