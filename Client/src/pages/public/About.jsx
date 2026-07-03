@@ -47,7 +47,7 @@ FSSAI Licence No.: 20425371000005`;
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
       {/* Corporate Editorial Header */}
-      <header className="relative max-w-7xl mx-auto pt-20 pb-12 px-4 sm:px-6 lg:px-8 text-center">
+      {/* <header className="relative max-w-7xl mx-auto pt-20 pb-12 px-4 sm:px-6 lg:px-8 text-center">
         <h1 className="text-4xl sm:text-6xl font-serif text-[#0B2D5B] tracking-tight font-normal mb-4">
           India Trade Overseas
         </h1>
@@ -58,7 +58,7 @@ FSSAI Licence No.: 20425371000005`;
         <p className="text-sm italic font-serif text-slate-600 tracking-wide">
           Where Quality Meets Global Demand.
         </p>
-      </header>
+      </header> */}
 
       {/* Main Presentation Section */}
       <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
