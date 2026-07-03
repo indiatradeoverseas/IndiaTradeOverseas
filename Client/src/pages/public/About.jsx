@@ -76,11 +76,11 @@ FSSAI Licence No.: 20425371000005`;
                   e.target.src = './images/ITO Logo.jpeg';
                 }}
               />
-              <div className="mt-4 text-center border-t border-slate-100 pt-3">
+              {/* <div className="mt-4 text-center border-t border-slate-100 pt-3">
                 <p className="font-serif italic text-xs text-slate-400 tracking-wide">
                   Complete Company Book Cover &bull; 2026 Edition
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
 
