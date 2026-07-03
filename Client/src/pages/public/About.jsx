@@ -30,7 +30,7 @@ Branch Office: Pradhan Nagar, Siliguri, West Bengal, India
 Additional Presence: Jaigaon and Noida
 Factory: Deramari, Kishanganj, Bihar, India
 Phone: +91 82506 14079
-Email: info.indiatradeoverseas@gmail.com
+Email: info@indiatradeoverseas.com
 GSTIN: 10JIMPK9981B1Z0
 FSSAI Licence No.: 20425371000005`;
 
@@ -76,11 +76,6 @@ FSSAI Licence No.: 20425371000005`;
                   e.target.src = './images/ITO Logo.jpeg';
                 }}
               />
-              <div className="mt-4 text-center border-t border-slate-100 pt-3">
-                <p className="font-serif italic text-xs text-slate-400 tracking-wide">
-                  Complete Company Book Cover &bull; 2026 Edition
-                </p>
-              </div>
             </div>
           </div>
 

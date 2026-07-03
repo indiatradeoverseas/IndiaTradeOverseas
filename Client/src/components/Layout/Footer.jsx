@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 export default function Footer() {
   // Mandated Copy Context Blocks from the Directive
-  const footerContactText = `Phone: +91 82506 14079\nEmail: info.indiatradeoverseas@gmail.com`;
+  const footerContactText = `Phone: +91 82506 14079\nEmail: info@indiatradeoverseas.com`;
   const registeredOfficeText = `Vill-Deramari, Tola-Maujabari, panch-Deramari, Block-Khochadham, dist - kishanganj, Near imambada pani bagh, Kishanganj, Bihar - 855107`;
 
   const copyToClipboard = (text, typeLabel) => {
@@ -84,13 +84,8 @@ export default function Footer() {
 
               <div className="space-y-1.5 pt-1  relative group">
                 <div className="flex items-center justify-between">
-                  <a href="tel:+918250614079" className="hover:text-white transition-colors block text-xs tracking-wide">
-                    Phone: <span className="font-medium text-slate-300">+91 82506 14079</span>
-                  </a>
-                </div>
-                <div className="flex items-center justify-between">
-                  <a href="mailto:info.indiatradeoverseas@gmail.com" className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[190px]">
-                    Email: <span className="font-medium text-slate-300">info.indiatradeoverseas@gmail.com</span>
+                  <a href="mailto:info@indiatradeoverseas.com" className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[190px]">
+                    Email: <span className="font-medium text-slate-300">info@indiatradeoverseas.com</span>
                   </a>
                 </div>
               </div>

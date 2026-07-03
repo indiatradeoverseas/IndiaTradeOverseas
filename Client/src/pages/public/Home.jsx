@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,10 +10,27 @@ import {
   FiActivity,
   FiBookOpen
 } from 'react-icons/fi';
-import { IoLogoWhatsapp } from "react-icons/io";
+
+// Editorial B2B global trade carousel assets curated to match business segments
+const CINEMATIC_CAROUSEL_BACKDROPS = [
+  "https://images.unsplash.com/photo-1703977883249-d959f2b0c1ae?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", // Mandated Starting Vessel Asset
+  "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=1920&auto=format&fit=crop",          // Heavy Ocean Container Carrier 
+  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=1920&auto=format&fit=crop",          // Global Supply Distribution Hub
+  "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=1920&auto=format&fit=crop",          // Dockside Terminal Infrastructure
+  "https://images.unsplash.com/photo-1710081647293-a07a5915bcd6?q=80&w=1331&auto=format&fit=crop"           // Industrial Freight Crane Cranes Overview
+];
 
 export default function Home() {
   const [activeStep, setActiveStep] = useState(0);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  // Automated fade rotation background loop stepping over a clean 5-second lifecycle threshold
+  useEffect(() => {
+    const backdropTimer = setInterval(() => {
+      setCarouselIndex((prevIndex) => (prevIndex + 1) % CINEMATIC_CAROUSEL_BACKDROPS.length);
+    }, 5000);
+    return () => clearInterval(backdropTimer);
+  }, []);
 
   // Mandated Trust Badge Set
   const trustBadges = [
@@ -99,22 +116,26 @@ export default function Home() {
       {/* Non-Negotiable Double Gold Frame Top Divider Accent */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
-      {/* 03 HOME HERO SECTION - RESPONSIVE MOBILE EYE-CENTERED BACKDROP */}
-      <section className="relative min-h-[85vh] flex items-center bg-slate-100 py-24 md:py-32 overflow-hidden border-b border-[#C99B38]">
+      {/* 03 HOME HERO SECTION - RESPONSIVE MOBILE EYE-CENTERED BACKDROP WITH CROSS-FADE CAROUSEL */}
+      <section className="relative min-h-[85vh] flex items-center bg-slate-950 py-24 md:py-32 overflow-hidden border-b border-[#C99B38]">
         
-        {/* Cinematic Clean Import-Export Background Layer */}
-        <div className="absolute inset-0 z-0">
-          <motion.img 
-            initial={{ scale: 1.1, opacity: 0 }}
-            animate={{ scale: 1.02, opacity: 0.80 }}
-            transition={{ duration: 1.5, ease: 'easeOut' }}
-            src="https://images.unsplash.com/photo-1703977883249-d959f2b0c1ae?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
-            alt="Cinematic Sourcing Container Logistics Terminal" 
-            className="w-full h-full object-cover object-center"
-          />
+        {/* Animated Cinematic Layer Box (No public busy elements overlay without protective shields) */}
+        <div className="absolute inset-0 z-0 bg-slate-950">
+          <AnimatePresence mode="wait">
+            <motion.img 
+              key={carouselIndex}
+              initial={{ opacity: 0, scale: 1.10 }}
+              animate={{ opacity: 0.80, scale: 1.02 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.4, ease: 'easeInOut' }}
+              src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]} 
+              alt="Cinematic Sourcing Container Logistics Terminal" 
+              className="w-full h-full object-cover object-center absolute inset-0"
+            />
+          </AnimatePresence>
           {/* Subtle Clean Vignette Protective Layers */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#FBF7EF]/90 via-[#FBF7EF]/40 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#FBF7EF] via-transparent to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FBF7EF]/90 via-[#FBF7EF]/40 to-transparent z-1"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#FBF7EF] via-transparent to-transparent z-1"></div>
         </div>
 
         {/* Updated alignment wrapper classes to properly shift layout orientations based on screens */}
