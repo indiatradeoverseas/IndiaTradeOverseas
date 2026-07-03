@@ -2,18 +2,14 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../api/auth';
+import { motion } from 'framer-motion';
 import {
   FiMail,
   FiLock,
   FiEye,
   FiEyeOff,
-  FiLogIn,
   FiShield,
-  FiArrowRight,
-  FiSmartphone,
-  FiAlertOctagon,
-  FiCheckCircle,
-  FiCornerDownLeft
+  FiArrowRight
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -38,7 +34,7 @@ const Login = () => {
       if (response.success) {
         toast.success('Welcome back!', {
           icon: '🎉',
-          style: { borderRadius: '10px', background: '#333', color: '#fff' }
+          style: { borderRadius: '6px', background: '#0B2D5B', color: '#FBF7EF', border: '1px solid #C99B38' }
         });
         navigate('/crm/dashboard');
       }
@@ -46,7 +42,7 @@ const Login = () => {
       console.error('Login error:', error);
       const errorMsg = error.response?.data?.message || 'Login failed. Please check your credentials.';
       toast.error(errorMsg, {
-        style: { borderRadius: '10px', background: '#333', color: '#fff' }
+        style: { borderRadius: '6px', background: '#0B2D5B', color: '#FBF7EF', border: '1px solid #ef4444' }
       });
     } finally {
       setLoading(false);
@@ -54,29 +50,46 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-80 h-80 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-1000"></div>
+    <div className="min-h-screen flex items-center justify-center bg-[#FBF7EF] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans antialiased">
+      
+      {/* Background Decor - Refined geometric tinting with zero blue color-masking overlays */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#C99B38]/5 rounded-bl-full filter blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#0B2D5B]/5 rounded-tr-full filter blur-3xl" />
       </div>
 
-      <div className="max-w-md w-full space-y-8 relative z-10 bg-white/80 backdrop-blur-md p-8 rounded-3xl border border-gray-100 shadow-2xl">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", duration: 0.6 }}
+        className="max-w-md w-full space-y-8 relative z-10 bg-[#FBF7EF] border border-[#C99B38]/30 p-8 sm:p-10 rounded-lg shadow-xl"
+      >
+        {/* Top Gold Border strip alignment matching the shared dynamic Enquiry overlays */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C99B38] via-[#E2C275] to-[#C99B38] rounded-t-lg" />
+
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-blue-600 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative h-16 w-16 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-105">
-                <FiShield className="h-8 w-8 text-white" />
-              </div>
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="relative h-14 w-14 bg-[#0B2D5B] rounded border border-[#C99B38]/30 flex items-center justify-center shadow-md"
+            >
+              <FiShield className="h-6 w-6 text-[#C99B38]" />
+            </motion.div>
           </div>
+          <h2 className="text-2xl sm:text-3xl font-serif font-semibold text-[#0B2D5B] tracking-wide">
+            Internal Portal Access
+          </h2>
+          <p className="text-xs text-[#C99B38] tracking-widest uppercase mt-1.5">
+            India Trade Overseas CRM
+          </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleLoginSubmit}>
+        <form className="mt-8 space-y-5" onSubmit={handleLoginSubmit}>
           <div className="space-y-4">
+            {/* Corporate Email Address Field */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <FiMail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200" />
+                <FiMail className="h-4 w-4 text-[#0B2D5B]/40 group-focus-within:text-[#C99B38] transition-colors duration-200" />
               </div>
               <input
                 id="email"
@@ -86,14 +99,15 @@ const Login = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white/50 backdrop-blur-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm hover:shadow"
+                className="block w-full pl-10 pr-3 py-3 border border-[#0B2D5B]/20 rounded bg-white placeholder-[#0B2D5B]/30 text-[#0B2D5B] focus:outline-none focus:border-[#C99B38] focus:ring-0 transition-all text-sm"
                 placeholder="Email address"
               />
             </div>
 
+            {/* Secure Password Field */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <FiLock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200" />
+                <FiLock className="h-4 w-4 text-[#0B2D5B]/40 group-focus-within:text-[#C99B38] transition-colors duration-200" />
               </div>
               <input
                 id="password"
@@ -103,33 +117,44 @@ const Login = () => {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl bg-white/50 backdrop-blur-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm hover:shadow"
+                className="block w-full pl-10 pr-12 py-3 border border-[#0B2D5B]/20 rounded bg-white placeholder-[#0B2D5B]/30 text-[#0B2D5B] focus:outline-none focus:border-[#C99B38] focus:ring-0 transition-all text-sm"
                 placeholder="Password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#0B2D5B]/40 hover:text-[#0B2D5B] transition-colors duration-200"
               >
-                {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
-          <button
+          {/* Secure Processing Trigger Action */}
+          <motion.button
             type="submit"
             disabled={loading}
-            className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25"
+            whileHover={{ scale: loading ? 1 : 1.01 }}
+            whileTap={{ scale: loading ? 1 : 0.99 }}
+            className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-medium rounded text-[#FBF7EF] bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md"
           >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
+            {loading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#FBF7EF] border-t-transparent"></div>
+                <span>Verifying Credentials...</span>
+              </div>
+            ) : (
+              'Sign In'
+            )}
+          </motion.button>
         </form>
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
+
+        <div className="text-center pt-2">
+          <p className="text-xs text-[#0B2D5B]/70">
             Don't have an account?{' '}
             <Link
               to="/signup"
-              className="font-semibold text-blue-600 hover:text-blue-500 transition-colors duration-200 inline-flex items-center gap-1 group"
+              className="font-semibold text-[#C99B38] hover:text-[#C99B38]/80 transition-colors inline-flex items-center gap-1 group"
             >
               Create account
               <FiArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
@@ -137,12 +162,13 @@ const Login = () => {
           </p>
         </div>
 
-        <p className="text-center text-xs text-gray-400">
+        {/* Global Structural Disclaimers and compliance anchors */}
+        <p className="text-center text-[11px] text-[#0B2D5B]/40 border-t border-[#0B2D5B]/5 pt-4">
           By signing in, you agree to our{' '}
-          <a href="#" className="text-blue-500 hover:text-blue-600">Terms</a> and{' '}
-          <a href="#" className="text-blue-500 hover:text-blue-600">Privacy Policy</a>
+          <a href="#" className="text-[#C99B38] hover:underline">Terms</a> and{' '}
+          <a href="#" className="text-[#C99B38] hover:underline">Privacy Policy</a>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

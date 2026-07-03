@@ -400,7 +400,9 @@ export default function Home() {
       <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center font-sans">
         <div className="max-w-3xl mx-auto space-y-4">
           <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
-            India Trade Overseas &bull; Empowering Trade. Enabling Growth.
+            India Trade Overseas
+            <br /> 
+            Empowering Trade. Enabling Growth.
           </p>
           <p className="text-xs italic text-[#C99B38] font-serif">
             "Where Quality Meets Global Demand."
