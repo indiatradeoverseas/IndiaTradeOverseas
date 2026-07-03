@@ -85,7 +85,7 @@ export default function Footer() {
                   className="absolute top-2 right-2 text-slate-500 hover:text-[#C99B38] transition-colors"
                   title="Copy Registered Office Path"
                 >
-                  <FiCopy size={12} />
+                   {/* <FiCopy size={12} /> */}
                 </button>
               </div>
 
@@ -98,7 +98,7 @@ export default function Footer() {
                     onClick={() => copyToClipboard('+918250614079')}
                     className="text-slate-500 hover:text-[#C99B38] transition-colors"
                   >
-                    <FiCopy size={12} />
+                     {/* <FiCopy size={12} /> */}
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
@@ -109,7 +109,7 @@ export default function Footer() {
                     onClick={() => copyToClipboard('info.indiatradeoverseas@gmail.com')}
                     className="text-slate-500 hover:text-[#C99B38] transition-colors"
                   >
-                    <FiCopy size={12} />
+                    {/* <FiCopy size={12} /> */}
                   </button>
                 </div>
               </div>
