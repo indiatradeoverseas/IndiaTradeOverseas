@@ -80,37 +80,18 @@ export default function Footer() {
                 <p className="pr-6 text-[11px]">
                   {registeredOfficeText}
                 </p>
-                <button 
-                  onClick={() => copyToClipboard(registeredOfficeText)}
-                  className="absolute top-2 right-2 text-slate-500 hover:text-[#C99B38] transition-colors"
-                  title="Copy Registered Office Path"
-                >
-                   {/* <FiCopy size={12} /> */}
-                </button>
               </div>
 
-              <div className="space-y-1.5 pt-1 border-t border-slate-800 relative group">
+              <div className="space-y-1.5 pt-1  relative group">
                 <div className="flex items-center justify-between">
                   <a href="tel:+918250614079" className="hover:text-white transition-colors block text-xs tracking-wide">
                     Phone: <span className="font-medium text-slate-300">+91 82506 14079</span>
                   </a>
-                  <button 
-                    onClick={() => copyToClipboard('+918250614079')}
-                    className="text-slate-500 hover:text-[#C99B38] transition-colors"
-                  >
-                     {/* <FiCopy size={12} /> */}
-                  </button>
                 </div>
                 <div className="flex items-center justify-between">
                   <a href="mailto:info.indiatradeoverseas@gmail.com" className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[190px]">
                     Email: <span className="font-medium text-slate-300">info.indiatradeoverseas@gmail.com</span>
                   </a>
-                  <button 
-                    onClick={() => copyToClipboard('info.indiatradeoverseas@gmail.com')}
-                    className="text-slate-500 hover:text-[#C99B38] transition-colors"
-                  >
-                    {/* <FiCopy size={12} /> */}
-                  </button>
                 </div>
               </div>
 
