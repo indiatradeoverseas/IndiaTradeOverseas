@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { FiMapPin, FiPhone, FiMail, FiClock, FiSend } from 'react-icons/fi';
+import { 
+  FiMapPin, 
+  FiPhone, 
+  FiMail, 
+  FiClock, 
+  FiSend, 
+  FiCopy, 
+  FiBookmark 
+} from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function Contact() {
@@ -12,11 +20,15 @@ export default function Contact() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Mandated Copy Context Blocks from the Directive
+  const officeLocationsText = `Registered Office: Kishanganj, Bihar, India\nBranch Office: Pradhan Nagar, Siliguri, West Bengal, India\nFactory: Deramari, Kishanganj, Bihar, India`;
+  const emailTargetText = `info.indiatradeoverseas@gmail.com`;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
-    
+    // Kept identical to your original form architecture logic to ensure zero breakage
     setTimeout(() => {
       toast.success('Message sent successfully! We will get back to you soon.');
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -24,49 +36,91 @@ export default function Contact() {
     }, 1000);
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success('Copied to Clipboard'))
+      .catch(() => toast.error('Clipboard access disabled'));
+  };
+
   const contactInfo = [
     {
       icon: FiMapPin,
-      title: 'Visit Us',
+      title: 'Corporate Presence',
       details: [
-        'Vill-Deramari, Tola-Maujabari, panch-Deramari, Block-Khochadham',
-        'dist - kishanganj, Near imambada pani bagh, Kishanganj, Bihar - 855107'
-      ]
+        'Registered Office: Kishanganj, Bihar, India',
+        'Branch Office: Pradhan Nagar, Siliguri, West Bengal',
+        'Factory: Deramari, Kishanganj, Bihar, India'
+      ],
+      copyData: officeLocationsText
     },
-    { icon: FiPhone, title: 'Call Us', details: ['+91 8250614079'] },
-    { icon: FiMail, title: 'Email Us', details: ['info@indiatraaddeoverseas.com'] },
-    { icon: FiClock, title: 'Working Hours', details: ['Mon-Fri: 9:00 AM - 6:00 PM', 'Sat: 10:00 AM - 2:00 PM'] }
+    { 
+      icon: FiPhone, 
+      title: 'Call Channels', 
+      details: ['+91 82506 14079'], 
+      copyData: '+91 82506 14079' 
+    },
+    { 
+      icon: FiMail, 
+      title: 'Secure Electronic Mail', 
+      details: ['info.indiatradeoverseas@gmail.com'], 
+      copyData: emailTargetText 
+    },
+    { 
+      icon: FiClock, 
+      title: 'Business Hours', 
+      details: ['Monday to Saturday 9:30 AM to 6:30 PM IST'], 
+      copyData: 'Monday to Saturday 9:30 AM to 6:30 PM IST' 
+    }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+    <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900">
+      
+      {/* Structural Double Gold Line Top Border Accent */}
+      <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         
-        <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 sm:mb-4">
-            Contact Us
+        {/* Corporate Editorial Header */}
+        <div className="text-center mb-12 sm:mb-16">
+          <span className="text-[#C99B38] font-medium tracking-[0.25em] text-xs uppercase block mb-3 font-sans">
+            Commercial Intake Portal
+          </span>
+          <h1 className="text-4xl sm:text-5xl font-serif text-[#0B2D5B] tracking-tight font-normal mb-4">
+            Contact Commercial Office
           </h1>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-4">
-            Get in touch with our team for any inquiries
+          <div className="w-24 h-[1px] bg-[#C99B38] mx-auto mb-4"></div>
+          <p className="text-sm italic font-serif text-slate-500 max-w-2xl mx-auto px-4">
+            "Where Quality Meets Global Demand."
           </p>
-          <div className="w-20 h-1 bg-primary-600 mx-auto mt-4 rounded-full"></div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-start">
           
-          <div className="lg:col-span-1 space-y-5 sm:space-y-6">
+          {/* Left Column: Premium Information Blocks */}
+          <div className="lg:col-span-5 space-y-6">
             {contactInfo.map((info, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-5 sm:p-6 group">
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className="p-2.5 sm:p-3 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors duration-300">
-                    <info.icon className="text-primary-600" size={22} />
+              <div key={index} className="bg-white border border-[#F5EEDF] shadow-sm rounded-sm p-5 relative group">
+                <div className="absolute inset-0 border border-[#C99B38]/5 scale-[0.98] pointer-events-none"></div>
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-[#FAF9F5] border border-amber-900/5 text-[#C99B38] rounded-sm shrink-0">
+                    <info.icon size={18} />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1.5 sm:mb-2 text-base sm:text-lg">
-                      {info.title}
-                    </h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <h3 className="font-serif text-base font-medium text-[#0B2D5B]">
+                        {info.title}
+                      </h3>
+                      <button 
+                        onClick={() => copyToClipboard(info.copyData)}
+                        className="text-slate-300 hover:text-[#C99B38] transition-colors p-1"
+                        title="Copy Parameter"
+                      >
+                        <FiCopy size={12} />
+                      </button>
+                    </div>
                     {info.details.map((detail, i) => (
-                      <p key={i} className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                      <p key={i} className="text-slate-600 text-xs font-sans font-light leading-relaxed truncate">
                         {detail}
                       </p>
                     ))}
@@ -75,16 +129,17 @@ export default function Contact() {
               </div>
             ))}
 
-            
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
-              <div className="p-4 sm:p-6 pb-2 sm:pb-3">
-                <h3 className="font-semibold text-gray-900 text-base sm:text-lg">Find Us</h3>
+            {/* Map Frame Container */}
+            <div className="bg-white border border-[#F5EEDF] rounded-sm shadow-sm overflow-hidden p-3">
+              <div className="p-2 pb-3 flex items-center gap-2 text-[#0B2D5B]">
+                <FiBookmark size={14} className="text-[#C99B38]" />
+                <h3 className="font-serif text-sm font-medium">Regional Mapping</h3>
               </div>
-              <div className="h-56 sm:h-64 w-full bg-gray-100">
+              <div className="h-52 w-full bg-slate-50 border border-slate-100 rounded-sm overflow-hidden">
                 <iframe
-                  title="India Trade Overseas Location"
-                  src="https://maps.google.com/maps?q=26.1800553,87.9105314&t=&z=15&ie=UTF8&iwloc=&output=embed"
-                  className="w-full h-full border-0"
+                  title="India Trade Overseas Location Mapping"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3570.3664797042576!2d87.9405623!3d26.4447472!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjbCsDI2JzQxLjEiTiA4N8KwNTYnMjYuMCJF!5e0!3m2!1sen!2sin!4v1680000000000"
+                  className="w-full h-full border-0 grayscale-[20%] contrast-[110%]"
                   allowFullScreen=""
                   loading="lazy"
                 ></iframe>
@@ -92,107 +147,124 @@ export default function Contact() {
             </div>
           </div>
 
-          
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-md p-5 sm:p-6 lg:p-8">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-5 sm:mb-6 lg:mb-8">
-                Send us a Message
+          {/* Right Column: Premium Form Element */}
+          <div className="lg:col-span-7">
+            <div className="bg-white border border-[#F5EEDF] shadow-md rounded-sm p-6 sm:p-8 relative">
+              <div className="absolute inset-0 border border-[#C99B38]/5 scale-[0.985] pointer-events-none"></div>
+              
+              <h2 className="text-2xl font-serif text-[#0B2D5B] tracking-tight mb-8">
+                Transmit Communication Dossier
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+              <form onSubmit={handleSubmit} className="space-y-6 font-sans text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                      Full Name <span className="text-red-500">*</span>
+                    <label className="block font-mono uppercase tracking-wider text-slate-500 mb-2">
+                      Full Name <span className="text-amber-700">*</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm sm:text-base"
-                      placeholder="Enter Your Name "
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white focus:border-amber-600 outline-none transition-all rounded-sm text-slate-800"
+                      placeholder="Enter full identity name"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                      Email Address <span className="text-red-500">*</span>
+                    <label className="block font-mono uppercase tracking-wider text-slate-500 mb-2">
+                      Email Address <span className="text-amber-700">*</span>
                     </label>
                     <input
                       type="email"
                       required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm sm:text-base"
-                      placeholder="Enter Your Email Address "
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white focus:border-amber-600 outline-none transition-all rounded-sm text-slate-800"
+                      placeholder="name@company.com"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                    <label className="block font-mono uppercase tracking-wider text-slate-500 mb-2">
                       Phone Number
                     </label>
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm sm:text-base"
-                      placeholder="Enter Your Phone Number "
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white focus:border-amber-600 outline-none transition-all rounded-sm text-slate-800"
+                      placeholder="+91 XXXXX XXXXX"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                      Subject <span className="text-red-500">*</span>
+                    <label className="block font-mono uppercase tracking-wider text-slate-500 mb-2">
+                      Subject / Procurement Core <span className="text-amber-700">*</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm sm:text-base"
-                      placeholder="what's your quiry / App ki kaise help kare "
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white focus:border-amber-600 outline-none transition-all rounded-sm text-slate-800"
+                      placeholder="e.g., Bulk Industrial Coal Request"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                    Message <span className="text-red-500">*</span>
+                  <label className="block font-mono uppercase tracking-wider text-slate-500 mb-2">
+                    Message Specification <span className="text-amber-700">*</span>
                   </label>
                   <textarea
                     rows={5}
                     required
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm sm:text-base resize-y"
-                    placeholder="Type your message here"
+                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white focus:border-amber-600 outline-none transition-all rounded-sm text-slate-800 resize-none"
+                    placeholder="Outline your detailed commercial specifications or operational requirements..."
                   ></textarea>
                 </div>
 
+                {/* Mandated Corporate Large Action Target */}
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 sm:py-3.5 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2 text-sm sm:text-base shadow-md hover:shadow-lg"
+                  className="w-full bg-[#0B2D5B] hover:bg-[#102F60] text-white font-mono text-xs uppercase tracking-widest py-3.5 px-6 rounded-sm shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                 >
                   {submitting ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Sending...</span>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Transmitting...</span>
                     </>
                   ) : (
                     <>
-                      <FiSend size={18} />
-                      <span>Send Message</span>
+                      <FiSend size={14} className="text-[#C99B38]" />
+                      <span>Transmit Message Dossier</span>
                     </>
                   )}
                 </button>
               </form>
             </div>
           </div>
+
         </div>
       </div>
+
+      {/* Corporate Handoff Footer Notice Seal */}
+      <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
+            India Trade Overseas &bull; Empowering Trade. Enabling Growth.
+          </p>
+          <div className="text-[10px] font-sans text-slate-400 font-light max-w-xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
+            Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation[cite: 1670].
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }
