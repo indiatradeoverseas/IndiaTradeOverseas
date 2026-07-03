@@ -199,7 +199,7 @@ Factory: Deramari, Kishanganj, Bihar, India`;
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <a href="tel:+918250614079" className="bg-[#0B2D5B] hover:bg-[#102F60] text-white px-3 py-3 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors">Call Now</a>
-                    <a href="https://wa.me/918250614079" target="_blank" rel="noreferrer" className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors"><IoLogoWhatsapp className='text-xl'/></a>
+                    <a href="https://wa.me/918250614079" target="_blank" rel="noreferrer" aria-label="WhatsApp Us" className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 font-semibold uppercase tracking-wider text-[10px] rounded-sm transition-colors"><IoLogoWhatsapp className="text-xl" /></a>
                   </div>
                 </div>
 
