@@ -14,7 +14,8 @@ import {
   FiX,
   FiPackage,
   FiCheckSquare,
-  FiBell
+  FiBell,
+  FiBriefcase
 } from 'react-icons/fi';
 
 export default function Sidebar({ onClose }) {
@@ -33,40 +34,44 @@ export default function Sidebar({ onClose }) {
   ].filter(Boolean);
 
   const adminMenuItems = [
-    { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
-    { to: '/crm/employees', label: 'Employees', icon: FiUsers },
-    { to: '/crm/security', label: 'Security', icon: FiShield },
-    { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 },
-  ];
+    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
+    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/employees', label: 'Employees', icon: FiUsers },
+    { to: '/crm/applications', label: 'Job Applications', icon: FiFileText },
+    (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR' || user?.jobPermission === true) && { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
+    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/security', label: 'Security', icon: FiShield },
+    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 },
+  ].filter(Boolean);
+
+  const showAdminMenu = ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true;
 
   return (
-    <aside className="h-full bg-[#0f4c75] text-white flex flex-col">
-      <div className="p-6 border-b border-[#144c7c] flex items-center justify-between">
+    <aside className="h-full bg-[#0B2D5B] text-[#FBF7EF] border-r border-[#C99B3B]/20 flex flex-col font-sans">
+      <div className="p-6 border-b border-[#C99B3B]/20 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">India Trade Center</h1>
-          <p className="text-sm text-[#cbd5e1] mt-1">{user?.role}</p>
+          <h1 className="text-xl font-serif font-bold text-white">India Trade Overseas</h1>
+          <p className="text-xs text-[#C99B3B] mt-1 font-semibold uppercase tracking-wider">{user?.role}</p>
         </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden rounded-lg p-2 text-[#dbeafe] hover:bg-[#144c7c] hover:text-white transition"
+            className="md:hidden rounded-lg p-2 text-slate-350 hover:bg-[#102F60] hover:text-white transition"
           >
             <FiX size={20} />
           </button>
         )}
       </div>
 
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin">
         <div className="px-4 mb-2">
-          <p className="text-xs text-[#a8c5dc] uppercase tracking-wider">Main</p>
+          <p className="text-xs text-[#C99B3B]/60 uppercase tracking-widest font-bold">Main</p>
         </div>
         {menuItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-6 py-3 text-[#dbeafe] hover:bg-[#144c7c] hover:text-white transition-colors ${isActive ? 'bg-[#144c7c] text-white border-r-4 border-[#f5a524]' : ''}`
+              `flex items-center space-x-3 px-6 py-3 text-slate-300 hover:bg-[#102F60] hover:text-white transition-colors ${isActive ? 'bg-[#102F60] text-[#C99B3B] border-r-4 border-[#C99B3B] font-bold' : ''}`
             }
           >
             <item.icon size={20} />
@@ -74,17 +79,17 @@ export default function Sidebar({ onClose }) {
           </NavLink>
         ))}
 
-        {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+        {showAdminMenu && (
           <>
             <div className="px-4 mt-6 mb-2">
-              <p className="text-xs text-[#a8c5dc] uppercase tracking-wider">Administration</p>
+              <p className="text-xs text-[#C99B3B]/60 uppercase tracking-widest font-bold">Administration</p>
             </div>
             {adminMenuItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-6 py-3 text-[#dbeafe] hover:bg-[#144c7c] hover:text-white transition-colors ${isActive ? 'bg-[#144c7c] text-white border-r-4 border-[#f5a524]' : ''}`
+                  `flex items-center space-x-3 px-6 py-3 text-slate-300 hover:bg-[#102F60] hover:text-white transition-colors ${isActive ? 'bg-[#102F60] text-[#C99B3B] border-r-4 border-[#C99B3B] font-bold' : ''}`
                 }
               >
                 <item.icon size={20} />

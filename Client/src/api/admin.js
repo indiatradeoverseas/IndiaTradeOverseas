@@ -101,6 +101,11 @@ export const adminApi = {
     return response.data;
   },
 
+  async updateJobPermission(userId, jobPermission) {
+    const response = await axiosInstance.patch(`/admin/users/${userId}/job-permission`, { jobPermission });
+    return response.data;
+  },
+
   async getAuditLogs(limit = 100) {
     const response = await axiosInstance.get(`/admin/audit-logs?limit=${limit}`);
     return response.data;

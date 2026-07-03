@@ -13,6 +13,7 @@ const PORT = env.PORT || 5000;
 async function startServer() {
   try {
     await connectDB();
+    await seedRoles();
     if (!process.env.VERCEL) {
       app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
