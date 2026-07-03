@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FiBriefcase, 
   FiMapPin, 
@@ -12,6 +12,7 @@ import {
   FiChevronDown 
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { careersApi } from '../../api/careers';
 
 export default function Careers() {
   const [activeJob, setActiveJob] = useState(null);
@@ -26,7 +27,7 @@ export default function Careers() {
     coverLetter: ''
   });
 
-  const jobs = [
+  const defaultJobs = [
     {
       id: 1,
       title: 'International Logistics Coordinator',
@@ -73,6 +74,22 @@ export default function Careers() {
       ]
     }
   ];
+
+  const [jobs, setJobs] = useState(defaultJobs);
+
+  useEffect(() => {
+    const loadJobs = async () => {
+      try {
+        const response = await careersApi.getJobs();
+        if (response && response.success && response.data && response.data.jobs && response.data.jobs.length > 0) {
+          setJobs(response.data.jobs);
+        }
+      } catch (err) {
+        console.error('Failed to fetch jobs from backend, using fallback data.', err);
+      }
+    };
+    loadJobs();
+  }, []);
 
   const perks = [
     { icon: FiGlobe, title: 'Global Exposure', description: 'Interact and deal with suppliers and clients across international markets and continents.' },
@@ -121,7 +138,7 @@ Phone: ${formData.phone}`;
       .catch(() => toast.error('Failed to copy to clipboard'));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.fullName || !formData.email || !formData.phone || !formData.position || !formData.resume) {
       toast.error('Please fill all required fields and upload your resume.');
@@ -129,11 +146,28 @@ Phone: ${formData.phone}`;
     }
 
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      const data = new FormData();
+      data.append('fullName', formData.fullName);
+      data.append('email', formData.email);
+      data.append('phone', formData.phone);
+      data.append('position', formData.position);
+      data.append('resume', formData.resume);
+      if (formData.coverLetter) {
+        data.append('coverLetter', formData.coverLetter);
+      }
+
+      await careersApi.applyJob(data);
+      
       setSubmitted(true);
-      toast.success('Your enquiry has been copied successfully.');
-    }, 1200);
+      toast.success('Your application has been submitted successfully!');
+    } catch (error) {
+      console.error('Failed to submit application:', error);
+      const errMsg = error.response?.data?.message || 'Failed to submit application. Please try again.';
+      toast.error(errMsg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -194,52 +228,55 @@ Phone: ${formData.phone}`;
           </div>
 
           <div className="space-y-4">
-            {jobs.map((job) => (
-              <div key={job.id} className="bg-white border border-[#F5EEDF] rounded-sm overflow-hidden shadow-sm">
-                <div
-                  className="p-6 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#FAF9F5]/40"
-                  onClick={() => setActiveJob(activeJob === job.id ? null : job.id)}
-                >
-                  <div>
-                    <h3 className="text-lg font-serif font-medium text-[#0B2D5B]">{job.title}</h3>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-400 font-light font-sans">
-                      <span className="flex items-center gap-1"><FiBriefcase size={12} className="text-[#C99B38]" />{job.department}</span>
-                      <span className="flex items-center gap-1"><FiMapPin size={12} className="text-[#C99B38]" />{job.location}</span>
-                      <span className="flex items-center gap-1"><FiClock size={12} className="text-[#C99B38]" />{job.type}</span>
+            {jobs.map((job) => {
+              const jobId = job.id || job._id;
+              return (
+                <div key={jobId} className="bg-white border border-[#F5EEDF] rounded-sm overflow-hidden shadow-sm">
+                  <div
+                    className="p-6 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#FAF9F5]/40"
+                    onClick={() => setActiveJob(activeJob === jobId ? null : jobId)}
+                  >
+                    <div>
+                      <h3 className="text-lg font-serif font-medium text-[#0B2D5B]">{job.title}</h3>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-400 font-light font-sans">
+                        <span className="flex items-center gap-1"><FiBriefcase size={12} className="text-[#C99B38]" />{job.department}</span>
+                        <span className="flex items-center gap-1"><FiMapPin size={12} className="text-[#C99B38]" />{job.location}</span>
+                        <span className="flex items-center gap-1"><FiClock size={12} className="text-[#C99B38]" />{job.type}</span>
+                      </div>
                     </div>
+                    <button className="text-xs uppercase tracking-wider font-semibold text-[#C99B38] bg-[#FAF9F5] px-3 py-1 border border-[#C99B38]/10 rounded-sm flex items-center gap-1">
+                      Details <FiChevronDown className={`transition-transform ${activeJob === jobId ? 'rotate-180' : ''}`} />
+                    </button>
                   </div>
-                  <button className="text-xs uppercase tracking-wider font-semibold text-[#C99B38] bg-[#FAF9F5] px-3 py-1 border border-[#C99B38]/10 rounded-sm flex items-center gap-1">
-                    Details <FiChevronDown className={`transition-transform ${activeJob === job.id ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
 
-                {activeJob === job.id && (
-                  <div className="px-6 pb-6 border-t border-slate-100 pt-5 bg-[#FAF9F5]/10 font-sans">
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">About The Role</h4>
-                        <p className="text-slate-600 text-xs mt-1 leading-relaxed font-light">{job.description}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Requirements</h4>
-                        <ul className="list-disc pl-5 mt-2 space-y-1 text-xs text-slate-600 font-light">
-                          {job.requirements.map((req, i) => <li key={i}>{req}</li>)}
-                        </ul>
-                      </div>
-                      <div className="pt-4 flex justify-between items-center text-xs border-t border-slate-100">
-                        <span className="text-slate-500">Experience Needed: <strong className="text-slate-700">{job.experience}</strong></span>
-                        <button
-                          onClick={() => handleApplyClick(job.title)}
-                          className="px-4 py-2 bg-[#0B2D5B] hover:bg-[#102F60] text-white rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors"
-                        >
-                          Apply For This Job
-                        </button>
+                  {activeJob === jobId && (
+                    <div className="px-6 pb-6 border-t border-slate-100 pt-5 bg-[#FAF9F5]/10 font-sans">
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">About The Role</h4>
+                          <p className="text-slate-600 text-xs mt-1 leading-relaxed font-light">{job.description}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Requirements</h4>
+                          <ul className="list-disc pl-5 mt-2 space-y-1 text-xs text-slate-600 font-light">
+                            {job.requirements.map((req, i) => <li key={i}>{req}</li>)}
+                          </ul>
+                        </div>
+                        <div className="pt-4 flex justify-between items-center text-xs border-t border-slate-100">
+                          <span className="text-slate-500">Experience Needed: <strong className="text-slate-700">{job.experience}</strong></span>
+                          <button
+                            onClick={() => handleApplyClick(job.title)}
+                            className="px-4 py-2 bg-[#0B2D5B] hover:bg-[#102F60] text-white rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors"
+                          >
+                            Apply For This Job
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -334,7 +371,7 @@ Phone: ${formData.phone}`;
                     className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none text-slate-500 rounded-sm transition-all"
                   >
                     <option value="">Select a position</option>
-                    {jobs.map(job => <option key={job.id} value={job.title}>{job.title}</option>)}
+                    {jobs.map(job => <option key={job.id || job._id} value={job.title}>{job.title}</option>)}
                     <option value="General Application">General Application / Other</option>
                   </select>
                 </div>

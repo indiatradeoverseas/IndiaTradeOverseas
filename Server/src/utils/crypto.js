@@ -2,6 +2,9 @@ const crypto = require('crypto');
 const env = require('../config/env');
 
 const ALGORITHM = 'aes-256-cbc';
+if (!env.ENCRYPTION_KEY) {
+  throw new Error('ENCRYPTION_KEY is missing from environment variables (.env file). Please configure it.');
+}
 const ENCRYPTION_KEY = Buffer.from(env.ENCRYPTION_KEY); 
 const IV_LENGTH = 16;
 

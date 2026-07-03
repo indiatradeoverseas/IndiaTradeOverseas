@@ -136,6 +136,8 @@ export default function Employees() {
         response = await adminApi.updateExportPermission(id, !currentValue);
       } else if (type === 'upload') {
         response = await adminApi.updateProductUploadPermission(id, !currentValue);
+      } else if (type === 'job') {
+        response = await adminApi.updateJobPermission(id, !currentValue);
       }
       if (response && response.success) {
         toast.success('Permissions updated successfully!');
@@ -351,6 +353,20 @@ export default function Employees() {
                             <span className="flex items-center gap-1">
                               <FiDatabase className="text-slate-400" />
                               Export Database
+                            </span>
+                          </label>
+
+                          {/* Job Posting Toggle */}
+                          <label className="inline-flex items-center cursor-pointer text-xs font-medium text-slate-600 gap-2">
+                            <input
+                              type="checkbox"
+                              checked={emp.jobPermission || false}
+                              onChange={() => togglePermission(emp._id, 'job', emp.jobPermission)}
+                              className="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4 cursor-pointer"
+                            />
+                            <span className="flex items-center gap-1">
+                              <FiBriefcase className="text-slate-400" />
+                              Job Posting
                             </span>
                           </label>
                         </div>

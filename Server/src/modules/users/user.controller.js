@@ -95,7 +95,7 @@ async function updateUserDepartment(req, res, next) {
 
 async function updateUserPermissions(req, res, next) {
   try {
-    const { exportPermission, productUploadPermission, leadPermission, documentPermission, taskPermission, dispatchPermission, paymentPermission, quotationPermission } = req.body;
+    const { exportPermission, productUploadPermission, leadPermission, documentPermission, taskPermission, dispatchPermission, paymentPermission, quotationPermission, jobPermission } = req.body;
     const permissions = {};
 
     if (typeof exportPermission === 'boolean') {
@@ -121,6 +121,9 @@ async function updateUserPermissions(req, res, next) {
     }
     if (typeof quotationPermission === 'boolean') {
       permissions.quotationPermission = quotationPermission;
+    }
+    if (typeof jobPermission === 'boolean') {
+      permissions.jobPermission = jobPermission;
     }
 
     if (!Object.keys(permissions).length) {

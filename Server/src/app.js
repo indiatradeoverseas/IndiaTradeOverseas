@@ -19,6 +19,7 @@ const dailyReportRoutes = require('./modules/daily-reports/dailyReport.routes');
 const auditRoutes = require('./modules/security-audit/audit.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const chatRoutes = require('./modules/chat/chat.routes');
+const careerRoutes = require('./modules/careers/career.routes');
 
 const app = express();
 
@@ -76,7 +77,8 @@ const apiRoutes = [
   { path: '/dashboard', router: notificationRoutes },
   { path: '/daily-reports', router: dailyReportRoutes },
   { path: '/security', router: auditRoutes },
-  { path: '/chat', router: chatRoutes }
+  { path: '/chat', router: chatRoutes },
+  { path: '/careers', router: careerRoutes }
 ];
 
 apiRoutes.forEach(route => {
@@ -124,6 +126,7 @@ adminFallbackRouter.patch('/users/:id/task-permission', require('./modules/users
 adminFallbackRouter.patch('/users/:id/dispatch-permission', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.patch('/users/:id/payment-permission', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.patch('/users/:id/quotation-permission', require('./modules/users/user.controller').updateUserPermissions);
+adminFallbackRouter.patch('/users/:id/job-permission', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.delete('/users/:id', require('./modules/users/user.controller').deleteUser);
 adminFallbackRouter.delete('/leads/:leadId', rbac('ADMIN'), require('./modules/leads/lead.controller').deleteLead);
 adminFallbackRouter.get('/devices', async (req, res, next) => {

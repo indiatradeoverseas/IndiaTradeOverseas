@@ -35,6 +35,8 @@ import AdminPanel from './pages/crm/AdminPanel';
 import ProductUpload from './pages/crm/ProductUpload';
 import Tasks from './pages/crm/Tasks';
 import Notifications from './pages/crm/Notifications';
+import Applications from './pages/crm/Applications';
+import Jobs from './pages/crm/Jobs';
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -193,6 +195,26 @@ function AppLayout() {
           <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
           <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
           <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route
+            path="/crm/applications"
+            element={
+              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
+                <Applications />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/crm/jobs"
+            element={
+              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true ? (
+                <Jobs />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
           <Route path="*" element={<Navigate to="/crm/dashboard" />} />
         </Routes>
         <ChatWidget />
