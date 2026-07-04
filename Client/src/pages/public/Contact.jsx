@@ -22,7 +22,7 @@ export default function Contact() {
 
   // Mandated Copy Context Blocks from the Directive
   const officeLocationsText = `Registered Office: Kishanganj, Bihar, India\nBranch Office: Pradhan Nagar, Siliguri, West Bengal, India\nFactory: Deramari, Kishanganj, Bihar, India`;
-  const emailTargetText = `info.indiatradeoverseas@gmail.com`;
+  const emailTargetText = `info@indiatradeoverseas.com`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,15 +54,9 @@ export default function Contact() {
       copyData: officeLocationsText
     },
     { 
-      icon: FiPhone, 
-      title: 'Call Channels', 
-      details: ['+91 82506 14079'], 
-      copyData: '+91 82506 14079' 
-    },
-    { 
       icon: FiMail, 
       title: 'Secure Electronic Mail', 
-      details: ['info.indiatradeoverseas@gmail.com'], 
+      details: ['info@indiatradeoverseas.com'], 
       copyData: emailTargetText 
     },
     { 
@@ -111,13 +105,6 @@ export default function Contact() {
                       <h3 className="font-serif text-base font-medium text-[#0B2D5B]">
                         {info.title}
                       </h3>
-                      <button 
-                        onClick={() => copyToClipboard(info.copyData)}
-                        className="text-slate-300 hover:text-[#C99B38] transition-colors p-1"
-                        title="Copy Parameter"
-                      >
-                        <FiCopy size={12} />
-                      </button>
                     </div>
                     {info.details.map((detail, i) => (
                       <p key={i} className="text-slate-600 text-xs font-sans font-light leading-relaxed truncate">
@@ -257,7 +244,9 @@ export default function Contact() {
       <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center">
         <div className="max-w-3xl mx-auto space-y-4">
           <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
-            India Trade Overseas &bull; Empowering Trade. Enabling Growth.
+            India Trade Overseas 
+            <br />
+            Empowering Trade. Enabling Growth.
           </p>
           <div className="text-[10px] font-sans text-slate-400 font-light max-w-xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation[cite: 1670].
