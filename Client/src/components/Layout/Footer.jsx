@@ -16,13 +16,13 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#0B2D5B] text-slate-300 font-sans border-t-2 border-[#C99B38] relative overflow-hidden">
-      
+
       {/* Structural Double Gold Line Border Accent */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full opacity-30"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8">
-          
+
           {/* Column 1: Brand Authority and Mottos */}
           <div className="md:col-span-4 space-y-4">
             <h3 className="text-xl font-serif text-white tracking-wide font-normal">
@@ -35,7 +35,7 @@ export default function Footer() {
             <p className="text-slate-400 font-serif italic text-xs tracking-wide">
               "Where Quality Meets Global Demand."
             </p>
-            
+
             {/* Social Channels with Guarded Link Tracking */}
             <div className="flex space-x-4 pt-2">
               <a href="#" className="text-slate-400 hover:text-[#C99B38] transition-colors"><FiFacebook size={18} /></a>
@@ -75,7 +75,7 @@ export default function Footer() {
           <div className="md:col-span-3 space-y-4">
             <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Contact Info</h4>
             <div className="space-y-3 font-sans text-xs text-slate-400 font-light leading-relaxed">
-              
+
               <div className="relative group bg-[#102F60]/40 p-2.5 border border-slate-800 rounded-sm">
                 <p className="pr-6 text-[11px]">
                   {registeredOfficeText}
@@ -84,15 +84,10 @@ export default function Footer() {
 
               <div className="space-y-1.5 pt-1  relative group">
                 <div className="flex items-center justify-between">
-                  <a href="mailto:info@indiatradeoverseas.com" className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[190px]">
+                  <a href="mailto:info@indiatradeoverseas.com" className="hover:text-white transition-colors block text-xs tracking-wide">
                     Email: <span className="font-medium text-slate-300">info@indiatradeoverseas.com</span>
                   </a>
-                </div> */}
-                <div className="flex items-center justify-between">
-  <a href="mailto:info@indiatradeoverseas.com" className="hover:text-white transition-colors block text-xs tracking-wide">
-    Email: <span className="font-medium text-slate-300">info@indiatradeoverseas.com</span>
-  </a>
-</div>
+                </div>
               </div>
 
             </div>
