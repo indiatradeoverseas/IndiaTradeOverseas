@@ -146,7 +146,7 @@ async function sendMessage(req, res, next) {
       }
     } else {
       
-      aiReplyText = 'For non-catalog inquiries or custom questions, please visit our Contact Page directly at http://localhost:5173/contact or contact our support desk at contact@itoexim.com.';
+      aiReplyText = 'For custom questions or non-catalog inquiries, please visit our Contact Page directly or reach out to our team at info@indiatradeoverseas.com. Redirecting you to the Contact Page now...';
     }
 
     
