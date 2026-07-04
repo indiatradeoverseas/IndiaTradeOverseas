@@ -34,6 +34,14 @@ const careerApplicationSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  coverLetterPath: {
+    type: String,
+    trim: true
+  },
+  coverLetterOriginalName: {
+    type: String,
+    trim: true
+  },
   status: {
     type: String,
     enum: ['PENDING', 'REVIEWED', 'ACCEPTED'],

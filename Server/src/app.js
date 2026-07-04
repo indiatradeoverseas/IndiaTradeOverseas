@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
-const corsOptions = require('./config/cors');
 const { rateLimiter } = require('./middlewares/rateLimit.middleware');
 const { errorHandler } = require('./middlewares/error.middleware');
 const authRoutes = require('./modules/auth/auth.routes');
@@ -60,6 +59,13 @@ const healthCheck = (req, res) => {
 
 app.get('/api/health', healthCheck);
 app.get('/api/v1/health', healthCheck);
+
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Welcome to India Trade Overseas Backend API. Access health check at /api/health'
+  });
+});
 
 
 const apiRoutes = [

@@ -19,7 +19,10 @@ const applyJob = async (req, res, next) => {
       return fail(res, 400, 'VALIDATION_ERROR', 'All required fields (fullName, email, phone, position) must be provided.');
     }
 
-    if (!req.file) {
+    const resumeFile = req.files && req.files['resume'] ? req.files['resume'][0] : null;
+    const coverLetterFile = req.files && req.files['coverLetter'] ? req.files['coverLetter'][0] : null;
+
+    if (!resumeFile) {
       return fail(res, 400, 'FILE_REQUIRED', 'Please upload your resume.');
     }
 
@@ -28,9 +31,11 @@ const applyJob = async (req, res, next) => {
       email,
       phone,
       position,
-      resumePath: req.file.path,
-      resumeOriginalName: req.file.originalname,
-      coverLetter
+      resumePath: resumeFile.path,
+      resumeOriginalName: resumeFile.originalname,
+      coverLetter,
+      coverLetterPath: coverLetterFile ? coverLetterFile.path : undefined,
+      coverLetterOriginalName: coverLetterFile ? coverLetterFile.originalname : undefined
     });
 
     await application.save();
@@ -99,6 +104,28 @@ const downloadResume = async (req, res, next) => {
     }
 
     return res.download(filePath, application.resumeOriginalName);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadCoverLetter = async (req, res, next) => {
+  try {
+    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can download cover letters.');
+    }
+
+    const application = await CareerApplication.findById(req.params.id);
+    if (!application) {
+      return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
+    }
+
+    const filePath = application.coverLetterPath;
+    if (!filePath || !fs.existsSync(filePath)) {
+      return fail(res, 404, 'FILE_NOT_FOUND', 'Cover letter file not found on server disk.');
+    }
+
+    return res.download(filePath, application.coverLetterOriginalName || 'cover_letter.pdf');
   } catch (error) {
     next(error);
   }
@@ -212,6 +239,7 @@ module.exports = {
   listApplications,
   updateApplicationStatus,
   downloadResume,
+  downloadCoverLetter,
   listJobs,
   listAllJobs,
   createJob,
