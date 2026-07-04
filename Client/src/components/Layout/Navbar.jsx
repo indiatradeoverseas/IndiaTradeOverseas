@@ -87,20 +87,32 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
         <div className="flex justify-between items-center h-16">
 
-          {/* Brand Authority Identity */}
+          {/* Brand Authority Identity - Adaptive Screen Configuration */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2.5 group">
               <div className="h-9 flex items-center justify-center transition-transform group-hover:scale-105">
                 <img
                   src={CompanyLogo}
                   alt="India Trade Overseas Logo"
-                  className="h-full w-auto object-contain max-w-[120px]  rounded-full"
+                  className="h-full w-auto object-contain max-w-[120px]"
                   loading="eager"
                 />
               </div>
-              <span className="hidden sm:inline font-serif font-normal text-[#0B2D5B] text-lg tracking-wide">
+              
+              {/* Desktop Text Layout: Kept completely as it was originally designed */}
+              <span className="hidden md:inline font-serif font-normal text-[#0B2D5B] text-lg tracking-wide">
                 India Trade Overseas
               </span>
+
+              {/* Mobile Text Layout: Renders multi-tiered stacked titles next to logo on smaller screens */}
+              <div className="flex flex-col justify-center leading-none md:hidden">
+                <span className="font-serif font-bold text-[#0B2D5B] text-sm tracking-wide uppercase">
+                  India
+                </span>
+                <span className="font-sans font-light text-[#102F60]/80 text-[9px] tracking-widest uppercase mt-0.5">
+                  Trade Overseas
+                </span>
+              </div>
             </Link>
           </div>
 
@@ -224,7 +236,7 @@ export default function Navbar() {
           <div className="px-3 py-4 space-y-1">
             {user && (
               <div className="mb-4 p-3.5 bg-white border border-[#F5EEDF] rounded-sm flex items-center space-x-3">
-                <div className="bg-[#F5EEDF] text-[#C99B38] p-2.5 rounded-full">
+                <div className="bg-[#FBF7EF] text-[#C99B38] p-2.5 rounded-full">
                   <FiUser size={16} />
                 </div>
                 <div>
