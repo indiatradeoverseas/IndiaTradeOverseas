@@ -13,11 +13,13 @@ import {
 
 // Editorial B2B global trade carousel assets curated to match business segments
 const CINEMATIC_CAROUSEL_BACKDROPS = [
-  "https://images.unsplash.com/photo-1703977883249-d959f2b0c1ae?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", // Mandated Starting Vessel Asset
-  "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=1920&auto=format&fit=crop",          // Heavy Ocean Container Carrier 
-  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=1920&auto=format&fit=crop",          // Global Supply Distribution Hub
-  "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=1920&auto=format&fit=crop",          // Dockside Terminal Infrastructure
-  "https://images.unsplash.com/photo-1710081647293-a07a5915bcd6?q=80&w=1331&auto=format&fit=crop"           // Industrial Freight Crane Cranes Overview
+  "./images/ito_1.jpeg", // Mandated Starting Vessel Asset
+  "./images/ito_2.jpeg",          // Heavy Ocean Container Carrier 
+  "./images/ito_3.jpeg",          // Global Supply Distribution Hub
+  "./images/ito_4.jpeg",          // Dockside Terminal Infrastructure
+  "./images/ito_5.jpeg",
+  "./images/ito_6.jpeg",
+  "./images/ito_7.jpeg"           // Industrial Freight Crane Cranes Overview
 ];
 
 export default function Home() {
@@ -112,24 +114,24 @@ export default function Home() {
 
   return (
     <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900 font-sans overflow-x-hidden">
-      
+
       {/* Non-Negotiable Double Gold Frame Top Divider Accent */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
       {/* 03 HOME HERO SECTION - RESPONSIVE MOBILE EYE-CENTERED BACKDROP WITH CROSS-FADE CAROUSEL */}
       <section className="relative min-h-[85vh] flex items-center bg-slate-950 py-24 md:py-32 overflow-hidden border-b border-[#C99B38]">
-        
+
         {/* Animated Cinematic Layer Box (No public busy elements overlay without protective shields) */}
         <div className="absolute inset-0 z-0 bg-slate-950">
           <AnimatePresence mode="wait">
-            <motion.img 
+            <motion.img
               key={carouselIndex}
               initial={{ opacity: 0, scale: 1.10 }}
               animate={{ opacity: 0.80, scale: 1.02 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.4, ease: 'easeInOut' }}
-              src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]} 
-              alt="Cinematic Sourcing Container Logistics Terminal" 
+              src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
+              alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-center absolute inset-0"
             />
           </AnimatePresence>
@@ -139,14 +141,14 @@ export default function Home() {
         </div>
 
         {/* Updated alignment wrapper classes to properly shift layout orientations based on screens */}
-        <motion.div 
+        <motion.div
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center md:text-left w-full"
         >
           <div className="max-w-3xl mx-auto md:mx-0">
-            
+
             {/* Context Badge */}
             <motion.span variants={fadeInUp} className="inline-flex items-center space-x-2 bg-white/90 backdrop-blur-xs text-[#0B2D5B] border border-[#C99B38]/40 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-6 shadow-xs">
               <FiAnchor className="text-[#C99B38]" /> <span>India Trade Overseas</span>
@@ -230,7 +232,7 @@ export default function Home() {
       {/* CORE INFO MATRIX: EXCLUSIVE ELECTRONIC INTAKE & LOCATION CORRIDORS */}
       <section className="pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          
+
           <div className="lg:col-span-7 bg-white border border-[#F5EEDF] p-8 rounded-sm shadow-sm flex flex-col justify-between relative">
             <div className="absolute inset-0 border border-[#C99B38]/5 scale-[0.98] pointer-events-none"></div>
             <div>
@@ -279,13 +281,13 @@ export default function Home() {
       {/* 05-BUSINESS VERTICALS PRESENTATION PANELS */}
       <section className="py-20 bg-[#F5EEDF] border-y border-[#C99B38]/10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          
+
           <div className="text-center mb-16">
             <span className="text-amber-700 font-medium tracking-[0.2em] text-xs uppercase block mb-2">Capabilities</span>
             <h2 className="text-3xl font-serif text-[#0B2D5B] tracking-tight">Six Commercial Verticals</h2>
           </div>
 
-          <motion.div 
+          <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
@@ -293,8 +295,8 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {verticals.map((v, idx) => (
-              <motion.div 
-                key={idx} 
+              <motion.div
+                key={idx}
                 variants={fadeInUp}
                 className="bg-white border border-slate-200/40 p-6 shadow-sm rounded-sm flex flex-col justify-between relative group hover:border-[#C99B38]/40 transition-colors"
               >
@@ -325,21 +327,19 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-          
+
           <div className="lg:col-span-5 space-y-3">
             {steps.map((step, index) => (
               <button
                 key={index}
                 onClick={() => setActiveStep(index)}
-                className={`w-full text-left p-4 rounded-sm border font-sans transition-all duration-150 flex items-center space-x-4 ${
-                  activeStep === index
+                className={`w-full text-left p-4 rounded-sm border font-sans transition-all duration-150 flex items-center space-x-4 ${activeStep === index
                     ? 'bg-[#0B2D5B] border-[#C99B38] text-white shadow-md'
                     : 'bg-white border-slate-200/60 text-slate-600 hover:bg-[#F5EEDF]/40'
-                }`}
+                  }`}
               >
-                <span className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold ${
-                  activeStep === index ? 'bg-[#C99B38] text-white' : 'bg-slate-100 text-slate-400'
-                }`}>
+                <span className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold ${activeStep === index ? 'bg-[#C99B38] text-white' : 'bg-slate-100 text-slate-400'
+                  }`}>
                   {index + 1}
                 </span>
                 <span className="font-serif text-sm font-medium tracking-wide">{step.title}</span>
@@ -349,7 +349,7 @@ export default function Home() {
 
           <div className="lg:col-span-7 bg-white border border-[#F5EEDF] rounded-sm p-8 min-h-[260px] flex flex-col justify-between shadow-md relative overflow-hidden">
             <div className="absolute inset-0 border border-[#C99B38]/5 scale-[0.98] pointer-events-none"></div>
-            
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeStep}
@@ -401,7 +401,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto space-y-4">
           <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
             India Trade Overseas
-            <br /> 
+            <br />
             Empowering Trade. Enabling Growth.
           </p>
           <p className="text-xs italic text-[#C99B38] font-serif">

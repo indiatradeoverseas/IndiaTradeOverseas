@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiGlobe, FiDollarSign, FiSend, FiInbox, FiCompass } from 'react-icons/fi';
+import { FiArrowLeft, FiGlobe, FiSend, FiInbox, FiCompass, FiShield } from 'react-icons/fi';
+import { motion } from 'framer-motion';
 import { productsApi } from '../../api/products';
 
 const staticProducts = [
@@ -9,35 +10,34 @@ const staticProducts = [
     origin: 'India',
     name: 'Jharia Jharkhand Coal',
     image: 'https://tiimg.tistatic.com/fp/1/008/230/99-purity-natural-black-coal-for-industrial-use-842.jpg',
-    category: 'coal',
-    description: 'Jharia Jharkhand Coal'
+    category: 'coal_industrial',
+    description: 'Premium High-Calorific Jharia Jharkhand Coal for heavy industrial application.'
   },
   {
     id: 2,
     origin: 'India',
-    name: 'Jharkhand Coal ',
+    name: 'Jharkhand Coal',
     image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8IbtVGkg34mUsY_o5fccaQy5iSmtkXjH6J_JDAP6YKN9uR2-Vm_ShuNk&s=10',
-    category: 'coal',
-    description: 'Jharkhand Coal'
+    category: 'coal_industrial',
+    description: 'Sourced Standard Grade Jharkhand Coal for power and manufacturing works.'
   },
   {
     id: 3,
     origin: 'India',
-    name: 'Indonesian Steam Coal - Dimension (L*w*h): 20 Millimeter (Mm)',
+    name: 'Indonesian Steam Coal - 20mm Grade',
     image: 'https://cpimg.tistatic.com/10890150/b/4/Indonesian-Steam-Coal..jpg',
-    category: 'coal',
-    description: 'Indonesian Steam Coal - Dimension (L*w*h): 20 Millimeter (Mm)'
+    category: 'coal_industrial',
+    description: 'High Purity Imported Indonesian Steam Coal variety. Sized dimension specifications: 20 Millimeter (mm).'
   }
 ];
 
 const categoryLabels = {
-  stone: ' Stone',
-  white_stone: 'White Stone',
-  tea: 'Tea Premium',
-  rice: ' Rice',
-  fruit: 'Fresh Fruits',
-  vegetable: 'Fresh Vegetable',
-  coal: 'Coal'
+  stone_construction: 'Stone & Construction',
+  clay_consumer: 'Clay & Consumer',
+  tea: 'Premium Tea',
+  rice: 'Bulk Rice',
+  food_agriculture: 'Food & Agriculture',
+  coal_industrial: 'Coal & Industrial Mat'
 };
 
 const renderFormattedDescriptionFull = (description) => {
@@ -46,16 +46,16 @@ const renderFormattedDescriptionFull = (description) => {
   const lines = description.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
 
   if (lines.length <= 1) {
-    return <p className="text-slate-600 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">{description}</p>;
+    return <p className="text-slate-600 leading-relaxed text-xs font-sans font-light">{description}</p>;
   }
 
   return (
-    <div className="space-y-4 text-slate-700">
+    <div className="space-y-3.5 text-slate-600 font-sans text-xs font-light">
       {lines.map((line, index) => {
         const isHeader = line === line.toUpperCase() && line.length > 4 && !line.includes(':');
         if (isHeader) {
           return (
-            <div key={index} className="font-bold text-slate-900 tracking-wider uppercase border-b-2 border-slate-100 pb-1 mt-6 first:mt-0 text-sm sm:text-base">
+            <div key={index} className="font-serif font-medium text-[#0B2D5B] tracking-wide border-b border-[#0B2D5B]/10 pb-1 mt-5 first:mt-0 text-sm uppercase">
               {line}
             </div>
           );
@@ -67,9 +67,9 @@ const renderFormattedDescriptionFull = (description) => {
           const key = parts[0].trim();
           const value = parts.slice(1).join(delimiter).trim();
           return (
-            <div key={index} className="flex justify-between items-baseline gap-4 py-2 border-b border-slate-100/60 hover:bg-slate-50/50 px-2 rounded transition">
-              <span className="text-slate-500 text-xs sm:text-sm font-medium">{key}</span>
-              <span className="text-slate-900 text-xs sm:text-sm font-semibold text-right">{value}</span>
+            <div key={index} className="flex justify-between items-baseline gap-4 py-2 border-b border-[#0B2D5B]/5 hover:bg-[#FAF9F5] px-1 transition-colors">
+              <span className="text-[#0B2D5B]/50 text-[10px] uppercase tracking-wider font-medium shrink-0">{key}</span>
+              <span className="text-[#0B2D5B] text-xs font-semibold text-right">{value}</span>
             </div>
           );
         }
@@ -77,15 +77,15 @@ const renderFormattedDescriptionFull = (description) => {
         if (line.startsWith('-')) {
           const content = line.substring(1).trim();
           return (
-            <div key={index} className="flex items-start space-x-2 text-xs sm:text-sm py-1">
-              <span className="text-indigo-500 font-bold text-base mt-[-2px]">•</span>
-              <span className="text-slate-700">{content}</span>
+            <div key={index} className="flex items-start space-x-2 py-0.5">
+              <span className="text-[#C99B38] font-bold">&bull;</span>
+              <span className="text-slate-600">{content}</span>
             </div>
           );
         }
 
         return (
-          <p key={index} className="text-slate-600 text-xs sm:text-sm leading-relaxed py-1">
+          <p key={index} className="leading-relaxed py-0.5">
             {line}
           </p>
         );
@@ -105,7 +105,6 @@ export default function ProductDetail() {
     const fetchProduct = async () => {
       try {
         setLoading(true);
-        // If the ID matches a static product local lookup
         const staticItem = staticProducts.find(p => String(p.id) === String(id));
         if (staticItem) {
           setProduct(staticItem);
@@ -113,7 +112,6 @@ export default function ProductDetail() {
           return;
         }
 
-        // Otherwise fetch from database
         const response = await productsApi.getProductById(id);
         if (response.success && response.data.product) {
           setProduct(response.data.product);
@@ -122,7 +120,6 @@ export default function ProductDetail() {
         }
       } catch (err) {
         console.error('Error fetching product detail:', err);
-        // Fallback checks
         const staticFallback = staticProducts.find(p => String(p.id) === String(id));
         if (staticFallback) {
           setProduct(staticFallback);
@@ -139,10 +136,10 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <p className="text-slate-500 text-sm font-medium">Loading premium product details...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#FBF7EF]">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#0B2D5B] border-t-transparent"></div>
+          <p className="text-[#0B2D5B]/60 text-xs tracking-wider">Accessing Ledger Specifications...</p>
         </div>
       </div>
     );
@@ -150,12 +147,12 @@ export default function ProductDetail() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="max-w-md w-full text-center bg-white p-8 rounded-2xl border border-slate-100 shadow-lg">
-          <FiInbox className="mx-auto text-rose-500 mb-4" size={48} />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Product Not Found</h2>
-          <p className="text-slate-500 text-sm mb-6">{error || 'The product you requested does not exist.'}</p>
-          <Link to="/products" className="btn-primary inline-flex items-center space-x-2 bg-indigo-600 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-[#FBF7EF] px-4">
+        <div className="max-w-sm w-full text-center bg-[#FBF7EF] border border-[#C99B38]/30 p-8 rounded shadow-sm">
+          <FiInbox className="mx-auto text-[#C99B38] mb-3" size={36} />
+          <h2 className="text-lg font-serif font-semibold text-[#0B2D5B] tracking-wide mb-1">Dossier Missing</h2>
+          <p className="text-xs text-slate-500 mb-6">{error || 'The item requested cannot be extracted.'}</p>
+          <Link to="/products" className="w-full inline-flex items-center justify-center space-x-2 bg-[#0B2D5B] text-[#FBF7EF] text-xs font-medium tracking-wider py-2.5 rounded shadow-xs uppercase">
             <FiArrowLeft />
             <span>Return to Catalog</span>
           </Link>
@@ -166,114 +163,122 @@ export default function ProductDetail() {
 
   const categoryName = categoryLabels[product.category] || product.category;
 
-  // Generate Quote Request URL with prefilled parameters
   const quoteParams = new URLSearchParams({
-    category: product.category,
-    productName: product.name
+    category: product.category || '',
+    productName: product.name || ''
   }).toString();
 
   return (
-    <div className="bg-slate-50 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div className="bg-[#FBF7EF] min-h-screen py-10 px-4 sm:px-6 lg:px-8 font-sans antialiased">
       <div className="max-w-6xl mx-auto">
-        {/* Navigation Breadcrumb & Back Link */}
-        <div className="mb-8 flex items-center justify-between">
+        
+        {/* Navigation Breadcrumb Node */}
+        <div className="mb-6 flex items-center justify-between border-b border-[#0B2D5B]/5 pb-4">
           <button
             onClick={() => navigate(-1)}
-            className="group flex items-center space-x-2 text-sm text-slate-500 hover:text-indigo-600 transition duration-150"
+            className="group flex items-center space-x-1.5 text-xs text-[#0B2D5B]/70 hover:text-[#0B2D5B] transition-colors"
           >
-            <FiArrowLeft className="transform group-hover:-translate-x-1 transition-transform" />
-            <span className="font-semibold">Go Back</span>
+            <FiArrowLeft className="transform group-hover:-translate-x-0.5 transition-transform" />
+            <span className="font-semibold uppercase tracking-wider text-[10px]">Back</span>
           </button>
 
-          <div className="hidden sm:flex items-center space-x-2 text-xs text-slate-400">
+          <div className="hidden sm:flex items-center space-x-1.5 text-[10px] tracking-wide uppercase text-slate-400 font-medium">
             <Link to="/" className="hover:text-slate-600">Home</Link>
             <span>/</span>
             <Link to="/products" className="hover:text-slate-600">Products</Link>
             <span>/</span>
-            <span className="text-slate-600 font-medium truncate max-w-[200px]">{product.name}</span>
+            <span className="text-[#0B2D5B] font-semibold truncate max-w-[180px]">{product.name}</span>
           </div>
         </div>
 
-        {/* Main Product Container */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0">
-
-          {/* Left Column: Product Image */}
-          <div className="lg:col-span-5 bg-slate-50 relative min-h-[350px] lg:min-h-[500px] flex items-center justify-center p-4">
-            <div className="absolute inset-0 overflow-hidden">
+        {/* Outer Split Container - Disconnects height constraints */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative">
+          
+          {/* Left Column: Intelligently Sticky to frame window with long specification tables */}
+          <div className="md:col-span-5 sticky md:top-24 w-full">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="bg-white border border-[#F5EEDF] p-4 rounded-sm shadow-md overflow-hidden relative flex flex-col items-center justify-center bg-gradient-to-b from-[#FAF9F5] to-white"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#C99B38] via-[#E2C275] to-[#C99B38]" />
               <img
                 src={product.image || product.imageUrl}
                 alt={product.name}
-                className="w-full h-full object-cover filter blur-2xl opacity-10"
+                className="w-full max-h-[340px] md:max-h-[380px] object-contain rounded-xs select-none p-1 transition-transform duration-500 hover:scale-[1.01]"
+                loading="eager"
+                onError={(e) => {
+                  e.target.src = 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80';
+                }}
               />
-            </div>
-            <img
-              src={product.image || product.imageUrl}
-              alt={product.name}
-              className="relative z-10 w-full max-h-[450px] object-contain rounded-2xl shadow-lg border border-slate-100/55 hover:scale-[1.02] transition-transform duration-300"
-            />
+            </motion.div>
           </div>
 
-          {/* Right Column: Details & Specs */}
-          <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between">
-            <div className="space-y-6">
-              {/* Category Badge & Origin */}
+          {/* Right Column: Independent Scrolling Stream Area */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="md:col-span-7 bg-white border border-[#F5EEDF] shadow-md rounded-sm p-6 sm:p-8 flex flex-col relative"
+          >
+            <div className="space-y-5">
+              
+              {/* Category and Origin Matrix Tags */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100/60 px-3 py-1 rounded-full">
-                  {categoryName}
+                <span className="text-[9px] font-bold uppercase tracking-widest text-[#0B2D5B] bg-[#0B2D5B]/5 border border-[#0B2D5B]/10 px-2.5 py-1 rounded-sm">
+                  {categoryName || 'Sourcing Commodity'}
                 </span>
-                <span className="inline-flex items-center text-xs text-slate-400 bg-slate-55 border border-slate-100 px-3 py-1 rounded-full">
-                  <FiGlobe className="mr-1" /> Origin: <strong className="ml-1 text-slate-600">{product.origin}</strong>
+                <span className="inline-flex items-center text-[9px] font-medium uppercase tracking-widest text-slate-500 bg-[#FAF9F5] border border-slate-200/50 px-2.5 py-1 rounded-sm">
+                  <FiGlobe className="mr-1 text-[#C99B38]" /> Origin: <strong className="ml-1 text-slate-700 tracking-normal normal-case font-sans">{product.origin || 'India'}</strong>
                 </span>
               </div>
 
-              {/* Title */}
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+              {/* Title Header Layout Block */}
+              <h1 className="text-xl sm:text-2xl font-serif font-medium text-[#0B2D5B] tracking-wide leading-tight uppercase border-b border-[#0B2D5B]/5 pb-3">
                 {product.name}
               </h1>
 
-              {/* Verification Info Box */}
-              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-100 flex items-center justify-between">
+              {/* Trust & Exporter Regulatory Verification Box */}
+              <div className="bg-[#FAF9F5] rounded-sm p-3.5 border border-[#F5EEDF] flex items-center justify-between shadow-3xs">
                 <div>
-                  <span className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    Verification Status
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    Verification Profile
                   </span>
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    India Trade Center
+                  <span className="text-[10px] font-bold text-[#0B2D5B] uppercase tracking-wider flex items-center mt-0.5">
+                    <FiShield className="mr-1 text-[#C99B38]" size={11} /> India Trade Registry
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="inline-block text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100/70 px-3 py-1 rounded-full uppercase tracking-wide">
+                  <span className="inline-block text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
                     Verified Exporter
                   </span>
                 </div>
               </div>
 
-              {/* Formatted Specs Grid */}
-              <div className="space-y-3">
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center">
-                  <FiCompass className="mr-1.5" /> Product Specifications
+              {/* Product Specifications Section Area */}
+              <div className="space-y-2 pt-2">
+                <span className="block text-[10px] font-bold text-[#0B2D5B]/60 uppercase tracking-widest flex items-center mb-1">
+                  <FiCompass className="mr-1 text-[#C99B38]" /> Technical Specifications Ledger
                 </span>
-                <div className="border border-slate-100 rounded-2xl p-4 sm:p-6 bg-slate-50/20">
+                <div className="border border-[#0B2D5B]/10 rounded-sm p-5 bg-[#FAF9F5]/20 shadow-3xs">
                   {renderFormattedDescriptionFull(product.description)}
                 </div>
               </div>
             </div>
 
-            {/* Actions Footer */}
-            <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
-
-
+            {/* Action Trigger Interface Handoff */}
+            <div className="mt-8 pt-4 border-t border-[#0B2D5B]/5 flex items-center justify-end">
               <Link
                 to={`/quote-request?${quoteParams}`}
-                className="w-full sm:w-auto btn-primary bg-indigo-600 text-white hover:bg-indigo-700 font-bold px-8 py-4 rounded-xl flex items-center justify-center space-x-2 text-center shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition duration-150 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer active:scale-95 whitespace-nowrap"
+                className="w-full sm:w-auto bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] text-xs font-medium tracking-widest uppercase py-3.5 px-6 rounded-sm flex items-center justify-center space-x-2 text-center transition-all shadow-sm uppercase"
               >
-                <FiSend size={16} />
+                <FiSend size={13} className="text-[#C99B38]" />
                 <span>Request Custom Quote</span>
               </Link>
             </div>
 
-          </div>
-
+          </motion.div>
         </div>
 
       </div>
