@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
+import CompanyLogo from '../../../public/images/ITO Logo.jpeg'
 import {
   FiMenu,
   FiX,
@@ -91,7 +92,7 @@ export default function Navbar() {
             <Link to="/" className="flex items-center space-x-2.5 group">
               <div className="h-9 flex items-center justify-center transition-transform group-hover:scale-105">
                 <img
-                  src="./images/ITO Logo.jpeg"
+                  src={CompanyLogo}
                   alt="India Trade Overseas Logo"
                   className="h-full w-auto object-contain max-w-[120px]  rounded-full"
                   loading="eager"
