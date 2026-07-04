@@ -198,17 +198,17 @@ FSSAI Licence No.: 20425371000005`;
       </section>
 
       {/* Corporate Handoff Footer Seal */}
-      <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center">
+      <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center font-sans">
         <div className="max-w-3xl mx-auto space-y-4">
           <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
             India Trade Overseas
-            <br />  
+            <br />
             Empowering Trade. Enabling Growth.
           </p>
           <p className="text-xs italic text-[#C99B38] font-serif">
             "Where Quality Meets Global Demand."
           </p>
-          <div className="text-[10px] font-sans text-slate-400 font-light max-w-xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
+          <div className="text-[10px] text-slate-400 font-light max-w-2xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>
