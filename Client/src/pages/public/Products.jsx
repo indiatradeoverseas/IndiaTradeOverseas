@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiChevronRight, FiBriefcase, FiMapPin, FiCheckCircle } from 'react-icons/fi';
+import { FiSearch, FiBriefcase, FiMapPin, FiCheckCircle } from 'react-icons/fi';
 import { IoLogoWhatsapp } from 'react-icons/io';
 import { productsApi } from '../../api/products';
-import toast from 'react-hot-toast';
+import { text } from 'framer-motion/client';
 
 const renderFormattedDescription = (description) => {
   if (!description) return null;
@@ -62,16 +62,20 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('all');
   const [dbProducts, setDbProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDbProducts = async () => {
       try {
+        setLoading(true);
         const response = await productsApi.getProducts('all');
         if (response.success) {
           setDbProducts(response.data.products);
         }
       } catch (error) {
         console.error('Error fetching database products:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchDbProducts();
@@ -141,8 +145,8 @@ export default function Products() {
   });
 
   const getWhatsAppLink = (productName) => {
-    const text = `Hello India Trade Overseas Team, I would like to request commercial pricing details regarding: ${productName}. Please forward the freight parameters.`;
-    return `https://wa.me/918250614079?text=${encodeURIComponent(text)}`;
+    const defaultText = `Hello India Trade Overseas Team, I would like to request commercial pricing details regarding: ${productName}. Please forward the freight parameters.`;
+    return `https://wa.me/918250614079?text=${encodeURIComponent(defaultText)}`;
   };
 
   const itemCardVariants = {
@@ -150,6 +154,18 @@ export default function Products() {
     visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
     exit: { opacity: 0, scale: 0.98, transition: { duration: 0.2 } }
   };
+
+  // Full-Screen Premium Brand Loader matching verification specs
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FBF7EF] font-sans antialiased">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#0B2D5B] border-t-transparent"></div>
+          <p className="text-[#0B2D5B]/60 text-xs tracking-widest uppercase font-medium">Synchronizing Commodities...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900 font-sans">
@@ -252,7 +268,7 @@ export default function Products() {
                         </span>
                       </div>
 
-                      {/* Action Triggers Grid - Structured to prevent link clashing */}
+                      {/* Action Triggers Grid */}
                       <div className="grid grid-cols-12 gap-2 font-sans text-[11px]">
                         <Link 
                           to={productDetailUrl} 
@@ -290,14 +306,14 @@ export default function Products() {
       </div>
 
       {/* Corporate Handoff Footer Seal */}
-      <footer className="bg-[#0B2D5B] text-slate-400 py-10 px-4 border-t-2 border-[#C99B38] text-center font-sans mt-8">
-        <div className="max-w-3xl mx-auto space-y-3">
-          <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-white">
+      <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center font-sans">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
             India Trade Overseas
             <br />
             <span className="text-[#C99B38]">Empowering Trade. Enabling Growth.</span>
           </p>
-          <div className="text-[9px] text-slate-400 font-light max-w-2xl mx-auto border-t border-slate-700/40 pt-3 leading-relaxed">
+          <div className="text-[10px] text-slate-400 font-light max-w-2xl mx-auto border-t border-slate-700/40 pt-3 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>

@@ -7,7 +7,6 @@ import {
   FiCheck, 
   FiShield, 
   FiFolder, 
-  FiInfo, 
   FiClock, 
   FiChevronRight,
   FiMail
@@ -53,7 +52,6 @@ export default function Notifications() {
       const response = await notificationsApi.markAllRead();
       if (response.success) {
         toast.success('All notifications marked as read');
-        
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       }
     } catch (error) {
@@ -66,18 +64,15 @@ export default function Notifications() {
     try {
       setActionLoadingId(notification._id);
       
-      
       if (!notification.isRead) {
         const res = await notificationsApi.markRead(notification._id);
         if (res.success) {
-          
           setNotifications(prev => prev.map(n => 
             n._id === notification._id ? { ...n, isRead: true } : n
           ));
         }
       }
 
-      
       if (notification.type === 'TASK_ASSIGNMENT' && notification.metadata?.leadId) {
         navigate(`/crm/leads/${notification.metadata.leadId}`);
       } else if (notification.type === 'SECURITY_ALERT') {
@@ -98,27 +93,26 @@ export default function Notifications() {
       case 'SECURITY_ALERT':
         return {
           icon: FiShield,
-          bgClass: 'bg-red-50 text-red-600 border border-red-100',
+          bgClass: 'bg-rose-50 text-rose-700 border border-rose-100',
         };
       case 'TASK_ASSIGNMENT':
         return {
           icon: FiFolder,
-          bgClass: 'bg-blue-50 text-blue-600 border border-blue-100',
+          bgClass: 'bg-[#0B2D5B]/5 text-[#0B2D5B] border border-[#0B2D5B]/10',
         };
       case 'MESSAGE':
         return {
           icon: FiMail,
-          bgClass: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+          bgClass: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
         };
       default:
         return {
           icon: FiBell,
-          bgClass: 'bg-slate-50 text-slate-600 border border-slate-100',
+          bgClass: 'bg-gray-50 text-gray-600 border border-gray-100',
         };
     }
   };
 
-  
   const filteredNotifications = notifications.filter(n => {
     if (activeTab === 'unread') return !n.isRead;
     if (activeTab === 'read') return n.isRead;
@@ -129,98 +123,100 @@ export default function Notifications() {
   const readCount = notifications.filter(n => n.isRead).length;
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#FBF7EF] text-[#0B2D5B] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
       
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Top Deck Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-[#C99B38]/10 pb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-950 flex items-center gap-2">
-            <FiBell className="text-[#0f4c75]" /> Notifications
+          <span className="text-xs uppercase tracking-widest text-[#C99B38] font-bold">Communications Center</span>
+          <h1 className="text-3xl font-serif text-[#0B2D5B] tracking-wide mt-1 flex items-center gap-2">
+            <FiBell className="text-[#C99B38]" size={26} /> Notifications
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Stay updated with tasks, security alerts, and system notifications.
+          <p className="text-sm text-gray-500 font-light mt-0.5">
+            Monitor real-time task dispatches, cross-border shipping anomalies, and system operations logs.
           </p>
         </div>
         <button
           onClick={handleMarkAllRead}
           disabled={unreadCount === 0}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs uppercase tracking-wider font-semibold transition-all duration-300 ${
             unreadCount === 0
-              ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50'
-              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-sm'
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200/50 opacity-60'
+              : 'bg-white border border-[#C99B38]/20 text-[#0B2D5B] hover:border-[#C99B38] hover:bg-[#FBF7EF] active:scale-98 shadow-sm'
           }`}
         >
-          <FiCheck size={16} /> Mark all as read
+          <FiCheck size={14} /> Clear Active Buffer
         </button>
       </div>
 
-      
-      <div className="flex items-center border-b border-slate-200 overflow-x-auto">
+      {/* Structured Category Tabs */}
+      <div className="flex items-center border-b border-gray-200 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab('all')}
-          className={`px-5 py-3 border-b-2 text-sm font-semibold transition-all whitespace-nowrap ${
+          className={`px-5 py-3 border-b-2 text-xs uppercase tracking-wider font-semibold transition-all whitespace-nowrap ${
             activeTab === 'all'
-              ? 'border-[#0f4c75] text-[#0f4c75]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-[#C99B38] text-[#0B2D5B]'
+              : 'border-transparent text-gray-400 hover:text-[#0B2D5B]'
           }`}
         >
-          All Notifications
-          <span className="ml-2 px-2 py-0.5 text-xs bg-slate-100 text-slate-700 rounded-full font-bold">
+          All Stream Records
+          <span className="ml-2 px-2 py-0.5 text-[10px] bg-[#0B2D5B]/5 text-[#0B2D5B] rounded-full font-bold">
             {notifications.length}
           </span>
         </button>
         <button
           onClick={() => setActiveTab('unread')}
-          className={`px-5 py-3 border-b-2 text-sm font-semibold transition-all whitespace-nowrap ${
+          className={`px-5 py-3 border-b-2 text-xs uppercase tracking-wider font-semibold transition-all whitespace-nowrap ${
             activeTab === 'unread'
-              ? 'border-[#0f4c75] text-[#0f4c75]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-[#C99B38] text-[#0B2D5B]'
+              : 'border-transparent text-gray-400 hover:text-[#0B2D5B]'
           }`}
         >
-          Unread
+          Unread Payload
           {unreadCount > 0 && (
-            <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full font-bold">
+            <span className="ml-2 px-2 py-0.5 text-[10px] bg-rose-100 text-rose-800 rounded-full font-bold animate-pulse">
               {unreadCount}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('read')}
-          className={`px-5 py-3 border-b-2 text-sm font-semibold transition-all whitespace-nowrap ${
+          className={`px-5 py-3 border-b-2 text-xs uppercase tracking-wider font-semibold transition-all whitespace-nowrap ${
             activeTab === 'read'
-              ? 'border-[#0f4c75] text-[#0f4c75]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-[#C99B38] text-[#0B2D5B]'
+              : 'border-transparent text-gray-400 hover:text-[#0B2D5B]'
           }`}
         >
-          Read
-          <span className="ml-2 px-2 py-0.5 text-xs bg-slate-100 text-slate-700 rounded-full font-bold">
+          Archived Ledger
+          <span className="ml-2 px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded-full font-bold">
             {readCount}
           </span>
         </button>
       </div>
 
-      {/* List Container */}
-      <div className="card">
+      {/* Notifications Ledger Viewport */}
+      <div className="bg-white rounded-xl border border-[#C99B38]/10 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 space-y-3">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0f4c75]"></div>
-            <p className="text-sm text-slate-500 font-medium">Fetching notifications...</p>
+          <div className="flex flex-col items-center justify-center py-28 space-y-3 bg-[#FBF7EF]/10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C99B38]"></div>
+            <p className="text-xs uppercase tracking-widest text-gray-400 font-medium">Polling Live Stream Nodes...</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="h-16 w-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-4 shadow-inner">
-              <FiBell size={28} />
+          <div className="flex flex-col items-center justify-center py-24 text-center bg-[#FBF7EF]/10">
+            <div className="h-16 w-16 bg-white border border-[#C99B38]/10 rounded-xl flex items-center justify-center text-gray-400 mb-4 shadow-sm">
+              <FiBell size={24} className="text-[#C99B38] opacity-70" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900">No notifications found</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-xs">
+            <h3 className="text-base font-serif text-[#0B2D5B]">Stream Queue Cleared</h3>
+            <p className="text-xs text-gray-400 mt-1.5 max-w-xs font-light leading-relaxed">
               {activeTab === 'unread' 
-                ? "You've read all your notifications! Good job."
+                ? "Excellent synchronization. All inbound operations vectors have been processed."
                 : activeTab === 'read'
-                ? "No read notifications found."
-                : "You don't have any notifications at the moment."}
+                ? "No archived elements discovered within this workspace filter."
+                : "Your administrative stream is completely empty at this juncture."}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-gray-100">
             {filteredNotifications.map((notification) => {
               const { icon: Icon, bgClass } = getNotificationIcon(notification.type);
               const isUnread = !notification.isRead;
@@ -230,47 +226,49 @@ export default function Notifications() {
                 <div
                   key={notification._id}
                   onClick={() => !isActionLoading && handleNotificationClick(notification)}
-                  className={`group relative p-4 sm:p-5 flex items-start gap-4 transition-all duration-200 cursor-pointer -mx-6 first:rounded-t-2xl last:rounded-b-2xl border-l-4 ${
+                  className={`group relative p-5 flex items-start gap-5 transition-all duration-200 cursor-pointer border-l-4 ${
                     isUnread
-                      ? 'bg-violet-50/20 border-[#0f4c75]/80 hover:bg-violet-50/40'
-                      : 'border-transparent hover:bg-slate-50 bg-white'
+                      ? 'bg-[#FBF7EF]/30 border-[#0B2D5B] hover:bg-[#FBF7EF]/60'
+                      : 'border-transparent hover:bg-[#FBF7EF]/20 bg-white'
                   }`}
                 >
                   
-                  <div className={`p-2.5 rounded-xl shrink-0 ${bgClass} transition-transform duration-200 group-hover:scale-105`}>
-                    <Icon size={20} />
+                  {/* Indicator Icon Context */}
+                  <div className={`p-3 rounded-lg shrink-0 ${bgClass} transition-transform duration-300 group-hover:scale-105`}>
+                    <Icon size={16} />
                   </div>
 
-                  {/* Body Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        {notification.type ? notification.type.replace(/_/g, ' ') : 'General Alert'}
+                  {/* Body Copy Block */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
+                        {notification.type ? notification.type.replace(/_/g, ' ') : 'General Broadcast'}
                       </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <FiClock size={12} />
+                      <span className="flex items-center gap-1 text-[11px] font-mono text-gray-400 font-light">
+                        <FiClock size={11} className="text-[#C99B38]" />
                         {new Date(notification.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className={`text-sm leading-relaxed ${isUnread ? 'font-semibold text-slate-950' : 'text-slate-700'}`}>
+                    <p className={`text-sm leading-relaxed ${isUnread ? 'font-medium text-[#0B2D5B]' : 'text-gray-600 font-light'}`}>
                       {notification.message}
                     </p>
                   </div>
 
-                  
-                  <div className="flex items-center gap-3 shrink-0 self-center">
+                  {/* Actions Telemetry Chevron */}
+                  <div className="flex items-center gap-3 shrink-0 self-center pl-2">
                     {isUnread && (
-                      <span className="h-2 w-2 rounded-full bg-violet-600 ring-4 ring-violet-100 animate-pulse"></span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-4 ring-rose-100 animate-pulse"></span>
                     )}
                     {isActionLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#0f4c75]"></div>
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-[#C99B38]"></div>
                     ) : (
                       <FiChevronRight 
-                        size={18} 
-                        className="text-slate-400 group-hover:text-slate-700 transition-colors group-hover:translate-x-0.5" 
+                        size={16} 
+                        className="text-gray-300 group-hover:text-[#0B2D5B] transition-colors transform group-hover:translate-x-0.5" 
                       />
                     )}
                   </div>
+                  
                 </div>
               );
             })}

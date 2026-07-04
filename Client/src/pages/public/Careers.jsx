@@ -5,12 +5,12 @@ import {
   FiClock, 
   FiUpload, 
   FiCheckCircle, 
-  FiSend, 
   FiGlobe, 
   FiTrendingUp, 
   FiUsers, 
   FiChevronDown 
 } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
 
@@ -24,7 +24,7 @@ export default function Careers() {
     phone: '',
     position: '',
     resume: null,
-    coverLetter: ''
+    coverLetterFile: null // Preserves architectural clean node mappings for file assets
   });
 
   const defaultJobs = [
@@ -109,6 +109,12 @@ export default function Careers() {
     }
   };
 
+  const handleCoverLetterFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData(prev => ({ ...prev, coverLetterFile: e.target.files[0] }));
+    }
+  };
+
   const handleApplyClick = (jobTitle) => {
     setFormData(prev => ({ ...prev, position: jobTitle }));
     document.getElementById('apply-form')?.scrollIntoView({ behavior: 'smooth' });
@@ -121,9 +127,9 @@ Name: ${formData.fullName}
 Position Applied: ${formData.position}
 Email: ${formData.email}
 Phone: ${formData.phone}
-Additional Info: ${formData.coverLetter || 'None provided'}
+Documents Transmitted: Resume & Cover Letter compiled.
 
-Please let me know the process for submitting my documents.`;
+Please let me know the process for submitting my files.`;
   };
 
   const copyApplicationTemplate = () => {
@@ -153,8 +159,8 @@ Phone: ${formData.phone}`;
       data.append('phone', formData.phone);
       data.append('position', formData.position);
       data.append('resume', formData.resume);
-      if (formData.coverLetter) {
-        data.append('coverLetter', formData.coverLetter);
+      if (formData.coverLetterFile) {
+        data.append('coverLetter', formData.coverLetterFile);
       }
 
       await careersApi.applyJob(data);
@@ -171,12 +177,12 @@ Phone: ${formData.phone}`;
   };
 
   const resetForm = () => {
-    setFormData({ fullName: '', email: '', phone: '', position: '', resume: null, coverLetter: '' });
+    setFormData({ fullName: '', email: '', phone: '', position: '', resume: null, coverLetterFile: null });
     setSubmitted(false);
   };
 
   return (
-    <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900">
+    <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900 font-sans">
       
       {/* Decorative Double Gold Line Top Border */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
@@ -186,87 +192,87 @@ Phone: ${formData.phone}`;
         <span className="text-amber-700 font-medium tracking-[0.25em] text-xs uppercase block mb-3">
           Work With Us
         </span>
-        <h1 className="text-4xl sm:text-6xl font-serif text-[#0B2D5B] tracking-tight font-normal mb-6">
+        <h1 className="text-4xl sm:text-5xl font-serif text-[#0B2D5B] tracking-wide font-normal mb-4">
           Build The Future Of Global Trade
         </h1>
-        <div className="w-24 h-[1px] bg-[#C99B38] mx-auto mb-4"></div>
-        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-sans font-light leading-relaxed mb-6">
-          At India Trade Overseas, we bridge markets and connect opportunities across borders. We are looking for talented, passionate individuals to join our growing empire.
+        <div className="w-16 h-[1px] bg-[#C99B38] mx-auto mb-4"></div>
+        <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto font-sans font-light leading-relaxed mb-6">
+          At India Trade Overseas, we bridge markets and connect opportunities across borders. We are looking for talented, passionate individuals to join our growing team.
         </p>
         <a
           href="#openings"
-          className="inline-flex items-center px-6 py-2.5 border border-transparent text-xs tracking-widest uppercase font-semibold rounded-sm bg-[#0B2D5B] hover:bg-[#102F60] text-white shadow-md transition-colors"
+          className="inline-flex items-center px-5 py-2.5 border border-transparent text-[10px] tracking-widest uppercase font-semibold rounded-sm bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] shadow-sm transition-colors"
         >
           Explore Openings
         </a>
       </header>
 
       {/* Corporate Perks Grid */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-serif text-[#0B2D5B]">Why India Trade Overseas?</h2>
-          <p className="text-slate-500 font-sans font-light text-xs mt-2">Discover a workplace where ambition meets global reach.</p>
+      <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10">
+          <h2 className="text-xl font-serif text-[#0B2D5B] tracking-wide uppercase">Why India Trade Overseas?</h2>
+          <p className="text-slate-400 font-sans font-light text-[11px] mt-1">Discover a workplace where ambition meets global reach.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {perks.map((perk, index) => (
-            <div key={index} className="bg-white p-6 border border-[#F5EEDF] shadow-sm rounded-sm">
-              <div className="text-[#C99B38] bg-[#FAF9F5] w-10 h-10 rounded-sm border border-[#C99B38]/10 flex items-center justify-center mb-4">
-                <perk.icon size={18} />
+            <div key={index} className="bg-white p-5 border border-[#F5EEDF] shadow-3xs rounded-sm">
+              <div className="text-[#C99B38] bg-[#FAF9F5] w-9 h-9 rounded-sm border border-[#C99B38]/10 flex items-center justify-center mb-3">
+                <perk.icon size={16} />
               </div>
-              <h3 className="text-base font-serif font-medium text-[#0B2D5B] mb-2">{perk.title}</h3>
-              <p className="text-slate-600 text-xs font-sans font-light leading-relaxed">{perk.description}</p>
+              <h3 className="text-sm font-serif font-medium text-[#0B2D5B] mb-1.5">{perk.title}</h3>
+              <p className="text-slate-500 text-[11px] font-sans font-light leading-relaxed">{perk.description}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Mandates Accordion Section */}
-      <section id="openings" className="py-16 bg-[#F5EEDF] border-y border-[#C99B38]/10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-serif text-[#0B2D5B]">Current Job Openings</h2>
+      {/* Current Openings Accordion */}
+      <section id="openings" className="py-12 bg-[#F5EEDF] border-y border-[#C99B38]/10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-xl font-serif text-[#0B2D5B] tracking-wide uppercase">Current Job Openings</h2>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {jobs.map((job) => {
               const jobId = job.id || job._id;
               return (
-                <div key={jobId} className="bg-white border border-[#F5EEDF] rounded-sm overflow-hidden shadow-sm">
+                <div key={jobId} className="bg-white border border-[#F5EEDF] rounded-sm overflow-hidden shadow-3xs">
                   <div
-                    className="p-6 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#FAF9F5]/40"
+                    className="p-5 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#FAF9F5]/40"
                     onClick={() => setActiveJob(activeJob === jobId ? null : jobId)}
                   >
                     <div>
-                      <h3 className="text-lg font-serif font-medium text-[#0B2D5B]">{job.title}</h3>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-400 font-light font-sans">
-                        <span className="flex items-center gap-1"><FiBriefcase size={12} className="text-[#C99B38]" />{job.department}</span>
-                        <span className="flex items-center gap-1"><FiMapPin size={12} className="text-[#C99B38]" />{job.location}</span>
-                        <span className="flex items-center gap-1"><FiClock size={12} className="text-[#C99B38]" />{job.type}</span>
+                      <h3 className="text-base font-serif font-medium text-[#0B2D5B]">{job.title}</h3>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-400 font-light font-sans">
+                        <span className="flex items-center gap-1"><FiBriefcase size={11} className="text-[#C99B38]" />{job.department}</span>
+                        <span className="flex items-center gap-1"><FiMapPin size={11} className="text-[#C99B38]" />{job.location}</span>
+                        <span className="flex items-center gap-1"><FiClock size={11} className="text-[#C99B38]" />{job.type}</span>
                       </div>
                     </div>
-                    <button className="text-xs uppercase tracking-wider font-semibold text-[#C99B38] bg-[#FAF9F5] px-3 py-1 border border-[#C99B38]/10 rounded-sm flex items-center gap-1">
+                    <button className="text-[10px] uppercase tracking-wider font-semibold text-[#C99B38] bg-[#FAF9F5] px-2.5 py-1 border border-[#C99B38]/10 rounded-sm flex items-center gap-1 shrink-0">
                       Details <FiChevronDown className={`transition-transform ${activeJob === jobId ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
 
                   {activeJob === jobId && (
-                    <div className="px-6 pb-6 border-t border-slate-100 pt-5 bg-[#FAF9F5]/10 font-sans">
-                      <div className="space-y-4">
+                    <div className="px-5 pb-5 border-t border-slate-100 pt-4 bg-[#FAF9F5]/10 font-sans text-xs">
+                      <div className="space-y-3.5">
                         <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">About The Role</h4>
-                          <p className="text-slate-600 text-xs mt-1 leading-relaxed font-light">{job.description}</p>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">About The Role</h4>
+                          <p className="text-slate-600 text-xs mt-0.5 leading-relaxed font-light">{job.description}</p>
                         </div>
                         <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Requirements</h4>
-                          <ul className="list-disc pl-5 mt-2 space-y-1 text-xs text-slate-600 font-light">
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Key Requirements</h4>
+                          <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs text-slate-600 font-light">
                             {job.requirements.map((req, i) => <li key={i}>{req}</li>)}
                           </ul>
                         </div>
-                        <div className="pt-4 flex justify-between items-center text-xs border-t border-slate-100">
-                          <span className="text-slate-500">Experience Needed: <strong className="text-slate-700">{job.experience}</strong></span>
+                        <div className="pt-3 flex justify-between items-center text-xs border-t border-slate-100">
+                          <span className="text-slate-400 font-light">Experience Needed: <strong className="text-slate-600 font-medium">{job.experience}</strong></span>
                           <button
                             onClick={() => handleApplyClick(job.title)}
-                            className="px-4 py-2 bg-[#0B2D5B] hover:bg-[#102F60] text-white rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors"
+                            className="px-3.5 py-1.5 bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] text-[10px] font-medium uppercase tracking-wider transition-colors rounded-sm shadow-2xs"
                           >
                             Apply For This Job
                           </button>
@@ -281,48 +287,49 @@ Phone: ${formData.phone}`;
         </div>
       </section>
 
-      {/* Intake Dossier Form Container */}
-      <section id="apply-form" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto bg-white border border-[#F5EEDF] rounded-sm shadow-xl overflow-hidden">
-          <div className="bg-[#0B2D5B] text-white p-6 sm:p-8 border-b border-[#C99B38]">
-            <h2 className="text-2xl font-serif">Apply Now</h2>
-            <p className="text-slate-300 font-sans font-light text-xs mt-1">Fill out the form below to submit your job application.</p>
+      {/* Application Form */}
+      <section id="apply-form" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-xl mx-auto bg-white border border-[#F5EEDF] rounded-sm shadow-xl overflow-hidden">
+          <div className="bg-[#0B2D5B] text-[#FBF7EF] p-5 sm:p-6 relative">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#C99B38] via-[#E2C275] to-[#C99B38]" />
+            <h2 className="text-xl font-serif tracking-wide uppercase">Intake Dossier Form</h2>
+            <p className="text-[#FBF7EF]/70 font-sans font-light text-[11px] mt-0.5">Submit institutional parameters for corporate review.</p>
           </div>
 
-          <div className="p-6 sm:p-8 bg-white font-sans text-xs">
+          <div className="p-5 sm:p-6 bg-white font-sans text-xs">
             {submitted ? (
-              <div className="text-center py-10">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
-                  <FiCheckCircle size={20} />
+              <div className="text-center py-8">
+                <div className="w-10 h-10 bg-[#0B2D5B]/5 text-[#C99B38] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#C99B38]/10 shadow-3xs">
+                  <FiCheckCircle size={18} />
                 </div>
-                <h3 className="text-lg font-serif mb-2 text-slate-900">Application Staged Successfully</h3>
-                <p className="text-slate-500 text-xs font-light max-w-md mx-auto leading-relaxed mb-6">
-                  Your candidate record data for the position of <strong>{formData.position}</strong> has been framed successfully. Use the secondary conduits below to forward the profile to target operational vectors.
+                <h3 className="text-base font-serif font-medium mb-1 text-[#0B2D5B] tracking-wide uppercase">Application Staged</h3>
+                <p className="text-slate-500 text-xs font-light max-w-xs mx-auto leading-relaxed mb-5">
+                  Your profile for <strong>{formData.position}</strong> has been stored successfully. Use the channels below to instantly flag your file to HR.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
                   <a 
                     href={`https://wa.me/918250614079?text=${encodeURIComponent(generateWhatsAppMessage())}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="bg-[#C99B38] hover:bg-amber-600 text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2"
+                    className="bg-[#C99B38] hover:bg-amber-600 text-white font-medium py-2 rounded-sm flex items-center justify-center gap-1.5 transition-colors uppercase text-[10px] tracking-wider"
                   >
                     Send on WhatsApp
                   </a>
                   <button 
                     onClick={copyApplicationTemplate}
-                    className="bg-[#FAF9F5] border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2"
+                    className="bg-[#FAF9F5] border border-slate-200 text-slate-700 font-medium py-2 rounded-sm flex items-center justify-center gap-1.5 transition-colors uppercase text-[10px] tracking-wider"
                   >
                     Copy Form Details
                   </button>
                 </div>
-                <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 underline font-light block mx-auto text-[11px]">
+                <button onClick={resetForm} className="text-[#C99B38] hover:underline font-light block mx-auto text-[11px] tracking-wide">
                   Submit Another Application
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Full Name *</label>
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">Full Name *</label>
                   <input
                     type="text"
                     name="fullName"
@@ -330,13 +337,13 @@ Phone: ${formData.phone}`;
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
-                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all"
+                    className="w-full px-3 py-2 border border-[#0B2D5B]/15 bg-[#FAF9F5]/40 text-[#0B2D5B] text-xs placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] focus:bg-white transition-all rounded-sm"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Email Address *</label>
+                    <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">Email Address *</label>
                     <input
                       type="email"
                       name="email"
@@ -344,11 +351,11 @@ Phone: ${formData.phone}`;
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="name@example.com"
-                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all"
+                      className="w-full px-3 py-2 border border-[#0B2D5B]/15 bg-[#FAF9F5]/40 text-[#0B2D5B] text-xs placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] focus:bg-white transition-all rounded-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Phone Number *</label>
+                    <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">Phone Number *</label>
                     <input
                       type="tel"
                       name="phone"
@@ -356,29 +363,30 @@ Phone: ${formData.phone}`;
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="+91 XXXXX XXXXX"
-                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all"
+                      className="w-full px-3 py-2 border border-[#0B2D5B]/15 bg-[#FAF9F5]/40 text-[#0B2D5B] text-xs placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] focus:bg-white transition-all rounded-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Position of Interest *</label>
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">Position of Interest *</label>
                   <select
                     name="position"
                     required
                     value={formData.position}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none text-slate-500 rounded-sm transition-all"
+                    className="w-full px-3 py-2 border border-[#0B2D5B]/15 bg-[#FAF9F5]/40 text-[#0B2D5B] text-xs focus:outline-none focus:border-[#C99B38] focus:bg-white transition-all rounded-sm appearance-none cursor-pointer"
                   >
-                    <option value="">Select a position</option>
+                    <option value="">Select an openings target</option>
                     {jobs.map(job => <option key={job.id || job._id} value={job.title}>{job.title}</option>)}
                     <option value="General Application">General Application / Other</option>
                   </select>
                 </div>
 
+                {/* Primary Upload Block: Resume */}
                 <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Upload Resume (PDF/DOC) *</label>
-                  <div className="border border-dashed border-slate-300 rounded-sm p-6 text-center hover:border-[#C99B38] relative cursor-pointer bg-[#FAF9F5]/30">
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">Upload Resume (PDF/DOC) *</label>
+                  <div className="border border-dashed border-slate-300 rounded-sm p-4 text-center hover:border-[#C99B38] relative cursor-pointer bg-[#FAF9F5]/30 transition-colors">
                     <input
                       type="file"
                       required
@@ -386,30 +394,36 @@ Phone: ${formData.phone}`;
                       onChange={handleFileChange}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <FiUpload size={20} className="text-slate-400 mx-auto mb-2" />
-                    <p className="text-slate-700 font-medium">{formData.resume ? formData.resume.name : 'Click to upload or drag & drop'}</p>
-                    <p className="text-slate-400 text-[10px] mt-0.5">PDF, DOC, DOCX up to 5MB</p>
+                    <FiUpload size={16} className="text-slate-400 mx-auto mb-1.5" />
+                    <p className="text-[#0B2D5B] font-medium text-xs truncate max-w-full px-4">{formData.resume ? formData.resume.name : 'Click to select or drag Resume'}</p>
+                    <p className="text-slate-400 text-[9px] mt-0.5">PDF, DOC, DOCX formats up to 5MB</p>
                   </div>
                 </div>
 
+                {/* Secondary Upload Block: Cover Letter */}
                 <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Cover Letter</label>
-                  <textarea
-                    name="coverLetter"
-                    rows={4}
-                    value={formData.coverLetter}
-                    onChange={handleInputChange}
-                    placeholder="Tell us why you are a great fit..."
-                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all resize-none"
-                  />
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">Upload Cover Letter (PDF/DOC)</label>
+                  <div className="border border-dashed border-slate-300 rounded-sm p-4 text-center hover:border-[#C99B38] relative cursor-pointer bg-[#FAF9F5]/30 transition-colors">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleCoverLetterFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                    <FiUpload size={16} className="text-slate-400 mx-auto mb-1.5" />
+                    <p className="text-[#0B2D5B] font-medium text-xs truncate max-w-full px-4">
+                      {formData.coverLetterFile ? formData.coverLetterFile.name : 'Click to select or drag Cover Letter'}
+                    </p>
+                    <p className="text-slate-400 text-[9px] mt-0.5">PDF, DOC, DOCX formats up to 5MB</p>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-[#0B2D5B] hover:bg-[#102F60] text-white font-sans text-xs uppercase tracking-widest py-3.5 font-bold rounded-sm shadow-md transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] font-sans text-xs uppercase tracking-widest py-3 font-semibold rounded-sm shadow-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
                 >
-                  {submitting ? 'Processing...' : 'Submit Application'}
+                  {submitting ? 'Processing Submission...' : 'Submit Official Dossier'}
                 </button>
               </form>
             )}
@@ -418,14 +432,14 @@ Phone: ${formData.phone}`;
       </section>
 
       {/* Corporate Handoff Footer Seal */}
-      <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
-            India Trade Overseas 
+      <footer className="bg-[#0B2D5B] text-slate-400 py-10 px-4 border-t-2 border-[#C99B38] text-center font-sans">
+        <div className="max-w-3xl mx-auto space-y-3">
+          <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-white">
+            India Trade Overseas
             <br />
-            Empowering Trade. Enabling Growth.
+            <span className="text-[#C99B38]">Empowering Trade. Enabling Growth.</span>
           </p>
-          <div className="text-[10px] font-sans text-slate-400 font-light max-w-xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
+          <div className="text-[9px] text-slate-400 font-light max-w-2xl mx-auto border-t border-slate-700/40 pt-3 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>
