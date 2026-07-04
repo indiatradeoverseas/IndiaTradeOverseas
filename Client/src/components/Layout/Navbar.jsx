@@ -2,20 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-import { 
-  FiMenu, 
-  FiX, 
-  FiUser, 
-  FiLogOut, 
-  FiHome, 
-  FiPackage, 
-  FiInfo, 
-  FiPhone, 
-  FiBriefcase, 
-  FiFileText, 
-  FiSettings, 
-  FiBell, 
-  FiChevronDown 
+import {
+  FiMenu,
+  FiX,
+  FiUser,
+  FiLogOut,
+  FiHome,
+  FiPackage,
+  FiInfo,
+  FiPhone,
+  FiBriefcase,
+  FiFileText,
+  FiSettings,
+  FiBell,
+  FiChevronDown
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -79,7 +79,7 @@ export default function Navbar() {
 
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 bg-[#FBF7EF] border-b ${scrolled ? 'shadow-lg border-[#C99B38]/30' : 'border-[#F5EEDF] shadow-sm'}`}>
-      
+
       {/* Structural Double-Line Gold Top Border Accent */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
@@ -89,8 +89,13 @@ export default function Navbar() {
           {/* Brand Authority Identity */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2.5 group">
-              <div className="h-9 w-9 bg-[#0B2D5B] border border-[#C99B38]/40 rounded-sm flex items-center justify-center transition-transform group-hover:scale-105">
-                <span className="text-white font-serif font-bold text-xs tracking-wider">ITO</span>
+              <div className="h-9 flex items-center justify-center transition-transform group-hover:scale-105">
+                <img
+                  src="./images/ITO Logo.jpeg"
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-auto object-contain max-w-[120px]  rounded-full"
+                  loading="eager"
+                />
               </div>
               <span className="hidden sm:inline font-serif font-normal text-[#0B2D5B] text-lg tracking-wide">
                 India Trade Overseas
@@ -104,11 +109,10 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`relative px-3 py-2 text-xs uppercase tracking-widest font-semibold font-sans transition-all duration-150 ${
-                  isActive(link.to)
+                className={`relative px-3 py-2 text-xs uppercase tracking-widest font-semibold font-sans transition-all duration-150 ${isActive(link.to)
                     ? 'text-[#0B2D5B] bg-[#F5EEDF]'
                     : 'text-[#102F60]/80 hover:text-[#0B2D5B] hover:bg-[#F5EEDF]/50'
-                }`}
+                  }`}
               >
                 {link.label}
                 {isActive(link.to) && (
@@ -118,13 +122,12 @@ export default function Navbar() {
             ))}
 
             {/* Mandated Gold Get a Quote Call-To-Action fixed to the right of navigation */}
-            <Link 
-              to="/quote-request" 
-              className={`ml-2 text-xs uppercase tracking-widest font-bold px-4 py-2 rounded-sm transition-all shadow-xs border ${
-                isActive('/quote-request')
+            <Link
+              to="/quote-request"
+              className={`ml-2 text-xs uppercase tracking-widest font-bold px-4 py-2 rounded-sm transition-all shadow-xs border ${isActive('/quote-request')
                   ? 'bg-[#0B2D5B] text-white border-transparent'
                   : 'bg-[#C99B38] hover:bg-amber-600 text-white border-transparent'
-              }`}
+                }`}
             >
               Get a Quote
             </Link>
@@ -237,11 +240,10 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center space-x-3 px-3 py-3 rounded-sm uppercase tracking-wider font-semibold ${
-                  isActive(link.to) 
-                    ? 'bg-[#F5EEDF] text-[#0B2D5B]' 
+                className={`flex items-center space-x-3 px-3 py-3 rounded-sm uppercase tracking-wider font-semibold ${isActive(link.to)
+                    ? 'bg-[#F5EEDF] text-[#0B2D5B]'
                     : 'text-[#102F60] hover:bg-[#F5EEDF]/40'
-                }`}
+                  }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <link.icon size={14} className="text-[#C99B38]" />
@@ -252,11 +254,10 @@ export default function Navbar() {
             {/* Mobile View Quote link action */}
             <Link
               to="/quote-request"
-              className={`flex items-center space-x-3 px-3 py-3 rounded-sm uppercase tracking-wider font-bold ${
-                isActive('/quote-request') 
-                  ? 'bg-[#F5EEDF] text-[#0B2D5B]' 
+              className={`flex items-center space-x-3 px-3 py-3 rounded-sm uppercase tracking-wider font-bold ${isActive('/quote-request')
+                  ? 'bg-[#F5EEDF] text-[#0B2D5B]'
                   : 'bg-[#C99B38]/10 text-[#C99B38] border border-[#C99B38]/20'
-              }`}
+                }`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <FiFileText size={14} />
