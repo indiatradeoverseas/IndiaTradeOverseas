@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiTag, FiDollarSign, FiGlobe, FiFileText, FiImage, FiGrid, FiUpload, FiTrash2, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTag, FiGlobe, FiFileText, FiImage, FiGrid, FiUpload, FiTrash2, FiEdit2, FiShield } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { productsApi } from '../../api/products';
 import { useAuth } from '../../hooks/useAuth';
-
 
 const imagesByCategory = {
   stone: '/images/natural_stones.png',
@@ -29,16 +29,16 @@ const renderFormattedDescription = (description) => {
   const lines = description.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
   
   if (lines.length <= 1) {
-    return <p className="text-slate-600 leading-relaxed text-xs whitespace-pre-wrap">{description}</p>;
+    return <p className="text-slate-600 leading-relaxed text-xs font-sans font-light whitespace-pre-wrap">{description}</p>;
   }
 
   return (
-    <div className="space-y-1 text-slate-600">
+    <div className="space-y-1 text-slate-600 font-sans font-light text-xs">
       {lines.map((line, index) => {
         const isHeader = line === line.toUpperCase() && line.length > 4 && !line.includes(':');
         if (isHeader) {
           return (
-            <div key={index} className="font-bold text-slate-900 tracking-wider uppercase border-b border-slate-100 pb-0.5 mt-2 first:mt-0 text-[10px]">
+            <div key={index} className="font-bold text-[#0B2D5B] tracking-wider uppercase border-b border-[#0B2D5B]/10 pb-0.5 mt-2.5 first:mt-0 text-[10px]">
               {line}
             </div>
           );
@@ -50,9 +50,9 @@ const renderFormattedDescription = (description) => {
           const key = parts[0].trim();
           const value = parts.slice(1).join(delimiter).trim();
           return (
-            <div key={index} className="flex justify-between items-baseline gap-2 py-0.5 border-b border-slate-50">
-              <span className="text-slate-500 text-[10px] font-medium shrink-0">{key}</span>
-              <span className="text-slate-800 text-[10px] font-semibold text-right">{value}</span>
+            <div key={index} className="flex justify-between items-baseline gap-2 py-0.5 border-b border-[#0B2D5B]/5">
+              <span className="text-slate-400 text-[9px] uppercase tracking-wider shrink-0">{key}</span>
+              <span className="text-[#0B2D5B] text-[10px] font-semibold text-right">{value}</span>
             </div>
           );
         }
@@ -60,15 +60,15 @@ const renderFormattedDescription = (description) => {
         if (line.startsWith('-')) {
           const content = line.substring(1).trim();
           return (
-            <div key={index} className="flex items-start space-x-1.5 text-[10px] py-0.5">
-              <span className="text-indigo-500 font-bold">•</span>
-              <span className="text-slate-700">{content}</span>
+            <div key={index} className="flex items-start space-x-1.5 py-0.5">
+              <span className="text-[#C99B38] font-bold">&bull;</span>
+              <span className="text-slate-600">{content}</span>
             </div>
           );
         }
 
         return (
-          <p key={index} className="text-slate-600 text-[10px] leading-relaxed py-0.5">
+          <p key={index} className="leading-relaxed py-0.5">
             {line}
           </p>
         );
@@ -122,7 +122,7 @@ export default function ProductUpload() {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // Limit to 1MB
+      if (file.size > 1024 * 1024) {
         toast.error('File size is too large! Please upload an image smaller than 1MB.');
         return;
       }
@@ -209,236 +209,301 @@ export default function ProductUpload() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 font-sans antialiased bg-[#FBF7EF] min-h-screen p-1 sm:p-2">
+      
+      {/* Editorial Header Hub */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#0B2D5B]/10 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Products</h1>
-          <p className="text-gray-600">Add, edit, or configure import-export catalog items</p>
+          <h1 className="text-xl sm:text-2xl font-serif font-medium text-[#0B2D5B] tracking-wide uppercase">Catalog Ledger Management</h1>
+          <p className="text-xs text-[#C99B38] tracking-wider uppercase font-medium mt-0.5">Configure Active Import-Export Commodities Portfolio</p>
         </div>
-        {(['ADMIN', 'MANAGER', 'IT', 'SOFTWARE_ENGINEER'].includes(user?.role) || user?.productUploadPermission) && (
-          <button
+        {((user?.role && ['ADMIN', 'MANAGER', 'IT', 'SOFTWARE_ENGINEER'].includes(user.role)) || user?.productUploadPermission) && (
+          <motion.button
+            whileHover={{ y: -0.5 }}
+            whileTap={{ y: 0 }}
             onClick={handleOpenUpload}
-            className="btn-primary bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-lg transition-transform active:scale-95"
+            className="w-full sm:w-auto bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] text-xs font-medium tracking-widest py-3 px-5 rounded-sm flex items-center justify-center space-x-2 shadow-sm uppercase cursor-pointer"
           >
-            <FiPlus size={20} />
-            <span>Upload Product</span>
-          </button>
+            <FiPlus size={14} className="text-[#C99B38]" />
+            <span>Upload Commodity</span>
+          </motion.button>
         )}
       </div>
 
-      {/* Products list grid */}
+      {/* Main Content Render Engine */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="flex flex-col items-center justify-center h-64 space-y-3">
+          <div className="animate-spin rounded-full h-7 w-8 border-2 border-[#0B2D5B] border-t-transparent"></div>
+          <p className="text-[#0B2D5B]/50 text-[10px] uppercase tracking-widest">Parsing Registry Systems...</p>
         </div>
       ) : products.length === 0 ? (
-        <div className="card text-center py-12">
-          <FiGrid size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-500">No products uploaded yet. Click "Upload Product" to add the first item.</p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white border border-[#F5EEDF] text-center py-16 rounded-sm shadow-3xs"
+        >
+          <FiGrid size={32} className="mx-auto text-[#C99B38] mb-3" />
+          <p className="text-slate-400 font-light text-xs">No entries indexed. Transmit "Upload Commodity" to build records.</p>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => {
-            const canDelete = user?.role === 'ADMIN' || 
-              (product.createdBy && 
-                (product.createdBy === user?._id || 
-                 product.createdBy._id === user?._id || 
-                 String(product.createdBy) === String(user?._id))
-              );
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+          }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          <AnimatePresence mode="popLayout">
+            {products.map((product) => {
+              const canDelete = user?.role === 'ADMIN' || 
+                (product.createdBy && 
+                  (product.createdBy === user?._id || 
+                   product.createdBy._id === user?._id || 
+                   String(product.createdBy) === String(user?._id))
+                );
 
-            return (
-              <div key={product._id} className="card flex flex-col justify-between hover:shadow-lg transition">
-                <div>
-                  <img
-                    src={product.image || product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-64 object-cover rounded-lg mb-4"
-                  />
-                  <div className="flex justify-between items-start mb-2 gap-2 min-w-0">
-                    <h3 className="text-xl font-semibold text-gray-900 break-all flex-1 min-w-0">{product.name}</h3>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
-                      {categoryLabels[product.category] || product.category}
-                    </span>
-                  </div>
-                  <div className="max-h-36 overflow-y-auto pr-1.5 custom-scrollbar mb-4 border border-slate-50 rounded-lg p-2 bg-slate-50/50">
-                    {renderFormattedDescription(product.description)}
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-sm text-gray-500">
-                  <div className="flex flex-col">
-                    <span>Origin: <strong>{product.origin}</strong></span>
-                  </div>
-                  {canDelete && (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="p-2 text-indigo-600 hover:text-white hover:bg-indigo-600 rounded-xl border border-indigo-200 transition-all duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
-                        title="Edit Product"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-xl border border-red-200 transition-all duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
-                        title="Delete Product"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Upload Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
-              <h3 className="text-lg font-bold text-slate-800">
-                {editingProduct ? 'Edit Commodity details' : 'Add New Commodity to Catalog'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingProduct(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Product Name *
-                </label>
-                <div className="relative">
-                  <FiTag className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                    placeholder="Enter Your Product Name"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Category *
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm cursor-pointer placeholder:text-slate-400"
-                  >
-                    <option value="">Select Category *</option>
-                    <option value="stone">Natural Stone</option>
-                    <option value="white_stone">White Stone</option>
-                    <option value="tea">Tea Premium</option>
-                    <option value="rice">Premium Rice</option>
-                    <option value="fruit">Fresh Fruits</option>
-                    <option value="vegetable">Fresh Vegetable</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Origin Country *
-                  </label>
-                  <div className="relative">
-                    <FiGlobe className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.origin}
-                      onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                      placeholder="Enter Your Origin Country"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Image URL or File *
-                </label>
-                <div className="flex space-x-2">
-                  <div className="relative flex-1">
-                    <FiImage className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.image}
-                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                      placeholder="URL or Upload File"
-                    />
-                  </div>
-
-                  {/* Choose File Styled Label Button */}
-                  <label
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 rounded-xl flex items-center justify-center shrink-0 border border-slate-200 cursor-pointer text-xs font-medium transition active:scale-95"
-                    title="Upload image from your device"
-                  >
-                    <FiUpload className="mr-1" size={14} />
-                    File
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center">
-                  <FiFileText className="mr-1.5" size={14} />
-                  Product Description *
-                </label>
-                <textarea
-                  required
-                  rows="6"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                  placeholder="Enter Product Description. Use 'Key: Value' format (e.g. 'Net Weight: 5 kg') and uppercase titles (e.g. 'TERMS & CONDITIONS') on new lines for premium styling."
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4 border-t border-slate-100 shrink-0">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition"
-                >
-                  {editingProduct ? 'Update Product' : 'Create Product'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingProduct(null);
+              return (
+                <motion.div 
+                  key={product._id} 
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+                    exit: { opacity: 0, scale: 0.98 }
                   }}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+                  layout
+                  className="bg-white border border-[#F5EEDF] shadow-3xs rounded-sm p-4 flex flex-col justify-between relative group hover:shadow-md hover:border-[#C99B38]/30 transition-all duration-300"
                 >
-                  Cancel
+                  <div className="absolute inset-0 border border-[#C99B38]/5 scale-[0.985] pointer-events-none" />
+                  
+                  <div>
+                    {/* Image Window */}
+                    <div className="overflow-hidden bg-[#FAF9F5] border border-slate-100 rounded-xs mb-4 h-56 flex items-center justify-center relative">
+                      <img
+                        src={product.image || product.imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-101 select-none"
+                        loading="lazy"
+                      />
+                    </div>
+                    
+                    {/* Item Heading */}
+                    <div className="flex justify-between items-start mb-3 gap-3">
+                      <h3 className="text-base font-serif font-medium text-[#0B2D5B] tracking-wide break-words line-clamp-2 uppercase flex-1">{product.name}</h3>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-[#0B2D5B] bg-[#0B2D5B]/5 border border-[#0B2D5B]/10 px-2 py-0.5 rounded-sm shrink-0">
+                        {categoryLabels[product.category] || product.category}
+                      </span>
+                    </div>
+
+                    {/* Technical Parameters Viewport */}
+                    <div className="max-h-36 overflow-y-auto pr-1 custom-scrollbar mb-4 border border-slate-50 rounded-sm p-2.5 bg-[#FAF9F5]/60 text-xs">
+                      {renderFormattedDescription(product.description)}
+                    </div>
+                  </div>
+
+                  {/* Footprint Specifications Handoff */}
+                  <div className="pt-3 border-t border-[#0B2D5B]/5 flex justify-between items-center text-[11px] font-sans text-slate-400">
+                    <span className="flex items-center gap-1">Origin Country: <strong className="text-slate-600 font-medium font-sans">{product.origin}</strong></span>
+                    {canDelete && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditProduct(product)}
+                          className="p-2 text-[#0B2D5B] hover:text-[#FBF7EF] hover:bg-[#0B2D5B] rounded border border-[#0B2D5B]/15 bg-white transition-all shadow-3xs cursor-pointer flex items-center justify-center"
+                          title="Edit Document"
+                        >
+                          <FiEdit2 size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product._id)}
+                          className="p-2 text-red-700 hover:text-white hover:bg-red-700 rounded border border-red-200 bg-white transition-all shadow-3xs cursor-pointer flex items-center justify-center"
+                          title="Purge Entry"
+                        >
+                          <FiTrash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      {/* Upload/Edit Modal Overlay */}
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowModal(false); setEditingProduct(null); }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+            />
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.96, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="bg-[#FBF7EF] border border-[#C99B38]/30 rounded shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] relative z-10"
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C99B38] via-[#E2C275] to-[#C99B38]" />
+
+              {/* Modal Header */}
+              <div className="p-5 border-b border-[#0B2D5B]/5 flex justify-between items-center bg-white">
+                <div>
+                  <h3 className="text-base font-serif font-medium text-[#0B2D5B] tracking-wide uppercase">
+                    {editingProduct ? 'Modify Ledger Entry' : 'Add New Commodity Node'}
+                  </h3>
+                  <p className="text-[9px] text-[#C99B38] tracking-widest uppercase font-medium mt-0.5">India Trade Catalog Infrastructure</p>
+                </div>
+                <button
+                  onClick={() => { setShowModal(false); setEditingProduct(null); }}
+                  className="text-[#0B2D5B]/40 hover:text-[#0B2D5B] text-sm p-1 transition-colors"
+                >
+                  ✕
                 </button>
               </div>
-            </form>
+
+              {/* Form Body Stream */}
+              <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1 font-sans text-xs">
+                
+                {/* Product Name Input */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">
+                    Commodity Title *
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#0B2D5B]/30 group-focus-within:text-[#C99B38] transition-colors">
+                      <FiTag size={13} />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full pl-9 pr-3 py-2.5 border border-[#0B2D5B]/15 rounded bg-white text-xs text-[#0B2D5B] placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] transition-all"
+                      placeholder="Enter operational product name"
+                    />
+                  </div>
+                </div>
+
+                {/* Categories & Origin Block */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">
+                      Classification *
+                    </label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-[#0B2D5B]/15 rounded bg-white text-xs text-[#0B2D5B] focus:outline-none focus:border-[#C99B38] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="stone">Natural Stone</option>
+                      <option value="white_stone">White Stone</option>
+                      <option value="tea">Tea Premium</option>
+                      <option value="rice">Premium Rice</option>
+                      <option value="fruit">Fresh Fruits</option>
+                      <option value="vegetable">Fresh Vegetable</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">
+                      Origin Country *
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#0B2D5B]/30 group-focus-within:text-[#C99B38] transition-colors">
+                        <FiGlobe size={13} />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={formData.origin}
+                        onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2.5 border border-[#0B2D5B]/15 rounded bg-white text-xs text-[#0B2D5B] placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] transition-all"
+                        placeholder="e.g. India"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Media Resource Pointer Wrapper */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1">
+                    Image File Pointer Resource *
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative group flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#0B2D5B]/30 group-focus-within:text-[#C99B38] transition-colors">
+                        <FiImage size={13} />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={formData.image}
+                        onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2.5 border border-[#0B2D5B]/15 rounded bg-white text-xs text-[#0B2D5B] placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] transition-all"
+                        placeholder="Paste secure remote asset URL link"
+                      />
+                    </div>
+
+                    <label
+                      className="bg-[#FAF9F5] hover:bg-[#F5EEDF] text-[#0B2D5B] px-3 rounded border border-[#0B2D5B]/15 flex items-center justify-center gap-1 transition-colors font-medium text-xs cursor-pointer select-none"
+                      title="Upload file from local directory"
+                    >
+                      <FiUpload size={13} className="text-[#C99B38]" />
+                      <span>Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Technical Description Specification Block */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#0B2D5B]/70 uppercase tracking-widest mb-1 flex items-center">
+                    <FiFileText className="mr-1 text-[#C99B38]" size={13} />
+                    Specifications Ledger Data *
+                  </label>
+                  <textarea
+                    required
+                    rows="5"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-[#0B2D5B]/15 rounded bg-white text-xs text-[#0B2D5B] placeholder-[#0B2D5B]/30 focus:outline-none focus:border-[#C99B38] transition-all resize-none font-sans font-light"
+                    placeholder="Enter specs line-by-line. Format templates on separate lines:&#10;UPPERCASE HEADER (e.g. CERTIFICATIONS)&#10;Key: Value (e.g. Grade: Premium Clean)"
+                  />
+                </div>
+
+                {/* Modal Footer Controls */}
+                <div className="flex gap-3 pt-4 border-t border-[#0B2D5B]/5 shrink-0">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] text-xs font-medium tracking-wide py-3 rounded border border-transparent hover:border-[#C99B38]/30 transition-all uppercase shadow-xs cursor-pointer"
+                  >
+                    {editingProduct ? 'Commit Ledger Update' : 'Generate Commodity Node'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowModal(false); setEditingProduct(null); }}
+                    className="flex-1 bg-[#FAF9F5] hover:bg-[#F5EEDF] border border-[#0B2D5B]/15 text-[#0B2D5B] text-xs font-medium tracking-wide py-3 rounded transition-all uppercase cursor-pointer"
+                  >
+                    Discard Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

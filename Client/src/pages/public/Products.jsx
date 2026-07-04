@@ -109,7 +109,7 @@ export default function Products() {
   ];
 
   const categories = [
-    { value: 'all', label: 'All Portfolios' },
+    { value: 'all', label: 'All Products'},
     { value: 'food_agriculture', label: 'Food & Agriculture' },
     { value: 'coal_industrial', label: 'Coal & Industrial' },
     { value: 'stone_construction', label: 'Stone & Construction' },
@@ -269,24 +269,13 @@ export default function Products() {
                       </div>
 
                       {/* Action Triggers Grid */}
-                      <div className="grid grid-cols-12 gap-2 font-sans text-[11px]">
+                      <div className="grid  font-sans text-[11px]">
                         <Link 
                           to={productDetailUrl} 
                           className="col-span-8 inline-flex items-center justify-center text-center bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-[#FBF7EF] py-2 font-medium tracking-wide transition-colors rounded-sm shadow-xs uppercase text-[10px]"
                         >
                           View Specifications
                         </Link>
-                        
-                        <a 
-                          href={getWhatsAppLink(product.name)}
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="col-span-4 inline-flex items-center justify-center bg-[#FAF9F5] hover:bg-[#F5EEDF] border border-slate-200 text-[#0B2D5B] py-2 font-semibold transition-colors rounded-sm gap-1"
-                          title="WhatsApp Enquiry"
-                        >
-                          <IoLogoWhatsapp size={13} className="text-[#C99B38]" />
-                          <span>Quotes</span>
-                        </a>
                       </div>
                     </div>
 

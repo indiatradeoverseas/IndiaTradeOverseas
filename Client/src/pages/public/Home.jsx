@@ -18,7 +18,6 @@ const CINEMATIC_CAROUSEL_BACKDROPS = [
   "./images/ito_3.jpeg",           // Global Supply Distribution Hub
   "./images/ito_4.jpeg",           // Dockside Terminal Infrastructure
   "./images/ito_5.jpeg",
-  "./images/ito_6.jpeg",
   "./images/ito_7.jpeg"            // Industrial Freight Crane Cranes Overview
 ];
 
@@ -118,25 +117,25 @@ export default function Home() {
       {/* Non-Negotiable Double Gold Frame Top Divider Accent */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
-      {/* 03 HOME HERO SECTION - MINIMIZED MOB COMPRESSION GAP WITH FULL CINEMATIC BACKDROP */}
-      <section className="relative min-h-[80vh] md:min-h-[85vh] flex items-center bg-slate-950 pt-8 pb-16 md:py-32 overflow-hidden border-b border-[#C99B38]">
+      {/* 03 HOME HERO SECTION - FIXED TRANSPARENCY DROP WITH PREMIUM IVORY BLENDING */}
+      <section className="relative min-h-[80vh] md:min-h-[85vh] flex items-center bg-[#FBF7EF] pt-8 pb-16 md:py-32 overflow-hidden border-b border-[#C99B38]">
 
-        {/* Animated Cinematic Layer Box */}
-        <div className="absolute inset-0 z-0 bg-slate-950">
-          <AnimatePresence mode="wait">
+        {/* Dynamic Image Canvas Layer */}
+        <div className="absolute inset-0 z-0 bg-[#FBF7EF]">
+          <AnimatePresence mode="popLayout">
             <motion.img
               key={carouselIndex}
-              initial={{ opacity: 0, scale: 1.05 }}
-              animate={{ opacity: 0.75, scale: 1.00 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.45 }} // Gently modulated opacity to prevent merging with texts on any viewport
               exit={{ opacity: 0 }}
-              transition={{ duration: 1.2, ease: 'easeInOut' }}
+              transition={{ duration: 1.5, ease: 'easeInOut' }}
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-center absolute inset-0"
             />
           </AnimatePresence>
-          {/* Subtle Clean Vignette Protective Layers */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#FBF7EF]/95 via-[#FBF7EF]/50 to-transparent z-1"></div>
+          {/* Steady color-safe gradients to guarantee legibility regardless of carousel shifts */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FBF7EF] via-[#FBF7EF]/80 to-transparent z-1"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-[#FBF7EF] via-transparent to-transparent z-1"></div>
         </div>
 
@@ -147,10 +146,9 @@ export default function Home() {
           variants={sampleStagger}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center md:text-left w-full"
         >
-          {/* Minimized padding layout space configuration targeting image_761a7f.jpg mobile view shift */}
           <div className="max-w-3xl mx-auto md:mx-0 pt-4 sm:pt-6 md:pt-0">
 
-            {/* Context Badge - Reduced size and spacing constraints on mobile */}
+            {/* Context Badge */}
             <motion.span 
               variants={fadeInUp} 
               className="inline-flex items-center space-x-2 bg-white/95 backdrop-blur-xs text-[#0B2D5B] border border-[#C99B38]/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-widest uppercase mb-4 sm:mb-6 shadow-xs"
@@ -158,7 +156,7 @@ export default function Home() {
               <FiAnchor className="text-[#C99B38]" /> <span>India Trade Overseas</span>
             </motion.span>
 
-            {/* Mandated Hero Heading Text - Scaled dynamically downward for perfect clean rendering */}
+            {/* Mandated Hero Heading Text */}
             <motion.h1 
               variants={fadeInUp} 
               className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-[#0B2D5B] tracking-tight font-normal leading-tight mb-3 sm:mb-4 uppercase"
@@ -207,7 +205,7 @@ export default function Home() {
               </Link>
               <Link 
                 to="/quote-request" 
-                className="w-full sm:w-auto bg-white/40 backdrop-blur-xs border border-[#0B2D5B]/20 hover:border-[#0B2D5B] text-[#0B2D5B] text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm transition-all"
+                className="w-full sm:w-auto bg-white/60 backdrop-blur-xs border border-[#0B2D5B]/20 hover:border-[#0B2D5B] text-[#0B2D5B] text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm transition-all"
               >
                 Request Bulk Quote
               </Link>
@@ -392,9 +390,8 @@ export default function Home() {
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-between items-center text-[11px] font-sans">
-              <span className="text-slate-400 font-light">Verification Discipline</span>
-              <Link to="/contact" className="text-[#C99B38] font-semibold hover:underline flex items-center tracking-wide">
+            <div className="text-right text-[11px] font-sans pt-3 border-t border-slate-100 mt-5">
+              <Link to="/contact" className="text-[#C99B38] font-semibold hover:underline inline-flex items-center tracking-wide">
                 Talk to a Compliance Specialist <FiChevronRight className="ml-0.5" />
               </Link>
             </div>
