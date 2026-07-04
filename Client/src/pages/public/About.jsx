@@ -73,7 +73,7 @@ FSSAI Licence No.: 20425371000005`;
                 alt="India Trade Overseas Complete Company Profile Cover" 
                 className="w-full h-auto object-contain max-h-[500px]"
                 onError={(e) => {
-                  e.target.src = './images/ITO Logo.jpeg';
+                  e.target.src = './images/Company_logo.png';
                 }}
               />
             </div>

@@ -109,7 +109,7 @@ export default function Products() {
   ];
 
   const categories = [
-    { value: 'all', label: 'All Products'},
+    { value: 'all', label: 'All Categories'},
     { value: 'food_agriculture', label: 'Food & Agriculture' },
     { value: 'coal_industrial', label: 'Coal & Industrial' },
     { value: 'stone_construction', label: 'Stone & Construction' },
