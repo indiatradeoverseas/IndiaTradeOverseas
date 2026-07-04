@@ -8,6 +8,7 @@ const {
   listApplications, 
   updateApplicationStatus, 
   downloadResume,
+  downloadCoverLetter,
   listJobs,
   listAllJobs,
   createJob,
@@ -15,14 +16,16 @@ const {
   deleteJob
 } = require('./career.controller');
 
-// Configure multer storage for resumes
-const uploadDir = path.join(process.cwd(), 'uploads', 'resumes');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
+// Configure multer storage for resumes and cover letters
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => {
+    const fieldName = file.fieldname === 'coverLetter' ? 'cover_letters' : 'resumes';
+    const destDir = path.join(process.cwd(), 'uploads', fieldName);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    cb(null, destDir);
+  },
   filename: (req, file, cb) => {
     const safeName = `${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
     cb(null, safeName);
@@ -37,7 +40,10 @@ const upload = multer({
 // ----------------------------------------------------
 // Public Endpoints
 // ----------------------------------------------------
-router.post('/', upload.single('resume'), applyJob);
+router.post('/', upload.fields([
+  { name: 'resume', maxCount: 1 },
+  { name: 'coverLetter', maxCount: 1 }
+]), applyJob);
 router.get('/jobs', listJobs);
 
 // ----------------------------------------------------
@@ -46,6 +52,7 @@ router.get('/jobs', listJobs);
 router.get('/', authenticate, listApplications);
 router.patch('/:id/status', authenticate, updateApplicationStatus);
 router.get('/:id/resume', authenticate, downloadResume);
+router.get('/:id/cover-letter', authenticate, downloadCoverLetter);
 
 router.get('/jobs/all', authenticate, listAllJobs);
 router.post('/jobs', authenticate, createJob);
