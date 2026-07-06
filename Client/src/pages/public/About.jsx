@@ -176,7 +176,7 @@ FSSAI Licence No.: 20425371000005`;
           <div className="bg-white border border-[#F5EEDF] shadow-md rounded-sm p-8 flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full mb-6 border border-[#F5EEDF] shadow-inner overflow-hidden bg-[#FAF9F5] flex items-center justify-center">
               <img 
-                src="./images/Ito Image.jpeg" 
+                src="./images/Sonia_Mam_Image.jpeg" 
                 alt="Soniya Singh" 
                 className="w-full h-full object-cover"
                 onError={(e) => {
