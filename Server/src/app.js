@@ -20,6 +20,7 @@ const notificationRoutes = require('./modules/notifications/notification.routes'
 const chatRoutes = require('./modules/chat/chat.routes');
 const careerRoutes = require('./modules/careers/career.routes');
 
+
 const app = express();
 
 

@@ -40,11 +40,18 @@ const jobSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  jdPath: {
+    type: String
+  },
+  jdOriginalName: {
+    type: String
+  },
   postedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   }
+
 }, {
   timestamps: true
 });

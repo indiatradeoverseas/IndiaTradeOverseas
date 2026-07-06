@@ -7,7 +7,7 @@ router.use(authenticate, rbac('ADMIN', 'MANAGER'));
 
 router.get('/admin-summary', getAdminSummary);
 router.get('/employee-performance', getPerformanceReport);
-router.get('/employee/:id/performance', getPerformanceReport); 
+router.get('/employee/:id/performance', getPerformanceReport);
 router.get('/pipeline', getPipelineReport);
 
 module.exports = router;
