@@ -46,20 +46,6 @@ FSSAI Licence No.: 20425371000005`;
       {/* Decorative Double Gold Line Top Border */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
 
-      {/* Corporate Editorial Header */}
-      {/* <header className="relative max-w-7xl mx-auto pt-20 pb-12 px-4 sm:px-6 lg:px-8 text-center">
-        <h1 className="text-4xl sm:text-6xl font-serif text-[#0B2D5B] tracking-tight font-normal mb-4">
-          India Trade Overseas
-        </h1>
-        <div className="w-24 h-[1px] bg-[#C99B38] mx-auto mb-4"></div>
-        <p className="text-md sm:text-lg uppercase tracking-[0.2em] font-sans text-[#C99B38] font-semibold mb-2">
-          Empowering Trade. Enabling Growth.
-        </p>
-        <p className="text-sm italic font-serif text-slate-600 tracking-wide">
-          Where Quality Meets Global Demand.
-        </p>
-      </header> */}
-
       {/* Main Presentation Section */}
       <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
