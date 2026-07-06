@@ -10,28 +10,28 @@ async function getAdminCommandCenterMetrics() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  
+
   const totalLeads = await Lead.countDocuments();
 
-  
+
   const todayLeads = await Lead.countDocuments({ createdAt: { $gte: todayStart } });
 
-  
+
   const aiGeneratedLeads = await Lead.countDocuments({ source: 'AI_AGENT' });
 
-  
+
   const hotLeads = await Lead.countDocuments({
     priority: 'HOT',
     stage: { $nin: ['CLOSED_WON', 'CLOSED_LOST'] }
   });
 
-  
+
   const missedFollowUps = await Lead.countDocuments({
     nextFollowupAt: { $lt: now },
     stage: { $nin: ['CLOSED_WON', 'CLOSED_LOST'] }
   });
 
-  
+
   const pendingQuotes = await Quotation.aggregate([
     { $match: { status: 'PENDING' } },
     {
@@ -45,10 +45,10 @@ async function getAdminCommandCenterMetrics() {
   const quotationPendingCount = pendingQuotes[0] ? pendingQuotes[0].count : 0;
   const quotationPendingValue = pendingQuotes[0] ? pendingQuotes[0].totalValue : 0;
 
-  
+
   const ordersConfirmed = await Lead.countDocuments({ stage: 'ORDER_CONFIRMED' });
 
-  
+
   const pendingPayments = await Payment.aggregate([
     { $match: { paymentStatus: { $in: ['Due', 'Overdue', 'Partial'] } } },
     {
@@ -62,7 +62,7 @@ async function getAdminCommandCenterMetrics() {
   const paymentPendingCount = pendingPayments[0] ? pendingPayments[0].count : 0;
   const paymentPendingValue = pendingPayments[0] ? pendingPayments[0].totalOutstanding : 0;
 
-  
+
   const employeeRanking = await Lead.aggregate([
     { $match: { assignedTo: { $ne: null } } },
     {
@@ -86,10 +86,10 @@ async function getAdminCommandCenterMetrics() {
     }
   ]);
 
-  
+
   const securityAlerts = await SecurityAlert.countDocuments({ status: { $ne: 'RESOLVED' } });
 
-  
+
   const exportAttempts = await AuditLog.find({ actionType: 'EXPORT_ATTEMPT' })
     .populate('actorId', 'fullName email employeeId')
     .sort({ createdAt: -1 })

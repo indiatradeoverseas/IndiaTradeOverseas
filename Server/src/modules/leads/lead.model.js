@@ -48,7 +48,16 @@ const leadSchema = new mongoose.Schema(
         'PAYMENT_PENDING',
         'DOCUMENT_PENDING',
         'CLOSED_WON',
-        'CLOSED_LOST'
+        'CLOSED_LOST',
+        // New stages
+        'REQUIREMENT_RECEIVED',
+        'QUOTATION_SENT',
+        'SAMPLE_SENT',
+        'PRICE_DISCUSSION',
+        'PAYMENT_DISCUSSION',
+        'PO_RECEIVED',
+        'DEAL_WON',
+        'DEAL_LOST'
       ],
       default: 'NEW_LEAD',
       index: true
@@ -59,6 +68,19 @@ const leadSchema = new mongoose.Schema(
       enum: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES'],
       default: null
     },
+    contactPerson: { type: String, default: '' },
+    country: { type: String, default: '' },
+    whatsAppNumber: { type: String, default: '' },
+    leadValue: { type: Number, default: 0 },
+    score: { type: Number, default: 0 },
+    voiceNotes: [
+      {
+        path: { type: String },
+        originalName: { type: String },
+        uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
     duplicateOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', default: null },
     chatSummary: { type: String, default: '' },
     originalPayload: { type: Object, default: {} },

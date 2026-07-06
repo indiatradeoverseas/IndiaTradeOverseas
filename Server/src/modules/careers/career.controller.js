@@ -169,6 +169,8 @@ const createJob = async (req, res, next) => {
       ? requirements
       : requirements ? [requirements] : [];
 
+    const jdFile = req.files && req.files['jd'] ? req.files['jd'][0] : null;
+
     const job = new Job({
       title,
       department,
@@ -177,7 +179,9 @@ const createJob = async (req, res, next) => {
       experience,
       description,
       requirements: reqs,
-      postedBy: req.user._id
+      postedBy: req.user._id,
+      jdPath: jdFile ? jdFile.path : undefined,
+      jdOriginalName: jdFile ? jdFile.originalname : undefined
     });
 
     await job.save();
@@ -203,8 +207,29 @@ const updateJob = async (req, res, next) => {
     if (type) updateFields.type = type;
     if (experience) updateFields.experience = experience;
     if (description) updateFields.description = description;
-    if (Array.isArray(requirements)) updateFields.requirements = requirements;
-    if (typeof isActive === 'boolean') updateFields.isActive = isActive;
+    if (requirements) {
+      updateFields.requirements = Array.isArray(requirements)
+        ? requirements
+        : [requirements];
+    }
+    if (isActive !== undefined) {
+      updateFields.isActive = isActive === 'true' || isActive === true;
+    }
+
+    const jdFile = req.files && req.files['jd'] ? req.files['jd'][0] : null;
+    if (jdFile) {
+      // Delete old JD file if it exists
+      const oldJob = await Job.findById(req.params.id);
+      if (oldJob && oldJob.jdPath && fs.existsSync(oldJob.jdPath)) {
+        try {
+          fs.unlinkSync(oldJob.jdPath);
+        } catch (err) {
+          console.error(`Error deleting old JD file: ${oldJob.jdPath}`, err);
+        }
+      }
+      updateFields.jdPath = jdFile.path;
+      updateFields.jdOriginalName = jdFile.originalname;
+    }
 
     const job = await Job.findByIdAndUpdate(req.params.id, updateFields, { new: true });
     if (!job) {
@@ -228,7 +253,70 @@ const deleteJob = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job opening not found.');
     }
 
+    // Clean up JD file from disk if it exists
+    if (job.jdPath && fs.existsSync(job.jdPath)) {
+      try {
+        fs.unlinkSync(job.jdPath);
+      } catch (err) {
+        console.error(`Error deleting JD file: ${job.jdPath}`, err);
+      }
+    }
+
     return ok(res, null, 'Job posting deleted successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteApplication = async (req, res, next) => {
+  try {
+    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can delete applications.');
+    }
+
+    const application = await CareerApplication.findById(req.params.id);
+    if (!application) {
+      return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
+    }
+
+    // Delete associated files from server disk if they exist
+    if (application.resumePath && fs.existsSync(application.resumePath)) {
+      try {
+        fs.unlinkSync(application.resumePath);
+      } catch (err) {
+        console.error(`Error deleting resume file: ${application.resumePath}`, err);
+      }
+    }
+
+    if (application.coverLetterPath && fs.existsSync(application.coverLetterPath)) {
+      try {
+        fs.unlinkSync(application.coverLetterPath);
+      } catch (err) {
+        console.error(`Error deleting cover letter file: ${application.coverLetterPath}`, err);
+      }
+    }
+
+    await CareerApplication.findByIdAndDelete(req.params.id);
+
+    return ok(res, null, 'Job application deleted successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadJobJD = async (req, res, next) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return fail(res, 404, 'NOT_FOUND', 'Job opening not found.');
+    }
+
+    const filePath = job.jdPath;
+    if (!filePath || !fs.existsSync(filePath)) {
+      return fail(res, 404, 'FILE_NOT_FOUND', 'Job description PDF not found on server disk.');
+    }
+
+    return res.download(filePath, job.jdOriginalName || 'job_description.pdf');
   } catch (error) {
     next(error);
   }
@@ -244,5 +332,8 @@ module.exports = {
   listAllJobs,
   createJob,
   updateJob,
-  deleteJob
+  deleteJob,
+  deleteApplication,
+  downloadJobJD
 };
+
