@@ -284,8 +284,8 @@ export default function Home() {
           </div>
 
           <div className="lg:col-span-5 bg-white border border-[#F5EEDF] p-6 rounded-sm shadow-3xs flex flex-col justify-center">
-            <span className="text-amber-700 font-medium tracking-[0.2em] text-[10px] uppercase block mb-0.5">Corporate Corridor Presence</span>
-            <h4 className="text-lg font-serif text-[#0B2D5B] mb-2">Location Chips</h4>
+            <span className="text-amber-700 font-medium tracking-[0.2em] text-[10px] uppercase block mb-0.5">Corporate Office Location</span>
+            <h4 className="text-lg font-serif text-[#0B2D5B] mb-2">Location Stone Chips</h4>
             <p className="text-[11px] text-slate-500 font-sans font-light leading-relaxed mb-4">
               Our active multi-category physical footprints maintain operational hubs inside the following major regional logistics corridors:
             </p>
