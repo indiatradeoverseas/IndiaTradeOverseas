@@ -35,12 +35,17 @@ export default function Home() {
 
   // Mandated Trust Badge Set
   const trustBadges = [
-    'EXPORTER', 'IMPORTER', 'BULK SUPPLIER', 'ITO TRANSPORT',
-    'TRADE SOLUTIONS', 'GST REGISTERED', 'IEC HOLDER', 'MSME / UDYAM', 'FSSAI REGISTERED'
+    { label: 'APEDA ', img: 'cer_1.jpeg' },
+    { label: 'DGFT CERTIFIED', img: 'cer_2.jpeg' },
+    { label: 'ISO CERTIFIED', img: 'cer_3.jpeg' },
+    { label: 'FSSAI REGISTERED', img: 'cer_4.jpeg' },
+    { label: 'GST REGISTERED', img: 'cer_5.jpeg' },
+    { label: 'IEC HOLDER', img: 'cer_6.jpeg' },
+    { label: 'MSME / UDYAM', img: 'cer_7.jpeg' },
   ];
 
   // Mandated Location Chips
-  const locations = ['Kishanganj', 'Siliguri', 'Jaigaon', 'Noida'];
+  const locations = ['Kishanganj', 'Siliguri', 'Jaigaon', 'Noida', 'Bangladesh', 'Bhutan', 'Nepal'];
 
   // Mandated Six Commercial Business Verticals
   const verticals = [
@@ -216,11 +221,25 @@ export default function Home() {
       </section>
 
       {/* MANDATED BRAND TRUST SIGNALS STRIP */}
-      <section className="bg-[#F5EEDF] py-4 border-b border-[#C99B38]/10 overflow-x-auto select-none">
+      <section className="bg-[#F5EEDF] py-5 border-b border-[#C99B38]/10 overflow-x-auto select-none scrollbar-none">
         <div className="max-w-7xl mx-auto px-4 flex flex-wrap justify-center items-center gap-2.5 md:gap-4 whitespace-nowrap">
           {trustBadges.map((badge, index) => (
-            <span key={index} className="bg-white border border-[#C99B38]/15 text-[#0B2D5B] text-[9px] sm:text-[10px] tracking-widest font-bold uppercase px-3 py-1 rounded-sm shadow-3xs">
-              &bull; {badge}
+            <span
+              key={index}
+              className="inline-flex items-center gap-2 bg-white border border-[#C99B38]/15 text-[#0B2D5B] text-[9px] sm:text-[10px] tracking-widest font-bold uppercase px-3 py-1.5 rounded-sm shadow-3xs hover:border-[#C99B38]/40 transition-all"
+            >
+              {/* Dynamic Certificate Image Loader */}
+              <img
+                src={`./images/certificates/${badge.img}`}
+                alt={`${badge.label} Official Certificate Badge`}
+                className="w-8 h-8 object-contain filter drop-shadow-xs pointer-events-none select-none"
+                onError={(e) => {
+                  // Optional fallback: hides broken image frame if file name doesn't match perfectly
+                  e.target.style.display = 'none';
+                }}
+              />
+
+              <span>{badge.label}</span>
             </span>
           ))}
         </div>
@@ -401,7 +420,7 @@ export default function Home() {
       </section>
 
       {/* PARTNER WITH INDIA TRADE OVERSEAS */}
-      <section className="relative w-full py-10 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-b border-[#C99B38] bg-[#FBF7EF]">
+      <section className="relative w-full py-8 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-b border-[#C99B38] bg-[#FBF7EF]">
 
         {/* 1. Base Cinematic Port Image Layer (Mirrors the Hero Section structure) */}
         <div className="absolute inset-0 z-0">
@@ -443,130 +462,46 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Column: Perfected Narrative Animation Stage */}
-          <div className="lg:col-span-7 w-full flex items-center justify-center">
-            {/* Added a light alpha transparency mask so the background layer bleeds through the container gracefully */}
-            <div className="relative w-full max-w-xl h-60 bg-[#0B2D5B]/35 border border-[#C99B38]/20 rounded-xl overflow-hidden flex flex-col justify-between p-6 shadow-2xl backdrop-blur">
+          {/* Right Column: Video Stage */}
 
-              {/* Transit Dotted Track Ground Base */}
-              <div className="absolute bottom-20 left-8 right-12 h-[1px] border-b border-dashed border-white/30 z-0" />
+          <div className="lg:col-span-7 w-full flex items-center justify-center p-2">
+            {/* Overhauled Cinematic Video Frame Showcase with reduced height via ultrawide aspect constraints */}
+            <div className="relative w-full max-w-xl aspect-[21/10] sm:aspect-[21/9] bg-slate-950/40 border border-[#C99B38]/30 rounded-2xl overflow-hidden flex flex-col justify-between p-4 sm:p-5 shadow-2xl backdrop-blur-md group transition-all duration-300">
 
-              {/* Content Arena */}
-              <div className="relative z-10 flex justify-between items-end w-full h-full pb-16">
+              {/* Background Ambient Depth Glow Elements */}
+              <div className="absolute -top-10 -left-10 w-36 h-20 bg-[#C99B38]/10 rounded-full filter blur-2xl pointer-events-none transition-opacity group-hover:opacity-70 z-10" />
+              <div className="absolute -bottom-10 -right-10 w-36 h-20 bg-blue-500/10 rounded-full filter blur-2xl pointer-events-none transition-opacity group-hover:opacity-70 z-10" />
 
-                {/* Sourcing Origin Node */}
-                <div className="flex flex-col items-center gap-2 z-10">
-                  <div className="w-10 h-10 rounded-full bg-[#0B2D5B] border border-[#C99B38] flex items-center justify-center shadow-lg">
-                    <span className="text-[10px] font-mono font-bold text-[#C99B38]">IND</span>
-                  </div>
-                  <span className="text-[9px] uppercase tracking-widest font-mono text-slate-300 font-semibold">Origin</span>
-                </div>
-
-                {/* Full Container Track Area */}
-                <div className="absolute left-14 right-20 top-0 bottom-16 z-20">
-
-                  {/* Expanded Truck moving via absolute track percentage layout coordinates */}
-                  <motion.div
-                    initial={{ left: "0%" }}
-                    animate={{ left: ["0%", "86%", "86%", "0%"] }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 4.5, // Standardized runtime duration
-                      times: [0, 0.40, 0.75, 1],
-                      ease: "easeInOut"
-                    }}
-                    className="absolute bottom-0 flex flex-col items-center"
-                    style={{ width: "64px" }}
-                  >
-                    {/* Unloading Goods Box Payload */}
-                    <motion.div
-                      animate={{
-                        opacity: [1, 1, 0, 0, 1],
-                        y: [0, 0, 22, 22, 0]
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 4.5, // Must match parent loop duration explicitly
-                        times: [0, 0.40, 0.45, 0.75, 1] // Drops at exactly 0.40 keyframe
-                      }}
-                      className="w-5 h-5 bg-[#C99B38] rounded-xs border border-white/30 shadow-md flex items-center justify-center mb-1"
-                    >
-                      <span className="w-2.5 h-[1px] bg-[#0B2D5B]/30" />
-                    </motion.div>
-
-                    {/* Freight Cargo Truck Vector */}
-                    <svg className="w-14 h-10 text-[#C99B38] fill-current drop-shadow-md" viewBox="0 0 24 24">
-                      <path d="M20 8h-3V4H4c-1.1 0-2 .9-2 2v11h2c0 1.66.89 3 2.5 3s2.5-1.34 2.5-3h6c0 1.66.89 3 2.5 3s2.5-1.34 2.5-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm11.5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-                    </svg>
-                  </motion.div>
-
-                  {/* Delivered Cargo Drop Reference left with Customer */}
-                  <motion.div
-                    animate={{
-                      opacity: [0, 0, 1, 0, 0],
-                      scale: [0.5, 0.5, 1, 0.5, 0.5]
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 4.5, // Standardized runtime duration
-                      times: [0, 0.40, 0.45, 0.75, 1] // Inherits matching cargo-floor handoff timing 
-                    }}
-                    className="absolute right-0 bottom-0 w-5 h-5 bg-[#C99B38] rounded-xs border border-white/30 shadow-md"
-                  />
-                </div>
-
-                {/* Stick Figure Customer Node */}
-                <div className="flex flex-col items-center gap-2 relative pl-4 z-10">
-
-                  {/* Horizontally Balanced Endorsement Banner Box */}
-                  <motion.div
-                    animate={{
-                      opacity: [0, 0, 1, 1, 0],
-                      scale: [0, 0, 1, 1, 0],
-                      y: [10, 10, 0, 0, 10]
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 4.5, // Corrected from 5 down to 4.5 to eliminate timeline drift
-                      times: [0, 0.40, 0.45, 0.75, 1], // Synced directly with cargo delivery frames
-                      ease: "backOut"
-                    }}
-                    className="absolute -top-10 bg-[#C99B38] text-[#0B2D5B] text-[10px] font-sans font-bold py-2 px-4 rounded-lg shadow-2xl flex flex-col items-center border border-white/20 z-30 min-w-[260px] max-w-sm left-0.4 -translate-x-[76%]"
-                  >
-                    <span className="text-xs">Order Received! 🎉</span>
-                    <span className="text-[9px] text-[#0B2D5B] font-extrabold tracking-wider mt-0.5 whitespace-nowrap">"Use India Trade Overseas for Import-Export"</span>
-                    {/* Carey pointer perfectly aligned to stay positioned over the stick figure */}
-                    <div className="w-2 h-2 bg-[#C99B38] rotate-45 absolute -bottom-1 right-12" />
-                  </motion.div>
-
-                  {/* Custom Vector Stick Figure (Circle Head, 2 Arms, Spine, 2 Legs) */}
-                  <div className="w-12 h-10 relative flex items-center justify-center">
-                    <svg className="w-full h-full text-amber-400 stroke-current" strokeWidth="2.5" strokeLinecap="round" fill="none" viewBox="0 0 24 36">
-                      <circle cx="12" cy="6" r="4" fill="#0B2D5B" strokeWidth="2.5" />
-                      <line x1="12" y1="10" x2="12" y2="22" />
-                      <line x1="12" y1="13" x2="5" y2="17" />
-                      <motion.line
-                        animate={{ y2: [11, 5, 11] }}
-                        transition={{ repeat: Infinity, duration: 0.5, ease: "easeInOut" }}
-                        x1="12" y1="13" x2="19" y2="11"
-                      />
-                      <line x1="12" y1="22" x2="6" y2="33" />
-                      <line x1="12" y1="22" x2="18" y2="33" />
-                    </svg>
-                  </div>
-
-                  <span className="text-[9px] uppercase tracking-widest font-mono text-slate-300 font-bold">Consignee</span>
-                </div>
-
+              <div className="absolute inset-0 z-0 bg-slate-950">
+                <video
+                  src="./images/video_ito.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover object-center pointer-events-none select-none filter contrast-[1.05] brightness-90 transition-transform duration-700 group-hover:scale-102"
+                />
+                {/* Premium dark vignette gradient protection mask overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/20 mix-blend-multiply opacity-90" />
               </div>
 
-              {/* Real-Time Telemetry Data Ribbon Footer */}
-              <div className="border-t border-white/10 pt-3 flex justify-between items-center text-[10px] font-mono text-slate-400">
-                <span className="flex items-center gap-1">
+              {/* Top Corner Minimal Badge Overlay */}
+              <div className="relative z-20 flex justify-between items-start pointer-events-none select-none">
+                <div className="bg-slate-950/60 border border-white/10 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  End-To-End Freight Vector Active
+                  <span className="text-[9px] font-mono tracking-widest text-slate-300 uppercase font-bold">Fulfillment Video Active</span>
+                </div>
+              </div>
+
+              {/* Bottom Telemetry Data Ribbon Footer Bar */}
+              <div className="relative z-20 border-t border-white/10 pt-3 flex justify-between items-center text-[10px] font-mono text-slate-400 tracking-wide select-none pointer-events-none">
+                <span className="flex items-center gap-1.5 drop-shadow-md">
+                  <span className="w-1 h-1 rounded-full bg-[#C99B38]" />
+                  Global Freight Operations Matrix
                 </span>
-                <span className="text-[#C99B38]/80 font-bold tracking-widest uppercase">Fulfillment Clear</span>
+                <span className="text-[#C99B38]/90 font-bold tracking-widest uppercase text-[9px] sm:text-[10px] drop-shadow-md">
+                  Fulfillment Clear
+                </span>
               </div>
 
             </div>

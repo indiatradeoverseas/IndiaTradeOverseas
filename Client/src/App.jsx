@@ -42,6 +42,7 @@ import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
+import Prakriti from './pages/public/Prakriti';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -238,6 +239,7 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/prakriti" element={<Prakriti />} />
         </Routes>
       </main>
       <Footer />

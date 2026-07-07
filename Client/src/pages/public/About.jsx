@@ -94,7 +94,7 @@ FSSAI Licence No.: 20425371000005`;
             <div className="space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 block">Operational Presence</span>
               <div className="flex flex-wrap gap-2 text-xs font-sans text-[#0B2D5B]">
-                {['Kishanganj', 'Siliguri', 'Jaigaon', 'Noida'].map((city) => (
+                {['Kishanganj', 'Siliguri', 'Jaigaon', 'Noida','Bangladesh','Nepal','Bhutan'].map((city) => (
                   <span key={city} className="bg-white px-3 py-1.5 border border-[#F5EEDF] flex items-center gap-1.5 text-xs rounded-sm shadow-sm font-medium">
                     <FiMapPin size={12} className="text-[#C99B38]" /> {city}
                   </span>
@@ -162,7 +162,7 @@ FSSAI Licence No.: 20425371000005`;
           <div className="bg-white border border-[#F5EEDF] shadow-md rounded-sm p-8 flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full mb-6 border border-[#F5EEDF] shadow-inner overflow-hidden bg-[#FAF9F5] flex items-center justify-center">
               <img 
-                src="./images/Sonia_Mam_Image.jpeg" 
+                src="./images/sonia_mam_new_image.jpeg" 
                 alt="Soniya Singh" 
                 className="w-full h-full object-cover"
                 onError={(e) => {

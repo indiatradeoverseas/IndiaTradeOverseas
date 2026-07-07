@@ -19,6 +19,7 @@ import {
   FiChevronDown
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { GiThreeLeaves } from "react-icons/gi";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -72,6 +73,7 @@ export default function Navbar() {
     { to: '/about', label: 'About Us', icon: FiInfo },
     { to: '/contact', label: 'Contact', icon: FiPhone },
     { to: '/careers', label: 'Careers', icon: FiBriefcase },
+    { to: '/prakriti' , label :'Prakriti Divison',icon:GiThreeLeaves  }
   ];
 
   const isActive = (path) => {
@@ -109,7 +111,7 @@ export default function Navbar() {
                 <span className="font-serif font-bold text-[#0B2D5B] text-sm tracking-wide uppercase">
                   India
                 </span>
-                <span className="font-sans font-light text-[#102F60]/80 text-[9px] tracking-widest uppercase mt-0.5">
+                <span className="font-sans font-bold text-[#102F60]/80 text-[9px] tracking-widest uppercase mt-0.5">
                   Trade Overseas
                 </span>
               </div>
