@@ -306,22 +306,6 @@ Phone: ${formData.phone}`;
                 <p className="text-slate-500 text-xs font-light max-w-xs mx-auto leading-relaxed mb-5">
                   Your profile for <strong>{formData.position}</strong> has been stored successfully. Use the channels below to instantly flag your file to HR.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
-                  <a 
-                    href={`https://wa.me/918250614079?text=${encodeURIComponent(generateWhatsAppMessage())}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-[#C99B38] hover:bg-amber-600 text-white font-medium py-2 rounded-sm flex items-center justify-center gap-1.5 transition-colors uppercase text-[10px] tracking-wider"
-                  >
-                    Send on WhatsApp
-                  </a>
-                  <button 
-                    onClick={copyApplicationTemplate}
-                    className="bg-[#FAF9F5] border border-slate-200 text-slate-700 font-medium py-2 rounded-sm flex items-center justify-center gap-1.5 transition-colors uppercase text-[10px] tracking-wider"
-                  >
-                    Copy Form Details
-                  </button>
-                </div>
                 <button onClick={resetForm} className="text-[#C99B38] hover:underline font-light block mx-auto text-[11px] tracking-wide">
                   Submit Another Application
                 </button>

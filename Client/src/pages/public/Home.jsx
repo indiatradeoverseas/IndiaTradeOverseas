@@ -149,16 +149,16 @@ export default function Home() {
           <div className="max-w-3xl mx-auto md:mx-0 pt-4 sm:pt-6 md:pt-0">
 
             {/* Context Badge */}
-            <motion.span 
-              variants={fadeInUp} 
+            <motion.span
+              variants={fadeInUp}
               className="inline-flex items-center space-x-2 bg-white/95 backdrop-blur-xs text-[#0B2D5B] border border-[#C99B38]/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-widest uppercase mb-4 sm:mb-6 shadow-xs"
             >
               <FiAnchor className="text-[#C99B38]" /> <span>India Trade Overseas</span>
             </motion.span>
 
             {/* Mandated Hero Heading Text */}
-            <motion.h1 
-              variants={fadeInUp} 
+            <motion.h1
+              variants={fadeInUp}
               className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-[#0B2D5B] tracking-tight font-normal leading-tight mb-3 sm:mb-4 uppercase"
             >
               India Trade Overseas <br />
@@ -171,40 +171,40 @@ export default function Home() {
             <motion.div variants={fadeInUp} className="w-12 sm:w-16 h-[1px] bg-[#C99B38] mb-4 sm:mb-6 mx-auto md:mx-0"></motion.div>
 
             {/* Motto & Supporting Brand Lines */}
-            <motion.p 
-              variants={fadeInUp} 
+            <motion.p
+              variants={fadeInUp}
               className="text-base sm:text-xl md:text-2xl uppercase tracking-[0.12em] sm:tracking-[0.15em] font-sans text-[#C99B38] font-bold mb-1"
             >
               Empowering Trade. Enabling Growth.
             </motion.p>
-            <motion.p 
-              variants={fadeInUp} 
+            <motion.p
+              variants={fadeInUp}
               className="text-[11px] sm:text-xs md:text-sm italic font-serif text-slate-500 tracking-wider mb-5 sm:mb-8 block"
             >
               Where Quality Meets Global Demand.
             </motion.p>
 
             {/* Mandated Hero Narrative Copy */}
-            <motion.p 
-              variants={fadeInUp} 
+            <motion.p
+              variants={fadeInUp}
               className="text-slate-700 font-sans font-light text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed mb-6 sm:mb-10"
             >
               India Trade Overseas is a multi-dimensional trade enterprise providing domestic and international sourcing, bulk supply, logistics coordination, industrial materials, construction materials, food commodities and consumer product solutions.
             </motion.p>
 
             {/* Mandated Hero Multi-Action Interface Matrix */}
-            <motion.div 
-              variants={fadeInUp} 
+            <motion.div
+              variants={fadeInUp}
               className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-4"
             >
-              <Link 
-                to="/products" 
+              <Link
+                to="/products"
                 className="w-full sm:w-auto bg-[#0B2D5B] hover:bg-[#0B2D5B]/90 text-white text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm shadow-sm transition-all"
               >
                 Explore Products
               </Link>
-              <Link 
-                to="/quote-request" 
+              <Link
+                to="/quote-request"
                 className="w-full sm:w-auto bg-white/60 backdrop-blur-xs border border-[#0B2D5B]/20 hover:border-[#0B2D5B] text-[#0B2D5B] text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm transition-all"
               >
                 Request Bulk Quote
@@ -357,8 +357,8 @@ export default function Home() {
                 key={index}
                 onClick={() => setActiveStep(index)}
                 className={`w-full text-left p-3.5 rounded-sm border font-sans transition-all flex items-center space-x-3 ${activeStep === index
-                    ? 'bg-[#0B2D5B] border-[#C99B38] text-white shadow-sm'
-                    : 'bg-white border-slate-200/60 text-slate-500 hover:bg-[#F5EEDF]/40'
+                  ? 'bg-[#0B2D5B] border-[#C99B38] text-white shadow-sm'
+                  : 'bg-white border-slate-200/60 text-slate-500 hover:bg-[#F5EEDF]/40'
                   }`}
               >
                 <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-mono font-bold ${activeStep === index ? 'bg-[#C99B38] text-white' : 'bg-slate-100 text-slate-400'
@@ -401,20 +401,177 @@ export default function Home() {
       </section>
 
       {/* PARTNER WITH INDIA TRADE OVERSEAS */}
-      <section className="bg-slate-900 text-white py-14 border-t border-slate-800 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center space-y-5">
-          <h2 className="text-2xl font-serif text-white tracking-wide uppercase">Partner with India Trade Overseas</h2>
-          <p className="text-slate-400 font-sans font-light text-[11px] sm:text-xs max-w-xl mx-auto leading-relaxed">
-            Ready to secure regular commodity deliveries or customized natural stone blocks? Get in touch with our team today for direct port-to-port pricing configurations.
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-3 pt-2">
-            <Link to="/quote-request" className="bg-[#C99B38] hover:bg-amber-600 text-white font-sans font-bold text-[10px] uppercase tracking-widest px-5 py-3 rounded-sm transition-colors shadow-sm">
-              Get FOB / CIF Pricing
-            </Link>
-            <Link to="/contact" className="bg-transparent border border-white/40 hover:border-white text-white font-sans font-bold text-[10px] uppercase tracking-widest px-5 py-3 rounded-sm transition-colors">
-              Contact Commercial Office
-            </Link>
+      <section className="relative w-full py-10 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-b border-[#C99B38] bg-[#FBF7EF]">
+
+        {/* 1. Base Cinematic Port Image Layer (Mirrors the Hero Section structure) */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="./images/ito_1.jpeg"
+            alt="India Trade Overseas Freight Port Terminal Background"
+            className="w-full h-full object-cover object-center pointer-events-none select-none"
+          />
+          {/* Lightened overlay mask to make the background image stand out clearly */}
+          <div className="absolute inset-0 bg-[#FBF7EF]/45 backdrop-blur-3xs" />
+          <div className="absolute inset-0 opacity-2 bg-[linear-gradient(to_right,#0B2D5B_1px,transparent_1px),linear-gradient(to_bottom,#0B2D5B_1px,transparent_1px)] bg-[size:40px_32px]" />
+        </div>
+
+        {/* 2. Content Grid */}
+        <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+          {/* Left Column: Context Branding Text */}
+          <div className="lg:col-span-5 text-center lg:text-left space-y-6">
+            <div className="inline-flex items-center gap-2 bg-[#0B2D5B]/5 border border-[#0B2D5B]/20 rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C99B38] animate-ping" />
+              <span className="text-[10px] tracking-widest font-mono uppercase text-[#0B2D5B] font-bold">Fulfillment Matrix</span>
+            </div>
+
+            <h2 className="text-3xl sm:text-4xl font-serif text-[#0B2D5B] tracking-wide uppercase leading-tight">
+              Partner with <br className="hidden lg:block" />India Trade Overseas
+            </h2>
+
+            <p className="text-slate-900 font-sans font-light text-xs sm:text-sm max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              Ready to secure regular commodity deliveries or customized natural stone blocks? Get in touch with our team today for direct port-to-port pricing configurations.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <Link to="/quote-request" className="bg-[#0B2D5B] hover:bg-[#C99B38] text-white font-sans font-bold text-[10px] uppercase tracking-widest px-6 py-3.5 rounded-sm transition-all shadow-md text-center">
+                Get FOB / CIF Pricing
+              </Link>
+              <Link to="/contact" className="bg-white border border-[#0B2D5B]/20 text-[#0B2D5B] hover:border-[#C99B38] hover:text-[#C99B38] text-sans font-bold text-[10px] uppercase tracking-widest px-6 py-3.5 rounded-sm transition-all text-center">
+                Contact Commercial Office
+              </Link>
+            </div>
           </div>
+
+          {/* Right Column: Perfected Narrative Animation Stage */}
+          <div className="lg:col-span-7 w-full flex items-center justify-center">
+            {/* Added a light alpha transparency mask so the background layer bleeds through the container gracefully */}
+            <div className="relative w-full max-w-xl h-60 bg-[#0B2D5B]/35 border border-[#C99B38]/20 rounded-xl overflow-hidden flex flex-col justify-between p-6 shadow-2xl backdrop-blur">
+
+              {/* Transit Dotted Track Ground Base */}
+              <div className="absolute bottom-20 left-8 right-12 h-[1px] border-b border-dashed border-white/30 z-0" />
+
+              {/* Content Arena */}
+              <div className="relative z-10 flex justify-between items-end w-full h-full pb-16">
+
+                {/* Sourcing Origin Node */}
+                <div className="flex flex-col items-center gap-2 z-10">
+                  <div className="w-10 h-10 rounded-full bg-[#0B2D5B] border border-[#C99B38] flex items-center justify-center shadow-lg">
+                    <span className="text-[10px] font-mono font-bold text-[#C99B38]">IND</span>
+                  </div>
+                  <span className="text-[9px] uppercase tracking-widest font-mono text-slate-300 font-semibold">Origin</span>
+                </div>
+
+                {/* Full Container Track Area */}
+                <div className="absolute left-14 right-20 top-0 bottom-16 z-20">
+
+                  {/* Expanded Truck moving via absolute track percentage layout coordinates */}
+                  <motion.div
+                    initial={{ left: "0%" }}
+                    animate={{ left: ["0%", "86%", "86%", "0%"] }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 4.5, // Standardized runtime duration
+                      times: [0, 0.40, 0.75, 1],
+                      ease: "easeInOut"
+                    }}
+                    className="absolute bottom-0 flex flex-col items-center"
+                    style={{ width: "64px" }}
+                  >
+                    {/* Unloading Goods Box Payload */}
+                    <motion.div
+                      animate={{
+                        opacity: [1, 1, 0, 0, 1],
+                        y: [0, 0, 22, 22, 0]
+                      }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 4.5, // Must match parent loop duration explicitly
+                        times: [0, 0.40, 0.45, 0.75, 1] // Drops at exactly 0.40 keyframe
+                      }}
+                      className="w-5 h-5 bg-[#C99B38] rounded-xs border border-white/30 shadow-md flex items-center justify-center mb-1"
+                    >
+                      <span className="w-2.5 h-[1px] bg-[#0B2D5B]/30" />
+                    </motion.div>
+
+                    {/* Freight Cargo Truck Vector */}
+                    <svg className="w-14 h-10 text-[#C99B38] fill-current drop-shadow-md" viewBox="0 0 24 24">
+                      <path d="M20 8h-3V4H4c-1.1 0-2 .9-2 2v11h2c0 1.66.89 3 2.5 3s2.5-1.34 2.5-3h6c0 1.66.89 3 2.5 3s2.5-1.34 2.5-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm11.5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+                    </svg>
+                  </motion.div>
+
+                  {/* Delivered Cargo Drop Reference left with Customer */}
+                  <motion.div
+                    animate={{
+                      opacity: [0, 0, 1, 0, 0],
+                      scale: [0.5, 0.5, 1, 0.5, 0.5]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 4.5, // Standardized runtime duration
+                      times: [0, 0.40, 0.45, 0.75, 1] // Inherits matching cargo-floor handoff timing 
+                    }}
+                    className="absolute right-0 bottom-0 w-5 h-5 bg-[#C99B38] rounded-xs border border-white/30 shadow-md"
+                  />
+                </div>
+
+                {/* Stick Figure Customer Node */}
+                <div className="flex flex-col items-center gap-2 relative pl-4 z-10">
+
+                  {/* Horizontally Balanced Endorsement Banner Box */}
+                  <motion.div
+                    animate={{
+                      opacity: [0, 0, 1, 1, 0],
+                      scale: [0, 0, 1, 1, 0],
+                      y: [10, 10, 0, 0, 10]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 4.5, // Corrected from 5 down to 4.5 to eliminate timeline drift
+                      times: [0, 0.40, 0.45, 0.75, 1], // Synced directly with cargo delivery frames
+                      ease: "backOut"
+                    }}
+                    className="absolute -top-10 bg-[#C99B38] text-[#0B2D5B] text-[10px] font-sans font-bold py-2 px-4 rounded-lg shadow-2xl flex flex-col items-center border border-white/20 z-30 min-w-[260px] max-w-sm left-0.4 -translate-x-[76%]"
+                  >
+                    <span className="text-xs">Order Received! 🎉</span>
+                    <span className="text-[9px] text-[#0B2D5B] font-extrabold tracking-wider mt-0.5 whitespace-nowrap">"Use India Trade Overseas for Import-Export"</span>
+                    {/* Carey pointer perfectly aligned to stay positioned over the stick figure */}
+                    <div className="w-2 h-2 bg-[#C99B38] rotate-45 absolute -bottom-1 right-12" />
+                  </motion.div>
+
+                  {/* Custom Vector Stick Figure (Circle Head, 2 Arms, Spine, 2 Legs) */}
+                  <div className="w-12 h-10 relative flex items-center justify-center">
+                    <svg className="w-full h-full text-amber-400 stroke-current" strokeWidth="2.5" strokeLinecap="round" fill="none" viewBox="0 0 24 36">
+                      <circle cx="12" cy="6" r="4" fill="#0B2D5B" strokeWidth="2.5" />
+                      <line x1="12" y1="10" x2="12" y2="22" />
+                      <line x1="12" y1="13" x2="5" y2="17" />
+                      <motion.line
+                        animate={{ y2: [11, 5, 11] }}
+                        transition={{ repeat: Infinity, duration: 0.5, ease: "easeInOut" }}
+                        x1="12" y1="13" x2="19" y2="11"
+                      />
+                      <line x1="12" y1="22" x2="6" y2="33" />
+                      <line x1="12" y1="22" x2="18" y2="33" />
+                    </svg>
+                  </div>
+
+                  <span className="text-[9px] uppercase tracking-widest font-mono text-slate-300 font-bold">Consignee</span>
+                </div>
+
+              </div>
+
+              {/* Real-Time Telemetry Data Ribbon Footer */}
+              <div className="border-t border-white/10 pt-3 flex justify-between items-center text-[10px] font-mono text-slate-400">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  End-To-End Freight Vector Active
+                </span>
+                <span className="text-[#C99B38]/80 font-bold tracking-widest uppercase">Fulfillment Clear</span>
+              </div>
+
+            </div>
+          </div>
+
         </div>
       </section>
 

@@ -29,9 +29,7 @@ export default function Footer() {
               India Trade Overseas
             </h3>
             <div className="w-12 h-[1px] bg-[#C99B38]"></div>
-            <p className="text-[#C99B38] text-xs uppercase tracking-widest font-semibold">
-              Empowering Trade. Enabling Growth.
-            </p>
+
             <p className="text-slate-400 font-serif italic text-xs tracking-wide">
               "Where Quality Meets Global Demand."
             </p>
