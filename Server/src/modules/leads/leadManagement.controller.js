@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
+const { getRelativePath, resolveUploadPath, proxyFromProduction } = require('../../utils/file');
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
 const { ok, fail } = require('../../utils/response');
@@ -139,7 +140,7 @@ async function uploadVoiceNote(req, res, next) {
     }
 
     const voiceNoteObj = {
-      path: req.file.path,
+      path: getRelativePath(req.file.path),
       originalName: req.file.originalname,
       uploadedBy: req.user._id,
       createdAt: new Date()
@@ -176,11 +177,20 @@ async function streamVoiceNote(req, res, next) {
       return fail(res, 404, 'NOT_FOUND', 'Voice note not found at this index.');
     }
 
-    if (!fs.existsSync(voiceNote.path)) {
+    const filePath = resolveUploadPath(voiceNote.path, 'voice_notes');
+    if (!filePath || !fs.existsSync(filePath)) {
+      // Fallback: proxy from production in development mode
+      try {
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/leads/${id}/voice-note/${index}`;
+        await proxyFromProduction(prodUrl, req.headers.authorization, res);
+        return;
+      } catch (proxyError) {
+        console.warn(`Local voice note missing, and production proxy failed: ${proxyError.message}`);
+      }
       return fail(res, 404, 'FILE_NOT_FOUND', 'Voice note audio file not found on disk.');
     }
 
-    res.sendFile(voiceNote.path);
+    res.sendFile(filePath);
   } catch (error) {
     next(error);
   }
