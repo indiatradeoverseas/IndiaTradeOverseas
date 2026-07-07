@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram, FiCopy } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 
 export default function Footer() {
-  // Mandated Copy Context Blocks from the Directive
+  const location = useLocation();
+  const isPrakritiPage = location.pathname === '/prakriti';
   const footerContactText = `Phone: +91 82506 14079\nEmail: info@indiatradeoverseas.com`;
   const registeredOfficeText = `Vill-Deramari, Tola-Maujabari, panch-Deramari, Block-Khochadham, dist - kishanganj, Near imambada pani bagh, Kishanganj, Bihar - 855107`;
 
@@ -15,7 +17,12 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-[#0B2D5B] text-slate-300 font-sans border-t-2 border-[#C99B38] relative overflow-hidden">
+    <footer
+      className={`w-full py-12 px-4 transition-colors duration-300 ${isPrakritiPage
+          ? 'bg-[#0B3D2E] text-white border-t border-[#50C878]/20'
+          : 'bg-[#0B2D5B] text-white border-t border-white/10'
+        }`}
+    >
 
       {/* Structural Double Gold Line Border Accent */}
       <div className="border-t-[3px] border-double border-[#C99B38] w-full opacity-30"></div>
@@ -24,7 +31,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8">
 
           {/* Column 1: Brand Authority and Mottos */}
-          <div className="md:col-span-4 space-y-4">
+          <div className="md:col-span-4 space-y-2">
             <h3 className="text-xl font-serif text-white tracking-wide font-normal">
               India Trade Overseas
             </h3>
@@ -74,7 +81,10 @@ export default function Footer() {
             <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Contact Info</h4>
             <div className="space-y-3 font-sans text-xs text-slate-400 font-light leading-relaxed">
 
-              <div className="relative group bg-[#102F60]/40 p-2.5 border border-slate-800 rounded-sm">
+              <div className={`w-full py-12 px-4 transition-colors duration-300 ${isPrakritiPage
+                  ? 'bg-[#0B3D2E] text-white border-t border-[#50C878]/20'
+                  : 'bg-[#0B2D5B] text-white border-t border-white/10'
+                }`}>
                 <p className="pr-6 text-[11px]">
                   {registeredOfficeText}
                 </p>
