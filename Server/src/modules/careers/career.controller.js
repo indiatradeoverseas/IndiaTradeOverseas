@@ -3,6 +3,7 @@ const path = require('path');
 const CareerApplication = require('./career.model');
 const Job = require('./job.model');
 const { ok, fail } = require('../../utils/response');
+const { resolveUploadPath, getRelativePath, proxyFromProduction } = require('../../utils/file');
 
 
 const hasJobPermission = (user) => {
@@ -31,10 +32,10 @@ const applyJob = async (req, res, next) => {
       email,
       phone,
       position,
-      resumePath: resumeFile.path,
+      resumePath: getRelativePath(resumeFile.path),
       resumeOriginalName: resumeFile.originalname,
       coverLetter,
-      coverLetterPath: coverLetterFile ? coverLetterFile.path : undefined,
+      coverLetterPath: coverLetterFile ? getRelativePath(coverLetterFile.path) : undefined,
       coverLetterOriginalName: coverLetterFile ? coverLetterFile.originalname : undefined
     });
 
@@ -98,8 +99,16 @@ const downloadResume = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
     }
 
-    const filePath = application.resumePath;
-    if (!fs.existsSync(filePath)) {
+    const filePath = resolveUploadPath(application.resumePath, 'resumes');
+    if (!filePath || !fs.existsSync(filePath)) {
+      // Fallback: proxy from production in development mode
+      try {
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/${req.params.id}/resume`;
+        await proxyFromProduction(prodUrl, req.headers.authorization, res);
+        return;
+      } catch (proxyError) {
+        console.warn(`Local resume missing, and production proxy failed: ${proxyError.message}`);
+      }
       return fail(res, 404, 'FILE_NOT_FOUND', 'Resume file not found on server disk.');
     }
 
@@ -120,8 +129,16 @@ const downloadCoverLetter = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
     }
 
-    const filePath = application.coverLetterPath;
+    const filePath = resolveUploadPath(application.coverLetterPath, 'cover_letters');
     if (!filePath || !fs.existsSync(filePath)) {
+      // Fallback: proxy from production in development mode
+      try {
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/${req.params.id}/cover-letter`;
+        await proxyFromProduction(prodUrl, req.headers.authorization, res);
+        return;
+      } catch (proxyError) {
+        console.warn(`Local cover letter missing, and production proxy failed: ${proxyError.message}`);
+      }
       return fail(res, 404, 'FILE_NOT_FOUND', 'Cover letter file not found on server disk.');
     }
 
@@ -180,7 +197,7 @@ const createJob = async (req, res, next) => {
       description,
       requirements: reqs,
       postedBy: req.user._id,
-      jdPath: jdFile ? jdFile.path : undefined,
+      jdPath: jdFile ? getRelativePath(jdFile.path) : undefined,
       jdOriginalName: jdFile ? jdFile.originalname : undefined
     });
 
@@ -220,14 +237,17 @@ const updateJob = async (req, res, next) => {
     if (jdFile) {
       // Delete old JD file if it exists
       const oldJob = await Job.findById(req.params.id);
-      if (oldJob && oldJob.jdPath && fs.existsSync(oldJob.jdPath)) {
-        try {
-          fs.unlinkSync(oldJob.jdPath);
-        } catch (err) {
-          console.error(`Error deleting old JD file: ${oldJob.jdPath}`, err);
+      if (oldJob && oldJob.jdPath) {
+        const oldJdPath = resolveUploadPath(oldJob.jdPath, 'job_descriptions');
+        if (oldJdPath && fs.existsSync(oldJdPath)) {
+          try {
+            fs.unlinkSync(oldJdPath);
+          } catch (err) {
+            console.error(`Error deleting old JD file: ${oldJdPath}`, err);
+          }
         }
       }
-      updateFields.jdPath = jdFile.path;
+      updateFields.jdPath = getRelativePath(jdFile.path);
       updateFields.jdOriginalName = jdFile.originalname;
     }
 
@@ -254,11 +274,14 @@ const deleteJob = async (req, res, next) => {
     }
 
     // Clean up JD file from disk if it exists
-    if (job.jdPath && fs.existsSync(job.jdPath)) {
-      try {
-        fs.unlinkSync(job.jdPath);
-      } catch (err) {
-        console.error(`Error deleting JD file: ${job.jdPath}`, err);
+    if (job.jdPath) {
+      const jdPath = resolveUploadPath(job.jdPath, 'job_descriptions');
+      if (jdPath && fs.existsSync(jdPath)) {
+        try {
+          fs.unlinkSync(jdPath);
+        } catch (err) {
+          console.error(`Error deleting JD file: ${jdPath}`, err);
+        }
       }
     }
 
@@ -280,19 +303,25 @@ const deleteApplication = async (req, res, next) => {
     }
 
     // Delete associated files from server disk if they exist
-    if (application.resumePath && fs.existsSync(application.resumePath)) {
-      try {
-        fs.unlinkSync(application.resumePath);
-      } catch (err) {
-        console.error(`Error deleting resume file: ${application.resumePath}`, err);
+    if (application.resumePath) {
+      const resumePath = resolveUploadPath(application.resumePath, 'resumes');
+      if (resumePath && fs.existsSync(resumePath)) {
+        try {
+          fs.unlinkSync(resumePath);
+        } catch (err) {
+          console.error(`Error deleting resume file: ${resumePath}`, err);
+        }
       }
     }
 
-    if (application.coverLetterPath && fs.existsSync(application.coverLetterPath)) {
-      try {
-        fs.unlinkSync(application.coverLetterPath);
-      } catch (err) {
-        console.error(`Error deleting cover letter file: ${application.coverLetterPath}`, err);
+    if (application.coverLetterPath) {
+      const coverLetterPath = resolveUploadPath(application.coverLetterPath, 'cover_letters');
+      if (coverLetterPath && fs.existsSync(coverLetterPath)) {
+        try {
+          fs.unlinkSync(coverLetterPath);
+        } catch (err) {
+          console.error(`Error deleting cover letter file: ${coverLetterPath}`, err);
+        }
       }
     }
 
@@ -311,8 +340,16 @@ const downloadJobJD = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job opening not found.');
     }
 
-    const filePath = job.jdPath;
+    const filePath = resolveUploadPath(job.jdPath, 'job_descriptions');
     if (!filePath || !fs.existsSync(filePath)) {
+      // Fallback: proxy from production in development mode
+      try {
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/jobs/${req.params.id}/jd`;
+        await proxyFromProduction(prodUrl, req.headers.authorization, res);
+        return;
+      } catch (proxyError) {
+        console.warn(`Local JD PDF missing, and production proxy failed: ${proxyError.message}`);
+      }
       return fail(res, 404, 'FILE_NOT_FOUND', 'Job description PDF not found on server disk.');
     }
 
