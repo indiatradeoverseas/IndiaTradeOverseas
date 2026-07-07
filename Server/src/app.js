@@ -19,6 +19,7 @@ const auditRoutes = require('./modules/security-audit/audit.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const chatRoutes = require('./modules/chat/chat.routes');
 const careerRoutes = require('./modules/careers/career.routes');
+const distributorRoutes = require('./modules/distributors/distributor.routes');
 
 
 const app = express();
@@ -85,7 +86,8 @@ const apiRoutes = [
   { path: '/daily-reports', router: dailyReportRoutes },
   { path: '/security', router: auditRoutes },
   { path: '/chat', router: chatRoutes },
-  { path: '/careers', router: careerRoutes }
+  { path: '/careers', router: careerRoutes },
+  { path: '/distributors', router: distributorRoutes }
 ];
 
 apiRoutes.forEach(route => {
