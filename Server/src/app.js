@@ -95,6 +95,11 @@ apiRoutes.forEach(route => {
   app.use(`/api/v1${route.path}`, route.router);
 });
 
+const { getMarketplace } = require('./modules/distributors/distributor.controller');
+const { authenticateDistributor } = require('./middlewares/auth.middleware');
+
+app.get('/api/marketplace', authenticateDistributor, getMarketplace);
+app.get('/api/v1/marketplace', authenticateDistributor, getMarketplace);
 
 const adminFallbackRouter = require('express').Router();
 const rbac = require('./middlewares/rbac.middleware');

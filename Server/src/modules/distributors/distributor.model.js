@@ -1,55 +1,38 @@
 const mongoose = require('mongoose');
 
-const distributorSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  email: {
-    type: String,
-    required: true,
-    trim: true,
-    lowercase: true
-  },
-  mobile: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  address: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  gstCertificatePath: {
-    type: String,
-    required: true
-  },
-  gstCertificateOriginalName: {
-    type: String,
-    required: true
-  },
-  udyamCertificatePath: {
-    type: String,
-    required: true
-  },
-  udyamCertificateOriginalName: {
-    type: String,
-    required: true
-  },
-  otp: {
-    type: String
-  },
-  otpExpiresAt: {
-    type: Date
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  }
-}, {
-  timestamps: true
-});
+const DistributorSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, trim: true, lowercase: true },
+  mobile: { type: String, required: true, trim: true },
+  gstNumber: { type: String, trim: true },
+  
+  // Compliance Documents
+  doc1Path: { type: String, required: true }, // GST Certificate
+  doc2Path: { type: String }, // Udyam Certificate (Optional)
+  
+  city: { type: String, required: true },
+  state: { type: String, required: true },
+  country: { type: String, default: 'India' },
 
-module.exports = mongoose.model('Distributor', distributorSchema);
+  // Optional Sourcing Parameters for Admin CRM panel compatibility
+  company: { type: String, default: 'Prakriti Tea Partner', trim: true },
+  address: { type: String, default: '', trim: true },
+  teaType: { type: String, default: 'CTC & Orthodox Bulk' },
+  monthlyReq: { type: Number, default: 0 },
+  purpose: { type: String, default: 'Wholesale Sourcing' },
+  businessType: { type: String, default: '1' },
+  
+  // Security Tokens & Lifecycles
+  otpToken: { type: String },
+  otpExpires: { type: Date },
+  isOtpVerified: { type: Boolean, default: false },
+  
+  // Layer 4 & 5 Verification States
+  approvalStatus: { 
+    type: String, 
+    default: 'pending', 
+    enum: ['pending', 'approved', 'rejected'] 
+  }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Distributor', DistributorSchema);
