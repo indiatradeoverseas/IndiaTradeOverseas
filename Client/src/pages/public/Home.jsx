@@ -117,21 +117,21 @@ export default function Home() {
   };
 
   return (
-    <div className="bg-[#ffffff] text-[#0C1F3F] antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-[#0C1F3F] font-sans overflow-x-hidden">
+    <div className="bg-[#0C1F3F] text-white antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-white font-sans overflow-x-hidden">
 
       {/* Non-Negotiable Double Gold Frame Top Divider Accent */}
       <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
 
-      {/* 03 HOME HERO SECTION - FIXED TRANSPARENCY DROP WITH PREMIUM IVORY BLENDING */}
-      <section className="relative min-h-[80vh] md:min-h-[85vh] flex items-center bg-[#ffffff] pt-8 pb-16 md:py-32 overflow-hidden border-b border-[#8FAADC]">
+      {/* 03 HOME HERO SECTION - FIXED TRANSPARENCY DROP WITH PREMIUM SAPPHIRE BLENDING */}
+      <section className="relative min-h-[80vh] md:min-h-[85vh] flex items-center bg-[#0C1F3F] pt-8 pb-16 md:py-32 overflow-hidden border-b border-[#8FAADC]/30">
 
         {/* Dynamic Image Canvas Layer */}
-        <div className="absolute inset-0 z-0 bg-[#ffffff]">
+        <div className="absolute inset-0 z-0 bg-[#0C1F3F]">
           <AnimatePresence mode="popLayout">
             <motion.img
               key={carouselIndex}
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.25 }} // Gently modulated opacity to prevent merging with texts on any viewport
+              animate={{ opacity: 0.15 }} // Gently modulated opacity for dark theme visibility
               exit={{ opacity: 0 }}
               transition={{ duration: 1.5, ease: 'easeInOut' }}
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
@@ -139,9 +139,9 @@ export default function Home() {
               className="w-full h-full object-cover object-center absolute inset-0"
             />
           </AnimatePresence>
-          {/* Steady color-safe gradients to guarantee legibility regardless of carousel shifts */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#ffffff] via-[#ffffff]/80 to-transparent z-1"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#ffffff] via-transparent to-transparent z-1"></div>
+          {/* Steady dark color-safe gradients to guarantee legibility regardless of carousel shifts */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0C1F3F] via-[#0C1F3F]/80 to-transparent z-1"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0C1F3F] via-transparent to-transparent z-1"></div>
         </div>
 
         {/* Dynamic Mobile Layout Wrapper Node */}
@@ -156,35 +156,35 @@ export default function Home() {
             {/* Context Badge */}
             <motion.span
               variants={fadeInUp}
-              className="inline-flex items-center space-x-2 bg-white/95 backdrop-blur-xs text-[#0C1F3F] border border-[#8FAADC]/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-widest uppercase mb-4 sm:mb-6 shadow-xs"
+              className="inline-flex items-center space-x-2 bg-[#0C1F3F]/90 backdrop-blur-xs text-white border border-[#8FAADC]/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-widest uppercase mb-4 sm:mb-6 shadow-xs"
             >
-              <FiAnchor className="text-[#2F5DA8]" /> <span>India Trade Overseas</span>
+              <FiAnchor className="text-[#8FAADC]" /> <span>India Trade Overseas</span>
             </motion.span>
 
             {/* Mandated Hero Heading Text */}
             <motion.h1
               variants={fadeInUp}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-[#0C1F3F] tracking-tight font-normal leading-tight mb-3 sm:mb-4 uppercase"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-white tracking-tight font-normal leading-tight mb-3 sm:mb-4 uppercase"
             >
               India Trade Overseas <br />
-              <span className="text-[#2F5DA8] text-xl sm:text-2xl md:text-3xl block mt-1 sm:mt-2 font-sans font-light tracking-wide normal-case">
+              <span className="text-[#8FAADC] text-xl sm:text-2xl md:text-3xl block mt-1 sm:mt-2 font-sans font-light tracking-wide normal-case">
                 Trade. Supply. Logistics. Growth.
               </span>
             </motion.h1>
 
-            {/* Gold Divider Line Layout Alignment Rule */}
-            <motion.div variants={fadeInUp} className="w-12 sm:w-16 h-[1px] bg-[#2F5DA8] mb-4 sm:mb-6 mx-auto md:mx-0"></motion.div>
+            {/* Gold/Blue Divider Line Layout Alignment Rule */}
+            <motion.div variants={fadeInUp} className="w-12 sm:w-16 h-[1px] bg-[#8FAADC] mb-4 sm:mb-6 mx-auto md:mx-0"></motion.div>
 
             {/* Motto & Supporting Brand Lines */}
             <motion.p
               variants={fadeInUp}
-              className="text-base sm:text-xl md:text-2xl uppercase tracking-[0.12em] sm:tracking-[0.15em] font-sans text-[#2F5DA8] font-bold mb-1"
+              className="text-base sm:text-xl md:text-2xl uppercase tracking-[0.12em] sm:tracking-[0.15em] font-sans text-[#8FAADC] font-bold mb-1"
             >
               Empowering Trade. Enabling Growth.
             </motion.p>
             <motion.p
               variants={fadeInUp}
-              className="text-[11px] sm:text-xs md:text-sm italic font-serif text-[#8FAADC] tracking-wider mb-5 sm:mb-8 block"
+              className="text-[11px] sm:text-xs md:text-sm italic font-serif text-[#FFF1E8]/70 tracking-wider mb-5 sm:mb-8 block"
             >
               Where Quality Meets Global Demand.
             </motion.p>
@@ -192,7 +192,7 @@ export default function Home() {
             {/* Mandated Hero Narrative Copy */}
             <motion.p
               variants={fadeInUp}
-              className="text-[#0C1F3F]/90 font-sans font-light text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed mb-6 sm:mb-10"
+              className="text-white/80 font-sans font-light text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed mb-6 sm:mb-10"
             >
               India Trade Overseas is a multi-dimensional trade enterprise providing domestic and international sourcing, bulk supply, logistics coordination, industrial materials, construction materials, food commodities and consumer product solutions.
             </motion.p>
@@ -204,13 +204,13 @@ export default function Home() {
             >
               <Link
                 to="/products"
-                className="w-full sm:w-auto bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm shadow-sm transition-all"
+                className="w-full sm:w-auto bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm shadow-sm transition-all"
               >
                 Explore Products
               </Link>
               <Link
                 to="/quote-request"
-                className="w-full sm:w-auto bg-white/60 backdrop-blur-xs border border-[#2F5DA8]/20 hover:border-[#2F5DA8] text-[#2F5DA8] text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm transition-all"
+                className="w-full sm:w-auto bg-[#0C1F3F]/60 backdrop-blur-xs border border-[#8FAADC]/40 hover:border-[#8FAADC] text-[#8FAADC] hover:text-white text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm transition-all"
               >
                 Request Bulk Quote
               </Link>
@@ -221,24 +221,30 @@ export default function Home() {
       </section>
 
       {/* MANDATED BRAND TRUST SIGNALS STRIP */}
-      <section className="bg-[#ffffff] py-5 border-b border-[#8FAADC]/20 overflow-x-auto select-none scrollbar-none">
+      <section className="bg-[#0C1F3F] py-5 border-b border-[#8FAADC]/20 overflow-x-auto select-none scrollbar-none">
         <div className="max-w-7xl mx-auto px-4 flex flex-wrap justify-center items-center gap-2.5 md:gap-4 whitespace-nowrap">
           {trustBadges.map((badge, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-2 bg-white border border-[#8FAADC]/30 text-[#0C1F3F] text-[9px] sm:text-[10px] tracking-widest font-bold uppercase px-3 py-1.5 rounded-sm shadow-3xs hover:border-[#2F5DA8] transition-all"
+              className="inline-flex items-center justify-center min-w-[120px] h-9 border border-[#8FAADC]/30 text-white text-[9px] sm:text-[10px] tracking-widest font-bold uppercase px-4 rounded-sm shadow-3xs hover:border-[#2F5DA8] transition-all relative overflow-hidden group"
             >
-              {/* Dynamic Certificate Image Loader */}
+              {/* Background Image Layer */}
               <img
                 src={`./images/certificates/${badge.img}`}
-                alt={`${badge.label} Official Certificate Badge`}
-                className="w-8 h-8 object-contain filter drop-shadow-xs pointer-events-none select-none mix-blend-multiply"
+                alt={`${badge.label} Background Asset`}
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none z-0 transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
                   e.target.style.display = 'none';
                 }}
               />
 
-              <span>{badge.label}</span>
+              {/* Translucent Tint Mask Layer to protect typography legibility over the image */}
+              <div className="absolute inset-0 bg-[#0C1F3F]/75 backdrop-blur-[0.5px] z-5 transition-colors group-hover:bg-[#0C1F3F]/65" />
+
+              {/* Foreground Interactive Content Tier */}
+              <span className="relative z-10 text-center pointer-events-none drop-shadow-md">
+                {badge.label}
+              </span>
             </span>
           ))}
         </div>
@@ -247,25 +253,25 @@ export default function Home() {
       {/* EDITORIAL REVEAL DOSSIER METRICS BLOCK */}
       <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white border border-[#8FAADC]/20 p-5 rounded-sm shadow-3xs">
-            <div className="text-[#2F5DA8] mb-2"><FiActivity size={16} /></div>
-            <h4 className="font-serif text-base text-[#0C1F3F] mb-1.5">Enterprise Timeline</h4>
-            <p className="text-[11px] text-[#0C1F3F]/70 font-light leading-relaxed">Established in 2024 as a founder-led trade gateway supporting secure business procurement chains.</p>
-            <div className="text-[9px] font-mono font-bold text-[#2F5DA8] mt-3">ESTABLISHED 2024</div>
+          <div className="bg-[#0C1F3F] border border-[#8FAADC]/20 p-5 rounded-sm shadow-3xs">
+            <div className="text-[#8FAADC] mb-2"><FiActivity size={16} /></div>
+            <h4 className="font-serif text-base text-white mb-1.5">Enterprise Timeline</h4>
+            <p className="text-[11px] text-white/70 font-light leading-relaxed">Established in 2024 as a founder-led trade gateway supporting secure business procurement chains.</p>
+            <div className="text-[9px] font-mono font-bold text-[#8FAADC] mt-3">ESTABLISHED 2024</div>
           </div>
 
-          <div className="bg-white border border-[#8FAADC]/20 p-5 rounded-sm shadow-3xs">
-            <div className="text-[#2F5DA8] mb-2"><FiLayers size={16} /></div>
-            <h4 className="font-serif text-base text-[#0C1F3F] mb-1.5">Market Capabilities</h4>
-            <p className="text-[11px] text-[#0C1F3F]/70 font-light leading-relaxed">Systematically configured to coordinate bulk cross-border operations across Trade, Supply, and Logistics networks.</p>
-            <div className="text-[9px] font-mono font-bold text-[#2F5DA8] mt-3">MULTILATERAL INFRASTRUCTURE</div>
+          <div className="bg-[#0C1F3F] border border-[#8FAADC]/20 p-5 rounded-sm shadow-3xs">
+            <div className="text-[#8FAADC] mb-2"><FiLayers size={16} /></div>
+            <h4 className="font-serif text-base text-white mb-1.5">Market Capabilities</h4>
+            <p className="text-[11px] text-white/70 font-light leading-relaxed">Systematically configured to coordinate bulk cross-border operations across Trade, Supply, and Logistics networks.</p>
+            <div className="text-[9px] font-mono font-bold text-[#8FAADC] mt-3">MULTILATERAL INFRASTRUCTURE</div>
           </div>
 
-          <div className="bg-white border border-[#8FAADC]/20 p-5 rounded-sm shadow-3xs">
-            <div className="text-[#2F5DA8] mb-2"><FiBookOpen size={16} /></div>
-            <h4 className="font-serif text-base text-[#0C1F3F] mb-1.5">Verified Sourcing</h4>
-            <p className="text-[11px] text-[#0C1F3F]/70 font-light leading-relaxed">Connecting reliable suppliers, domestic factories, and overseas buyers under full document compliance parameters.</p>
-            <div className="text-[9px] font-mono font-bold text-[#2F5DA8] mt-3">QUALITY ASSURED PROFILE</div>
+          <div className="bg-[#0C1F3F] border border-[#8FAADC]/20 p-5 rounded-sm shadow-3xs">
+            <div className="text-[#8FAADC] mb-2"><FiBookOpen size={16} /></div>
+            <h4 className="font-serif text-base text-white mb-1.5">Verified Sourcing</h4>
+            <p className="text-[11px] text-white/70 font-light leading-relaxed">Connecting reliable suppliers, domestic factories, and overseas buyers under full document compliance parameters.</p>
+            <div className="text-[9px] font-mono font-bold text-[#8FAADC] mt-3">QUALITY ASSURED PROFILE</div>
           </div>
         </div>
       </section>
@@ -274,42 +280,42 @@ export default function Home() {
       <section className="pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-          <div className="lg:col-span-7 bg-white border border-[#8FAADC]/20 p-6 rounded-sm shadow-3xs flex flex-col justify-between relative">
-            <div className="absolute inset-0 border border-[#2F5DA8]/5 scale-[0.98] pointer-events-none"></div>
+          <div className="lg:col-span-7 bg-[#0C1F3F] border border-[#8FAADC]/20 p-6 rounded-sm shadow-3xs flex flex-col justify-between relative">
+            <div className="absolute inset-0 border border-[#2F5DA8]/10 scale-[0.98] pointer-events-none"></div>
             <div>
-              <h3 className="text-xl font-serif text-[#0C1F3F] mb-2">Official Transmission Node</h3>
-              <p className="text-[11px] text-[#0C1F3F]/70 font-sans font-light leading-relaxed mb-4">
+              <h3 className="text-xl font-serif text-white mb-2">Official Transmission Node</h3>
+              <p className="text-[11px] text-white/70 font-sans font-light leading-relaxed mb-4">
                 To maintain standard corporate workflows and verification speed, all commercial sourcing inquiries are processed via our electronic mail network.
               </p>
               <div className="space-y-3 font-sans text-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-[#ffffff] border border-[#8FAADC]/20 rounded-sm gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-[#0C1F3F] border border-[#8FAADC]/30 rounded-sm gap-2">
                   <div>
-                    <span  className="text-[9px] tracking-wider uppercase font-bold text-[#8FAADC] block mb-0.5">Secure Document Transmission</span>
-                    <span className="text-[#0C1F3F] font-medium text-xs">info@indiatradeoverseas.com</span>
+                    <span className="text-[9px] tracking-wider uppercase font-bold text-[#8FAADC] block mb-0.5">Secure Document Transmission</span>
+                    <span className="text-white font-medium text-xs">info@indiatradeoverseas.com</span>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <a href="mailto:info@indiatradeoverseas.com" className="bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white px-3 py-1.5 font-semibold uppercase tracking-wider text-[9px] rounded-sm transition-colors flex items-center gap-1.5 shadow-xs">
+                    <a href="mailto:info@indiatradeoverseas.com" className="bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] px-3 py-1.5 font-semibold uppercase tracking-wider text-[9px] rounded-sm transition-colors flex items-center gap-1.5 shadow-xs">
                       <FiMail /> Send Email
                     </a>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#ffffff] border border-[#8FAADC]/10 text-[#8FAADC] text-[10px] font-light leading-relaxed rounded-sm">
+                <div className="p-3 bg-[#0C1F3F] border border-[#8FAADC]/10 text-[#8FAADC] text-[10px] font-light leading-relaxed rounded-sm">
                   <strong>Operational Hours:</strong> Dossier packages are evaluated Monday to Saturday between 9:30 AM and 6:30 PM IST.
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-5 bg-white border border-[#8FAADC]/20 p-6 rounded-sm shadow-3xs flex flex-col justify-center">
-            <span className="text-[#2F5DA8] font-medium tracking-[0.2em] text-[10px] uppercase block mb-0.5">Corporate Office Location</span>
-            <h4 className="text-lg font-serif text-[#0C1F3F] mb-2">Location Stone Chips</h4>
-            <p className="text-[11px] text-[#0C1F3F]/70 font-sans font-light leading-relaxed mb-4">
+          <div className="lg:col-span-5 bg-[#0C1F3F] border border-[#8FAADC]/20 p-6 rounded-sm shadow-3xs flex flex-col justify-center">
+            <span className="text-[#8FAADC] font-medium tracking-[0.2em] text-[10px] uppercase block mb-0.5">Corporate Office Location</span>
+            <h4 className="text-lg font-serif text-white mb-2">Location Stone Chips</h4>
+            <p className="text-[11px] text-white/70 font-sans font-light leading-relaxed mb-4">
               Our active multi-category physical footprints maintain operational hubs inside the following major regional logistics corridors:
             </p>
             <div className="flex flex-wrap gap-2">
               {locations.map((city) => (
-                <span key={city} className="bg-[#ffffff] border border-[#8FAADC]/30 text-[#0C1F3F] font-sans font-medium text-[11px] px-3 py-1.5 rounded-sm shadow-3xs">
+                <span key={city} className="bg-[#0C1F3F] border border-[#8FAADC]/30 text-white font-sans font-medium text-[11px] px-3 py-1.5 rounded-sm shadow-3xs hover:border-[#2F5DA8] transition-colors">
                   {city}
                 </span>
               ))}
@@ -320,12 +326,25 @@ export default function Home() {
       </section>
 
       {/* 05-BUSINESS VERTICALS PRESENTATION PANELS */}
-      <section className="py-16 bg-[#ffffff] border-y border-[#8FAADC]/30 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative py-16 bg-[#0C1F3F] border-y border-[#8FAADC]/80 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        
+        {/* 1. Base Decorative Background Asset Layer */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none">
+          <img 
+            src="./images/New image for bg.png" // Replace with your explicit asset pathname
+            alt="Commercial Verticals Depth Layout Background" 
+            className="w-full h-full object-cover object-center opacity-30" // Softened opacity ensures text remains crisp
+          />
+          {/* Subtle color protection mask overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0C1F3F]/90 via-transparent to-[#0C1F3F]/90 mix-blend-multiply" />
+        </div>
+
+        {/* 2. Content Matrix Wrapper */}
+        <div className="max-w-7xl mx-auto relative z-10">
 
           <div className="text-center mb-12">
-            <span className="text-[#2F5DA8] font-medium tracking-[0.2em] text-[10px] uppercase block mb-1">Capabilities</span>
-            <h2 className="text-2xl font-serif text-[#0C1F3F] tracking-wide uppercase">Six Commercial Verticals</h2>
+            <span className="text-[#8FAADC] font-medium tracking-[0.2em] text-[10px] uppercase block mb-1">Capabilities</span>
+            <h2 className="text-2xl font-serif text-white tracking-wide uppercase">Six Commercial Verticals</h2>
           </div>
 
           <motion.div
@@ -339,17 +358,17 @@ export default function Home() {
               <motion.div
                 key={idx}
                 variants={fadeInUp}
-                className="bg-white border border-[#8FAADC]/20 p-5 shadow-3xs rounded-sm flex flex-col justify-between relative group hover:border-[#2F5DA8] transition-colors"
+                className="bg-[#0C1F3F]/90 backdrop-blur-xs border border-[#8FAADC]/20 p-5 shadow-3xs rounded-sm flex flex-col justify-between relative group hover:border-[#8FAADC] transition-colors"
               >
                 <div>
                   <div className="flex justify-between items-center mb-3">
-                    <span className="font-serif text-[#2F5DA8] font-bold text-base tracking-wider">{v.num}</span>
-                    <FiLayers className="text-[#8FAADC] group-hover:text-[#2F5DA8] transition-colors" size={14} />
+                    <span className="font-serif text-[#8FAADC] font-bold text-base tracking-wider">{v.num}</span>
+                    <FiLayers className="text-[#8FAADC] group-hover:text-white transition-colors" size={14} />
                   </div>
-                  <h4 className="text-base font-serif font-medium text-[#0C1F3F] mb-1.5">{v.title}</h4>
-                  <p className="text-[#0C1F3F]/70 text-[11px] font-sans font-light leading-relaxed mb-5">{v.desc}</p>
+                  <h4 className="text-base font-serif font-medium text-white mb-1.5">{v.title}</h4>
+                  <p className="text-white/70 text-[11px] font-sans font-light leading-relaxed mb-5">{v.desc}</p>
                 </div>
-                <Link to="/products" className="w-full inline-flex items-center justify-center text-center bg-[#ffffff] hover:bg-[#8FAADC]/10 border border-[#8FAADC]/30 text-[#0C1F3F] font-sans text-[10px] uppercase tracking-widest py-2 font-bold transition-colors">
+                <Link to="/products" className="w-full inline-flex items-center justify-center text-center bg-[#0C1F3F] hover:bg-[#8FAADC]/10 border border-[#8FAADC]/30 text-white font-sans text-[10px] uppercase tracking-widest py-2 font-bold transition-colors">
                   {v.cta}
                 </Link>
               </motion.div>
@@ -362,8 +381,8 @@ export default function Home() {
       {/* DATA WORKFLOW PRESENTATION LAYER */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <span className="text-[#2F5DA8] font-medium tracking-[0.2em] text-[10px] uppercase block mb-1">Procurement Architecture</span>
-          <h2 className="text-2xl font-serif text-[#0C1F3F] tracking-wide uppercase">Our Rigorous Trade Workflow</h2>
+          <span className="text-[#8FAADC] font-medium tracking-[0.2em] text-[10px] uppercase block mb-1">Procurement Architecture</span>
+          <h2 className="text-2xl font-serif text-white tracking-wide uppercase">Our Rigorous Trade Workflow</h2>
           <p className="text-[#8FAADC] font-sans font-light text-[11px] mt-1">We handle procedural complexity to preserve risk-free corporate supply lines.</p>
         </div>
 
@@ -375,11 +394,11 @@ export default function Home() {
                 key={index}
                 onClick={() => setActiveStep(index)}
                 className={`w-full text-left p-3.5 rounded-sm border font-sans transition-all flex items-center space-x-3 ${activeStep === index
-                  ? 'bg-[#0C1F3F] border-[#2F5DA8] text-white shadow-sm'
-                  : 'bg-white border-[#8FAADC]/20 text-[#0C1F3F] hover:bg-[#8FAADC]/10'
+                  ? 'bg-[#2F5DA8] border-[#8FAADC] text-white shadow-sm'
+                  : 'bg-[#0C1F3F] border-[#8FAADC]/20 text-white hover:bg-[#8FAADC]/10'
                   }`}
               >
-                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-mono font-bold ${activeStep === index ? 'bg-[#2F5DA8] text-white' : 'bg-[#ffffff] border border-[#8FAADC]/30 text-[#8FAADC]'
+                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-mono font-bold ${activeStep === index ? 'bg-[#0C1F3F] text-white' : 'bg-[#0C1F3F] border border-[#8FAADC]/30 text-[#8FAADC]'
                   }`}>
                   {index + 1}
                 </span>
@@ -388,7 +407,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="lg:col-span-7 bg-white border border-[#8FAADC]/20 rounded-sm p-6 min-h-[220px] flex flex-col justify-between shadow-3xs relative overflow-hidden">
+          <div className="lg:col-span-7 bg-[#0C1F3F] border border-[#8FAADC]/20 rounded-sm p-6 min-h-[220px] flex flex-col justify-between shadow-3xs relative overflow-hidden">
             <div className="absolute inset-0 border border-[#2F5DA8]/5 scale-[0.98] pointer-events-none"></div>
 
             <AnimatePresence mode="wait">
@@ -399,17 +418,17 @@ export default function Home() {
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="flex items-center gap-1.5 text-[#2F5DA8] mb-3">
+                <div className="flex items-center gap-1.5 text-[#8FAADC] mb-3">
                   <FiCheckCircle size={16} />
                   <span className="text-[9px] font-mono uppercase tracking-widest text-[#8FAADC] font-bold">Phase {activeStep + 1} of 4</span>
                 </div>
-                <h3 className="text-lg font-serif font-medium text-[#0C1F3F] mb-2">{steps[activeStep].title}</h3>
-                <p className="text-[#0C1F3F]/70 text-[11px] font-sans font-light leading-relaxed">{steps[activeStep].description}</p>
+                <h3 className="text-lg font-serif font-medium text-white mb-2">{steps[activeStep].title}</h3>
+                <p className="text-white/70 text-[11px] font-sans font-light leading-relaxed">{steps[activeStep].description}</p>
               </motion.div>
             </AnimatePresence>
 
             <div className="text-right text-[11px] font-sans pt-3 border-t border-[#8FAADC]/10 mt-5">
-              <Link to="/contact" className="text-[#2F5DA8] font-semibold hover:underline inline-flex items-center tracking-wide">
+              <Link to="/contact" className="text-[#8FAADC] font-semibold hover:underline inline-flex items-center tracking-wide">
                 Talk to a Compliance Specialist <FiChevronRight className="ml-0.5" />
               </Link>
             </div>
@@ -419,93 +438,45 @@ export default function Home() {
       </section>
 
       {/* PARTNER WITH INDIA TRADE OVERSEAS */}
-      <section className="relative w-full py-8 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-b border-[#8FAADC] bg-[#ffffff]">
+      <section className="relative w-full py-16 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-b border-[#8FAADC]/30 bg-[#0C1F3F]">
 
-        {/* 1. Base Cinematic Port Image Layer (Mirrors the Hero Section structure) */}
+        {/* 1. Base Cinematic Port Image Layer (Enhanced Clarity Visibility) */}
         <div className="absolute inset-0 z-0">
           <img
             src="./images/ito_1.jpeg"
             alt="India Trade Overseas Freight Port Terminal Background"
-            className="w-full h-full object-cover object-center pointer-events-none select-none"
+            className="w-full h-full object-cover object-center pointer-events-none select-none opacity-65"
           />
-          {/* Lightened overlay mask to make the background image stand out clearly */}
-          <div className="absolute inset-0 bg-[#ffffff]/60 backdrop-blur-3xs" />
-          <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#0C1F3F_1px,transparent_1px),linear-gradient(to_bottom,#0C1F3F_1px,transparent_1px)] bg-[size:40px_32px]" />
+          {/* Light opacity mask to let the background image shine through cleanly */}
+          <div className="absolute inset-0 bg-[#0C1F3F]/40 backdrop-blur-[1px]" />
+          <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:40px_32px]" />
         </div>
 
-        {/* 2. Content Grid */}
-        <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-
-          {/* Left Column: Context Branding Text */}
-          <div className="lg:col-span-5 text-center lg:text-left space-y-6">
-            <div className="inline-flex items-center gap-2 bg-[#0C1F3F]/5 border border-[#8FAADC]/30 rounded-full px-3 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#2F5DA8] animate-ping" />
-              <span className="text-[10px] tracking-widest font-mono uppercase text-[#0C1F3F] font-bold">Fulfillment Matrix</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl font-serif text-[#0C1F3F] tracking-wide uppercase leading-tight">
-              Partner with <br className="hidden lg:block" />India Trade Overseas
-            </h2>
-
-            <p className="text-[#0C1F3F] font-sans font-light text-xs sm:text-sm max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Ready to secure regular commodity deliveries or customized natural stone blocks? Get in touch with our team today for direct port-to-port pricing configurations.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 pt-2">
-              <Link to="/quote-request" className="bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white font-sans font-bold text-[10px] uppercase tracking-widest px-6 py-3.5 rounded-sm transition-all shadow-md text-center">
-                Get FOB / CIF Pricing
-              </Link>
-              <Link to="/contact" className="bg-white border border-[#2F5DA8]/30 text-[#2F5DA8] hover:border-[#0C1F3F] hover:text-[#0C1F3F] text-sans font-bold text-[10px] uppercase tracking-widest px-6 py-3.5 rounded-sm transition-all text-center">
-                Contact Commercial Office
-              </Link>
-            </div>
+        {/* 2. Content Layout (Fully Centralized Clean Interface Matrix) */}
+        <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
+          
+          <div className="inline-flex items-center gap-2 bg-white/5 border border-[#8FAADC]/30 rounded-full px-3 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#8FAADC] animate-ping" />
+            <span className="text-[10px] tracking-widest font-mono uppercase text-[#FFF1E8] font-bold">Fulfillment Matrix</span>
           </div>
 
-          {/* Right Column: Video Stage */}
+          <h2 className="text-3xl sm:text-4xl font-serif text-white tracking-wide uppercase leading-tight">
+            Partner with India Trade Overseas
+          </h2>
 
-          <div className="lg:col-span-7 w-full flex items-center justify-center p-2">
-            {/* Overhauled Cinematic Video Frame Showcase with reduced height via ultrawide aspect constraints */}
-            <div className="relative w-full max-w-xl aspect-[21/10] sm:aspect-[21/9] bg-slate-950/40 border border-[#2F5DA8]/30 rounded-2xl overflow-hidden flex flex-col justify-between p-4 sm:p-5 shadow-2xl backdrop-blur-md group transition-all duration-300">
+          <p className="text-white font-sans font-light text-xs sm:text-sm max-w-2xl leading-relaxed drop-shadow-sm mx-auto">
+            Ready to secure regular commodity deliveries or customized natural stone blocks? Get in touch with our team today for direct port-to-port pricing configurations.
+          </p>
 
-              {/* Background Ambient Depth Glow Elements */}
-              <div className="absolute -top-10 -left-10 w-36 h-20 bg-[#2F5DA8]/10 rounded-full filter blur-2xl pointer-events-none transition-opacity group-hover:opacity-70 z-10" />
-              <div className="absolute -bottom-10 -right-10 w-36 h-20 bg-[#8FAADC]/10 rounded-full filter blur-2xl pointer-events-none transition-opacity group-hover:opacity-70 z-10" />
-
-              <div className="absolute inset-0 z-0 bg-slate-950">
-                <video
-                  src="./images/video_ito.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover object-center pointer-events-none select-none filter contrast-[1.05] brightness-90 transition-transform duration-700 group-hover:scale-102"
-                />
-                /* Premium dark vignette gradient protection mask overlay */
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/20 mix-blend-multiply opacity-90" />
-              </div>
-
-              {/* Top Corner Minimal Badge Overlay */}
-              <div className="relative z-20 flex justify-between items-start pointer-events-none select-none">
-                <div className="bg-slate-950/60 border border-white/10 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[9px] font-mono tracking-widest text-slate-300 uppercase font-bold">Fulfillment Video Active</span>
-                </div>
-              </div>
-
-              {/* Bottom Telemetry Data Ribbon Footer Bar */}
-              <div className="relative z-20 border-t border-white/10 pt-3 flex justify-between items-center text-[10px] font-mono text-slate-400 tracking-wide select-none pointer-events-none">
-                <span className="flex items-center gap-1.5 drop-shadow-md">
-                  <span className="w-1 h-1 rounded-full bg-[#2F5DA8]" />
-                  Global Freight Operations Matrix
-                </span>
-                <span className="text-[#2F5DA8] font-bold tracking-widest uppercase text-[9px] sm:text-[10px] drop-shadow-md">
-                  Fulfillment Clear
-                </span>
-              </div>
-
-            </div>
+          <div className="flex flex-col sm:flex-row gap-4 pt-2 w-full sm:w-auto items-center justify-center">
+            <Link to="/quote-request" className="w-full sm:w-auto bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] font-sans font-bold text-[10px] uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md text-center">
+              Get FOB / CIF Pricing
+            </Link>
+            <Link to="/contact" className="w-full sm:w-auto bg-[#0C1F3F]/80 backdrop-blur-xs border border-[#8FAADC]/40 text-[#8FAADC] hover:border-white hover:text-white text-sans font-bold text-[10px] uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all text-center">
+              Contact Commercial Office
+            </Link>
           </div>
-
+          
         </div>
       </section>
 
@@ -517,10 +488,10 @@ export default function Home() {
             <br />
             Empowering Trade. Enabling Growth.
           </p>
-          <p className="text-xs italic text-[#8FAADC] font-serif">
+          <p className="text-xs italic text-[#FFF1E8]/80 font-serif">
             "Where Quality Meets Global Demand."
           </p>
-          <div className="text-[10px] text-[#8FAADC]/50 font-light max-w-2xl mx-auto border-t border-slate-700/30 pt-4 leading-relaxed">
+          <div className="text-[10px] text-[#8FAADC]/50 font-light max-w-2xl mx-auto border-t border-[#8FAADC]/10 pt-4 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>

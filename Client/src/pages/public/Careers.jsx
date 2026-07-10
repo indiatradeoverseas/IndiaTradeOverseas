@@ -159,26 +159,26 @@ export default function Careers() {
   };
 
   return (
-    <div className="bg-[#ffffff] text-[#0C1F3F] antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-[#0C1F3F] font-sans">
+    <div className="bg-[#0C1F3F] text-white antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-white font-sans">
       
       {/* Decorative Double Light Blue Line Top Border */}
       <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
 
       {/* Hero Header */}
       <header className="relative max-w-7xl mx-auto pt-20 pb-12 px-4 sm:px-6 lg:px-8 text-center">
-        <span className="text-[#2F5DA8] font-bold tracking-[0.25em] text-xs uppercase block mb-3">
+        <span className="text-[#8FAADC] font-bold tracking-[0.25em] text-xs uppercase block mb-3">
           Work With Us
         </span>
-        <h1 className="text-4xl sm:text-5xl font-serif text-[#0C1F3F] font-bold tracking-wide mb-4">
+        <h1 className="text-4xl sm:text-5xl font-serif text-white font-bold tracking-wide mb-4">
           Build The Future Of Global Trade
         </h1>
-        <div className="w-16 h-[2px] bg-[#2F5DA8] mx-auto mb-4"></div>
-        <p className="text-xs sm:text-sm text-[#0C1F3F]/70 max-w-xl mx-auto font-sans font-light leading-relaxed mb-6">
+        <div className="w-16 h-[2px] bg-[#8FAADC] mx-auto mb-4"></div>
+        <p className="text-xs sm:text-sm text-white/70 max-w-xl mx-auto font-sans font-light leading-relaxed mb-6">
           At India Trade Overseas, we bridge markets and connect opportunities across borders. We are looking for talented, passionate individuals to join our growing team.
         </p>
         <a
           href="#openings"
-          className="inline-flex items-center px-6 py-3 border border-transparent text-[10px] tracking-widest uppercase font-semibold rounded-md bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white shadow-md transition-all"
+          className="inline-flex items-center px-6 py-3 border border-transparent text-[10px] tracking-widest uppercase font-semibold rounded-md bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] shadow-md transition-all"
         >
           Explore Openings
         </a>
@@ -187,16 +187,16 @@ export default function Careers() {
       {/* Corporate Perks Grid */}
       <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
-          <h2 className="text-xl font-serif text-[#0C1F3F] font-bold tracking-wide uppercase">Why India Trade Overseas?</h2>
+          <h2 className="text-xl font-serif text-white font-bold tracking-wide uppercase">Why India Trade Overseas?</h2>
           <p className="text-[#8FAADC] font-sans font-light text-[11px] mt-1">Discover a workplace where ambition meets global reach.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {perks.map((perk, index) => (
-            <div key={index} className="bg-[#ffffff] p-6 border border-[#8FAADC]/20 shadow-xs rounded-xl hover:border-[#2F5DA8] transition-colors">
-              <div className="text-[#2F5DA8] bg-[#ffffff] w-9 h-9 rounded-lg border border-[#8FAADC]/20 flex items-center justify-center mb-4">
+            <div key={index} className="bg-[#0C1F3F] p-6 border border-[#8FAADC]/20 shadow-xs rounded-xl hover:border-[#8FAADC] transition-colors">
+              <div className="text-[#8FAADC] bg-[#0C1F3F] w-9 h-9 rounded-lg border border-[#8FAADC]/20 flex items-center justify-center mb-4">
                 <perk.icon size={16} />
               </div>
-              <h3 className="text-sm font-serif font-bold text-[#0C1F3F] mb-1.5">{perk.title}</h3>
+              <h3 className="text-sm font-serif font-bold text-white mb-1.5">{perk.title}</h3>
               <p className="text-[#8FAADC] text-[11px] font-sans font-light leading-relaxed">{perk.description}</p>
             </div>
           ))}
@@ -204,52 +204,52 @@ export default function Careers() {
       </section>
 
       {/* Current Openings Accordion */}
-      <section id="openings" className="py-16 bg-[#8FAADC]/10 border-y border-[#8FAADC]/20 px-4 sm:px-6 lg:px-8">
+      <section id="openings" className="py-16 bg-[#0C1F3F] border-y border-[#8FAADC]/20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-xl font-serif text-[#0C1F3F] font-bold tracking-wide uppercase">Current Job Openings</h2>
+            <h2 className="text-xl font-serif text-white font-bold tracking-wide uppercase">Current Job Openings</h2>
           </div>
 
           <div className="space-y-3">
             {jobs.map((job) => {
               const jobId = job.id || job._id;
               return (
-                <div key={jobId} className="bg-[#ffffff] border border-[#8FAADC]/20 rounded-xl overflow-hidden shadow-xs">
+                <div key={jobId} className="bg-[#0C1F3F] border border-[#8FAADC]/20 rounded-xl overflow-hidden shadow-xs">
                   <div
-                    className="p-5 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#ffffff]/40 transition-colors"
+                    className="p-5 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-white/5 transition-colors"
                     onClick={() => setActiveJob(activeJob === jobId ? null : jobId)}
                   >
                     <div>
-                      <h3 className="text-base font-serif font-bold text-[#0C1F3F]">{job.title}</h3>
+                      <h3 className="text-base font-serif font-bold text-white">{job.title}</h3>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] text-[#8FAADC] font-light font-sans">
-                        <span className="flex items-center gap-1"><FiBriefcase size={11} className="text-[#2F5DA8]" />{job.department}</span>
-                        <span className="flex items-center gap-1"><FiMapPin size={11} className="text-[#2F5DA8]" />{job.location}</span>
-                        <span className="flex items-center gap-1"><FiClock size={11} className="text-[#2F5DA8]" />{job.type}</span>
+                        <span className="flex items-center gap-1"><FiBriefcase size={11} className="text-[#8FAADC]" />{job.department}</span>
+                        <span className="flex items-center gap-1"><FiMapPin size={11} className="text-[#8FAADC]" />{job.location}</span>
+                        <span className="flex items-center gap-1"><FiClock size={11} className="text-[#8FAADC]" />{job.type}</span>
                       </div>
                     </div>
-                    <button className="text-[10px] uppercase tracking-wider font-bold text-[#2F5DA8] bg-[#ffffff] px-3 py-1.5 border border-[#8FAADC]/30 rounded-md flex items-center gap-1 shrink-0 hover:bg-white transition-colors">
+                    <button className="text-[10px] uppercase tracking-wider font-bold text-[#8FAADC] bg-[#0C1F3F] px-3 py-1.5 border border-[#8FAADC]/30 rounded-md flex items-center gap-1 shrink-0 hover:border-white hover:text-white transition-colors">
                       Details <FiChevronDown className={`transition-transform ${activeJob === jobId ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
 
                   {activeJob === jobId && (
-                    <div className="px-5 pb-5 border-t border-[#8FAADC]/10 pt-4 bg-[#ffffff]/50 font-sans text-xs">
+                    <div className="px-5 pb-5 border-t border-[#8FAADC]/10 pt-4 bg-white/5 font-sans text-xs">
                       <div className="space-y-4">
                         <div>
                           <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#8FAADC]">About The Role</h4>
-                          <p className="text-[#0C1F3F]/80 text-xs mt-1 leading-relaxed font-light">{job.description}</p>
+                          <p className="text-white/80 text-xs mt-1 leading-relaxed font-light">{job.description}</p>
                         </div>
                         <div>
                           <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#8FAADC]">Key Requirements</h4>
-                          <ul className="list-disc pl-4 mt-1 space-y-1 text-xs text-[#0C1F3F]/80 font-light">
+                          <ul className="list-disc pl-4 mt-1 space-y-1 text-xs text-white/80 font-light">
                             {job.requirements.map((req, i) => <li key={i}>{req}</li>)}
                           </ul>
                         </div>
                         <div className="pt-4 flex justify-between items-center text-xs border-t border-[#8FAADC]/10">
-                          <span className="text-[#8FAADC] font-light">Experience Needed: <strong className="text-[#0C1F3F] font-semibold">{job.experience}</strong></span>
+                          <span className="text-[#8FAADC] font-light">Experience Needed: <strong className="text-white font-semibold">{job.experience}</strong></span>
                           <button
                             onClick={() => handleApplyClick(job.title)}
-                            className="px-4 py-2 bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white text-[10px] font-bold uppercase tracking-wider transition-colors rounded-md shadow-sm"
+                            className="px-4 py-2 bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] text-[10px] font-bold uppercase tracking-wider transition-colors rounded-md shadow-sm"
                           >
                             Apply For This Job
                           </button>
@@ -266,78 +266,78 @@ export default function Careers() {
 
       {/* Application Form */}
       <section id="apply-form" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-xl mx-auto bg-[#ffffff] border border-[#8FAADC]/20 rounded-xl shadow-xl overflow-hidden">
-          <div className="bg-[#0C1F3F] text-white p-5 sm:p-6 relative">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#2F5DA8]" />
+        <div className="max-w-xl mx-auto bg-[#0C1F3F] border border-[#8FAADC]/20 rounded-xl shadow-xl overflow-hidden">
+          <div className="bg-[#0C1F3F] text-white p-5 sm:p-6 relative border-b border-[#8FAADC]/20">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#8FAADC]" />
             <h2 className="text-xl font-serif tracking-wide uppercase font-bold">Intake Dossier Form</h2>
             <p className="text-slate-300 font-sans font-light text-[11px] mt-0.5">Submit institutional parameters for corporate review.</p>
           </div>
 
-          <div className="p-5 sm:p-6 bg-[#ffffff] font-sans text-xs">
+          <div className="p-5 sm:p-6 bg-[#0C1F3F] font-sans text-xs">
             {submitted ? (
               <div className="text-center py-8">
-                <div className="w-10 h-10 bg-[#ffffff] text-[#2F5DA8] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#8FAADC]/20 shadow-3xs">
+                <div className="w-10 h-10 bg-[#0C1F3F] text-[#8FAADC] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#8FAADC]/20 shadow-3xs">
                   <FiCheckCircle size={18} />
                 </div>
-                <h3 className="text-base font-serif font-bold mb-1 text-[#0C1F3F] tracking-wide uppercase">Application Staged</h3>
+                <h3 className="text-base font-serif font-bold mb-1 text-white tracking-wide uppercase">Application Staged</h3>
                 <p className="text-[#8FAADC] text-xs font-light max-w-xs mx-auto leading-relaxed mb-5">
                   Your profile for <strong>{formData.position}</strong> has been stored successfully. Our procurement team will review your application parameters soon.
                 </p>
-                <button onClick={resetForm} className="text-[#2F5DA8] hover:underline font-bold block mx-auto text-[11px] tracking-wide">
+                <button onClick={resetForm} className="text-[#8FAADC] hover:text-white hover:underline font-bold block mx-auto text-[11px] tracking-wide">
                   Submit Another Application
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#0C1F3F] uppercase tracking-wide mb-1.5">Full Name *</label>
+                  <label className="block text-[11px] font-bold text-white uppercase tracking-wide mb-1.5">Full Name *</label>
                   <input
                     type="text"
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
-                    className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#ffffff] text-[#0C1F3F] text-xs placeholder-[#8FAADC] focus:outline-none focus:border-[#2F5DA8] transition-all rounded-md"
+                    className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#0C1F3F] text-white text-xs placeholder-[#8FAADC]/60 focus:outline-none focus:border-[#8FAADC] transition-all rounded-md"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-bold text-[#0C1F3F] uppercase tracking-wide mb-1.5">Email Address *</label>
+                    <label className="block text-[11px] font-bold text-white uppercase tracking-wide mb-1.5">Email Address *</label>
                     <input
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="name@example.com"
-                      className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#ffffff] text-[#0C1F3F] text-xs placeholder-[#8FAADC] focus:outline-none focus:border-[#2F5DA8] transition-all rounded-md"
+                      className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#0C1F3F] text-white text-xs placeholder-[#8FAADC]/60 focus:outline-none focus:border-[#8FAADC] transition-all rounded-md"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-[#0C1F3F] uppercase tracking-wide mb-1.5">Phone Number *</label>
+                    <label className="block text-[11px] font-bold text-white uppercase tracking-wide mb-1.5">Phone Number *</label>
                     <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="+91 XXXXX XXXXX"
-                      className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#ffffff] text-[#0C1F3F] text-xs placeholder-[#8FAADC] focus:outline-none focus:border-[#2F5DA8] transition-all rounded-md"
+                      className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#0C1F3F] text-white text-xs placeholder-[#8FAADC]/60 focus:outline-none focus:border-[#8FAADC] transition-all rounded-md"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-[#0C1F3F] uppercase tracking-wide mb-1.5">Position of Interest *</label>
+                  <label className="block text-[11px] font-bold text-white uppercase tracking-wide mb-1.5">Position of Interest *</label>
                   <div className="relative">
                     <select
                       name="position"
                       value={formData.position}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#ffffff] text-[#0C1F3F] text-xs focus:outline-none focus:border-[#2F5DA8] transition-all rounded-md appearance-none cursor-pointer"
+                      className="w-full px-4 py-2.5 border border-[#8FAADC]/30 bg-[#0C1F3F] text-white text-xs focus:outline-none focus:border-[#8FAADC] transition-all rounded-md appearance-none cursor-pointer"
                     >
-                      <option value="">Select an openings target</option>
-                      {jobs.map(job => <option key={job.id || job._id} value={job.title}>{job.title}</option>)}
-                      <option value="General Application">General Application / Other</option>
+                      <option value="" className="bg-[#0C1F3F]">Select an openings target</option>
+                      {jobs.map(job => <option key={job.id || job._id} value={job.title} className="bg-[#0C1F3F] text-white">{job.title}</option>)}
+                      <option value="General Application" className="bg-[#0C1F3F]">General Application / Other</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#8FAADC]">
                       <FiChevronDown size={14} />
@@ -347,32 +347,32 @@ export default function Careers() {
 
                 {/* Primary Upload Block: Resume */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#0C1F3F] uppercase tracking-wide mb-1.5">Upload Resume (PDF/DOC) *</label>
-                  <div className="border-2 border-dashed border-[#8FAADC]/30 rounded-xl p-4 text-center hover:border-[#2F5DA8] relative cursor-pointer bg-[#ffffff] transition-colors">
+                  <label className="block text-[11px] font-bold text-white uppercase tracking-wide mb-1.5">Upload Resume (PDF/DOC) *</label>
+                  <div className="border-2 border-dashed border-[#8FAADC]/30 rounded-xl p-4 text-center hover:border-[#8FAADC] relative cursor-pointer bg-[#0C1F3F] transition-colors">
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx"
                       onChange={handleFileChange}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <FiUpload size={20} className={formData.resume ? "text-[#2F5DA8] mx-auto mb-1.5" : "text-[#8FAADC] mx-auto mb-1.5"} />
-                    <p className="text-[#0C1F3F] font-bold text-xs truncate max-w-full px-4">{formData.resume ? formData.resume.name : 'Click to select or drag Resume'}</p>
+                    <FiUpload size={20} className={formData.resume ? "text-[#8FAADC] mx-auto mb-1.5" : "text-[#8FAADC]/50 mx-auto mb-1.5"} />
+                    <p className="text-white font-bold text-xs truncate max-w-full px-4">{formData.resume ? formData.resume.name : 'Click to select or drag Resume'}</p>
                     <p className="text-[#8FAADC] text-[9px] mt-0.5">PDF, DOC, DOCX formats up to 5MB</p>
                   </div>
                 </div>
 
                 {/* Secondary Upload Block: Cover Letter */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#0C1F3F] uppercase tracking-wide mb-1.5">Upload Cover Letter (PDF/DOC)</label>
-                  <div className="border-2 border-dashed border-[#8FAADC]/30 rounded-xl p-4 text-center hover:border-[#2F5DA8] relative cursor-pointer bg-[#ffffff] transition-colors">
+                  <label className="block text-[11px] font-bold text-white uppercase tracking-wide mb-1.5">Upload Cover Letter (PDF/DOC)</label>
+                  <div className="border-2 border-dashed border-[#8FAADC]/30 rounded-xl p-4 text-center hover:border-[#8FAADC] relative cursor-pointer bg-[#0C1F3F] transition-colors">
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx"
                       onChange={handleCoverLetterFileChange}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <FiUpload size={20} className={formData.coverLetterFile ? "text-[#2F5DA8] mx-auto mb-1.5" : "text-[#8FAADC] mx-auto mb-1.5"} />
-                    <p className="text-[#0C1F3F] font-bold text-xs truncate max-w-full px-4">
+                    <FiUpload size={20} className={formData.coverLetterFile ? "text-[#8FAADC] mx-auto mb-1.5" : "text-[#8FAADC]/50 mx-auto mb-1.5"} />
+                    <p className="text-white font-bold text-xs truncate max-w-full px-4">
                       {formData.coverLetterFile ? formData.coverLetterFile.name : 'Click to select or drag Cover Letter'}
                     </p>
                     <p className="text-[#8FAADC] text-[9px] mt-0.5">PDF, DOC, DOCX formats up to 5MB</p>
@@ -382,7 +382,7 @@ export default function Careers() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white font-sans text-xs uppercase tracking-widest py-4 font-bold rounded-md shadow-md transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60"
+                  className="w-full bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] font-sans text-xs uppercase tracking-widest py-4 font-bold rounded-md shadow-md transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60"
                 >
                   {submitting ? (
                     <>
@@ -405,7 +405,7 @@ export default function Careers() {
             <br />
             Empowering Trade. Enabling Growth.
           </p>
-          <p className="text-xs italic text-[#8FAADC] font-serif">
+          <p className="text-xs italic text-[#FFF1E8]/80 font-serif">
             "Where Quality Meets Global Demand."
           </p>
           <div className="text-[10px] text-[#8FAADC]/50 font-light max-w-2xl mx-auto border-t border-[#8FAADC]/10 pt-4 leading-relaxed">
