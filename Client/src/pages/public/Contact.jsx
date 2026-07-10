@@ -70,7 +70,7 @@ export default function Contact() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-[#8FAADC] uppercase tracking-wider mb-1.5">Direct Mobile Line</label>
-                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2.5 bg-[#ffffff] border border-[#8FAADC]/30 rounded-lg outline-none focus:border-[#2F5DA8] text-[#0C1F3F]" placeholder="+91 82506 14079" />
+                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2.5 bg-[#ffffff] border border-[#8FAADC]/30 rounded-lg outline-none focus:border-[#2F5DA8] text-[#0C1F3F]" placeholder="+91 XXXXXXXXXX" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[#8FAADC] uppercase tracking-wider mb-1.5">Procurement Target Subject *</label>
