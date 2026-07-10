@@ -54,20 +54,26 @@ const checkAdminManagerHR = (req, res, next) => {
   return require('../../utils/response').fail(res, 403, 'FORBIDDEN', 'Access denied. Unauthorized role.');
 };
 
+// ==========================================
 // Public Routes
-router.post(
-  '/register', 
-  upload.fields([
-    { name: 'doc1', maxCount: 1 },
-    { name: 'doc2', maxCount: 1 }
-  ]), 
-  registerDistributor
-);
+// ==========================================
+
+// Intercepts the exact keys from the frontend form state
+const distributorUploadFields = upload.fields([
+  { name: 'primaryDocument', maxCount: 1 },
+  { name: 'secondaryDocument', maxCount: 1 }
+]);
+
+// Handlers capture both alternative path bindings safely
+router.post('/', distributorUploadFields, registerDistributor);
+router.post('/register', distributorUploadFields, registerDistributor);
 
 router.post('/verify-otp', verifyDistributorOtp);
 router.get('/status/:id', getDistributorStatus);
 
+// ==========================================
 // Authenticated/Protected Admin Routes
+// ==========================================
 router.get('/', authenticate, checkAdminManagerHR, getDistributors);
 router.patch('/:id/verify', authenticate, checkAdminManagerHR, toggleDistributorVerification);
 router.delete('/:id', authenticate, checkAdminManagerHR, deleteDistributor);

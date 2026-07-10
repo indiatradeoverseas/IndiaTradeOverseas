@@ -9,27 +9,36 @@ const { getRelativePath, resolveUploadPath } = require('../../utils/file');
 // 1. Register Distributor (Upload Details & Certificates + Send OTP)
 const registerDistributor = async (req, res, next) => {
   try {
+    // Destructured all parameters uploaded from the frontend form
     const {
       name,
       email,
       mobile,
-      gstNumber,
+      address,
       city,
-      state
+      state,
+      country,
+      company,
+      teaType,
+      monthlyReq,
+      purpose,
+      businessType,
+      gstNumber
     } = req.body;
 
     if (!name || !email || !mobile || !city || !state) {
       return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, mobile, city, and state are required.');
     }
 
-    const doc1 = req.files && req.files['doc1'] ? req.files['doc1'][0] : null;
-    const doc2 = req.files && req.files['doc2'] ? req.files['doc2'][0] : null;
+    // Capture standard payload keys
+    const doc1 = req.files && req.files['primaryDocument'] ? req.files['primaryDocument'][0] : null;
+    const doc2 = req.files && req.files['secondaryDocument'] ? req.files['secondaryDocument'][0] : null;
 
     // Check if there is an existing distributor with the same email
     let distributor = await Distributor.findOne({ email });
 
     if (!doc1 && !distributor) {
-      return fail(res, 400, 'FILE_REQUIRED', 'GST Certificate (doc1) is required.');
+      return fail(res, 400, 'FILE_REQUIRED', 'Primary validation document is required.');
     }
 
     // Generate 6-digit OTP code
@@ -37,7 +46,7 @@ const registerDistributor = async (req, res, next) => {
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     if (distributor) {
-      // If a new doc1 is uploaded, clean up the old one
+      // Clean up old doc1 on rewrite
       if (doc1 && distributor.doc1Path) {
         const oldDoc1 = path.join(process.cwd(), distributor.doc1Path);
         if (fs.existsSync(oldDoc1)) {
@@ -48,7 +57,7 @@ const registerDistributor = async (req, res, next) => {
         distributor.doc1Path = getRelativePath(doc1.path);
       }
       
-      // If a new doc2 is uploaded, clean up the old one
+      // Clean up old doc2 on rewrite
       if (doc2 && distributor.doc2Path) {
         const oldDoc2 = path.join(process.cwd(), distributor.doc2Path);
         if (fs.existsSync(oldDoc2)) {
@@ -59,14 +68,23 @@ const registerDistributor = async (req, res, next) => {
         distributor.doc2Path = getRelativePath(doc2.path);
       }
 
+      // Sync every profile parameter provided by frontend actions
       distributor.name = name;
       distributor.mobile = mobile;
-      distributor.gstNumber = gstNumber;
+      distributor.address = address || distributor.address;
       distributor.city = city;
       distributor.state = state;
+      distributor.country = country || distributor.country;
+      distributor.company = company || distributor.company;
+      distributor.teaType = teaType || distributor.teaType;
+      distributor.monthlyReq = monthlyReq ? Number(monthlyReq) : distributor.monthlyReq;
+      distributor.purpose = purpose || distributor.purpose;
+      distributor.businessType = businessType || distributor.businessType;
+      distributor.gstNumber = gstNumber || distributor.gstNumber;
+
       distributor.otpToken = otpCode;
       distributor.otpExpires = otpExpires;
-      distributor.isOtpVerified = false; // Reset verification to verify email again
+      distributor.isOtpVerified = false; 
       distributor.approvalStatus = 'pending';
       await distributor.save();
     } else {
@@ -74,9 +92,16 @@ const registerDistributor = async (req, res, next) => {
         name,
         email,
         mobile,
-        gstNumber,
+        address,
         city,
         state,
+        country,
+        company,
+        teaType,
+        monthlyReq: monthlyReq ? Number(monthlyReq) : 0,
+        purpose,
+        businessType,
+        gstNumber,
         doc1Path: getRelativePath(doc1.path),
         doc2Path: doc2 ? getRelativePath(doc2.path) : undefined,
         otpToken: otpCode,
@@ -96,13 +121,15 @@ const registerDistributor = async (req, res, next) => {
 
     return ok(res, { distributorId: distributor._id, email: distributor.email }, 'Distributor registration initiated. OTP sent to email.', 201, req);
   } catch (error) {
-    // If error, cleanup uploaded files
+    // If error, cleanup raw binary traces immediately from storage paths
     if (req.files) {
-      if (req.files['doc1'] && fs.existsSync(req.files['doc1'][0].path)) {
-        try { fs.unlinkSync(req.files['doc1'][0].path); } catch (e) { }
+      const pDoc = req.files['primaryDocument'];
+      const sDoc = req.files['secondaryDocument'];
+      if (pDoc && fs.existsSync(pDoc[0].path)) {
+        try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
       }
-      if (req.files['doc2'] && fs.existsSync(req.files['doc2'][0].path)) {
-        try { fs.unlinkSync(req.files['doc2'][0].path); } catch (e) { }
+      if (sDoc && fs.existsSync(sDoc[0].path)) {
+        try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
       }
     }
     next(error);
@@ -136,7 +163,7 @@ const verifyDistributorOtp = async (req, res, next) => {
     // Success! Verify distributor and auto-approve for direct access
     distributor.isOtpVerified = true;
     distributor.approvalStatus = 'approved';
-    distributor.otpToken = undefined; // clear otp
+    distributor.otpToken = undefined; 
     distributor.otpExpires = undefined;
     await distributor.save();
 
@@ -194,7 +221,6 @@ const getMarketplace = async (req, res, next) => {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Distributor status is not approved.', [], req);
     }
 
-    // Return unblinded bulk market data (including live bulk prices, exact garden/source lot names, and analytical tea tasting metrics)
     const bulkMarketData = [
       {
         id: 'LOT-DARJ-2026-A1',
@@ -203,12 +229,7 @@ const getMarketplace = async (req, res, next) => {
         livePricePerKg: 1250,
         currency: 'INR',
         availableQuantityKg: 450,
-        tastingMetrics: {
-          astringency: 7,
-          floralNotes: 9,
-          body: 6,
-          sweetness: 8
-        },
+        tastingMetrics: { astringency: 7, floralNotes: 9, body: 6, sweetness: 8 },
         harvestDate: '2026-05-15'
       },
       {
@@ -218,43 +239,8 @@ const getMarketplace = async (req, res, next) => {
         livePricePerKg: 780,
         currency: 'INR',
         availableQuantityKg: 1200,
-        tastingMetrics: {
-          maltiness: 9,
-          body: 9,
-          briskness: 8,
-          strength: 9
-        },
+        tastingMetrics: { maltiness: 9, body: 9, briskness: 8, strength: 9 },
         harvestDate: '2026-06-02'
-      },
-      {
-        id: 'LOT-NILG-2026-C2',
-        gardenName: 'Craigmore Estate, Nilgiri',
-        grade: 'SFTGFOP (Winter Frost)',
-        livePricePerKg: 950,
-        currency: 'INR',
-        availableQuantityKg: 300,
-        tastingMetrics: {
-          citrusNotes: 8,
-          floralNotes: 7,
-          body: 5,
-          sweetness: 7
-        },
-        harvestDate: '2026-01-20'
-      },
-      {
-        id: 'LOT-ASSA-2026-D1',
-        gardenName: 'Mangalam Estate, Assam',
-        grade: 'CTC Grade Pekoe',
-        livePricePerKg: 410,
-        currency: 'INR',
-        availableQuantityKg: 3500,
-        tastingMetrics: {
-          maltiness: 7,
-          body: 8,
-          briskness: 9,
-          strength: 8
-        },
-        harvestDate: '2026-06-10'
       }
     ];
 
@@ -268,13 +254,10 @@ const getMarketplace = async (req, res, next) => {
 const getDistributors = async (req, res, next) => {
   try {
     const distributors = await Distributor.find().sort({ createdAt: -1 });
-
-    // Map approvalStatus to isVerified for backwards compatibility in CRM
     const mappedDistributors = distributors.map(dist => ({
       ...dist.toObject(),
       isVerified: dist.approvalStatus === 'approved'
     }));
-
     return ok(res, { distributors: mappedDistributors }, 'Distributors list retrieved successfully', 200, req);
   } catch (error) {
     next(error);
@@ -311,7 +294,6 @@ const deleteDistributor = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
 
-    // Cleanup files on disk
     if (distributor.doc1Path) {
       const doc1Path = path.join(process.cwd(), distributor.doc1Path);
       if (fs.existsSync(doc1Path)) {
