@@ -2,25 +2,24 @@ const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
 const { 
   registerDistributor, 
   verifyDistributorOtp,
+  getDistributorStatus,
   getDistributors,
   toggleDistributorVerification,
   deleteDistributor,
   downloadGstCertificate,
   downloadUdyamCertificate
 } = require('./distributor.controller');
+
 const { authenticate } = require('../../middlewares/auth.middleware');
 
-// Configure multer storage for distributor certificates
+// Configure multer storage for distributor documents
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    let fieldName = 'gst_certificates';
-    if (file.fieldname === 'udyamCertificate') {
-      fieldName = 'udyam_certificates';
-    }
-    const destDir = path.join(process.cwd(), 'uploads', fieldName);
+    const destDir = path.join(process.cwd(), 'uploads', 'distributor_docs');
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });
     }
@@ -57,15 +56,16 @@ const checkAdminManagerHR = (req, res, next) => {
 
 // Public Routes
 router.post(
-  '/', 
+  '/register', 
   upload.fields([
-    { name: 'gstCertificate', maxCount: 1 },
-    { name: 'udyamCertificate', maxCount: 1 }
+    { name: 'doc1', maxCount: 1 },
+    { name: 'doc2', maxCount: 1 }
   ]), 
   registerDistributor
 );
 
 router.post('/verify-otp', verifyDistributorOtp);
+router.get('/status/:id', getDistributorStatus);
 
 // Authenticated/Protected Admin Routes
 router.get('/', authenticate, checkAdminManagerHR, getDistributors);

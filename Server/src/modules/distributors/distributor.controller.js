@@ -9,73 +9,100 @@ const { getRelativePath, resolveUploadPath } = require('../../utils/file');
 // 1. Register Distributor (Upload Details & Certificates + Send OTP)
 const registerDistributor = async (req, res, next) => {
   try {
-    const { name, email, mobile, address } = req.body;
+    const {
+      name,
+      email,
+      mobile,
+      gstNumber,
+      city,
+      state
+    } = req.body;
 
-    if (!name || !email || !mobile || !address) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'All fields (name, email, mobile, address) are required.');
+    if (!name || !email || !mobile || !city || !state) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, mobile, city, and state are required.');
     }
 
-    const gstFile = req.files && req.files['gstCertificate'] ? req.files['gstCertificate'][0] : null;
-    const udyamFile = req.files && req.files['udyamCertificate'] ? req.files['udyamCertificate'][0] : null;
-
-    if (!gstFile) {
-      return fail(res, 400, 'FILE_REQUIRED', 'GST Certificate is required.');
-    }
-    if (!udyamFile) {
-      return fail(res, 400, 'FILE_REQUIRED', 'Udyam Certificate is required.');
-    }
-
-    // Generate 6-digit OTP code
-    const otpCode = generateOtp();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    const doc1 = req.files && req.files['doc1'] ? req.files['doc1'][0] : null;
+    const doc2 = req.files && req.files['doc2'] ? req.files['doc2'][0] : null;
 
     // Check if there is an existing distributor with the same email
     let distributor = await Distributor.findOne({ email });
+
+    if (!doc1 && !distributor) {
+      return fail(res, 400, 'FILE_REQUIRED', 'GST Certificate (doc1) is required.');
+    }
+
+    // Generate 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
     if (distributor) {
+      // If a new doc1 is uploaded, clean up the old one
+      if (doc1 && distributor.doc1Path) {
+        const oldDoc1 = path.join(process.cwd(), distributor.doc1Path);
+        if (fs.existsSync(oldDoc1)) {
+          try { fs.unlinkSync(oldDoc1); } catch (e) { }
+        }
+        distributor.doc1Path = getRelativePath(doc1.path);
+      } else if (doc1) {
+        distributor.doc1Path = getRelativePath(doc1.path);
+      }
+      
+      // If a new doc2 is uploaded, clean up the old one
+      if (doc2 && distributor.doc2Path) {
+        const oldDoc2 = path.join(process.cwd(), distributor.doc2Path);
+        if (fs.existsSync(oldDoc2)) {
+          try { fs.unlinkSync(oldDoc2); } catch (e) { }
+        }
+        distributor.doc2Path = getRelativePath(doc2.path);
+      } else if (doc2) {
+        distributor.doc2Path = getRelativePath(doc2.path);
+      }
+
       distributor.name = name;
       distributor.mobile = mobile;
-      distributor.address = address;
-      distributor.gstCertificatePath = getRelativePath(gstFile.path);
-      distributor.gstCertificateOriginalName = gstFile.originalname;
-      distributor.udyamCertificatePath = getRelativePath(udyamFile.path);
-      distributor.udyamCertificateOriginalName = udyamFile.originalname;
-      distributor.otp = otpCode;
-      distributor.otpExpiresAt = otpExpiresAt;
-      distributor.isVerified = false; // Reset verification
+      distributor.gstNumber = gstNumber;
+      distributor.city = city;
+      distributor.state = state;
+      distributor.otpToken = otpCode;
+      distributor.otpExpires = otpExpires;
+      distributor.isOtpVerified = false; // Reset verification to verify email again
+      distributor.approvalStatus = 'pending';
       await distributor.save();
     } else {
       distributor = new Distributor({
         name,
         email,
         mobile,
-        address,
-        gstCertificatePath: getRelativePath(gstFile.path),
-        gstCertificateOriginalName: gstFile.originalname,
-        udyamCertificatePath: getRelativePath(udyamFile.path),
-        udyamCertificateOriginalName: udyamFile.originalname,
-        otp: otpCode,
-        otpExpiresAt,
-        isVerified: false
+        gstNumber,
+        city,
+        state,
+        doc1Path: getRelativePath(doc1.path),
+        doc2Path: doc2 ? getRelativePath(doc2.path) : undefined,
+        otpToken: otpCode,
+        otpExpires,
+        isOtpVerified: false,
+        approvalStatus: 'pending'
       });
       await distributor.save();
     }
 
     // Send OTP to distributor email
-    const subject = 'Distributor Verification OTP - India Trade Overseas';
-    const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 10 minutes.`;
+    const subject = 'Distributor Verification OTP - Prakriti Tea Division';
+    const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
     const html = getOtpHtml(otpCode);
-    
+
     await sendEmail(email, subject, text, html);
 
     return ok(res, { distributorId: distributor._id, email: distributor.email }, 'Distributor registration initiated. OTP sent to email.', 201, req);
   } catch (error) {
     // If error, cleanup uploaded files
     if (req.files) {
-      if (req.files['gstCertificate'] && fs.existsSync(req.files['gstCertificate'][0].path)) {
-        try { fs.unlinkSync(req.files['gstCertificate'][0].path); } catch (e) {}
+      if (req.files['doc1'] && fs.existsSync(req.files['doc1'][0].path)) {
+        try { fs.unlinkSync(req.files['doc1'][0].path); } catch (e) { }
       }
-      if (req.files['udyamCertificate'] && fs.existsSync(req.files['udyamCertificate'][0].path)) {
-        try { fs.unlinkSync(req.files['udyamCertificate'][0].path); } catch (e) {}
+      if (req.files['doc2'] && fs.existsSync(req.files['doc2'][0].path)) {
+        try { fs.unlinkSync(req.files['doc2'][0].path); } catch (e) { }
       }
     }
     next(error);
@@ -97,76 +124,207 @@ const verifyDistributorOtp = async (req, res, next) => {
     }
 
     // Check OTP expiration
-    if (distributor.otpExpiresAt < new Date()) {
+    if (new Date() > distributor.otpExpires) {
       return fail(res, 400, 'OTP_EXPIRED', 'OTP code has expired. Please register again to get a new code.');
     }
 
     // Check OTP match
-    if (distributor.otp !== otp) {
+    if (distributor.otpToken !== otp) {
       return fail(res, 400, 'INVALID_OTP', 'The OTP code entered is incorrect.');
     }
 
-    // Success! Verify distributor
-    distributor.isVerified = true;
-    distributor.otp = undefined; // clear otp
-    distributor.otpExpiresAt = undefined;
+    // Success! Verify distributor and auto-approve for direct access
+    distributor.isOtpVerified = true;
+    distributor.approvalStatus = 'approved';
+    distributor.otpToken = undefined; // clear otp
+    distributor.otpExpires = undefined;
     await distributor.save();
 
-    return ok(res, { verified: true, email: distributor.email }, 'Distributor verified successfully!', 200, req);
+    // Generate standardized session token (JWT)
+    const jwt = require('jsonwebtoken');
+    const env = require('../../config/env');
+    const token = jwt.sign(
+      { sub: distributor._id.toString(), role: 'DISTRIBUTOR', email: distributor.email },
+      env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return ok(res, {
+      token,
+      distributorId: distributor._id,
+      email: distributor.email,
+      approvalStatus: distributor.approvalStatus
+    }, 'Distributor verified successfully!', 200, req);
   } catch (error) {
     next(error);
   }
 };
 
-// 3. Get all distributors
+// 3. Get distributor verification/approval status (Polling endpoint)
+const getDistributorStatus = async (req, res, next) => {
+  try {
+    const distributor = await Distributor.findById(req.params.id);
+    if (!distributor) {
+      return fail(res, 404, 'NOT_FOUND', 'Distributor record not found.');
+    }
+    return ok(res, { approvalStatus: distributor.approvalStatus }, 'Status retrieved successfully.', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 4. Get gated bulk marketplace data
+const getMarketplace = async (req, res, next) => {
+  try {
+    const userId = req.distributor ? req.distributor._id : null;
+    if (!userId) {
+      return fail(res, 401, 'UNAUTHORIZED', 'Access denied. Invalid session context.');
+    }
+
+    let user = await Distributor.findById(userId);
+    if (!user && req.user) {
+      user = {
+        _id: req.user._id,
+        name: req.user.fullName,
+        approvalStatus: 'approved'
+      };
+    }
+
+    if (!user || user.approvalStatus !== 'approved') {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Distributor status is not approved.', [], req);
+    }
+
+    // Return unblinded bulk market data (including live bulk prices, exact garden/source lot names, and analytical tea tasting metrics)
+    const bulkMarketData = [
+      {
+        id: 'LOT-DARJ-2026-A1',
+        gardenName: 'Makaibari Estate, Darjeeling',
+        grade: 'FTGFOP1 (First Flush)',
+        livePricePerKg: 1250,
+        currency: 'INR',
+        availableQuantityKg: 450,
+        tastingMetrics: {
+          astringency: 7,
+          floralNotes: 9,
+          body: 6,
+          sweetness: 8
+        },
+        harvestDate: '2026-05-15'
+      },
+      {
+        id: 'LOT-ASSA-2026-B4',
+        gardenName: 'Halmari Estate, Assam',
+        grade: 'TGFOP (Second Flush)',
+        livePricePerKg: 780,
+        currency: 'INR',
+        availableQuantityKg: 1200,
+        tastingMetrics: {
+          maltiness: 9,
+          body: 9,
+          briskness: 8,
+          strength: 9
+        },
+        harvestDate: '2026-06-02'
+      },
+      {
+        id: 'LOT-NILG-2026-C2',
+        gardenName: 'Craigmore Estate, Nilgiri',
+        grade: 'SFTGFOP (Winter Frost)',
+        livePricePerKg: 950,
+        currency: 'INR',
+        availableQuantityKg: 300,
+        tastingMetrics: {
+          citrusNotes: 8,
+          floralNotes: 7,
+          body: 5,
+          sweetness: 7
+        },
+        harvestDate: '2026-01-20'
+      },
+      {
+        id: 'LOT-ASSA-2026-D1',
+        gardenName: 'Mangalam Estate, Assam',
+        grade: 'CTC Grade Pekoe',
+        livePricePerKg: 410,
+        currency: 'INR',
+        availableQuantityKg: 3500,
+        tastingMetrics: {
+          maltiness: 7,
+          body: 8,
+          briskness: 9,
+          strength: 8
+        },
+        harvestDate: '2026-06-10'
+      }
+    ];
+
+    return ok(res, { marketData: bulkMarketData }, 'Live bulk market data retrieved successfully.', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 5. Get all distributors (Admin Panel compatibility)
 const getDistributors = async (req, res, next) => {
   try {
     const distributors = await Distributor.find().sort({ createdAt: -1 });
-    return ok(res, { distributors }, 'Distributors list retrieved successfully', 200, req);
+
+    // Map approvalStatus to isVerified for backwards compatibility in CRM
+    const mappedDistributors = distributors.map(dist => ({
+      ...dist.toObject(),
+      isVerified: dist.approvalStatus === 'approved'
+    }));
+
+    return ok(res, { distributors: mappedDistributors }, 'Distributors list retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }
 };
 
-// 4. Toggle distributor verification status
+// 6. Toggle distributor verification status (Admin Panel compatibility)
 const toggleDistributorVerification = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
     if (!distributor) {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
-    
-    distributor.isVerified = !distributor.isVerified;
+
+    distributor.approvalStatus = distributor.approvalStatus === 'approved' ? 'pending' : 'approved';
     await distributor.save();
-    
-    return ok(res, { distributor }, `Distributor verification status toggled to ${distributor.isVerified}`, 200, req);
+
+    const responseData = {
+      ...distributor.toObject(),
+      isVerified: distributor.approvalStatus === 'approved'
+    };
+
+    return ok(res, { distributor: responseData }, `Distributor verification status toggled to ${distributor.approvalStatus}`, 200, req);
   } catch (error) {
     next(error);
   }
 };
 
-// 5. Delete distributor and their certificates from disk
+// 7. Delete distributor and their certificates from disk
 const deleteDistributor = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
     if (!distributor) {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
-    
+
     // Cleanup files on disk
-    if (distributor.gstCertificatePath) {
-      const gstPath = path.join(process.cwd(), distributor.gstCertificatePath);
-      if (fs.existsSync(gstPath)) {
-        try { fs.unlinkSync(gstPath); } catch (e) { console.error('Failed to delete GST certificate file:', e); }
+    if (distributor.doc1Path) {
+      const doc1Path = path.join(process.cwd(), distributor.doc1Path);
+      if (fs.existsSync(doc1Path)) {
+        try { fs.unlinkSync(doc1Path); } catch (e) { }
       }
     }
-    if (distributor.udyamCertificatePath) {
-      const udyamPath = path.join(process.cwd(), distributor.udyamCertificatePath);
-      if (fs.existsSync(udyamPath)) {
-        try { fs.unlinkSync(udyamPath); } catch (e) { console.error('Failed to delete Udyam certificate file:', e); }
+    if (distributor.doc2Path) {
+      const doc2Path = path.join(process.cwd(), distributor.doc2Path);
+      if (fs.existsSync(doc2Path)) {
+        try { fs.unlinkSync(doc2Path); } catch (e) { }
       }
     }
-    
+
     await Distributor.findByIdAndDelete(req.params.id);
     return ok(res, null, 'Distributor record and files deleted successfully', 200, req);
   } catch (error) {
@@ -174,39 +332,43 @@ const deleteDistributor = async (req, res, next) => {
   }
 };
 
-// 6. Download GST certificate
+// 8. Download Document 1 (GST/FSSAI/IEC)
 const downloadGstCertificate = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
     if (!distributor) {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
-    
-    const filePath = resolveUploadPath(distributor.gstCertificatePath, 'gst_certificates');
+
+    const filePath = resolveUploadPath(distributor.doc1Path, 'distributor_docs');
     if (!filePath || !fs.existsSync(filePath)) {
-      return fail(res, 404, 'FILE_NOT_FOUND', 'GST certificate file not found on disk.');
+      return fail(res, 404, 'FILE_NOT_FOUND', 'GST/FSSAI/IEC document file not found on disk.');
     }
-    
-    return res.download(filePath, distributor.gstCertificateOriginalName || 'gst_certificate.pdf');
+
+    return res.download(filePath, path.basename(distributor.doc1Path) || 'document_1.pdf');
   } catch (error) {
     next(error);
   }
 };
 
-// 7. Download Udyam certificate
+// 9. Download Document 2 (UDYAM/Secondary)
 const downloadUdyamCertificate = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
     if (!distributor) {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
-    
-    const filePath = resolveUploadPath(distributor.udyamCertificatePath, 'udyam_certificates');
-    if (!filePath || !fs.existsSync(filePath)) {
-      return fail(res, 404, 'FILE_NOT_FOUND', 'Udyam certificate file not found on disk.');
+
+    if (!distributor.doc2Path) {
+      return fail(res, 400, 'FILE_NOT_FOUND', 'No second document uploaded for this distributor.');
     }
-    
-    return res.download(filePath, distributor.udyamCertificateOriginalName || 'udyam_certificate.pdf');
+
+    const filePath = resolveUploadPath(distributor.doc2Path, 'distributor_docs');
+    if (!filePath || !fs.existsSync(filePath)) {
+      return fail(res, 404, 'FILE_NOT_FOUND', 'Udyam/Secondary document file not found on disk.');
+    }
+
+    return res.download(filePath, path.basename(distributor.doc2Path) || 'document_2.pdf');
   } catch (error) {
     next(error);
   }
@@ -215,6 +377,8 @@ const downloadUdyamCertificate = async (req, res, next) => {
 module.exports = {
   registerDistributor,
   verifyDistributorOtp,
+  getDistributorStatus,
+  getMarketplace,
   getDistributors,
   toggleDistributorVerification,
   deleteDistributor,
