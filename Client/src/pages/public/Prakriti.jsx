@@ -326,7 +326,7 @@ export default function Prakriti() {
                                 >
                                     PRAKRITI <br />
                                     <span className="text-[#50C878] font-sans font-light normal-case tracking-wide text-xl sm:text-4xl block mt-3">
-                                        Premium Quality Indian Tea Division
+                                        Prakriti Tea By India Trade Overseas
                                     </span>
                                 </motion.h1>
 
