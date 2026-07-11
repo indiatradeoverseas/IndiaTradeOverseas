@@ -33,59 +33,6 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
-
-  const isTeaPage = location.pathname === '/prakriti' || location.pathname === '/prakriti/tea';
-  const isCoalPage = location.pathname === '/prakriti/coal';
-  const isRicePage = location.pathname === '/prakriti/rice';
-  const isPrakritiPage = isTeaPage || isCoalPage || isRicePage;
-
-  const getThemeStyles = () => {
-    if (isTeaPage) {
-      return {
-        textPrimary: 'text-[#004B3B]',
-        textAccent: 'text-[#50C878]',
-        borderPrimary: 'border-[#50C878]',
-        bgActive: 'bg-[#50C878]/20',
-        bgHover: 'hover:bg-[#50C878]/10',
-        btnPrimary: 'bg-[#004B3B] hover:bg-[#0c5747] text-white',
-        borderPulse: 'bg-[#50C878]'
-      };
-    }
-    if (isCoalPage) {
-      return {
-        textPrimary: 'text-[#0C1F3F]',
-        textAccent: 'text-[#8FAADC]',
-        borderPrimary: 'border-[#0C1F3F]',
-        bgActive: 'bg-[#0C1F3F]/10 rounded-md',
-        bgHover: 'hover:bg-[#0C1F3F]/5',
-        btnPrimary: 'bg-[#0C1F3F] hover:bg-[#2F5DA8] text-white',
-        borderPulse: 'bg-[#0C1F3F]'
-      };
-    }
-    if (isRicePage) {
-      return {
-        textPrimary: 'text-[#2F5DA8]',
-        textAccent: 'text-[#8FAADC]',
-        borderPrimary: 'border-[#2F5DA8]',
-        bgActive: 'bg-[#2F5DA8]/10 rounded-md',
-        bgHover: 'hover:bg-[#2F5DA8]/5',
-        btnPrimary: 'bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white',
-        borderPulse: 'bg-[#2F5DA8]'
-      };
-    }
-    return {
-      textPrimary: 'text-[#0C1F3F]',
-      textAccent: 'text-[#2F5DA8]',
-      borderPrimary: 'border-[#8FAADC]',
-      bgActive: 'bg-[#8FAADC]/20 rounded-md',
-      bgHover: 'hover:bg-[#8FAADC]/10 rounded-md',
-      btnPrimary: 'bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white',
-      borderPulse: 'bg-[#2F5DA8]'
-    };
-  };
-
-  const currentTheme = getThemeStyles();
-
   useEffect(() => {
     const loadNotifications = async () => {
       if (!user) return;
@@ -142,14 +89,12 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`sticky top-0 z-50 transition-all duration-300 border-b ${isPrakritiPage ? 'bg-[#FAF9F5]' : 'bg-[#ffffff]'
-        } ${scrolled
-          ? isPrakritiPage ? 'shadow-lg border-[#50C878]/30' : 'shadow-lg border-[#8FAADC]/40'
-          : isPrakritiPage ? 'border-[#50C878]/15 shadow-sm' : 'border-[#8FAADC]/20 shadow-sm'
-        }`}
+      className={`sticky top-0 z-50 transition-all duration-300 border-b bg-[#ffffff] ${
+        scrolled ? 'shadow-lg border-[#8FAADC]/40' : 'border-[#8FAADC]/20 shadow-sm'
+      }`}
     >
-      {/* Structural Double-Line Top Border Accent matching Active Sub-Division Route */}
-      <div className={`border-t-[3px] border-double w-full transition-colors duration-500 ${currentTheme.borderPrimary}`} />
+      {/* Structural Double-Line Top Border Accent fixed to corporate Blue profile */}
+      <div className="border-t-[3px] border-double w-full border-[#8FAADC]" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 gap-4">
@@ -166,18 +111,15 @@ export default function Navbar() {
                 />
               </div>
 
-              <span className={`hidden lg:inline font-serif font-bold text-lg tracking-wide transition-colors duration-500 whitespace-nowrap ${isPrakritiPage ? currentTheme.textPrimary : 'text-[#0C1F3F]'
-                }`}>
+              <span className="hidden lg:inline font-serif font-bold text-lg tracking-wide text-[#0C1F3F] whitespace-nowrap">
                 India Trade Overseas
               </span>
 
               <div className="flex flex-col justify-center leading-none lg:hidden">
-                <span className={`font-serif font-bold text-sm tracking-wide uppercase transition-colors duration-500 whitespace-nowrap ${isPrakritiPage ? currentTheme.textPrimary : 'text-[#0C1F3F]'
-                  }`}>
+                <span className="font-serif font-bold text-sm tracking-wide uppercase text-[#0C1F3F] whitespace-nowrap">
                   India
                 </span>
-                <span className={`font-sans font-bold text-[9px] tracking-widest uppercase mt-0.5 transition-colors duration-500 whitespace-nowrap ${isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'
-                  }`}>
+                <span className="font-sans font-bold text-[9px] tracking-widest uppercase mt-0.5 text-[#2F5DA8] whitespace-nowrap">
                   Trade Overseas
                 </span>
               </div>
@@ -190,17 +132,15 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`relative px-2 py-2 text-xs uppercase tracking-widest font-bold font-sans transition-all duration-150 whitespace-nowrap ${isActive(link.to)
-                    ? isPrakritiPage ? `${currentTheme.textPrimary} ${currentTheme.bgActive}` : 'text-[#0C1F3F] bg-[#8FAADC]/20 rounded-md'
-                    : isPrakritiPage
-                      ? `${currentTheme.textPrimary}/80 ${currentTheme.bgHover} rounded-md`
-                      : 'text-[#0C1F3F]/80 hover:text-[#2F5DA8] hover:bg-[#8FAADC]/10 rounded-md'
-                  }`}
+                className={`relative px-2 py-2 text-xs uppercase tracking-widest font-bold font-sans transition-all duration-150 whitespace-nowrap ${
+                  isActive(link.to)
+                    ? 'text-[#0C1F3F] bg-[#8FAADC]/20 rounded-md'
+                    : 'text-[#0C1F3F]/80 hover:text-[#2F5DA8] hover:bg-[#8FAADC]/10 rounded-md'
+                }`}
               >
                 {link.label}
                 {isActive(link.to) && (
-                  <span className={`absolute bottom-0 left-2 right-2 h-[2px] ${isPrakritiPage ? currentTheme.borderPulse : 'bg-[#2F5DA8]'
-                    }`} />
+                  <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#2F5DA8]" />
                 )}
               </Link>
             ))}
@@ -212,12 +152,11 @@ export default function Navbar() {
               onMouseLeave={() => setIsPrakritiDropdownOpen(false)}
             >
               <button
-                className={`flex items-center  px-2 py-2 text-xs uppercase tracking-widest font-bold font-sans transition-all duration-150 rounded-md outline-none  ${isPrakritiActive
-                    ? `${currentTheme.textPrimary} ${currentTheme.bgActive}`
-                    : isPrakritiPage
-                      ? `${currentTheme.textPrimary}/80 ${currentTheme.bgHover}`
-                      : 'text-[#0C1F3F]/80 hover:text-[#2F5DA8] hover:bg-[#8FAADC]/10'
-                  }`}
+                className={`flex items-center px-2 py-2 text-xs uppercase tracking-widest font-bold font-sans transition-all duration-150 rounded-md outline-none ${
+                  isPrakritiActive
+                    ? 'text-[#0C1F3F] bg-[#8FAADC]/20 rounded-md'
+                    : 'text-[#0C1F3F]/80 hover:text-[#2F5DA8] hover:bg-[#8FAADC]/10'
+                }`}
               >
                 <span>Prakriti Division</span>
                 <FiChevronDown size={12} className={`transition-transform duration-300 ${isPrakritiDropdownOpen ? 'rotate-180' : ''}`} />
@@ -231,8 +170,7 @@ export default function Navbar() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className={`absolute right-0 mt-1 w-48 bg-white border rounded-lg shadow-xl py-1 z-50 overflow-hidden ${isPrakritiPage ? currentTheme.borderPrimary : 'border-[#8FAADC]/30'
-                      }`}
+                    className="absolute right-0 mt-1 w-48 bg-white border border-[#8FAADC]/30 rounded-lg shadow-xl py-1 z-50 overflow-hidden"
                   >
                     {prakritiDivisions.map((subLink) => {
                       const isSubActive = location.pathname === subLink.to;
@@ -240,11 +178,9 @@ export default function Navbar() {
                         <Link
                           key={subLink.to}
                           to={subLink.to}
-                          className={`block text-left px-4 py-2.5 text-xs font-sans font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${isSubActive
-                              ? 'bg-slate-50'
-                              : 'hover:bg-slate-50/70'
-                            } ${subLink.to === '/prakriti' ? 'text-[#004B3B]' : subLink.to === '/prakriti/coal' ? 'text-[#0C1F3F]' : 'text-[#2F5DA8]'
-                            }`}
+                          className={`block text-left px-4 py-2.5 text-xs font-sans font-bold uppercase tracking-wider transition-colors whitespace-nowrap text-[#0C1F3F] ${
+                            isSubActive ? 'bg-slate-50' : 'hover:bg-slate-50/70'
+                          }`}
                         >
                           {subLink.label}
                         </Link>
@@ -258,24 +194,21 @@ export default function Navbar() {
             {/* Quote Action Button */}
             <Link
               to="/quote-request"
-              className={`ml-1 lg:ml-2 text-xs uppercase tracking-widest font-bold px-3 lg:px-4 py-2 rounded-md transition-all shadow-sm border whitespace-nowrap ${isActive('/quote-request')
-                  ? isPrakritiPage ? 'bg-[#004B3B] text-white border-transparent' : 'bg-[#0C1F3F] text-white border-transparent'
-                  : isPrakritiPage
-                    ? 'bg-[#004B3B] hover:bg-[#0c5747] text-white border-transparent'
-                    : 'bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white border-transparent'
-                }`}
+              className={`ml-1 lg:ml-2 text-xs uppercase tracking-widest font-bold px-3 lg:px-4 py-2 rounded-md transition-all shadow-sm border whitespace-nowrap ${
+                isActive('/quote-request')
+                  ? 'bg-[#0C1F3F] text-white border-transparent'
+                  : 'bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white border-transparent'
+              }`}
             >
               Get a Quote
             </Link>
 
             {/* Authenticated Context Dropdown Panel */}
             {user ? (
-              <div className={`flex items-center gap-2 ml-2 lg:ml-4 border-l pl-2 lg:pl-4 shrink-0 ${isPrakritiPage ? 'border-[#50C878]/30' : 'border-[#8FAADC]/30'
-                }`}>
+              <div className="flex items-center gap-2 ml-2 lg:ml-4 border-l border-[#8FAADC]/30 pl-2 lg:pl-4 shrink-0">
                 <Link
                   to="/crm/notifications"
-                  className={`relative p-2 rounded-md transition-colors ${isPrakritiPage ? `${currentTheme.textPrimary} ${currentTheme.bgHover}` : 'text-[#0C1F3F] hover:bg-[#8FAADC]/10'
-                    }`}
+                  className="relative p-2 rounded-md transition-colors text-[#0C1F3F] hover:bg-[#8FAADC]/10"
                 >
                   <FiBell size={16} />
                   {unreadCount > 0 && (
@@ -288,11 +221,10 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className={`flex items-center space-x-1.5 bg-[#ffffff] border rounded-md px-3 py-1.5 transition-colors ${isPrakritiPage ? 'border-[#50C878]/20 hover:bg-[#FAF9F5]' : 'border-[#8FAADC]/20 hover:bg-[#ffffff]/30'
-                      }`}
+                    className="flex items-center space-x-1.5 bg-[#ffffff] border border-[#8FAADC]/20 rounded-md px-3 py-1.5 transition-colors hover:bg-[#ffffff]/30"
                   >
-                    <FiUser className={isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'} size={14} />
-                    <span className={`text-xs font-bold hidden lg:inline whitespace-nowrap ${isPrakritiPage ? currentTheme.textPrimary : 'text-[#0C1F3F]'}`}>
+                    <FiUser className="text-[#2F5DA8]" size={14} />
+                    <span className="text-xs font-bold hidden lg:inline whitespace-nowrap text-[#0C1F3F]">
                       {user?.fullName ? user.fullName.split(' ')[0] : 'User'}
                     </span>
                     <FiChevronDown size={12} className="text-slate-400 transition-transform" />
@@ -301,24 +233,22 @@ export default function Navbar() {
                   {isUserMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
-                      <div className={`absolute right-0 mt-2 w-48 bg-[#ffffff] rounded-xl shadow-xl border py-1 z-50 text-xs ${isPrakritiPage ? 'border-[#50C878]/20' : 'border-[#8FAADC]/20'
-                        }`}>
-                        <div className={`px-4 py-2 border-b border-slate-100 ${isPrakritiPage ? 'bg-[#FAF9F5]' : 'bg-[#ffffff]/30'}`}>
-                          <p className={`font-serif font-bold ${isPrakritiPage ? currentTheme.textPrimary : 'text-[#0C1F3F]'}`}>{user?.fullName}</p>
+                      <div className="absolute right-0 mt-2 w-48 bg-[#ffffff] rounded-xl shadow-xl border border-[#8FAADC]/20 py-1 z-50 text-xs">
+                        <div className="px-4 py-2 border-b border-slate-100 bg-[#ffffff]/30">
+                          <p className="font-serif font-bold text-[#0C1F3F]">{user?.fullName}</p>
                           <p className="text-[10px] text-slate-400 font-mono truncate">{user?.email}</p>
-                          <span className={`inline-block mt-1.5 text-[9px] font-mono tracking-wider uppercase font-bold px-2 py-0.5 rounded-full ${isPrakritiPage ? 'bg-[#50C878]/20 text-[#004B3B]' : 'bg-[#8FAADC]/20 text-[#0C1F3F]'
-                            }`}>
+                          <span className="inline-block mt-1.5 text-[9px] font-mono tracking-wider uppercase font-bold px-2 py-0.5 rounded-full bg-[#8FAADC]/20 text-[#0C1F3F]">
                             {user?.employeeId?.startsWith('CL_') ? 'CLIENT' : user?.role}
                           </span>
                         </div>
                         {!user?.employeeId?.startsWith('CL_') && (
                           <Link to="/crm/dashboard" className="flex items-center space-x-2 px-4 py-2.5 text-slate-600 hover:bg-slate-50" onClick={() => setIsUserMenuOpen(false)}>
-                            <FiPackage size={12} className={isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'} /> <span>Dashboard</span>
+                            <FiPackage size={12} className="text-[#2F5DA8]" /> <span>Dashboard</span>
                           </Link>
                         )}
                         {user?.role === 'ADMIN' && (
                           <Link to="/crm/admin" className="flex items-center space-x-2 px-4 py-2.5 text-slate-600 hover:bg-slate-50" onClick={() => setIsUserMenuOpen(false)}>
-                            <FiSettings size={12} className={isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'} /> <span>Admin Panel</span>
+                            <FiSettings size={12} className="text-[#2F5DA8]" /> <span>Admin Panel</span>
                           </Link>
                         )}
                         <button onClick={handleLogout} className="flex items-center space-x-2 px-4 py-2.5 text-red-600 hover:bg-red-50/60 w-full text-left font-bold border-t border-slate-50">
@@ -330,19 +260,17 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <div className={`flex items-center space-x-1 ml-2 lg:ml-4 border-l pl-2 lg:pl-4 shrink-0 ${isPrakritiPage ? 'border-[#50C878]/30' : 'border-[#8FAADC]/30'}`}>
-                <Link to="/login" className={`px-2.5 py-2 text-xs uppercase tracking-widest font-bold whitespace-nowrap ${isPrakritiPage ? `${currentTheme.textPrimary} hover:${currentTheme.textAccent}` : 'text-[#0C1F3F] hover:text-[#2F5DA8]'
-                  }`}>Login</Link>
-                <Link to="/client-signup" className={`px-3 py-2 rounded-md text-xs uppercase tracking-widest font-bold shadow-sm whitespace-nowrap ${isPrakritiPage ? 'bg-[#004B3B] hover:bg-[#0c5747] text-white' : 'bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white'
-                  }`}>Sign Up</Link>
+              <div className="flex items-center space-x-1 ml-2 lg:ml-4 border-l border-[#8FAADC]/30 pl-2 lg:pl-4 shrink-0">
+                <Link to="/login" className="px-2.5 py-2 text-xs uppercase tracking-widest font-bold whitespace-nowrap text-[#0C1F3F] hover:text-[#2F5DA8]">Login</Link>
+                <Link to="/client-signup" className="px-3 py-2 rounded-md text-xs uppercase tracking-widest font-bold shadow-sm whitespace-nowrap bg-[#2F5DA8] hover:bg-[#0C1F3F] text-white">Sign Up</Link>
               </div>
             )}
           </div>
 
-          {/* Mobile Utility Actions Bar (Only Icons Visible Here) */}
+          {/* Mobile Utility Actions Bar */}
           <div className="flex items-center gap-1 md:hidden">
             {user && (
-              <Link to="/crm/notifications" className={`relative p-2 rounded-md ${currentTheme.textPrimary}`}>
+              <Link to="/crm/notifications" className="relative p-2 rounded-md text-[#0C1F3F]">
                 <FiBell size={20} />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold">
@@ -353,7 +281,7 @@ export default function Navbar() {
             )}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`p-2 rounded-md z-50 ${currentTheme.textPrimary}`}
+              className="p-2 rounded-md z-50 text-[#0C1F3F]"
               aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
@@ -363,21 +291,19 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Viewport (Guarantees visibility of Login/Logout links) */}
+      {/* Mobile Menu Viewport */}
       {isMobileMenuOpen && (
-        <div className={`md:hidden fixed inset-x-0 top-[67px] shadow-xl border-b z-40 max-h-[calc(100vh-67px)] overflow-y-auto font-sans text-xs uppercase tracking-widest font-bold ${isPrakritiPage ? 'bg-[#FAF9F5] border-[#50C878]/20' : 'bg-[#ffffff] border-[#8FAADC]/20'
-          }`}>
+        <div className="md:hidden fixed inset-x-0 top-[67px] shadow-xl border-b z-40 max-h-[calc(100vh-67px)] overflow-y-auto font-sans text-xs uppercase tracking-widest font-bold bg-[#ffffff] border-[#8FAADC]/20">
           <div className="px-3 py-4 space-y-1">
             {user ? (
               <div className="mb-4 p-3.5 bg-[#ffffff] border border-slate-100 rounded-xl flex items-center space-x-3 text-left normal-case tracking-normal">
-                <div className={`p-2.5 rounded-full ${isPrakritiPage ? 'bg-[#FAF9F5] text-[#50C878]' : 'bg-[#ffffff] text-[#2F5DA8]'}`}>
+                <div className="p-2.5 rounded-full bg-[#ffffff] text-[#2F5DA8]">
                   <FiUser size={16} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`font-serif font-bold text-sm ${isPrakritiPage ? currentTheme.textPrimary : 'text-[#0C1F3F]'}`}>{user?.fullName}</p>
+                  <p className="font-serif font-bold text-sm text-[#0C1F3F]">{user?.fullName}</p>
                   <p className="text-[10px] text-slate-400 font-mono truncate">{user?.email}</p>
-                  <span className={`inline-block mt-1 text-[9px] font-mono tracking-wider uppercase font-bold px-2 py-0.5 rounded-full ${isPrakritiPage ? 'bg-[#50C878]/20 text-[#004B3B]' : 'bg-[#8FAADC]/20 text-[#0C1F3F]'
-                    }`}>
+                  <span className="inline-block mt-1 text-[9px] font-mono tracking-wider uppercase font-bold px-2 py-0.5 rounded-full bg-[#8FAADC]/20 text-[#0C1F3F]">
                     {user?.employeeId?.startsWith('CL_') ? 'CLIENT' : user?.role}
                   </span>
                 </div>
@@ -387,16 +313,14 @@ export default function Navbar() {
                 <Link
                   to="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-center py-2.5 border rounded-lg transition-colors ${isPrakritiPage ? 'border-[#50C878]/30 text-[#004B3B]' : 'border-[#8FAADC]/30 text-[#0C1F3F]'
-                    }`}
+                  className="flex items-center justify-center py-2.5 border rounded-lg transition-colors border-[#8FAADC]/30 text-[#0C1F3F]"
                 >
                   Login
                 </Link>
                 <Link
                   to="/client-signup"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-center py-2.5 text-white rounded-lg shadow-sm ${isPrakritiPage ? 'bg-[#004B3B]' : 'bg-[#2F5DA8]'
-                    }`}
+                  className="flex items-center justify-center py-2.5 text-white rounded-lg shadow-sm bg-[#2F5DA8]"
                 >
                   Sign Up
                 </Link>
@@ -407,13 +331,12 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center space-x-3 px-3 py-3 rounded-md text-left transition-colors ${isActive(link.to)
-                    ? isPrakritiPage ? 'bg-[#50C878]/20 text-[#004B3B]' : 'bg-[#8FAADC]/20 text-[#0C1F3F]'
-                    : isPrakritiPage ? 'text-[#004B3B] hover:bg-[#50C878]/10' : 'text-[#0C1F3F] hover:bg-[#8FAADC]/10'
-                  }`}
+                className={`flex items-center space-x-3 px-3 py-3 rounded-md text-left transition-colors ${
+                  isActive(link.to) ? 'bg-[#8FAADC]/20 text-[#0C1F3F]' : 'text-[#0C1F3F] hover:bg-[#8FAADC]/10'
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <link.icon size={16} className={isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'} />
+                <link.icon size={16} className="text-[#2F5DA8]" />
                 <span>{link.label}</span>
               </Link>
             ))}
@@ -424,20 +347,16 @@ export default function Navbar() {
                 Prakriti Sectors
               </div>
               {prakritiDivisions.map((subLink) => {
-                // Extract the unique component icon assigned to this division
                 const SubIcon = subLink.icon;
-
                 return (
                   <Link
                     key={subLink.to}
                     to={subLink.to}
-                    className={`flex items-center space-x-3.5 px-6 py-3 rounded-xl text-left transition-colors ${isActive(subLink.to)
-                        ? 'bg-[#8FAADC]/30 text-[#0C1F3F]'
-                        : 'text-[#0C1F3F]/80 hover:bg-[#8FAADC]/10'
-                      }`}
+                    className={`flex items-center space-x-3.5 px-6 py-3 rounded-xl text-left transition-colors ${
+                      isActive(subLink.to) ? 'bg-[#8FAADC]/30 text-[#0C1F3F]' : 'text-[#0C1F3F]/80 hover:bg-[#8FAADC]/10'
+                    }`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    {/* Render the unique structural icon component dynamically */}
                     {SubIcon && <SubIcon size={14} className="text-[#2F5DA8] shrink-0" />}
                     <span>{subLink.label}</span>
                   </Link>
@@ -451,12 +370,12 @@ export default function Navbar() {
                 <>
                   {!user?.employeeId?.startsWith('CL_') && (
                     <Link to="/crm/dashboard" className="flex items-center space-x-3 px-3 py-3 text-slate-600" onClick={() => setIsMobileMenuOpen(false)}>
-                      <FiPackage size={16} className={isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'} /> <span>Dashboard</span>
+                      <FiPackage size={16} className="text-[#2F5DA8]" /> <span>Dashboard</span>
                     </Link>
                   )}
                   {user?.role === 'ADMIN' && (
                     <Link to="/crm/admin" className="flex items-center space-x-3 px-3 py-3 text-slate-600" onClick={() => setIsMobileMenuOpen(false)}>
-                      <FiSettings size={16} className={isPrakritiPage ? currentTheme.textAccent : 'text-[#2F5DA8]'} /> <span>Admin Panel</span>
+                      <FiSettings size={16} className="text-[#2F5DA8]" /> <span>Admin Panel</span>
                     </Link>
                   )}
                   <button onClick={handleLogout} className="flex items-center space-x-3 px-3 py-3 text-red-600 w-full text-left font-bold">
@@ -467,8 +386,7 @@ export default function Navbar() {
 
               <Link
                 to="/quote-request"
-                className={`flex items-center justify-center space-x-1 px-4 py-3.5 rounded-xl text-white shadow-sm ${isPrakritiPage ? 'bg-[#004B3B]' : 'bg-[#2F5DA8]'
-                  }`}
+                className="flex items-center justify-center space-x-1 px-4 py-3.5 rounded-xl text-white shadow-sm bg-[#2F5DA8]"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <FiFileText size={16} />

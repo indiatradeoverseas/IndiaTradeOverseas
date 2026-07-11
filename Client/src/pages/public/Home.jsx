@@ -8,7 +8,10 @@ import {
   FiLayers,
   FiMail,
   FiActivity,
-  FiBookOpen
+  FiBookOpen,
+  FiGlobe,
+  FiShield,
+  FiClipboard
 } from 'react-icons/fi';
 
 // Editorial B2B global trade carousel assets curated to match business segments
@@ -123,101 +126,154 @@ export default function Home() {
       <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
 
       {/* 03 HOME HERO SECTION - FIXED TRANSPARENCY DROP WITH PREMIUM SAPPHIRE BLENDING */}
-      <section className="relative min-h-[80vh] md:min-h-[85vh] flex items-center bg-[#0C1F3F] pt-8 pb-16 md:py-32 overflow-hidden border-b border-[#8FAADC]/30">
+      {/* 03 HOME HERO SECTION - CONTAINER CANVAS ANCHOR */}
+      {/* 03 HOME HERO SECTION - BALANCED VERTICAL FLOW */}
+      <section className="relative min-h-[100svh] flex items-center bg-[#0C1F3F] pt-24 pb-12 overflow-hidden border-b border-[#8FAADC]/30">
 
-        {/* Dynamic Image Canvas Layer (Optimized Clarity & Lighter Overlays) */}
+        {/* Dynamic Image Canvas Layer */}
         <div className="absolute inset-0 z-0 bg-[#0C1F3F]">
           <AnimatePresence mode="popLayout">
             <motion.img
               key={carouselIndex}
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6, transition: { duration: 1.2 } }} 
+              animate={{ opacity: 0.6, transition: { duration: 1.2 } }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.5, ease: 'easeInOut' }}
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
-              className="w-full h-full object-cover object-center absolute inset-0 md:opacity-35"
+              className="w-full h-full object-cover object-[68%_center] absolute inset-0 md:opacity-35"
             />
           </AnimatePresence>
-          {/* Lighter, color-safe protection masks to reveal asset details clearly */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0C1F3F]/50 via-[#0C1F3F]/30 to-transparent z-1"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0C1F3F]/60 via-transparent to-transparent z-1"></div>
+
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0C1F3F]/100 via-[#0C1F3F]/60 to-transparent z-1 hidden md:block"></div>
+          <div className="absolute inset-0 bg-[#0C1F3F]/75 z-1 block md:hidden"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0C1F3F]/85 via-transparent to-transparent z-1"></div>
         </div>
 
-        {/* Dynamic Mobile Layout Wrapper Node */}
+        {/* Main Container Wrapper - Uses flex-col and gap spacing to separate content naturally */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center md:text-left w-full"
+          className="max-w-[1480px] mx-auto px-4 sm:px-8 lg:px-12 relative z-10 w-full flex flex-col justify-center gap-8 h-full"
         >
-          <div className="max-w-3xl mx-auto md:mx-0 pt-4 sm:pt-6 md:pt-0">
+          {/* TEXT COLUMN CONTAINER: Content stays constrained to the left */}
+          <div className="max-w-3xl text-center md:text-left mx-auto md:mx-0 flex flex-col items-center md:items-start w-full">
 
             {/* Context Badge */}
-            <motion.span
-              variants={fadeInUp}
-              className="inline-flex items-center space-x-2 bg-[#0C1F3F]/90 backdrop-blur-xs text-white border border-[#8FAADC]/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-widest uppercase mb-4 sm:mb-6 shadow-xs"
-            >
+            <motion.span variants={fadeInUp} className="inline-flex items-center space-x-2 bg-[#0C1F3F]/90 border border-[#8FAADC]/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-widest uppercase mb-4 shadow-xs">
               <FiAnchor className="text-[#8FAADC]" /> <span>India Trade Overseas</span>
             </motion.span>
 
             {/* Mandated Hero Heading Text */}
-            <motion.h1
-              variants={fadeInUp}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-white tracking-tight font-normal leading-tight mb-3 sm:mb-4 uppercase drop-shadow-md"
-            >
+            <motion.h1 variants={fadeInUp} className="text-3xl sm:text-4xl md:text-5xl lg:text-[56px] font-serif text-white tracking-tight font-normal leading-[1.1] mb-3 uppercase drop-shadow-md">
               India Trade Overseas <br />
-              <span className="text-[#8FAADC] text-xl sm:text-2xl md:text-3xl block mt-1 sm:mt-2 font-sans font-light tracking-wide normal-case">
+              <span className="text-[#8FAADC] text-base sm:text-2xl md:text-3xl block mt-0.5 font-sans font-light tracking-wide normal-case">
                 Trade. Supply. Logistics. Growth.
               </span>
             </motion.h1>
 
-            {/* Gold/Blue Divider Line Layout Alignment Rule */}
-            <motion.div variants={fadeInUp} className="w-12 sm:w-16 h-[1px] bg-[#8FAADC] mb-4 sm:mb-6 mx-auto md:mx-0"></motion.div>
+            <motion.div variants={fadeInUp} className="w-16 h-[1px] bg-[#8FAADC] mb-3 mx-auto md:mx-0"></motion.div>
 
-            {/* Motto & Supporting Brand Lines */}
-            <motion.p
-              variants={fadeInUp}
-              className="text-base sm:text-xl md:text-2xl uppercase tracking-[0.12em] sm:tracking-[0.15em] font-sans text-[#8FAADC] font-bold mb-1 drop-shadow-xs"
-            >
+            {/* Motto & Narrative Copy */}
+            <motion.p variants={fadeInUp} className="text-base sm:text-lg md:text-xl uppercase tracking-[0.12em] sm:tracking-[0.15em] font-sans text-[#8FAADC] font-bold mb-0.5">
               Empowering Trade. Enabling Growth.
             </motion.p>
-            <motion.p
-              variants={fadeInUp}
-              className="text-[11px] sm:text-xs md:text-sm italic font-serif text-[#FFF1E8]/90 tracking-wider mb-5 sm:mb-8 block drop-shadow-xs"
-            >
+            <motion.p variants={fadeInUp} className="text-[10px] sm:text-xs italic font-serif text-[#FFF1E8]/90 tracking-wider mb-4 block">
               Where Quality Meets Global Demand.
             </motion.p>
-
-            {/* Mandated Hero Narrative Copy */}
-            <motion.p
-              variants={fadeInUp}
-              className="text-white font-sans font-light text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed mb-6 sm:mb-10 drop-shadow-sm"
-            >
+            <motion.p variants={fadeInUp} className="text-white font-sans font-light text-[12px] sm:text-sm md:text-base max-w-xl md:max-w-2xl leading-relaxed mb-6">
               India Trade Overseas is a multi-dimensional trade enterprise providing domestic and international sourcing, bulk supply, logistics coordination, industrial materials, construction materials, food commodities and consumer product solutions.
             </motion.p>
 
-            {/* Mandated Hero Multi-Action Interface Matrix */}
-            <motion.div
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-4"
-            >
-              <Link
-                to="/products"
-                className="w-full sm:w-auto bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm shadow-md transition-all text-center"
-              >
+            {/* Action Buttons */}
+            <div className="flex flex-row items-center justify-center md:justify-start gap-3 w-full max-w-sm sm:max-w-none">
+              <Link to="/products" className="flex-1 sm:flex-none bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] text-[10px] sm:text-xs tracking-widest uppercase font-semibold px-4 sm:px-6 py-3 rounded-sm shadow-md transition-all text-center whitespace-nowrap">
                 Explore Products
               </Link>
-              <Link
-                to="/quote-request"
-                className="w-full sm:w-auto bg-[#0C1F3F]/80 backdrop-blur-xs border border-[#8FAADC]/40 hover:border-[#8FAADC] text-[#8FAADC] hover:text-white text-[11px] sm:text-xs tracking-widest uppercase font-semibold px-5 py-3 sm:px-6 sm:py-3.5 rounded-sm transition-all text-center"
-              >
+              <Link to="/quote-request" className="flex-1 sm:flex-none bg-[#0C1F3F]/80 border border-[#8FAADC]/40 hover:border-[#8FAADC] text-[#8FAADC] hover:text-white text-[10px] sm:text-xs tracking-widest uppercase font-semibold px-4 sm:px-6 py-3 rounded-sm transition-all text-center whitespace-nowrap">
                 Request Bulk Quote
               </Link>
-            </motion.div>
+            </div>
+          </div>
 
+          {/* FOUR COLUMNS STRIP LAYER - Changes from absolute to normal relative grid layout */}
+          <div className="w-full">
+            {/* Desktop Horizon Panel Matrix Layout */}
+            <div className="hidden lg:block w-full">
+              <div className="grid grid-cols-4 gap-6 bg-[#0C1F3F]/85 backdrop-blur-md border border-[#8FAADC]/30 p-5 rounded-[4px] shadow-lg w-full">
+                <div className="flex gap-4 items-start px-2">
+                  <FiGlobe className="text-[#8FAADC] shrink-0 mt-1" size={18} />
+                  <div>
+                    <h5 className="text-white font-sans text-xs font-semibold tracking-wider uppercase mb-1">Global Sourcing</h5>
+                    <p className="text-white/80 text-[11px] leading-normal font-light">Trusted network of manufacturers and suppliers across key markets.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start px-4 border-l border-[#8FAADC]/20">
+                  <FiShield className="text-[#8FAADC] shrink-0 mt-1" size={18} />
+                  <div>
+                    <h5 className="text-white font-sans text-xs font-semibold tracking-wider uppercase mb-1">Smart Logistics</h5>
+                    <p className="text-white/80 text-[11px] leading-normal font-light">Integrated multi-modal logistics ensuring speed, reliability and scale.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start px-4 border-l border-[#8FAADC]/20">
+                  <FiClipboard className="text-[#8FAADC] shrink-0 mt-1" size={18} />
+                  <div>
+                    <h5 className="text-white font-sans text-xs font-semibold tracking-wider uppercase mb-1">Compliance Assured</h5>
+                    <p className="text-white/80 text-[11px] leading-normal font-light">Adherence to international standards and regulatory excellence.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start px-4 border-l border-[#8FAADC]/20">
+                  <FiAnchor className="text-[#8FAADC] shrink-0 mt-1" size={18} />
+                  <div>
+                    <h5 className="text-white font-sans text-xs font-semibold tracking-wider uppercase mb-1">Built For Partnerships</h5>
+                    <p className="text-white/80 text-[11px] leading-normal font-light">Long-term relationships powered by transparency and results.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile/Tablet Adaptive Stacked Content Matrix Grid */}
+            <div className="block lg:hidden w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#0C1F3F]/85 backdrop-blur-md border border-[#8FAADC]/30 p-3 rounded-[4px] shadow-md w-full">
+                {[
+                  { icon: <FiGlobe size={14} />, title: "Global Sourcing", desc: "Trusted network of manufacturers and suppliers across key markets." },
+                  { icon: <FiShield size={14} />, title: "Smart Logistics", desc: "Integrated multi-modal logistics ensuring speed, reliability and scale." },
+                  { icon: <FiClipboard size={14} />, title: "Compliance Assured", desc: "Adherence to international standards and regulatory excellence." },
+                  { icon: <FiAnchor size={14} />, title: "Built For Partnerships", desc: "Long-term relationships powered by transparency and results." }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-2.5 p-2 bg-[#0C1F3F]/50 rounded border border-[#8FAADC]/10 w-full text-left">
+                    <div className="text-[#8FAADC] shrink-0 mt-0.5">{item.icon}</div>
+                    <div>
+                      <h5 className="text-white font-sans text-[10px] font-semibold tracking-wide uppercase mb-0.5">{item.title}</h5>
+                      <p className="text-white/70 text-[9px] leading-tight font-light">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </motion.div>
+      </section>
+
+      {/* MOBILE ONLY: Rendered cleanly under the viewport section as a natural scroll element */}
+      <section className="block lg:hidden bg-[#0C1F3F] border-b border-[#8FAADC]/20 py-8 px-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#0C1F3F]/85 border border-[#8FAADC]/30 p-4 rounded-[4px] shadow-md w-full">
+          {[
+            { icon: <FiGlobe size={16} />, title: "Global Sourcing", desc: "Trusted network of manufacturers and suppliers across key markets." },
+            { icon: <FiShield size={16} />, title: "Smart Logistics", desc: "Integrated multi-modal logistics ensuring speed, reliability and scale." },
+            { icon: <FiClipboard size={16} />, title: "Compliance Assured", desc: "Adherence to international standards and regulatory excellence." },
+            { icon: <FiAnchor size={16} />, title: "Built For Partnerships", desc: "Long-term relationships powered by transparency and results." }
+          ].map((item, idx) => (
+            <div key={idx} className="flex gap-3 p-3 bg-[#0C1F3F]/50 rounded border border-[#8FAADC]/10 w-full text-left">
+              <div className="text-[#8FAADC] shrink-0 mt-0.5">{item.icon}</div>
+              <div>
+                <h5 className="text-white font-sans text-[11px] font-semibold tracking-wide uppercase mb-0.5">{item.title}</h5>
+                <p className="text-white/70 text-[10px] leading-relaxed font-light">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* MANDATED BRAND TRUST SIGNALS STRIP */}
@@ -327,13 +383,13 @@ export default function Home() {
 
       {/* 05-BUSINESS VERTICALS PRESENTATION PANELS */}
       <section className="relative py-16 bg-[#0C1F3F] border-y border-[#8FAADC]/80 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        
+
         {/* 1. Base Decorative Background Asset Layer */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none">
-          <img 
+          <img
             src="./images/bg-image.png"
-            alt="Commercial Verticals Depth Layout Background" 
-            className="w-full h-full object-cover object-center opacity-55 md:opacity-35 transition-opacity duration-300" 
+            alt="Commercial Verticals Depth Layout Background"
+            className="w-full h-full object-cover  object-center opacity-55 md:opacity-35 transition-opacity duration-300"
           />
           {/* Modulated protection mask: lightened the top/bottom pinch colors to let details emerge on smaller panels */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#0C1F3F]/75 via-transparent to-[#0C1F3F]/75 mix-blend-multiply" />
@@ -358,7 +414,6 @@ export default function Home() {
               <motion.div
                 key={idx}
                 variants={fadeInUp}
-                
                 className="bg-[#0C1F3F]/80 backdrop-blur-xs border border-[#8FAADC]/20 p-5 shadow-3xs rounded-sm flex flex-col justify-between relative group hover:border-[#8FAADC] transition-colors"
               >
                 <div>
@@ -442,20 +497,20 @@ export default function Home() {
       <section className="relative w-full py-16 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-b border-[#8FAADC]/30 bg-[#0C1F3F]">
 
         {/* 1. Base Cinematic Port Image Layer (Enhanced Clarity Visibility) */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 opacity-45">
           <img
             src="./images/ito_1.jpeg"
             alt="India Trade Overseas Freight Port Terminal Background"
-            className="w-full h-full object-cover object-center pointer-events-none select-none opacity-65"
+            className="w-full h-full object-cover object-center pointer-events-none select-none filter brightness-[0.70] contrast-[1.12] saturate-[0.72]"
           />
           {/* Light opacity mask to let the background image shine through cleanly */}
-          <div className="absolute inset-0 bg-[#0C1F3F]/40 backdrop-blur-[1px]" />
+          <div className="absolute inset-0 bg-[#0C1F3F]/25 backdrop-blur-[0.5px]" />
           <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:40px_32px]" />
         </div>
 
         {/* 2. Content Layout (Fully Centralized Clean Interface Matrix) */}
         <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
-          
+
           <div className="inline-flex items-center gap-2 bg-white/5 border border-[#8FAADC]/30 rounded-full px-3 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#8FAADC] animate-ping" />
             <span className="text-[10px] tracking-widest font-mono uppercase text-[#FFF1E8] font-bold">Fulfillment Matrix</span>
@@ -477,7 +532,7 @@ export default function Home() {
               Contact Commercial Office
             </Link>
           </div>
-          
+
         </div>
       </section>
 
