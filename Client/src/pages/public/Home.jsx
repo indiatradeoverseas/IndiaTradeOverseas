@@ -333,7 +333,7 @@ export default function Home() {
           <img 
             src="./images/bg-image.png"
             alt="Commercial Verticals Depth Layout Background" 
-            className="w-full h-full object-cover object-center opacity-55 md:opacity-35 transition-opacity duration-300" 
+            className="w-full h-full object-cover  object-center opacity-55 md:opacity-35 transition-opacity duration-300" 
           />
           {/* Modulated protection mask: lightened the top/bottom pinch colors to let details emerge on smaller panels */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#0C1F3F]/75 via-transparent to-[#0C1F3F]/75 mix-blend-multiply" />
