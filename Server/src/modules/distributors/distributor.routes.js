@@ -56,10 +56,10 @@ const checkAdminManagerHR = (req, res, next) => {
 
 // Public Routes
 router.post(
-  '/register', 
+  '/', 
   upload.fields([
-    { name: 'doc1', maxCount: 1 },
-    { name: 'doc2', maxCount: 1 }
+    { name: 'primaryDocument', maxCount: 1 },
+    { name: 'secondaryDocument', maxCount: 1 }
   ]), 
   registerDistributor
 );
