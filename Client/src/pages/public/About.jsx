@@ -1,5 +1,6 @@
 import React from 'react';
-import { FiShield, FiAward, FiUsers, FiTrendingUp, FiMapPin } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { FiShield, FiAward, FiUsers, FiTrendingUp } from 'react-icons/fi';
 
 export default function About() {
   const coreValues = [
@@ -9,37 +10,98 @@ export default function About() {
     { icon: FiTrendingUp, title: 'Growth', description: 'Creating commercial opportunities for clients, supply partners and communities.' }
   ];
 
+  // Animation variants for the text stack pop-up effect
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        delayChildren: 0.1, // Gives a micro-pause before the first child starts popping up
+        staggerChildren: 0.2, // Increased from 0.15 for a distinct, rhythmic sequential reveal
+      }
+    }
+  };
+
+  const textPopUpVariants = {
+    hidden: { opacity: 0, y: 35 }, // Slightly increased y-offset for a more dramatic but smooth glide
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.85, // Increased from 0.5s to 0.85s to slow down the popup transition
+        ease: [0.16, 1, 0.3, 1] // Keeps the beautiful, ultra-premium cinematic cubic-bezier ease-out
+      }
+    }
+  };
+
   return (
-    <div className="bg-[#0C1F3F] text-white antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-white">
+    <div className="bg-[#0C1F3F] text-white antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-white font-sans overflow-x-hidden">
       <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
 
       {/* Overview Block */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+      <section className="relative w-full py-10 lg:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+
+        {/* Background Image Layer */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none">
+          <img
+            src="/images/about_bg_image.png"
+            alt="Corporate Operations Background Canvas"
+            className="w-full h-full object-cover object-center opacity-45"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0C1F3F]/70 via-[#0C1F3F]/75 to-[#0C1F3F]/80 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-[#0C1F3F]/10 backdrop-blur-[0.5px]" />
+        </div>
+
+        {/* Content Structure */}
+        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center w-full">
           <div className="lg:col-span-5 w-full flex justify-center">
-            <div className="relative p-3 bg-[#0C1F3F] border border-[#8FAADC]/20 shadow-xl rounded-2xl">
+            <div className="relative p-3 bg-[#0C1F3F]/90 backdrop-blur-xs border border-[#8FAADC]/20 shadow-xl rounded-2xl">
               <img src="/images/ito Image.jpeg" alt="Company Profile" className="w-full h-auto object-contain max-h-[460px] rounded-xl" onError={(e) => e.target.src = './images/Company_logo.png'} />
             </div>
           </div>
 
-          <div className="lg:col-span-7 space-y-6 text-left">
-            <span className="text-[#8FAADC] text-[10px] font-bold tracking-[0.25em] uppercase block">Dossier Statement</span>
-            <h2 className="text-3xl sm:text-4xl font-serif text-white font-bold tracking-tight uppercase">Corporate Overview</h2>
-            <p className="text-white/80 leading-relaxed font-sans font-light text-sm sm:text-base">
-              India Trade Overseas is a founder-led enterprise established in 2024. The business operates across complex raw product sourcing configurations, large-volume supply operations, inter-state transit distribution routing models, and custom manufacturing. We unify trusted processing mills and industrial sectors under strict corporate governance blueprints.
-            </p>
+          {/* Animated Left-aligned Text Column Wrapper */}
+          <motion.div
+            className="lg:col-span-7 space-y-6 text-left"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.span
+              variants={textPopUpVariants}
+              className="text-[#8FAADC] text-[10px] font-bold tracking-[0.25em] uppercase block"
+            >
+              Dossier Statement
+            </motion.span>
 
-            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-[#8FAADC]/20">
-              <div className="bg-[#0C1F3F] p-4 rounded-xl border border-[#8FAADC]/30">
+            <motion.h2
+              variants={textPopUpVariants}
+              className="text-3xl sm:text-4xl font-serif text-white font-bold tracking-tight uppercase drop-shadow-sm"
+            >
+              Corporate Overview
+            </motion.h2>
+
+            <motion.p
+              variants={textPopUpVariants}
+              className="text-white/90 leading-relaxed font-sans font-light text-sm sm:text-base drop-shadow-sm"
+            >
+              India Trade Overseas is a founder-led enterprise established in 2024. The business operates across complex raw product sourcing configurations, large-volume supply operations, inter-state transit distribution routing models, and custom manufacturing. We unify trusted processing mills and industrial sectors under strict corporate governance blueprints.
+            </motion.p>
+
+            <motion.div
+              variants={textPopUpVariants}
+              className="grid grid-cols-2 gap-4 pt-6 border-t border-[#8FAADC]/20"
+            >
+              <div className="bg-[#0C1F3F]/80 backdrop-blur-xs p-4 rounded-xl border border-[#8FAADC]/30 shadow-xs">
                 <span className="text-[9px] font-mono uppercase tracking-widest text-[#8FAADC] font-bold block mb-0.5">Established</span>
                 <span className="font-serif text-xl font-bold text-white">2024</span>
               </div>
-              <div className="bg-[#0C1F3F] p-4 rounded-xl border border-[#8FAADC]/30">
+              <div className="bg-[#0C1F3F]/80 backdrop-blur-xs p-4 rounded-xl border border-[#8FAADC]/30 shadow-xs">
                 <span className="text-[9px] font-mono uppercase tracking-widest text-[#8FAADC] font-bold block mb-0.5">Market Core</span>
                 <span className="font-sans text-[11px] text-white font-bold block mt-1 uppercase tracking-wide">Trade &bull; Logistics &bull; EXIM</span>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -68,7 +130,7 @@ export default function About() {
           <span className="text-[#8FAADC] font-bold tracking-[0.25em] text-[10px] uppercase block">Executive Desk</span>
           <h2 className="text-2xl sm:text-3xl font-serif text-white font-bold uppercase tracking-wide">Governance &amp; Direction</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="bg-[#0C1F3F] border border-[#8FAADC]/20 shadow-sm rounded-2xl p-8 flex flex-col items-center text-center hover:border-[#8FAADC] transition-colors duration-300">
             <div className="w-20 h-24 rounded-xl mb-4 border border-[#8FAADC]/20 overflow-hidden bg-[#0C1F3F]"><img src="./images/Raza.jpeg" alt="Md Ramiz Raza Khan" className="w-full h-full object-cover scale-105" /></div>
