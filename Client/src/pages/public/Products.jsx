@@ -101,62 +101,56 @@ export default function Products() {
     return matchesSearch && prodCat === category;
   });
 
-  if (loading) {
-    return (
-      <div className="bg-[#0C1F3F] text-white antialiased min-h-screen font-sans">
-        <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          
-          {/* Header Skeleton */}
-          <div className="text-center mb-12 space-y-3 animate-pulse">
-            <div className="w-24 h-2 bg-[#8FAADC]/20 mx-auto rounded"></div>
-            <div className="w-64 sm:w-96 h-8 bg-white/10 mx-auto rounded"></div>
-            <div className="w-12 h-[2px] bg-[#8FAADC]/30 mx-auto mt-2"></div>
-          </div>
-
-          {/* Filters Skeleton */}
-          <div className="mb-10 bg-[#0C1F3F] border border-[#8FAADC]/20 p-4 rounded-xl flex flex-col md:flex-row gap-3 items-center animate-pulse">
-            <div className="flex-1 w-full h-9 bg-white/5 rounded-md"></div>
-            <div className="w-full md:w-64 h-9 bg-white/5 rounded-md"></div>
-          </div>
-
-          {/* Shimmer Grid Structure */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-[#0C1F3F] border border-[#8FAADC]/20 rounded-xl p-4 flex flex-col justify-between h-[450px] animate-pulse">
-                <div>
-                  {/* Image Placeholder */}
-                  <div className="bg-white/5 rounded-lg mb-4 h-52 w-full"></div>
-                  {/* Title Placeholder */}
-                  <div className="h-4 bg-white/10 rounded w-3/4 mb-3"></div>
-                  <div className="h-4 bg-white/10 rounded w-1/2 mb-4"></div>
-                  {/* Description Box Placeholder */}
-                  <div className="border border-[#8FAADC]/10 rounded-lg p-2.5 space-y-2">
-                    <div className="h-2 bg-white/5 rounded w-full"></div>
-                    <div className="h-2 bg-white/5 rounded w-5/6"></div>
-                    <div className="h-2 bg-white/5 rounded w-4/5"></div>
-                  </div>
-                </div>
-                {/* Footer Metadata & Action Buttons */}
-                <div>
-                  <div className="flex justify-between items-center mb-4 pt-4 border-t border-[#8FAADC]/10">
-                    <div className="h-2 bg-white/5 rounded w-1/3"></div>
-                    <div className="h-4 bg-white/5 rounded w-16"></div>
-                  </div>
-                  <div className="w-full h-11 bg-[#2F5DA8]/20 rounded-lg"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-[#0C1F3F] text-white antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-white font-sans">
+    <div className="bg-[#0C1F3F] text-white antialiased min-h-screen selection:bg-[#8FAADC]/30 selection:text-white font-sans overflow-x-hidden">
+      
+      {/* Decorative Top Accent Border */}
       <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
 
+      {/* PRODUCTS HERO SECTION - CONFIGURING 3/4 VIEWPORT HEIGHT (75vh) */}
+      <section className="relative min-h-[75vh] flex items-center justify-center bg-[#0C1F3F] overflow-hidden border-b border-[#8FAADC]/20 py-16 md:py-24">
+        
+        {/* Background Graphic Framework Container */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none">
+          <img 
+            src="./images/prod_bg_image.png" 
+            alt="India Trade Overseas Bulk Cargo Freight Hub Background" 
+            className="w-full h-full object-cover object-center opacity-40"
+          />
+          {/* Transparent Color Protection Tint Mask to maximize readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0C1F3F]/70 via-[#0C1F3F]/40 to-[#0C1F3F]/85 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-[#0C1F3F]/20 backdrop-blur-[0.5px]" />
+        </div>
+
+        {/* Hero Typography Metadata Stack */}
+        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="space-y-4"
+          >
+            <span className="inline-flex items-center gap-1.5 bg-white/5 border border-[#8FAADC]/30 rounded-full px-3 py-1 text-[10px] tracking-widest font-mono uppercase text-[#FFF1E8] font-bold shadow-xs">
+              Global Supply Portfolio
+            </span>
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-serif tracking-wide uppercase text-white leading-tight drop-shadow-md">
+              India Trade Overseas Products
+            </h2>
+            <div className="w-20 h-[1.5px] bg-[#8FAADC] mx-auto my-3" />
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+            className="text-white/90 font-sans font-light text-xs sm:text-sm md:text-base max-w-2xl mx-auto leading-relaxed drop-shadow-sm"
+          >
+            Explore our cross-border allocation matrix mapping direct supply chains across key global industries. We synchronize trusted local plantations, processing mills, and manufacturing sectors to secure premium food agricultural assets, industrial energy components, and bulk civil construction materials. Browse our catalog parameters below to inspect verified grading, lot options, and origin certifications.
+          </motion.p>
+        </div>
+      </section>
+
+      {/* CORE CATALOG FEED CONTAINER GRID */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 
         <div className="text-center mb-12 space-y-1">
@@ -176,34 +170,61 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Grid */}
+        {/* Dynamic State Staging Viewport Grid */}
         <div className="min-h-[400px]">
-          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <AnimatePresence mode="popLayout">
-              {filteredProducts.map(product => (
-                <motion.div key={product._id || product.id} variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" exit={{ opacity: 0, scale: 0.98 }} layout className="bg-[#0C1F3F] border border-[#8FAADC]/20 shadow-xs rounded-xl p-4 flex flex-col justify-between group hover:shadow-md hover:border-[#8FAADC] transition-all duration-300">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-[#0C1F3F] border border-[#8FAADC]/20 rounded-xl p-4 flex flex-col justify-between h-[450px] animate-pulse">
                   <div>
-                    <div className="overflow-hidden bg-[#0C1F3F] border border-[#8FAADC]/10 rounded-lg mb-4 h-52 relative flex items-center justify-center">
-                      <img src={product.image || product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-101" loading="lazy" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80'} />
+                    <div className="bg-white/5 rounded-lg mb-4 h-52 w-full"></div>
+                    <div className="h-4 bg-white/10 rounded w-3/4 mb-3"></div>
+                    <div className="h-4 bg-white/10 rounded w-1/2 mb-4"></div>
+                    <div className="border border-[#8FAADC]/10 rounded-lg p-2.5 space-y-2">
+                      <div className="h-2 bg-white/5 rounded w-full"></div>
+                      <div className="h-2 bg-white/5 rounded w-5/6"></div>
+                      <div className="h-2 bg-white/5 rounded w-4/5"></div>
                     </div>
-                    <h3 className="text-base font-serif font-bold text-white mb-3 text-left tracking-wide line-clamp-2">{product.name}</h3>
-                    <div className="max-h-40 overflow-y-auto mb-4 border border-[#8FAADC]/10 rounded-lg p-2.5 bg-[#0C1F3F] text-xs scrollbar-thin">{renderFormattedDescription(product.description)}</div>
                   </div>
-
                   <div>
-                    <div className="flex justify-between items-center text-[9px] font-mono uppercase tracking-widest text-[#8FAADC] mb-4 pt-2 border-t border-[#8FAADC]/10">
-                      <span className="flex items-center gap-1"><FiMapPin className="text-[#8FAADC]" /> Origin: <strong className="text-white font-sans normal-case ml-0.5">{product.origin || 'India'}</strong></span>
-                      <span className="text-[#8FAADC] font-bold text-[8px] bg-[#0C1F3F] px-2 py-0.5 rounded-md border border-[#8FAADC]/30 flex items-center gap-1"><FiCheckCircle size={8} /> Verified</span>
+                    <div className="flex justify-between items-center mb-4 pt-4 border-t border-[#8FAADC]/10">
+                      <div className="h-2 bg-white/5 rounded w-1/3"></div>
+                      <div className="h-4 bg-white/5 rounded w-16"></div>
                     </div>
-                    <Link to={`/products/${product._id || product.id}`} className="w-full inline-flex items-center justify-center text-center bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] py-3 font-bold tracking-widest transition-colors rounded-lg uppercase text-[10px]">Analyze Specifications</Link>
+                    <div className="w-full h-11 bg-[#2F5DA8]/20 rounded-lg"></div>
                   </div>
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
-          </motion.div>
+            </div>
+          ) : (
+            <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <AnimatePresence mode="popLayout">
+                {filteredProducts.map(product => (
+                  <motion.div key={product._id || product.id} variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }} initial="hidden" animate="visible" exit={{ opacity: 0, scale: 0.98 }} layout className="bg-[#0C1F3F] border border-[#8FAADC]/20 shadow-xs rounded-xl p-4 flex flex-col justify-between group hover:shadow-md hover:border-[#8FAADC] transition-all duration-300">
+                    <div>
+                      <div className="overflow-hidden bg-[#0C1F3F] border border-[#8FAADC]/10 rounded-lg mb-4 h-52 relative flex items-center justify-center">
+                        <img src={product.image || product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-101" loading="lazy" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-157857437130-527eed3abbec?auto=format&fit=crop&w=600&q=80'} />
+                      </div>
+                      <h3 className="text-base font-serif font-bold text-white mb-3 text-left tracking-wide line-clamp-2">{product.name}</h3>
+                      <div className="max-h-40 overflow-y-auto mb-4 border border-[#8FAADC]/10 rounded-lg p-2.5 bg-[#0C1F3F] text-xs scrollbar-thin">{renderFormattedDescription(product.description)}</div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center text-[9px] font-mono uppercase tracking-widest text-[#8FAADC] mb-4 pt-2 border-t border-[#8FAADC]/10">
+                        <span className="flex items-center gap-1"><FiMapPin className="text-[#8FAADC]" /> Origin: <strong className="text-white font-sans normal-case ml-0.5">{product.origin || 'India'}</strong></span>
+                        <span className="text-[#8FAADC] font-bold text-[8px] bg-[#0C1F3F] px-2 py-0.5 rounded-md border border-[#8FAADC]/30 flex items-center gap-1"><FiCheckCircle size={8} /> Verified</span>
+                      </div>
+                      <Link to={`/products/${product._id || product.id}`} className="w-full inline-flex items-center justify-center text-center bg-[#2F5DA8] hover:bg-[#8FAADC] text-white hover:text-[#0C1F3F] py-3 font-bold tracking-widest transition-colors rounded-lg uppercase text-[10px]">Analyze Specifications</Link>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </div>
       </div>
 
+      {/* CORPORATE FOOTER SEAL */}
       <footer className="bg-[#0C1F3F] text-[#8FAADC] py-12 px-4 border-t-2 border-[#2F5DA8] text-center font-sans">
         <div className="max-w-3xl mx-auto space-y-4">
           <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">

@@ -14,14 +14,14 @@ import {
   FiClipboard
 } from 'react-icons/fi';
 
-// Editorial B2B global trade carousel assets curated to match business segments
+
 const CINEMATIC_CAROUSEL_BACKDROPS = [
-  "./images/ito_1.jpeg", // Mandated Starting Vessel Asset
-  "./images/ito_2.jpeg",           // Heavy Ocean Container Carrier 
-  "./images/ito_3.jpeg",           // Global Supply Distribution Hub
-  "./images/ito_4.jpeg",           // Dockside Terminal Infrastructure
+  "./images/ito_1.jpeg", 
+  "./images/ito_2.jpeg",          
+  "./images/ito_3.jpeg",           
+  "./images/ito_4.jpeg",           
   "./images/ito_5.jpeg",
-  "./images/ito_7.jpeg"            // Industrial Freight Crane Cranes Overview
+  "./images/ito_7.jpeg"           
 ];
 
 export default function Home() {
@@ -125,9 +125,6 @@ export default function Home() {
       {/* Non-Negotiable Double Gold Frame Top Divider Accent */}
       <div className="border-t-[3px] border-double border-[#8FAADC] w-full"></div>
 
-      {/* 03 HOME HERO SECTION - FIXED TRANSPARENCY DROP WITH PREMIUM SAPPHIRE BLENDING */}
-      {/* 03 HOME HERO SECTION - CONTAINER CANVAS ANCHOR */}
-      {/* 03 HOME HERO SECTION - BALANCED VERTICAL FLOW */}
       <section className="relative min-h-[100svh] flex items-center bg-[#0C1F3F] pt-24 pb-12 overflow-hidden border-b border-[#8FAADC]/30">
 
         {/* Dynamic Image Canvas Layer */}
@@ -230,26 +227,6 @@ export default function Home() {
                     <p className="text-white/80 text-[11px] leading-normal font-light">Long-term relationships powered by transparency and results.</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Mobile/Tablet Adaptive Stacked Content Matrix Grid */}
-            <div className="block lg:hidden w-full">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#0C1F3F]/85 backdrop-blur-md border border-[#8FAADC]/30 p-3 rounded-[4px] shadow-md w-full">
-                {[
-                  { icon: <FiGlobe size={14} />, title: "Global Sourcing", desc: "Trusted network of manufacturers and suppliers across key markets." },
-                  { icon: <FiShield size={14} />, title: "Smart Logistics", desc: "Integrated multi-modal logistics ensuring speed, reliability and scale." },
-                  { icon: <FiClipboard size={14} />, title: "Compliance Assured", desc: "Adherence to international standards and regulatory excellence." },
-                  { icon: <FiAnchor size={14} />, title: "Built For Partnerships", desc: "Long-term relationships powered by transparency and results." }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex gap-2.5 p-2 bg-[#0C1F3F]/50 rounded border border-[#8FAADC]/10 w-full text-left">
-                    <div className="text-[#8FAADC] shrink-0 mt-0.5">{item.icon}</div>
-                    <div>
-                      <h5 className="text-white font-sans text-[10px] font-semibold tracking-wide uppercase mb-0.5">{item.title}</h5>
-                      <p className="text-white/70 text-[9px] leading-tight font-light">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -365,7 +342,7 @@ export default function Home() {
 
           <div className="lg:col-span-5 bg-[#0C1F3F] border border-[#8FAADC]/20 p-6 rounded-sm shadow-3xs flex flex-col justify-center">
             <span className="text-[#8FAADC] font-medium tracking-[0.2em] text-[10px] uppercase block mb-0.5">Corporate Office Location</span>
-            <h4 className="text-lg font-serif text-white mb-2">Location Stone Chips</h4>
+            <h4 className="text-lg font-serif text-white mb-2">Corporate Office Location</h4>
             <p className="text-[11px] text-white/70 font-sans font-light leading-relaxed mb-4">
               Our active multi-category physical footprints maintain operational hubs inside the following major regional logistics corridors:
             </p>
