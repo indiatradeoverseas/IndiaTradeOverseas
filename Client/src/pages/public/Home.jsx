@@ -159,10 +159,10 @@ export default function Home() {
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
-          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col justify-between lg:pt-[120px] sm:pt-[10px] lg:pb-[72px] sm:pb-[10px] h-full min-h-[100svh] max-h-[980px]"
+          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col  justify-between lg:pt-[120px] sm:pt-[12px] lg:pb-[72px] sm:pb-[10px] h-full min-h-[100svh] max-h-[980px]"
         >
           {/* Hero Content Left Column Block */}
-          <div className="max-w-[720px] text-left flex flex-col items-start w-full mt-6 ">
+          <div className="max-w-[720px] text-left flex flex-col items-start w-full mt-8">
 
             {/* Context Eyebrow Text */}
             <motion.p 
