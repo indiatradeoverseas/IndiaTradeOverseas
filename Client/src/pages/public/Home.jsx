@@ -472,9 +472,9 @@ export default function Home() {
       {/* FINAL FULFILLMENT MATRIX CTA BLOCK */}
       <section className="relative w-full py-24 px-6 sm:px-12 lg:px-16 overflow-hidden border-t border-[#C5CBD3]/24 bg-[#040A12]">
         
-        <div className="absolute inset-0 z-0 opacity-40">
+        <div className="absolute inset-0 z-0 opacity-70">
           <img
-            src="./images/ito_1.jpeg"
+            src="./images/ito_images/ito_1.jpeg"
             alt="India Trade Overseas Freight Port Terminal Background"
             className="w-full h-full object-cover object-center"
             style={{ filter: 'brightness(0.70) contrast(1.12) saturate(0.72)' }}
