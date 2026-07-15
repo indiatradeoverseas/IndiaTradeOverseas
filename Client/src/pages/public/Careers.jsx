@@ -5,12 +5,12 @@ import {
   FiClock, 
   FiUpload, 
   FiCheckCircle, 
-  FiSend, 
   FiGlobe, 
   FiTrendingUp, 
   FiUsers, 
   FiChevronDown 
 } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
 
@@ -24,7 +24,7 @@ export default function Careers() {
     phone: '',
     position: '',
     resume: null,
-    coverLetter: ''
+    coverLetterFile: null 
   });
 
   const defaultJobs = [
@@ -65,7 +65,7 @@ export default function Careers() {
       location: 'Kishanganj, Bihar (Office)',
       type: 'Full-time',
       experience: '0-2 Years',
-      description: 'Provide exceptional service to our global clients. You will assist in tracking orders, resolving inquiries, keeping clients updated on shipment status, and coordinating with logistics internally.',
+      description: 'Provide exceptional service to global clients. You will assist in tracking orders, resolving inquiries, keeping clients updated on shipment status, and coordinating with logistics internally.',
       requirements: [
         'Graduate with decent communication skills.',
         'Proficient in using email, spreadsheets, and CRM tools.',
@@ -92,10 +92,10 @@ export default function Careers() {
   }, []);
 
   const perks = [
-    { icon: FiGlobe, title: 'Global Exposure', description: 'Interact and deal with suppliers and clients across international markets and continents.' },
-    { icon: FiTrendingUp, title: 'Fast-Track Growth', description: 'We are scaling rapidly. Grow your career as we scale our global footprints.' },
-    { icon: FiUsers, title: 'Collaborative Culture', description: 'Work in a supportive, transparent environment with passionate teammates.' },
-    { icon: FiBriefcase, title: 'Employee Well-being', description: 'We offer healthy work-life balance, regular team activities, and competitive pay.' }
+    { icon: FiGlobe, title: 'Global Exposure', description: 'Interaction with suppliers, buyers and operational partners across markets.' },
+    { icon: FiTrendingUp, title: 'Fast-Track Growth', description: 'Practical responsibility and accelerated learning as the company scales.' },
+    { icon: FiUsers, title: 'Collaborative Culture', description: 'Transparent teamwork, clear responsibilities and support from experienced professionals.' },
+    { icon: FiBriefcase, title: 'Employee Wellbeing', description: 'Reasonable work systems, respectful communication, development opportunities and clearly stated compensation.' }
   ];
 
   const handleInputChange = (e) => {
@@ -109,41 +109,24 @@ export default function Careers() {
     }
   };
 
+  const handleCoverLetterFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData(prev => ({ ...prev, coverLetterFile: e.target.files[0] }));
+    }
+  };
+
   const handleApplyClick = (jobTitle) => {
     setFormData(prev => ({ ...prev, position: jobTitle }));
     document.getElementById('apply-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const generateWhatsAppMessage = () => {
-    return `Hello India Trade Overseas Team,
-I would like to request an evaluation for the following career opening:
-Name: ${formData.fullName}
-Position Applied: ${formData.position}
-Email: ${formData.email}
-Phone: ${formData.phone}
-Additional Info: ${formData.coverLetter || 'None provided'}
-
-Please let me know the process for submitting my documents.`;
-  };
-
-  const copyApplicationTemplate = () => {
-    const rawTemplate = `Hello India Trade Overseas Team,
-I would like to request a career review:
-Name: ${formData.fullName}
-Position Applied: ${formData.position}
-Email: ${formData.email}
-Phone: ${formData.phone}`;
-    navigator.clipboard.writeText(rawTemplate)
-      .then(() => toast.success('Copied to Clipboard'))
-      .catch(() => toast.error('Failed to copy to clipboard'));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.fullName || !formData.email || !formData.phone || !formData.position || !formData.resume) {
-      toast.error('Please fill all required fields and upload your resume.');
-      return;
-    }
+    if (!formData.fullName.trim()) return toast.error('Full name is a required field.');
+    if (!formData.email.trim()) return toast.error('Email address is a required field.');
+    if (!formData.phone.trim()) return toast.error('Phone number is a required field.');
+    if (!formData.position) return toast.error('Please select your position of interest.');
+    if (!formData.resume) return toast.error('Please upload your resume file.');
 
     setSubmitting(true);
     try {
@@ -153,8 +136,8 @@ Phone: ${formData.phone}`;
       data.append('phone', formData.phone);
       data.append('position', formData.position);
       data.append('resume', formData.resume);
-      if (formData.coverLetter) {
-        data.append('coverLetter', formData.coverLetter);
+      if (formData.coverLetterFile) {
+        data.append('coverLetter', formData.coverLetterFile);
       }
 
       await careersApi.applyJob(data);
@@ -171,259 +154,382 @@ Phone: ${formData.phone}`;
   };
 
   const resetForm = () => {
-    setFormData({ fullName: '', email: '', phone: '', position: '', resume: null, coverLetter: '' });
+    setFormData({ fullName: '', email: '', phone: '', position: '', resume: null, coverLetterFile: null });
     setSubmitted(false);
   };
 
-  return (
-    <div className="bg-[#FBF7EF] text-slate-900 antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900">
-      
-      {/* Decorative Double Gold Line Top Border */}
-      <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
+  // Framer Motion Animation Variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.12 } }
+  };
 
-      {/* Hero Header */}
-      <header className="relative max-w-7xl mx-auto pt-20 pb-12 px-4 sm:px-6 lg:px-8 text-center">
-        <span className="text-amber-700 font-medium tracking-[0.25em] text-xs uppercase block mb-3">
-          Work With Us
-        </span>
-        <h1 className="text-4xl sm:text-6xl font-serif text-[#0B2D5B] tracking-tight font-normal mb-6">
-          Build The Future Of Global Trade
-        </h1>
-        <div className="w-24 h-[1px] bg-[#C99B38] mx-auto mb-4"></div>
-        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-sans font-light leading-relaxed mb-6">
-          At India Trade Overseas, we bridge markets and connect opportunities across borders. We are looking for talented, passionate individuals to join our growing empire.
-        </p>
-        <a
-          href="#openings"
-          className="inline-flex items-center px-6 py-2.5 border border-transparent text-xs tracking-widest uppercase font-semibold rounded-sm bg-[#0B2D5B] hover:bg-[#102F60] text-white shadow-md transition-colors"
-        >
-          Explore Openings
-        </a>
+  const elementVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { type: 'linear', duration: 0.55 } }
+  };
+
+  return (
+    <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden relative">
+      
+      {/* Structural Double-Line Top Border Accent */}
+      <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full fixed top-0 left-0 z-50"></div>
+
+      {/* PAGE HERO SECTION - RECRUITMENT REVISION WITH CINEMATIC BACKDROP */}
+      <header className="relative w-full pt-32 sm:pt-40 lg:pt-[160px] pb-24 px-6 sm:px-12 lg:px-16 text-center bg-[#040A12] border-b border-[#C5CBD3]/10 overflow-hidden">
+        
+        {/* Dynamic Photo Canvas Overlay Layer */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-40">
+          <img 
+            src="./images/ito_images/ito_14.png" 
+            alt="Professional diverse operations team overlooking international gateway logistics" 
+            className="w-full h-full object-cover object-center scale-105 filter brightness-[1.3] contrast-[1.18] saturate-[0.8]"
+          />
+          {/* Layered cinematic grading vignettes */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#040A12]/20 via-transparent to-[#040A12] z-1" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/20 via-[#040A12]/10 to-[#040A12]/2 z-1" />
+        </div>
+
+        {/* Hero Content Stack */}
+        <div className="relative z-10 max-w-4xl mx-auto space-y-6">
+          <motion.span 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-[#6D7886] font-medium tracking-[4px] text-[10px] sm:text-[11px] uppercase block font-sans"
+          >
+            WORK WITH US
+          </motion.span>
+          
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: 'easeOut' }}
+            className="text-3xl sm:text-5xl lg:text-[62px] font-serif text-[#F2F4F7] font-normal tracking-tight uppercase leading-[1.1] max-w-4xl mx-auto text-transparent bg-clip-text bg-gradient-to-b from-[#F2F4F7] via-[#F2F4F7] to-[#C5CBD3] filter drop-shadow-[0_4px_12px_rgba(4,10,18,0.7)]"
+          >
+            BUILD THE FUTURE OF GLOBAL TRADE.
+          </motion.h1>
+          
+          <motion.div 
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="w-16 h-[1px] bg-[#C5CBD3]/40 mx-auto border-b" 
+            aria-hidden="true"
+          />
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: 'easeOut' }}
+            className="font-sans font-light text-[#C5CBD3] text-sm sm:text-[16px] max-w-2xl mx-auto leading-[1.65] opacity-95 drop-shadow-[0_2px_8px_rgba(4,10,18,0.6)]"
+          >
+            Join a growing trade and logistics enterprise connecting markets and opportunities across borders.
+          </motion.p>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
+            className="pt-4"
+          >
+            <a
+              href="#openings"
+              className="inline-flex items-center px-7 h-[52px] text-[12px] uppercase tracking-widest font-semibold rounded-sm bg-[#F2F4F7] border border-transparent text-[#0E1116] hover:bg-[#C5CBD3] hover:-translate-y-0.5 transition-all duration-200 shadow-md cursor-pointer"
+            >
+              EXPLORE OPENINGS
+            </a>
+          </motion.div>
+        </div>
       </header>
 
-      {/* Corporate Perks Grid */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-serif text-[#0B2D5B]">Why India Trade Overseas?</h2>
-          <p className="text-slate-500 font-sans font-light text-xs mt-2">Discover a workplace where ambition meets global reach.</p>
+      {/* Employer Value Proposition - Grid Panel Layer */}
+      <section className="py-24 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 border-b border-[#C5CBD3]/24">
+        <div className="text-center space-y-2 mb-16">
+          <span className="text-[#6D7886] font-medium tracking-[3px] text-[12px] uppercase block">EVP Architecture</span>
+          <h2 className="text-2xl sm:text-3xl font-serif text-[#F2F4F7] uppercase tracking-wide">Why India Trade Overseas?</h2>
+          <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mx-auto mt-4" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
           {perks.map((perk, index) => (
-            <div key={index} className="bg-white p-6 border border-[#F5EEDF] shadow-sm rounded-sm">
-              <div className="text-[#C99B38] bg-[#FAF9F5] w-10 h-10 rounded-sm border border-[#C99B38]/10 flex items-center justify-center mb-4">
-                <perk.icon size={18} />
+            <motion.div 
+              key={index} 
+              variants={elementVariants}
+              className="bg-[#121D29]/80 backdrop-blur-sm p-6 border border-[#C5CBD3]/80 shadow-md rounded-sm hover:border-[#F2F4F7] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group "
+            >
+              <div>
+                <div className="text-[#F2F4F7] bg-[#0E1116] w-10 h-10 rounded-sm border border-[#C5CBD3]/24 flex items-center justify-center mb-5 transition-all duration-300 group-hover:bg-[#F2F4F7] group-hover:text-[#0E1116] shadow-inner">
+                  <perk.icon size={16} />
+                </div>
+                <h3 className="text-base font-serif font-medium text-[#F2F4F7] mb-2 group-hover:text-white transition-colors">{perk.title}</h3>
+                <p className="text-[#C5CBD3] text-xs font-sans font-light leading-[1.65] opacity-90">{perk.description}</p>
               </div>
-              <h3 className="text-base font-serif font-medium text-[#0B2D5B] mb-2">{perk.title}</h3>
-              <p className="text-slate-600 text-xs font-sans font-light leading-relaxed">{perk.description}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
-      {/* Mandates Accordion Section */}
-      <section id="openings" className="py-16 bg-[#F5EEDF] border-y border-[#C99B38]/10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-serif text-[#0B2D5B]">Current Job Openings</h2>
+      {/* Job Listings Accordion Section */}
+      <section id="openings" className="py-24 bg-[#040A12] border-b border-[#C5CBD3]/24 px-6 sm:px-12 lg:px-16">
+      <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-50">
+            <img 
+              src="./images/ito_images/ito_11.jpeg" 
+              alt="Contained framework mask background" 
+              className="w-full h-full object-cover filter brightness-[1.3] contrast-[1.15] saturate-[0.8]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/20 via-transparent to-[#040A12]/10" />
           </div>
 
-          <div className="space-y-4">
+        <div className="max-w-[1040px] mx-auto">
+          <div className="text-center space-y-2 mb-16">
+            <span className="text-[#6D7886] font-medium tracking-[3px] text-[12px] uppercase block">Inventory Deck</span>
+            <h2 className="text-2xl sm:text-3xl font-serif text-[#F2F4F7] uppercase tracking-wide">Current Openings</h2>
+            <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mx-auto mt-4" />
+          </div>
+
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-40px" }}
+            className="space-y-4"
+          >
             {jobs.map((job) => {
               const jobId = job.id || job._id;
               return (
-                <div key={jobId} className="bg-white border border-[#F5EEDF] rounded-sm overflow-hidden shadow-sm">
+                <motion.div 
+                  key={jobId} 
+                  variants={elementVariants}
+                  className="bg-[#121D29]/40 border border-[#C5CBD3]/80 rounded-sm overflow-hidden shadow-sm hover:border-[#C5CBD3]/80 transition-all duration-300"
+                >
                   <div
-                    className="p-6 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#FAF9F5]/40"
+                    className="p-5 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#2B3440]/20 transition-colors duration-200 backdrop-blur-sm"
                     onClick={() => setActiveJob(activeJob === jobId ? null : jobId)}
                   >
                     <div>
-                      <h3 className="text-lg font-serif font-medium text-[#0B2D5B]">{job.title}</h3>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-400 font-light font-sans">
-                        <span className="flex items-center gap-1"><FiBriefcase size={12} className="text-[#C99B38]" />{job.department}</span>
-                        <span className="flex items-center gap-1"><FiMapPin size={12} className="text-[#C99B38]" />{job.location}</span>
-                        <span className="flex items-center gap-1"><FiClock size={12} className="text-[#C99B38]" />{job.type}</span>
+                      <h3 className="text-base sm:text-lg font-serif font-normal text-[#F2F4F7] tracking-wide">{job.title}</h3>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2.5 text-[10px] text-[#d3dae2] font-medium uppercase font-sans tracking-widest">
+                        <span className="flex items-center gap-1.5"><FiBriefcase size={12} />{job.department}</span>
+                        <span className="flex items-center gap-1.5"><FiMapPin size={12} />{job.location}</span>
+                        <span className="flex items-center gap-1.5"><FiClock size={12} />{job.type}</span>
                       </div>
                     </div>
-                    <button className="text-xs uppercase tracking-wider font-semibold text-[#C99B38] bg-[#FAF9F5] px-3 py-1 border border-[#C99B38]/10 rounded-sm flex items-center gap-1">
-                      Details <FiChevronDown className={`transition-transform ${activeJob === jobId ? 'rotate-180' : ''}`} />
+                    <button className="text-[10px] uppercase tracking-widest font-bold text-[#F2F4F7] bg-[#0E1116] px-4 h-[36px] border border-[#C5CBD3]/30 rounded-sm flex items-center gap-1.5 shrink-0 hover:border-[#F2F4F7] transition-all cursor-pointer">
+                      <span>Details</span> <FiChevronDown className={`transition-transform duration-300 ${activeJob === jobId ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
 
-                  {activeJob === jobId && (
-                    <div className="px-6 pb-6 border-t border-slate-100 pt-5 bg-[#FAF9F5]/10 font-sans">
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">About The Role</h4>
-                          <p className="text-slate-600 text-xs mt-1 leading-relaxed font-light">{job.description}</p>
+                  <AnimatePresence>
+                    {activeJob === jobId && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
+                        className="px-5 pb-6 border-t border-[#C5CBD3]/10 pt-5  font-sans text-xs backdrop-blur-sm"
+                      >
+                        <div className="space-y-5">
+                          <div>
+                            <h4 className="text-[10px] font-bold font-sans uppercase tracking-widest text-[#f5eeee] border-b border-[#C5CBD3]/10 pb-1">Responsibilities</h4>
+                            <p className="text-white text-xs mt-2 leading-[1.65] font-light opacity-90">{job.description}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-[10px] font-bold font-sans uppercase tracking-widest text-[#f5eeee] border-b border-[#C5CBD3]/10 pb-1">Minimum Qualifications</h4>
+                            <ul className="list-none space-y-1.5 mt-2 text-xs text-white font-light leading-[1.6]">
+                              {job.requirements.map((req, i) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="text-[#6D7886] mt-0.5">&bull;</span>
+                                  <span className="opacity-90">{req}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="pt-4 flex flex-col sm:flex-row justify-between sm:items-center text-xs border-t border-[#C5CBD3]/10 gap-4">
+                            <span className="text-[#f5eeee] font-light">Compensation Structure: <strong className="text-white font-medium">{job.experience}</strong></span>
+                            <button
+                              onClick={() => handleApplyClick(job.title)}
+                              className="text-[10px] uppercase tracking-widest font-bold text-[#F2F4F7] px-4 h-[36px] border border-[#C5CBD3]/50 rounded-sm flex items-center gap-1.5 shrink-0 hover:border-[#F2F4F7] transition-all bg-black cursor-pointer"
+                            >
+                              Apply For This Job
+                            </button>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Requirements</h4>
-                          <ul className="list-disc pl-5 mt-2 space-y-1 text-xs text-slate-600 font-light">
-                            {job.requirements.map((req, i) => <li key={i}>{req}</li>)}
-                          </ul>
-                        </div>
-                        <div className="pt-4 flex justify-between items-center text-xs border-t border-slate-100">
-                          <span className="text-slate-500">Experience Needed: <strong className="text-slate-700">{job.experience}</strong></span>
-                          <button
-                            onClick={() => handleApplyClick(job.title)}
-                            className="px-4 py-2 bg-[#0B2D5B] hover:bg-[#102F60] text-white rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors"
-                          >
-                            Apply For This Job
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Intake Dossier Form Container */}
-      <section id="apply-form" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto bg-white border border-[#F5EEDF] rounded-sm shadow-xl overflow-hidden">
-          <div className="bg-[#0B2D5B] text-white p-6 sm:p-8 border-b border-[#C99B38]">
-            <h2 className="text-2xl font-serif">Apply Now</h2>
-            <p className="text-slate-300 font-sans font-light text-xs mt-1">Fill out the form below to submit your job application.</p>
-          </div>
+      {/* Application Form Section with Contained Form Background Blur Mask */}
+      <section id="apply-form" className="py-24 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10">
+        <div className="max-w-xl mx-auto bg-[#121D29]/40 border border-[#C5CBD3]/24 rounded-sm shadow-2xl overflow-hidden relative">
+          
+          {/* ST STRICTLY ISOLATED BANNER ASS ASSET BEHIND FORM CARD ONLY */}
+         
+          <div className="backdrop-blur-sm bg-transparent relative z-10">
+            <div className="bg-[#040A12]/90 text-white p-5 sm:p-6 relative border-b border-[#C5CBD3]/24">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#6D7886] via-[#C5CBD3] to-[#6D7886]" />
+              <h2 className="text-xl font-serif tracking-wide uppercase font-normal text-[#F2F4F7]">Application Form</h2>
+              <p className="text-[#6D7886] font-sans font-bold text-[10px] tracking-wider mt-0.5">Secure profile ingest interface. Review core retain parameters before submit.</p>
+            </div>
 
-          <div className="p-6 sm:p-8 bg-white font-sans text-xs">
-            {submitted ? (
-              <div className="text-center py-10">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
-                  <FiCheckCircle size={20} />
-                </div>
-                <h3 className="text-lg font-serif mb-2 text-slate-900">Application Staged Successfully</h3>
-                <p className="text-slate-500 text-xs font-light max-w-md mx-auto leading-relaxed mb-6">
-                  Your candidate record data for the position of <strong>{formData.position}</strong> has been framed successfully. Use the secondary conduits below to forward the profile to target operational vectors.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                  <a 
-                    href={`https://wa.me/918250614079?text=${encodeURIComponent(generateWhatsAppMessage())}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-[#C99B38] hover:bg-amber-600 text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2"
-                  >
-                    Send on WhatsApp
-                  </a>
-                  <button 
-                    onClick={copyApplicationTemplate}
-                    className="bg-[#FAF9F5] border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2"
-                  >
-                    Copy Form Details
+            <div className="p-5 sm:p-6 font-sans text-xs">
+              {submitted ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-12 h-12 bg-[#0E1116] text-[#F2F4F7] rounded-full flex items-center justify-center mx-auto border border-[#C5CBD3]/24 shadow-sm">
+                    <FiCheckCircle size={20} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-base font-serif font-medium text-[#F2F4F7] tracking-wide uppercase">Submission Success</h3>
+                    <p className="text-[#C5CBD3] text-xs font-light max-w-xs mx-auto leading-[1.6] opacity-90">
+                      Your parameter records for <strong>{formData.position}</strong> have been saved securely. Our IT team enforces full data privacy mandates.
+                    </p>
+                  </div>
+                  <button onClick={resetForm} className="text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-semibold block mx-auto text-[11px] tracking-widest uppercase transition-colors">
+                    Submit Another Application
                   </button>
                 </div>
-                <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 underline font-light block mx-auto text-[11px]">
-                  Submit Another Application
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Full Name *</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    required
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    placeholder="Enter your full name"
-                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Email Address *</label>
+                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Full name *</label>
                     <input
-                      type="email"
-                      name="email"
-                      required
-                      value={formData.email}
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleInputChange}
-                      placeholder="name@example.com"
-                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all"
+                      placeholder="Enter your full name"
+                      className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
                     />
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Email address *</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="name@example.com"
+                        className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Phone number *</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="+91 XXXXX XXXXX"
+                        className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Phone Number *</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      required
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="+91 XXXXX XXXXX"
-                      className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all"
-                    />
+                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Position of interest *</label>
+                    <div className="relative">
+                      <select
+                        name="position"
+                        value={formData.position}
+                        onChange={handleInputChange}
+                        className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-[#0E1116] text-[#6D7886]">Select linked position targets</option>
+                        {jobs.map(job => <option key={job.id || job._id} value={job.title} className="bg-[#0E1116] text-[#F2F4F7]">{job.title}</option>)}
+                        <option value="General Application" className="bg-[#0E1116] text-[#F2F4F7]">General Application / Other</option>
+                      </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[#6D7886]">
+                      <FiChevronDown size={14} />
+                    </div>
                   </div>
                 </div>
 
+                {/* Primary Upload Block: Resume */}
                 <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Position of Interest *</label>
-                  <select
-                    name="position"
-                    required
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none text-slate-500 rounded-sm transition-all"
-                  >
-                    <option value="">Select a position</option>
-                    {jobs.map(job => <option key={job.id || job._id} value={job.title}>{job.title}</option>)}
-                    <option value="General Application">General Application / Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Upload Resume (PDF/DOC) *</label>
-                  <div className="border border-dashed border-slate-300 rounded-sm p-6 text-center hover:border-[#C99B38] relative cursor-pointer bg-[#FAF9F5]/30">
+                  <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Resume *</label>
+                  <div className="border border-dashed border-[#C5CBD3]/30 bg-[#0E1116]/60 rounded-sm p-5 text-center hover:border-[#F2F4F7] relative cursor-pointer transition-colors group">
                     <input
                       type="file"
-                      required
+                      name="resume"
                       accept=".pdf,.doc,.docx"
                       onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
                     />
-                    <FiUpload size={20} className="text-slate-400 mx-auto mb-2" />
-                    <p className="text-slate-700 font-medium">{formData.resume ? formData.resume.name : 'Click to upload or drag & drop'}</p>
-                    <p className="text-slate-400 text-[10px] mt-0.5">PDF, DOC, DOCX up to 5MB</p>
+                    <FiUpload size={20} className={formData.resume ? "text-[#F2F4F7] mx-auto mb-2" : "text-[#6D7886] mx-auto mb-2 group-hover:text-[#F2F4F7] transition-colors"} />
+                    <p className="text-[#F2F4F7] font-medium text-xs truncate max-w-full px-4">{formData.resume ? formData.resume.name : 'Select or drag Resume file'}</p>
+                    <p className="text-[#6D7886] text-[10px] mt-1 font-mono tracking-wide">PDF, DOC, DOCX maximum size 5MB</p>
                   </div>
                 </div>
 
+                {/* Secondary Upload Block: Cover Letter */}
                 <div>
-                  <label className="block text-slate-600 font-semibold uppercase tracking-wider mb-1.5">Cover Letter</label>
-                  <textarea
-                    name="coverLetter"
-                    rows={4}
-                    value={formData.coverLetter}
-                    onChange={handleInputChange}
-                    placeholder="Tell us why you are a great fit..."
-                    className="w-full px-4 py-2.5 border border-slate-200 bg-[#FAF9F5]/30 focus:bg-white outline-none rounded-sm transition-all resize-none"
-                  />
+                  <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Cover note</label>
+                  <div className="border border-dashed border-[#C5CBD3]/30 bg-[#0E1116]/60 rounded-sm p-5 text-center hover:border-[#F2F4F7] relative cursor-pointer transition-colors group">
+                    <input
+                      type="file"
+                      name="coverLetter"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleCoverLetterFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
+                    />
+                    <FiUpload size={20} className={formData.coverLetterFile ? "text-[#F2F4F7] mx-auto mb-2" : "text-[#6D7886] mx-auto mb-2 group-hover:text-[#F2F4F7] transition-colors"} />
+                    <p className="text-[#F2F4F7] font-medium text-xs truncate max-w-full px-4">
+                      {formData.coverLetterFile ? formData.coverLetterFile.name : 'Select or drag optional Cover Letter'}
+                    </p>
+                    <p className="text-[#6D7886] text-[10px] mt-1 font-mono tracking-wide">PDF, DOC, DOCX maximum size 5MB</p>
+                  </div>
+                </div>
+
+                {/* Consent & Privacy Statement Notice */}
+                <div className="p-3.5 bg-[#040A12]/60 border border-[#C5CBD3]/10 text-[#6D7886] text-[11px] font-light leading-relaxed rounded-sm">
+                  By submitting this form, you provide consent for processing your applicant data and attached files under strict internal privacy retention policies.
                 </div>
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-[#0B2D5B] hover:bg-[#102F60] text-white font-sans text-xs uppercase tracking-widest py-3.5 font-bold rounded-sm shadow-md transition-colors flex items-center justify-center gap-2"
+                  className="w-full h-[52px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans text-xs uppercase tracking-widest font-bold rounded-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60 shadow-md"
                 >
-                  {submitting ? 'Processing...' : 'Submit Application'}
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Processing Application...</span>
+                    </>
+                  ) : 'Submit Official Application'}
                 </button>
               </form>
             )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Corporate Handoff Footer Seal */}
-      <footer className="bg-[#0B2D5B] text-slate-400 py-12 px-4 border-t-2 border-[#C99B38] text-center">
+      {/* Shared Corporate Footer Panel */}
+      <footer className="bg-[#040A12] text-[#6D7886] py-16 px-6 border-t border-[#C5CBD3]/24 text-center font-sans">
         <div className="max-w-3xl mx-auto space-y-4">
-          <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white">
-            India Trade Overseas &bull; Empowering Trade. Enabling Growth.
+          <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7]">
+            India Trade Overseas
+            <br />
+            <span className="text-xs text-[#cacdd3] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
           </p>
-          <div className="text-[10px] font-sans text-slate-400 font-light max-w-xl mx-auto border-t border-slate-700/50 pt-4 leading-relaxed">
+          <p className="text-xs italic text-[#C5CBD3]/60 font-serif">
+            "Where Quality Meets Global Demand"
+          </p>
+          <div className="text-[10px] text-[#ffff]/60 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/30 pt-4 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>

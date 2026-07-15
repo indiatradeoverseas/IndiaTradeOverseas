@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
+import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
 import ProductDetail from './pages/public/ProductDetail';
@@ -42,6 +43,7 @@ import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
+import Prakriti from './pages/public/Prakriti';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -123,17 +125,20 @@ function AppLayout() {
 
   if (isAuth) {
     return (
-      <Routes>
-        <Route path="/login" element={<ClientLogin />} />
-        <Route path="/client-login" element={<Navigate to="/login" replace />} />
-        <Route path="/employee-login" element={<EmployeeLogin />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/client-signup" element={<ClientSignup />} />
-        <Route path="/employee-signup" element={<EmployeeSignup />} />
-        <Route path="/device-pending" element={<DevicePending />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-      </Routes>
+      <>
+        <ScrollToTop /> {/* <-- INJECTED TO HANDLE AUTH ENTRY ROUTES */}
+        <Routes>
+          <Route path="/login" element={<ClientLogin />} />
+          <Route path="/client-login" element={<Navigate to="/login" replace />} />
+          <Route path="/employee-login" element={<EmployeeLogin />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/client-signup" element={<ClientSignup />} />
+          <Route path="/employee-signup" element={<EmployeeSignup />} />
+          <Route path="/device-pending" element={<DevicePending />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        </Routes>
+      </>
     );
   }
 
@@ -144,6 +149,7 @@ function AppLayout() {
     }
     return (
       <PortalLayout>
+        <ScrollToTop /> {/* <-- INJECTED TO HANDLE CRM DASHBOARD CHANNELS */}
         <Routes>
           <Route path="/crm/dashboard" element={<Dashboard />} />
           <Route path="/crm/notifications" element={<Notifications />} />
@@ -228,6 +234,7 @@ function AppLayout() {
 
   return (
     <div>
+      <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
       <Navbar />
       <main>
         <Routes>
@@ -238,6 +245,7 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/prakriti" element={<Prakriti />} />
         </Routes>
       </main>
       <Footer />

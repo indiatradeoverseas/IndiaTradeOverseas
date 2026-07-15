@@ -2,20 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-import { 
-  FiMenu, 
-  FiX, 
-  FiUser, 
-  FiLogOut, 
-  FiHome, 
-  FiPackage, 
-  FiInfo, 
-  FiPhone, 
-  FiBriefcase, 
-  FiFileText, 
-  FiSettings, 
-  FiBell, 
-  FiChevronDown 
+import CompanyLogo from '../../../public/images/ITO Logo.jpeg';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  FiMenu,
+  FiX,
+  FiUser,
+  FiLogOut,
+  FiPackage,
+  FiSettings,
+  FiBell,
+  FiChevronDown
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -25,8 +22,8 @@ export default function Navbar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isPrakritiDropdownOpen, setIsPrakritiDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -40,21 +37,13 @@ export default function Navbar() {
         console.error('Unable to load notification badge:', error);
       }
     };
-
     loadNotifications();
   }, [user]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
+    setIsPrakritiDropdownOpen(false);
   }, [location]);
 
   const handleLogout = () => {
@@ -66,77 +55,155 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { to: '/', label: 'Home', icon: FiHome },
-    { to: '/products', label: 'Products', icon: FiPackage },
-    { to: '/about', label: 'About Us', icon: FiInfo },
-    { to: '/contact', label: 'Contact', icon: FiPhone },
-    { to: '/careers', label: 'Careers', icon: FiBriefcase },
+    { to: '/', label: 'HOME' },
+    { to: '/about', label: 'ABOUT US' },
+    { to: '/careers', label: 'CAREERS' },
+    { to: '/products', label: 'Products'},
   ];
 
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  const prakritiDivisions = [
+    { to: '/prakriti', label: 'TEA DIVISION' },
+    { to: '/prakriti/rice', label: 'RICE DIVISION' },
+    { to: '/prakriti/coal', label: 'COAL DIVISION' },
+  ];
+
+  const isActive = (path) => location.pathname === path;
+  const isPrakritiActive = location.pathname.startsWith('/prakriti');
 
   return (
-    <nav className={`sticky top-0 z-50 transition-all duration-300 bg-[#FBF7EF] border-b ${scrolled ? 'shadow-lg border-[#C99B38]/30' : 'border-[#F5EEDF] shadow-sm'}`}>
-      
-      {/* Structural Double-Line Gold Top Border Accent */}
-      <div className="border-t-[3px] border-double border-[#C99B38] w-full"></div>
+    <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
+      <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-        <div className="flex justify-between items-center h-16">
-
-          {/* Brand Authority Identity */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2.5 group">
-              <div className="h-9 w-9 bg-[#0B2D5B] border border-[#C99B38]/40 rounded-sm flex items-center justify-center transition-transform group-hover:scale-105">
-                <span className="text-white font-serif font-bold text-xs tracking-wider">ITO</span>
+        {/* MOBILE NAVIGATION BAR HEADER (Isolated Viewport Row) */}
+        <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
+          {/* Logo and Brand Identity layout aligned correctly to the right edge */}
+          <div className="flex items-center space-x-3 text-right">
+            <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
+              <img
+                src={CompanyLogo}
+                alt="India Trade Overseas Logo"
+                className="h-full w-full object-cover"
+                loading="eager"
+              />
+            </div>
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="flex flex-col justify-center text-right leading-none">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap">
+                  INDIA
+                </span>
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                  TRADE OVERSEAS
+                </span>
               </div>
-              <span className="hidden sm:inline font-serif font-normal text-[#0B2D5B] text-lg tracking-wide">
-                India Trade Overseas
-              </span>
+
             </Link>
           </div>
 
-          {/* Desktop Core Navigation Links Panel */}
-          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+          {/* 3 Horizontal lines container pinned cleanly to the far left */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
+          </button>
+        </div>
+
+        {/* DESKTOP NAVIGATION BAR HEADER (Isolated Viewport Row) */}
+        <div className="hidden lg:flex justify-between items-center h-[104px]">
+          {/* Brand Authority Identity */}
+          <div className="flex items-center shrink-0">
+            <Link to="/" className="flex items-center space-x-3.5 group">
+              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/20 shrink-0">
+                <img
+                  src={CompanyLogo}
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-full object-cover"
+                  loading="eager"
+                />
+              </div>
+
+              <div className="flex flex-col justify-center text-left">
+                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap">
+                  India Trade Overseas
+                </span>
+                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap">
+                  Trade. Supply. Logistics. Growth.
+                </span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Desktop Navigation Link Cluster */}
+          <div className="flex items-center justify-end flex-1 min-w-0 space-x-5 xl:space-x-6">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`relative px-3 py-2 text-xs uppercase tracking-widest font-semibold font-sans transition-all duration-150 ${
-                  isActive(link.to)
-                    ? 'text-[#0B2D5B] bg-[#F5EEDF]'
-                    : 'text-[#102F60]/80 hover:text-[#0B2D5B] hover:bg-[#F5EEDF]/50'
-                }`}
+                className={`relative text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap outline-none ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                  }`}
               >
                 {link.label}
                 {isActive(link.to) && (
-                  <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C99B38]"></span>
+                  <span className="absolute bottom-[-10px] left-0 right-0 h-[2px] bg-[#F2F4F7]" />
                 )}
               </Link>
             ))}
 
-            {/* Mandated Gold Get a Quote Call-To-Action fixed to the right of navigation */}
-            <Link 
-              to="/quote-request" 
-              className={`ml-2 text-xs uppercase tracking-widest font-bold px-4 py-2 rounded-sm transition-all shadow-xs border ${
-                isActive('/quote-request')
-                  ? 'bg-[#0B2D5B] text-white border-transparent'
-                  : 'bg-[#C99B38] hover:bg-amber-600 text-white border-transparent'
-              }`}
+            {/* SERVICES DROPDOWN - MAPPED VIA PRAKRITI LABEL STRUCTURE */}
+            <div
+              className="relative py-2"
+              onMouseEnter={() => setIsPrakritiDropdownOpen(true)}
+              onMouseLeave={() => setIsPrakritiDropdownOpen(false)}
             >
-              Get a Quote
+              <button
+                className={`flex items-center space-x-1 text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none ${isPrakritiActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                  }`}
+              >
+                <span>PRAKRITI DIVISION</span>
+                <FiChevronDown size={12} className={`transition-transform duration-300 ${isPrakritiDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isPrakritiDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    className="absolute left-0 mt-3 w-48 bg-[#0E1116] border border-[#C5CBD3]/24 shadow-xl py-2 z-50 rounded-[2px]"
+                  >
+                    {prakritiDivisions.map((subLink) => (
+                      <Link
+                        key={subLink.to}
+                        to={subLink.to}
+                        className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${location.pathname === subLink.to ? 'bg-[#2B3440] text-[#F2F4F7]' : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
+                          }`}
+                      >
+                        {subLink.label}
+                      </Link>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <Link
+              to="/contact"
+              className={`text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                }`}
+            >
+              CONTACT
             </Link>
 
-            {/* Authenticated Context Dropdown Panel */}
+            {/* PREMIUM METALLIC GLASS PRIMARY CTAS */}
             {user ? (
-              <div className="flex items-center gap-2 ml-4 border-l border-[#F5EEDF] pl-4">
-                <Link to="/crm/notifications" className="relative p-2 rounded-sm text-[#102F60] hover:bg-[#F5EEDF] transition-colors">
+              <div className="flex items-center gap-3 pl-2 border-l border-[#C5CBD3]/24 shrink-0">
+                <Link to="/crm/notifications" className="relative text-[#C5CBD3] hover:text-[#F2F4F7] transition-colors">
                   <FiBell size={16} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                    <span className="absolute -top-1.5 -right-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
+                      {unreadCount}
                     </span>
                   )}
                 </Link>
@@ -144,38 +211,29 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-1.5 bg-white border border-[#F5EEDF] rounded-sm px-3 py-1.5 hover:bg-[#FAF9F5] transition-colors"
+                    className="flex items-center space-x-1 px-2.5 py-1.5 border border-[#C5CBD3]/24 bg-[#2B3440]/40 text-[#F2F4F7] hover:bg-[#2B3440]/70 text-[11px] tracking-wider uppercase transition-colors"
                   >
-                    <FiUser className="text-[#C99B38]" size={14} />
-                    <span className="text-xs font-semibold text-[#0B2D5B] hidden lg:inline">
-                      {user?.fullName ? user.fullName.split(' ')[0] : 'User'}
-                    </span>
-                    <FiChevronDown size={12} className={`text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                    <FiUser size={13} />
+                    <span>{user?.fullName?.split(' ')[0]}</span>
+                    <FiChevronDown size={12} />
                   </button>
 
                   {isUserMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-sm shadow-xl border border-[#F5EEDF] py-1 z-50 text-xs">
-                        <div className="px-4 py-2 border-b border-slate-100 bg-[#FAF9F5]/40">
-                          <p className="font-serif font-semibold text-[#0B2D5B]">{user?.fullName}</p>
-                          <p className="text-[10px] text-slate-400 font-mono truncate">{user?.email}</p>
-                          <span className="inline-block mt-1.5 text-[9px] font-mono tracking-wider uppercase font-bold bg-[#F5EEDF] px-2 py-0.5 rounded-full text-amber-900">
-                            {user?.employeeId?.startsWith('CL_') ? 'CLIENT' : user?.role}
-                          </span>
-                        </div>
+                      <div className="absolute right-0 mt-2 w-48 bg-[#0E1116] border border-[#C5CBD3]/24 shadow-2xl py-1 z-50 text-[11px] rounded-[2px]">
                         {!user?.employeeId?.startsWith('CL_') && (
-                          <Link to="/crm/dashboard" className="flex items-center space-x-2 px-4 py-2.5 text-slate-600 hover:bg-[#FAF9F5]" onClick={() => setIsUserMenuOpen(false)}>
-                            <FiPackage size={12} className="text-[#C99B38]" /> <span>Dashboard</span>
+                          <Link to="/crm/dashboard" className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]">
+                            <FiPackage size={12} /> <span>DASHBOARD</span>
                           </Link>
                         )}
                         {user?.role === 'ADMIN' && (
-                          <Link to="/crm/admin" className="flex items-center space-x-2 px-4 py-2.5 text-slate-600 hover:bg-[#FAF9F5]" onClick={() => setIsUserMenuOpen(false)}>
-                            <FiSettings size={12} className="text-[#C99B38]" /> <span>Admin Panel</span>
+                          <Link to="/crm/admin" className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]">
+                            <FiSettings size={12} /> <span>ADMIN PANEL</span>
                           </Link>
                         )}
-                        <button onClick={handleLogout} className="flex items-center space-x-2 px-4 py-2.5 text-red-600 hover:bg-red-50/60 w-full text-left font-medium border-t border-slate-50">
-                          <FiLogOut size={12} /> <span>Logout</span>
+                        <button onClick={handleLogout} className="flex items-center space-x-2 px-4 py-2 text-red-400 hover:bg-red-950/20 w-full text-left font-semibold border-t border-[#C5CBD3]/10">
+                          <FiLogOut size={12} /> <span>LOGOUT</span>
                         </button>
                       </div>
                     </>
@@ -183,103 +241,104 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-2 ml-4 border-l border-[#F5EEDF] pl-4">
-                <Link to="/login" className="px-3 py-2 text-xs uppercase tracking-widest font-bold text-[#102F60] hover:text-[#0B2D5B]">Login</Link>
-                <Link to="/client-signup" className="bg-[#0B2D5B] text-white px-4 py-2 rounded-sm text-xs uppercase tracking-widest font-bold hover:bg-[#102F60] shadow-xs">Sign Up</Link>
+              <div className="flex items-center gap-3 xl:gap-4 shrink-0 pl-1">
+                <Link
+                  to="/quote-request"
+                  className="h-[44px] px-3 xl:px-4 flex items-center justify-center space-x-1.5 text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans text-[#F2F4F7] border border-[#C5CBD3]/30 bg-[#2B3440]/30 hover:bg-[#2B3440]/60 transition-all duration-200"
+                >
+                  <span>REQUEST BULK QUOTE</span>
+                  <span className="text-sm font-light">&rarr;</span>
+                </Link>
+
+                <div className="flex items-center space-x-3 xl:space-x-4 border-l border-[#C5CBD3]/24 pl-3 xl:pl-4">
+                  <Link to="/login" className="text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium text-[#C5CBD3] hover:text-[#F2F4F7]">LOGIN</Link>
+                  <Link to="/client-signup" className="h-[44px] px-3 xl:px-4 flex items-center justify-center text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] hover:bg-[#0E1116] hover:border-[#F2F4F7] rounded-[2px] transition-all duration-200">SIGN UP</Link>
+                </div>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Mobile Utility Actions Bar */}
-          <div className="flex items-center gap-1.5 md:hidden">
-            {user && (
-              <Link to="/crm/notifications" className="relative p-2 rounded-sm text-[#102F60]">
-                <FiBell size={18} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Link>
-            )}
+      </div>
+
+      {/* Mobile Viewport Subdeck Overlay */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans text-[11px] uppercase tracking-[0.18em] font-medium bg-[#0E1116]">
+
+          {/* Replicated Mobile Header Inside Overlay to blend from the top */}
+          <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
+            {/* Pinned Logo and Brand Identity Layout on the left side of the upper bar */}
+            <div className="flex items-center space-x-3">
+              <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
+                <img
+                  src={CompanyLogo}
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-full object-cover"
+                  loading="eager"
+                />
+              </div>
+              <div className="flex flex-col justify-center text-left leading-none">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase text-[#F2F4F7] whitespace-nowrap">
+                  INDIA
+                </span>
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                  TRADE OVERSEAS
+                </span>
+              </div>
+            </div>
+
+            {/* Close button layout pinned exactly to the upper right corner */}
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-[#102F60] p-2 rounded-sm z-50"
-              aria-label="Toggle Menu"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
+              aria-label="Close Navigation Menu"
             >
-              {isMobileMenuOpen ? <FiX size={20} /> : <FiMenu size={20} />}
+              <FiX size={26} />
             </button>
           </div>
 
-        </div>
-      </div>
-
-      {/* Mobile Drawer Menu Viewport */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-[67px] bg-[#FBF7EF] shadow-xl border-b border-[#F5EEDF] z-40 max-h-[calc(100vh-67px)] overflow-y-auto font-sans text-xs">
-          <div className="px-3 py-4 space-y-1">
-            {user && (
-              <div className="mb-4 p-3.5 bg-white border border-[#F5EEDF] rounded-sm flex items-center space-x-3">
-                <div className="bg-[#F5EEDF] text-[#C99B38] p-2.5 rounded-full">
-                  <FiUser size={16} />
-                </div>
-                <div>
-                  <p className="font-serif font-semibold text-sm text-[#0B2D5B]">{user?.fullName}</p>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{user?.email}</p>
-                  <span className="inline-block mt-1 text-[9px] font-mono font-bold uppercase tracking-wider bg-[#F5EEDF] px-2 py-0.5 rounded-full text-amber-900">
-                    {user?.employeeId?.startsWith('CL_') ? 'CLIENT' : user?.role}
-                  </span>
-                </div>
-              </div>
-            )}
-
+          {/* Links Area Container */}
+          <div className="px-6 pb-6 space-y-6">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center space-x-3 px-3 py-3 rounded-sm uppercase tracking-wider font-semibold ${
-                  isActive(link.to) 
-                    ? 'bg-[#F5EEDF] text-[#0B2D5B]' 
-                    : 'text-[#102F60] hover:bg-[#F5EEDF]/40'
-                }`}
+                className={`block  text-base tracking-wider ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <link.icon size={14} className="text-[#C99B38]" />
-                <span>{link.label}</span>
+                {link.label}
               </Link>
             ))}
 
-            {/* Mobile View Quote link action */}
-            <Link
-              to="/quote-request"
-              className={`flex items-center space-x-3 px-3 py-3 rounded-sm uppercase tracking-wider font-bold ${
-                isActive('/quote-request') 
-                  ? 'bg-[#F5EEDF] text-[#0B2D5B]' 
-                  : 'bg-[#C99B38]/10 text-[#C99B38] border border-[#C99B38]/20'
-              }`}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <FiFileText size={14} />
-              <span>Get a Quote</span>
-            </Link>
+            <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
+              <div className="text-[#6D7886] text-[10px] uppercase tracking-normal">PRAKRITI DIVISON</div>
+              {prakritiDivisions.map((subLink) => (
+                <Link
+                  key={subLink.to}
+                  to={subLink.to}
+                  className="block  pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {subLink.label}
+                </Link>
+              ))}
+            </div>
 
-            {user ? (
-              <div className="pt-2 border-t border-slate-100 mt-2 space-y-1">
-                {!user?.employeeId?.startsWith('CL_') && (
-                  <Link to="/crm/dashboard" className="flex items-center space-x-3 px-3 py-3 rounded-sm text-slate-600 font-medium" onClick={() => setIsMobileMenuOpen(false)}>
-                    <FiPackage size={14} className="text-[#C99B38]" /> <span>Dashboard</span>
-                  </Link>
-                )}
-                <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-3 py-3 rounded-sm text-red-600 font-semibold border border-transparent hover:bg-red-50 text-left">
-                  <FiLogOut size={14} /> <span>Logout</span>
-                </button>
-              </div>
-            ) : (
-              <div className="pt-4 space-y-2">
-                <Link to="/login" className="flex items-center justify-center px-3 py-3 rounded-sm font-bold uppercase tracking-wider border border-[#102F60] text-[#102F60]" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
-                <Link to="/client-signup" className="flex items-center justify-center px-3 py-3 rounded-sm font-bold uppercase tracking-wider bg-[#0B2D5B] text-white" onClick={() => setIsMobileMenuOpen(false)}>Sign Up</Link>
-              </div>
-            )}
+            <div className="border-t border-[#C5CBD3]/24 pt-6 space-y-3">
+              <Link
+                to="/quote-request"
+                className="w-full h-[52px] flex items-center justify-center bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] font-semibold text-xs tracking-widest rounded-[2px]"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                REQUEST BULK QUOTE
+              </Link>
+              {!user && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest">LOGIN</Link>
+                  <Link to="/client-signup" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center bg-[#2B3440] border border-transparent text-[#F2F4F7] text-xs tracking-widest">SIGN UP</Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

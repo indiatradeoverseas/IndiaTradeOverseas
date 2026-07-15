@@ -1,6 +1,7 @@
-import React from 'react';
+import React,{useState} from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiLayout,
   FiUsers,
@@ -15,11 +16,16 @@ import {
   FiPackage,
   FiCheckSquare,
   FiBell,
-  FiBriefcase
+  FiBriefcase,
+  FiLogOut
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 
 export default function Sidebar({ onClose }) {
-  const { user } = useAuth();
+  const { user , logout } = useAuth();
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const menuItems = [
     { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
@@ -43,6 +49,14 @@ export default function Sidebar({ onClose }) {
   ].filter(Boolean);
 
   const showAdminMenu = ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true;
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    toast.success('Logged out successfully');
+    setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
 
   return (
     <aside className="h-full bg-[#0B2D5B] text-[#FBF7EF] border-r border-[#C99B3B]/20 flex flex-col font-sans">
@@ -98,6 +112,9 @@ export default function Sidebar({ onClose }) {
             ))}
           </>
         )}
+        <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-3 py-3 rounded-sm text-red-600 font-semibold border border-transparent hover:bg-red-50 text-left">
+          <FiLogOut size={14} /> <span>Logout</span>
+        </button>
       </nav>
     </aside>
   );

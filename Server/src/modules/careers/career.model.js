@@ -44,7 +44,7 @@ const careerApplicationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['PENDING', 'REVIEWED', 'ACCEPTED', 'REJECTED'],
+    enum: ['PENDING', 'REVIEWED', 'ACCEPTED'],
     default: 'PENDING'
   },
   appliedAt: {

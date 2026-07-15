@@ -36,4 +36,9 @@ export const leadsApi = {
     const response = await axiosInstance.delete(`/admin/leads/${leadId}`);
     return response.data;
   }
+  , 
+  async getDueReminders(){
+    const response = await axiosInstance.post('/leads/reminders/due');
+    return response.data;
+  }
 };

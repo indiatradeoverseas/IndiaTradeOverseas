@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 //  const API_BASE_URL = 'https://indiatradeoverseas-1.onrender.com/api'
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://indiatradeoverseas-ito.onrender.com/api';
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -9,17 +9,6 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-// const API_BASE_URL = 'http://localhost:5000/api';
-
-// const axiosInstance = axios.create({
-//   baseURL: API_BASE_URL,
-//   headers: {
-//     'Content-Type': 'application/json',
-//   },
-//   timeout: 10000,
-// });
-
 
 axiosInstance.interceptors.request.use(
   (config) => {
