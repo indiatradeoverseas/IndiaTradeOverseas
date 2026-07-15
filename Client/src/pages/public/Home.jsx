@@ -130,6 +130,7 @@ export default function Home() {
       {/* HERO SECTION: Configured as full bleed viewport height framework */}
       {/* HERO SECTION: Configured as a fully adaptive cinematic framework */}
       {/* HERO SECTION: Fully responsive layout architecture using dynamic grid row allocations */}
+      {/* HERO SECTION: Configured as a fully adaptive cinematic framework */}
       <section className="relative min-h-screen lg:h-screen lg:min-h-[760px] lg:max-h-[980px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10">
 
         {/* Dynamic Image Canvas Layer & Grading Modifications */}
@@ -144,7 +145,7 @@ export default function Home() {
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-[68%_center] absolute inset-0"
-              style={{ filter: 'brightness(1.3) contrast(1.15) saturate(0.70)' }}
+              style={{ filter: 'brightness(1.2) contrast(1.15) saturate(0.70)' }}
             />
           </AnimatePresence>
 
@@ -154,63 +155,64 @@ export default function Home() {
           <div className="absolute inset-0 box-shadow-[inset_0_0_180px_rgba(0,0,0,0.48)] pointer-events-none z-1" />
         </div>
 
-        {/* Unified 3-Row Grid Container: Equidistantly scales and distributes spacing dynamically */}
+        {/* Unified Safe Content Container Frame with Expanded Layout Distribution */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
-          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full grid grid-rows-[auto_1fr_auto] items-center pt-24 sm:pt-28 md:pt-32 lg:pt-[120px] pb-8 md:pb-12 lg:pb-16 min-h-screen lg:h-full gap-y-6"
+          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col justify-between pt-28 sm:pt-32 md:pt-36 lg:pt-[140px] pb-10 md:pb-12 lg:pb-16 min-h-screen lg:h-full"
         >
-          {/* Row 1: Structural Navbar Clearance Buffer Spacer */}
-          <div className="h-2 w-full pointer-events-none" aria-hidden="true" />
+          {/* Centered Hero Content Left Column Block (Stretches text components evenly down the viewport height) */}
+          <div className="max-w-[720px] text-left flex-1 flex flex-col justify-center space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 xl:space-y-14 w-full py-8">
 
-          {/* Row 2: Centered Hero Content Left Column Block (Always occupies the exact vertical remainder) */}
-          <div className="max-w-[720px] text-left flex flex-col items-start w-full py-4 sm:py-6 my-auto">
+            <div>
+              {/* Context Eyebrow Text */}
+              <motion.p
+                variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: 'easeOut' } } }}
+                className="font-sans font-medium text-[10px] sm:text-[11px] md:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-1"
+              >
+                GLOBAL TRADE. RELIABLE PARTNER.
+              </motion.p>
 
-            {/* Context Eyebrow Text */}
-            <motion.p
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: 'easeOut' } } }}
-              className="font-sans font-medium text-[10px] sm:text-[11px] md:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-3 sm:mb-4"
-            >
-              GLOBAL TRADE. RELIABLE PARTNER.
-            </motion.p>
+              {/* Editorial Serif Main Heading */}
+              <motion.h1
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } } }}
+                className="text-3xl sm:text-5xl lg:text-6xl xl:text-[68px] font-serif tracking-tight font-normal leading-[1.2] sm:leading-[1.1] md:leading-[1.06] uppercase text-[#F2F4F7] mt-3 sm:mt-4"
+              >
+                CONNECTING INDIA.<br />
+                POWERING THE WORLD.
+              </motion.h1>
+            </div>
 
-            {/* Editorial Serif Main Heading */}
-            <motion.h1
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } } }}
-              className="text-3xl sm:text-5xl lg:text-6xl xl:text-[68px] font-serif tracking-tight font-normal leading-[1.15] sm:leading-[1.1] md:leading-[1.06] mb-5 sm:mb-6 uppercase text-[#F2F4F7]"
-            >
-              CONNECTING INDIA.<br />
-              POWERING THE WORLD.
-            </motion.h1>
+            <div className="w-full">
+              <motion.div
+                variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+                className="w-16 h-[1px] bg-[#C5CBD3]/30 mb-6 sm:mb-8 border-b"
+                aria-hidden="true"
+              />
 
-            <motion.div
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-5 sm:mb-6 border-b"
-              aria-hidden="true"
-            />
-
-            {/* Supporting Context Copy */}
-            <motion.p
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } } }}
-              className="font-sans font-light text-[#C5CBD3] text-xs sm:text-sm lg:text-[16px] max-w-[580px] leading-[1.6] mb-6 sm:mb-8 opacity-90"
-            >
-              End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets[cite: 1].
-            </motion.p>
+              {/* Supporting Context Copy */}
+              <motion.p
+                variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } } }}
+                className="font-sans font-light text-[#C5CBD3] text-xs sm:text-sm lg:text-[16px] max-w-[580px] leading-[1.65] opacity-90"
+              >
+                End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets[cite: 1].
+              </motion.p>
+            </div>
 
             {/* Primary & Secondary Action Targets */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-              <Link to="/products" className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[48px] sm:h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2">
+              <Link to="/products" className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[50px] sm:h-[54px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
                 Explore Solutions &rarr;
               </Link>
-              <Link to="/quote-request" className="w-full sm:w-auto min-w-[220px] sm:min-w-[250px] bg-[#121D29]/58 backdrop-blur-[8px] border border-[#C5CBD3]/42 hover:bg-[#2B3440] hover:border-[#F2F4F7] text-[#F2F4F7] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[48px] sm:h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200">
+              <Link to="/quote-request" className="w-full sm:w-auto min-w-[220px] sm:min-w-[250px] bg-[#121D29]/58 backdrop-blur-[8px] border border-[#C5CBD3]/42 hover:bg-[#2B3440] hover:border-[#F2F4F7] text-[#F2F4F7] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[50px] sm:h-[54px] flex items-center justify-center rounded-[2px] transition-all duration-200">
                 Request Bulk Quote &rarr;
               </Link>
             </div>
           </div>
 
-          {/* Row 3: DESKTOP HORIZON PANEL STRIP (Operational Pillars Matrix - Anchors the absolute base) */}
-          <div className="w-full hidden md:block mt-auto pt-4 border-t border-white/5">
+          {/* DESKTOP HORIZON PANEL STRIP (Operational Pillars Matrix - Always anchors cleanly to the bottom) */}
+          <div className="w-full hidden md:block pt-6 border-t border-white/5 mt-auto">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full">
 
               <div className="grid grid-cols-[auto_1fr] gap-4 items-start px-4">
