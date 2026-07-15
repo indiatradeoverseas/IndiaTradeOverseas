@@ -317,7 +317,7 @@ export default function Navbar() {
             </Link>
 
             <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
-              <div className="text-[#6D7886] text-[10px] uppercase tracking-normal">PRAKRITI DIVISION</div>
+              <div className="text-[#6D7886] text-[10px] uppercase tracking-normal">PRAKRITI DIVISON</div>
               {prakritiDivisions.map((subLink) => (
                 <Link
                   key={subLink.to}
