@@ -143,13 +143,15 @@ export default function Home() {
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-[68%_center] absolute inset-0"
-              style={{ filter: 'brightness(0.65) contrast(1.15) saturate(0.70)' }}
+              style={{ filter: 'brightness(1.2) contrast(1.15) saturate(0.70)' }}
             />
           </AnimatePresence>
 
           {/* Cinematic Overlay Protectors Layering */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#040A12]/95 via-[#040A12]/85 via-[#040A12]/70 via-[#040A12]/20 to-[#040A12]/10 z-1" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/70 via-transparent to-[#040A12]/95 z-1" />
+
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/70 via-transparent to-[#040A12]/95 z-1 animate-none" />
+
           <div className="absolute inset-0 box-shadow-[inset_0_0_180px_rgba(0,0,0,0.48)] pointer-events-none z-1" />
         </div>
 
