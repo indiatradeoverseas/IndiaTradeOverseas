@@ -54,6 +54,7 @@ const checkAdminManagerHR = (req, res, next) => {
   return require('../../utils/response').fail(res, 403, 'FORBIDDEN', 'Access denied. Unauthorized role.');
 };
 
+// ==========================================
 // Public Routes
 router.post(
   '/', 
@@ -67,7 +68,9 @@ router.post(
 router.post('/verify-otp', verifyDistributorOtp);
 router.get('/status/:id', getDistributorStatus);
 
+// ==========================================
 // Authenticated/Protected Admin Routes
+// ==========================================
 router.get('/', authenticate, checkAdminManagerHR, getDistributors);
 router.patch('/:id/verify', authenticate, checkAdminManagerHR, toggleDistributorVerification);
 router.delete('/:id', authenticate, checkAdminManagerHR, deleteDistributor);

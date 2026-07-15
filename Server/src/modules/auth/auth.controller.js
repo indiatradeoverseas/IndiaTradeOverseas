@@ -72,7 +72,7 @@ async function register(req, res, next) {
     });
 
 
-    await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp));
+    await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
 
     const ip = req.ip || req.headers['x-forwarded-for'] || '';
@@ -144,7 +144,7 @@ async function login(req, res, next) {
         user: user._id,
         otpHash
       });
-      await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp));
+      await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
       return fail(res, 403, 'EMAIL_NOT_VERIFIED', 'Your email is not verified. A new verification OTP has been sent to ' + user.email);
     }
@@ -225,7 +225,7 @@ async function requestOtp(req, res, next) {
       otpHash
     });
 
-    await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp));
+    await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
     await recordAudit({
       actorId: user._id,
@@ -584,7 +584,7 @@ async function forgotPassword(req, res, next) {
       otpHash
     });
 
-    await sendEmail(user.email, 'Password Reset OTP Code', null, getOtpHtml(otp));
+    await sendEmail(user.email, 'Password Reset OTP Code', null, getOtpHtml(otp, user.email));
 
     return ok(res, {}, 'Password reset OTP sent successfully to your email', 200, req);
   } catch (error) {

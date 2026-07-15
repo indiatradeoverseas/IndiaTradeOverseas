@@ -1,7 +1,13 @@
 const router = require('express').Router();
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
-const { createPayment, getPaymentsList, getOutstandingPayments, updateStatus, triggerReminder } = require('./payment.controller');
+const { 
+  createPayment, 
+  getPaymentsList, 
+  getOutstandingPayments, 
+  updateStatus, 
+  triggerReminder
+} = require('./payment.controller');
 
 router.use(authenticate);
 
@@ -30,3 +36,5 @@ router.patch('/:id', updateStatus);
 router.post('/:id/reminder', triggerReminder);
 
 module.exports = router;
+
+

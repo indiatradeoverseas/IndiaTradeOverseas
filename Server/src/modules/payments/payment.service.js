@@ -2,6 +2,7 @@ const Payment = require('./payment.model');
 const Lead = require('../leads/lead.model');
 const { recordAudit } = require('../security-audit/auditLog.service');
 
+
 async function createPayment({ leadId, dispatchId, totalAmount, advanceAmount, dueDate, paymentStatus, actorId }) {
   const lead = await Lead.findById(leadId);
   if (!lead) throw new Error('LEAD_NOT_FOUND');
@@ -106,6 +107,7 @@ async function triggerPaymentReminder(id, actorId) {
   return payment;
 }
 
+
 module.exports = {
   createPayment,
   listPayments,
@@ -113,3 +115,4 @@ module.exports = {
   updatePaymentStatus,
   triggerPaymentReminder
 };
+
