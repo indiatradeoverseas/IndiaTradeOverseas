@@ -170,7 +170,7 @@ export default function Careers() {
   };
 
   return (
-    <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden">
+    <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden relative">
       
       {/* Structural Double-Line Top Border Accent */}
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full fixed top-0 left-0 z-50"></div>
@@ -246,7 +246,7 @@ export default function Careers() {
       {/* Employer Value Proposition - Grid Panel Layer */}
       <section className="py-24 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 border-b border-[#C5CBD3]/24">
         <div className="text-center space-y-2 mb-16">
-          <span className="text-[#6D7886] font-medium tracking-[3px] text-[11px] uppercase block">EVP Architecture</span>
+          <span className="text-[#6D7886] font-medium tracking-[3px] text-[12px] uppercase block">EVP Architecture</span>
           <h2 className="text-2xl sm:text-3xl font-serif text-[#F2F4F7] uppercase tracking-wide">Why India Trade Overseas?</h2>
           <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mx-auto mt-4" />
         </div>
@@ -262,7 +262,7 @@ export default function Careers() {
             <motion.div 
               key={index} 
               variants={elementVariants}
-              className="bg-[#121D29]/40 backdrop-blur-sm p-6 border border-[#C5CBD3]/20 shadow-md rounded-sm hover:border-[#F2F4F7] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
+              className="bg-[#121D29]/80 backdrop-blur-sm p-6 border border-[#C5CBD3]/80 shadow-md rounded-sm hover:border-[#F2F4F7] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group "
             >
               <div>
                 <div className="text-[#F2F4F7] bg-[#0E1116] w-10 h-10 rounded-sm border border-[#C5CBD3]/24 flex items-center justify-center mb-5 transition-all duration-300 group-hover:bg-[#F2F4F7] group-hover:text-[#0E1116] shadow-inner">
@@ -278,9 +278,18 @@ export default function Careers() {
 
       {/* Job Listings Accordion Section */}
       <section id="openings" className="py-24 bg-[#040A12] border-b border-[#C5CBD3]/24 px-6 sm:px-12 lg:px-16">
+      <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-50">
+            <img 
+              src="./images/ito_images/ito_11.jpeg" 
+              alt="Contained framework mask background" 
+              className="w-full h-full object-cover filter brightness-[1.3] contrast-[1.15] saturate-[0.8]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/20 via-transparent to-[#040A12]/10" />
+          </div>
+
         <div className="max-w-[1040px] mx-auto">
           <div className="text-center space-y-2 mb-16">
-            <span className="text-[#6D7886] font-medium tracking-[3px] text-[11px] uppercase block">Inventory Deck</span>
+            <span className="text-[#6D7886] font-medium tracking-[3px] text-[12px] uppercase block">Inventory Deck</span>
             <h2 className="text-2xl sm:text-3xl font-serif text-[#F2F4F7] uppercase tracking-wide">Current Openings</h2>
             <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mx-auto mt-4" />
           </div>
@@ -298,15 +307,15 @@ export default function Careers() {
                 <motion.div 
                   key={jobId} 
                   variants={elementVariants}
-                  className="bg-[#121D29]/30 border border-[#C5CBD3]/15 rounded-sm overflow-hidden shadow-sm hover:border-[#C5CBD3]/40 transition-all duration-300"
+                  className="bg-[#121D29]/40 border border-[#C5CBD3]/80 rounded-sm overflow-hidden shadow-sm hover:border-[#C5CBD3]/80 transition-all duration-300"
                 >
                   <div
-                    className="p-5 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#2B3440]/20 transition-colors duration-200"
+                    className="p-5 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[#2B3440]/20 transition-colors duration-200 backdrop-blur-sm"
                     onClick={() => setActiveJob(activeJob === jobId ? null : jobId)}
                   >
                     <div>
                       <h3 className="text-base sm:text-lg font-serif font-normal text-[#F2F4F7] tracking-wide">{job.title}</h3>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2.5 text-[10px] text-[#6D7886] font-medium uppercase font-sans tracking-widest">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2.5 text-[10px] text-[#d3dae2] font-medium uppercase font-sans tracking-widest">
                         <span className="flex items-center gap-1.5"><FiBriefcase size={12} />{job.department}</span>
                         <span className="flex items-center gap-1.5"><FiMapPin size={12} />{job.location}</span>
                         <span className="flex items-center gap-1.5"><FiClock size={12} />{job.type}</span>
@@ -324,16 +333,16 @@ export default function Careers() {
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.25, ease: 'easeInOut' }}
-                        className="px-5 pb-6 border-t border-[#C5CBD3]/10 pt-5 bg-[#040A12]/40 font-sans text-xs"
+                        className="px-5 pb-6 border-t border-[#C5CBD3]/10 pt-5  font-sans text-xs backdrop-blur-sm"
                       >
                         <div className="space-y-5">
                           <div>
-                            <h4 className="text-[10px] font-bold font-sans uppercase tracking-widest text-[#6D7886] border-b border-[#C5CBD3]/10 pb-1">Responsibilities</h4>
-                            <p className="text-[#C5CBD3] text-xs mt-2 leading-[1.65] font-light opacity-90">{job.description}</p>
+                            <h4 className="text-[10px] font-bold font-sans uppercase tracking-widest text-[#f5eeee] border-b border-[#C5CBD3]/10 pb-1">Responsibilities</h4>
+                            <p className="text-white text-xs mt-2 leading-[1.65] font-light opacity-90">{job.description}</p>
                           </div>
                           <div>
-                            <h4 className="text-[10px] font-bold font-sans uppercase tracking-widest text-[#6D7886] border-b border-[#C5CBD3]/10 pb-1">Minimum Qualifications</h4>
-                            <ul className="list-none space-y-1.5 mt-2 text-xs text-[#C5CBD3] font-light leading-[1.6]">
+                            <h4 className="text-[10px] font-bold font-sans uppercase tracking-widest text-[#f5eeee] border-b border-[#C5CBD3]/10 pb-1">Minimum Qualifications</h4>
+                            <ul className="list-none space-y-1.5 mt-2 text-xs text-white font-light leading-[1.6]">
                               {job.requirements.map((req, i) => (
                                 <li key={i} className="flex items-start gap-2">
                                   <span className="text-[#6D7886] mt-0.5">&bull;</span>
@@ -343,10 +352,10 @@ export default function Careers() {
                             </ul>
                           </div>
                           <div className="pt-4 flex flex-col sm:flex-row justify-between sm:items-center text-xs border-t border-[#C5CBD3]/10 gap-4">
-                            <span className="text-[#6D7886] font-light">Compensation Structure: <strong className="text-[#F2F4F7] font-medium">{job.experience}</strong></span>
+                            <span className="text-[#f5eeee] font-light">Compensation Structure: <strong className="text-white font-medium">{job.experience}</strong></span>
                             <button
                               onClick={() => handleApplyClick(job.title)}
-                              className="px-5 h-[40px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] text-[11px] font-semibold uppercase tracking-widest transition-all duration-200 rounded-sm shadow-sm flex items-center justify-center cursor-pointer"
+                              className="text-[10px] uppercase tracking-widest font-bold text-[#F2F4F7] px-4 h-[36px] border border-[#C5CBD3]/50 rounded-sm flex items-center gap-1.5 shrink-0 hover:border-[#F2F4F7] transition-all bg-black cursor-pointer"
                             >
                               Apply For This Job
                             </button>
@@ -362,83 +371,87 @@ export default function Careers() {
         </div>
       </section>
 
-      {/* Application Form Section */}
-      <section id="apply-form" className="py-24 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative">
-        <div className="max-w-xl mx-auto bg-[#121D29]/40 backdrop-blur-sm border border-[#C5CBD3]/24 rounded-sm shadow-2xl overflow-hidden">
-          <div className="bg-[#040A12] text-white p-5 sm:p-6 relative border-b border-[#C5CBD3]/24">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#6D7886] via-[#C5CBD3] to-[#6D7886]" />
-            <h2 className="text-xl font-serif tracking-wide uppercase font-normal text-[#F2F4F7]">Application Form</h2>
-            <p className="text-[#6D7886] font-sans font-light text-[10px] tracking-wide mt-0.5">Secure profile ingest interface. Review core retain parameters before submit.</p>
-          </div>
+      {/* Application Form Section with Contained Form Background Blur Mask */}
+      <section id="apply-form" className="py-24 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10">
+        <div className="max-w-xl mx-auto bg-[#121D29]/40 border border-[#C5CBD3]/24 rounded-sm shadow-2xl overflow-hidden relative">
+          
+          {/* ST STRICTLY ISOLATED BANNER ASS ASSET BEHIND FORM CARD ONLY */}
+         
+          <div className="backdrop-blur-sm bg-transparent relative z-10">
+            <div className="bg-[#040A12]/90 text-white p-5 sm:p-6 relative border-b border-[#C5CBD3]/24">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#6D7886] via-[#C5CBD3] to-[#6D7886]" />
+              <h2 className="text-xl font-serif tracking-wide uppercase font-normal text-[#F2F4F7]">Application Form</h2>
+              <p className="text-[#6D7886] font-sans font-bold text-[10px] tracking-wider mt-0.5">Secure profile ingest interface. Review core retain parameters before submit.</p>
+            </div>
 
-          <div className="p-5 sm:p-6 bg-transparent font-sans text-xs">
-            {submitted ? (
-              <div className="text-center py-8 space-y-4">
-                <div className="w-12 h-12 bg-[#0E1116] text-[#F2F4F7] rounded-full flex items-center justify-center mx-auto border border-[#C5CBD3]/24 shadow-sm">
-                  <FiCheckCircle size={20} />
+            <div className="p-5 sm:p-6 font-sans text-xs">
+              {submitted ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-12 h-12 bg-[#0E1116] text-[#F2F4F7] rounded-full flex items-center justify-center mx-auto border border-[#C5CBD3]/24 shadow-sm">
+                    <FiCheckCircle size={20} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-base font-serif font-medium text-[#F2F4F7] tracking-wide uppercase">Submission Success</h3>
+                    <p className="text-[#C5CBD3] text-xs font-light max-w-xs mx-auto leading-[1.6] opacity-90">
+                      Your parameter records for <strong>{formData.position}</strong> have been saved securely. Our IT team enforces full data privacy mandates.
+                    </p>
+                  </div>
+                  <button onClick={resetForm} className="text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-semibold block mx-auto text-[11px] tracking-widest uppercase transition-colors">
+                    Submit Another Application
+                  </button>
                 </div>
-                <div className="space-y-1">
-                  <h3 className="text-base font-serif font-medium text-[#F2F4F7] tracking-wide uppercase">Submission Success</h3>
-                  <p className="text-[#C5CBD3] text-xs font-light max-w-xs mx-auto leading-[1.6] opacity-90">
-                    Your parameter records for <strong>{formData.position}</strong> have been saved securely. Our IT team enforces full data privacy mandates.
-                  </p>
-                </div>
-                <button onClick={resetForm} className="text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-semibold block mx-auto text-[11px] tracking-widest uppercase transition-colors">
-                  Submit Another Application
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Full name *</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    placeholder="Enter your full name"
-                    className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Email address *</label>
+                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Full name *</label>
                     <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleInputChange}
-                      placeholder="name@example.com"
+                      placeholder="Enter your full name"
                       className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Phone number *</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="+91 XXXXX XXXXX"
-                      className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
-                    />
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Position of interest *</label>
-                  <div className="relative">
-                    <select
-                      name="position"
-                      value={formData.position}
-                      onChange={handleInputChange}
-                      className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm appearance-none cursor-pointer"
-                    >
-                      <option value="" className="bg-[#0E1116] text-[#6D7886]">Select linked position targets</option>
-                      {jobs.map(job => <option key={job.id || job._id} value={job.title} className="bg-[#0E1116] text-[#F2F4F7]">{job.title}</option>)}
-                      <option value="General Application" className="bg-[#0E1116] text-[#F2F4F7]">General Application / Other</option>
-                    </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Email address *</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="name@example.com"
+                        className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Phone number *</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="+91 XXXXX XXXXX"
+                        className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Position of interest *</label>
+                    <div className="relative">
+                      <select
+                        name="position"
+                        value={formData.position}
+                        onChange={handleInputChange}
+                        className="w-full px-4 h-[46px] border border-[#C5CBD3]/20 bg-[#0E1116]/80 text-[#F2F4F7] text-xs focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/10 transition-all rounded-sm appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-[#0E1116] text-[#6D7886]">Select linked position targets</option>
+                        {jobs.map(job => <option key={job.id || job._id} value={job.title} className="bg-[#0E1116] text-[#F2F4F7]">{job.title}</option>)}
+                        <option value="General Application" className="bg-[#0E1116] text-[#F2F4F7]">General Application / Other</option>
+                      </select>
                     <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[#6D7886]">
                       <FiChevronDown size={14} />
                     </div>
@@ -500,6 +513,7 @@ export default function Careers() {
                 </button>
               </form>
             )}
+            </div>
           </div>
         </div>
       </section>
@@ -510,7 +524,7 @@ export default function Careers() {
           <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7]">
             India Trade Overseas
             <br />
-            <span className="text-xs text-[#6D7886] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
+            <span className="text-xs text-[#cacdd3] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
           </p>
           <p className="text-xs italic text-[#C5CBD3]/60 font-serif">
             "Where Quality Meets Global Demand"
