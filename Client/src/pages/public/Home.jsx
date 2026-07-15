@@ -196,7 +196,7 @@ export default function Home() {
                 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } } }}
                 className="font-sans font-light text-[#C5CBD3] text-xs sm:text-sm lg:text-[16px] max-w-[580px] leading-[1.65] opacity-90"
               >
-                End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets[cite: 1].
+                End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets.
               </motion.p>
             </div>
 
