@@ -26,8 +26,8 @@ const registerDistributor = async (req, res, next) => {
       gstNumber
     } = req.body;
 
-    if (!name || !email || !mobile || !city || !state) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, mobile, city, and state are required.');
+    if (!name || !email || !mobile) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, and mobile are required.');
     }
 
     // Capture standard payload keys
@@ -37,9 +37,6 @@ const registerDistributor = async (req, res, next) => {
     // Check if there is an existing distributor with the same email
     let distributor = await Distributor.findOne({ email });
 
-    if (!doc1 && !distributor) {
-      return fail(res, 400, 'FILE_REQUIRED', 'Primary validation document is required.');
-    }
 
     // Generate 6-digit OTP code
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -92,17 +89,17 @@ const registerDistributor = async (req, res, next) => {
         name,
         email,
         mobile,
-        address,
-        city,
-        state,
-        country,
+        address: address || '',
+        city: city || 'N/A',
+        state: state || 'N/A',
+        country: country || 'India',
         company,
         teaType,
         monthlyReq: monthlyReq ? Number(monthlyReq) : 0,
         purpose,
         businessType,
         gstNumber,
-        doc1Path: getRelativePath(doc1.path),
+        doc1Path: doc1 ? getRelativePath(doc1.path) : '',
         doc2Path: doc2 ? getRelativePath(doc2.path) : undefined,
         otpToken: otpCode,
         otpExpires,
@@ -115,7 +112,7 @@ const registerDistributor = async (req, res, next) => {
     // Send OTP to distributor email
     const subject = 'Distributor Verification OTP - Prakriti Tea Division';
     const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
-    const html = getOtpHtml(otpCode);
+    const html = getOtpHtml(otpCode, email);
 
     await sendEmail(email, subject, text, html);
 

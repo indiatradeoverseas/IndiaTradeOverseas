@@ -7,12 +7,13 @@ const DistributorSchema = new mongoose.Schema({
   gstNumber: { type: String, trim: true },
   
   // Compliance Documents
-  doc1Path: { type: String, required: true }, // GST Certificate
+  doc1Path: { type: String, required: false }, // GST Certificate (optional initially)
   doc2Path: { type: String }, // Udyam Certificate (Optional)
   
-  city: { type: String, required: true },
-  state: { type: String, required: true },
+  city: { type: String, required: false },
+  state: { type: String, required: false },
   country: { type: String, default: 'India' },
+
 
   // Optional Sourcing Parameters for Admin CRM panel compatibility
   company: { type: String, default: 'Prakriti Tea Partner', trim: true },

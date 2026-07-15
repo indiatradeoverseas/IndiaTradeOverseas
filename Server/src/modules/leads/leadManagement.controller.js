@@ -6,7 +6,8 @@ const { getRelativePath, resolveUploadPath, proxyFromProduction } = require('../
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
 const { ok, fail } = require('../../utils/response');
-const nodemailer = require('nodemailer');
+// const nodemailer = require('nodemailer');
+
 
 // 1. Create Lead manually with Scoring
 async function createManualLead(req, res, next) {
@@ -235,33 +236,20 @@ async function logEmailActivity(req, res, next) {
       return fail(res, 404, 'NOT_FOUND', 'Lead not found.');
     }
 
-    // Try mock/local send or Nodemailer if env configs exist
+    const { sendEmail } = require('../../utils/mailer');
+    const { decryptText } = require('../../utils/crypto');
+    const decryptedEmail = lead.emailEncrypted ? decryptText(lead.emailEncrypted) : '';
+
     let emailSentSuccessfully = false;
-    try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
-        port: process.env.SMTP_PORT || 2525,
-        auth: {
-          user: process.env.SMTP_USER || '',
-          pass: process.env.SMTP_PASS || ''
-        }
-      });
-
-      const { decryptText } = require('../../utils/crypto');
-      const decryptedEmail = lead.emailEncrypted ? decryptText(lead.emailEncrypted) : '';
-
-      if (decryptedEmail && process.env.SMTP_USER) {
-        await transporter.sendMail({
-          from: `"India Trade Overseas" <${process.env.SMTP_USER}>`,
-          to: decryptedEmail,
-          subject: subject,
-          text: body
-        });
+    if (decryptedEmail) {
+      try {
+        await sendEmail(decryptedEmail, subject, body, `<p>${body.replace(/\n/g, '<br/>')}</p>`);
         emailSentSuccessfully = true;
+      } catch (err) {
+        console.warn('Mail send failed, falling back to database activity logger only:', err.message);
       }
-    } catch (err) {
-      console.warn('Mail send failed, falling back to database activity logger only:', err.message);
     }
+
 
     await LeadActivity.create({
       leadId: lead._id,
