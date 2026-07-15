@@ -129,7 +129,8 @@ export default function Home() {
 
       {/* HERO SECTION: Configured as full bleed viewport height framework */}
       {/* HERO SECTION: Configured as a fully adaptive cinematic framework */}
-      <section className="relative min-h-screen lg:h-screen lg:min-h-[760px] lg:max-h-[980px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10 py-12 sm:py-16 md:py-0">
+      {/* HERO SECTION: Fully responsive layout architecture using dynamic grid row allocations */}
+      <section className="relative min-h-screen lg:h-screen lg:min-h-[760px] lg:max-h-[980px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10">
 
         {/* Dynamic Image Canvas Layer & Grading Modifications */}
         <div className="absolute inset-0 z-0 bg-[#040A12]">
@@ -143,40 +144,41 @@ export default function Home() {
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-[68%_center] absolute inset-0"
-              style={{ filter: 'brightness(1.2) contrast(1.15) saturate(0.70)' }}
+              style={{ filter: 'brightness(1.3) contrast(1.15) saturate(0.70)' }}
             />
           </AnimatePresence>
 
           {/* Cinematic Overlay Protectors Layering */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#040A12]/95 via-[#040A12]/85 via-[#040A12]/70 via-[#040A12]/20 to-[#040A12]/10 z-1" />
-
           <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/70 via-transparent to-[#040A12]/95 z-1 animate-none" />
-
           <div className="absolute inset-0 box-shadow-[inset_0_0_180px_rgba(0,0,0,0.48)] pointer-events-none z-1" />
         </div>
 
-        {/* Safe Content Container Frame: Unified layout engine to balance height across mobile & desktop emulations */}
+        {/* Unified 3-Row Grid Container: Equidistantly scales and distributes spacing dynamically */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
-          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col justify-center md:justify-between pt-24 sm:pt-28 md:pt-32 lg:pt-[130px] pb-6 md:pb-12 lg:pb-[64px] min-h-screen lg:h-full"
+          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full grid grid-rows-[auto_1fr_auto] items-center pt-24 sm:pt-28 md:pt-32 lg:pt-[120px] pb-8 md:pb-12 lg:pb-16 min-h-screen lg:h-full gap-y-6"
         >
-          {/* Hero Content Left Column Block */}
-          <div className="max-w-[720px] text-left flex flex-col items-start w-full my-auto md:my-0">
+          {/* Row 1: Structural Navbar Clearance Buffer Spacer */}
+          <div className="h-2 w-full pointer-events-none" aria-hidden="true" />
+
+          {/* Row 2: Centered Hero Content Left Column Block (Always occupies the exact vertical remainder) */}
+          <div className="max-w-[720px] text-left flex flex-col items-start w-full py-4 sm:py-6 my-auto">
 
             {/* Context Eyebrow Text */}
             <motion.p
               variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: 'easeOut' } } }}
-              className="font-sans font-medium text-[10px] sm:text-[11px] md:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-2.5 sm:mb-4"
+              className="font-sans font-medium text-[10px] sm:text-[11px] md:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-3 sm:mb-4"
             >
               GLOBAL TRADE. RELIABLE PARTNER.
             </motion.p>
 
-            {/* Editorial Serif Main Heading: Optimized with a strict scale sequence to prevent navbar collision */}
+            {/* Editorial Serif Main Heading */}
             <motion.h1
               variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } } }}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[68px] font-serif tracking-tight font-normal leading-[1.15] sm:leading-[1.1] md:leading-[1.06] mb-4 sm:mb-6 uppercase text-[#F2F4F7]"
+              className="text-3xl sm:text-5xl lg:text-6xl xl:text-[68px] font-serif tracking-tight font-normal leading-[1.15] sm:leading-[1.1] md:leading-[1.06] mb-5 sm:mb-6 uppercase text-[#F2F4F7]"
             >
               CONNECTING INDIA.<br />
               POWERING THE WORLD.
@@ -184,7 +186,7 @@ export default function Home() {
 
             <motion.div
               variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-4 sm:mb-6 border-b"
+              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-5 sm:mb-6 border-b"
               aria-hidden="true"
             />
 
@@ -197,7 +199,7 @@ export default function Home() {
             </motion.p>
 
             {/* Primary & Secondary Action Targets */}
-            <div className="flex flex-col sm:flex-row items-center gap-3.5 sm:gap-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
               <Link to="/products" className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[48px] sm:h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
                 Explore Solutions &rarr;
               </Link>
@@ -207,8 +209,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* DESKTOP HORIZON PANEL STRIP (Operational Pillars Matrix) */}
-          <div className="w-full hidden md:block mt-8 lg:mt-12">
+          {/* Row 3: DESKTOP HORIZON PANEL STRIP (Operational Pillars Matrix - Anchors the absolute base) */}
+          <div className="w-full hidden md:block mt-auto pt-4 border-t border-white/5">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full">
 
               <div className="grid grid-cols-[auto_1fr] gap-4 items-start px-4">
