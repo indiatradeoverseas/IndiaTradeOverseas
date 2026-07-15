@@ -33,8 +33,6 @@ const CINEMATIC_CAROUSEL_BACKDROPS = [
   "./images/ito_images/ito_16.jpeg",
   "./images/ito_images/ito_17.jpeg",
   "./images/ito_images/ito_18.jpeg",
-
-
 ];
 
 export default function Home() {
@@ -125,12 +123,12 @@ export default function Home() {
 
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden">
-      
+
       {/* Structural Double-Line Top Border Accent mapped to token metrics */}
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full absolute top-0 left-0 z-50"></div>
 
       {/* HERO SECTION: Configured as full bleed viewport height framework */}
-      <section className="relative min-h-[100svh] max-h-[980px] min-h-[760px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10">
+      <section className="relative min-h-[100svh] lg:max-h-[980px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10">
 
         {/* Dynamic Image Canvas Layer & Grading Modifications */}
         <div className="absolute inset-0 z-0 bg-[#040A12]">
@@ -144,59 +142,59 @@ export default function Home() {
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-[68%_center] absolute inset-0"
-              style={{ filter: 'brightness(2) contrast(1.18) saturate(0.72)' }}
+              style={{ filter: 'brightness(1) contrast(1.15) saturate(0.70)' }}
             />
           </AnimatePresence>
 
           {/* Cinematic Overlay Protectors Layering */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#040A12]/90 via-[#040A12]/80 via-[#040A12]/73 via-[#040A12]/18 to-[#040A12]/06 z-1" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#040A12]/94 via-[#040A12]/25 via-transparent to-[#040A12]/38 z-1" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#040A12]/95 via-[#040A12]/85 via-[#040A12]/70 via-[#040A12]/20 to-[#040A12]/10 z-1" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/70 via-transparent to-[#040A12]/95 z-1 animate-none" />
           <div className="absolute inset-0 box-shadow-[inset_0_0_180px_rgba(0,0,0,0.48)] pointer-events-none z-1" />
         </div>
 
-        {/* Safe Content Container Frame */}
+        {/* Safe Content Container Frame: Fixed top padding alignment to guard against navbar overlap */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
-          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col  justify-between lg:pt-[120px] sm:pt-[12px] lg:pb-[72px] sm:pb-[10px] h-full min-h-[100svh] max-h-[980px]"
+          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col justify-between pt-28 sm:pt-36 lg:pt-[140px] pb-12 md:pb-[72px] h-full min-h-[100svh]"
         >
           {/* Hero Content Left Column Block */}
-          <div className="max-w-[720px] text-left flex flex-col items-start w-full mt-8">
+          <div className="max-w-[720px] text-left flex flex-col items-start w-full">
 
             {/* Context Eyebrow Text */}
-            <motion.p 
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: 'easeOut' } } }} 
-              className="font-sans font-medium text-[11px] sm:text-[13px] tracking-[4px] text-[#C5CBD3] uppercase mb-4"
+            <motion.p
+              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: 'easeOut' } } }}
+              className="font-sans font-medium text-[10px] sm:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-3 sm:mb-4"
             >
               GLOBAL TRADE. RELIABLE PARTNER.
             </motion.p>
 
-            {/* Editorial Serif Main Heading */}
-            <motion.h1 
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } } }} 
-              className="text-4xl sm:text-5xl lg:text-[68px] font-serif tracking-tight font-normal leading-[1.06] mb-6 uppercase text-[#F2F4F7]"
+            {/* Editorial Serif Main Heading: Configured text metrics via clamp to clean overlap bounds */}
+            <motion.h1
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } } }}
+              className="text-3xl sm:text-5xl lg:text-[68px] font-serif tracking-tight font-normal leading-[1.1] sm:leading-[1.06] mb-5 sm:mb-6 uppercase text-[#F2F4F7]"
             >
               CONNECTING INDIA.<br />
               POWERING THE WORLD.
             </motion.h1>
 
-            <motion.div 
+            <motion.div
               variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-6 border-b"
+              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-5 sm:mb-6 border-b"
               aria-hidden="true"
             />
 
             {/* Supporting Context Copy */}
-            <motion.p 
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } } }} 
-              className="font-sans font-light text-[#C5CBD3] text-sm sm:text-[16px] max-w-[580px] leading-[1.6] mb-8"
+            <motion.p
+              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } } }}
+              className="font-sans font-light text-[#C5CBD3] text-xs sm:text-sm lg:text-[16px] max-w-[580px] leading-[1.6] mb-6 sm:mb-8 opacity-90"
             >
               End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets.
             </motion.p>
 
             {/* Primary & Secondary Action Targets */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-8 md:mb-0">
               <Link to="/products" className="w-full sm:w-auto min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[12px] tracking-widest uppercase font-semibold h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
                 Explore Solutions &rarr;
               </Link>
@@ -207,10 +205,10 @@ export default function Home() {
           </div>
 
           {/* DESKTOP HORIZON PANEL STRIP (Operational Pillars Matrix) */}
-          <div className="w-full hidden md:block mt-12">
+          <div className="w-full hidden md:block mt-8 lg:mt-12">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-              
-              <div className="grid grid-template-columns-[56px_1fr] gap-4 items-start px-4">
+
+              <div className="grid grid-cols-[auto_1fr] gap-4 items-start px-4">
                 <FiGlobe className="text-[#F2F4F7] shrink-0 mt-0.5" size={20} />
                 <div>
                   <h5 className="text-[#F2F4F7] font-sans text-[13px] font-medium tracking-wider uppercase mb-1">Global Sourcing</h5>
@@ -218,7 +216,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid grid-template-columns-[56px_1fr] gap-4 items-start px-4 border-l border-[#C5CBD3]/22">
+              <div className="grid grid-cols-[auto_1fr] gap-4 items-start px-4 border-l border-[#C5CBD3]/22">
                 <FiShield className="text-[#F2F4F7] shrink-0 mt-0.5" size={20} />
                 <div>
                   <h5 className="text-[#F2F4F7] font-sans text-[13px] font-medium tracking-wider uppercase mb-1">Smart Logistics</h5>
@@ -226,7 +224,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid grid-template-columns-[56px_1fr] gap-4 items-start px-4 border-l border-[#C5CBD3]/22">
+              <div className="grid grid-cols-[auto_1fr] gap-4 items-start px-4 border-l border-[#C5CBD3]/22">
                 <FiClipboard className="text-[#F2F4F7] shrink-0 mt-0.5" size={20} />
                 <div>
                   <h5 className="text-[#F2F4F7] font-sans text-[13px] font-medium tracking-wider uppercase mb-1">Compliance Assured</h5>
@@ -234,7 +232,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid grid-template-columns-[56px_1fr] gap-4 items-start px-4 border-l border-[#C5CBD3]/22">
+              <div className="grid grid-cols-[auto_1fr] gap-4 items-start px-4 border-l border-[#C5CBD3]/22">
                 <FiAnchor className="text-[#F2F4F7] shrink-0 mt-0.5" size={20} />
                 <div>
                   <h5 className="text-[#F2F4F7] font-sans text-[13px] font-medium tracking-wider uppercase mb-1">Built For Partnerships</h5>
@@ -256,7 +254,7 @@ export default function Home() {
             { icon: <FiClipboard size={18} />, title: "Compliance Assured", desc: "Adherence to international standards and regulatory excellence." },
             { icon: <FiAnchor size={18} />, title: "Built For Partnerships", desc: "Long-term relationships powered by transparency and results." }
           ].map((item, idx) => (
-            <div key={idx} className="grid grid-template-columns-[44px_1fr] gap-3 py-3 border-b border-[#C5CBD3]/10 last:border-b-0 w-full text-left">
+            <div key={idx} className="grid grid-cols-[auto_1fr] gap-3 py-3 border-b border-[#C5CBD3]/10 last:border-b-0 w-full text-left">
               <div className="text-[#F2F4F7] shrink-0 mt-0.5">{item.icon}</div>
               <div>
                 <h5 className="text-[#F2F4F7] font-sans text-[12px] font-medium tracking-wide uppercase mb-1">{item.title}</h5>
@@ -268,12 +266,12 @@ export default function Home() {
       </section>
 
       {/* BRAND TRUST SIGNALS GRID STRIP */}
-      <section className="bg-[#0E1116] py-8 border-b border-[#C5CBD3]/24 overflow-x-auto select-none scrollbar-none">
-        <div className="max-w-[1480px] mx-auto px-6 flex flex-wrap justify-center items-center gap-3 md:gap-4 whitespace-nowrap">
+      <section className="bg-[#0E1116] py-8 border-b border-[#C5CBD3]/24 select-none">
+        <div className="max-w-[1480px] mx-auto px-6 grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center items-center gap-3 md:gap-4">
           {trustBadges.map((badge, index) => (
             <span
               key={index}
-              className="inline-flex items-center justify-center min-w-[140px] h-11 border border-[#C5CBD3]/24 text-[#F2F4F7] text-[10px] tracking-widest font-semibold uppercase px-5 rounded-[2px] transition-all duration-200 relative overflow-hidden group hover:border-[#F2F4F7]"
+              className="inline-flex items-center justify-center w-full sm:w-auto sm:min-w-[140px] h-11 border border-[#C5CBD3]/24 text-[#F2F4F7] text-[10px] tracking-widest font-semibold uppercase px-4 rounded-[2px] transition-all duration-200 relative overflow-hidden group hover:border-[#F2F4F7]"
             >
               <img
                 src={`./images/certificates/${badge.img}`}
@@ -284,7 +282,7 @@ export default function Home() {
                 }}
               />
               <div className="absolute inset-0 bg-[#0E1116]/80 backdrop-blur-[0.5px] z-5 transition-colors group-hover:bg-[#0E1116]/70" />
-              <span className="relative z-10 text-center pointer-events-none">
+              <span className="relative z-10 text-center pointer-events-none text-[9px] sm:text-[10px] px-1 line-clamp-1">
                 {badge.label}
               </span>
             </span>
@@ -295,7 +293,7 @@ export default function Home() {
       {/* SYSTEM DOSSIER INFORMATION CARDS */}
       <section className="py-20 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
+
           <div className="bg-[#121D29]/58 border border-[#C5CBD3]/24 p-6 rounded-md shadow-sm hover:border-[#C5CBD3] transition-colors duration-200">
             <div className="text-[#F2F4F7] mb-3"><FiActivity size={18} /></div>
             <h4 className="font-serif text-lg text-[#F2F4F7] mb-2">Enterprise Timeline</h4>
@@ -368,7 +366,7 @@ export default function Home() {
 
       {/* CORE BUSINESS VERTICALS MATRIX */}
       <section className="relative py-20 bg-[#0E1116] border-y border-[#C5CBD3]/24 px-6 sm:px-12 lg:px-16 overflow-hidden">
-        
+
         <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-100">
           <img
             src="./images/ito_images/ito_2.png"
@@ -422,7 +420,7 @@ export default function Home() {
           <p className="text-[#6D7886] font-sans font-light text-xs mt-2">We handle procedural complexity to preserve risk-free corporate supply lines.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 grid-rows-none lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-5 space-y-3">
             {steps.map((step, index) => (
               <button
@@ -471,13 +469,13 @@ export default function Home() {
 
       {/* FINAL FULFILLMENT MATRIX CTA BLOCK */}
       <section className="relative w-full py-24 px-6 sm:px-12 lg:px-16 overflow-hidden border-t border-[#C5CBD3]/24 bg-[#040A12]">
-        
+
         <div className="absolute inset-0 z-0 opacity-70">
           <img
             src="./images/ito_images/ito_1.jpeg"
             alt="India Trade Overseas Freight Port Terminal Background"
             className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.70) contrast(1.12) saturate(0.72)' }}
+            style={{ filter: 'brightness(0.35) contrast(1.12) saturate(0.72)' }}
           />
           <div className="absolute inset-0 bg-[#0E1116]/40 backdrop-blur-[0.5px]" />
         </div>
@@ -510,15 +508,15 @@ export default function Home() {
       {/* CORPORATE FOOTER PANEL */}
       <footer className="bg-[#040A12] text-[#6D7886] py-16 px-6 border-t border-[#C5CBD3]/24 text-center font-sans">
         <div className="max-w-3xl mx-auto space-y-4">
-          <p className="text-[12px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7]">
+          <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7]">
             India Trade Overseas
             <br />
             <span className="text-xs text-[#6D7886] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
           </p>
           <p className="text-xs italic text-[#C5CBD3]/60 font-serif">
-            "Empowering Trade. Enabling Growth."
+            "Where Quality Meets Global Demand"
           </p>
-          <div className="text-[10px] text-[#6D7886]/40 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/10 pt-4 leading-relaxed">
+          <div className="text-[10px] text-[#ffff]/60 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/30 pt-4 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>
