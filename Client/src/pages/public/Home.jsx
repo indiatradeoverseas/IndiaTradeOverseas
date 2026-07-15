@@ -128,7 +128,8 @@ export default function Home() {
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full absolute top-0 left-0 z-50"></div>
 
       {/* HERO SECTION: Configured as full bleed viewport height framework */}
-      <section className="relative min-h-[100svh] lg:max-h-[980px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10">
+      {/* HERO SECTION: Configured as a fully adaptive cinematic framework */}
+      <section className="relative min-h-screen lg:h-screen lg:min-h-[760px] lg:max-h-[980px] flex items-center bg-[#0E1116] overflow-hidden border-b border-[#C5CBD3]/10 py-12 sm:py-16 md:py-0">
 
         {/* Dynamic Image Canvas Layer & Grading Modifications */}
         <div className="absolute inset-0 z-0 bg-[#040A12]">
@@ -142,38 +143,38 @@ export default function Home() {
               src={CINEMATIC_CAROUSEL_BACKDROPS[carouselIndex]}
               alt="Cinematic Sourcing Container Logistics Terminal"
               className="w-full h-full object-cover object-[68%_center] absolute inset-0"
-              style={{ filter: 'brightness(1) contrast(1.15) saturate(0.70)' }}
+              style={{ filter: 'brightness(0.65) contrast(1.15) saturate(0.70)' }}
             />
           </AnimatePresence>
 
           {/* Cinematic Overlay Protectors Layering */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#040A12]/95 via-[#040A12]/85 via-[#040A12]/70 via-[#040A12]/20 to-[#040A12]/10 z-1" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/70 via-transparent to-[#040A12]/95 z-1 animate-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/70 via-transparent to-[#040A12]/95 z-1" />
           <div className="absolute inset-0 box-shadow-[inset_0_0_180px_rgba(0,0,0,0.48)] pointer-events-none z-1" />
         </div>
 
-        {/* Safe Content Container Frame: Fixed top padding alignment to guard against navbar overlap */}
+        {/* Safe Content Container Frame: Unified layout engine to balance height across mobile & desktop emulations */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={sampleStagger}
-          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col justify-between pt-28 sm:pt-36 lg:pt-[140px] pb-12 md:pb-[72px] h-full min-h-[100svh]"
+          className="max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10 w-full flex flex-col justify-center md:justify-between pt-24 sm:pt-28 md:pt-32 lg:pt-[130px] pb-6 md:pb-12 lg:pb-[64px] min-h-screen lg:h-full"
         >
           {/* Hero Content Left Column Block */}
-          <div className="max-w-[720px] text-left flex flex-col items-start w-full">
+          <div className="max-w-[720px] text-left flex flex-col items-start w-full my-auto md:my-0">
 
             {/* Context Eyebrow Text */}
             <motion.p
               variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: 'easeOut' } } }}
-              className="font-sans font-medium text-[10px] sm:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-3 sm:mb-4"
+              className="font-sans font-medium text-[10px] sm:text-[11px] md:text-[12px] lg:text-[13px] tracking-[3px] sm:tracking-[4px] text-[#C5CBD3] uppercase mb-2.5 sm:mb-4"
             >
               GLOBAL TRADE. RELIABLE PARTNER.
             </motion.p>
 
-            {/* Editorial Serif Main Heading: Configured text metrics via clamp to clean overlap bounds */}
+            {/* Editorial Serif Main Heading: Optimized with a strict scale sequence to prevent navbar collision */}
             <motion.h1
               variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } } }}
-              className="text-3xl sm:text-5xl lg:text-[68px] font-serif tracking-tight font-normal leading-[1.1] sm:leading-[1.06] mb-5 sm:mb-6 uppercase text-[#F2F4F7]"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[68px] font-serif tracking-tight font-normal leading-[1.15] sm:leading-[1.1] md:leading-[1.06] mb-4 sm:mb-6 uppercase text-[#F2F4F7]"
             >
               CONNECTING INDIA.<br />
               POWERING THE WORLD.
@@ -181,7 +182,7 @@ export default function Home() {
 
             <motion.div
               variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-5 sm:mb-6 border-b"
+              className="w-12 h-[1px] bg-[#C5CBD3]/30 mb-4 sm:mb-6 border-b"
               aria-hidden="true"
             />
 
@@ -190,15 +191,15 @@ export default function Home() {
               variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } } }}
               className="font-sans font-light text-[#C5CBD3] text-xs sm:text-sm lg:text-[16px] max-w-[580px] leading-[1.6] mb-6 sm:mb-8 opacity-90"
             >
-              End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets.
+              End-to-end trade and logistics solutions built on trust, scale, and performance. India Trade Overseas coordinates multi-dimensional distribution architectures safely across key global markets[cite: 1].
             </motion.p>
 
             {/* Primary & Secondary Action Targets */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-8 md:mb-0">
-              <Link to="/products" className="w-full sm:w-auto min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[12px] tracking-widest uppercase font-semibold h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
+            <div className="flex flex-col sm:flex-row items-center gap-3.5 sm:gap-4 w-full sm:w-auto">
+              <Link to="/products" className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[48px] sm:h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
                 Explore Solutions &rarr;
               </Link>
-              <Link to="/quote-request" className="w-full sm:w-auto min-w-[250px] bg-[#121D29]/58 backdrop-blur-[8px] border border-[#C5CBD3]/42 hover:bg-[#2B3440] hover:border-[#F2F4F7] text-[#F2F4F7] text-[12px] tracking-widest uppercase font-semibold h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200">
+              <Link to="/quote-request" className="w-full sm:w-auto min-w-[220px] sm:min-w-[250px] bg-[#121D29]/58 backdrop-blur-[8px] border border-[#C5CBD3]/42 hover:bg-[#2B3440] hover:border-[#F2F4F7] text-[#F2F4F7] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[48px] sm:h-[52px] flex items-center justify-center rounded-[2px] transition-all duration-200">
                 Request Bulk Quote &rarr;
               </Link>
             </div>
@@ -475,9 +476,9 @@ export default function Home() {
             src="./images/ito_images/ito_1.jpeg"
             alt="India Trade Overseas Freight Port Terminal Background"
             className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.35) contrast(1.12) saturate(0.72)' }}
+            style={{ filter: 'brightness(1.3) contrast(1.15) saturate(0.72)' }}
           />
-          <div className="absolute inset-0 bg-[#0E1116]/40 backdrop-blur-[0.5px]" />
+          <div className="absolute inset-0 bg-[#0E1116]/70 backdrop-blur-[0.5px]" />
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
