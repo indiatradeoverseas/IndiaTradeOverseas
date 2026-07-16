@@ -106,7 +106,7 @@ const ClientSignup = () => {
               Create Client Account
             </h2>
             <p className="text-xs text-[#6D7886] font-light leading-relaxed">
-              Register your enterprise identity below to initiate direct bulk allocations and coordinate end-to-end global trade logistics[cite: 1].
+              Register your enterprise identity below to initiate direct bulk allocations and coordinate end-to-end global trade logistics.
             </p>
           </motion.div>
 
