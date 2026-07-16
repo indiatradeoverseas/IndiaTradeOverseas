@@ -94,7 +94,7 @@ const ClientLogin = () => {
             <h2 className="text-3xl font-serif text-[#F2F4F7] font-light tracking-tight">
               Client Hub Login
             </h2>
-            <p className="text-xs text-[#6D7886] font-light leading-relaxed">
+            <p className="text-xs text-[#bcc2ca] font-light leading-relaxed">
               Authenticate via terminal to access active trade contracts, allocations, and logistics.
             </p>
           </motion.div>
@@ -193,7 +193,7 @@ const ClientLogin = () => {
 
         {/* Global Protection Notice */}
         <div className="text-[10px] text-[#6D7886]/60 leading-relaxed font-light relative z-20">
-          &copy; 2026 India Trade Overseas. All rights reserved. Protected Environment Terminal[cite: 1].
+          &copy; 2026 India Trade Overseas. All rights reserved. Protected Environment Terminal.
         </div>
       </div>
 

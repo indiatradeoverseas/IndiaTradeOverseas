@@ -146,7 +146,7 @@ export default function QuoteRequest() {
             FOB / CIF Pricing Request
           </h1>
           <div className="w-12 h-[1px] bg-[#C5CBD3]/30 mx-auto" aria-hidden="true" />
-          <p className="text-[10px] text-[#6D7886] tracking-widest uppercase font-mono font-bold">
+          <p className="text-[10px] text-[#f6f8fb] tracking-widest uppercase font-mono font-bold">
             India Trade Overseas Commercial Intake
           </p>
         </motion.div>

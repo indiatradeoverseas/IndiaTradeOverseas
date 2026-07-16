@@ -94,8 +94,8 @@ const EmployeeLogin = () => {
             <h2 className="text-3xl font-serif text-[#F2F4F7] font-light tracking-tight">
               Employee Terminal
             </h2>
-            <p className="text-xs text-[#6D7886] font-light leading-relaxed">
-              Authorized personnel only. Access internal management loops, trade networks, and logistics logs[cite: 1].
+            <p className="text-xs text-[#f5f5f5] font-light leading-relaxed">
+              Authorized personnel only. Access internal management loops, trade networks, and logistics logs.
             </p>
           </motion.div>
 
@@ -184,7 +184,7 @@ const EmployeeLogin = () => {
 
         {/* Global Protection Notice */}
         <div className="text-[10px] text-[#6D7886]/60 leading-relaxed font-light relative z-20">
-          &copy; 2026 India Trade Overseas. All rights reserved. Protected Environment Terminal[cite: 1].
+          &copy; 2026 India Trade Overseas. All rights reserved. Protected Environment Terminal.
         </div>
       </div>
 
