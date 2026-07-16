@@ -27,23 +27,73 @@ const registerDistributor = async (req, res, next) => {
     } = req.body;
 
     if (!name || !email || !mobile) {
+      if (req.files) {
+        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+        if (pDoc && fs.existsSync(pDoc[0].path)) {
+          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+        }
+        if (sDoc && fs.existsSync(sDoc[0].path)) {
+          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+        }
+      }
       return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, and mobile are required.');
     }
 
-    // Capture standard payload keys
-    const doc1 = req.files && req.files['primaryDocument'] ? req.files['primaryDocument'][0] : null;
-    const doc2 = req.files && req.files['secondaryDocument'] ? req.files['secondaryDocument'][0] : null;
+    const doc1 = req.files && req.files['doc1'] ? req.files['doc1'][0] : (req.files && req.files['primaryDocument'] ? req.files['primaryDocument'][0] : null);
+    const doc2 = req.files && req.files['doc2'] ? req.files['doc2'][0] : (req.files && req.files['secondaryDocument'] ? req.files['secondaryDocument'][0] : null);
 
-    // Check if there is an existing distributor with the same email
     let distributor = await Distributor.findOne({ email });
 
+    const currentBusinessType = businessType || (distributor ? distributor.businessType : '1');
 
-    // Generate 6-digit OTP code
+    const hasDoc1 = doc1 || (distributor && distributor.doc1Path);
+    const hasDoc2 = doc2 || (distributor && distributor.doc2Path);
+
+    if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
+      if (req.files) {
+        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+        if (pDoc && fs.existsSync(pDoc[0].path)) {
+          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+        }
+        if (sDoc && fs.existsSync(sDoc[0].path)) {
+          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+        }
+      }
+      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
+    }
+    if (currentBusinessType === '4' && !hasDoc1) {
+      if (req.files) {
+        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+        if (pDoc && fs.existsSync(pDoc[0].path)) {
+          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+        }
+        if (sDoc && fs.existsSync(sDoc[0].path)) {
+          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+        }
+      }
+      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
+    }
+    if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
+      if (req.files) {
+        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+        if (pDoc && fs.existsSync(pDoc[0].path)) {
+          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+        }
+        if (sDoc && fs.existsSync(sDoc[0].path)) {
+          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+        }
+      }
+      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
+    }
+
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     if (distributor) {
-      // Clean up old doc1 on rewrite
       if (doc1 && distributor.doc1Path) {
         const oldDoc1 = path.join(process.cwd(), distributor.doc1Path);
         if (fs.existsSync(oldDoc1)) {
@@ -53,8 +103,7 @@ const registerDistributor = async (req, res, next) => {
       } else if (doc1) {
         distributor.doc1Path = getRelativePath(doc1.path);
       }
-      
-      // Clean up old doc2 on rewrite
+
       if (doc2 && distributor.doc2Path) {
         const oldDoc2 = path.join(process.cwd(), distributor.doc2Path);
         if (fs.existsSync(oldDoc2)) {
@@ -65,7 +114,6 @@ const registerDistributor = async (req, res, next) => {
         distributor.doc2Path = getRelativePath(doc2.path);
       }
 
-      // Sync every profile parameter provided by frontend actions
       distributor.name = name;
       distributor.mobile = mobile;
       distributor.address = address || distributor.address;
@@ -81,7 +129,7 @@ const registerDistributor = async (req, res, next) => {
 
       distributor.otpToken = otpCode;
       distributor.otpExpires = otpExpires;
-      distributor.isOtpVerified = false; 
+      distributor.isOtpVerified = false;
       distributor.approvalStatus = 'pending';
       await distributor.save();
     } else {
@@ -109,7 +157,6 @@ const registerDistributor = async (req, res, next) => {
       await distributor.save();
     }
 
-    // Send OTP to distributor email
     const subject = 'Distributor Verification OTP - Prakriti Tea Division';
     const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
     const html = getOtpHtml(otpCode, email);
@@ -118,10 +165,9 @@ const registerDistributor = async (req, res, next) => {
 
     return ok(res, { distributorId: distributor._id, email: distributor.email }, 'Distributor registration initiated. OTP sent to email.', 201, req);
   } catch (error) {
-    // If error, cleanup raw binary traces immediately from storage paths
     if (req.files) {
-      const pDoc = req.files['primaryDocument'];
-      const sDoc = req.files['secondaryDocument'];
+      const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+      const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
       if (pDoc && fs.existsSync(pDoc[0].path)) {
         try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
       }
@@ -133,7 +179,6 @@ const registerDistributor = async (req, res, next) => {
   }
 };
 
-// 2. Verify Distributor OTP
 const verifyDistributorOtp = async (req, res, next) => {
   try {
     const { distributorId, otp } = req.body;
@@ -147,24 +192,19 @@ const verifyDistributorOtp = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Distributor record not found.');
     }
 
-    // Check OTP expiration
     if (new Date() > distributor.otpExpires) {
       return fail(res, 400, 'OTP_EXPIRED', 'OTP code has expired. Please register again to get a new code.');
     }
-
-    // Check OTP match
     if (distributor.otpToken !== otp) {
       return fail(res, 400, 'INVALID_OTP', 'The OTP code entered is incorrect.');
     }
 
-    // Success! Verify distributor and auto-approve for direct access
     distributor.isOtpVerified = true;
     distributor.approvalStatus = 'approved';
-    distributor.otpToken = undefined; 
+    distributor.otpToken = undefined;
     distributor.otpExpires = undefined;
     await distributor.save();
 
-    // Generate standardized session token (JWT)
     const jwt = require('jsonwebtoken');
     const env = require('../../config/env');
     const token = jwt.sign(
@@ -184,7 +224,6 @@ const verifyDistributorOtp = async (req, res, next) => {
   }
 };
 
-// 3. Get distributor verification/approval status (Polling endpoint)
 const getDistributorStatus = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
@@ -197,7 +236,6 @@ const getDistributorStatus = async (req, res, next) => {
   }
 };
 
-// 4. Get gated bulk marketplace data
 const getMarketplace = async (req, res, next) => {
   try {
     const userId = req.distributor ? req.distributor._id : null;
@@ -247,7 +285,6 @@ const getMarketplace = async (req, res, next) => {
   }
 };
 
-// 5. Get all distributors (Admin Panel compatibility)
 const getDistributors = async (req, res, next) => {
   try {
     const distributors = await Distributor.find().sort({ createdAt: -1 });
@@ -261,7 +298,6 @@ const getDistributors = async (req, res, next) => {
   }
 };
 
-// 6. Toggle distributor verification status (Admin Panel compatibility)
 const toggleDistributorVerification = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
@@ -283,7 +319,6 @@ const toggleDistributorVerification = async (req, res, next) => {
   }
 };
 
-// 7. Delete distributor and their certificates from disk
 const deleteDistributor = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
@@ -311,7 +346,6 @@ const deleteDistributor = async (req, res, next) => {
   }
 };
 
-// 8. Download Document 1 (GST/FSSAI/IEC)
 const downloadGstCertificate = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
@@ -330,7 +364,6 @@ const downloadGstCertificate = async (req, res, next) => {
   }
 };
 
-// 9. Download Document 2 (UDYAM/Secondary)
 const downloadUdyamCertificate = async (req, res, next) => {
   try {
     const distributor = await Distributor.findById(req.params.id);
