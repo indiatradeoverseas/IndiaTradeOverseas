@@ -16,7 +16,6 @@ const {
 
 const { authenticate } = require('../../middlewares/auth.middleware');
 
-// Configure multer storage for distributor documents
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const destDir = path.join(process.cwd(), 'uploads', 'distributor_docs');
@@ -56,17 +55,16 @@ const checkAdminManagerHR = (req, res, next) => {
 
 // ==========================================
 // Public Routes
-// ==========================================
-
-// Intercepts the exact keys from the frontend form state
-const distributorUploadFields = upload.fields([
-  { name: 'primaryDocument', maxCount: 1 },
-  { name: 'secondaryDocument', maxCount: 1 }
-]);
-
-// Handlers capture both alternative path bindings safely
-router.post('/', distributorUploadFields, registerDistributor);
-router.post('/register', distributorUploadFields, registerDistributor);
+router.post(
+  '/', 
+  upload.fields([
+    { name: 'doc1', maxCount: 1 },
+    { name: 'doc2', maxCount: 1 },
+    { name: 'primaryDocument', maxCount: 1 },
+    { name: 'secondaryDocument', maxCount: 1 }
+  ]), 
+  registerDistributor
+);
 
 router.post('/verify-otp', verifyDistributorOtp);
 router.get('/status/:id', getDistributorStatus);
