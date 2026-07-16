@@ -6,7 +6,6 @@ const { getRelativePath, resolveUploadPath, proxyFromProduction } = require('../
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
 const { ok, fail } = require('../../utils/response');
-// const nodemailer = require('nodemailer');
 
 
 // 1. Create Lead manually with Scoring

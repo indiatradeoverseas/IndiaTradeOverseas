@@ -90,10 +90,6 @@ function getOtpHtml(otp, email = '') {
             
             <p>Alternatively, you can use the following 6-digit OTP code to verify your account:</p>
             <p class="otp">${otp}</p>
-            
-            <p>If the button above doesn't work, copy and paste the following link into your web browser:</p>
-            <p style="word-break: break-all; color: #007bff;">${verificationUrl}</p>
-            
             <p>If you did not create an account, you can safely ignore this email.</p>
         </div>
         <div class="footer">
