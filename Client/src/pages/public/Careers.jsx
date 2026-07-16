@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FiBriefcase, 
-  FiMapPin, 
-  FiClock, 
-  FiUpload, 
-  FiCheckCircle, 
-  FiGlobe, 
-  FiTrendingUp, 
-  FiUsers, 
-  FiChevronDown 
+import {
+  FiBriefcase,
+  FiMapPin,
+  FiClock,
+  FiUpload,
+  FiCheckCircle,
+  FiGlobe,
+  FiTrendingUp,
+  FiUsers,
+  FiChevronDown
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -24,7 +24,7 @@ export default function Careers() {
     phone: '',
     position: '',
     resume: null,
-    coverLetterFile: null 
+    coverLetterFile: null
   });
 
   const defaultJobs = [
@@ -141,7 +141,7 @@ export default function Careers() {
       }
 
       await careersApi.applyJob(data);
-      
+
       setSubmitted(true);
       toast.success('Your application has been submitted successfully!');
     } catch (error) {
@@ -171,18 +171,18 @@ export default function Careers() {
 
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden relative">
-      
+
       {/* Structural Double-Line Top Border Accent */}
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full fixed top-0 left-0 z-50"></div>
 
       {/* PAGE HERO SECTION - RECRUITMENT REVISION WITH CINEMATIC BACKDROP */}
       <header className="relative w-full pt-32 sm:pt-40 lg:pt-[160px] pb-24 px-6 sm:px-12 lg:px-16 text-center bg-[#040A12] border-b border-[#C5CBD3]/10 overflow-hidden">
-        
+
         {/* Dynamic Photo Canvas Overlay Layer */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-40">
-          <img 
-            src="./images/ito_images/ito_14.png" 
-            alt="Professional diverse operations team overlooking international gateway logistics" 
+          <img
+            src="./images/ito_images/ito_14.png"
+            alt="Professional diverse operations team overlooking international gateway logistics"
             className="w-full h-full object-cover object-center scale-105 filter brightness-[1.3] contrast-[1.18] saturate-[0.8]"
           />
           {/* Layered cinematic grading vignettes */}
@@ -192,7 +192,7 @@ export default function Careers() {
 
         {/* Hero Content Stack */}
         <div className="relative z-10 max-w-4xl mx-auto space-y-6">
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -200,8 +200,8 @@ export default function Careers() {
           >
             WORK WITH US
           </motion.span>
-          
-          <motion.h1 
+
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: 'easeOut' }}
@@ -209,16 +209,16 @@ export default function Careers() {
           >
             BUILD THE FUTURE OF GLOBAL TRADE.
           </motion.h1>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, scaleX: 0 }}
             animate={{ opacity: 1, scaleX: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="w-16 h-[1px] bg-[#C5CBD3]/40 mx-auto border-b" 
+            className="w-16 h-[1px] bg-[#C5CBD3]/40 mx-auto border-b"
             aria-hidden="true"
           />
-          
-          <motion.p 
+
+          <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.25, ease: 'easeOut' }}
@@ -226,7 +226,7 @@ export default function Careers() {
           >
             Join a growing trade and logistics enterprise connecting markets and opportunities across borders.
           </motion.p>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -251,7 +251,7 @@ export default function Careers() {
           <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mx-auto mt-4" />
         </div>
 
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="show"
@@ -259,8 +259,8 @@ export default function Careers() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           {perks.map((perk, index) => (
-            <motion.div 
-              key={index} 
+            <motion.div
+              key={index}
               variants={elementVariants}
               className="bg-[#121D29]/80 backdrop-blur-sm p-6 border border-[#C5CBD3]/80 shadow-md rounded-sm hover:border-[#F2F4F7] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group "
             >
@@ -278,14 +278,14 @@ export default function Careers() {
 
       {/* Job Listings Accordion Section */}
       <section id="openings" className="py-24 bg-[#040A12] border-b border-[#C5CBD3]/24 px-6 sm:px-12 lg:px-16">
-      <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-50">
-            <img 
-              src="./images/ito_images/ito_11.jpeg" 
-              alt="Contained framework mask background" 
-              className="w-full h-full object-cover filter brightness-[1.3] contrast-[1.15] saturate-[0.8]"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/20 via-transparent to-[#040A12]/10" />
-          </div>
+        <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-50">
+          <img
+            src="./images/ito_images/ito_11.jpeg"
+            alt="Contained framework mask background"
+            className="w-full h-full object-cover filter brightness-[1.3] contrast-[1.15] saturate-[0.8]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/20 via-transparent to-[#040A12]/10" />
+        </div>
 
         <div className="max-w-[1040px] mx-auto">
           <div className="text-center space-y-2 mb-16">
@@ -294,7 +294,7 @@ export default function Careers() {
             <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mx-auto mt-4" />
           </div>
 
-          <motion.div 
+          <motion.div
             variants={containerVariants}
             initial="hidden"
             whileInView="show"
@@ -304,8 +304,8 @@ export default function Careers() {
             {jobs.map((job) => {
               const jobId = job.id || job._id;
               return (
-                <motion.div 
-                  key={jobId} 
+                <motion.div
+                  key={jobId}
                   variants={elementVariants}
                   className="bg-[#121D29]/40 border border-[#C5CBD3]/80 rounded-sm overflow-hidden shadow-sm hover:border-[#C5CBD3]/80 transition-all duration-300"
                 >
@@ -328,7 +328,7 @@ export default function Careers() {
 
                   <AnimatePresence>
                     {activeJob === jobId && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
@@ -374,9 +374,9 @@ export default function Careers() {
       {/* Application Form Section with Contained Form Background Blur Mask */}
       <section id="apply-form" className="py-24 max-w-[1480px] mx-auto px-6 sm:px-12 lg:px-16 relative z-10">
         <div className="max-w-xl mx-auto bg-[#121D29]/40 border border-[#C5CBD3]/24 rounded-sm shadow-2xl overflow-hidden relative">
-          
+
           {/* ST STRICTLY ISOLATED BANNER ASS ASSET BEHIND FORM CARD ONLY */}
-         
+
           <div className="backdrop-blur-sm bg-transparent relative z-10">
             <div className="bg-[#040A12]/90 text-white p-5 sm:p-6 relative border-b border-[#C5CBD3]/24">
               <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#6D7886] via-[#C5CBD3] to-[#6D7886]" />
@@ -452,84 +452,100 @@ export default function Careers() {
                         {jobs.map(job => <option key={job.id || job._id} value={job.title} className="bg-[#0E1116] text-[#F2F4F7]">{job.title}</option>)}
                         <option value="General Application" className="bg-[#0E1116] text-[#F2F4F7]">General Application / Other</option>
                       </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[#6D7886]">
-                      <FiChevronDown size={14} />
+                      <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[#6D7886]">
+                        <FiChevronDown size={14} />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Primary Upload Block: Resume */}
-                <div>
-                  <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Resume *</label>
-                  <div className="border border-dashed border-[#C5CBD3]/30 bg-[#0E1116]/60 rounded-sm p-5 text-center hover:border-[#F2F4F7] relative cursor-pointer transition-colors group">
-                    <input
-                      type="file"
-                      name="resume"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
-                    />
-                    <FiUpload size={20} className={formData.resume ? "text-[#F2F4F7] mx-auto mb-2" : "text-[#6D7886] mx-auto mb-2 group-hover:text-[#F2F4F7] transition-colors"} />
-                    <p className="text-[#F2F4F7] font-medium text-xs truncate max-w-full px-4">{formData.resume ? formData.resume.name : 'Select or drag Resume file'}</p>
-                    <p className="text-[#6D7886] text-[10px] mt-1 font-mono tracking-wide">PDF, DOC, DOCX maximum size 5MB</p>
+                  {/* Primary Upload Block: Resume */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Resume *</label>
+                    <div className="border border-dashed border-[#C5CBD3]/30 bg-[#0E1116]/60 rounded-sm p-5 text-center hover:border-[#F2F4F7] relative cursor-pointer transition-colors group">
+                      <input
+                        type="file"
+                        name="resume"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
+                      />
+                      <FiUpload size={20} className={formData.resume ? "text-[#F2F4F7] mx-auto mb-2" : "text-[#6D7886] mx-auto mb-2 group-hover:text-[#F2F4F7] transition-colors"} />
+                      <p className="text-[#F2F4F7] font-medium text-xs truncate max-w-full px-4">{formData.resume ? formData.resume.name : 'Select or drag Resume file'}</p>
+                      <p className="text-[#6D7886] text-[10px] mt-1 font-mono tracking-wide">PDF, DOC, DOCX maximum size 5MB</p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Secondary Upload Block: Cover Letter */}
-                <div>
-                  <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Cover note</label>
-                  <div className="border border-dashed border-[#C5CBD3]/30 bg-[#0E1116]/60 rounded-sm p-5 text-center hover:border-[#F2F4F7] relative cursor-pointer transition-colors group">
-                    <input
-                      type="file"
-                      name="coverLetter"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleCoverLetterFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
-                    />
-                    <FiUpload size={20} className={formData.coverLetterFile ? "text-[#F2F4F7] mx-auto mb-2" : "text-[#6D7886] mx-auto mb-2 group-hover:text-[#F2F4F7] transition-colors"} />
-                    <p className="text-[#F2F4F7] font-medium text-xs truncate max-w-full px-4">
-                      {formData.coverLetterFile ? formData.coverLetterFile.name : 'Select or drag optional Cover Letter'}
-                    </p>
-                    <p className="text-[#6D7886] text-[10px] mt-1 font-mono tracking-wide">PDF, DOC, DOCX maximum size 5MB</p>
+                  {/* Secondary Upload Block: Cover Letter */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#F2F4F7] uppercase tracking-widest mb-1.5">Cover note</label>
+                    <div className="border border-dashed border-[#C5CBD3]/30 bg-[#0E1116]/60 rounded-sm p-5 text-center hover:border-[#F2F4F7] relative cursor-pointer transition-colors group">
+                      <input
+                        type="file"
+                        name="coverLetter"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleCoverLetterFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
+                      />
+                      <FiUpload size={20} className={formData.coverLetterFile ? "text-[#F2F4F7] mx-auto mb-2" : "text-[#6D7886] mx-auto mb-2 group-hover:text-[#F2F4F7] transition-colors"} />
+                      <p className="text-[#F2F4F7] font-medium text-xs truncate max-w-full px-4">
+                        {formData.coverLetterFile ? formData.coverLetterFile.name : 'Select or drag optional Cover Letter'}
+                      </p>
+                      <p className="text-[#6D7886] text-[10px] mt-1 font-mono tracking-wide">PDF, DOC, DOCX maximum size 5MB</p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Consent & Privacy Statement Notice */}
-                <div className="p-3.5 bg-[#040A12]/60 border border-[#C5CBD3]/10 text-[#6D7886] text-[11px] font-light leading-relaxed rounded-sm">
-                  By submitting this form, you provide consent for processing your applicant data and attached files under strict internal privacy retention policies.
-                </div>
+                  {/* Consent & Privacy Statement Notice */}
+                  <div className="p-3.5 bg-[#040A12]/60 border border-[#C5CBD3]/10 text-[#6D7886] text-[11px] font-light leading-relaxed rounded-sm">
+                    By submitting this form, you provide consent for processing your applicant data and attached files under strict internal privacy retention policies.
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-[52px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans text-xs uppercase tracking-widest font-bold rounded-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60 shadow-md"
-                >
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      <span>Processing Application...</span>
-                    </>
-                  ) : 'Submit Official Application'}
-                </button>
-              </form>
-            )}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full h-[52px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans text-xs uppercase tracking-widest font-bold rounded-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60 shadow-md"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Processing Application...</span>
+                      </>
+                    ) : 'Submit Official Application'}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
       </section>
 
       {/* Shared Corporate Footer Panel */}
-      <footer className="bg-[#040A12] text-[#6D7886] py-16 px-6 border-t border-[#C5CBD3]/24 text-center font-sans">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7]">
+      <footer className="bg-[#040A12] text-[#6D7886] py-16 px-6 border-t border-[#C5CBD3]/24 text-center font-sans relative overflow-hidden">
+
+        {/* Cinematic Photo Background Overlay Matrix */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-80">
+          <img
+            src="/images/footer-bg-image.png" // Sourced corporate terminal or map backdrop path
+            alt="India Trade Overseas Industrial Logistics Footprint"
+            className="w-full h-full object-cover object-center scale-106 mt-3"
+            style={{ filter: 'brightness(1.5) contrast(1.5) saturate(0.5)' }}
+          />
+          {/* Protective vignette mask gradient layer to secure text parameter isolation */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#040A12]/30 via-transparent to-[#040A12]/10" />
+        </div>
+
+        {/* Centered Footer Content Meta Stack */}
+        <div className="max-w-3xl mx-auto space-y-4 relative z-10">
+          <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7] drop-shadow-[0_2px_4px_rgba(4,10,18,0.5)]">
             India Trade Overseas
             <br />
-            <span className="text-xs text-[#cacdd3] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
+            <span className="text-xs text-[#8a939e] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
           </p>
-          <p className="text-xs italic text-[#C5CBD3]/60 font-serif">
+
+          <p className="text-xs italic text-[#C5CBD3]/70 font-serif drop-shadow-[0_2px_4px_rgba(4,10,18,0.4)]">
             "Where Quality Meets Global Demand"
           </p>
-          <div className="text-[10px] text-[#ffff]/60 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/30 pt-4 leading-relaxed">
+
+          <div className="text-[10px] text-[#8a939e] /50 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/20 pt-4 leading-relaxed tracking-wide">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>
