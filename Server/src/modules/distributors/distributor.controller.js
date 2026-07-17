@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const Distributor = require('./distributor.model');
+const DistributorTransaction = require('./transaction.model');
 const { generateOtp, getOtpHtml } = require('../../utils/otp');
 const { sendEmail } = require('../../utils/mailer');
 const { ok, fail } = require('../../utils/response');
@@ -23,7 +25,8 @@ const registerDistributor = async (req, res, next) => {
       monthlyReq,
       purpose,
       businessType,
-      gstNumber
+      gstNumber,
+      division
     } = req.body;
 
     if (!name || !email || !mobile) {
@@ -126,11 +129,14 @@ const registerDistributor = async (req, res, next) => {
       distributor.purpose = purpose || distributor.purpose;
       distributor.businessType = businessType || distributor.businessType;
       distributor.gstNumber = gstNumber || distributor.gstNumber;
+      distributor.division = division || distributor.division || 'TEA';
 
       distributor.otpToken = otpCode;
       distributor.otpExpires = otpExpires;
       distributor.isOtpVerified = false;
-      distributor.approvalStatus = 'pending';
+      if (distributor.approvalStatus !== 'approved') {
+        distributor.approvalStatus = 'pending';
+      }
       await distributor.save();
     } else {
       distributor = new Distributor({
@@ -152,7 +158,8 @@ const registerDistributor = async (req, res, next) => {
         otpToken: otpCode,
         otpExpires,
         isOtpVerified: false,
-        approvalStatus: 'pending'
+        approvalStatus: 'pending',
+        division: division || 'TEA'
       });
       await distributor.save();
     }
@@ -200,7 +207,9 @@ const verifyDistributorOtp = async (req, res, next) => {
     }
 
     distributor.isOtpVerified = true;
-    distributor.approvalStatus = 'approved';
+    if (distributor.approvalStatus !== 'approved') {
+      distributor.approvalStatus = 'pending';
+    }
     distributor.otpToken = undefined;
     distributor.otpExpires = undefined;
     await distributor.save();
@@ -305,8 +314,97 @@ const toggleDistributorVerification = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
 
+    const previousStatus = distributor.approvalStatus;
     distributor.approvalStatus = distributor.approvalStatus === 'approved' ? 'pending' : 'approved';
     await distributor.save();
+
+    if (distributor.approvalStatus === 'approved') {
+      try {
+        const subject = 'Account Approved - Prakriti Tea B2B Portal';
+        const text = `Congratulations! Your distributor profile has been approved. You can now access our premium items.`;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Account Approved - IndiaTradeOverseas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #eeeeee;
+            padding-bottom: 20px;
+        }
+        .header h2 {
+            color: #004B3B;
+            margin: 0;
+        }
+        .content {
+            padding: 20px 0;
+            line-height: 1.6;
+            color: #555555;
+        }
+        .btn-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            background-color: #004B3B;
+            color: #50C878 !important;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eeeeee;
+            text-align: center;
+            font-size: 12px;
+            color: #999999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Prakriti Tea Division</h2>
+        </div>
+        <div class="content">
+            <p>Dear ${distributor.name},</p>
+            <p>Congratulations! Your business registration has been verified and approved by our team.</p>
+            <p>You can now access our premium items, view real-time bulk pricing, inspect tasting scores, and place orders.</p>
+            <div class="btn-container">
+                <a href="${frontendUrl}/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
+            </div>
+            <p>If you have any questions or require procurement support, feel free to contact your account manager.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 IndiaTradeOverseas. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+        await sendEmail(distributor.email, subject, text, html);
+      } catch (err) {
+        console.error('Error sending approval email:', err);
+      }
+    }
 
     const responseData = {
       ...distributor.toObject(),
@@ -386,6 +484,202 @@ const downloadUdyamCertificate = async (req, res, next) => {
   }
 };
 
+// Razorpay and PayPal Online Payment Integrations
+const getRazorpayAuth = () => {
+  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TDkYIhxFKBUK3K';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '2DL5K0rcm00absDWP8oniGT8';
+  return Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+};
+
+const createRazorpayOrder = async (req, res, next) => {
+  try {
+    const { amount, lotId, quantity } = req.body;
+    if (!amount || !lotId || !quantity) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Amount, lotId and quantity are required.');
+    }
+
+    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TDkYIhxFKBUK3K';
+    const auth = getRazorpayAuth();
+    
+    // Amount is in INR. Razorpay expects it in paise (multiply by 100)
+    const amountInPaise = Math.round(Number(amount) * 100);
+
+    const response = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `dist_receipt_${Date.now()}`
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `Razorpay Order Error: ${errText}`);
+    }
+
+    const order = await response.json();
+    return ok(res, { orderId: order.id, amount: order.amount, keyId }, 'Razorpay order created successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyRazorpayPayment = async (req, res, next) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, lotId, quantity, amount } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !lotId || !quantity || !amount) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Missing verification parameters.');
+    }
+
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || '2DL5K0rcm00absDWP8oniGT8';
+    
+    const hmac = crypto.createHmac('sha256', keySecret);
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const generatedSignature = hmac.digest('hex');
+
+    if (generatedSignature !== razorpay_signature) {
+      return fail(res, 400, 'PAYMENT_VERIFICATION_FAILED', 'Invalid signature verification.');
+    }
+
+    // Save transaction
+    const transaction = new DistributorTransaction({
+      distributorId: req.distributor._id,
+      lotId,
+      quantity: Number(quantity),
+      amount: Number(amount),
+      currency: 'INR',
+      paymentGateway: 'Razorpay',
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      status: 'Success'
+    });
+    await transaction.save();
+
+    return ok(res, { transaction }, 'Payment verified successfully and transaction recorded.', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPaypalAccessToken = async () => {
+  const clientId = process.env.PAYPAL_CLIENT_ID || 'AQsHOxpt4otfYTb2UO0WvHMH3q5ZkC-XZffGbPVL3QtcA-MQwZg6zuzOCWXpTJbdt3XbuUjz9N59CRRr';
+  const clientSecret = process.env.PAYPAL_SECRET || 'EIUlUHJZ_ohSB1yms0nKdI7SA2AvEqbb8uiDHCyD5dkrltSIAidRLiIDXSGYkGIWGXcMiChVWrvQFfsh';
+  
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const response = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`PayPal Auth Error: ${errText}`);
+  }
+
+  const data = await response.json();
+  return data.access_token;
+};
+
+const createPaypalOrder = async (req, res, next) => {
+  try {
+    const { amount, lotId, quantity } = req.body;
+    if (!amount || !lotId || !quantity) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Amount, lotId and quantity are required.');
+    }
+
+    const accessToken = await getPaypalAccessToken();
+
+    // Convert INR to USD (dividing by 85) for international gateway
+    const usdAmount = (Number(amount) / 85).toFixed(2);
+
+    const response = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        intent: 'CAPTURE',
+        purchase_units: [
+          {
+            amount: {
+              currency_code: 'USD',
+              value: usdAmount
+            },
+            description: `Prakriti Sourcing Lot ${lotId} - ${quantity} Kg`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `PayPal Create Order Error: ${errText}`);
+    }
+
+    const order = await response.json();
+    return ok(res, { orderId: order.id, usdAmount }, 'PayPal order created successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const capturePaypalOrder = async (req, res, next) => {
+  try {
+    const { orderId, lotId, quantity, amount } = req.body;
+    if (!orderId || !lotId || !quantity || !amount) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'orderId, lotId, quantity and amount are required.');
+    }
+
+    const accessToken = await getPaypalAccessToken();
+
+    const response = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `PayPal Capture Order Error: ${errText}`);
+    }
+
+    const capture = await response.json();
+    if (capture.status !== 'COMPLETED') {
+      return fail(res, 400, 'PAYMENT_CAPTURE_FAILED', `PayPal Order not completed: Current status is ${capture.status}`);
+    }
+
+    // Save transaction
+    const transaction = new DistributorTransaction({
+      distributorId: req.distributor._id,
+      lotId,
+      quantity: Number(quantity),
+      amount: Number(amount),
+      currency: 'INR',
+      paymentGateway: 'PayPal',
+      paymentId: capture.purchase_units[0].payments.captures[0].id,
+      orderId: orderId,
+      status: 'Success'
+    });
+    await transaction.save();
+
+    return ok(res, { transaction }, 'PayPal payment captured successfully and transaction recorded.', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerDistributor,
   verifyDistributorOtp,
@@ -395,5 +689,9 @@ module.exports = {
   toggleDistributorVerification,
   deleteDistributor,
   downloadGstCertificate,
-  downloadUdyamCertificate
+  downloadUdyamCertificate,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  createPaypalOrder,
+  capturePaypalOrder
 };

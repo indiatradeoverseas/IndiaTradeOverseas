@@ -11,7 +11,11 @@ const {
   toggleDistributorVerification,
   deleteDistributor,
   downloadGstCertificate,
-  downloadUdyamCertificate
+  downloadUdyamCertificate,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  createPaypalOrder,
+  capturePaypalOrder
 } = require('./distributor.controller');
 
 const { authenticate } = require('../../middlewares/auth.middleware');
@@ -68,6 +72,13 @@ router.post(
 
 router.post('/verify-otp', verifyDistributorOtp);
 router.get('/status/:id', getDistributorStatus);
+
+// Online Payment Integrations (Distributor Authenticated)
+const { authenticateDistributor } = require('../../middlewares/auth.middleware');
+router.post('/payments/razorpay/create-order', authenticateDistributor, createRazorpayOrder);
+router.post('/payments/razorpay/verify-payment', authenticateDistributor, verifyRazorpayPayment);
+router.post('/payments/paypal/create-order', authenticateDistributor, createPaypalOrder);
+router.post('/payments/paypal/capture-order', authenticateDistributor, capturePaypalOrder);
 
 // ==========================================
 // Authenticated/Protected Admin Routes
