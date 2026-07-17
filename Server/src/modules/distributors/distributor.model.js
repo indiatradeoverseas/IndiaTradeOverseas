@@ -5,11 +5,11 @@ const DistributorSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, trim: true, lowercase: true },
   mobile: { type: String, required: true, trim: true },
   gstNumber: { type: String, trim: true },
-  
+
   // Compliance Documents
   doc1Path: { type: String, required: false }, // GST Certificate (optional initially)
   doc2Path: { type: String }, // Udyam Certificate (Optional)
-  
+
   city: { type: String, required: false },
   state: { type: String, required: false },
   country: { type: String, default: 'India' },
@@ -22,17 +22,22 @@ const DistributorSchema = new mongoose.Schema({
   monthlyReq: { type: Number, default: 0 },
   purpose: { type: String, default: 'Wholesale Sourcing' },
   businessType: { type: String, default: '1' },
-  
+  division: {
+    type: String,
+    default: 'TEA',
+    enum: ['TEA', 'RICE', 'COAL']
+  },
+
   // Security Tokens & Lifecycles
   otpToken: { type: String },
   otpExpires: { type: Date },
   isOtpVerified: { type: Boolean, default: false },
-  
+
   // Layer 4 & 5 Verification States
-  approvalStatus: { 
-    type: String, 
-    default: 'pending', 
-    enum: ['pending', 'approved', 'rejected'] 
+  approvalStatus: {
+    type: String,
+    default: 'pending',
+    enum: ['pending', 'approved', 'rejected']
   }
 }, { timestamps: true });
 
