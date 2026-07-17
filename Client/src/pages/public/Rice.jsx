@@ -6,12 +6,8 @@ import {
     FiKey, FiUploadCloud, FiX, FiAward, FiCompass, FiLayers, FiLock, FiGlobe, FiGrid
 } from 'react-icons/fi';
 
-// B2B Channel API Endpoint Handlers
 import { distributorApi } from '../../api/distributor';
 
-// Strict Imperial Harvest Palette Hex Definitions
-// Ivory White: #FFF9EC | Cream Beige: #F2E3B4 | Golden Wheat: #D9B85C | Harvest Gold: #A67C2D | Rich Earth: #5A4422
-// Master Linear Gradient Accent: #E2C26A -> #8D6A25
 
 const HERO_BACKGROUNDS = [
     "/images/rice_images/rice_1.jpeg",
