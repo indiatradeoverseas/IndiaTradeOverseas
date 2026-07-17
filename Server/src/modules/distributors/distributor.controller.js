@@ -390,7 +390,7 @@ const toggleDistributorVerification = async (req, res, next) => {
             <p>Congratulations! Your business registration has been verified and approved by our team.</p>
             <p>You can now access our premium items, view real-time bulk pricing, inspect tasting scores, and place orders.</p>
             <div class="btn-container">
-                <a href="${frontendUrl}/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
+              <a href="https://www.indiatradeoverseas.com/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
             </div>
             <p>If you have any questions or require procurement support, feel free to contact your account manager.</p>
         </div>
