@@ -141,7 +141,7 @@ export default function ChatWidget() {
       if (response.success) {
         toast.success('CRM Lead generated successfully from this chat!', {
           icon: '🚀',
-          style: { borderRadius: '6px', background: '#0C1F3F', color: '#ffffff', border: '1px solid #2F5DA8' }
+          style: { borderRadius: '2px', background: '#121D29', color: '#F2F4F7', border: '1px solid rgba(197,203,211,0.2)' }
         });
       }
     } catch (error) {
@@ -164,45 +164,44 @@ export default function ChatWidget() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center justify-center w-14 h-14 bg-[#0C1F3F] text-white border border-[#2F5DA8]/40 rounded-full shadow-2xl hover:bg-[#0C1F3F]/90 transition-colors"
+            className="flex items-center justify-center w-14 h-14 bg-[#F2F4F7] text-[#040A12] rounded-full shadow-2xl transition-colors cursor-pointer border border-[#C5CBD3]/20"
           >
-            <FiMessageCircle size={24} className="text-[#2F5DA8]" />
+            <FiMessageCircle size={24} />
           </motion.button>
         )}
 
         {isOpen && (
           <motion.div
             key="chat-window-container"
-            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 30 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="w-[calc(100vw-2rem)] sm:w-96 h-[80vh] max-h-[600px] sm:h-[550px] bg-[#ffffff] rounded-lg shadow-2xl border border-[#8FAADC]/30 flex flex-col overflow-hidden"
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", stiffness: 350, damping: 26 }}
+            className="w-[calc(100vw-2rem)] sm:w-96 h-[80vh] max-h-[580px] sm:h-[530px] bg-[#0E1116] rounded-sm shadow-2xl border border-[#C5CBD3]/15 flex flex-col overflow-hidden"
           >
-            {/* Header Area using Corporate Navy & Color Accents */}
-            <div className="bg-[#0C1F3F] text-white p-4 flex items-center justify-between shadow-md shrink-0 relative">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#2F5DA8]" />
-              <div className="flex items-center space-x-3 mt-0.5">
+            {/* Header Area using Steel Dark Accents */}
+            <div className="bg-[#040A12] text-[#C5CBD3] p-4 flex items-center justify-between border-b border-[#C5CBD3]/10 shrink-0 relative text-left">
+              <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <div className="w-2 h-2 bg-[#2F5DA8] rounded-full"></div>
-                  <div className="absolute inset-0 w-2 h-2 bg-[#2F5DA8] rounded-full animate-ping opacity-75"></div>
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                  <div className="absolute inset-0 w-2 h-2 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
                 </div>
                 <div>
-                  <h4 className="font-serif font-semibold text-sm sm:text-base tracking-wide leading-tight text-white">ITO AI Support</h4>
-                  <p className="text-[10px] text-[#8FAADC] font-medium tracking-widest uppercase">Grow With ITO</p>
+                  <h4 className="font-serif font-normal text-sm tracking-wide uppercase text-[#F2F4F7]">Support Node</h4>
+                  <p className="text-[9px] text-[#6D7886] font-mono tracking-widest uppercase font-bold mt-0.5">OPERATIONAL GRID VAULT</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
                 aria-label="Close chat"
-                className="text-white/70 hover:text-white hover:bg-white/10 p-1.5 rounded transition-all duration-200"
+                className="text-[#6D7886] hover:text-[#F2F4F7] p-1.5 rounded-sm hover:bg-[#0E1116] transition-all cursor-pointer"
               >
-                <FiX size={18} />
+                <FiX size={16} />
               </button>
             </div>
 
-            {/* Core Chat Stream Backed by Premium Ivory Fallback */}
-            <div className="flex-1 p-4 overflow-y-auto bg-[#ffffff] flex flex-col space-y-4 custom-scrollbar">
+            {/* Core Chat Stream Area */}
+            <div className="flex-1 p-4 overflow-y-auto bg-[#0E1116] flex flex-col space-y-4 custom-scrollbar">
               <AnimatePresence initial={false}>
                 {!session ? (
                   <motion.form
@@ -212,39 +211,39 @@ export default function ChatWidget() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="space-y-4 my-auto w-full max-w-sm mx-auto"
+                    className="space-y-4 my-auto w-full max-w-sm mx-auto text-left"
                   >
-                    <div className="text-center mb-5">
-                      <div className="w-14 h-14 bg-[#0C1F3F] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#8FAADC]/30 shadow-md">
-                        <FiMessageCircle size={24} className="text-[#2F5DA8]" />
+                    <div className="text-center mb-6">
+                      <div className="w-12 h-12 bg-[#121D29]/40 rounded-sm flex items-center justify-center mx-auto mb-3 border border-[#C5CBD3]/15 shadow-md">
+                        <FiMessageCircle size={20} className="text-[#6D7886]" />
                       </div>
-                      <h5 className="font-serif font-semibold text-[#0C1F3F] text-lg">Welcome</h5>
-                      <p className="text-[#0C1F3F]/60 text-xs mt-1">Initiate a secure support conversation</p>
+                      <h5 className="font-serif font-normal uppercase tracking-wide text-[#F2F4F7] text-base">Initialize Stream</h5>
+                      <p className="text-[#6D7886] font-mono text-[9px] uppercase tracking-widest mt-1">Secure Channel Connection</p>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#0C1F3F]/80">
-                        Full Name <span className="text-red-500">*</span>
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[#6D7886] mb-1.5">
+                        Full Name Designation *
                       </label>
                       <input
                         type="text"
                         required
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
-                        className="w-full bg-[#ffffff] border border-[#8FAADC]/30 rounded px-3 py-2 text-[#0C1F3F] focus:outline-none focus:border-[#2F5DA8] transition-all text-sm"
-                        placeholder="Enter your name"
+                        className="w-full bg-[#040A12] border border-[#C5CBD3]/15 rounded-sm px-3.5 py-2.5 text-xs text-[#F2F4F7] focus:outline-none focus:border-[#F2F4F7]/40 placeholder-[#6D7886] font-light"
+                        placeholder="Enter identification name"
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#0C1F3F]/80">
-                        Email Address <span className="text-[#0C1F3F]/40 text-[10px] font-normal normal-case">(Optional)</span>
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[#6D7886] mb-1.5">
+                        Email Coordinate Address <span className="text-[#6D7886]/60 text-[9px] font-normal normal-case font-sans">(Optional)</span>
                       </label>
                       <input
                         type="email"
                         value={clientEmail}
                         onChange={(e) => setClientEmail(e.target.value)}
-                        className="w-full bg-[#ffffff] border border-[#8FAADC]/30 rounded px-3 py-2 text-[#0C1F3F] focus:outline-none focus:border-[#2F5DA8] transition-all text-sm"
+                        className="w-full bg-[#040A12] border border-[#C5CBD3]/15 rounded-sm px-3.5 py-2.5 text-xs text-[#F2F4F7] focus:outline-none focus:border-[#F2F4F7]/40 placeholder-[#6D7886] font-light"
                         placeholder="name@company.com"
                       />
                     </div>
@@ -252,18 +251,9 @@ export default function ChatWidget() {
                     <motion.button
                       type="submit"
                       disabled={loading}
-                      whileHover={{ scale: loading ? 1 : 1.01 }}
-                      whileTap={{ scale: loading ? 1 : 0.99 }}
-                      className="w-full mt-2 bg-[#0C1F3F] text-white font-medium tracking-wide py-2.5 rounded border border-transparent hover:border-[#2F5DA8]/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[42px]"
+                      className="w-full bg-[#F2F4F7] text-[#040A12] font-mono font-bold text-[10px] uppercase tracking-widest py-3 rounded-sm cursor-pointer shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
                     >
-                      {loading ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                          <span>Connecting...</span>
-                        </div>
-                      ) : (
-                        'Start Chat'
-                      )}
+                      {loading ? 'Establishing Node...' : 'Connect Stream'}
                     </motion.button>
                   </motion.form>
                 ) : (
@@ -276,11 +266,11 @@ export default function ChatWidget() {
                         return (
                           <motion.div 
                             key={msg._id || index} 
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="flex justify-center px-2 py-1"
+                            className="flex justify-center px-2 py-1 shrink-0"
                           >
-                            <span className="inline-block bg-[#0C1F3F]/5 text-[10px] text-[#0C1F3F]/70 px-3 py-1 rounded border border-[#8FAADC]/20 font-medium text-center">
+                            <span className="inline-block bg-[#040A12]/60 text-[9px] font-mono text-[#6D7886] px-3 py-0.5 rounded-sm border border-[#C5CBD3]/10 uppercase tracking-widest text-center">
                               {msg.message}
                             </span>
                           </motion.div>
@@ -290,19 +280,20 @@ export default function ChatWidget() {
                       return (
                         <motion.div
                           key={msg._id || index}
-                          initial={{ opacity: 0, y: 10, x: isClient ? 10 : -10 }}
+                          initial={{ opacity: 0, y: 10, x: isClient ? 8 : -8 }}
                           animate={{ opacity: 1, y: 0, x: 0 }}
                           transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="flex flex-col max-w-[85%] isClient ? 'items-end ml-auto' : 'items-start mr-auto'"
+                          // FIXED: Resolved broken dynamic ternary class token parsing logic error
+                          className={`flex flex-col max-w-[80%] shrink-0 ${isClient ? 'items-end ml-auto' : 'items-start mr-auto'}`}
                         >
-                          <span className="text-[10px] text-[#0C1F3F]/50 font-medium mb-0.5 px-1">
+                          <span className="text-[9px] font-mono uppercase tracking-widest text-[#6D7886] mb-1 px-1">
                             {isClient ? 'You' : msg.senderName}
                           </span>
                           <div
-                            className={`rounded px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-sm break-words w-full ${
+                            className={`rounded-sm px-3.5 py-2.5 text-xs leading-relaxed shadow-md break-words border text-left ${
                               isClient
-                                ? 'bg-[#0C1F3F] text-white border border-transparent'
-                                : 'bg-[#ffffff] text-[#0C1F3F] border border-[#8FAADC]/20'
+                                ? 'bg-[#121D29] border-[#C5CBD3]/25 text-[#F2F4F7] rounded-tr-none'
+                                : 'bg-[#040A12] border-[#C5CBD3]/10 text-[#C5CBD3] rounded-tl-none'
                             }`}
                           >
                             {msg.message}
@@ -316,75 +307,69 @@ export default function ChatWidget() {
               </AnimatePresence>
             </div>
 
-            {/* Quick Action Navigation Buttons */}
+            {/* Quick Action Matrix Channels */}
             {session && (
-              <div className="px-4 py-2.5 bg-[#ffffff] border-t border-[#8FAADC]/20 space-y-1.5 shrink-0">
-                <p className="text-[9px] font-bold text-[#0C1F3F]/60 uppercase tracking-widest flex items-center">
-                  <FiCornerDownLeft size={10} className="mr-1 text-[#2F5DA8]" />
-                  Quick Actions
+              <div className="px-4 py-3 bg-[#040A12]/40 border-t border-[#C5CBD3]/10 space-y-2 shrink-0 text-left">
+                <p className="text-[9px] font-mono font-bold text-[#6D7886] uppercase tracking-widest flex items-center">
+                  <FiCornerDownLeft size={10} className="mr-1" />
+                  Quick Payload Inquiries
                 </p>
-                <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto custom-scrollbar">
-                  <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar">
+                  <button
                     type="button"
                     onClick={() => handleQuickOptionClick("I want to inquire about Stone Aggregates delivery.")}
-                    className="px-2.5 py-1 text-[10px] bg-[#ffffff] border border-[#8FAADC]/30 rounded text-[#0C1F3F] hover:border-[#2F5DA8] transition-colors"
+                    className="px-2.5 py-1 text-[9px] font-mono uppercase bg-[#0E1116] border border-[#C5CBD3]/15 rounded-sm text-[#C5CBD3] hover:border-[#C5CBD3]/40 transition-colors cursor-pointer"
                   >
-                    🪨 Stone Aggregates
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    Stone Manifest
+                  </button>
+                  <button
                     type="button"
                     onClick={() => handleQuickOptionClick("I need Coal bulk pricing.")}
-                    className="px-2.5 py-1 text-[10px] bg-[#ffffff] border border-[#8FAADC]/30 rounded text-[#0C1F3F] hover:border-[#2F5DA8] transition-colors"
+                    className="px-2.5 py-1 text-[9px] font-mono uppercase bg-[#0E1116] border border-[#C5CBD3]/15 rounded-sm text-[#C5CBD3] hover:border-[#C5CBD3]/40 transition-colors cursor-pointer"
                   >
-                    🔥 Coal Bulk
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    Coal Volume
+                  </button>
+                  <button
                     type="button"
                     onClick={() => handleQuickOptionClick("I need a quote for minerals.")}
-                    className="px-2.5 py-1 text-[10px] bg-[#ffffff] border border-[#8FAADC]/30 rounded text-[#0C1F3F] hover:border-[#2F5DA8] transition-colors"
+                    className="px-2.5 py-1 text-[9px] font-mono uppercase bg-[#0E1116] border border-[#C5CBD3]/15 rounded-sm text-[#C5CBD3] hover:border-[#C5CBD3]/40 transition-colors cursor-pointer"
                   >
-                    💎 Minerals Quote
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    Minerals Matrix
+                  </button>
+                  <button
                     type="button"
                     onClick={handleCreateCrmLeadFromChat}
-                    className="px-2.5 py-1 text-[10px] bg-[#0C1F3F] border border-transparent rounded text-white font-semibold hover:border-[#2F5DA8]/50 transition-colors"
+                    className="px-2.5 py-1 text-[9px] font-mono uppercase bg-[#F2F4F7] text-[#040A12] font-bold rounded-sm hover:bg-[#C5CBD3] transition-colors cursor-pointer shadow-sm"
                   >
-                    🚀 Create CRM Lead
-                  </motion.button>
+                    Generate CRM Node
+                  </button>
                   <Link
                     to="/contact"
-                    className="px-2.5 py-1 text-[10px] bg-[#ffffff] border border-[#8FAADC]/30 rounded text-[#0C1F3F] hover:border-[#2F5DA8] transition-colors text-center inline-block"
+                    className="px-2.5 py-1 text-[9px] font-mono uppercase bg-[#0E1116] border border-[#C5CBD3]/15 rounded-sm text-[#C5CBD3] hover:border-[#C5CBD3]/40 transition-colors text-center inline-block"
                   >
-                    Contact Us
+                    Contact Desk
                   </Link>
                 </div>
               </div>
             )}
 
-            {/* Active Text Input Bar */}
+            {/* Input Form Control Desk */}
             {session && (
-              <form onSubmit={handleSendMessage} className="p-3 bg-[#ffffff] border-t border-[#8FAADC]/20 flex items-center space-x-2 shrink-0">
+              <form onSubmit={handleSendMessage} className="p-3 bg-[#040A12] border-t border-[#C5CBD3]/10 flex items-center space-x-2 shrink-0">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message here..."
-                  className="flex-1 px-3 py-2 bg-[#ffffff] border border-[#8FAADC]/30 rounded outline-none focus:border-[#2F5DA8] text-sm transition-all text-[#0C1F3F] placeholder-[#8FAADC]"
+                  placeholder="Type secure response payload..."
+                  className="flex-1 px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-xs rounded-sm outline-none text-[#F2F4F7] placeholder-[#6D7886] font-light font-sans"
                 />
-                <motion.button
+                <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  whileHover={{ scale: newMessage.trim() ? 1.05 : 1 }}
-                  whileTap={{ scale: newMessage.trim() ? 0.95 : 1 }}
-                  className="p-2.5 rounded bg-[#0C1F3F] text-white border border-transparent hover:border-[#2F5DA8]/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center min-w-[38px] min-h-[38px]"
+                  className="w-9 h-9 rounded-sm bg-[#F2F4F7] text-[#040A12] hover:bg-[#C5CBD3] disabled:opacity-20 disabled:cursor-not-allowed transition duration-150 shadow-md flex items-center justify-center cursor-pointer shrink-0"
                 >
-                  <FiSend size={14} className={newMessage.trim() ? "text-[#2F5DA8]" : "text-white"} />
-                </motion.button>
+                  <FiSend size={13} />
+                </button>
               </form>
             )}
           </motion.div>
