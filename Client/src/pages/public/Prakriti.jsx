@@ -213,6 +213,7 @@ export default function Prakriti() {
         data.append('monthlyReq', monthlyReq);
         data.append('purpose', purpose);
         data.append('businessType', businessType);
+        data.append('division', 'TEA');
         
         if (doc1) data.append('doc1', doc1);
         if (doc2) data.append('doc2', doc2);
