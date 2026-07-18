@@ -22,6 +22,13 @@ export const distributorApi = {
     return response.data;
   },
 
+  // ✅ ADDED: Background Document Verification Polling & Session Check
+  // Hits the public route: router.get('/status/:id', getDistributorStatus)
+  getDistributorStatus: async (id) => {
+    const response = await axiosInstance.get(`/distributors/status/${id}`);
+    return response.data;
+  },
+
   getDistributors: async () => {
     const response = await axiosInstance.get('/distributors');
     return response.data;

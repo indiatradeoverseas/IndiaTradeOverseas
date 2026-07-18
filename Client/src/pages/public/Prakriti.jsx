@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import {
     FiShield, FiBriefcase, FiFileText, FiCheckCircle, FiArrowRight, FiArrowLeft, 
     FiUser, FiPhone, FiMapPin, FiKey, FiUploadCloud, FiX, FiAward, FiCompass, 
-    FiLayers, FiLock, FiEye, FiDownload
+    FiLayers, FiLock, FiEye, FiDownload, FiFilter, FiShoppingCart, FiInfo
 } from 'react-icons/fi';
 import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icons/gi";
 
@@ -61,14 +61,15 @@ const TEASER_LISTINGS = [
 ];
 
 const APPROVED_MARKETPLACE_DATA = [
-    { id: "PK-AS-091", region: "Assam Upper Track", grade: "BP (Broken Pekoe)", color: "Deep Mahogany", strength: "9.5/10", stock: "14,200 Kg", price: "INR 210/Kg", dispatch: "Siliguri Hub" },
-    { id: "PK-DJ-104", region: "Darjeeling Premium", grade: "TGFOP1 Whole Leaf", color: "Bright Amber", strength: "6.0/10", stock: "3,100 Kg", price: "INR 420/Kg", dispatch: "Kolkata Port" },
-    { id: "PK-DO-072", region: "Dooars Western", grade: "BOP (Broken Orange Pekoe)", color: "Rich Crimson", strength: "8.5/10", stock: "9,500 Kg", price: "INR 165/Kg", dispatch: "Siliguri Hub" },
-    { id: "PK-ST-110", region: "Commercial Blend", grade: "Super Fine Dust", color: "Intense Opaque", strength: "10/10", stock: "22,000 Kg", price: "INR 135/Kg", dispatch: "Guwahati Desk" }
+    { id: "PK-AS-091", region: "Assam Upper Track", grade: "BP (Broken Pekoe)", color: "Deep Mahogany", strength: "9.5/10", stock: "14,200 Kg", price: "210", dispatch: "Siliguri Hub", type: "CTC Tea" },
+    { id: "PK-DJ-104", region: "Darjeeling Premium", grade: "TGFOP1 Whole Leaf", color: "Bright Amber", strength: "6.0/10", stock: "3,100 Kg", price: "420", dispatch: "Kolkata Port", type: "Orthodox Tea" },
+    { id: "PK-DO-072", region: "Dooars Western", grade: "BOP (Broken Orange Pekoe)", color: "Rich Crimson", strength: "8.5/10", stock: "9,500 Kg", price: "165", dispatch: "Siliguri Hub", type: "CTC Tea" },
+    { id: "PK-ST-110", region: "Commercial Blend", grade: "Super Fine Dust", color: "Intense Opaque", strength: "10/10", stock: "22,000 Kg", price: "135", dispatch: "Guwahati Desk", type: "Dust Tea" }
 ];
 
 export default function Prakriti() {
     const [userAccessLayer, setUserAccessLayer] = useState(1); 
+    const [isSessionLoading, setIsLoadingSession] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [step, setStep] = useState('register');
     const [distributorId, setDistributorId] = useState('');
@@ -77,6 +78,12 @@ export default function Prakriti() {
     const [heroBgIndex, setHeroBgIndex] = useState(0);
     const [carouselIndex, setCarouselIndex] = useState(0);
     const [activeTab, setActiveTab] = useState('programme');
+
+    // Marketplace Interactive Variables
+    const [selectedMarketCategory, setSelectedMarketCategory] = useState('All');
+    const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
+    const [activeDrawerLot, setActiveDrawerLot] = useState(null);
+    const [orderQuantity, setOrderQuantity] = useState('500');
 
     const [businessType, setBusinessType] = useState('1');
     const [name, setName] = useState('');
@@ -93,6 +100,72 @@ export default function Prakriti() {
     const [doc1, setDoc1] = useState(null);
     const [doc2, setDoc2] = useState(null);
     const [otp, setOtp] = useState('');
+
+    // Session Verification Lifecycle on Mount
+    useEffect(() => {
+        const initializeAuthenticationSession = async () => {
+            const savedId = localStorage.getItem('prakriti_distributor_id');
+            const token = localStorage.getItem('distributor_token');
+
+            if (savedId) {
+                setDistributorId(savedId);
+                try {
+                    const res = await distributorApi.getDistributorStatus(savedId);
+                    if (res.success) {
+                        const status = res.data.approvalStatus;
+                        if (status === 'approved' && token) {
+                            setUserAccessLayer(5);
+                        } else if (status === 'pending') {
+                            setUserAccessLayer(4);
+                        } else {
+                            setUserAccessLayer(1);
+                            localStorage.removeItem('prakriti_distributor_id');
+                            localStorage.removeItem('distributor_token');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Session re-alignment synchronization failure:", err);
+                    setUserAccessLayer(1);
+                }
+            }
+            setIsLoadingSession(false);
+        };
+        initializeAuthenticationSession();
+    }, []);
+
+    // Status Polling Loop for Pending Layer 4 Users
+    useEffect(() => {
+        let pollingTimer;
+
+        if (userAccessLayer === 4 && distributorId) {
+            const executeStatusPulseCheck = async () => {
+                try {
+                    const res = await distributorApi.getDistributorStatus(distributorId);
+                    if (res.success) {
+                        const currentStatus = res.data.approvalStatus;
+                        if (currentStatus === 'approved') {
+                            toast.success("B2B Sourcing Profile Approved! Secure Marketplace Activated.");
+                            clearInterval(pollingTimer);
+                            setUserAccessLayer(5);
+                        } else if (currentStatus === 'rejected') {
+                            toast.error("Sourcing credentials could not be verified by trade desk validation.");
+                            clearInterval(pollingTimer);
+                            localStorage.removeItem('prakriti_distributor_id');
+                            localStorage.removeItem('distributor_token');
+                            setUserAccessLayer(1);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Automated background verification polling issue:", err);
+                }
+            };
+
+            executeStatusPulseCheck();
+            pollingTimer = setInterval(executeStatusPulseCheck, 5000);
+        }
+
+        return () => clearInterval(pollingTimer);
+    }, [userAccessLayer, distributorId]);
 
     useEffect(() => {
         const bgTimer = setInterval(() => {
@@ -140,6 +213,7 @@ export default function Prakriti() {
         data.append('monthlyReq', monthlyReq);
         data.append('purpose', purpose);
         data.append('businessType', businessType);
+        data.append('division', 'TEA');
         
         if (doc1) data.append('doc1', doc1);
         if (doc2) data.append('doc2', doc2);
@@ -149,6 +223,7 @@ export default function Prakriti() {
             if (res.success) {
                 toast.success(res.message || "B2B profile recorded. Verification code routed to your email.");
                 setDistributorId(res.data.distributorId);
+                localStorage.setItem('prakriti_distributor_id', res.data.distributorId);
                 setStep('otp');
             }
         } catch (err) {
@@ -167,6 +242,9 @@ export default function Prakriti() {
             const res = await distributorApi.verifyOtp(distributorId, otp);
             if (res.success) {
                 toast.success(res.message || "B2B Credentials Authenticated!");
+                if (res.data.token) {
+                    localStorage.setItem('distributor_token', res.data.token);
+                }
                 setIsModalOpen(false);
                 setStep('register');
                 setUserAccessLayer(4); 
@@ -180,6 +258,29 @@ export default function Prakriti() {
             setIsSubmitting(false);
         }
     };
+
+    const handleLogOut = () => {
+        setUserAccessLayer(1);
+        setDistributorId('');
+        localStorage.removeItem('prakriti_distributor_id');
+        localStorage.removeItem('distributor_token');
+        toast.success("Secured session token terminated.");
+    };
+
+    const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot => 
+        selectedMarketCategory === 'All' ? true : lot.type === selectedMarketCategory
+    );
+
+    if (isSessionLoading) {
+        return (
+            <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <span className="w-10 h-10 border-4 border-[#004B3B] border-t-transparent rounded-full animate-spin block mx-auto" />
+                    <p className="text-xs font-mono tracking-widest text-[#004B3B] uppercase font-bold">Synchronizing Trade Pipeline...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-[#FAF9F5] text-slate-900 antialiased min-h-screen font-sans selection:bg-[#50C878]/30 selection:text-[#004B3B]">
@@ -224,10 +325,30 @@ export default function Prakriti() {
                             </p>
                         </div>
                         <div className="shrink-0 relative z-10">
-                            <button onClick={() => { setUserAccessLayer(1); toast.success("Secured token revoked."); }} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-mono text-[9px] sm:text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-lg transition-colors">
+                            <button onClick={handleLogOut} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-mono text-[9px] sm:text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-lg transition-colors">
                                 Lock Session Terminal
                             </button>
                         </div>
+                    </div>
+
+                    {/* Bulk Order Filter Systems */}
+                    <div className="flex flex-wrap gap-2 items-center justify-between border-b border-slate-200 pb-4">
+                        <div className="flex flex-wrap gap-1.5">
+                            {['All', 'CTC Tea', 'Orthodox Tea', 'Dust Tea'].map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedMarketCategory(cat)}
+                                    className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-md font-bold transition-all ${
+                                        selectedMarketCategory === cat 
+                                        ? 'bg-[#004B3B] text-[#50C878] shadow-sm' 
+                                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400 uppercase tracking-widest">{filteredMarketLots.length} Active Lots Loaded</span>
                     </div>
 
                     <div className="space-y-4">
@@ -248,7 +369,7 @@ export default function Prakriti() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
-                                    {APPROVED_MARKETPLACE_DATA.map((row) => (
+                                    {filteredMarketLots.map((row) => (
                                         <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                                             <td className="p-4 font-mono font-bold text-[#004B3B]">{row.id}</td>
                                             <td className="p-4">
@@ -261,12 +382,18 @@ export default function Prakriti() {
                                                 <div className="text-[10px] text-slate-400">Strength Indicator: {row.strength}</div>
                                             </td>
                                             <td className="p-4 font-mono">{row.stock}</td>
-                                            <td className="p-4 font-mono font-bold text-base text-[#004B3B]">{row.price}</td>
+                                            <td className="p-4 font-mono font-bold text-base text-[#004B3B]">INR {row.price}/Kg</td>
                                             <td className="p-4 text-center space-x-1.5 whitespace-nowrap">
                                                 <button onClick={() => toast.success(`Sample request generated for Lot ${row.id}`)} className="bg-slate-100 hover:bg-[#50C878] hover:text-[#004B3B] text-slate-700 px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-colors">
                                                     Request Sample
                                                 </button>
-                                                <button onClick={() => toast.success(`Allocation desk alerted for Lot ${row.id}`)} className="bg-[#004B3B] hover:bg-[#06362a] text-white px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-colors">
+                                                <button 
+                                                    onClick={() => {
+                                                        setActiveDrawerLot(row);
+                                                        setIsOrderDrawerOpen(true);
+                                                    }} 
+                                                    className="bg-[#004B3B] hover:bg-[#06362a] text-white px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-colors"
+                                                >
                                                     Place Order
                                                 </button>
                                             </td>
@@ -479,7 +606,6 @@ export default function Prakriti() {
                             </h2>
                         </div>
 
-                        {/* Fixed Layout */}
                         <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:justify-center sm:items-center gap-1.5 border-b border-slate-200 pb-px">
                             {[
                                 { id: 'programme', label: 'Commercial Protocol', icon: FiFileText },
@@ -818,6 +944,75 @@ export default function Prakriti() {
                                 )}
                             </div>
                         </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ================= LAYER 5: BULK ORDER DRAWER AND ENQUIRY BENCH ================= */}
+            <AnimatePresence>
+                {isOrderDrawerOpen && activeDrawerLot && (
+                    <div className="fixed inset-0 z-50 overflow-hidden">
+                        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" onClick={() => setIsOrderDrawerOpen(false)} />
+                        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                            <motion.div 
+                                initial={{ x: '100%' }} 
+                                animate={{ x: 0 }} 
+                                exit={{ x: '100%' }} 
+                                transition={{ type: 'tween', duration: 0.35 }}
+                                className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
+                            >
+                                <div className="p-6 overflow-y-auto space-y-6 text-left">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                        <h2 className="text-xl font-serif text-[#004B3B] uppercase tracking-wide">Initialize Trade Negotiation</h2>
+                                        <button onClick={() => setIsOrderDrawerOpen(false)} className="text-slate-400 hover:text-slate-600"><FiX size={20} /></button>
+                                    </div>
+
+                                    <div className="bg-[#FAF9F5] border border-slate-200 rounded-xl p-4 space-y-2.5">
+                                        <span className="text-[10px] font-mono bg-[#004B3B] text-[#50C878] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Lot Target: {activeDrawerLot.id}</span>
+                                        <div className="text-sm font-bold text-slate-900 font-serif">{activeDrawerLot.region}</div>
+                                        <div className="text-xs text-slate-600">Grade Configuration: <span className="font-mono font-bold">{activeDrawerLot.grade}</span></div>
+                                        <div className="text-xs text-slate-600">Base Sourcing Price: <span className="font-bold text-[#004B3B]">INR {activeDrawerLot.price}/Kg</span></div>
+                                        <div className="text-xs text-slate-600">Active Pipeline Allocation: <span className="font-mono">{activeDrawerLot.stock}</span></div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Negotiation Target Quantity (Kilograms) *</label>
+                                            <input 
+                                                type="number" 
+                                                min="200"
+                                                value={orderQuantity} 
+                                                onChange={(e) => setOrderQuantity(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 font-mono focus:outline-none focus:border-[#004B3B] text-xs" 
+                                            />
+                                            <span className="text-[9px] text-slate-400 mt-1 block">Minimum commercial lot dispatch constraint matches 200 Kg configurations.</span>
+                                        </div>
+                                        <div className="bg-emerald-50 border border-dashed border-emerald-200 rounded-lg p-3 flex gap-2">
+                                            <FiInfo className="text-emerald-700 shrink-0 mt-0.5" size={14} />
+                                            <p className="text-[10px] text-emerald-800 font-light leading-relaxed">
+                                                By executing this pipeline commitment, your intent metric maps directly to the active garden allocation layout. Trade desk support answers confirmations within minutes.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-3">
+                                    <div className="flex items-center justify-between font-mono text-xs">
+                                        <span className="text-slate-500 font-bold uppercase">Estimated Lot Base Value:</span>
+                                        <span className="text-[#004B3B] font-extrabold text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price)).toLocaleString()}</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
+                                            setIsOrderDrawerOpen(false);
+                                        }}
+                                        className="w-full bg-[#004B3B] hover:bg-[#053127] text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg"
+                                    >
+                                        <FiShoppingCart /> Dispatch Sourcing Request
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
                     </div>
                 )}
             </AnimatePresence>

@@ -58,7 +58,7 @@ export default function Navbar() {
     { to: '/', label: 'HOME' },
     { to: '/about', label: 'ABOUT US' },
     { to: '/careers', label: 'CAREERS' },
-    { to: '/products', label: 'Products'},
+    { to: '/products', label: 'PRODUCTS'},
   ];
 
   const prakritiDivisions = [
@@ -95,11 +95,10 @@ export default function Navbar() {
                   TRADE OVERSEAS
                 </span>
               </div>
-
             </Link>
           </div>
 
-          {/* 3 Horizontal lines container pinned cleanly to the far left */}
+          {/* Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
@@ -267,7 +266,6 @@ export default function Navbar() {
 
           {/* Replicated Mobile Header Inside Overlay to blend from the top */}
           <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
-            {/* Pinned Logo and Brand Identity Layout on the left side of the upper bar */}
             <div className="flex items-center space-x-3">
               <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
                 <img
@@ -287,7 +285,6 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Close button layout pinned exactly to the upper right corner */}
             <button
               onClick={() => setIsMobileMenuOpen(false)}
               className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
@@ -303,12 +300,21 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`block  text-base tracking-wider ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
+                className={`block text-base tracking-wider ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
+
+            {/* FIXED: Added explicitly inside the mobile subdeck list to resolve missing viewport link */}
+            <Link
+              to="/contact"
+              className={`block text-base tracking-wider ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              CONTACT
+            </Link>
 
             <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
               <div className="text-[#6D7886] text-[10px] uppercase tracking-normal">PRAKRITI DIVISON</div>
@@ -316,7 +322,7 @@ export default function Navbar() {
                 <Link
                   key={subLink.to}
                   to={subLink.to}
-                  className="block  pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
+                  className="block pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {subLink.label}

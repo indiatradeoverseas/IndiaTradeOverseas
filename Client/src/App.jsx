@@ -7,6 +7,7 @@ import { useAuth } from './hooks/useAuth';
 import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
+import Rice from './pages/public/Rice';
 import ProductDetail from './pages/public/ProductDetail';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
@@ -246,6 +247,7 @@ function AppLayout() {
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
           <Route path="/prakriti" element={<Prakriti />} />
+          <Route path='/prakriti/rice' element={<Rice/>}/>
         </Routes>
       </main>
       <Footer />
