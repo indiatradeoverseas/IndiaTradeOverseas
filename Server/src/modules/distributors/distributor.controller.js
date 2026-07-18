@@ -322,7 +322,6 @@ const toggleDistributorVerification = async (req, res, next) => {
       try {
         const subject = 'Account Approved - Prakriti Tea B2B Portal';
         const text = `Congratulations! Your distributor profile has been approved. You can now access our premium items.`;
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -390,7 +389,7 @@ const toggleDistributorVerification = async (req, res, next) => {
             <p>Congratulations! Your business registration has been verified and approved by our team.</p>
             <p>You can now access our premium items, view real-time bulk pricing, inspect tasting scores, and place orders.</p>
             <div class="btn-container">
-              <a href="https://www.indiatradeoverseas.com/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
+                <a href="https://www.indiatradeoverseas.com/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
             </div>
             <p>If you have any questions or require procurement support, feel free to contact your account manager.</p>
         </div>
@@ -500,7 +499,7 @@ const createRazorpayOrder = async (req, res, next) => {
 
     const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TDkYIhxFKBUK3K';
     const auth = getRazorpayAuth();
-    
+
     // Amount is in INR. Razorpay expects it in paise (multiply by 100)
     const amountInPaise = Math.round(Number(amount) * 100);
 
@@ -537,7 +536,7 @@ const verifyRazorpayPayment = async (req, res, next) => {
     }
 
     const keySecret = process.env.RAZORPAY_KEY_SECRET || '2DL5K0rcm00absDWP8oniGT8';
-    
+
     const hmac = crypto.createHmac('sha256', keySecret);
     hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const generatedSignature = hmac.digest('hex');
@@ -569,7 +568,7 @@ const verifyRazorpayPayment = async (req, res, next) => {
 const getPaypalAccessToken = async () => {
   const clientId = process.env.PAYPAL_CLIENT_ID || 'AQsHOxpt4otfYTb2UO0WvHMH3q5ZkC-XZffGbPVL3QtcA-MQwZg6zuzOCWXpTJbdt3XbuUjz9N59CRRr';
   const clientSecret = process.env.PAYPAL_SECRET || 'EIUlUHJZ_ohSB1yms0nKdI7SA2AvEqbb8uiDHCyD5dkrltSIAidRLiIDXSGYkGIWGXcMiChVWrvQFfsh';
-  
+
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   const response = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
     method: 'POST',

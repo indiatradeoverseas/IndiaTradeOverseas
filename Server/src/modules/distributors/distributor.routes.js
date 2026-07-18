@@ -3,8 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const { 
-  registerDistributor, 
+const {
+  registerDistributor,
   verifyDistributorOtp,
   getDistributorStatus,
   getDistributors,
@@ -17,6 +17,7 @@ const {
   createPaypalOrder,
   capturePaypalOrder
 } = require('./distributor.controller');
+
 
 const { authenticate } = require('../../middlewares/auth.middleware');
 
@@ -57,36 +58,35 @@ const checkAdminManagerHR = (req, res, next) => {
   return require('../../utils/response').fail(res, 403, 'FORBIDDEN', 'Access denied. Unauthorized role.');
 };
 
-// ==========================================
-// Public Routes
+
 router.post(
-  '/', 
+  '/',
   upload.fields([
     { name: 'doc1', maxCount: 1 },
     { name: 'doc2', maxCount: 1 },
     { name: 'primaryDocument', maxCount: 1 },
     { name: 'secondaryDocument', maxCount: 1 }
-  ]), 
+  ]),
   registerDistributor
 );
 
 router.post('/verify-otp', verifyDistributorOtp);
 router.get('/status/:id', getDistributorStatus);
 
-// Online Payment Integrations (Distributor Authenticated)
 const { authenticateDistributor } = require('../../middlewares/auth.middleware');
 router.post('/payments/razorpay/create-order', authenticateDistributor, createRazorpayOrder);
 router.post('/payments/razorpay/verify-payment', authenticateDistributor, verifyRazorpayPayment);
 router.post('/payments/paypal/create-order', authenticateDistributor, createPaypalOrder);
 router.post('/payments/paypal/capture-order', authenticateDistributor, capturePaypalOrder);
 
-// ==========================================
-// Authenticated/Protected Admin Routes
-// ==========================================
 router.get('/', authenticate, checkAdminManagerHR, getDistributors);
 router.patch('/:id/verify', authenticate, checkAdminManagerHR, toggleDistributorVerification);
 router.delete('/:id', authenticate, checkAdminManagerHR, deleteDistributor);
 router.get('/:id/gst-certificate', authenticate, checkAdminManagerHR, downloadGstCertificate);
 router.get('/:id/udyam-certificate', authenticate, checkAdminManagerHR, downloadUdyamCertificate);
+
+// Proposals Router Integration
+const proposalsRouter = require('../proposals/proposals.route');
+router.use('/', proposalsRouter);
 
 module.exports = router;
