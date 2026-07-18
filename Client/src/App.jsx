@@ -31,6 +31,7 @@ import Dispatches from './pages/crm/Dispatches';
 import Payments from './pages/crm/Payments';
 import Documents from './pages/crm/Documents';
 import Employees from './pages/crm/Employees';
+import Distributors from './pages/crm/Distributors';
 import Security from './pages/crm/Security';
 import Reports from './pages/crm/Reports';
 import AdminPanel from './pages/crm/AdminPanel';
@@ -154,6 +155,7 @@ function AppLayout() {
         <Routes>
           <Route path="/crm/dashboard" element={<Dashboard />} />
           <Route path="/crm/notifications" element={<Notifications />} />
+          <Route path="/crm/distributors" element={<Distributors />}/>
           <Route
             path="/crm/leads"
             element={

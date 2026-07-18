@@ -1,608 +1,651 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
-  FiDollarSign,
+  FiTruck,
   FiCheckCircle,
-  FiAlertCircle,
-  FiSend,
+  FiXCircle,
+  FiEye,
   FiUpload,
-  FiLock,
+  FiDownload,
+  FiFileText,
+  FiShield,
   FiCalendar,
-  FiRefreshCw,
-  FiFileText
+  FiAlertTriangle,
+  FiX
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { paymentsApi } from '../../api/payments';
-import { leadsApi } from '../../api/leads';
+import { dispatchesApi } from '../../api/dispatches';
 import { useAuth } from '../../hooks/useAuth';
 import axiosInstance from '../../api/axiosInstance';
 
-export default function Payments() {
+// Cinematic staggered entrance transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.02, delayChildren: 0.1 } }
+};
+
+const blockVariants = {
+  hidden: { opacity: 0, y: 12, scale: 0.99 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 20 } }
+};
+
+export default function Dispatches() {
   const { user } = useAuth();
-  const [payments, setPayments] = useState([]);
-  const [leads, setLeads] = useState([]);
+  
+  // FIXED: Simplified down to a single clean, single-source-of-truth state array to prevent component sync mismatches
+  const [dispatchesList, setDispatchesList] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [showOutstandingOnly, setShowOutstandingOnly] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showRevealModal, setShowRevealModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  const [selectedDispatchId, setSelectedDispatchId] = useState(null);
+  const [revealedPhones, setRevealedPhones] = useState({});
+  const [revealReason, setRevealReason] = useState('');
+
+  const [proofFile, setProofFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     leadId: '',
-    totalAmount: '',
-    advanceAmount: '0',
-    dueDate: '',
-    paymentStatus: 'Not Started'
+    loadingPoint: '',
+    destination: '',
+    truckNo: '',
+    driverName: '',
+    driverPhone: '',
+    material: '',
+    quantity: '',
+    loadingDate: ''
   });
 
-  const [updateData, setUpdateData] = useState({
-    totalAmount: '',
-    advanceAmount: '',
-    dueDate: '',
-    paymentStatus: '',
-    invoiceFile: null,
-    proofFile: null
-  });
+  const statusOptions = ['Pending', 'Truck Assigned', 'Loading', 'In Transit', 'Delivered', 'Issue Raised', 'Closed'];
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const statusOptions = ['Not Started', 'Advance Received', 'Partial', 'Due', 'Overdue', 'Paid', 'Disputed'];
-
-  const isFinanceAuthorized =
+  const isProcurementAuthorized =
     user?.role === 'ADMIN' ||
     user?.role === 'MANAGER' ||
-    user?.role === 'ACCOUNTS' ||
-    user?.paymentPermission === true;
+    user?.role === 'PROCUREMENT' ||
+    user?.dispatchPermission === true;
 
   useEffect(() => {
-    fetchPayments();
-    fetchLeads();
-  }, [showOutstandingOnly]);
+    fetchDispatches();
+  }, []);
 
-  const fetchLeads = async () => {
+  const fetchDispatches = async () => {
     try {
-      const response = await leadsApi.getLeads();
+      setLoading(true);
+      const response = await dispatchesApi.getDispatches();
       if (response.success) {
-        setLeads(response.data.leads || []);
+        setDispatchesList(response.data.dispatches || []);
       }
     } catch (error) {
-      console.error('Error fetching leads:', error);
-    }
-  };
-
-  const fetchPayments = async () => {
-    try {
-      const response = showOutstandingOnly
-        ? await paymentsApi.getOutstandingPayments()
-        : await paymentsApi.getPayments();
-      if (response.success) {
-        setPayments(response.data.payments || []);
-      }
-    } catch (error) {
-      console.error('Error fetching payments:', error);
-      toast.error('Failed to load payments.');
+      console.error('Error fetching dispatches:', error);
+      toast.error('Failed to fetch dispatches');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreatePayment = async (e) => {
+  const handleCreateDispatch = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
     try {
-      const payload = {
-        ...formData,
-        leadId: formData.leadId?.trim(),
-        totalAmount: Number(formData.totalAmount),
-        advanceAmount: Number(formData.advanceAmount || 0)
-      };
-
-      const response = await paymentsApi.createPayment(payload);
+      const response = await dispatchesApi.createDispatch(formData);
       if (response.success) {
-        toast.success('Payment record created successfully 🎉');
+        toast.success('Dispatch order created successfully 🎉');
         setShowCreateModal(false);
-        setFormData({ leadId: '', totalAmount: '', advanceAmount: '0', dueDate: '', paymentStatus: 'Not Started' });
-        fetchPayments();
+        setFormData({
+          leadId: '',
+          loadingPoint: '',
+          destination: '',
+          truckNo: '',
+          driverName: '',
+          driverPhone: '',
+          material: '',
+          quantity: '',
+          loadingDate: ''
+        });
+        fetchDispatches();
       }
     } catch (error) {
-      console.error('Error creating payment:', error);
-      toast.error(error.response?.data?.message || 'Failed to create payment');
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error creating dispatch:', error);
+      toast.error(error.response?.data?.message || 'Failed to create dispatch');
     }
   };
 
-  const handleOpenUpdateModal = (payment) => {
-    setSelectedPayment(payment);
-    setUpdateData({
-      totalAmount: payment.totalAmount || '',
-      advanceAmount: payment.advanceAmount || '',
-      dueDate: payment.dueDate ? payment.dueDate.split('T')[0] : '',
-      paymentStatus: payment.paymentStatus || '',
-      invoiceFile: null,
-      proofFile: null
-    });
-    setShowUpdateModal(true);
+  const updateStatus = async (id, status) => {
+    try {
+      const response = await dispatchesApi.updateDispatchStatus(id, status);
+      if (response.success) {
+        toast.success(`Dispatch status updated to: ${status}`);
+        fetchDispatches();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update dispatch status');
+    }
   };
 
-  const handleUpdatePayment = async (e) => {
+  const handleRevealClick = (id) => {
+    setSelectedDispatchId(id);
+    setRevealReason('');
+    setShowRevealModal(true);
+  };
+
+  const handleRevealSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if (!revealReason.trim()) return;
+
     try {
-      const fd = new FormData();
-      fd.append('paymentStatus', updateData.paymentStatus);
-      if (updateData.dueDate) fd.append('dueDate', updateData.dueDate);
-      if (updateData.totalAmount !== '') fd.append('totalAmount', updateData.totalAmount);
-      if (updateData.advanceAmount !== '') fd.append('advanceAmount', updateData.advanceAmount);
-
-      if (updateData.invoiceFile) {
-        fd.append('invoice', updateData.invoiceFile);
-      }
-      if (updateData.proofFile) {
-        fd.append('paymentProof', updateData.proofFile);
-      }
-
-      
-      const response = await axiosInstance.patch(`/payments/${selectedPayment._id}`, fd, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const deviceHash = localStorage.getItem('deviceHash');
+      const response = await axiosInstance.post('/security/reveal', {
+        entityType: 'DISPATCH',
+        entityId: selectedDispatchId,
+        fieldName: 'phone',
+        reason: revealReason,
+        deviceHash
       });
 
       if (response.data.success) {
-        toast.success('Payment record updated successfully!');
-        setShowUpdateModal(false);
-        fetchPayments();
+        setRevealedPhones(prev => ({
+          ...prev,
+          [selectedDispatchId]: response.data.data.value
+        }));
+        toast.success('Driver phone number revealed successfully');
+        setShowRevealModal(false);
       }
     } catch (error) {
-      console.error('Error updating payment:', error);
-      toast.error(error.response?.data?.message || 'Failed to update payment record');
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error revealing driver phone:', error);
+      toast.error(error.response?.data?.message || 'Reveal attempt rejected.');
     }
   };
 
-  const handleSendReminder = async (id) => {
+  const handleOpenUploadModal = (id) => {
+    setSelectedDispatchId(id);
+    setProofFile(null);
+    setShowUploadModal(true);
+  };
+
+  const handleUploadProof = async (e) => {
+    e.preventDefault();
+    if (!proofFile) return;
+    setIsUploading(true);
+
     try {
-      
-      const response = await axiosInstance.post(`/payments/${id}/reminder`);
+      const fd = new FormData();
+      fd.append('file', proofFile);
+      fd.append('ownerType', 'DISPATCH');
+      fd.append('ownerId', selectedDispatchId);
+      fd.append('accessLevel', 'RESTRICTED');
+
+      const uploadResponse = await axiosInstance.post('/documents/upload', fd);
+
+      if (!uploadResponse.data.success) {
+        throw new Error(uploadResponse.data.message || 'Document upload failed');
+      }
+
+      const documentId = uploadResponse.data.data?.document?._id || uploadResponse.data?.data?.documentId;
+      if (!documentId) {
+        throw new Error('Uploaded document ID missing');
+      }
+
+      const response = await axiosInstance.post(`/dispatch/${selectedDispatchId}/proof`, {
+        proofDocumentId: documentId
+      });
+
       if (response.data.success) {
-        toast.success(`Payment reminder triggered successfully! Total sent: ${response.data.data.payment.reminderCount} ✉️`);
-        fetchPayments();
+        toast.success('Dispatch proof document uploaded successfully!');
+        setShowUploadModal(false);
+        fetchDispatches();
       }
     } catch (error) {
-      console.error('Error sending reminder:', error);
-      toast.error('Failed to trigger reminder.');
+      console.error('Error uploading proof:', error);
+      toast.error(error.response?.data?.message || error.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleDownloadDoc = (docId, fileName) => {
+  const handleDownloadProof = (docId, truckNo) => {
     if (!docId) return;
-    toast.loading('Downloading document...', { id: 'download' });
+    toast.loading('Downloading dispatch proof...', { id: 'download' });
     axiosInstance.get(`/documents/${docId}/download`, { responseType: 'blob' })
       .then((res) => {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', fileName || 'document');
+        link.setAttribute('download', `Proof_Truck_${truckNo}.pdf`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success('Document downloaded!', { id: 'download' });
+        toast.success('Document downloaded successfully!', { id: 'download' });
       })
       .catch((err) => {
         console.error('Download error:', err);
-        toast.error('Failed to download document. Permissions restricted.', { id: 'download' });
+        toast.error('Failed to download document. Unauthorized access.', { id: 'download' });
       });
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      'Not Started': 'bg-slate-100 text-slate-700 border border-slate-200',
-      'Advance Received': 'bg-emerald-50 text-emerald-700 border border-emerald-100',
-      'Partial': 'bg-blue-50 text-blue-700 border border-blue-100',
-      'Due': 'bg-amber-50 text-amber-700 border border-amber-100',
-      'Overdue': 'bg-rose-50 text-rose-700 border border-rose-100 font-semibold',
-      'Paid': 'bg-green-100 text-green-800 border border-green-200 font-bold',
-      'Disputed': 'bg-purple-50 text-purple-700 border border-purple-100'
+      'Pending': 'bg-gray-950/40 text-gray-400 border border-gray-500/20',
+      'Truck Assigned': 'bg-indigo-950/20 text-indigo-400 border border-indigo-500/20',
+      'Loading': 'bg-purple-950/20 text-purple-400 border border-purple-500/20',
+      'In Transit': 'bg-amber-950/20 text-amber-400 border border-amber-500/20',
+      'Delivered': 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/20 font-bold',
+      'Issue Raised': 'bg-rose-950/20 text-rose-400 border border-rose-500/20 font-semibold flex items-center gap-1 justify-center',
+      'Closed': 'bg-gray-950/20 text-gray-500 border border-gray-500/20 opacity-40 line-through'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800 border border-gray-200';
+    return colors[status] || 'bg-gray-950/20 text-gray-400 border border-gray-500/20';
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-[#0E1116]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-[1px] bg-[#C5CBD3]/40 animate-pulse" />
+          <p className="text-[10px] tracking-widest uppercase font-mono text-[#6D7886]">Synchronizing Logistics Telemetry...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants} 
+      className="min-h-screen bg-[#0E1116] text-[#C5CBD3] block pb-12"
+    >
       
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-sans">Payment Ledger</h1>
-          <p className="text-gray-600 mt-1">Track advance deposits, pending invoices, outstanding balances, and reminder metrics.</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <label className="flex items-center space-x-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200 cursor-pointer shadow-sm select-none hover:bg-slate-50 transition">
-            <input
-              type="checkbox"
-              checked={showOutstandingOnly}
-              onChange={(e) => setShowOutstandingOnly(e.target.checked)}
-              className="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4 cursor-pointer"
-            />
-            <span className="text-sm font-semibold text-slate-700">Outstanding Only</span>
-          </label>
-
-          {isFinanceAuthorized && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-primary bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-lg transition-transform active:scale-95"
-            >
-              <FiPlus size={18} />
-              <span>Create Schedule</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-white shadow-sm border border-slate-100 rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Received (Advance)</p>
-            <p className="text-2xl font-extrabold text-slate-800 mt-1">
-              {isFinanceAuthorized
-                ? `₹${payments.reduce((sum, p) => sum + (p.advanceAmount || 0), 0).toLocaleString()}`
-                : '₹ - - - -'}
-            </p>
-            {!isFinanceAuthorized && <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1 mt-1"><FiLock /> Accounts Access Only</span>}
-          </div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <FiDollarSign size={24} />
-          </div>
+      {/* Top Deck Banner */}
+      <motion.div variants={blockVariants} className="w-full border-b border-[#C5CBD3]/10 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-[#040A12]/40 backdrop-blur-sm">
+        <div className="space-y-1 text-left">
+          <span className="text-[9px] uppercase tracking-[0.25em] text-[#6D7886] font-bold block font-mono">Fleet Telemetry Console</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[#F2F4F7] uppercase tracking-tight">Dispatch & Transport</h1>
+          <p className="text-xs text-[#6D7886] font-light max-w-2xl mt-1">Track vehicle load distributions, secure driver parameters, and manage electronic bills of lading.</p>
         </div>
 
-        <div className="card bg-white shadow-sm border border-slate-100 rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending Balance</p>
-            <p className="text-2xl font-extrabold text-slate-800 mt-1">
-              {isFinanceAuthorized
-                ? `₹${payments.reduce((sum, p) => sum + (p.balanceAmount || 0), 0).toLocaleString()}`
-                : '₹ - - - -'}
-            </p>
-            {!isFinanceAuthorized && <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1 mt-1"><FiLock /> Accounts Access Only</span>}
-          </div>
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <FiAlertCircle size={24} />
-          </div>
-        </div>
+        {isProcurementAuthorized && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full sm:w-auto bg-[#F2F4F7] text-[#040A12] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center justify-center space-x-1.5 transition-all shadow-md cursor-pointer hover:bg-[#C5CBD3]"
+          >
+            <FiPlus size={14} />
+            <span>Schedule New Dispatch</span>
+          </button>
+        )}
+      </motion.div>
 
-        <div className="card bg-white shadow-sm border border-slate-100 rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fully Paid Orders</p>
-            <p className="text-2xl font-extrabold text-green-700 mt-1">
-              {payments.filter(p => p.paymentStatus === 'Paid').length}
-            </p>
-            <span className="text-[10px] text-slate-400 mt-1 block">Out of {payments.length} transactions</span>
-          </div>
-          <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-            <FiCheckCircle size={24} />
-          </div>
-        </div>
-      </div>
-
-      {/* Ledger Table */}
-      <div className="card shadow-sm border border-slate-100 rounded-2xl overflow-hidden bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Lead Order</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Financial Overview</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Due Date</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Documents</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Reminders</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {payments.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-12 text-slate-500">No payment schedules found.</td>
+      {/* Main Ledger Core */}
+      <div className="w-full py-8 bg-[#0E1116]">
+        <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 overflow-hidden w-full bg-[#121D29]/10 rounded-sm shadow-2xl">
+          <div className="overflow-x-auto w-full block custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[950px]">
+              <thead>
+                <tr className="bg-[#040A12] text-[#6D7886] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[#C5CBD3]/15">
+                  <th className="py-4 px-6">Manifest & Transporter</th>
+                  <th className="py-4 px-6">Commodity Profile</th>
+                  <th className="py-4 px-6">Global Routing Matrix</th>
+                  <th className="py-4 px-6 text-center">Tracking Status</th>
+                  <th className="py-4 px-6">Delivery Verification</th>
+                  <th className="py-4 px-6 text-center">Authorize Change</th>
                 </tr>
-              ) : (
-                payments.map((payment) => (
-                  <tr key={payment._id} className="hover:bg-slate-50/40 transition">
-                    {/* Lead Order */}
-                    <td className="py-4 px-6">
-                      <div>
-                        <div className="font-semibold text-slate-900 text-sm">
-                          {payment.leadId?.customerName || 'N/A'}
-                        </div>
-                        <div className="text-xs text-slate-400 mt-0.5">Code: {payment.leadId?.leadCode || 'N/A'}</div>
-                      </div>
-                    </td>
-
-                    {/* Financial Overview */}
-                    <td className="py-4 px-6">
-                      {isFinanceAuthorized ? (
-                        <div className="space-y-1 text-xs">
-                          <div>Total: <span className="font-bold text-slate-800">₹{payment.totalAmount?.toLocaleString()}</span></div>
-                          <div className="text-emerald-600">Advance: <span>₹{payment.advanceAmount?.toLocaleString()}</span></div>
-                          <div className="text-indigo-600 font-semibold border-t border-slate-100 pt-0.5">
-                            Balance: <span>₹{payment.balanceAmount?.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
-                          <FiLock size={12} />
-                          <span>Omitted for Sales</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Due Date */}
-                    <td className="py-4 px-6 text-sm text-slate-600 font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <FiCalendar className="text-slate-400" />
-                        <span>{payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : 'N/A'}</span>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-4 px-6 text-center">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase rounded-full ${getStatusColor(payment.paymentStatus)}`}>
-                        {payment.paymentStatus}
-                      </span>
-                    </td>
-
-                    {/* Documents */}
-                    <td className="py-4 px-6">
-                      <div className="flex flex-col gap-1.5 text-xs">
-                        {payment.invoiceDocumentId ? (
-                          <button
-                            onClick={() => handleDownloadDoc(payment.invoiceDocumentId, `Invoice_${payment.leadId?.leadCode || 'payment'}.pdf`)}
-                            className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:underline font-semibold"
-                          >
-                            <FiFileText /> Invoice.pdf
-                          </button>
-                        ) : (
-                          <span className="text-slate-400 italic">No invoice</span>
-                        )}
-                        {payment.paymentProofDocumentId ? (
-                          <button
-                            onClick={() => handleDownloadDoc(payment.paymentProofDocumentId, `Receipt_${payment.leadId?.leadCode || 'payment'}.pdf`)}
-                            className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-800 hover:underline font-semibold"
-                          >
-                            <FiFileText /> Receipt.pdf
-                          </button>
-                        ) : (
-                          <span className="text-slate-400 italic">No receipt</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Reminders */}
-                    <td className="py-4 px-6">
-                      <div className="space-y-1">
-                        <div className="text-xs text-slate-500">Sent: <strong>{payment.reminderCount || 0} times</strong></div>
-                        {payment.lastReminderAt && (
-                          <div className="text-[10px] text-slate-400">
-                            Last: {new Date(payment.lastReminderAt).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-4 px-6 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleOpenUpdateModal(payment)}
-                          className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 p-2 rounded-xl transition text-xs font-semibold"
-                          title="Update ledger data or upload invoices"
-                        >
-                          Update
-                        </button>
-
-                        <button
-                          onClick={() => handleSendReminder(payment._id)}
-                          className="bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 p-2 rounded-xl transition"
-                          title="Trigger Payment Reminder"
-                        >
-                          <FiSend size={14} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-[#C5CBD3]/10 text-xs">
+                {dispatchesList.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-20 font-mono uppercase tracking-widest text-[10px] opacity-40">
+                      No ongoing transit manifests recorded inside the ledger network.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  dispatchesList.map((dispatch) => (
+                    <tr key={dispatch._id} className="hover:bg-[#121D29]/40 transition-colors">
+                      
+                      {/* Truck & Secure Driver Metadata */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="space-y-1">
+                          <div className="font-mono text-xs font-bold uppercase text-[#F2F4F7] tracking-wider">{dispatch.truckNo}</div>
+                          <div className="text-[11px] text-[#C5CBD3]/80 font-light">Operator: {dispatch.driverName || 'N/A'}</div>
+
+                          {dispatch.driverPhoneMasked ? (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="font-mono text-[#6D7886] font-medium">{revealedPhones[dispatch._id] || dispatch.driverPhoneMasked}</span>
+                              {!revealedPhones[dispatch._id] && (
+                                <button
+                                  onClick={() => handleRevealClick(dispatch._id)}
+                                  className="text-amber-400 hover:text-white transition p-0.5 cursor-pointer"
+                                  title="Unmask Protected Communications (Audit Logged)"
+                                >
+                                  <FiEye size={12} />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-[#6D7886] italic font-light">No encrypted phone data</div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Commodity Details */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="space-y-1">
+                          <div className="font-serif font-normal text-sm text-[#F2F4F7]">{dispatch.material}</div>
+                          <div className="text-[11px] font-mono text-[#6D7886]">Net Vol: <strong className="text-[#C5CBD3] font-medium">{dispatch.quantity}</strong></div>
+                        </div>
+                      </td>
+
+                      {/* Geographical Routes */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="space-y-1 text-[11px] text-[#C5CBD3]/90">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 block"></span>
+                            <span>Origin: <span className="text-[#F2F4F7] font-medium">{dispatch.loadingPoint || 'N/A'}</span></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 block"></span>
+                            <span>Discharge Point: <span className="text-[#F2F4F7] font-medium">{dispatch.destination || 'N/A'}</span></span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Tracking Status Pill */}
+                      <td className="py-4 px-6 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-wider uppercase border ${getStatusColor(dispatch.dispatchStatus)}`}>
+                          {dispatch.dispatchStatus === 'Issue Raised' && <FiAlertTriangle className="mr-1 text-rose-400 animate-bounce" size={10} />}
+                          {dispatch.dispatchStatus}
+                        </span>
+                      </td>
+
+                      {/* Document Verification Proof */}
+                      <td className="py-4 px-6 text-left">
+                        {dispatch.proofDocumentId ? (
+                          <div className="flex flex-col gap-1 items-start">
+                            <button
+                              onClick={() => handleDownloadProof(dispatch.proofDocumentId, dispatch.truckNo)}
+                              className="inline-flex items-center gap-1.5 text-xs text-[#F2F4F7] font-semibold hover:text-[#C5CBD3] transition cursor-pointer"
+                            >
+                              <FiFileText className="text-[#6D7886]" size={13} /> Verified Slip
+                            </button>
+                            <button
+                              onClick={() => handleOpenUploadModal(dispatch._id)}
+                              className="text-[9px] font-mono font-bold text-[#6D7886] hover:text-[#F2F4F7] bg-[#0E1116] border border-[#C5CBD3]/10 px-2 py-0.5 rounded-sm transition uppercase tracking-wider cursor-pointer mt-1"
+                            >
+                              Replace
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <span className="text-[11px] text-[#6D7886] italic block font-light">Awaiting validation receipt</span>
+                            <button
+                              onClick={() => handleOpenUploadModal(dispatch._id)}
+                              className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold text-[#C5CBD3] border border-[#C5CBD3]/15 px-2.5 py-1 rounded-sm bg-[#0E1116] hover:bg-[#121D29] transition uppercase tracking-wider cursor-pointer shadow-md"
+                            >
+                              <FiUpload size={10} /> Upload Proof
+                            </button>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Actions dropdown selector */}
+                      <td className="py-4 px-6 text-center">
+                        <div className="relative inline-block w-36">
+                          <select
+                            value={dispatch.dispatchStatus}
+                            onChange={(e) => updateStatus(dispatch._id, e.target.value)}
+                            className="w-full text-xs bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-[#F2F4F7] rounded-sm px-2.5 py-1.5 cursor-pointer outline-none appearance-none"
+                          >
+                            {statusOptions.map(opt => (
+                              <option key={opt} value={opt} className="bg-[#0E1116] text-[#C5CBD3]">{opt}</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[#6D7886]">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Create Payment Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-800">New Payment Schedule</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <form onSubmit={handleCreatePayment} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Select Lead / Customer *</label>
-                <select
-                  required
-                  value={formData.leadId}
-                  onChange={(e) => setFormData({ ...formData, leadId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+      {/* Creation Modal Matrix */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-[#121D29] rounded-sm p-6 w-full max-w-md border border-[#C5CBD3]/15 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-[#C5CBD3]/10 pb-3 text-left">
+                <div>
+                  <h2 className="text-base font-serif font-normal text-[#F2F4F7] tracking-wide uppercase">Initialize Transport Manifest</h2>
+                  <p className="text-[9px] text-[#6D7886] tracking-widest uppercase font-mono font-bold mt-1">Automated Fleet Node Setup</p>
+                </div>
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="text-[#6D7886] hover:text-[#F2F4F7] p-1.5 rounded-sm hover:bg-[#0E1116] transition-all cursor-pointer"
                 >
-                  <option value="">-- Select Lead --</option>
-                  {leads.map(lead => (
-                    <option key={lead._id} value={lead._id}>
-                      {lead.customerName} ({lead.leadCode})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Amount (₹) *</label>
-                <input
-                  type="number"
-                  required
-                  value={formData.totalAmount}
-                  onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g. 150000"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Advance Deposited (₹)</label>
-                <input
-                  type="number"
-                  value={formData.advanceAmount}
-                  onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g. 50000"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Initial Status</label>
-                <select
-                  value={formData.paymentStatus}
-                  onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  {statusOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Due Date</label>
-                <input
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex space-x-3 pt-4 border-t">
-                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
-                  {isSubmitting ? 'Saving...' : 'Create Schedule'}
+                  <FiX size={16} />
                 </button>
-                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
               </div>
-            </form>
+
+              <form onSubmit={handleCreateDispatch} className="space-y-4 text-left font-sans text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Lead Node Linkage *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.leadId}
+                    onChange={(e) => setFormData({ ...formData, leadId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 placeholder-[#6D7886]"
+                    placeholder="e.g. ITO-LD-101"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Loading Origin *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.loadingPoint}
+                      onChange={(e) => setFormData({ ...formData, loadingPoint: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 placeholder-[#6D7886]"
+                      placeholder="e.g. Haldia Terminal"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Discharge Destination *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.destination}
+                      onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 placeholder-[#6D7886]"
+                      placeholder="City / Port Location"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Vehicle License Registration *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.truckNo}
+                    onChange={(e) => setFormData({ ...formData, truckNo: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 font-mono uppercase placeholder-[#6D7886]"
+                    placeholder="e.g. WB-14-AX-5520"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Operator Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.driverName}
+                      onChange={(e) => setFormData({ ...formData, driverName: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Operator Contact</label>
+                    <input
+                      type="tel"
+                      value={formData.driverPhone}
+                      onChange={(e) => setFormData({ ...formData, driverPhone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Material Specification *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.material}
+                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 placeholder-[#6D7886]"
+                      placeholder="e.g. Basalt Chips"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Net Mass Vol *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 placeholder-[#6D7886]"
+                      placeholder="e.g. 4800 MT"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Loading Date Signature</label>
+                  <input
+                    type="date"
+                    value={formData.loadingDate}
+                    onChange={(e) => setFormData({ ...formData, loadingDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 cursor-pointer text-left"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4 border-t border-[#C5CBD3]/10">
+                  <button type="submit" className="flex-1 py-3 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#040A12] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md">Commit Manifest</button>
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3 bg-[#0E1116] hover:bg-[#121D29] border border-[#C5CBD3]/20 text-[#C5CBD3] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* Update Payment / Document Upload Modal */}
-      {showUpdateModal && selectedPayment && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-xl max-h-[95vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-800">Update Ledger & Vault Docs</h2>
-              <button onClick={() => setShowUpdateModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-
-            <form onSubmit={handleUpdatePayment} className="space-y-4">
-              <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border">
-                Lead: <strong>{selectedPayment.leadId?.customerName || 'N/A'}</strong><br />
-                Code: <strong>{selectedPayment.leadId?.leadCode || 'N/A'}</strong>
+      {/* Audit Form Justification layer */}
+      <AnimatePresence>
+        {showRevealModal && (
+          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-[#121D29] rounded-sm p-6 w-full max-w-md border border-[#C5CBD3]/15 shadow-2xl"
+            >
+              <div className="flex items-center space-x-3 mb-4 text-[#6D7886] text-left">
+                <FiShield size={22} />
+                <h3 className="text-base font-serif font-normal uppercase tracking-wide text-[#F2F4F7]">Protected Telemetry Decryption</h3>
+              </div>
+              <p className="text-xs text-[#6D7886] mb-5 leading-relaxed font-light text-left">
+                CRITICAL WARNING: Access to raw telephony coordinates is fully tracked inside the global security ledger node. Provide a formal operational clearance reason to initiate unmasking.
               </p>
 
-              {isFinanceAuthorized && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Amount (₹)</label>
-                    <input
-                      type="number"
-                      value={updateData.totalAmount}
-                      onChange={(e) => setUpdateData({ ...updateData, totalAmount: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Advance Paid (₹)</label>
-                    <input
-                      type="number"
-                      value={updateData.advanceAmount}
-                      onChange={(e) => setUpdateData({ ...updateData, advanceAmount: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none"
-                    />
-                  </div>
-                </>
-              )}
+              <form onSubmit={handleRevealSubmit} className="space-y-4 text-left font-sans text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-2 font-mono">Audit Registry Justification</label>
+                  <textarea
+                    required
+                    rows="3"
+                    value={revealReason}
+                    onChange={(e) => setRevealReason(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 focus:border-[#F2F4F7]/40 text-xs rounded-sm outline-none text-[#F2F4F7] font-light resize-none custom-scrollbar"
+                    placeholder="Provide exact commercial urgency requirement parameters..."
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status</label>
-                <select
-                  value={updateData.paymentStatus}
-                  onChange={(e) => setUpdateData({ ...updateData, paymentStatus: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm cursor-pointer"
-                >
-                  {statusOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Due Date</label>
-                <input
-                  type="date"
-                  value={updateData.dueDate}
-                  onChange={(e) => setUpdateData({ ...updateData, dueDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
-                />
-              </div>
-
-              {/* Upload Invoice File */}
-              <div className="p-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-600 flex items-center gap-1">
-                  <FiUpload /> Upload Invoice (PDF)
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setUpdateData({ ...updateData, invoiceFile: e.target.files[0] })}
-                  className="w-full text-xs cursor-pointer file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-                {updateData.invoiceFile && <div className="text-[10px] text-green-600 font-semibold">Ready: {updateData.invoiceFile.name}</div>}
-              </div>
-
-              {/* Upload Payment Proof File */}
-              <div className="p-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-600 flex items-center gap-1">
-                  <FiUpload /> Upload Payment Receipt
-                </label>
-                <input 
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => setUpdateData({ ...updateData, proofFile: e.target.files[0] })}
-                  className="w-full text-xs cursor-pointer file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                />
-                {updateData.proofFile && <div className="text-[10px] text-green-600 font-semibold">Ready: {updateData.proofFile.name}</div>}
-              </div>
-
-              <div className="flex space-x-3 pt-4 border-t">
-                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
-                  {isSubmitting ? 'Saving...' : 'Apply Changes'}
-                </button>
-                <button type="button" onClick={() => setShowUpdateModal(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
-              </div>
-            </form>
+                <div className="flex space-x-3 pt-2">
+                  <button type="submit" className="flex-1 py-3 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#040A12] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 shadow-md cursor-pointer">Authorize Unmasking</button>
+                  <button type="button" onClick={() => setShowRevealModal(false)} className="flex-1 py-3 bg-[#0E1116] hover:bg-[#121D29] border border-[#C5CBD3]/20 text-[#C5CBD3] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer">Abort</button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </AnimatePresence>
+
+      {/* Proof Submission Overlay */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-[#121D29] rounded-sm p-6 w-full max-w-md border border-[#C5CBD3]/15 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-[#C5CBD3]/10 pb-3 text-left">
+                <h2 className="text-base font-serif font-normal text-[#F2F4F7] tracking-wide uppercase">Transmit Waybill Proof Node</h2>
+                <button 
+                  onClick={() => setShowUploadModal(false)} 
+                  className="text-[#6D7886] hover:text-[#F2F4F7] p-1.5 rounded-sm hover:bg-[#0E1116] transition-all cursor-pointer"
+                >
+                  <FiX size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleUploadProof} className="space-y-5 text-left font-sans text-xs">
+                <div className="p-5 bg-[#0E1116] rounded-sm border border-dashed border-[#C5CBD3]/20 text-center shadow-inner">
+                  <label className="block text-[11px] font-bold text-[#C5CBD3] mb-3 uppercase tracking-wider font-mono">
+                    Select Digital Clearance Asset (Receipt/Slip PDF)
+                  </label>
+                  <input
+                    type="file"
+                    required
+                    onChange={(e) => setProofFile(e.target.files[0])}
+                    className="w-full text-xs text-[#6D7886] file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-[#121D29] file:border file:border-[#C5CBD3]/20 file:text-[#C5CBD3] hover:file:bg-[#0E1116] hover:file:text-[#F2F4F7] cursor-pointer file:transition shadow-md"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={isUploading || !proofFile} 
+                    className="flex-1 py-3 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#040A12] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 shadow-md cursor-pointer"
+                  >
+                    {isUploading ? 'Transmitting Node...' : 'Commit Upload'}
+                  </button>
+                  <button type="button" onClick={() => setShowUploadModal(false)} className="flex-1 py-3 bg-[#0E1116] hover:bg-[#121D29] border border-[#C5CBD3]/20 text-[#C5CBD3] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </motion.div>
   );
 }

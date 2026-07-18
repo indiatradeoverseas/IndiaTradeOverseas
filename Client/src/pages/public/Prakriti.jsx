@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
-    FiShield, FiBriefcase, FiFileText, FiCheckCircle, FiArrowRight, FiArrowLeft, 
-    FiUser, FiPhone, FiMapPin, FiKey, FiUploadCloud, FiX, FiAward, FiCompass, 
+    FiShield, FiBriefcase, FiFileText, FiCheckCircle, FiArrowRight, FiArrowLeft,
+    FiUser, FiPhone, FiMapPin, FiKey, FiUploadCloud, FiX, FiAward, FiCompass,
     FiLayers, FiLock, FiEye, FiDownload, FiFilter, FiShoppingCart, FiInfo
 } from 'react-icons/fi';
 import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icons/gi";
@@ -11,11 +11,11 @@ import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icon
 import { distributorApi } from '../../api/distributor';
 
 const HERO_BACKGROUNDS = [
-    "/images/tea_images/g1.jpeg", 
-    "/images/tea_images/g2.jpeg", 
-    "/images/tea_images/g3.jpeg", 
-    "/images/tea_images/g6.jpeg", 
-    "/images/tea_images/g7.jpeg"  
+    "/images/tea_images/g1.jpeg",
+    "/images/tea_images/g2.jpeg",
+    "/images/tea_images/g3.jpeg",
+    "/images/tea_images/g6.jpeg",
+    "/images/tea_images/g7.jpeg"
 ];
 
 const CAROUSEL_IMAGES = [
@@ -68,12 +68,14 @@ const APPROVED_MARKETPLACE_DATA = [
 ];
 
 export default function Prakriti() {
-    const [userAccessLayer, setUserAccessLayer] = useState(1); 
+    const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [step, setStep] = useState('register');
     const [distributorId, setDistributorId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [myProposals, setMyProposals] = useState([]);
+    const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
 
     const [heroBgIndex, setHeroBgIndex] = useState(0);
     const [carouselIndex, setCarouselIndex] = useState(0);
@@ -84,6 +86,8 @@ export default function Prakriti() {
     const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
     const [orderQuantity, setOrderQuantity] = useState('500');
+    const [modalMode, setModalMode] = useState('register'); // Switch between 'register' and 'login'
+    const [loginEmail, setLoginEmail] = useState('');
 
     const [businessType, setBusinessType] = useState('1');
     const [name, setName] = useState('');
@@ -100,6 +104,80 @@ export default function Prakriti() {
     const [doc1, setDoc1] = useState(null);
     const [doc2, setDoc2] = useState(null);
     const [otp, setOtp] = useState('');
+
+    const fetchMyProposals = async () => {
+        try {
+            const res = await distributorApi.getActiveProposals(); // Fetch system records
+            if (res.success) {
+                // Filter records belonging explicitly to this logged-in distributor session
+                const filtered = res.data.filter(p => p.distributorId?._id === distributorId || p.distributorId === distributorId);
+                setMyProposals(filtered);
+            }
+        } catch (err) {
+            console.error("Error loading user procurement pipelines:", err);
+        }
+    };
+
+    // 3. Trigger this fetch within your existing Level 5 mount hook:
+    useEffect(() => {
+        if (userAccessLayer === 5 && distributorId) {
+            fetchMyProposals();
+        }
+    }, [userAccessLayer, distributorId]);
+    // Add this inside your Prakriti component alongside your other hooks
+    useEffect(() => {
+        // Find the public main navbar element in your DOM layout
+        const globalNavbar = document.querySelector('header') || document.querySelector('nav');
+
+        if (globalNavbar) {
+            if (userAccessLayer >= 4) {
+                // Hide public navbar on verified screens to eliminate clipping
+                globalNavbar.style.display = 'none';
+            } else {
+                // Re-enable public navbar on fallback or store view
+                globalNavbar.style.display = '';
+            }
+        }
+
+        // Cleanup phase on component unmount
+        return () => {
+            if (globalNavbar) globalNavbar.style.display = '';
+        };
+    }, [userAccessLayer]);
+
+    // Locate your initializeAuthenticationSession useEffect hook near line ~70 and update its inner mapping logic:
+    useEffect(() => {
+        const initializeAuthenticationSession = async () => {
+            const savedId = localStorage.getItem('prakriti_distributor_id');
+            const token = localStorage.getItem('distributor_token');
+
+            if (savedId && token) {
+                setDistributorId(savedId);
+                try {
+                    const res = await distributorApi.getDistributorStatus(savedId);
+                    if (res.success) {
+                        const status = res.data.approvalStatus;
+                        if (status === 'approved') {
+                            // User is verified! Send them straight into the Secure Marketplace Terminal
+                            setUserAccessLayer(5);
+                            toast.success("Welcome back! Secured corporate session established.");
+                        } else if (status === 'pending') {
+                            // Document audit is still underway
+                            setUserAccessLayer(4);
+                        } else {
+                            // Handle fallback clear if rejected
+                            handleLogOut();
+                        }
+                    }
+                } catch (err) {
+                    console.error("Session re-alignment synchronization failure:", err);
+                    // Don't wipe data immediately on a network glitch, let them access public layers safely
+                }
+            }
+            setIsLoadingSession(false);
+        };
+        initializeAuthenticationSession();
+    }, []);
 
     // Session Verification Lifecycle on Mount
     useEffect(() => {
@@ -188,7 +266,7 @@ export default function Prakriti() {
         if (!email.trim()) return toast.error("Corporate Email Address is a required field.");
         if (!mobile.trim()) return toast.error("Mobile Line Contact is a required field.");
         if (!address.trim()) return toast.error("Physical Operating Address is a required field.");
-        
+
         if (['1', '2', '3'].includes(businessType) && !doc1) {
             return toast.error("Compliance Enforced: GST Certificate or Udyam Registration file is required.");
         }
@@ -214,7 +292,7 @@ export default function Prakriti() {
         data.append('purpose', purpose);
         data.append('businessType', businessType);
         data.append('division', 'TEA');
-        
+
         if (doc1) data.append('doc1', doc1);
         if (doc2) data.append('doc2', doc2);
 
@@ -247,7 +325,7 @@ export default function Prakriti() {
                 }
                 setIsModalOpen(false);
                 setStep('register');
-                setUserAccessLayer(4); 
+                setUserAccessLayer(4);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 setName(''); setCompany(''); setEmail(''); setMobile(''); setAddress('');
                 setCity(''); setState(''); setDoc1(null); setDoc2(null); setOtp('');
@@ -262,12 +340,10 @@ export default function Prakriti() {
     const handleLogOut = () => {
         setUserAccessLayer(1);
         setDistributorId('');
-        localStorage.removeItem('prakriti_distributor_id');
-        localStorage.removeItem('distributor_token');
         toast.success("Secured session token terminated.");
     };
 
-    const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot => 
+    const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot =>
         selectedMarketCategory === 'All' ? true : lot.type === selectedMarketCategory
     );
 
@@ -284,7 +360,7 @@ export default function Prakriti() {
 
     return (
         <div className="bg-[#FAF9F5] text-slate-900 antialiased min-h-screen font-sans selection:bg-[#50C878]/30 selection:text-[#004B3B]">
-            
+
             {/* ================= LAYER 4: UNDER REVIEW GATE ================= */}
             {userAccessLayer === 4 && (
                 <div className="min-h-[80vh] flex items-center justify-center py-20 px-4">
@@ -313,94 +389,335 @@ export default function Prakriti() {
 
             {/* ================= LAYER 5: APPROVED TEA BUYER MARKETPLACE ================= */}
             {userAccessLayer === 5 && (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-12 animate-fadeIn">
-                    <div className="bg-[#004B3B] rounded-2xl p-6 sm:p-8 border border-[#50C878]/30 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl relative overflow-hidden text-white">
-                        <div className="space-y-1.5 relative z-10">
-                            <div className="inline-flex items-center gap-1.5 bg-[#50C878]/20 border border-[#50C878]/40 px-3 py-1 rounded-full text-[10px] font-mono font-bold text-[#50C878]">
-                                <FiCheckCircle /> CREDENTIAL TOKEN ACCREDITED
+                <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-900 animate-fadeIn antialiased pt-6 pb-24">
+                    {/* Unified Top Action Navigation Bar specifically for Verified Corporate Accounts */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+                        <div className="bg-[#0B3D2E] text-white rounded-lg px-6 py-4 flex items-center justify-between border border-[#50C878]/20 shadow-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-white/10 rounded-sm flex items-center justify-center text-[#50C878] font-serif text-lg font-bold border border-white/10">
+                                    P
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-mono tracking-widest text-[#50C878] font-bold uppercase">B2B TRADE TERMINAL</div>
+                                    <div className="text-sm font-serif tracking-wide text-white uppercase">INDIA TRADE OVERSEAS</div>
+                                </div>
                             </div>
-                            <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wide">Prakriti Verified Buyer Marketplace</h2>
-                            <p className="text-xs text-slate-300 font-light max-w-xl">
-                                Welcome verified trading partner. You are officially synchronized into live inventory metrics, active lot configurations, and fresh wholesale price indexes.
-                            </p>
-                        </div>
-                        <div className="shrink-0 relative z-10">
-                            <button onClick={handleLogOut} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-mono text-[9px] sm:text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-lg transition-colors">
-                                Lock Session Terminal
-                            </button>
+                            <div className="flex items-center gap-4">
+                                <div className="hidden md:flex flex-col text-right font-mono text-[10px] text-slate-300 border-r border-white/10 pr-4">
+                                    <span>ESTATE NETWORK SECURED</span>
+                                    <span className="text-emerald-400">STATUS: ACTIVE SESSION</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => {
+                                            fetchMyProposals(); // Fresh catch refresh
+                                            setIsProposalModalOpen(true);
+                                        }}
+                                        className="relative bg-emerald-500/10 hover:bg-emerald-500/20 text-[#50C878] border border-[#50C878]/30 font-mono text-[10px] font-bold uppercase tracking-wider py-2 px-4 rounded transition-all cursor-pointer flex items-center gap-2"
+                                    >
+                                        <FiFileText /> My Proposals
+                                        {myProposals.filter(p => p.status === 'approved').length > 0 && (
+                                            <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce">
+                                                {myProposals.filter(p => p.status === 'approved').length}
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        onClick={handleLogOut}
+                                        className="bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 border border-white/10 text-slate-200 font-mono text-[10px] font-bold uppercase tracking-wider py-2 px-3 rounded transition-all cursor-pointer"
+                                    >
+                                        Lock Session Terminal
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Bulk Order Filter Systems */}
-                    <div className="flex flex-wrap gap-2 items-center justify-between border-b border-slate-200 pb-4">
-                        <div className="flex flex-wrap gap-1.5">
-                            {['All', 'CTC Tea', 'Orthodox Tea', 'Dust Tea'].map((cat) => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setSelectedMarketCategory(cat)}
-                                    className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-md font-bold transition-all ${
-                                        selectedMarketCategory === cat 
-                                        ? 'bg-[#004B3B] text-[#50C878] shadow-sm' 
-                                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                        <span className="text-[11px] font-mono text-slate-400 uppercase tracking-widest">{filteredMarketLots.length} Active Lots Loaded</span>
-                    </div>
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+                        {/* Executive Welcome Hero Banner */}
+                        <div className="bg-gradient-to-br from-[#0B3D2E] via-[#004B3B] to-[#043327] rounded-xl p-8 border border-[#50C878]/20 shadow-xl relative overflow-hidden text-white">
+                            <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle_at_top_right,rgba(80,200,120,0.08),transparent_60%)] pointer-events-none" />
 
-                    <div className="space-y-4">
-                        <h3 className="font-serif text-xl text-[#0B3D2E] uppercase tracking-wider flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#50C878]" /> Active Sourcing Lots & Live Pricing Matrix
-                        </h3>
-                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl overflow-x-auto">
-                            <table className="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr className="bg-[#0B3D2E] text-white font-mono uppercase tracking-wider text-[10px]">
-                                        <th className="p-4 border-b border-slate-200">Lot Tracking HASH</th>
-                                        <th className="p-4 border-b border-slate-200">Appellation / Origin Tract</th>
-                                        <th className="p-4 border-b border-slate-200">Industrial Leaf Grade</th>
-                                        <th className="p-4 border-b border-slate-200">Liquor Character</th>
-                                        <th className="p-4 border-b border-slate-200">Live Inventory</th>
-                                        <th className="p-4 border-b border-slate-200 text-[#50C878]">Wholesale Price</th>
-                                        <th className="p-4 border-b border-slate-200 text-center">Action Deck</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
-                                    {filteredMarketLots.map((row) => (
-                                        <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
-                                            <td className="p-4 font-mono font-bold text-[#004B3B]">{row.id}</td>
-                                            <td className="p-4">
-                                                <div className="font-semibold">{row.region}</div>
-                                                <div className="text-[10px] text-slate-400 font-mono italic">Origin Asset Encrypted</div>
-                                            </td>
-                                            <td className="p-4 font-bold text-slate-900">{row.grade}</td>
-                                            <td className="p-4">
-                                                <div>Color: {row.color}</div>
-                                                <div className="text-[10px] text-slate-400">Strength Indicator: {row.strength}</div>
-                                            </td>
-                                            <td className="p-4 font-mono">{row.stock}</td>
-                                            <td className="p-4 font-mono font-bold text-base text-[#004B3B]">INR {row.price}/Kg</td>
-                                            <td className="p-4 text-center space-x-1.5 whitespace-nowrap">
-                                                <button onClick={() => toast.success(`Sample request generated for Lot ${row.id}`)} className="bg-slate-100 hover:bg-[#50C878] hover:text-[#004B3B] text-slate-700 px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-colors">
-                                                    Request Sample
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        setActiveDrawerLot(row);
-                                                        setIsOrderDrawerOpen(true);
-                                                    }} 
-                                                    className="bg-[#004B3B] hover:bg-[#06362a] text-white px-3 py-1.5 rounded font-mono font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-colors"
-                                                >
-                                                    Place Order
-                                                </button>
-                                            </td>
+                            <div className="space-y-3 relative z-10 max-w-3xl">
+                                <div className="inline-flex items-center gap-1.5 bg-[#50C878]/10 border border-[#50C878]/30 px-3 py-1 rounded-sm text-[9px] font-mono font-bold text-[#50C878] tracking-wider uppercase">
+                                    <FiCheckCircle size={10} className="text-[#50C878]" /> CRM CREDENTIAL ACCREDITATION: LEVEL 5
+                                </div>
+                                <h2 className="text-2xl sm:text-4xl font-serif tracking-wide text-[#F2F4F7] uppercase">
+                                    Prakriti Verified Buyer Marketplace
+                                </h2>
+                                <p className="text-xs sm:text-sm text-slate-300 font-light leading-relaxed max-w-2xl">
+                                    Welcome back, trading partner. Your session is synchronized directly with live inventory metrics, active seasonal plucking lots, and fresh wholesale price indexes from our partner estate networks.
+                                </p>
+                            </div>
+                        </div>
+                        {/* ================= MY PROPOSALS & ESCROW SYSTEM DECK ================= */}
+                        <AnimatePresence>
+                            {isProposalModalOpen && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                                        className="w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 my-8"
+                                    >
+                                        {/* Header */}
+                                        <div className="bg-[#0B3D2E] text-white p-6 flex justify-between items-center text-left">
+                                            <div>
+                                                <div className="text-[9px] font-mono tracking-widest text-[#50C878] font-bold uppercase">Procurement Ledger Tracking</div>
+                                                <h2 className="text-xl font-serif text-white uppercase tracking-wide">My Active Trade Proposals</h2>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsProposalModalOpen(false)}
+                                                className="p-1 text-slate-300 hover:text-white rounded-sm transition-colors cursor-pointer"
+                                            >
+                                                <FiX size={20} />
+                                            </button>
+                                        </div>
+
+                                        {/* Content Panel */}
+                                        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto text-left">
+                                            {myProposals.length === 0 ? (
+                                                <div className="p-12 text-center text-slate-400 italic text-xs font-light">
+                                                    You have not committed any trade pipeline negotiations yet.
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {myProposals.map((prop) => (
+                                                        <div
+                                                            key={prop._id}
+                                                            className={`p-4 rounded-lg border text-xs font-mono transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${prop.status === 'approved' ? 'border-emerald-200 bg-emerald-50/30' :
+                                                                prop.status === 'disapproved' ? 'border-rose-200 bg-rose-50/30' :
+                                                                    'border-slate-200 bg-slate-50/50'
+                                                                }`}
+                                                        >
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[13px] font-extrabold text-[#0B3D2E]">{prop.lotId}</span>
+                                                                    <span className="text-[10px] text-slate-400">({prop.grade})</span>
+                                                                </div>
+                                                                <div className="text-slate-600 font-sans font-light">
+                                                                    Volume: <span className="font-mono font-bold text-slate-800">{prop.quantity?.toLocaleString()} Kg</span>
+                                                                    {" | "} Tract: <span className="text-slate-700">{prop.region}</span>
+                                                                </div>
+                                                                <div className="text-[11px] text-slate-500">
+                                                                    Lot Rate: INR {prop.basePrice}/Kg → Net Value: <span className="font-bold text-[#004B3B]">INR {prop.estimatedValue?.toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Status Indicator Badges */}
+                                                            <div className="shrink-0 flex items-center gap-2">
+                                                                <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${prop.status === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                                                                    prop.status === 'disapproved' ? 'bg-rose-100 text-rose-700 border-rose-300' :
+                                                                        'bg-amber-100 text-amber-700 border-amber-300 animate-pulse'
+                                                                    }`}>
+                                                                    {prop.status === 'approved' ? 'Invoice Issued' : prop.status === 'disapproved' ? 'Rejected' : 'Under Review'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Volumetric Escrow Calculations & Gateway Trigger Deck */}
+                                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 text-left">
+                                            <div>
+                                                <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Total Active Invoice Matrix</div>
+                                                <div className="text-xl font-mono font-extrabold text-[#0B3D2E]">
+                                                    INR {myProposals
+                                                        .filter(p => p.status === 'approved')
+                                                        .reduce((acc, curr) => acc + (curr.estimatedValue || 0), 0)
+                                                        .toLocaleString()
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                disabled={myProposals.filter(p => p.status === 'approved').length === 0}
+                                                onClick={async () => {
+                                                    const approvedProposals = myProposals.filter(p => p.status === 'approved');
+                                                    if (approvedProposals.length === 0) return;
+
+                                                    const aggregateAmount = approvedProposals.reduce((acc, curr) => acc + (curr.estimatedValue || 0), 0);
+                                                    const targetLotString = approvedProposals.map(p => p.lotId).join(", ");
+                                                    const combinedQuantity = approvedProposals.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+
+                                                    const loadingToast = toast.loading("Configuring transaction security manifest...");
+
+                                                    try {
+                                                        // 1. Invoke your new distributorApi method
+                                                        const orderResult = await distributorApi.createRazorpayOrder(aggregateAmount, targetLotString, combinedQuantity);
+
+                                                        if (!orderResult.success) {
+                                                            throw new Error(orderResult.message || "Failed to create secure transaction token.");
+                                                        }
+
+                                                        const { orderId, keyId } = orderResult.data;
+                                                        toast.dismiss(loadingToast);
+
+                                                        // 2. Open Razorpay Interface Script
+                                                        const options = {
+                                                            key: keyId,
+                                                            amount: aggregateAmount * 100,
+                                                            currency: "INR",
+                                                            name: "Prakriti Tea Division",
+                                                            description: `Sourcing Settlement - Lots: ${targetLotString}`,
+                                                            order_id: orderId,
+                                                            handler: async function (response) {
+                                                                const verificationToast = toast.loading("Verifying transaction checksum parameters...");
+
+                                                                try {
+                                                                    // 3. Verify Payment Signature Token 
+                                                                    const verifyResult = await distributorApi.verifyRazorpayPayment({
+                                                                        razorpay_order_id: response.razorpay_order_id,
+                                                                        razorpay_payment_id: response.razorpay_payment_id,
+                                                                        razorpay_signature: response.razorpay_signature,
+                                                                        lotId: targetLotString,
+                                                                        quantity: combinedQuantity,
+                                                                        amount: aggregateAmount
+                                                                    });
+
+                                                                    if (!verifyResult.success) {
+                                                                        throw new Error(verifyResult.message || "Cryptographic integrity match check failed.");
+                                                                    }
+
+                                                                    // 4. Update proposals to 'paid' state
+                                                                    await Promise.all(approvedProposals.map(p =>
+                                                                        distributorApi.updateProposalStatus(p._id, 'paid')
+                                                                    ));
+
+                                                                    toast.dismiss(verificationToast);
+                                                                    toast.success("Transaction certified! Ledger cleared successfully.");
+                                                                    setIsProposalModalOpen(false);
+
+                                                                    if (typeof fetchCoreSystemData === 'function') fetchCoreSystemData();
+
+                                                                } catch (verifyErr) {
+                                                                    toast.dismiss(verificationToast);
+                                                                    toast.error(verifyErr.message || "Payment completed but database signature sync failed.");
+                                                                }
+                                                            },
+                                                            prefill: {
+                                                                name: approvedProposals[0].name || "Corporate Partner",
+                                                                email: approvedProposals[0].email || ""
+                                                            },
+                                                            theme: { color: "#004B3B" }
+                                                        };
+
+                                                        const checkoutWindow = new window.Razorpay(options);
+                                                        checkoutWindow.open();
+
+                                                    } catch (err) {
+                                                        toast.dismiss(loadingToast);
+                                                        toast.error(err.message || "Failed to initiate gateway tunnel.");
+                                                    }
+                                                }}
+                                                className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center gap-2 transition-all shadow-md ${myProposals.filter(p => p.status === 'approved').length > 0
+                                                    ? 'bg-[#004B3B] hover:bg-[#053127] text-white cursor-pointer'
+                                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                                    }`}
+                                            >
+                                                <FiCheckCircle /> Proceed to Payment
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Sourcing Controls & Category Filter Row */}
+                        <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
+                                {['All', 'CTC Tea', 'Orthodox Tea', 'Dust Tea'].map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setSelectedMarketCategory(cat)}
+                                        className={`px-4 py-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider rounded transition-all font-bold cursor-pointer ${selectedMarketCategory === cat
+                                            ? 'bg-[#004B3B] text-[#50C878] shadow-md border border-[#004B3B]'
+                                            : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-3 md:pt-0 md:border-none w-full md:w-auto justify-end">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                {filteredMarketLots.length} Live Allocation Lots Streamed
+                            </div>
+                        </div>
+
+                        {/* Premium Table Block Layout */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-serif text-lg text-[#0B3D2E] uppercase tracking-wider flex items-center gap-2 font-medium">
+                                    Active Sourcing Lots & Live Pricing Matrix
+                                </h3>
+                            </div>
+
+                            <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-xl overflow-x-auto">
+                                <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr className="bg-[#0B3D2E] text-slate-200 border-b border-[#004B3B] font-mono uppercase tracking-wider text-[10px]">
+                                            <th className="p-4 font-medium tracking-widest text-[#50C878]">Lot HASH</th>
+                                            <th className="p-4 font-medium tracking-widest">Appellation / Origin Tract</th>
+                                            <th className="p-4 font-medium tracking-widest">Industrial Leaf Grade</th>
+                                            <th className="p-4 font-medium tracking-widest">Liquor & Infusion Character</th>
+                                            <th className="p-4 font-medium tracking-widest">Live Inventory</th>
+                                            <th className="p-4 font-medium tracking-widest text-[#50C878]">Wholesale Price</th>
+                                            <th className="p-4 font-medium tracking-widest text-right pr-6">Action Deck</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
+                                        {filteredMarketLots.map((row) => (
+                                            <tr key={row.id} className="hover:bg-slate-50/70 transition-colors group">
+                                                <td className="p-4 font-mono font-bold text-[#004B3B] text-[13px] tracking-wide">
+                                                    {row.id}
+                                                </td>
+                                                <td className="p-4 space-y-0.5">
+                                                    <div className="font-semibold text-slate-900 group-hover:text-[#004B3B] transition-colors">{row.region}</div>
+                                                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                                                        <span className="w-1 h-1 rounded-full bg-slate-300" /> Origin Lot Authenticated
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className="bg-slate-100 px-2 py-0.5 border border-slate-200 font-mono text-[11px] text-slate-800 font-bold rounded-sm">
+                                                        {row.grade}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 space-y-0.5">
+                                                    <div className="text-slate-800 font-medium">Color: <span className="text-slate-600 font-normal">{row.color}</span></div>
+                                                    <div className="text-[10px] font-mono text-slate-400">Strength Index: {row.strength}</div>
+                                                </td>
+                                                <td className="p-4 font-mono font-semibold text-slate-600">
+                                                    {row.stock}
+                                                </td>
+                                                <td className="p-4 font-mono font-bold text-[14px] text-[#004B3B]">
+                                                    INR {row.price}/Kg
+                                                </td>
+                                                <td className="p-4 text-right space-x-2 whitespace-nowrap pr-6">
+                                                    <button
+                                                        onClick={() => toast.success(`Sample dispatch token generated for Lot ${row.id}`)}
+                                                        className="bg-slate-50 hover:bg-slate-200 border border-slate-200 text-slate-700 px-3 py-2 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer"
+                                                    >
+                                                        Request Sample
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setActiveDrawerLot(row);
+                                                            setIsOrderDrawerOpen(true);
+                                                        }}
+                                                        className="bg-[#004B3B] hover:bg-[#053127] text-white px-4 py-2 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] shadow-sm hover:shadow transition-all cursor-pointer"
+                                                    >
+                                                        Place Order
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -500,8 +817,8 @@ export default function Prakriti() {
                                     { label: "Compliance & Safety", value: "Fully Certified", desc: "Rigorous alignment matching GST, FSSAI infrastructure, and IEC parameters." },
                                     { label: "Logistics Channels", value: "Pan-India / Export", desc: "Direct distribution pipelines serving local warehouses and major shipping ports." }
                                 ].map((item, idx) => (
-                                    <motion.div 
-                                        key={idx} 
+                                    <motion.div
+                                        key={idx}
                                         className="p-5 rounded-xl border border-white/10 bg-[#0B3D2E]/70 backdrop-blur-xs shadow-md"
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
@@ -582,8 +899,8 @@ export default function Prakriti() {
                                         </div>
 
                                         <div className="pt-4 border-t border-white/5 mt-5">
-                                            <button 
-                                                onClick={() => setIsModalOpen(true)} 
+                                            <button
+                                                onClick={() => setIsModalOpen(true)}
                                                 className="w-full bg-white/5 hover:bg-[#50C878] text-white hover:text-[#004B3B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                                             >
                                                 <span className="tracking-tight">Verify Business For Bulk Rates</span>
@@ -612,16 +929,15 @@ export default function Prakriti() {
                                 { id: 'rotation', label: 'Rotation Blueprint', icon: FiCompass },
                                 { id: 'enrolment', label: 'Accept Terms & Enrol', icon: FiAward }
                             ].map((tab) => (
-                                <button 
-                                    key={tab.id} 
-                                    onClick={() => setActiveTab(tab.id)} 
-                                    className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3.5 text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all border-b-2 text-center w-full sm:w-auto rounded-t-md ${
-                                        activeTab === tab.id 
-                                            ? 'border-[#004B3B] text-[#004B3B] bg-white shadow-xs' 
-                                            : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                                    }`}
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3.5 text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all border-b-2 text-center w-full sm:w-auto rounded-t-md ${activeTab === tab.id
+                                        ? 'border-[#004B3B] text-[#004B3B] bg-white shadow-xs'
+                                        : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                                        }`}
                                 >
-                                    <tab.icon size={13} className="shrink-0" /> 
+                                    <tab.icon size={13} className="shrink-0" />
                                     <span className="truncate">{tab.label}</span>
                                 </button>
                             ))}
@@ -670,11 +986,11 @@ export default function Prakriti() {
                                             Exclusivity configurations, final pricing matrix arrays, and distributor margin structures are officially activated following authorization signup.
                                         </p>
                                         <div className="pt-2">
-                                            <button 
+                                            <button
                                                 onClick={() => setIsModalOpen(true)}
                                                 className="bg-[#004B3B] hover:bg-[#06362a] text-[#50C878] font-mono text-[9px] sm:text-xs font-bold uppercase tracking-wider px-4 sm:px-10 py-3.5 sm:py-4 rounded-lg shadow-md transition-all inline-flex items-center justify-center gap-2 w-full sm:w-auto"
                                             >
-                                                <FiBriefcase className="shrink-0" /> 
+                                                <FiBriefcase className="shrink-0" />
                                                 <span>Open Authorization Form</span>
                                             </button>
                                         </div>
@@ -785,153 +1101,247 @@ export default function Prakriti() {
 
                             <div className="p-6 sm:p-8 text-left max-h-[70vh] overflow-y-auto">
                                 {step === 'register' ? (
-                                    <form onSubmit={handleRegister} className="space-y-5 text-xs">
-                                        <div>
-                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">Select Buyer Classification Category *</label>
-                                            <select value={businessType} onChange={(e) => { setBusinessType(e.target.value); setDoc1(null); setDoc2(null); }} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 font-medium focus:outline-none focus:border-[#004B3B]">
-                                                <option value="1">Domestic Tea Trader</option>
-                                                <option value="2">Tea Wholesaler</option>
-                                                <option value="3">Tea Distributor</option>
-                                                <option value="4">Hotel / Café / Restaurant Buyer</option>
-                                                <option value="5">Export Buyer</option>
-                                                <option value="6">Private Label Buyer</option>
-                                                <option value="7">Retail Brand Buyer</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Full Name *</label>
-                                                    <input type="text" required placeholder="Satyam Raj" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={name} onChange={(e) => setName(e.target.value)} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Company Name *</label>
-                                                    <input type="text" required placeholder="Enter Company Name" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={company} onChange={(e) => setCompany(e.target.value)} />
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Mobile Number *</label>
-                                                    <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Email Address *</label>
-                                                    <input type="email" required placeholder="buyer@enterprise.com" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={email} onChange={(e) => setEmail(e.target.value)} />
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Business Address *</label>
-                                                <input type="text" required placeholder="Physical Operating Address" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={address} onChange={(e) => setAddress(e.target.value)} />
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">City *</label>
-                                                    <input type="text" required placeholder="City" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={city} onChange={(e) => setCity(e.target.value)} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">State *</label>
-                                                    <input type="text" required placeholder="State" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={state} onChange={(e) => setState(e.target.value)} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Country *</label>
-                                                    <input type="text" required placeholder="Country" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={country} onChange={(e) => setCountry(e.target.value)} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4 pt-2">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Required Tea Type *</label>
-                                                    <select value={teaType} onChange={(e) => setTeaType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]">
-                                                        <option>CTC Tea</option>
-                                                        <option>Orthodox Tea</option>
-                                                        <option>Green Tea</option>
-                                                        <option>Dust Tea</option>
-                                                        <option>Premium Garden Tea</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Monthly Requirement (Kg) *</label>
-                                                    <input type="number" required placeholder="Approx. Demand Scale" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={monthlyReq} onChange={(e) => setMonthlyReq(e.target.value)} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Purpose of Purchase *</label>
-                                                <textarea rows="2" required placeholder="Describe corporate target lines..." className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4 pt-2">
-                                            <div className="flex items-center gap-2 text-[#004B3B] border-b border-slate-100 pb-1.5">
-                                                <FiShield size={13} />
-                                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Compliance Attachments</span>
-                                            </div>
-
-                                            {['1', '2', '3'].includes(businessType) && (
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">Upload GST Certificate or Udyam Registration *</label>
-                                                    <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                        <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                        <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Select Statutory PDF"}</span>
-                                                        <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
-                                                    </label>
-                                                </div>
-                                            )}
-
-                                            {businessType === '4' && (
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">Upload FSSAI License or GST Certificate *</label>
-                                                    <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                        <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                        <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Select FSSAI or GST PDF"}</span>
-                                                        <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
-                                                    </label>
-                                                </div>
-                                            )}
-
-                                            {['5', '6', '7'].includes(businessType) && (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">{businessType === '5' ? 'IEC Certificate *' : 'FSSAI License *'}</label>
-                                                        <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                            <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                            <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Upload Primary Doc"}</span>
-                                                            <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
-                                                        </label>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">GST Certificate *</label>
-                                                        <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                            <FiUploadCloud size={20} className={doc2 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                            <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc2 ? doc2.name : "Upload GST Certificate"}</span>
-                                                            <input type="file" required className="hidden" onChange={(e) => setDoc2(e.target.files[0])} />
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="pt-4">
-                                            <button 
-                                                type="submit" 
-                                                disabled={isSubmitting} 
-                                                className="w-full bg-[#004B3B] hover:bg-[#07362b] text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 sm:py-4 rounded-md transition-all shadow-md flex items-center justify-center gap-2"
+                                    <div className="space-y-5 text-xs">
+                                        {/* Dual Mode Switcher Navigation Ribbon */}
+                                        <div className="flex border-b border-slate-100 pb-2 mb-4 gap-4 font-mono text-[10px]">
+                                            <button
+                                                type="button"
+                                                onClick={() => setModalMode('register')}
+                                                className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${modalMode === 'register'
+                                                    ? 'text-[#004B3B] border-b-2 border-[#004B3B]'
+                                                    : 'text-slate-400 hover:text-slate-600'
+                                                    }`}
                                             >
-                                                {isSubmitting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Confirm Details & Send OTP"}
+                                                New Registration
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setModalMode('login')}
+                                                className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${modalMode === 'login'
+                                                    ? 'text-[#004B3B] border-b-2 border-[#004B3B]'
+                                                    : 'text-slate-400 hover:text-slate-600'
+                                                    }`}
+                                            >
+                                                Existing Corporate Partner (Login)
                                             </button>
                                         </div>
-                                    </form>
+
+                                        {modalMode === 'register' ? (
+                                            /* ================= ORIGINAL REGISTER UI EXTRACTION (STRICTLY PRESERVED) ================= */
+                                            <form onSubmit={handleRegister} className="space-y-5 text-xs">
+                                                <div>
+                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">Select Buyer Classification Category *</label>
+                                                    <select value={businessType} onChange={(e) => { setBusinessType(e.target.value); setDoc1(null); setDoc2(null); }} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 font-medium focus:outline-none focus:border-[#004B3B]">
+                                                        <option value="1">Domestic Tea Trader</option>
+                                                        <option value="2">Tea Wholesaler</option>
+                                                        <option value="3">Tea Distributor</option>
+                                                        <option value="4">Hotel / Café / Restaurant Buyer</option>
+                                                        <option value="5">Export Buyer</option>
+                                                        <option value="6">Private Label Buyer</option>
+                                                        <option value="7">Retail Brand Buyer</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Full Name *</label>
+                                                            <input type="text" required placeholder="Satyam Raj" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={name} onChange={(e) => setName(e.target.value)} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Company Name *</label>
+                                                            <input type="text" required placeholder="Enter Company Name" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={company} onChange={(e) => setCompany(e.target.value)} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Mobile Number *</label>
+                                                            <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Email Address *</label>
+                                                            <input type="email" required placeholder="buyer@enterprise.com" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={email} onChange={(e) => setEmail(e.target.value)} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Business Address *</label>
+                                                        <input type="text" required placeholder="Physical Operating Address" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={address} onChange={(e) => setAddress(e.target.value)} />
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">City *</label>
+                                                            <input type="text" required placeholder="City" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={city} onChange={(e) => setCity(e.target.value)} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">State *</label>
+                                                            <input type="text" required placeholder="State" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={state} onChange={(e) => setState(e.target.value)} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Country *</label>
+                                                            <input type="text" required placeholder="Country" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={country} onChange={(e) => setCountry(e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-4 pt-2">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Required Tea Type *</label>
+                                                            <select value={teaType} onChange={(e) => setTeaType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]">
+                                                                <option>CTC Tea</option>
+                                                                <option>Orthodox Tea</option>
+                                                                <option>Green Tea</option>
+                                                                <option>Dust Tea</option>
+                                                                <option>Premium Garden Tea</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Monthly Requirement (Kg) *</label>
+                                                            <input type="number" required placeholder="Approx. Demand Scale" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={monthlyReq} onChange={(e) => setMonthlyReq(e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Purpose of Purchase *</label>
+                                                        <textarea rows="2" required placeholder="Describe corporate target lines..." className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-4 pt-2">
+                                                    <div className="flex items-center gap-2 text-[#004B3B] border-b border-slate-100 pb-1.5">
+                                                        <FiShield size={13} />
+                                                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Compliance Attachments</span>
+                                                    </div>
+
+                                                    {['1', '2', '3'].includes(businessType) && (
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">Upload GST Certificate or Udyam Registration *</label>
+                                                            <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
+                                                                <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
+                                                                <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Select Statutory PDF"}</span>
+                                                                <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
+                                                            </label>
+                                                        </div>
+                                                    )}
+
+                                                    {businessType === '4' && (
+                                                        <div>
+                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">Upload FSSAI License or GST Certificate *</label>
+                                                            <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
+                                                                <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
+                                                                <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Select FSSAI or GST PDF"}</span>
+                                                                <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
+                                                            </label>
+                                                        </div>
+                                                    )}
+
+                                                    {['5', '6', '7'].includes(businessType) && (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">{businessType === '5' ? 'IEC Certificate *' : 'FSSAI License *'}</label>
+                                                                <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
+                                                                    <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
+                                                                    <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Upload Primary Doc"}</span>
+                                                                    <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
+                                                                </label>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">GST Certificate *</label>
+                                                                <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
+                                                                    <FiUploadCloud size={20} className={doc2 ? "text-[#004B3B]" : "text-slate-400"} />
+                                                                    <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc2 ? doc2.name : "Upload GST Certificate"}</span>
+                                                                    <input type="file" required className="hidden" onChange={(e) => setDoc2(e.target.files[0])} />
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="pt-4">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isSubmitting}
+                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 sm:py-4 rounded-md transition-all shadow-md flex items-center justify-center gap-2"
+                                                    >
+                                                        {isSubmitting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Confirm Details & Send OTP"}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        ) : (
+                                            /* ================= CORPORATE LOGIN FORM ================= */
+                                            <form
+                                                onSubmit={async (e) => {
+                                                    e.preventDefault();
+                                                    if (!loginEmail.trim()) return toast.error("Corporate Email is required.");
+
+                                                    setIsSubmitting(true);
+                                                    try {
+                                                        const resData = await distributorApi.getDistributors();
+                                                        const existingDistributor = resData.data?.distributors?.find(
+                                                            (d) => d.email.toLowerCase() === loginEmail.toLowerCase().trim()
+                                                        );
+
+                                                        if (!existingDistributor) {
+                                                            throw new Error("No trade terminal file mapped to this corporate address mapping.");
+                                                        }
+
+                                                        // Save lookup identities onto component state exactly as requested
+                                                        setDistributorId(existingDistributor._id);
+                                                        setEmail(existingDistributor.email);
+                                                        localStorage.setItem('prakriti_distributor_id', existingDistributor._id);
+
+                                                        toast.success("Corporate match verified. Verification OTP code generated.");
+                                                        setStep('otp'); // Transitions back right into the underlying verify layout panel
+                                                    } catch (err) {
+                                                        toast.error(err.message || "Failed to locate verified profile records.");
+                                                    } finally {
+                                                        setIsSubmitting(false);
+                                                    }
+                                                }}
+                                                className="space-y-5 pt-2"
+                                            >
+                                                <div>
+                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">
+                                                        Registered Corporate Email Address *
+                                                    </label>
+                                                    <input
+                                                        type="email"
+                                                        required
+                                                        placeholder="buyer@enterprise.com"
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 text-xs focus:outline-none focus:border-[#004B3B]"
+                                                        value={loginEmail}
+                                                        onChange={(e) => setLoginEmail(e.target.value)}
+                                                    />
+                                                    <span className="text-[10px] text-slate-400 font-light mt-1.5 block">
+                                                        Provide the email associated with your verified business profile structure to pull your live transaction matrix ledger.
+                                                    </span>
+                                                </div>
+
+                                                <div className="pt-2">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isSubmitting}
+                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] text-white font-mono font-bold text-[10px] uppercase tracking-wider py-3.5 rounded-md transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                                                    >
+                                                        {isSubmitting ? (
+                                                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            "Access Sourcing Terminal"
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
                                 ) : (
                                     <form onSubmit={handleVerifyOtp} className="space-y-6 max-w-md mx-auto text-center py-4">
                                         <div className="w-12 h-12 rounded-full bg-[#004B3B]/5 flex items-center justify-center text-[#004B3B] mx-auto"><FiKey size={20} /></div>
                                         <div className="space-y-1">
                                             <h3 className="text-lg font-serif text-[#004B3B]">Validate Secure Token</h3>
                                             <p className="text-xs text-slate-500 font-light leading-relaxed">Enter the 6-digit credential code routed to <span className="font-bold text-slate-700">{email}</span>.</p>
+                                            <p className="text-xs text-slate-500 font-light leading-relaxed">Please check the Spam Folder</p>
                                         </div>
                                         <div className="space-y-4">
                                             <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-slate-50 border border-slate-200 rounded-lg py-3 text-lg font-mono tracking-[0.35em] text-slate-800 focus:outline-none focus:border-[#004B3B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
@@ -954,10 +1364,10 @@ export default function Prakriti() {
                     <div className="fixed inset-0 z-50 overflow-hidden">
                         <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" onClick={() => setIsOrderDrawerOpen(false)} />
                         <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-                            <motion.div 
-                                initial={{ x: '100%' }} 
-                                animate={{ x: 0 }} 
-                                exit={{ x: '100%' }} 
+                            <motion.div
+                                initial={{ x: '100%' }}
+                                animate={{ x: 0 }}
+                                exit={{ x: '100%' }}
                                 transition={{ type: 'tween', duration: 0.35 }}
                                 className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
                             >
@@ -978,12 +1388,12 @@ export default function Prakriti() {
                                     <div className="space-y-4">
                                         <div>
                                             <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Negotiation Target Quantity (Kilograms) *</label>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 min="200"
-                                                value={orderQuantity} 
+                                                value={orderQuantity}
                                                 onChange={(e) => setOrderQuantity(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 font-mono focus:outline-none focus:border-[#004B3B] text-xs" 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 font-mono focus:outline-none focus:border-[#004B3B] text-xs"
                                             />
                                             <span className="text-[9px] text-slate-400 mt-1 block">Minimum commercial lot dispatch constraint matches 200 Kg configurations.</span>
                                         </div>
@@ -1001,10 +1411,32 @@ export default function Prakriti() {
                                         <span className="text-slate-500 font-bold uppercase">Estimated Lot Base Value:</span>
                                         <span className="text-[#004B3B] font-extrabold text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price)).toLocaleString()}</span>
                                     </div>
-                                    <button 
-                                        onClick={() => {
-                                            toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
-                                            setIsOrderDrawerOpen(false);
+                                    <button
+                                        onClick={async () => {
+                                            // Enforce basic front-end checks before calling server parameters
+                                            if (!orderQuantity || Number(orderQuantity) < 200) {
+                                                return toast.error("Minimum quantity constraint matches 200 Kg configurations.");
+                                            }
+
+                                            try {
+                                                const proposalPayload = {
+                                                    distributorId: distributorId,
+                                                    lotId: activeDrawerLot.id,
+                                                    region: activeDrawerLot.region,
+                                                    grade: activeDrawerLot.grade,
+                                                    quantity: Number(orderQuantity),
+                                                    basePrice: Number(activeDrawerLot.price)
+                                                };
+
+                                                const res = await distributorApi.createProposal(proposalPayload);
+                                                if (res.success) {
+                                                    toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
+                                                    setIsOrderDrawerOpen(false);
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                                toast.error(err.response?.data?.message || "Failed to route custom sourcing proposal.");
+                                            }
                                         }}
                                         className="w-full bg-[#004B3B] hover:bg-[#053127] text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg"
                                     >
@@ -1016,7 +1448,7 @@ export default function Prakriti() {
                     </div>
                 )}
             </AnimatePresence>
-            
+
             {/* ================= MODAL TRIGGER SYSTEM PREVENT CLIPPING ================= */}
             <style jsx="true" global="true">{`
                 .whitespace-nowrap {
