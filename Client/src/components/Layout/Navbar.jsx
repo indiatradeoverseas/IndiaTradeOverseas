@@ -74,9 +74,8 @@ export default function Navbar() {
     <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* MOBILE NAVIGATION BAR HEADER (Isolated Viewport Row) */}
+        {/* MOBILE NAVIGATION BAR HEADER */}
         <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
-          {/* Logo and Brand Identity layout aligned correctly to the right edge */}
           <div className="flex items-center space-x-3 text-right">
             <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
               <img
@@ -98,19 +97,30 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
-            aria-label="Toggle Navigation Menu"
-          >
-            {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
-          </button>
+          <div className="flex items-center space-x-2 shrink-0">
+            {/* Notification bell on mobile row for logged in users */}
+            {user && (
+              <Link to="/crm/notifications" className="relative text-[#C5CBD3] hover:text-[#F2F4F7] p-2 mr-1 transition-colors">
+                <FiBell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
+            </button>
+          </div>
         </div>
 
-        {/* DESKTOP NAVIGATION BAR HEADER (Isolated Viewport Row) */}
+        {/* DESKTOP NAVIGATION BAR HEADER */}
         <div className="hidden lg:flex justify-between items-center h-[104px]">
-          {/* Brand Authority Identity */}
           <div className="flex items-center shrink-0">
             <Link to="/" className="flex items-center space-x-3.5 group">
               <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/20 shrink-0">
@@ -133,7 +143,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Navigation Link Cluster */}
           <div className="flex items-center justify-end flex-1 min-w-0 space-x-5 xl:space-x-6">
             {navLinks.map((link) => (
               <Link
@@ -149,7 +158,6 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* SERVICES DROPDOWN - MAPPED VIA PRAKRITI LABEL STRUCTURE */}
             <div
               className="relative py-2"
               onMouseEnter={() => setIsPrakritiDropdownOpen(true)}
@@ -195,7 +203,6 @@ export default function Navbar() {
               CONTACT
             </Link>
 
-            {/* PREMIUM METALLIC GLASS PRIMARY CTAS */}
             {user ? (
               <div className="flex items-center gap-3 pl-2 border-l border-[#C5CBD3]/24 shrink-0">
                 <Link to="/crm/notifications" className="relative text-[#C5CBD3] hover:text-[#F2F4F7] transition-colors">
@@ -262,9 +269,7 @@ export default function Navbar() {
 
       {/* Mobile Viewport Subdeck Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans text-[11px] uppercase tracking-[0.18em] font-medium bg-[#0E1116]">
-
-          {/* Replicated Mobile Header Inside Overlay to blend from the top */}
+        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116]">
           <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
             <div className="flex items-center space-x-3">
               <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
@@ -295,7 +300,7 @@ export default function Navbar() {
           </div>
 
           {/* Links Area Container */}
-          <div className="px-6 pb-6 space-y-6">
+          <div className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
@@ -307,7 +312,6 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* FIXED: Added explicitly inside the mobile subdeck list to resolve missing viewport link */}
             <Link
               to="/contact"
               className={`block text-base tracking-wider ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
@@ -316,8 +320,45 @@ export default function Navbar() {
               CONTACT
             </Link>
 
+            {/* FIXED SECTION: Render Secure User Hub actions explicitly for mobile menu panels */}
+            {user && (
+              <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
+                <div className="text-[#6D7886] text-[10px] tracking-widest font-mono font-bold">OPERATOR VAULT ({user?.fullName})</div>
+                
+                {!user?.employeeId?.startsWith('CL_') && (
+                  <Link
+                    to="/crm/dashboard"
+                    className="flex items-center space-x-3 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7] py-1"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <FiPackage size={16} className="text-[#6D7886]" />
+                    <span>DASHBOARD</span>
+                  </Link>
+                )}
+                
+                {user?.role === 'ADMIN' && (
+                  <Link
+                    to="/crm/admin"
+                    className="flex items-center space-x-3 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7] py-1"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <FiSettings size={16} className="text-[#6D7886]" />
+                    <span>ADMIN PANEL</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-3 text-sm tracking-wider text-rose-400 hover:text-rose-300 w-full text-left py-2 font-bold border-t border-[#C5CBD3]/5 mt-2"
+                >
+                  <FiLogOut size={16} />
+                  <span>SECURE LOGOUT</span>
+                </button>
+              </div>
+            )}
+
             <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
-              <div className="text-[#6D7886] text-[10px] uppercase tracking-normal">PRAKRITI DIVISON</div>
+              <div className="text-[#6D7886] text-[10px] tracking-widest font-mono font-bold">PRAKRITI DIVISION</div>
               {prakritiDivisions.map((subLink) => (
                 <Link
                   key={subLink.to}
