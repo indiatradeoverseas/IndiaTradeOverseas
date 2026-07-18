@@ -1,7 +1,7 @@
-import React,{useState} from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   FiLayout,
   FiUsers,
@@ -22,10 +22,8 @@ import {
 import toast from 'react-hot-toast';
 
 export default function Sidebar({ onClose }) {
-  const { user , logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const menuItems = [
     { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
@@ -37,6 +35,7 @@ export default function Sidebar({ onClose }) {
     { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
     { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
     (user?.role === 'ADMIN' || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder },
+    { to: '/crm/distributors', label: 'Distributors', icon: FiBriefcase }
   ].filter(Boolean);
 
   const adminMenuItems = [
@@ -54,67 +53,116 @@ export default function Sidebar({ onClose }) {
     logout();
     navigate('/');
     toast.success('Logged out successfully');
-    setIsMobileMenuOpen(false);
-    setIsUserMenuOpen(false);
   };
 
   return (
-    <aside className="h-full bg-[#0B2D5B] text-[#FBF7EF] border-r border-[#C99B3B]/20 flex flex-col font-sans">
-      <div className="p-6 border-b border-[#C99B3B]/20 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-serif font-bold text-white">India Trade Overseas</h1>
-          <p className="text-xs text-[#C99B3B] mt-1 font-semibold uppercase tracking-wider">{user?.role}</p>
+    <aside className="h-full w-full bg-[#040A12] text-[#C5CBD3] flex flex-col font-sans select-none border-r border-[#C5CBD3]/10">
+      
+      {/* Sidebar Header Block */}
+      <div className="p-6 border-b border-[#C5CBD3]/10 flex items-center justify-between bg-[#0E1116]/30">
+        <div className="text-left">
+          <h1 className="text-lg font-serif font-normal text-[#F2F4F7] uppercase tracking-wide">
+            India Trade Center
+          </h1>
+          <p className="text-[9px] font-mono font-bold text-[#6D7886] mt-1.5 uppercase tracking-[0.2em]">
+            SYSTEM ROLE // {user?.role}
+          </p>
         </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden rounded-lg p-2 text-slate-350 hover:bg-[#102F60] hover:text-white transition"
+            className="md:hidden rounded-sm p-1.5 text-[#6D7886] hover:bg-[#121D29] hover:text-[#F2F4F7] transition-all cursor-pointer"
+            aria-label="Close Sidebar"
           >
-            <FiX size={20} />
+            <FiX size={18} />
           </button>
         )}
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin">
-        <div className="px-4 mb-2">
-          <p className="text-xs text-[#C99B3B]/60 uppercase tracking-widest font-bold">Main</p>
+      {/* Navigation Stream Matrix */}
+      <nav className="flex-1 py-6 overflow-y-auto custom-scrollbar space-y-6 px-3">
+        
+        {/* Main Section */}
+        <div className="space-y-1">
+          <div className="px-4 mb-2 text-left">
+            <p className="text-[9px] font-mono text-[#6D7886] uppercase tracking-[0.25em] font-bold">Main Core</p>
+          </div>
+          {menuItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center space-x-3 px-4 py-3 rounded-sm text-xs font-medium tracking-wide uppercase transition-all relative group ${
+                  isActive 
+                    ? 'bg-[#121D29] text-[#F2F4F7] font-semibold shadow-inner' 
+                    : 'text-[#C5CBD3] hover:bg-[#121D29]/40 hover:text-[#F2F4F7]'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon size={16} className={isActive ? "text-[#F2F4F7]" : "text-[#6D7886] group-hover:text-[#C5CBD3] transition-colors"} />
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <motion.span 
+                      layoutId="activeIndicator"
+                      className="absolute right-0 top-2 bottom-2 w-[3px] bg-[#F2F4F7] rounded-l-full"
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
         </div>
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center space-x-3 px-6 py-3 text-slate-300 hover:bg-[#102F60] hover:text-white transition-colors ${isActive ? 'bg-[#102F60] text-[#C99B3B] border-r-4 border-[#C99B3B] font-bold' : ''}`
-            }
-          >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
 
+        {/* Administration Section */}
         {showAdminMenu && (
-          <>
-            <div className="px-4 mt-6 mb-2">
-              <p className="text-xs text-[#C99B3B]/60 uppercase tracking-widest font-bold">Administration</p>
+          <div className="space-y-1">
+            <div className="px-4 mb-2 text-left">
+              <p className="text-[9px] font-mono text-[#6D7886] uppercase tracking-[0.25em] font-bold">Administration</p>
             </div>
             {adminMenuItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-6 py-3 text-slate-300 hover:bg-[#102F60] hover:text-white transition-colors ${isActive ? 'bg-[#102F60] text-[#C99B3B] border-r-4 border-[#C99B3B] font-bold' : ''}`
+                  `flex items-center space-x-3 px-4 py-3 rounded-sm text-xs font-medium tracking-wide uppercase transition-all relative group ${
+                    isActive 
+                      ? 'bg-[#121D29] text-[#F2F4F7] font-semibold shadow-inner' 
+                      : 'text-[#C5CBD3] hover:bg-[#121D29]/40 hover:text-[#F2F4F7]'
+                  }`
                 }
               >
-                <item.icon size={20} />
-                <span>{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                    <item.icon size={16} className={isActive ? "text-[#F2F4F7]" : "text-[#6D7886] group-hover:text-[#C5CBD3] transition-colors"} />
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <motion.span 
+                        layoutId="activeIndicator"
+                        className="absolute right-0 top-2 bottom-2 w-[3px] bg-[#F2F4F7] rounded-l-full"
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      />
+                    )}
+                  </>
+                )}
               </NavLink>
             ))}
-          </>
+          </div>
         )}
-        <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-3 py-3 rounded-sm text-red-600 font-semibold border border-transparent hover:bg-red-50 text-left">
-          <FiLogOut size={14} /> <span>Logout</span>
-        </button>
+
+        {/* Action Bottom Section Layer */}
+        <div className="pt-4 border-t border-[#C5CBD3]/10 px-1">
+          <button 
+            onClick={handleLogout} 
+            className="flex items-center space-x-3 w-full px-4 py-3 rounded-sm text-red-400 hover:text-red-300 font-medium font-sans text-xs uppercase tracking-wider transition-colors hover:bg-red-950/20 text-left cursor-pointer group"
+          >
+            <FiLogOut size={15} className="text-red-400 opacity-80 group-hover:opacity-100 transition-opacity" /> 
+            <span>Terminate Session</span>
+          </button>
+        </div>
       </nav>
     </aside>
   );

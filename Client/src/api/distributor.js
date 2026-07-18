@@ -6,7 +6,7 @@ export const distributorApi = {
    * Initiates distributor onboarding, uploads the necessary verification files,
    * and triggers a 6-digit verification OTP to the applicant's email address.
    * 
-   * @param {FormData} 
+   * @param {FormData} formData
    * @returns {Promise<Object>} 
    */
   registerDistributor: async (formData) => {
@@ -22,8 +22,39 @@ export const distributorApi = {
     return response.data;
   },
 
-  // ✅ ADDED: Background Document Verification Polling & Session Check
-  // Hits the public route: router.get('/status/:id', getDistributorStatus)
+  createProposal: async (proposalData) => {
+    const response = await axiosInstance.post('/distributors/proposals', proposalData);
+    return response.data;
+  },
+
+  // Fetch all active proposals for the admin CRM dashboard
+  getActiveProposals: async () => {
+    const response = await axiosInstance.get('/distributors/proposals/active');
+    return response.data;
+  },
+
+  // Update state to approved, disapproved, or paid
+  updateProposalStatus: async (id, status) => {
+    const response = await axiosInstance.patch(`/distributors/proposals/${id}/status`, { status });
+    return response.data;
+  },
+
+  // ✅ ADDED: Razorpay Payment Gateway API Methods
+  createRazorpayOrder: async (amount, lotId, quantity) => {
+    const response = await axiosInstance.post('/distributors/payments/razorpay/create-order', {
+      amount,
+      lotId,
+      quantity
+    });
+    return response.data;
+  },
+
+  verifyRazorpayPayment: async (paymentPayload) => {
+    const response = await axiosInstance.post('/distributors/payments/razorpay/verify-payment', paymentPayload);
+    return response.data;
+  },
+
+  // Background Document Verification Polling & Session Check
   getDistributorStatus: async (id) => {
     const response = await axiosInstance.get(`/distributors/status/${id}`);
     return response.data;
