@@ -256,7 +256,7 @@ export default function About() {
           </motion.div>
 
           {/* Profile Card 2 */}
-          <motion.div
+          {/* <motion.div
             variants={cardVariants}
             className="bg-[#121D29]/40 backdrop-blur-sm border border-[#C5CBD3]/20 rounded-sm p-6 lg:p-8 flex flex-col items-center text-center hover:border-[#F2F4F7] hover:-translate-y-1 transition-all duration-300 shadow-lg group"
           >
@@ -268,38 +268,22 @@ export default function About() {
             <p className="text-[10px] uppercase tracking-widest font-semibold text-[#6D7886] mb-4"><span>Co-Founder / Business Support</span></p>
             <span className="text-[9px] bg-[#0E1116] text-[#C5CBD3] px-3.5 py-1 border border-[#C5CBD3]/30 rounded-full font-mono font-medium shadow-sm tracking-wide">Operations Management</span>
             <p className="text-[#C5CBD3] text-xs font-sans font-light leading-[1.68] border-t border-[#C5CBD3]/15 pt-4 mt-5 w-full text-left opacity-90">Manages dynamic client-facing account pipelines, multi-tier source logging infrastructures, and state-level freight transport distribution setups.</p>
-          </motion.div>
+          </motion.div> */}
         </motion.div>
       </section>
 
       {/* Shared Handoff Footer Seal */}
-      <footer className="bg-[#040A12] text-[#6D7886] py-16 px-6 border-t border-[#C5CBD3]/24 text-center font-sans relative overflow-hidden">
-
-        {/* Cinematic Photo Background Overlay Matrix */}
-        <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-80">
-          <img
-            src="/images/footer-bg-image.png" // Sourced corporate terminal or map backdrop path
-            alt="India Trade Overseas Industrial Logistics Footprint"
-            className="w-full h-full object-cover object-center scale-106 mt-3"
-            style={{ filter: 'brightness(1.5) contrast(1.5) saturate(0.5)' }}
-          />
-          {/* Protective vignette mask gradient layer to secure text parameter isolation */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#040A12]/30 via-transparent to-[#040A12]/10" />
-        </div>
-
-        {/* Centered Footer Content Meta Stack */}
-        <div className="max-w-3xl mx-auto space-y-4 relative z-10">
-          <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7] drop-shadow-[0_2px_4px_rgba(4,10,18,0.5)]">
+      <footer className="bg-[#040A12] text-[#6D7886] py-16 px-6 border-t border-[#C5CBD3]/24 text-center font-sans">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <p className="text-[16px] uppercase tracking-[0.25em] font-semibold text-[#F2F4F7]">
             India Trade Overseas
             <br />
-            <span className="text-xs text-[#8a939e] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
+            <span className="text-xs text-[#6D7886] tracking-widest capitalize font-normal font-sans block mt-1">Trade. Supply. Logistics. Growth.</span>
           </p>
-
-          <p className="text-xs italic text-[#C5CBD3]/70 font-serif drop-shadow-[0_2px_4px_rgba(4,10,18,0.4)]">
+          <p className="text-xs italic text-[#C5CBD3]/60 font-serif">
             "Where Quality Meets Global Demand"
           </p>
-
-          <div className="text-[10px] text-[#8a939e] /50 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/20 pt-4 leading-relaxed tracking-wide">
+          <div className="text-[10px] text-[#ffff]/60 font-light max-w-2xl mx-auto border-t border-[#C5CBD3]/30 pt-4 leading-relaxed">
             Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
           </div>
         </div>
