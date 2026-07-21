@@ -89,14 +89,18 @@ getProposalsByDistributorId = async (req, res) => {
   try {
     const { distributorId } = req.params;
 
-    // Fetch all proposals for this distributor (Accepted, Rejected, Approved, Disapproved, etc.)
+    if (!distributorId) {
+      return require('../../utils/response').fail(res, 400, 'BAD_REQUEST', 'Distributor ID is required.');
+    }
+
+    // Query proposals by distributorId
     const proposals = await Proposal.find({ distributorId })
       .sort({ createdAt: -1 });
 
-    return response.success(res, 'Distributor proposals fetched successfully', proposals);
+    return require('../../utils/response').success(res, 'Distributor proposals fetched successfully', proposals);
   } catch (error) {
     console.error('Error fetching proposals for distributor:', error);
-    return response.fail(res, 500, 'SERVER_ERROR', error.message);
+    return require('../../utils/response').fail(res, 500, 'SERVER_ERROR', error.message);
   }
 };
 
