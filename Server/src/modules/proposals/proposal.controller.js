@@ -85,9 +85,24 @@ const updateProposalStatus = async (req, res, next) => {
     next(error);
   }
 };
+getProposalsByDistributorId = async (req, res) => {
+  try {
+    const { distributorId } = req.params;
+
+    // Fetch all proposals for this distributor (Accepted, Rejected, Approved, Disapproved, etc.)
+    const proposals = await Proposal.find({ distributorId })
+      .sort({ createdAt: -1 });
+
+    return response.success(res, 'Distributor proposals fetched successfully', proposals);
+  } catch (error) {
+    console.error('Error fetching proposals for distributor:', error);
+    return response.fail(res, 500, 'SERVER_ERROR', error.message);
+  }
+};
 
 module.exports = {
   createProposal,
   getAllProposals,
-  updateProposalStatus
+  updateProposalStatus,
+  getProposalsByDistributorId
 };
