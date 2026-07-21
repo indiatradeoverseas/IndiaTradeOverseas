@@ -6,6 +6,7 @@ const fs = require('fs');
 const {
   registerDistributor,
   verifyDistributorOtp,
+  resendDistributorOtp,
   getDistributorStatus,
   getDistributors,
   toggleDistributorVerification,
@@ -70,7 +71,10 @@ router.post(
   registerDistributor
 );
 
+
+
 router.post('/verify-otp', verifyDistributorOtp);
+router.post('/resend-otp', resendDistributorOtp);
 router.get('/status/:id', getDistributorStatus);
 
 const { authenticateDistributor } = require('../../middlewares/auth.middleware');
