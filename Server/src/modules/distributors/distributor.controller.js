@@ -679,10 +679,59 @@ const capturePaypalOrder = async (req, res, next) => {
   }
 };
 
+const resendDistributorOtp = async (req, res, next) => {
+  try {
+    const { email, distributorId } = req.body;
+
+    if (!email && !distributorId) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Corporate email or distributorId is required.');
+    }
+
+    // Find existing distributor by email or ID
+    let distributor = null;
+    if (email) {
+      distributor = await Distributor.findOne({ email: email.toLowerCase().trim() });
+    } else if (distributorId) {
+      distributor = await Distributor.findById(distributorId);
+    }
+
+    if (!distributor) {
+      return fail(res, 404, 'NOT_FOUND', 'No registered trade profile found for this corporate address.');
+    }
+
+    // Generate new 6-digit OTP code & set 5-minute expiry (matches registerDistributor)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    distributor.otpToken = otpCode;
+    distributor.otpExpires = otpExpires;
+    distributor.isOtpVerified = false;
+    await distributor.save();
+
+    // Prepare & dispatch email
+    const subject = 'Distributor Login Verification OTP - Prakriti Tea Division';
+    const text = `Your security OTP code for accessing the Prakriti Tea terminal is: ${otpCode}. It will expire in 5 minutes.`;
+    const html = getOtpHtml(otpCode, distributor.email);
+
+    await sendEmail(distributor.email, subject, text, html);
+
+    return ok(
+      res,
+      { distributorId: distributor._id, email: distributor.email },
+      'Verification OTP sent to your registered corporate email.',
+      200,
+      req
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerDistributor,
   verifyDistributorOtp,
   getDistributorStatus,
+  resendDistributorOtp,
   getMarketplace,
   getDistributors,
   toggleDistributorVerification,
