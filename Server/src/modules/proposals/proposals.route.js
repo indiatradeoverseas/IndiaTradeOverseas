@@ -16,6 +16,7 @@ const checkAdminManagerHR = (req, res, next) => {
 };
 
 router.post('/proposals', authenticateDistributor, createProposal);
+router.get('/proposals/distributor/:distributorId', authenticateDistributor, getProposalsByDistributorId);
 router.get('/proposals/active', authenticate, checkAdminManagerHR, getAllProposals);
 router.patch('/proposals/:id/status', authenticate, checkAdminManagerHR, updateProposalStatus);
 
