@@ -89,13 +89,23 @@ getProposalsByDistributorId = async (req, res) => {
   try {
     const { distributorId } = req.params;
 
-    if (!distributorId) {
-      return require('../../utils/response').fail(res, 400, 'BAD_REQUEST', 'Distributor ID is required.');
+    if (!distributorId || distributorId === 'undefined') {
+      return require('../../utils/response').fail(res, 400, 'BAD_REQUEST', 'Valid Distributor ID is required.');
     }
 
-    // Query proposals by distributorId
-    const proposals = await Proposal.find({ distributorId })
-      .sort({ createdAt: -1 });
+    // Convert string ID into Mongoose ObjectId safely
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(distributorId);
+    const targetObjectId = isValidObjectId ? new mongoose.Types.ObjectId(distributorId) : distributorId;
+
+    // Search against both potential field names (distributorId vs distributor) and both types (ObjectId vs String)
+    const proposals = await Proposal.find({
+      $or: [
+        { distributorId: targetObjectId },
+        { distributor: targetObjectId },
+        { distributorId: distributorId },
+        { distributor: distributorId }
+      ]
+    }).sort({ createdAt: -1 });
 
     return require('../../utils/response').success(res, 'Distributor proposals fetched successfully', proposals);
   } catch (error) {
