@@ -3,7 +3,6 @@ const Distributor = require('../distributors/distributor.model');
 const { ok, fail } = require('../../utils/response');
 const mongoose = require('mongoose');
 
-
 const createProposal = async (req, res, next) => {
   try {
     const { distributorId, lotId, region, grade, quantity, basePrice } = req.body;
@@ -41,7 +40,6 @@ const createProposal = async (req, res, next) => {
     next(error);
   }
 };
-
 
 const getAllProposals = async (req, res, next) => {
   try {
@@ -86,19 +84,17 @@ const updateProposalStatus = async (req, res, next) => {
     next(error);
   }
 };
-const getProposalsByDistributorId = async (req, res) => {
+
+const getProposalsByDistributorId = async (req, res, next) => {
   try {
     const { distributorId } = req.params;
 
-    // Validate parameter existence
+    // Validate parameter presence & sanitize corrupted string values
     if (!distributorId || distributorId === 'undefined' || distributorId === 'null') {
-      return res.status(400).json({
-        success: false,
-        message: 'A valid Distributor ID is required.'
-      });
+      return fail(res, 400, 'VALIDATION_ERROR', "A valid Distributor ID is required.", [], req);
     }
 
-    // Convert string to Mongoose ObjectId if valid
+    // Safely cast to Mongoose ObjectId if valid hex format
     const isValidObjectId = mongoose.Types.ObjectId.isValid(distributorId);
     const targetId = isValidObjectId ? new mongoose.Types.ObjectId(distributorId) : distributorId;
 
@@ -112,19 +108,11 @@ const getProposalsByDistributorId = async (req, res) => {
       ]
     }).sort({ createdAt: -1 });
 
-    // 🟢 Standard Express response (Fixes line 111 TypeError)
-    return res.status(200).json({
-      success: true,
-      message: 'Proposals fetched successfully',
-      data: proposals
-    });
+    return ok(res, proposals, "Proposals fetched successfully", 200, req);
 
   } catch (error) {
     console.error('Error fetching proposals for distributor:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    next(error);
   }
 };
 
