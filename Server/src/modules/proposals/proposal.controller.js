@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 // 🟢 CREATE proposal
 const createProposal = async (req, res, next) => {
   try {
-    const { distributorId, lotId, region, grade, quantity, basePrice } = req.body;
+    const { distributorId, lotId, region, grade, quantity, basePrice, division } = req.body;
 
     if (!distributorId || !lotId || !quantity || !basePrice) {
       return fail(res, 400, 'VALIDATION_ERROR', "Missing essential transaction matrix parameters.", [], req);
@@ -23,8 +23,12 @@ const createProposal = async (req, res, next) => {
 
     const estimatedValue = Number(quantity) * Number(basePrice);
 
+    // 🟢 Extract division (default to 'TEA' if omitted)
+    const targetDivision = division ? division.toUpperCase() : 'TEA';
+
     const newProposal = await Proposal.create({
       distributorId,
+      division: targetDivision, // 👈 Save division tag
       lotId,
       region,
       grade,
@@ -46,6 +50,7 @@ const createProposal = async (req, res, next) => {
 const getProposalsByDistributorId = async (req, res, next) => {
   try {
     const { distributorId } = req.params;
+    const { division } = req.query; // 👈 Extract division filter from URL query string
 
     if (!distributorId || distributorId === 'undefined' || distributorId === 'null') {
       return fail(res, 400, 'VALIDATION_ERROR', "A valid Distributor ID is required.", [], req);
@@ -54,14 +59,22 @@ const getProposalsByDistributorId = async (req, res, next) => {
     const isValidObjectId = mongoose.Types.ObjectId.isValid(distributorId);
     const targetId = isValidObjectId ? new mongoose.Types.ObjectId(distributorId) : distributorId;
 
-    const proposals = await Proposal.find({
+    // Build query conditions
+    const query = {
       $or: [
         { distributorId: targetId },
         { distributor: targetId },
         { distributorId: distributorId },
         { distributor: distributorId }
       ]
-    }).sort({ createdAt: -1 });
+    };
+
+    // 🟢 Filter by division if passed in query string (?division=TEA or ?division=RICE)
+    if (division) {
+      query.division = division.toUpperCase();
+    }
+
+    const proposals = await Proposal.find(query).sort({ createdAt: -1 });
 
     return ok(res, proposals, "Proposals fetched successfully", 200, req);
 
