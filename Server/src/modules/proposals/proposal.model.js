@@ -6,22 +6,28 @@ const proposalSchema = new mongoose.Schema({
     ref: 'Distributor',
     required: true
   },
+  division: {
+    type: String,
+    enum: ['TEA', 'RICE'],
+    default: 'TEA',
+    required: true
+  },
   lotId: {
     type: String, // e.g., "PK-AS-091"
     required: true
   },
   region: {
-    type: String, // e.g., "Assam Upper Track"
+    type: String,
     required: true
   },
   grade: {
-    type: String, // e.g., "BP (Broken Pekoe)"
+    type: String,
     required: true
   },
   quantity: {
     type: Number,
     required: true,
-    min: 200 // Enforce our 200 Kg minimum constraint
+    min: 200
   },
   basePrice: {
     type: Number,
