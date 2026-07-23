@@ -498,25 +498,31 @@ const getRazorpayAuth = () => {
 /**
  * 🟢 CREATE RAZORPAY ORDER
  */
+/**
+ * 🟢 CREATE RAZORPAY ORDER
+ */
 const createRazorpayOrder = async (req, res, next) => {
   try {
+    console.log("Incoming Razorpay Order Payload:", req.body);
     const { amount, lotId, quantity } = req.body;
 
-    // Validate inputs robustly
-    if (amount === undefined || amount === null || !lotId || !quantity) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Amount, lotId, and quantity are required parameters.', [], req);
+    // Standardize input parsing
+    const parsedAmount = Number(amount);
+    const parsedQuantity = Number(quantity);
+
+    if (amount === undefined || amount === null || isNaN(parsedAmount) || parsedAmount <= 0) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'A valid non-zero numerical amount is required.', [], req);
     }
 
-    const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'A valid non-zero numerical amount is required.', [], req);
+    if (!lotId || isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Valid lotId and non-zero quantity parameters are required.', [], req);
     }
 
     const auth = getRazorpayAuth();
     const keyId = process.env.RAZORPAY_KEY_ID;
 
-    // Razorpay expects currency in minimum sub-units (Paise for INR)
-    const amountInPaise = Math.round(numAmount * 100);
+    // Convert amount to minimum unit sub-currency (Paise for INR)
+    const amountInPaise = Math.round(parsedAmount * 100);
 
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -533,6 +539,7 @@ const createRazorpayOrder = async (req, res, next) => {
 
     if (!response.ok) {
       const errText = await response.text();
+      console.error("Razorpay Gateway API Error:", errText);
       return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `Razorpay Order Error: ${errText}`, [], req);
     }
 
