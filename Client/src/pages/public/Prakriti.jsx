@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import {
     FiShield, FiBriefcase, FiFileText, FiCheckCircle, FiArrowRight, FiArrowLeft,
     FiUser, FiPhone, FiMapPin, FiKey, FiUploadCloud, FiX, FiAward, FiCompass,
-    FiLayers, FiLock, FiEye, FiDownload, FiFilter, FiShoppingCart, FiInfo
+    FiLayers, FiLock, FiEye, FiDownload, FiFilter, FiShoppingCart, FiInfo, FiBox, FiCheck
 } from 'react-icons/fi';
 import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icons/gi";
 
@@ -24,22 +24,6 @@ const CAROUSEL_IMAGES = [
     { size: "1 kg", format: "Trade Pack", description: "High-yield commercial layout built for standalone tea shops, boutique cafes, restaurants, and high heavy trade usage.", image: './images/tea_variants/chai_3.png' },
     { size: "5 kg", format: "Bulk Pack", description: "Heavy bulk trade format configured explicitly for regional distributors, wholesale networks, and bulk blending operations.", image: './images/tea_variants/chai_4.png' },
     { size: "10 kg", format: "Bulk Pack", description: "Maximum wholesale deployment asset packaging designed for large-scale distribution, institutional trade, and repackaging setups.", image: './images/tea_variants/chai_5.png' }
-];
-
-const SOURCING_REGIONS = [
-    { name: "Assam Garden Track", traits: "Produces a powerful, deep strong liquor with an exceptionally bold, brisk character and dependable daily tea profiles." },
-    { name: "Darjeeling Heights", traits: "Prized for its premium market positioning, featuring highly distinctive, aroma-forward, and sophisticated fine leaf selections." },
-    { name: "Dooars Plains", traits: "Incredibly versatile tea varieties combining balanced flavor characteristics, strong color, and broad market fit use. " },
-    { name: "Siliguri Corridor", traits: "Serves as our strategic logistical aggregation and sourcing route, ensuring flawless consistency across varied tea profiles." }
-];
-
-const TEA_GRADES = [
-    { code: "Dust Tea", desc: "Strong liquor execution optimized for commercial brewing and intense high-volume extraction requirements. " },
-    { code: "BP (Broken Pekoe)", desc: "Offers a perfectly balanced body and sweet aroma profile for dependable daily family consumer tiers." },
-    { code: "BOP (Broken Orange Pekoe)", desc: "A popular leaf grade that infuses with intense color, rich brisk character, and clean presentation." },
-    { code: "BOPSM (Fine Broken)", desc: "Fine broken grade engineered specifically for quick, strong, brisk cups required in commercial tea setups." },
-    { code: "OF (Orange Fannings)", desc: "Fine grade layout built for rapid color release and quick steeping profiles inside fast-paced services." },
-    { code: "Pekoe Tea", desc: "Leaf tea option designed for premium aroma-led retail positioning across high-end gourmet shelves." }
 ];
 
 const PUBLIC_CATEGORIES = [
@@ -86,7 +70,7 @@ export default function Prakriti() {
     const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
     const [orderQuantity, setOrderQuantity] = useState('500');
-    const [modalMode, setModalMode] = useState('register'); // Switch between 'register' and 'login'
+    const [modalMode, setModalMode] = useState('register');
     const [loginEmail, setLoginEmail] = useState('');
 
     const [businessType, setBusinessType] = useState('1');
@@ -106,46 +90,46 @@ export default function Prakriti() {
     const [otp, setOtp] = useState('');
 
     const fetchMyProposals = async () => {
+        const storedDistributorId = distributorId || localStorage.getItem('prakriti_distributor_id');
+        const token = localStorage.getItem('distributor_token');
+
+        if (!storedDistributorId || !token) {
+            console.warn("No active distributor session or token found.");
+            return;
+        }
+
         try {
-            const res = await distributorApi.getActiveProposals(); // Fetch system records
-            if (res.success) {
-                // Filter records belonging explicitly to this logged-in distributor session
-                const filtered = res.data.filter(p => p.distributorId?._id === distributorId || p.distributorId === distributorId);
-                setMyProposals(filtered);
+            const res = await distributorApi.getDistributorProposalsCustomer(storedDistributorId,'TEA');
+            if (res && res.success) {
+                setMyProposals(res.data || []);
             }
         } catch (err) {
             console.error("Error loading user procurement pipelines:", err);
         }
     };
 
-    // 3. Trigger this fetch within your existing Level 5 mount hook:
     useEffect(() => {
         if (userAccessLayer === 5 && distributorId) {
             fetchMyProposals();
         }
     }, [userAccessLayer, distributorId]);
-    // Add this inside your Prakriti component alongside your other hooks
-    useEffect(() => {
-        // Find the public main navbar element in your DOM layout
-        const globalNavbar = document.querySelector('header') || document.querySelector('nav');
 
+    // DOM Navbar visibility control
+    useEffect(() => {
+        const globalNavbar = document.querySelector('header') || document.querySelector('nav');
         if (globalNavbar) {
             if (userAccessLayer >= 4) {
-                // Hide public navbar on verified screens to eliminate clipping
                 globalNavbar.style.display = 'none';
             } else {
-                // Re-enable public navbar on fallback or store view
                 globalNavbar.style.display = '';
             }
         }
-
-        // Cleanup phase on component unmount
         return () => {
             if (globalNavbar) globalNavbar.style.display = '';
         };
     }, [userAccessLayer]);
 
-    // Locate your initializeAuthenticationSession useEffect hook near line ~70 and update its inner mapping logic:
+    // Single Consolidated Session Initialization Lifecycle
     useEffect(() => {
         const initializeAuthenticationSession = async () => {
             const savedId = localStorage.getItem('prakriti_distributor_id');
@@ -158,52 +142,15 @@ export default function Prakriti() {
                     if (res.success) {
                         const status = res.data.approvalStatus;
                         if (status === 'approved') {
-                            // User is verified! Send them straight into the Secure Marketplace Terminal
                             setUserAccessLayer(5);
-                            toast.success("Welcome back! Secured corporate session established.");
                         } else if (status === 'pending') {
-                            // Document audit is still underway
                             setUserAccessLayer(4);
                         } else {
-                            // Handle fallback clear if rejected
                             handleLogOut();
                         }
                     }
                 } catch (err) {
-                    console.error("Session re-alignment synchronization failure:", err);
-                    // Don't wipe data immediately on a network glitch, let them access public layers safely
-                }
-            }
-            setIsLoadingSession(false);
-        };
-        initializeAuthenticationSession();
-    }, []);
-
-    // Session Verification Lifecycle on Mount
-    useEffect(() => {
-        const initializeAuthenticationSession = async () => {
-            const savedId = localStorage.getItem('prakriti_distributor_id');
-            const token = localStorage.getItem('distributor_token');
-
-            if (savedId) {
-                setDistributorId(savedId);
-                try {
-                    const res = await distributorApi.getDistributorStatus(savedId);
-                    if (res.success) {
-                        const status = res.data.approvalStatus;
-                        if (status === 'approved' && token) {
-                            setUserAccessLayer(5);
-                        } else if (status === 'pending') {
-                            setUserAccessLayer(4);
-                        } else {
-                            setUserAccessLayer(1);
-                            localStorage.removeItem('prakriti_distributor_id');
-                            localStorage.removeItem('distributor_token');
-                        }
-                    }
-                } catch (err) {
-                    console.error("Session re-alignment synchronization failure:", err);
-                    setUserAccessLayer(1);
+                    console.error("Session synchronization failure:", err);
                 }
             }
             setIsLoadingSession(false);
@@ -226,11 +173,9 @@ export default function Prakriti() {
                             clearInterval(pollingTimer);
                             setUserAccessLayer(5);
                         } else if (currentStatus === 'rejected') {
-                            toast.error("Sourcing credentials could not be verified by trade desk validation.");
+                            toast.error("Sourcing credentials could not be verified.");
                             clearInterval(pollingTimer);
-                            localStorage.removeItem('prakriti_distributor_id');
-                            localStorage.removeItem('distributor_token');
-                            setUserAccessLayer(1);
+                            handleLogOut();
                         }
                     }
                 } catch (err) {
@@ -261,20 +206,20 @@ export default function Prakriti() {
 
     const handleRegister = async (e) => {
         e.preventDefault();
-        if (!name.trim()) return toast.error("Applicant Name is a required field.");
-        if (!company.trim()) return toast.error("Company Name is a required field.");
-        if (!email.trim()) return toast.error("Corporate Email Address is a required field.");
-        if (!mobile.trim()) return toast.error("Mobile Line Contact is a required field.");
-        if (!address.trim()) return toast.error("Physical Operating Address is a required field.");
+        if (!name.trim()) return toast.error("Applicant Name is required.");
+        if (!company.trim()) return toast.error("Company Name is required.");
+        if (!email.trim()) return toast.error("Corporate Email Address is required.");
+        if (!mobile.trim()) return toast.error("Mobile Contact is required.");
+        if (!address.trim()) return toast.error("Physical Address is required.");
 
         if (['1', '2', '3'].includes(businessType) && !doc1) {
-            return toast.error("Compliance Enforced: GST Certificate or Udyam Registration file is required.");
+            return toast.error("GST Certificate or Udyam Registration file is required.");
         }
         if (businessType === '4' && !doc1) {
-            return toast.error("Compliance Enforced: FSSAI License or GST Certificate upload is required.");
+            return toast.error("FSSAI License or GST Certificate upload is required.");
         }
         if (['5', '6', '7'].includes(businessType) && (!doc1 || !doc2)) {
-            return toast.error("Compliance Enforced: Dual documentation stack required for verification.");
+            return toast.error("Dual documentation stack required for verification.");
         }
 
         setIsSubmitting(true);
@@ -299,13 +244,13 @@ export default function Prakriti() {
         try {
             const res = await distributorApi.registerDistributor(data);
             if (res.success) {
-                toast.success(res.message || "B2B profile recorded. Verification code routed to your email.");
+                toast.success(res.message || "B2B profile recorded. Verification code sent.");
                 setDistributorId(res.data.distributorId);
                 localStorage.setItem('prakriti_distributor_id', res.data.distributorId);
                 setStep('otp');
             }
         } catch (err) {
-            toast.error(err.response?.data?.message || "Registration sequence fault. Please verify files.");
+            toast.error(err.response?.data?.message || "Registration error. Please check uploaded files.");
         } finally {
             setIsSubmitting(false);
         }
@@ -313,25 +258,42 @@ export default function Prakriti() {
 
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
-        if (otp.length < 6) return toast.error("Security code parameters must be 6 digits.");
+        if (otp.length < 6) return toast.error("Security code must be 6 digits.");
 
         setIsSubmitting(true);
         try {
             const res = await distributorApi.verifyOtp(distributorId, otp);
             if (res.success) {
                 toast.success(res.message || "B2B Credentials Authenticated!");
-                if (res.data.token) {
-                    localStorage.setItem('distributor_token', res.data.token);
+
+                const activeToken = res.token || res.data?.token || res.data?.accessToken;
+                const activeId = res.data?.distributorId || res.data?._id || distributorId;
+
+                if (activeId) {
+                    setDistributorId(activeId);
+                    localStorage.setItem('prakriti_distributor_id', activeId);
                 }
+
+                if (activeToken) {
+                    localStorage.setItem('distributor_token', activeToken);
+                }
+
                 setIsModalOpen(false);
                 setStep('register');
-                setUserAccessLayer(4);
+
+                const statusRes = await distributorApi.getDistributorStatus(activeId);
+                if (statusRes.data?.approvalStatus === 'approved') {
+                    setUserAccessLayer(5);
+                } else {
+                    setUserAccessLayer(4);
+                }
+
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 setName(''); setCompany(''); setEmail(''); setMobile(''); setAddress('');
                 setCity(''); setState(''); setDoc1(null); setDoc2(null); setOtp('');
             }
         } catch (err) {
-            toast.error(err.response?.data?.message || "Invalid or expired security code token entry.");
+            toast.error(err.response?.data?.message || "Invalid or expired OTP entry.");
         } finally {
             setIsSubmitting(false);
         }
@@ -340,7 +302,9 @@ export default function Prakriti() {
     const handleLogOut = () => {
         setUserAccessLayer(1);
         setDistributorId('');
-        toast.success("Secured session token terminated.");
+        localStorage.removeItem('prakriti_distributor_id');
+        localStorage.removeItem('distributor_token');
+        toast.success("Secured customer session terminated.");
     };
 
     const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot =>
@@ -349,7 +313,7 @@ export default function Prakriti() {
 
     if (isSessionLoading) {
         return (
-            <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center">
+            <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center p-4">
                 <div className="text-center space-y-4">
                     <span className="w-10 h-10 border-4 border-[#004B3B] border-t-transparent rounded-full animate-spin block mx-auto" />
                     <p className="text-xs font-mono tracking-widest text-[#004B3B] uppercase font-bold">Synchronizing Trade Pipeline...</p>
@@ -363,22 +327,22 @@ export default function Prakriti() {
 
             {/* ================= LAYER 4: UNDER REVIEW GATE ================= */}
             {userAccessLayer === 4 && (
-                <div className="min-h-[80vh] flex items-center justify-center py-20 px-4">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl bg-white rounded-2xl p-8 sm:p-12 shadow-2xl border border-slate-200 text-center space-y-6">
-                        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl animate-pulse">
+                <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl bg-white rounded-2xl p-6 sm:p-12 shadow-2xl border border-slate-200 text-center space-y-6">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl sm:text-2xl animate-pulse">
                             <FiCompass />
                         </div>
-                        <h2 className="text-3xl font-serif text-[#0B3D2E] uppercase tracking-wide">Account Under Review</h2>
+                        <h2 className="text-2xl sm:text-3xl font-serif text-[#0B3D2E] uppercase tracking-wide">Account Under Review</h2>
                         <div className="w-16 h-[2px] bg-amber-500 mx-auto" />
-                        <p className="text-slate-600 text-sm leading-relaxed max-w-lg mx-auto font-light">
+                        <p className="text-slate-600 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto font-light">
                             “Your Prakriti Tea buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.”
                         </p>
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left text-xs text-slate-500 space-y-1.5 max-w-md mx-auto">
                             <div className="font-bold text-[#004B3B] uppercase tracking-wider text-[10px] mb-1 font-mono">STATUTORY CHECKLIST PIPELINE:</div>
-                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Database Cross-Reference Matching (GSTIN / FSSAI / IEC)</div>
-                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> Procurement Scale and Cargo Volume Authenticity Verification</div>
+                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" /> Database Cross-Reference Matching (GSTIN / FSSAI / IEC)</div>
+                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" /> Procurement Scale and Cargo Volume Authenticity Verification</div>
                         </div>
-                        <div className="pt-4">
+                        <div className="pt-2">
                             <button onClick={() => setUserAccessLayer(1)} className="text-[10px] font-mono text-[#004B3B] hover:text-[#50C878] uppercase tracking-wider underline underline-offset-4">
                                 Return to Public Storefront View
                             </button>
@@ -389,130 +353,222 @@ export default function Prakriti() {
 
             {/* ================= LAYER 5: APPROVED TEA BUYER MARKETPLACE ================= */}
             {userAccessLayer === 5 && (
-                <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-900 animate-fadeIn antialiased pt-6 pb-24">
-                    {/* Unified Top Action Navigation Bar specifically for Verified Corporate Accounts */}
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-                        <div className="bg-[#0B3D2E] text-white rounded-lg px-6 py-4 flex items-center justify-between border border-[#50C878]/20 shadow-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 bg-white/10 rounded-sm flex items-center justify-center text-[#50C878] font-serif text-lg font-bold border border-white/10">
-                                    P
+                <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-900 animate-fadeIn antialiased pt-3 sm:pt-6 pb-20 sm:pb-24">
+                    
+                    {/* Top B2B Control Header */}
+                    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-4 sm:mb-8">
+                        <div className="bg-[#0B3D2E] text-white rounded-xl p-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border border-[#50C878]/20 shadow-xl">
+                            
+                            {/* Brand Header Identity */}
+                            <div className="flex items-center justify-between sm:justify-start gap-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-[#50C878]/20 to-white/10 rounded flex items-center justify-center text-[#50C878] font-serif text-base sm:text-lg font-bold border border-white/15 shadow-inner">
+                                        P
+                                    </div>
+                                    <div>
+                                        <div className="text-[9px] sm:text-[10px] font-mono tracking-widest text-[#50C878] font-bold uppercase leading-none mb-0.5">B2B TRADE TERMINAL</div>
+                                        <div className="text-xs sm:text-sm font-serif tracking-wider text-white uppercase font-medium">INDIA TRADE OVERSEAS</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-[10px] font-mono tracking-widest text-[#50C878] font-bold uppercase">B2B TRADE TERMINAL</div>
-                                    <div className="text-sm font-serif tracking-wide text-white uppercase">INDIA TRADE OVERSEAS</div>
+
+                                <div className="sm:hidden flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded text-[9px] font-mono text-emerald-400 font-bold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> LIVE
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
+
+                            {/* Actions Deck */}
+                            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                                 <div className="hidden md:flex flex-col text-right font-mono text-[10px] text-slate-300 border-r border-white/10 pr-4">
                                     <span>ESTATE NETWORK SECURED</span>
                                     <span className="text-emerald-400">STATUS: ACTIVE SESSION</span>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => {
-                                            fetchMyProposals(); // Fresh catch refresh
-                                            setIsProposalModalOpen(true);
-                                        }}
-                                        className="relative bg-emerald-500/10 hover:bg-emerald-500/20 text-[#50C878] border border-[#50C878]/30 font-mono text-[10px] font-bold uppercase tracking-wider py-2 px-4 rounded transition-all cursor-pointer flex items-center gap-2"
-                                    >
-                                        <FiFileText /> My Proposals
-                                        {myProposals.filter(p => p.status === 'approved').length > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce">
-                                                {myProposals.filter(p => p.status === 'approved').length}
-                                            </span>
-                                        )}
-                                    </button>
 
-                                    <button
-                                        onClick={handleLogOut}
-                                        className="bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 border border-white/10 text-slate-200 font-mono text-[10px] font-bold uppercase tracking-wider py-2 px-3 rounded transition-all cursor-pointer"
-                                    >
-                                        Lock Session Terminal
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => {
+                                        fetchMyProposals();
+                                        setIsProposalModalOpen(true);
+                                    }}
+                                    className="relative flex-1 sm:flex-none bg-emerald-500/15 hover:bg-emerald-500/25 active:scale-95 text-[#50C878] border border-[#50C878]/30 font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-2.5 px-3 sm:px-4 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    <FiFileText className="text-xs sm:text-sm" /> 
+                                    <span>My Proposals</span>
+                                    {myProposals.filter(p => p.status === 'approved').length > 0 && (
+                                        <span className="bg-amber-500 text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce ml-0.5">
+                                            {myProposals.filter(p => p.status === 'approved').length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={handleLogOut}
+                                    className="bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 active:scale-95 border border-white/10 text-slate-200 font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-2.5 px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap"
+                                >
+                                    Lock Terminal
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-                        {/* Executive Welcome Hero Banner */}
-                        <div className="bg-gradient-to-br from-[#0B3D2E] via-[#004B3B] to-[#043327] rounded-xl p-8 border border-[#50C878]/20 shadow-xl relative overflow-hidden text-white">
-                            <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle_at_top_right,rgba(80,200,120,0.08),transparent_60%)] pointer-events-none" />
+                    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-8">
+                        
+                        {/* Hero Banner Section */}
+                        <div className="bg-gradient-to-br from-[#0B3D2E] via-[#004B3B] to-[#043327] rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[#50C878]/20 shadow-xl relative overflow-hidden text-white">
+                            <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-[radial-gradient(circle_at_top_right,rgba(80,200,120,0.12),transparent_60%)] pointer-events-none" />
 
-                            <div className="space-y-3 relative z-10 max-w-3xl">
-                                <div className="inline-flex items-center gap-1.5 bg-[#50C878]/10 border border-[#50C878]/30 px-3 py-1 rounded-sm text-[9px] font-mono font-bold text-[#50C878] tracking-wider uppercase">
-                                    <FiCheckCircle size={10} className="text-[#50C878]" /> CRM CREDENTIAL ACCREDITATION: LEVEL 5
+                            <div className="space-y-2.5 sm:space-y-3 relative z-10 max-w-3xl">
+                                <div className="inline-flex items-center gap-1.5 bg-[#50C878]/15 border border-[#50C878]/30 px-2.5 sm:px-3 py-1 rounded text-[9px] sm:text-[10px] font-mono font-bold text-[#50C878] tracking-wider uppercase">
+                                    <FiCheckCircle size={11} className="text-[#50C878]" /> ACCREDITATION: LEVEL 5 VERIFIED
                                 </div>
-                                <h2 className="text-2xl sm:text-4xl font-serif tracking-wide text-[#F2F4F7] uppercase">
+                                <h2 className="text-xl sm:text-3xl lg:text-4xl font-serif tracking-wide text-white uppercase leading-tight">
                                     Prakriti Verified Buyer Marketplace
                                 </h2>
-                                <p className="text-xs sm:text-sm text-slate-300 font-light leading-relaxed max-w-2xl">
+                                <p className="text-xs sm:text-sm text-slate-200 font-light leading-relaxed max-w-2xl">
                                     Welcome back, trading partner. Your session is synchronized directly with live inventory metrics, active seasonal plucking lots, and fresh wholesale price indexes from our partner estate networks.
                                 </p>
                             </div>
                         </div>
-                        {/* ================= MY PROPOSALS & ESCROW SYSTEM DECK ================= */}
+
+                        {/* ================= MY PROPOSALS & PAYMENT SYSTEM MODAL ================= */}
                         <AnimatePresence>
                             {isProposalModalOpen && (
-                                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+                                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-xs">
                                     <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                                        className="w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 my-8"
+                                        initial={{ opacity: 0, y: 100 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 100 }}
+                                        className="w-full max-w-3xl bg-white rounded-t-2xl sm:rounded-xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh] sm:max-h-[85vh]"
                                     >
-                                        {/* Header */}
-                                        <div className="bg-[#0B3D2E] text-white p-6 flex justify-between items-center text-left">
+                                        {/* Modal Header */}
+                                        <div className="bg-[#0B3D2E] text-white p-4 sm:p-6 flex justify-between items-center text-left shrink-0">
                                             <div>
                                                 <div className="text-[9px] font-mono tracking-widest text-[#50C878] font-bold uppercase">Procurement Ledger Tracking</div>
-                                                <h2 className="text-xl font-serif text-white uppercase tracking-wide">My Active Trade Proposals</h2>
+                                                <h2 className="text-base sm:text-xl font-serif text-white uppercase tracking-wide">My Active Trade Proposals</h2>
                                             </div>
                                             <button
                                                 onClick={() => setIsProposalModalOpen(false)}
-                                                className="p-1 text-slate-300 hover:text-white rounded-sm transition-colors cursor-pointer"
+                                                className="p-1.5 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer bg-white/5 border border-white/10"
                                             >
-                                                <FiX size={20} />
+                                                <FiX size={18} />
                                             </button>
                                         </div>
 
-                                        {/* Content Panel */}
-                                        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto text-left">
+                                        {/* Proposals Scrollable Area */}
+                                        <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto text-left flex-1 bg-slate-50/50">
                                             {myProposals.length === 0 ? (
-                                                <div className="p-12 text-center text-slate-400 italic text-xs font-light">
+                                                <div className="py-16 text-center text-slate-400 italic text-xs font-light">
                                                     You have not committed any trade pipeline negotiations yet.
                                                 </div>
                                             ) : (
-                                                <div className="space-y-4">
+                                                <div className="space-y-3">
                                                     {myProposals.map((prop) => (
                                                         <div
                                                             key={prop._id}
-                                                            className={`p-4 rounded-lg border text-xs font-mono transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${prop.status === 'approved' ? 'border-emerald-200 bg-emerald-50/30' :
-                                                                prop.status === 'disapproved' ? 'border-rose-200 bg-rose-50/30' :
-                                                                    'border-slate-200 bg-slate-50/50'
-                                                                }`}
+                                                            className={`p-3.5 sm:p-4 rounded-xl border text-xs transition-all space-y-3 ${
+                                                                prop.status === 'approved' ? 'border-emerald-300/80 bg-white shadow-sm' :
+                                                                prop.status === 'disapproved' ? 'border-rose-200 bg-rose-50/20' :
+                                                                'border-slate-200 bg-white'
+                                                            }`}
                                                         >
-                                                            <div className="space-y-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[13px] font-extrabold text-[#0B3D2E]">{prop.lotId}</span>
-                                                                    <span className="text-[10px] text-slate-400">({prop.grade})</span>
+                                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                                                                <div className="space-y-0.5">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-sm font-bold font-mono text-[#0B3D2E]">{prop.lotId}</span>
+                                                                        <span className="text-[10px] font-mono text-slate-400">({prop.grade})</span>
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-600 font-light">
+                                                                        Tract: <span className="font-medium text-slate-800">{prop.region}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="text-slate-600 font-sans font-light">
-                                                                    Volume: <span className="font-mono font-bold text-slate-800">{prop.quantity?.toLocaleString()} Kg</span>
-                                                                    {" | "} Tract: <span className="text-slate-700">{prop.region}</span>
-                                                                </div>
-                                                                <div className="text-[11px] text-slate-500">
-                                                                    Lot Rate: INR {prop.basePrice}/Kg → Net Value: <span className="font-bold text-[#004B3B]">INR {prop.estimatedValue?.toLocaleString()}</span>
+
+                                                                <div className="flex items-center justify-between sm:justify-end gap-2">
+                                                                    <span className={`px-2.5 py-1 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border ${
+                                                                        prop.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
+                                                                        prop.status === 'disapproved' ? 'bg-rose-50 text-rose-700 border-rose-300' :
+                                                                        'bg-amber-50 text-amber-700 border-amber-300'
+                                                                    }`}>
+                                                                        {prop.status === 'approved' ? 'Invoice Issued' : prop.status === 'disapproved' ? 'Rejected' : 'Under Review'}
+                                                                    </span>
+
+                                                                    {prop.status === 'approved' && (
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                const singleAmount = prop.estimatedValue || (prop.quantity * prop.basePrice);
+                                                                                const loadingToast = toast.loading(`Preparing checkout for ${prop.lotId}...`);
+
+                                                                                try {
+                                                                                    const orderResult = await distributorApi.createRazorpayOrder({
+                                                                                        amount: singleAmount,
+                                                                                        lotId: prop.lotId,
+                                                                                        quantity: prop.quantity
+                                                                                    });
+
+                                                                                    if (!orderResult || !orderResult.success) {
+                                                                                        throw new Error(orderResult?.message || "Failed to create payment order.");
+                                                                                    }
+
+                                                                                    const { orderId, keyId } = orderResult.data;
+                                                                                    toast.dismiss(loadingToast);
+
+                                                                                    const options = {
+                                                                                        key: keyId,
+                                                                                        amount: singleAmount * 100,
+                                                                                        currency: "INR",
+                                                                                        name: "Prakriti Tea Division",
+                                                                                        description: `Invoice Settlement - Lot ${prop.lotId}`,
+                                                                                        order_id: orderId,
+                                                                                        handler: async function (response) {
+                                                                                            const verificationToast = toast.loading("Verifying transaction...");
+                                                                                            try {
+                                                                                                const verifyResult = await distributorApi.verifyRazorpayPayment({
+                                                                                                    razorpay_order_id: response.razorpay_order_id,
+                                                                                                    razorpay_payment_id: response.razorpay_payment_id,
+                                                                                                    razorpay_signature: response.razorpay_signature,
+                                                                                                    lotId: prop.lotId,
+                                                                                                    quantity: prop.quantity,
+                                                                                                    amount: singleAmount
+                                                                                                });
+
+                                                                                                if (!verifyResult || !verifyResult.success) {
+                                                                                                    throw new Error(verifyResult?.message || "Signature verification failed.");
+                                                                                                }
+
+                                                                                                await distributorApi.updateProposalStatus(prop._id, 'paid');
+                                                                                                toast.dismiss(verificationToast);
+                                                                                                toast.success(`Payment verified for Lot ${prop.lotId}!`);
+                                                                                                fetchMyProposals();
+                                                                                            } catch (vErr) {
+                                                                                                toast.dismiss(verificationToast);
+                                                                                                toast.error(vErr.message || "Payment verification failed.");
+                                                                                            }
+                                                                                        },
+                                                                                        theme: { color: "#004B3B" }
+                                                                                    };
+
+                                                                                    const checkout = new window.Razorpay(options);
+                                                                                    checkout.open();
+
+                                                                                } catch (err) {
+                                                                                    toast.dismiss(loadingToast);
+                                                                                    toast.error(err.message || "Failed to start Razorpay gateway.");
+                                                                                }
+                                                                            }}
+                                                                            className="bg-[#004B3B] hover:bg-[#053127] text-white px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                                                                        >
+                                                                            <FiCheckCircle size={11} /> Pay Invoice
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
 
-                                                            {/* Status Indicator Badges */}
-                                                            <div className="shrink-0 flex items-center gap-2">
-                                                                <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${prop.status === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                                    prop.status === 'disapproved' ? 'bg-rose-100 text-rose-700 border-rose-300' :
-                                                                        'bg-amber-100 text-amber-700 border-amber-300 animate-pulse'
-                                                                    }`}>
-                                                                    {prop.status === 'approved' ? 'Invoice Issued' : prop.status === 'disapproved' ? 'Rejected' : 'Under Review'}
-                                                                </span>
+                                                            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                                                <div>
+                                                                    <span className="text-slate-400 block text-[9px] uppercase font-sans">Volume</span>
+                                                                    <span className="font-bold text-slate-800">{prop.quantity?.toLocaleString()} Kg</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-slate-400 block text-[9px] uppercase font-sans">Net Value</span>
+                                                                    <span className="font-bold text-[#004B3B]">INR {(prop.estimatedValue || prop.quantity * prop.basePrice)?.toLocaleString()}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -520,14 +576,14 @@ export default function Prakriti() {
                                             )}
                                         </div>
 
-                                        {/* Volumetric Escrow Calculations & Gateway Trigger Deck */}
-                                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 text-left">
-                                            <div>
-                                                <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Total Active Invoice Matrix</div>
-                                                <div className="text-xl font-mono font-extrabold text-[#0B3D2E]">
+                                        {/* Modal Sticky Footer */}
+                                        <div className="p-4 sm:p-6 bg-white border-t border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 shrink-0 shadow-lg">
+                                            <div className="flex items-center justify-between sm:block">
+                                                <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Total Active Matrix</div>
+                                                <div className="text-lg sm:text-xl font-mono font-extrabold text-[#0B3D2E]">
                                                     INR {myProposals
                                                         .filter(p => p.status === 'approved')
-                                                        .reduce((acc, curr) => acc + (curr.estimatedValue || 0), 0)
+                                                        .reduce((acc, curr) => acc + (curr.estimatedValue || (curr.quantity * curr.basePrice) || 0), 0)
                                                         .toLocaleString()
                                                     }
                                                 </div>
@@ -539,24 +595,33 @@ export default function Prakriti() {
                                                     const approvedProposals = myProposals.filter(p => p.status === 'approved');
                                                     if (approvedProposals.length === 0) return;
 
-                                                    const aggregateAmount = approvedProposals.reduce((acc, curr) => acc + (curr.estimatedValue || 0), 0);
-                                                    const targetLotString = approvedProposals.map(p => p.lotId).join(", ");
-                                                    const combinedQuantity = approvedProposals.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+                                                    const aggregateAmount = approvedProposals.reduce((acc, curr) => {
+                                                        return acc + (Number(curr.estimatedValue) || (Number(curr.quantity || 0) * Number(curr.basePrice || 0)));
+                                                    }, 0);
+
+                                                    if (aggregateAmount > 500000) {
+                                                        return toast.error("Total exceeds Razorpay's single-transaction cap (₹5,00,000). Please pay invoices individually.");
+                                                    }
+
+                                                    const targetLotString = approvedProposals.map(p => p.lotId).filter(Boolean).join(", ");
+                                                    const combinedQuantity = approvedProposals.reduce((acc, curr) => acc + (Number(curr.quantity) || 0), 0);
 
                                                     const loadingToast = toast.loading("Configuring transaction security manifest...");
 
                                                     try {
-                                                        // 1. Invoke your new distributorApi method
-                                                        const orderResult = await distributorApi.createRazorpayOrder(aggregateAmount, targetLotString, combinedQuantity);
+                                                        const orderResult = await distributorApi.createRazorpayOrder({
+                                                            amount: aggregateAmount,
+                                                            lotId: targetLotString,
+                                                            quantity: combinedQuantity
+                                                        });
 
-                                                        if (!orderResult.success) {
-                                                            throw new Error(orderResult.message || "Failed to create secure transaction token.");
+                                                        if (!orderResult || !orderResult.success) {
+                                                            throw new Error(orderResult?.message || "Failed to create secure transaction token.");
                                                         }
 
                                                         const { orderId, keyId } = orderResult.data;
                                                         toast.dismiss(loadingToast);
 
-                                                        // 2. Open Razorpay Interface Script
                                                         const options = {
                                                             key: keyId,
                                                             amount: aggregateAmount * 100,
@@ -565,10 +630,8 @@ export default function Prakriti() {
                                                             description: `Sourcing Settlement - Lots: ${targetLotString}`,
                                                             order_id: orderId,
                                                             handler: async function (response) {
-                                                                const verificationToast = toast.loading("Verifying transaction checksum parameters...");
-
+                                                                const verificationToast = toast.loading("Verifying transaction parameters...");
                                                                 try {
-                                                                    // 3. Verify Payment Signature Token 
                                                                     const verifyResult = await distributorApi.verifyRazorpayPayment({
                                                                         razorpay_order_id: response.razorpay_order_id,
                                                                         razorpay_payment_id: response.razorpay_payment_id,
@@ -578,29 +641,26 @@ export default function Prakriti() {
                                                                         amount: aggregateAmount
                                                                     });
 
-                                                                    if (!verifyResult.success) {
-                                                                        throw new Error(verifyResult.message || "Cryptographic integrity match check failed.");
+                                                                    if (!verifyResult || !verifyResult.success) {
+                                                                        throw new Error(verifyResult?.message || "Verification failed.");
                                                                     }
 
-                                                                    // 4. Update proposals to 'paid' state
                                                                     await Promise.all(approvedProposals.map(p =>
                                                                         distributorApi.updateProposalStatus(p._id, 'paid')
                                                                     ));
 
                                                                     toast.dismiss(verificationToast);
-                                                                    toast.success("Transaction certified! Ledger cleared successfully.");
+                                                                    toast.success("Transaction certified! Invoices cleared.");
                                                                     setIsProposalModalOpen(false);
-
-                                                                    if (typeof fetchCoreSystemData === 'function') fetchCoreSystemData();
-
+                                                                    fetchMyProposals();
                                                                 } catch (verifyErr) {
                                                                     toast.dismiss(verificationToast);
-                                                                    toast.error(verifyErr.message || "Payment completed but database signature sync failed.");
+                                                                    toast.error(verifyErr.message || "Payment verification failed.");
                                                                 }
                                                             },
                                                             prefill: {
-                                                                name: approvedProposals[0].name || "Corporate Partner",
-                                                                email: approvedProposals[0].email || ""
+                                                                name: approvedProposals[0]?.name || "Corporate Partner",
+                                                                email: approvedProposals[0]?.email || ""
                                                             },
                                                             theme: { color: "#004B3B" }
                                                         };
@@ -610,15 +670,15 @@ export default function Prakriti() {
 
                                                     } catch (err) {
                                                         toast.dismiss(loadingToast);
-                                                        toast.error(err.message || "Failed to initiate gateway tunnel.");
+                                                        toast.error(err.response?.data?.message || err.message || "Gateway initialization failed.");
                                                     }
                                                 }}
-                                                className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center gap-2 transition-all shadow-md ${myProposals.filter(p => p.status === 'approved').length > 0
-                                                    ? 'bg-[#004B3B] hover:bg-[#053127] text-white cursor-pointer'
+                                                className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md ${myProposals.filter(p => p.status === 'approved').length > 0
+                                                    ? 'bg-[#004B3B] hover:bg-[#053127] active:scale-98 text-white cursor-pointer'
                                                     : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                                                     }`}
                                             >
-                                                <FiCheckCircle /> Proceed to Payment
+                                                <FiCheckCircle /> Proceed to Settlement
                                             </button>
                                         </div>
                                     </motion.div>
@@ -626,15 +686,15 @@ export default function Prakriti() {
                             )}
                         </AnimatePresence>
 
-                        {/* Sourcing Controls & Category Filter Row */}
-                        <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
+                        {/* Category Filter Chips Bar */}
+                        <div className="bg-white border border-slate-200/80 rounded-xl p-3 sm:p-4 shadow-sm space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                                 {['All', 'CTC Tea', 'Orthodox Tea', 'Dust Tea'].map((cat) => (
                                     <button
                                         key={cat}
                                         onClick={() => setSelectedMarketCategory(cat)}
-                                        className={`px-4 py-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider rounded transition-all font-bold cursor-pointer ${selectedMarketCategory === cat
-                                            ? 'bg-[#004B3B] text-[#50C878] shadow-md border border-[#004B3B]'
+                                        className={`px-3.5 py-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider rounded-lg transition-all font-bold cursor-pointer whitespace-nowrap shrink-0 ${selectedMarketCategory === cat
+                                            ? 'bg-[#004B3B] text-[#50C878] shadow-sm border border-[#004B3B]'
                                             : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
                                             }`}
                                     >
@@ -642,21 +702,72 @@ export default function Prakriti() {
                                     </button>
                                 ))}
                             </div>
-                            <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-3 md:pt-0 md:border-none w-full md:w-auto justify-end">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                {filteredMarketLots.length} Live Allocation Lots Streamed
+                            <div className="flex items-center gap-1.5 font-mono text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-widest pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                <span>{filteredMarketLots.length} Allocation Lots Active</span>
                             </div>
                         </div>
 
-                        {/* Premium Table Block Layout */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-serif text-lg text-[#0B3D2E] uppercase tracking-wider flex items-center gap-2 font-medium">
-                                    Active Sourcing Lots & Live Pricing Matrix
+                        {/* Marketplace Lots Container */}
+                        <div className="space-y-3 sm:space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <h3 className="font-serif text-base sm:text-lg text-[#0B3D2E] uppercase tracking-wider font-semibold">
+                                    Active Sourcing Lots & Live Pricing
                                 </h3>
                             </div>
 
-                            <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-xl overflow-x-auto">
+                            {/* 📱 MOBILE VIEW: Premium Card Deck (Shown on Mobile screens) */}
+                            <div className="grid grid-cols-1 gap-3.5 md:hidden">
+                                {filteredMarketLots.map((row) => (
+                                    <div key={row.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-[#50C878]/50 transition-all space-y-3">
+                                        <div className="flex items-start justify-between border-b border-slate-100 pb-2.5">
+                                            <div>
+                                                <div className="text-xs font-mono font-bold text-[#004B3B] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mb-1">
+                                                    {row.id}
+                                                </div>
+                                                <h4 className="font-serif font-bold text-slate-900 text-sm">{row.region}</h4>
+                                            </div>
+                                            <span className="bg-slate-100 px-2 py-0.5 border border-slate-200 font-mono text-[10px] text-slate-800 font-bold rounded">
+                                                {row.grade}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 text-xs font-sans">
+                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                <span className="text-[9px] font-mono uppercase text-slate-400 block">Liquor Spec</span>
+                                                <span className="font-medium text-slate-800">{row.color}</span>
+                                                <span className="text-[10px] text-slate-500 font-mono block">Idx: {row.strength}</span>
+                                            </div>
+                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                <span className="text-[9px] font-mono uppercase text-slate-400 block">Inventory / Rate</span>
+                                                <span className="font-bold text-[#004B3B] block font-mono">INR {row.price}/Kg</span>
+                                                <span className="text-[10px] text-slate-500 font-mono block">Stock: {row.stock}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 pt-1">
+                                            <button
+                                                onClick={() => toast.success(`Sample dispatch token generated for Lot ${row.id}`)}
+                                                className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 py-2 rounded-lg font-mono font-bold uppercase text-[9px] tracking-wider transition-all"
+                                            >
+                                                Request Sample
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setActiveDrawerLot(row);
+                                                    setIsOrderDrawerOpen(true);
+                                                }}
+                                                className="bg-[#004B3B] hover:bg-[#053127] active:scale-98 text-white py-2 rounded-lg font-mono font-bold uppercase text-[9px] tracking-wider shadow-xs transition-all flex items-center justify-center gap-1"
+                                            >
+                                                <FiShoppingCart size={11} /> Place Order
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* 💻 DESKTOP/TABLET VIEW: Structured Table Layout */}
+                            <div className="hidden md:block bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-xl overflow-x-auto">
                                 <table className="w-full text-left border-collapse text-xs">
                                     <thead>
                                         <tr className="bg-[#0B3D2E] text-slate-200 border-b border-[#004B3B] font-mono uppercase tracking-wider text-[10px]">
@@ -726,7 +837,7 @@ export default function Prakriti() {
             {/* ================= LAYER 1 & LAYER 2: PUBLIC VIEWS ================= */}
             {userAccessLayer <= 2 && (
                 <>
-                    {/* ================= LAYER 1: PUBLIC TEA STOREFRONT HERO ================= */}
+                    {/* LAYER 1: PUBLIC TEA STOREFRONT HERO */}
                     <section className="relative w-full min-h-screen flex items-center bg-[#0B3D2E] overflow-hidden py-24">
                         <div className="absolute inset-0 z-0">
                             <AnimatePresence mode="wait">
@@ -860,7 +971,7 @@ export default function Prakriti() {
                         </div>
                     </section>
 
-                    {/* ================= LAYER 2: TEA TEASER DECK (BLURRED INVOICES) ================= */}
+                    {/* LAYER 2: TEA TEASER DECK */}
                     <section id="teaser-deck" className="py-24 bg-[#004B3B] text-white px-4 sm:px-6 lg:px-8 border-y border-[#50C878]/20 relative overflow-hidden">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(80,200,120,0.06),transparent_40%)]" />
 
@@ -1070,7 +1181,6 @@ export default function Prakriti() {
                                 <div className="flex justify-center items-center gap-2 pt-4 border-t border-slate-100 relative z-10">
                                     {CAROUSEL_IMAGES.map((_, idx) => (
                                         <button
-                                            document_key={idx}
                                             key={idx}
                                             onClick={() => setCarouselIndex(idx)}
                                             className={`h-1.5 transition-all rounded-full ${carouselIndex === idx ? 'bg-[#004B3B] w-6' : 'bg-slate-200 w-1.5'}`}
@@ -1083,26 +1193,25 @@ export default function Prakriti() {
                 </>
             )}
 
-            {/* ================= LAYER 3: REGISTRATION OVERLAY MODAL ================= */}
+            {/* ================= LAYER 3: REGISTRATION & LOGIN MODAL ================= */}
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-xs">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-xs">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 15 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                            className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 my-8"
+                            className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 my-4 sm:my-8"
                         >
-                            <div className="bg-[#004B3B] text-white p-6 sm:p-8 space-y-1 relative text-left">
-                                <button onClick={() => { setIsModalOpen(false); setStep('register'); }} className="absolute top-6 right-6 text-slate-300 hover:text-white"><FiX size={20} /></button>
+                            <div className="bg-[#004B3B] text-white p-5 sm:p-8 space-y-1 relative text-left">
+                                <button onClick={() => { setIsModalOpen(false); setStep('register'); }} className="absolute top-5 right-5 text-slate-300 hover:text-white p-1 rounded-md bg-white/5 border border-white/10"><FiX size={18} /></button>
                                 <div className="flex items-center gap-1.5 text-[#50C878]"><span className="text-[9px] tracking-[0.2em] font-mono font-extrabold uppercase">Layer 3 Verification Registry</span></div>
-                                <h2 className="text-2xl font-serif text-white">Tea Buyer Sourcing Registry</h2>
+                                <h2 className="text-xl sm:text-2xl font-serif text-white">Tea Buyer Sourcing Registry</h2>
                             </div>
 
-                            <div className="p-6 sm:p-8 text-left max-h-[70vh] overflow-y-auto">
+                            <div className="p-5 sm:p-8 text-left max-h-[75vh] overflow-y-auto">
                                 {step === 'register' ? (
                                     <div className="space-y-5 text-xs">
-                                        {/* Dual Mode Switcher Navigation Ribbon */}
                                         <div className="flex border-b border-slate-100 pb-2 mb-4 gap-4 font-mono text-[10px]">
                                             <button
                                                 type="button"
@@ -1127,8 +1236,7 @@ export default function Prakriti() {
                                         </div>
 
                                         {modalMode === 'register' ? (
-                                            /* ================= ORIGINAL REGISTER UI EXTRACTION (STRICTLY PRESERVED) ================= */
-                                            <form onSubmit={handleRegister} className="space-y-5 text-xs">
+                                            <form onSubmit={handleRegister} className="space-y-4 sm:space-y-5 text-xs">
                                                 <div>
                                                     <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">Select Buyer Classification Category *</label>
                                                     <select value={businessType} onChange={(e) => { setBusinessType(e.target.value); setDoc1(null); setDoc2(null); }} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 font-medium focus:outline-none focus:border-[#004B3B]">
@@ -1142,8 +1250,8 @@ export default function Prakriti() {
                                                     </select>
                                                 </div>
 
-                                                <div className="space-y-4">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-3 sm:space-y-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                         <div>
                                                             <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Full Name *</label>
                                                             <input type="text" required placeholder="Satyam Raj" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={name} onChange={(e) => setName(e.target.value)} />
@@ -1154,7 +1262,7 @@ export default function Prakriti() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                         <div>
                                                             <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Mobile Number *</label>
                                                             <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
@@ -1170,7 +1278,7 @@ export default function Prakriti() {
                                                         <input type="text" required placeholder="Physical Operating Address" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={address} onChange={(e) => setAddress(e.target.value)} />
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                                         <div>
                                                             <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">City *</label>
                                                             <input type="text" required placeholder="City" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={city} onChange={(e) => setCity(e.target.value)} />
@@ -1186,8 +1294,8 @@ export default function Prakriti() {
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-4 pt-2">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-3 sm:space-y-4 pt-1">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                         <div>
                                                             <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Required Tea Type *</label>
                                                             <select value={teaType} onChange={(e) => setTeaType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]">
@@ -1209,7 +1317,7 @@ export default function Prakriti() {
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-4 pt-2">
+                                                <div className="space-y-3 pt-1">
                                                     <div className="flex items-center gap-2 text-[#004B3B] border-b border-slate-100 pb-1.5">
                                                         <FiShield size={13} />
                                                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Compliance Attachments</span>
@@ -1238,7 +1346,7 @@ export default function Prakriti() {
                                                     )}
 
                                                     {['5', '6', '7'].includes(businessType) && (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                             <div>
                                                                 <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">{businessType === '5' ? 'IEC Certificate *' : 'FSSAI License *'}</label>
                                                                 <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
@@ -1259,48 +1367,54 @@ export default function Prakriti() {
                                                     )}
                                                 </div>
 
-                                                <div className="pt-4">
+                                                <div className="pt-2">
                                                     <button
                                                         type="submit"
                                                         disabled={isSubmitting}
-                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 sm:py-4 rounded-md transition-all shadow-md flex items-center justify-center gap-2"
+                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] active:scale-98 text-white font-mono font-bold text-[10px] sm:text-xs uppercase tracking-wider py-3.5 sm:py-4 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                                                     >
                                                         {isSubmitting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Confirm Details & Send OTP"}
                                                     </button>
                                                 </div>
                                             </form>
                                         ) : (
-                                            /* ================= CORPORATE LOGIN FORM ================= */
+                                            /* Corporate Login Form */
                                             <form
                                                 onSubmit={async (e) => {
                                                     e.preventDefault();
-                                                    if (!loginEmail.trim()) return toast.error("Corporate Email is required.");
+                                                    const cleanEmail = loginEmail.toLowerCase().trim();
+                                                    if (!cleanEmail) return toast.error("Corporate Email is required.");
 
                                                     setIsSubmitting(true);
                                                     try {
-                                                        const resData = await distributorApi.getDistributors();
-                                                        const existingDistributor = resData.data?.distributors?.find(
-                                                            (d) => d.email.toLowerCase() === loginEmail.toLowerCase().trim()
-                                                        );
+                                                        const otpRes = await distributorApi.resendOtp(cleanEmail);
 
-                                                        if (!existingDistributor) {
-                                                            throw new Error("No trade terminal file mapped to this corporate address mapping.");
+                                                        if (otpRes && otpRes.success) {
+                                                            const id = otpRes.data?.distributorId || otpRes.distributorId;
+                                                            if (id) {
+                                                                setDistributorId(id);
+                                                                localStorage.setItem('prakriti_distributor_id', id);
+                                                            }
+                                                            setEmail(cleanEmail);
+
+                                                            toast.success(otpRes.message || "Verification OTP sent to your corporate email!");
+                                                            setStep('otp');
+                                                        } else {
+                                                            throw new Error(otpRes?.message || "Failed to dispatch verification code.");
                                                         }
 
-                                                        // Save lookup identities onto component state exactly as requested
-                                                        setDistributorId(existingDistributor._id);
-                                                        setEmail(existingDistributor.email);
-                                                        localStorage.setItem('prakriti_distributor_id', existingDistributor._id);
-
-                                                        toast.success("Corporate match verified. Verification OTP code generated.");
-                                                        setStep('otp'); // Transitions back right into the underlying verify layout panel
                                                     } catch (err) {
-                                                        toast.error(err.message || "Failed to locate verified profile records.");
+                                                        console.error("Login OTP Dispatch Error:", err);
+                                                        toast.error(
+                                                            err.response?.data?.message ||
+                                                            err.message ||
+                                                            "Failed to dispatch OTP. Please verify your email."
+                                                        );
                                                     } finally {
                                                         setIsSubmitting(false);
                                                     }
                                                 }}
-                                                className="space-y-5 pt-2"
+                                                className="space-y-4 sm:space-y-5 pt-1"
                                             >
                                                 <div>
                                                     <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">
@@ -1323,7 +1437,7 @@ export default function Prakriti() {
                                                     <button
                                                         type="submit"
                                                         disabled={isSubmitting}
-                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] text-white font-mono font-bold text-[10px] uppercase tracking-wider py-3.5 rounded-md transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] active:scale-98 text-white font-mono font-bold text-[10px] uppercase tracking-wider py-3.5 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                                                     >
                                                         {isSubmitting ? (
                                                             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1336,18 +1450,20 @@ export default function Prakriti() {
                                         )}
                                     </div>
                                 ) : (
-                                    <form onSubmit={handleVerifyOtp} className="space-y-6 max-w-md mx-auto text-center py-4">
+                                    <form onSubmit={handleVerifyOtp} className="space-y-5 max-w-md mx-auto text-center py-2">
                                         <div className="w-12 h-12 rounded-full bg-[#004B3B]/5 flex items-center justify-center text-[#004B3B] mx-auto"><FiKey size={20} /></div>
                                         <div className="space-y-1">
-                                            <h3 className="text-lg font-serif text-[#004B3B]">Validate Secure Token</h3>
+                                            <h3 className="text-base sm:text-lg font-serif text-[#004B3B]">Validate Secure Token</h3>
                                             <p className="text-xs text-slate-500 font-light leading-relaxed">Enter the 6-digit credential code routed to <span className="font-bold text-slate-700">{email}</span>.</p>
-                                            <p className="text-xs text-slate-500 font-light leading-relaxed">Please check the Spam Folder</p>
+                                            <p className="text-[11px] text-amber-600 font-medium">Please check your Spam folder if code isn't in inbox.</p>
                                         </div>
-                                        <div className="space-y-4">
-                                            <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-slate-50 border border-slate-200 rounded-lg py-3 text-lg font-mono tracking-[0.35em] text-slate-800 focus:outline-none focus:border-[#004B3B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                                            <div className="flex gap-3">
-                                                <button type="button" className="w-1/3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-mono uppercase tracking-wider text-[9px] sm:text-[10px] font-bold rounded-md" onClick={() => setStep('register')}>Edit</button>
-                                                <button type="submit" className="w-2/3 bg-[#004B3B] hover:bg-[#07362b] text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 rounded-md flex items-center justify-center">Verify & Authenticate</button>
+                                        <div className="space-y-3">
+                                            <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-slate-50 border border-slate-200 rounded-lg py-3 text-base sm:text-lg font-mono tracking-[0.35em] text-slate-800 focus:outline-none focus:border-[#004B3B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
+                                            <div className="flex gap-2.5">
+                                                <button type="button" className="w-1/3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-mono uppercase tracking-wider text-[9px] sm:text-[10px] font-bold rounded-lg" onClick={() => setStep('register')}>Edit</button>
+                                                <button type="submit" disabled={isSubmitting} className="w-2/3 bg-[#004B3B] hover:bg-[#07362b] active:scale-98 text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center cursor-pointer shadow-sm">
+                                                    {isSubmitting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Verify & Authenticate"}
+                                                </button>
                                             </div>
                                         </div>
                                     </form>
@@ -1362,30 +1478,30 @@ export default function Prakriti() {
             <AnimatePresence>
                 {isOrderDrawerOpen && activeDrawerLot && (
                     <div className="fixed inset-0 z-50 overflow-hidden">
-                        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" onClick={() => setIsOrderDrawerOpen(false)} />
-                        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" onClick={() => setIsOrderDrawerOpen(false)} />
+                        <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
                             <motion.div
                                 initial={{ x: '100%' }}
                                 animate={{ x: 0 }}
                                 exit={{ x: '100%' }}
-                                transition={{ type: 'tween', duration: 0.35 }}
+                                transition={{ type: 'tween', duration: 0.3 }}
                                 className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
                             >
-                                <div className="p-6 overflow-y-auto space-y-6 text-left">
-                                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                                        <h2 className="text-xl font-serif text-[#004B3B] uppercase tracking-wide">Initialize Trade Negotiation</h2>
-                                        <button onClick={() => setIsOrderDrawerOpen(false)} className="text-slate-400 hover:text-slate-600"><FiX size={20} /></button>
+                                <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                                        <h2 className="text-base sm:text-xl font-serif text-[#004B3B] uppercase tracking-wide">Initialize Trade Negotiation</h2>
+                                        <button onClick={() => setIsOrderDrawerOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-md bg-slate-100"><FiX size={18} /></button>
                                     </div>
 
-                                    <div className="bg-[#FAF9F5] border border-slate-200 rounded-xl p-4 space-y-2.5">
-                                        <span className="text-[10px] font-mono bg-[#004B3B] text-[#50C878] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Lot Target: {activeDrawerLot.id}</span>
-                                        <div className="text-sm font-bold text-slate-900 font-serif">{activeDrawerLot.region}</div>
+                                    <div className="bg-[#FAF9F5] border border-slate-200 rounded-xl p-3.5 space-y-2">
+                                        <span className="text-[9px] font-mono bg-[#004B3B] text-[#50C878] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Lot Target: {activeDrawerLot.id}</span>
+                                        <div className="text-xs sm:text-sm font-bold text-slate-900 font-serif">{activeDrawerLot.region}</div>
                                         <div className="text-xs text-slate-600">Grade Configuration: <span className="font-mono font-bold">{activeDrawerLot.grade}</span></div>
                                         <div className="text-xs text-slate-600">Base Sourcing Price: <span className="font-bold text-[#004B3B]">INR {activeDrawerLot.price}/Kg</span></div>
                                         <div className="text-xs text-slate-600">Active Pipeline Allocation: <span className="font-mono">{activeDrawerLot.stock}</span></div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         <div>
                                             <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Negotiation Target Quantity (Kilograms) *</label>
                                             <input
@@ -1393,7 +1509,7 @@ export default function Prakriti() {
                                                 min="200"
                                                 value={orderQuantity}
                                                 onChange={(e) => setOrderQuantity(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 font-mono focus:outline-none focus:border-[#004B3B] text-xs"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono focus:outline-none focus:border-[#004B3B] text-xs"
                                             />
                                             <span className="text-[9px] text-slate-400 mt-1 block">Minimum commercial lot dispatch constraint matches 200 Kg configurations.</span>
                                         </div>
@@ -1406,14 +1522,13 @@ export default function Prakriti() {
                                     </div>
                                 </div>
 
-                                <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-3">
+                                <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 space-y-3 shrink-0 shadow-lg">
                                     <div className="flex items-center justify-between font-mono text-xs">
                                         <span className="text-slate-500 font-bold uppercase">Estimated Lot Base Value:</span>
-                                        <span className="text-[#004B3B] font-extrabold text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price)).toLocaleString()}</span>
+                                        <span className="text-[#004B3B] font-extrabold text-sm sm:text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price)).toLocaleString()}</span>
                                     </div>
                                     <button
                                         onClick={async () => {
-                                            // Enforce basic front-end checks before calling server parameters
                                             if (!orderQuantity || Number(orderQuantity) < 200) {
                                                 return toast.error("Minimum quantity constraint matches 200 Kg configurations.");
                                             }
@@ -1421,6 +1536,7 @@ export default function Prakriti() {
                                             try {
                                                 const proposalPayload = {
                                                     distributorId: distributorId,
+                                                    divison:'TEA',
                                                     lotId: activeDrawerLot.id,
                                                     region: activeDrawerLot.region,
                                                     grade: activeDrawerLot.grade,
@@ -1432,13 +1548,14 @@ export default function Prakriti() {
                                                 if (res.success) {
                                                     toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
                                                     setIsOrderDrawerOpen(false);
+                                                    fetchMyProposals();
                                                 }
                                             } catch (err) {
                                                 console.error(err);
                                                 toast.error(err.response?.data?.message || "Failed to route custom sourcing proposal.");
                                             }
                                         }}
-                                        className="w-full bg-[#004B3B] hover:bg-[#053127] text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg"
+                                        className="w-full bg-[#004B3B] hover:bg-[#053127] active:scale-98 text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-md cursor-pointer"
                                     >
                                         <FiShoppingCart /> Dispatch Sourcing Request
                                     </button>
@@ -1449,8 +1566,14 @@ export default function Prakriti() {
                 )}
             </AnimatePresence>
 
-            {/* ================= MODAL TRIGGER SYSTEM PREVENT CLIPPING ================= */}
             <style jsx="true" global="true">{`
+                .scrollbar-none::-webkit-scrollbar {
+                    display: none;
+                }
+                .scrollbar-none {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
                 .whitespace-nowrap {
                     white-space: normal !important;
                 }

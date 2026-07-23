@@ -1,8 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram, FiCopy, FiShield } from 'react-icons/fi';
-import toast from 'react-hot-toast';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram } from 'react-icons/fi';
 
 export default function Footer() {
   const location = useLocation();
@@ -29,41 +27,44 @@ export default function Footer() {
     };
   } else if (currentPath === '/prakriti/rice') {
     theme = {
-      bg: 'bg-[#5A4422]', // Rich Earth
-      text: 'text-[#FFF9EC]', // Ivory White
-      border: 'border-[#A67C2D]/30', // Harvest Gold
-      doubleBorder: '#D9B85C', // Golden Wheat
-      accentText: '#F2E3B4', // Cream Beige
-      subtleAccent: '#D9B85C' // Golden Wheat
+      bg: 'bg-[#5A4422]',
+      text: 'text-[#FFF9EC]',
+      border: 'border-[#A67C2D]/30',
+      doubleBorder: '#D9B85C',
+      accentText: '#F2E3B4',
+      subtleAccent: '#D9B85C'
+    };
+  } else if (currentPath === '/stone') {
+    // Strictly Mapped Palette Tokens for Stone Division
+    theme = {
+      bg: 'bg-[#37424B]',           // Primary Slate Blue Background
+      text: 'text-[#F4F2EE]',         // Sand White Text
+      border: 'border-[#A89E8E]/40',  // Stone Taupe Border
+      doubleBorder: '#C5A059',        // Metallic Gold Double Line Accent
+      accentText: '#DCCCB4',          // Warm Beige Body / Secondary Links
+      subtleAccent: '#A89E8E'         // Stone Taupe Icons & Subtle Details
     };
   }
 
   const officialEmail = "info.indiatradeoverseas@gmail.com";
-  const officialPhone = "+91 8250614079";
   const registeredOfficeText = "Deramari, Kishanganj, Bihar - 855107, India";
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-      .then(() => toast.success('Copied to Clipboard'))
-      .catch(() => toast.error('Clipboard access disabled'));
-  };
 
   return (
     <footer className={`w-full py-6 px-4 transition-colors duration-300 font-serif ${theme.bg} ${theme.text} border-t ${theme.border}`}>
       
       {/* Structural Double Line Border Accent */}
       <div 
-        className="border-t-[3px] border-double w-full opacity-30 mb-8" 
+        className="border-t-[3px] border-double w-full opacity-40 mb-8" 
         style={{ borderColor: theme.doubleBorder }}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 text-left">
 
-          {/* Column 1: Brand Authority, Mottos, and Statutory Registration Data */}
+          {/* Column 1: Brand Authority */}
           <div className="md:col-span-4 space-y-4">
             <div>
-              <h3 className="text-xl text-white tracking-wide font-normal uppercase">
+              <h3 className="text-xl tracking-wide font-normal uppercase">
                 India Trade Overseas
               </h3>
               <div className="w-12 h-[1px] mt-2" style={{ backgroundColor: theme.doubleBorder }} />
@@ -73,62 +74,57 @@ export default function Footer() {
               "Where Quality Meets Global Demand."
             </p>
 
-            {/* Corporate Registration Registry Token Feed */}
-            
-
-            {/* Social Channels with Guarded Link Tracking */}
             <div className="flex space-x-4 pt-1">
-              <a href="#" className="hover:text-white transition-colors" style={{ color: theme.subtleAccent }}><FiFacebook size={18} /></a>
-              <a href="#" className="hover:text-white transition-colors" style={{ color: theme.subtleAccent }}><FiTwitter size={18} /></a>
-              <a href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors" style={{ color: theme.subtleAccent }}><FiLinkedin size={18} /></a>
-              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors" style={{ color: theme.subtleAccent }}><FiInstagram size={18} /></a>
+              <a href="#" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiFacebook size={18} /></a>
+              <a href="#" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiTwitter size={18} /></a>
+              <a href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiLinkedin size={18} /></a>
+              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiInstagram size={18} /></a>
             </div>
           </div>
 
-          {/* Column 2: Architecture Navigation Links */}
+          {/* Column 2: Quick Links */}
           <div className="md:col-span-2 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Quick Links</h4>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">Quick Links</h4>
             <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
-              <li><Link to="/" className="hover:text-white transition-colors cursor-pointer">Home</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors cursor-pointer">Products</Link></li>
-              <li><Link to="/about" className="hover:text-white transition-colors cursor-pointer">About Us</Link></li>
-              <li><Link to="/contact" className="hover:text-white transition-colors cursor-pointer">Contact</Link></li>
-              <li><Link to="/careers" className="hover:text-white transition-colors cursor-pointer">Careers</Link></li>
-              <li><Link to="/quote-request" className="hover:text-white transition-colors cursor-pointer">Get Quote</Link></li>
+              <li><Link to="/" className="hover:underline transition-all cursor-pointer">Home</Link></li>
+              <li><Link to="/products" className="hover:underline transition-all cursor-pointer">Products</Link></li>
+              <li><Link to="/about" className="hover:underline transition-all cursor-pointer">About Us</Link></li>
+              <li><Link to="/contact" className="hover:underline transition-all cursor-pointer">Contact</Link></li>
+              <li><Link to="/careers" className="hover:underline transition-all cursor-pointer">Careers</Link></li>
+              <li><Link to="/quote-request" className="hover:underline transition-all cursor-pointer">Get Quote</Link></li>
             </ul>
           </div>
 
-          {/* Column 3: Brand Mandatory Business Verticals */}
+          {/* Column 3: Business Verticals */}
           <div className="md:col-span-3 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Business Verticals</h4>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">Business Verticals</h4>
             <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
-              <li><Link to="/products" className="hover:text-white transition-colors">Trade &amp; Export</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors">Food &amp; Agriculture</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors">Coal &amp; Industrial Materials</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors">Stone &amp; Construction Supply</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors">ITO Transport &amp; Logistics</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors">Clay &amp; Consumer Products</Link></li>
+              <li><Link to="/products" className="hover:underline transition-all">Trade &amp; Export</Link></li>
+              <li><Link to="/products" className="hover:underline transition-all">Food &amp; Agriculture</Link></li>
+              <li><Link to="/products" className="hover:underline transition-all">Coal &amp; Industrial Materials</Link></li>
+              <li><Link to="/stone" className="hover:underline transition-all">Stone &amp; Construction Supply</Link></li>
+              <li><Link to="/products" className="hover:underline transition-all">ITO Transport &amp; Logistics</Link></li>
+              <li><Link to="/products" className="hover:underline transition-all">Clay &amp; Consumer Products</Link></li>
             </ul>
           </div>
 
-          {/* Column 4: Document Contact Info Layer with Action Triggers */}
+          {/* Column 4: Contact Info */}
           <div className="md:col-span-3 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Contact Info</h4>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">Contact Info</h4>
             <div className="space-y-3 font-sans text-xs font-light leading-relaxed" style={{ color: theme.accentText }}>
 
               <div className="space-y-1">
-                <div className="font-bold uppercase tracking-wider text-[9px] opacity-60">Registered Office Address:</div>
-                <p className="text-[11px] font-serif leading-normal text-white/90">
+                <div className="font-bold uppercase tracking-wider text-[9px] opacity-70">Registered Office Address:</div>
+                <p className="text-[11px] font-serif leading-normal opacity-90">
                   {registeredOfficeText}
                 </p>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-white/5">
+              <div className="space-y-2 pt-2 border-t border-white/10">
                 <div className="flex items-center justify-between group">
-                  <a href={`mailto:${officialEmail}`} className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[90%]">
-                    Email: <span className="font-medium text-white/90 underline">{officialEmail}</span>
+                  <a href={`mailto:${officialEmail}`} className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]">
+                    Email: <span className="font-medium underline">{officialEmail}</span>
                   </a>
-                  
                 </div>
               </div>
 
@@ -137,7 +133,7 @@ export default function Footer() {
 
         </div>
 
-        {/* Brand Dictated Verification Notice Bar */}
+        {/* Verification Notice Bar */}
         <div className="border-t mt-8 pt-8 text-center border-white/10">
           <p className="text-[10px] font-sans font-light max-w-3xl mx-auto leading-relaxed tracking-wider" style={{ color: theme.accentText }}>
             Every appointment, price, margin, scheme, target, product specification, and territory protection right must be confirmed explicitly through authorized written company communication loops.

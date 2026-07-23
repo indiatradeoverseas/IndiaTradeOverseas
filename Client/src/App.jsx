@@ -25,6 +25,7 @@ import ForgotPassword from './pages/public/ForgotPassword';
 
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
+import Stone from './pages/public/Stone';
 import LeadDetail from './pages/crm/LeadDetail';
 import Quotations from './pages/crm/Quotations';
 import Dispatches from './pages/crm/Dispatches';
@@ -250,6 +251,7 @@ function AppLayout() {
           <Route path="/quote-request" element={<QuoteRequest />} />
           <Route path="/prakriti" element={<Prakriti />} />
           <Route path='/prakriti/rice' element={<Rice/>}/>
+          <Route path="/stone" element={<Stone />} />
         </Routes>
       </main>
       <Footer />
