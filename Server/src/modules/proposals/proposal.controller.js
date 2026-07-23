@@ -1,6 +1,7 @@
 const Proposal = require('./proposal.model');
 const Distributor = require('../distributors/distributor.model');
 const { ok, fail } = require('../../utils/response');
+const mongoose = require('mongoose');
 
 
 const createProposal = async (req, res, next) => {
