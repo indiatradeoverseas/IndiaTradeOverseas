@@ -27,7 +27,7 @@ export default function Distributor() {
             // Concurrent execution call matching both schemas
             const [distRes, propRes] = await Promise.all([
                 distributorApi.getDistributors(),
-                distributorApi.getActiveProposals()
+                distributorApi.getActiveProposalsAdmin()
             ]);
 
             if (distRes && distRes.success) {
@@ -230,7 +230,7 @@ export default function Distributor() {
                                         <th className="p-4 font-normal text-center">Tracking Status</th>
                                         <th className="p-4 font-normal text-right">Authorize Change</th>
                                     </tr>
-                                 
+                                  
                                 </thead>
                                 <tbody className="divide-y divide-[#C5CBD3]/10 text-[#C5CBD3]">
                                     {filteredRecords.length === 0 ? (
@@ -241,10 +241,12 @@ export default function Distributor() {
                                         </tr>
                                     ) : (
                                         filteredRecords.map((dist) => {
-                                            // Refactored from .find() to .filter() to intercept ALL stack entries concurrently
-                                            const pendingProposals = proposals.filter(
-                                                p => (p.distributorId?._id === dist._id || p.distributorId === dist._id) && p.status === 'pending'
-                                            );
+                                            // Strictly filter ONLY 'pending' proposals for this distributor
+                                            const pendingProposals = proposals.filter(p => {
+                                                const distIdMatches = p.distributorId?._id === dist._id || p.distributorId === dist._id;
+                                                const isPendingState = String(p.status).toLowerCase() === 'pending';
+                                                return distIdMatches && isPendingState;
+                                            });
                                         
                                             return (
                                                 <React.Fragment key={dist._id}>
@@ -279,7 +281,6 @@ export default function Distributor() {
                                                                     <button 
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            // Expand or collapse this distributor's stack ribbon block view
                                                                             setExpandedProposalRow(expandedProposalId === dist._id ? null : dist._id);
                                                                         }}
                                                                         className="text-emerald-400 hover:text-emerald-300 font-mono text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 bg-[#0E1116] px-1.5 py-0.5 border border-emerald-900/40 rounded-sm cursor-pointer"

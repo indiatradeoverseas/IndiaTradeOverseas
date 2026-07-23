@@ -3,14 +3,18 @@ import axiosInstance from './axiosInstance';
 export const distributorApi = {
   /**
    * 1. Register Distributor (Public)
-   * Initiates distributor onboarding, uploads the necessary verification files,
-   * and triggers a 6-digit verification OTP to the applicant's email address.
-   * 
-   * @param {FormData} formData
-   * @returns {Promise<Object>} 
    */
   registerDistributor: async (formData) => {
     const response = await axiosInstance.post('/distributors', formData);
+    return response.data;
+  },
+
+  resendOtp: async (emailOrId) => {
+    const payload = emailOrId.includes('@')
+      ? { email: emailOrId }
+      : { distributorId: emailOrId };
+
+    const response = await axiosInstance.post('/distributors/resend-otp', payload);
     return response.data;
   },
 
@@ -23,61 +27,107 @@ export const distributorApi = {
   },
 
   createProposal: async (proposalData) => {
-    const response = await axiosInstance.post('/distributors/proposals', proposalData);
+    const response = await axiosInstance.post('/distributors/proposals', proposalData, {
+      headers: { 'X-Portal-Context': 'customer' }
+    });
     return response.data;
   },
 
-  // Fetch all active proposals for the admin CRM dashboard
+  getActiveProposalsAdmin: async () => {
+    const response = await axiosInstance.get('/distributors/proposals/active', {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
+    return response.data;
+  },
+
+  getDistributorProposalsCustomer: async (distributorId, division) => {
+    const token = localStorage.getItem('distributor_token');
+  
+    if (!token || token === 'undefined') {
+      console.warn("No valid distributor token found in storage.");
+      return { success: false, data: [] };
+    }
+    const query = division ? `?division=${division}` : '';
+  
+    const response = await axiosInstance.get(`/distributors/proposals/distributor/${distributorId}${query}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Portal-Context': 'customer'
+      }
+    });
+    return response.data;
+  },
+
   getActiveProposals: async () => {
     const response = await axiosInstance.get('/distributors/proposals/active');
     return response.data;
   },
 
-  // Update state to approved, disapproved, or paid
   updateProposalStatus: async (id, status) => {
-    const response = await axiosInstance.patch(`/distributors/proposals/${id}/status`, { status });
-    return response.data;
-  },
-
-  // ✅ ADDED: Razorpay Payment Gateway API Methods
-  createRazorpayOrder: async (amount, lotId, quantity) => {
-    const response = await axiosInstance.post('/distributors/payments/razorpay/create-order', {
-      amount,
-      lotId,
-      quantity
+    const response = await axiosInstance.patch(`/distributors/proposals/${id}/status`, { status }, {
+      headers: { 'X-Portal-Context': 'admin' }
     });
     return response.data;
   },
 
+  // 🟢 FIXED: Handles both object payload { amount, lotId, quantity } and positional arguments safely
+  createRazorpayOrder: async (paymentData, lotIdArg, quantityArg) => {
+    let payload;
+    if (typeof paymentData === 'object' && paymentData !== null) {
+      payload = paymentData;
+    } else {
+      payload = { 
+        amount: paymentData, 
+        lotId: lotIdArg, 
+        quantity: quantityArg 
+      };
+    }
+
+    const response = await axiosInstance.post('/distributors/payments/razorpay/create-order', payload, {
+      headers: { 'X-Portal-Context': 'customer' }
+    });
+    return response.data;
+  },
+  
   verifyRazorpayPayment: async (paymentPayload) => {
-    const response = await axiosInstance.post('/distributors/payments/razorpay/verify-payment', paymentPayload);
+    const response = await axiosInstance.post('/distributors/payments/razorpay/verify-payment', paymentPayload, {
+      headers: { 'X-Portal-Context': 'customer' }
+    });
     return response.data;
   },
 
-  // Background Document Verification Polling & Session Check
   getDistributorStatus: async (id) => {
-    const response = await axiosInstance.get(`/distributors/status/${id}`);
+    const response = await axiosInstance.get(`/distributors/status/${id}`, {
+      headers: { 'X-Portal-Context': 'customer' }
+    });
     return response.data;
   },
 
   getDistributors: async () => {
-    const response = await axiosInstance.get('/distributors');
+    const response = await axiosInstance.get('/distributors', {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
     return response.data;
   },
 
   toggleVerify: async (id) => {
-    const response = await axiosInstance.patch(`/distributors/${id}/verify`);
+    const response = await axiosInstance.patch(`/distributors/${id}/verify`, {}, {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
     return response.data;
   },
 
   deleteDistributor: async (id) => {
-    const response = await axiosInstance.delete(`/distributors/${id}`);
+    const response = await axiosInstance.delete(`/distributors/${id}`, {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
     return response.data;
   },
 
   downloadGstCertificate: async (id, originalName) => {
     const response = await axiosInstance.get(`/distributors/${id}/gst-certificate`, {
-      responseType: 'blob'
+      responseType: 'blob',
+      headers: { 'X-Portal-Context': 'admin' }
     });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
@@ -91,7 +141,8 @@ export const distributorApi = {
 
   downloadUdyamCertificate: async (id, originalName) => {
     const response = await axiosInstance.get(`/distributors/${id}/udyam-certificate`, {
-      responseType: 'blob'
+      responseType: 'blob',
+      headers: { 'X-Portal-Context': 'admin' }
     });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');

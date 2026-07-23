@@ -25,6 +25,8 @@ export default function Navbar() {
   const [isPrakritiDropdownOpen, setIsPrakritiDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const isStonePage = location.pathname === '/stone';
+
   useEffect(() => {
     const loadNotifications = async () => {
       if (!user) return;
@@ -64,20 +66,20 @@ export default function Navbar() {
   const prakritiDivisions = [
     { to: '/prakriti', label: 'TEA DIVISION' },
     { to: '/prakriti/rice', label: 'RICE DIVISION' },
-    { to: '/prakriti/coal', label: 'COAL DIVISION' },
+    { to: '/stone', label: 'STONE DIVISION' },
   ];
 
   const isActive = (path) => location.pathname === path;
-  const isPrakritiActive = location.pathname.startsWith('/prakriti');
+  const isPrakritiActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
 
   return (
-    <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
+    <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 via-black/30 to-transparent transition-all duration-300">
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* MOBILE NAVIGATION BAR HEADER */}
         <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
           <div className="flex items-center space-x-3 text-right">
-            <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
+            <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
               <img
                 src={CompanyLogo}
                 alt="India Trade Overseas Logo"
@@ -87,10 +89,10 @@ export default function Navbar() {
             </div>
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="flex flex-col justify-center text-right leading-none">
-                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap drop-shadow">
                   INDIA
                 </span>
-                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap drop-shadow">
                   TRADE OVERSEAS
                 </span>
               </div>
@@ -98,7 +100,6 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
-            {/* Notification bell on mobile row for logged in users */}
             {user && (
               <Link to="/crm/notifications" className="relative text-[#C5CBD3] hover:text-[#F2F4F7] p-2 mr-1 transition-colors">
                 <FiBell size={20} />
@@ -123,7 +124,7 @@ export default function Navbar() {
         <div className="hidden lg:flex justify-between items-center h-[104px]">
           <div className="flex items-center shrink-0">
             <Link to="/" className="flex items-center space-x-3.5 group">
-              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/20 shrink-0">
+              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/30 bg-black/40 shrink-0 shadow-lg">
                 <img
                   src={CompanyLogo}
                   alt="India Trade Overseas Logo"
@@ -133,10 +134,10 @@ export default function Navbar() {
               </div>
 
               <div className="flex flex-col justify-center text-left">
-                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap">
+                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap drop-shadow-md">
                   India Trade Overseas
                 </span>
-                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap">
+                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap drop-shadow-sm">
                   Trade. Supply. Logistics. Growth.
                 </span>
               </div>
@@ -148,8 +149,9 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`relative text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap outline-none ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
-                  }`}
+                className={`relative text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap outline-none drop-shadow-sm ${
+                  isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                }`}
               >
                 {link.label}
                 {isActive(link.to) && (
@@ -164,8 +166,9 @@ export default function Navbar() {
               onMouseLeave={() => setIsPrakritiDropdownOpen(false)}
             >
               <button
-                className={`flex items-center space-x-1 text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none ${isPrakritiActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
-                  }`}
+                className={`flex items-center space-x-1 text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none drop-shadow-sm ${
+                  isPrakritiActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                }`}
               >
                 <span>PRAKRITI DIVISION</span>
                 <FiChevronDown size={12} className={`transition-transform duration-300 ${isPrakritiDropdownOpen ? 'rotate-180' : ''}`} />
@@ -178,14 +181,17 @@ export default function Navbar() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="absolute left-0 mt-3 w-48 bg-[#0E1116] border border-[#C5CBD3]/24 shadow-xl py-2 z-50 rounded-[2px]"
+                    className="absolute left-0 mt-3 w-48 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
                   >
                     {prakritiDivisions.map((subLink) => (
                       <Link
                         key={subLink.to}
                         to={subLink.to}
-                        className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${location.pathname === subLink.to ? 'bg-[#2B3440] text-[#F2F4F7]' : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
-                          }`}
+                        className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
+                          location.pathname === subLink.to 
+                            ? 'bg-[#2B3440] text-[#F2F4F7]' 
+                            : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
+                        }`}
                       >
                         {subLink.label}
                       </Link>
@@ -197,8 +203,9 @@ export default function Navbar() {
 
             <Link
               to="/contact"
-              className={`text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
-                }`}
+              className={`text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap drop-shadow-sm ${
+                isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+              }`}
             >
               CONTACT
             </Link>
@@ -217,7 +224,7 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-1 px-2.5 py-1.5 border border-[#C5CBD3]/24 bg-[#2B3440]/40 text-[#F2F4F7] hover:bg-[#2B3440]/70 text-[11px] tracking-wider uppercase transition-colors"
+                    className="flex items-center space-x-1 px-2.5 py-1.5 border border-[#C5CBD3]/24 bg-[#2B3440]/60 text-[#F2F4F7] hover:bg-[#2B3440]/90 text-[11px] tracking-wider uppercase transition-colors rounded-[2px]"
                   >
                     <FiUser size={13} />
                     <span>{user?.fullName?.split(' ')[0]}</span>
@@ -250,7 +257,7 @@ export default function Navbar() {
               <div className="flex items-center gap-3 xl:gap-4 shrink-0 pl-1">
                 <Link
                   to="/quote-request"
-                  className="h-[44px] px-3 xl:px-4 flex items-center justify-center space-x-1.5 text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans text-[#F2F4F7] border border-[#C5CBD3]/30 bg-[#2B3440]/30 hover:bg-[#2B3440]/60 transition-all duration-200"
+                  className="h-[44px] px-3 xl:px-4 flex items-center justify-center space-x-1.5 text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans text-[#F2F4F7] border border-[#C5CBD3]/40 bg-[#2B3440]/50 hover:bg-[#2B3440]/80 backdrop-blur-sm transition-all duration-200 rounded-[2px]"
                 >
                   <span>REQUEST BULK QUOTE</span>
                   <span className="text-sm font-light">&rarr;</span>
@@ -267,9 +274,9 @@ export default function Navbar() {
 
       </div>
 
-      {/* Mobile Viewport Subdeck Overlay */}
+      {/* Mobile Viewport Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116]">
+        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]">
           <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
             <div className="flex items-center space-x-3">
               <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
@@ -299,7 +306,6 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Links Area Container */}
           <div className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]">
             {navLinks.map((link) => (
               <Link
@@ -319,43 +325,6 @@ export default function Navbar() {
             >
               CONTACT
             </Link>
-
-            {/* FIXED SECTION: Render Secure User Hub actions explicitly for mobile menu panels */}
-            {user && (
-              <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
-                <div className="text-[#6D7886] text-[10px] tracking-widest font-mono font-bold">OPERATOR VAULT ({user?.fullName})</div>
-                
-                {!user?.employeeId?.startsWith('CL_') && (
-                  <Link
-                    to="/crm/dashboard"
-                    className="flex items-center space-x-3 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7] py-1"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <FiPackage size={16} className="text-[#6D7886]" />
-                    <span>DASHBOARD</span>
-                  </Link>
-                )}
-                
-                {user?.role === 'ADMIN' && (
-                  <Link
-                    to="/crm/admin"
-                    className="flex items-center space-x-3 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7] py-1"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <FiSettings size={16} className="text-[#6D7886]" />
-                    <span>ADMIN PANEL</span>
-                  </Link>
-                )}
-
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-3 text-sm tracking-wider text-rose-400 hover:text-rose-300 w-full text-left py-2 font-bold border-t border-[#C5CBD3]/5 mt-2"
-                >
-                  <FiLogOut size={16} />
-                  <span>SECURE LOGOUT</span>
-                </button>
-              </div>
-            )}
 
             <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
               <div className="text-[#6D7886] text-[10px] tracking-widest font-mono font-bold">PRAKRITI DIVISION</div>
