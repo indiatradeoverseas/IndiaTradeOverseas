@@ -86,32 +86,45 @@ const updateProposalStatus = async (req, res, next) => {
     next(error);
   }
 };
-getProposalsByDistributorId = async (req, res) => {
+const getProposalsByDistributorId = async (req, res) => {
   try {
     const { distributorId } = req.params;
 
-    if (!distributorId || distributorId === 'undefined') {
-      return require('../../utils/response').fail(res, 400, 'BAD_REQUEST', 'Valid Distributor ID is required.');
+    // Validate parameter existence
+    if (!distributorId || distributorId === 'undefined' || distributorId === 'null') {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid Distributor ID is required.'
+      });
     }
 
-    // Convert string ID into Mongoose ObjectId safely
+    // Convert string to Mongoose ObjectId if valid
     const isValidObjectId = mongoose.Types.ObjectId.isValid(distributorId);
-    const targetObjectId = isValidObjectId ? new mongoose.Types.ObjectId(distributorId) : distributorId;
+    const targetId = isValidObjectId ? new mongoose.Types.ObjectId(distributorId) : distributorId;
 
-    // Search against both potential field names (distributorId vs distributor) and both types (ObjectId vs String)
+    // Query matching proposals
     const proposals = await Proposal.find({
       $or: [
-        { distributorId: targetObjectId },
-        { distributor: targetObjectId },
+        { distributorId: targetId },
+        { distributor: targetId },
         { distributorId: distributorId },
         { distributor: distributorId }
       ]
     }).sort({ createdAt: -1 });
 
-    return require('../../utils/response').success(res, 'Distributor proposals fetched successfully', proposals);
+    // 🟢 Standard Express response (Fixes line 111 TypeError)
+    return res.status(200).json({
+      success: true,
+      message: 'Proposals fetched successfully',
+      data: proposals
+    });
+
   } catch (error) {
     console.error('Error fetching proposals for distributor:', error);
-    return require('../../utils/response').fail(res, 500, 'SERVER_ERROR', error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
