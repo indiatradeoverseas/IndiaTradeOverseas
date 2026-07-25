@@ -22,10 +22,8 @@ export default function Navbar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isPrakritiDropdownOpen, setIsPrakritiDropdownOpen] = useState(false);
+  const [isServicesDropdownOpen, setIsServicesDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-
-  const isStonePage = location.pathname === '/stone';
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -45,7 +43,7 @@ export default function Navbar() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
-    setIsPrakritiDropdownOpen(false);
+    setIsServicesDropdownOpen(false);
   }, [location]);
 
   const handleLogout = () => {
@@ -56,21 +54,32 @@ export default function Navbar() {
     setIsUserMenuOpen(false);
   };
 
+  // Removed Products link
   const navLinks = [
     { to: '/', label: 'HOME' },
     { to: '/about', label: 'ABOUT US' },
     { to: '/careers', label: 'CAREERS' },
-    { to: '/products', label: 'PRODUCTS'},
   ];
 
-  const prakritiDivisions = [
-    { to: '/prakriti', label: 'TEA DIVISION' },
-    { to: '/prakriti/rice', label: 'RICE DIVISION' },
-    { to: '/stone', label: 'STONE DIVISION' },
+  // Grouped Services Data
+  const servicesGroups = [
+    {
+      groupLabel: 'PRAKRITI DIVISION',
+      links: [
+        { to: '/prakriti', label: 'TEA DIVISION' },
+        { to: '/prakriti/rice', label: 'RICE DIVISION' },
+      ]
+    },
+    {
+      groupLabel: 'STONE & INFRASTRUCTURE',
+      links: [
+        { to: '/stone', label: 'STONE DIVISION' },
+      ]
+    }
   ];
 
   const isActive = (path) => location.pathname === path;
-  const isPrakritiActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
+  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
 
   return (
     <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 via-black/30 to-transparent transition-all duration-300">
@@ -160,41 +169,51 @@ export default function Navbar() {
               </Link>
             ))}
 
+            {/* OUR SERVICES DROPDOWN */}
             <div
               className="relative py-2"
-              onMouseEnter={() => setIsPrakritiDropdownOpen(true)}
-              onMouseLeave={() => setIsPrakritiDropdownOpen(false)}
+              onMouseEnter={() => setIsServicesDropdownOpen(true)}
+              onMouseLeave={() => setIsServicesDropdownOpen(false)}
             >
               <button
                 className={`flex items-center space-x-1 text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none drop-shadow-sm ${
-                  isPrakritiActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                  isServicesActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
                 }`}
               >
-                <span>PRAKRITI DIVISION</span>
-                <FiChevronDown size={12} className={`transition-transform duration-300 ${isPrakritiDropdownOpen ? 'rotate-180' : ''}`} />
+                <span>OUR SERVICES</span>
+                <FiChevronDown size={12} className={`transition-transform duration-300 ${isServicesDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
-                {isPrakritiDropdownOpen && (
+                {isServicesDropdownOpen && (
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="absolute left-0 mt-3 w-48 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
+                    className="absolute left-0 mt-3 w-56 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
                   >
-                    {prakritiDivisions.map((subLink) => (
-                      <Link
-                        key={subLink.to}
-                        to={subLink.to}
-                        className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
-                          location.pathname === subLink.to 
-                            ? 'bg-[#2B3440] text-[#F2F4F7]' 
-                            : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
-                        }`}
-                      >
-                        {subLink.label}
-                      </Link>
+                    {servicesGroups.map((group, gIdx) => (
+                      <div key={gIdx} className={gIdx > 0 ? "border-t border-[#C5CBD3]/15 mt-2 pt-2" : ""}>
+                        {/* Sub-heading Label */}
+                        <div className="px-4 py-1 text-[9px] font-mono font-bold tracking-widest text-[#6D7886] uppercase">
+                          {group.groupLabel}
+                        </div>
+                        {/* Group Links */}
+                        {group.links.map((subLink) => (
+                          <Link
+                            key={subLink.to}
+                            to={subLink.to}
+                            className={`block text-left px-4 py-2 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
+                              location.pathname === subLink.to 
+                                ? 'bg-[#2B3440] text-[#F2F4F7]' 
+                                : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
+                            }`}
+                          >
+                            {subLink.label}
+                          </Link>
+                        ))}
+                      </div>
                     ))}
                   </motion.div>
                 )}
@@ -326,17 +345,27 @@ export default function Navbar() {
               CONTACT
             </Link>
 
+            {/* OUR SERVICES MOBILE ACCORDION */}
             <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
-              <div className="text-[#6D7886] text-[10px] tracking-widest font-mono font-bold">PRAKRITI DIVISION</div>
-              {prakritiDivisions.map((subLink) => (
-                <Link
-                  key={subLink.to}
-                  to={subLink.to}
-                  className="block pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {subLink.label}
-                </Link>
+              <div className="text-[#F2F4F7] text-[11px] tracking-widest font-mono font-bold uppercase">
+                OUR SERVICES
+              </div>
+              {servicesGroups.map((group, gIdx) => (
+                <div key={gIdx} className="space-y-2 pt-1">
+                  <div className="text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase pl-2">
+                    {group.groupLabel}
+                  </div>
+                  {group.links.map((subLink) => (
+                    <Link
+                      key={subLink.to}
+                      to={subLink.to}
+                      className="block pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {subLink.label}
+                    </Link>
+                  ))}
+                </div>
               ))}
             </div>
 
