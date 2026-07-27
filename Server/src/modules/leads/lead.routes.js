@@ -5,7 +5,8 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage , getSalesMetrics} = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage} = require('./lead.controller');
+const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
 const {
