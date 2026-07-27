@@ -27,15 +27,13 @@ async function getLeadDetails(req, res, next) {
 
 async function changeLeadStage(req, res, next) {
   try {
-    const stageToSet = req.body.newStage || req.body.stage;
-if (!stageToSet) {
-  return fail(res, 400, 'VALIDATION_FAILED', 'stage or newStage is required');
-}
+    const newStage = req.body.newStage || req.body.stage; // Handle both keys
+    const { remark, nextFollowupAt } = req.body;
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '';
     const deviceHash = req.headers['x-device-hash'] || '';
 
     if (!newStage) {
-      return fail(res, 400, 'VALIDATION_FAILED', 'newStage is required');
+      return fail(res, 400, 'VALIDATION_FAILED', 'Stage parameter is required');
     }
 
     const lead = await leadService.updateStage({
