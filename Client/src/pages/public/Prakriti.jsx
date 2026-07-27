@@ -99,7 +99,7 @@ export default function Prakriti() {
         }
 
         try {
-            const res = await distributorApi.getDistributorProposalsCustomer(storedDistributorId,'TEA');
+            const res = await distributorApi.getDistributorProposalsCustomer(storedDistributorId, 'TEA');
             if (res && res.success) {
                 setMyProposals(res.data || []);
             }
@@ -354,11 +354,11 @@ export default function Prakriti() {
             {/* ================= LAYER 5: APPROVED TEA BUYER MARKETPLACE ================= */}
             {userAccessLayer === 5 && (
                 <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-900 animate-fadeIn antialiased pt-3 sm:pt-6 pb-20 sm:pb-24">
-                    
+
                     {/* Top B2B Control Header */}
                     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-4 sm:mb-8">
                         <div className="bg-[#0B3D2E] text-white rounded-xl p-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border border-[#50C878]/20 shadow-xl">
-                            
+
                             {/* Brand Header Identity */}
                             <div className="flex items-center justify-between sm:justify-start gap-3">
                                 <div className="flex items-center gap-2.5">
@@ -390,7 +390,7 @@ export default function Prakriti() {
                                     }}
                                     className="relative flex-1 sm:flex-none bg-emerald-500/15 hover:bg-emerald-500/25 active:scale-95 text-[#50C878] border border-[#50C878]/30 font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-2.5 px-3 sm:px-4 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                                 >
-                                    <FiFileText className="text-xs sm:text-sm" /> 
+                                    <FiFileText className="text-xs sm:text-sm" />
                                     <span>My Proposals</span>
                                     {myProposals.filter(p => p.status === 'approved').length > 0 && (
                                         <span className="bg-amber-500 text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce ml-0.5">
@@ -410,7 +410,7 @@ export default function Prakriti() {
                     </div>
 
                     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-8">
-                        
+
                         {/* Hero Banner Section */}
                         <div className="bg-gradient-to-br from-[#0B3D2E] via-[#004B3B] to-[#043327] rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[#50C878]/20 shadow-xl relative overflow-hidden text-white">
                             <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-[radial-gradient(circle_at_top_right,rgba(80,200,120,0.12),transparent_60%)] pointer-events-none" />
@@ -463,11 +463,10 @@ export default function Prakriti() {
                                                     {myProposals.map((prop) => (
                                                         <div
                                                             key={prop._id}
-                                                            className={`p-3.5 sm:p-4 rounded-xl border text-xs transition-all space-y-3 ${
-                                                                prop.status === 'approved' ? 'border-emerald-300/80 bg-white shadow-sm' :
-                                                                prop.status === 'disapproved' ? 'border-rose-200 bg-rose-50/20' :
-                                                                'border-slate-200 bg-white'
-                                                            }`}
+                                                            className={`p-3.5 sm:p-4 rounded-xl border text-xs transition-all space-y-3 ${prop.status === 'approved' ? 'border-emerald-300/80 bg-white shadow-sm' :
+                                                                    prop.status === 'disapproved' ? 'border-rose-200 bg-rose-50/20' :
+                                                                        'border-slate-200 bg-white'
+                                                                }`}
                                                         >
                                                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
                                                                 <div className="space-y-0.5">
@@ -481,11 +480,10 @@ export default function Prakriti() {
                                                                 </div>
 
                                                                 <div className="flex items-center justify-between sm:justify-end gap-2">
-                                                                    <span className={`px-2.5 py-1 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border ${
-                                                                        prop.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
-                                                                        prop.status === 'disapproved' ? 'bg-rose-50 text-rose-700 border-rose-300' :
-                                                                        'bg-amber-50 text-amber-700 border-amber-300'
-                                                                    }`}>
+                                                                    <span className={`px-2.5 py-1 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border ${prop.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
+                                                                            prop.status === 'disapproved' ? 'bg-rose-50 text-rose-700 border-rose-300' :
+                                                                                'bg-amber-50 text-amber-700 border-amber-300'
+                                                                        }`}>
                                                                         {prop.status === 'approved' ? 'Invoice Issued' : prop.status === 'disapproved' ? 'Rejected' : 'Under Review'}
                                                                     </span>
 
@@ -1112,48 +1110,61 @@ export default function Prakriti() {
                     </section>
 
                     {/* VOLUMETRIC CONTAINER CAROUSEL */}
-                    <section className="relative py-24 bg-[#0B3D2E] text-slate-900 px-4 sm:px-6 lg:px-8 border-t border-slate-200 overflow-hidden">
-                        <div className="absolute inset-0 z-0">
+                    <section className="relative py-16 sm:py-24 bg-[#0B3D2E] text-slate-900 px-4 sm:px-6 lg:px-8 border-t border-slate-200 overflow-hidden">
+                        {/* Background Image & Stronger Mobile Gradient Overlay */}
+                        <div className="absolute inset-0 z-0 pointer-events-none">
                             <img
                                 src='/images/Prakriti Image.jpeg'
                                 alt="Cinematic Volumetric Context Background"
-                                className="w-full h-full object-cover object-center"
+                                className="w-full h-full object-cover object-center opacity-40 sm:opacity-100"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#014B3B]/40 via-[#0B3D2E]/30 to-[#014B3B]/40 mix-blend-multiply z-1" />
-                            <div className="absolute inset-0 bg-[#0B3D2E]/20 z-1" />
+                            {/* Darkened overlay to prevent background logo/text bleeding into foreground text */}
+                            <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-[#014B3B]/85 via-[#0B3D2E]/80 to-[#014B3B]/75 sm:from-[#014B3B]/80 sm:via-[#0B3D2E]/70 sm:to-[#014B3B]/50 z-1" />
+                            <div className="absolute inset-0 bg-[#0B3D2E]/40 z-1" />
                         </div>
 
-                        <div className="relative z-10 max-w-5xl mx-auto space-y-12">
-                            <div className="text-center space-y-2">
-                                <span className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#50C878] bg-[#004B3B]/60 px-3 py-1 rounded-full border border-[#50C878]/20 backdrop-blur-xs">
-                                    Flexible Unit Dimensions
-                                </span>
-                                <h2 className="text-3xl sm:text-4xl font-serif uppercase tracking-wide text-white drop-shadow-md">
+                        <div className="relative z-10 max-w-5xl mx-auto space-y-8 sm:space-y-12">
+                            {/* Section Header */}
+                            <div className="text-center space-y-3 px-2">
+                                <div>
+                                    <span className="inline-block text-[10px] sm:text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#50C878] bg-[#004B3B]/80 px-3 py-1 rounded-full border border-[#50C878]/30 backdrop-blur-md shadow-sm">
+                                        Flexible Unit Dimensions
+                                    </span>
+                                </div>
+                                <h2 className="text-2xl sm:text-4xl font-serif uppercase tracking-wide text-white drop-shadow-md leading-tight">
                                     Packaging Portfolio Sizing
                                 </h2>
                             </div>
 
-                            <div className="relative border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl min-h-[300px] flex flex-col justify-between overflow-hidden bg-white/95 backdrop-blur-md">
-                                <div className="absolute inset-y-0 left-2 flex items-center z-30">
+                            {/* Carousel Card Container */}
+                            <div className="relative border border-white/10 rounded-2xl p-4 sm:p-10 shadow-2xl min-h-[320px] flex flex-col justify-between overflow-hidden bg-white/95 backdrop-blur-md">
+
+                                {/* Navigation Buttons: Responsive Positioning */}
+                                <div className="absolute inset-y-0 left-1 sm:left-3 flex items-center z-30">
                                     <button
                                         onClick={() => setCarouselIndex((prev) => (prev - 1 + CAROUSEL_IMAGES.length) % CAROUSEL_IMAGES.length)}
-                                        className="w-10 h-10 rounded-full bg-[#004B3B] hover:bg-[#50C878] hover:text-[#004B3B] text-white flex items-center justify-center transition-colors shadow-md"
+                                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#004B3B] hover:bg-[#50C878] hover:text-[#004B3B] text-white flex items-center justify-center transition-all shadow-lg active:scale-95"
+                                        aria-label="Previous Slide"
                                     >
-                                        <FiArrowLeft />
-                                    </button>
-                                </div>
-                                <div className="absolute inset-y-0 right-2 flex items-center z-30">
-                                    <button
-                                        onClick={() => setCarouselIndex((prev) => (prev + 1) % CAROUSEL_IMAGES.length)}
-                                        className="w-10 h-10 rounded-full bg-[#004B3B] hover:bg-[#50C878] hover:text-[#004B3B] text-white flex items-center justify-center transition-colors shadow-md"
-                                    >
-                                        <FiArrowRight />
+                                        <FiArrowLeft size={18} />
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center w-full relative z-10 py-4 px-6">
+                                <div className="absolute inset-y-0 right-1 sm:right-3 flex items-center z-30">
+                                    <button
+                                        onClick={() => setCarouselIndex((prev) => (prev + 1) % CAROUSEL_IMAGES.length)}
+                                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#004B3B] hover:bg-[#50C878] hover:text-[#004B3B] text-white flex items-center justify-center transition-all shadow-lg active:scale-95"
+                                        aria-label="Next Slide"
+                                    >
+                                        <FiArrowRight size={18} />
+                                    </button>
+                                </div>
+
+                                {/* Content Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center w-full relative z-10 py-2 sm:py-4 px-8 sm:px-12">
+                                    {/* Image Column */}
                                     <div className="md:col-span-4 w-full flex justify-center">
-                                        <div className="relative w-40 h-52 rounded-xl overflow-hidden border border-slate-200 shadow-lg bg-[#FAF9F5] flex items-center justify-center p-4">
+                                        <div className="relative w-36 sm:w-44 h-48 sm:h-56 rounded-xl overflow-hidden border border-slate-200 shadow-md bg-[#FAF9F5] flex items-center justify-center p-3">
                                             {CAROUSEL_IMAGES[carouselIndex] && (
                                                 <img
                                                     src={CAROUSEL_IMAGES[carouselIndex].image}
@@ -1161,29 +1172,36 @@ export default function Prakriti() {
                                                     className="w-full h-full object-contain"
                                                 />
                                             )}
-                                            <div className="absolute bottom-2 left-2 bg-[#004B3B] text-[#50C878] text-[10px] font-mono px-2 py-0.5 rounded font-bold">
-                                                {CAROUSEL_IMAGES[carouselIndex].size}
+                                            <div className="absolute bottom-2 left-2 bg-[#004B3B] text-[#50C878] text-[9px] sm:text-[10px] font-mono px-2 py-0.5 rounded font-bold">
+                                                {CAROUSEL_IMAGES[carouselIndex]?.size}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="md:col-span-8 space-y-4 text-center md:text-left">
-                                        <span className="inline-flex items-center text-[9px] font-mono uppercase tracking-widest text-[#004B3B] bg-[#50C878]/30 px-2.5 py-0.5 rounded-sm font-bold">
-                                            {CAROUSEL_IMAGES[carouselIndex].format}
-                                        </span>
-                                        <h3 className="text-2xl sm:text-3xl font-serif text-[#0B3D2E] font-bold">{CAROUSEL_IMAGES[carouselIndex].size} Format</h3>
-                                        <p className="text-slate-600 font-sans font-light text-xs sm:text-sm leading-relaxed">
-                                            {CAROUSEL_IMAGES[carouselIndex].description}
+                                    {/* Text Column */}
+                                    <div className="md:col-span-8 space-y-3 text-center md:text-left">
+                                        <div>
+                                            <span className="inline-flex items-center text-[9px] font-mono uppercase tracking-widest text-[#004B3B] bg-[#50C878]/30 px-2.5 py-1 rounded-sm font-bold">
+                                                {CAROUSEL_IMAGES[carouselIndex]?.format}
+                                            </span>
+                                        </div>
+                                        <h3 className="text-xl sm:text-3xl font-serif text-[#0B3D2E] font-bold">
+                                            {CAROUSEL_IMAGES[carouselIndex]?.size} Format
+                                        </h3>
+                                        <p className="text-slate-600 font-sans font-light text-xs sm:text-sm leading-relaxed max-w-xl mx-auto md:mx-0">
+                                            {CAROUSEL_IMAGES[carouselIndex]?.description}
                                         </p>
                                     </div>
                                 </div>
 
+                                {/* Carousel Indicators */}
                                 <div className="flex justify-center items-center gap-2 pt-4 border-t border-slate-100 relative z-10">
                                     {CAROUSEL_IMAGES.map((_, idx) => (
                                         <button
                                             key={idx}
                                             onClick={() => setCarouselIndex(idx)}
                                             className={`h-1.5 transition-all rounded-full ${carouselIndex === idx ? 'bg-[#004B3B] w-6' : 'bg-slate-200 w-1.5'}`}
+                                            aria-label={`Go to slide ${idx + 1}`}
                                         />
                                     ))}
                                 </div>
@@ -1536,7 +1554,7 @@ export default function Prakriti() {
                                             try {
                                                 const proposalPayload = {
                                                     distributorId: distributorId,
-                                                    divison:'TEA',
+                                                    divison: 'TEA',
                                                     lotId: activeDrawerLot.id,
                                                     region: activeDrawerLot.region,
                                                     grade: activeDrawerLot.grade,
