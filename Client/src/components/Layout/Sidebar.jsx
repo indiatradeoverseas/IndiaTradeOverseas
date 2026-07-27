@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiLayout,
   FiUsers,
@@ -17,13 +17,18 @@ import {
   FiCheckSquare,
   FiBell,
   FiBriefcase,
-  FiLogOut
+  FiLogOut,
+  FiLayers,
+  FiChevronDown,
+  FiChevronRight
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+
 
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [isDeptExpanded, setIsDeptExpanded] = useState(false);
 
   const menuItems = [
     { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
@@ -38,6 +43,15 @@ export default function Sidebar({ onClose }) {
     { to: '/crm/distributors', label: 'Distributors', icon: FiBriefcase }
   ].filter(Boolean);
 
+  const departments = [
+    { label: 'Sales', to: '/crm/employees?dept=SALES' },
+    { label: 'Transport', to: '/crm/employees?dept=TRANSPORT' },
+    { label: 'HR', to: '/crm/employees?dept=HR' },
+    { label: 'IT', to: '/crm/employees?dept=IT' },
+    { label: 'Management', to: '/crm/employees?role=MANAGER' },
+    { label: 'Co-founder', to: '/crm/employees?role=ADMIN' }
+  ];
+
   const adminMenuItems = [
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/employees', label: 'Employees', icon: FiUsers },
@@ -48,6 +62,7 @@ export default function Sidebar({ onClose }) {
   ].filter(Boolean);
 
   const showAdminMenu = ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true;
+
 
   const handleLogout = () => {
     logout();
@@ -116,6 +131,55 @@ export default function Sidebar({ onClose }) {
             </NavLink>
           ))}
         </div>
+
+        {/* Department Section */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsDeptExpanded(!isDeptExpanded)}
+            className="flex items-center justify-between w-full px-4 py-2 text-left text-[9px] font-mono text-[#6D7886] uppercase tracking-[0.25em] font-bold hover:text-[#F2F4F7] transition-colors cursor-pointer"
+          >
+            <span>Department</span>
+            {isDeptExpanded ? <FiChevronDown size={12} /> : <FiChevronRight size={12} />}
+          </button>
+          
+          <AnimatePresence>
+            {isDeptExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden space-y-1 pl-3"
+              >
+                {departments.map((dept) => (
+                  <NavLink
+                    key={dept.to}
+                    to={dept.to}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-2.5 rounded-sm text-[11px] font-medium tracking-wide uppercase transition-all relative group ${
+                        isActive 
+                          ? 'bg-[#121D29] text-[#F2F4F7] font-semibold shadow-inner' 
+                          : 'text-[#C5CBD3] hover:bg-[#121D29]/40 hover:text-[#F2F4F7]'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <FiLayers size={13} className={isActive ? "text-[#F2F4F7]" : "text-[#6D7886] group-hover:text-[#C5CBD3] transition-colors"} />
+                        <span>{dept.label}</span>
+                        {isActive && (
+                          <span className="absolute right-0 top-1 bottom-1 w-[2.5px] bg-[#F2F4F7] rounded-l-full" />
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
 
         {/* Administration Section */}
         {showAdminMenu && (

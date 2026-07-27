@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUserPlus,
@@ -15,13 +16,20 @@ import {
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/admin';
 
+
 export default function Employees() {
+  const [searchParams] = useSearchParams();
+  const deptParam = searchParams.get('dept');
+  const roleParam = searchParams.get('role');
+
   const [users, setUsers] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
+  const [selectedRole, setSelectedRole] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
+
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -64,6 +72,19 @@ export default function Employees() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (deptParam) {
+      setSelectedDept(deptParam.toUpperCase());
+    } else {
+      setSelectedDept('ALL');
+    }
+    if (roleParam) {
+      setSelectedRole(roleParam.toUpperCase());
+    } else {
+      setSelectedRole('ALL');
+    }
+  }, [deptParam, roleParam]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -178,8 +199,9 @@ export default function Employees() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesDept = selectedDept === 'ALL' || user.department === selectedDept;
+    const matchesRole = selectedRole === 'ALL' || user.role === selectedRole;
 
-    return matchesSearch && matchesDept;
+    return matchesSearch && matchesDept && matchesRole;
   });
 
   if (loading) {

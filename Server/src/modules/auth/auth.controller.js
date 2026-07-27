@@ -216,7 +216,7 @@ async function requestOtp(req, res, next) {
     user.otpExpires = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
- 
+
     const otpHash = await bcrypt.hash(otp, 10);
     await otpModel.deleteMany({ email: user.email });
     await otpModel.create({
@@ -239,7 +239,7 @@ async function requestOtp(req, res, next) {
 
     return ok(res, {}, 'OTP generated successfully', 200, req);
     // return ok(res, { otp }, 'OTP generated successfully (Demo Mode)', 200, req);
-    
+
   } catch (error) {
     next(error);
   }

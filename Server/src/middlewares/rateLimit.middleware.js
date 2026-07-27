@@ -11,12 +11,12 @@ setInterval(() => {
       ipCache.delete(ip);
     }
   }
-}, 5 * 60 * 1000); 
+}, 5 * 60 * 1000);
 
 function rateLimiter(req, res, next) {
   const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
-  
+
   let record = ipCache.get(ip);
   if (!record || now - record.resetTime > securityConfig.rateLimiting.windowMs) {
     record = {
@@ -25,9 +25,9 @@ function rateLimiter(req, res, next) {
     };
     ipCache.set(ip, record);
   }
-  
+
   record.hits += 1;
-  
+
   if (record.hits > securityConfig.rateLimiting.max) {
     return fail(
       res,
@@ -38,7 +38,7 @@ function rateLimiter(req, res, next) {
       req
     );
   }
-  
+
   next();
 }
 

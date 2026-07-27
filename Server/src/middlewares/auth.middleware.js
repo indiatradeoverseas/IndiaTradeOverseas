@@ -20,10 +20,10 @@ async function authenticate(req, res, next) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User is deactivated or invalid', [], req);
     }
 
-    
+
     req.user = user;
 
-    
+
     const openRoutes = [
       '/api/auth/device/request-approval',
       '/api/auth/me',
@@ -56,7 +56,7 @@ async function authenticate(req, res, next) {
       let device = await TrustedDevice.findOne({ userId: user._id, deviceHash });
 
       if (!device) {
-        
+
         device = await TrustedDevice.create({
           userId: user._id,
           deviceHash,
@@ -114,13 +114,11 @@ async function authenticateDistributor(req, res, next) {
       return next();
     }
 
-    // Check if it is a system user (Staff)
     const User = require('../modules/users/user.model');
     const user = await User.findById(decoded.sub);
 
     if (user && user.isActive) {
       req.user = user;
-      // Setup a mock distributor context for staff bypass
       req.distributor = {
         _id: user._id,
         name: user.fullName,

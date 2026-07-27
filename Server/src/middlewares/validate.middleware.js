@@ -4,13 +4,13 @@ function validateBody(requiredFields) {
   return (req, res, next) => {
     const missing = [];
     const body = req.body || {};
-    
+
     for (const field of requiredFields) {
       if (body[field] === undefined || body[field] === null || body[field] === '') {
         missing.push(field);
       }
     }
-    
+
     if (missing.length > 0) {
       return fail(
         res,
@@ -21,7 +21,6 @@ function validateBody(requiredFields) {
         req
       );
     }
-    
     next();
   };
 }

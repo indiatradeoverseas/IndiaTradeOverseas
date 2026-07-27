@@ -73,22 +73,22 @@ function checkPermission(...permissionNames) {
     if (!req.user) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Unauthorized: Authentication required', [], req);
     }
-    
+
     if (req.user.role === 'ADMIN') {
       return next();
     }
-    
+
     const hasAnyPermission = permissionNames.some(perm => {
       if (req.user[perm] === true) return true;
       const rolePerms = rolePermissions[req.user.role];
       if (rolePerms && rolePerms[perm] === true) return true;
       return false;
     });
-    
+
     if (hasAnyPermission) {
       return next();
     }
-    
+
     return fail(
       res,
       403,
