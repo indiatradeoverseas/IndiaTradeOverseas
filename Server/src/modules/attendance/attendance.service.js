@@ -63,6 +63,44 @@ async function checkOut(userId) {
   return record;
 }
 
+async function startLunch(userId) {
+  const today = getDayStart();
+  const record = await Attendance.findOne({ employeeId: userId, date: today });
+  if (!record || !record.checkInAt) {
+    throw new Error('NOT_CHECKED_IN');
+  }
+  if (record.checkOutAt) {
+    throw new Error('ALREADY_CHECKED_OUT');
+  }
+  if (record.lunchEndAt) {
+    throw new Error('LUNCH_ALREADY_TAKEN');
+  }
+  if (record.lunchStartAt) {
+    throw new Error('LUNCH_ALREADY_IN_PROGRESS');
+  }
+
+  record.lunchStartAt = new Date();
+  await record.save();
+  return record;
+}
+
+async function endLunch(userId) {
+  const today = getDayStart();
+  const record = await Attendance.findOne({ employeeId: userId, date: today });
+  if (!record || !record.lunchStartAt) {
+    throw new Error('LUNCH_NOT_STARTED');
+  }
+  if (record.lunchEndAt) {
+    throw new Error('LUNCH_ALREADY_ENDED');
+  }
+
+  const now = new Date();
+  record.lunchEndAt = now;
+  record.lunchDurationMinutes = Math.round((now - record.lunchStartAt) / 60000);
+  await record.save();
+  return record;
+}
+
 async function getTodayStatus(userId) {
   const today = getDayStart();
   return Attendance.findOne({ employeeId: userId, date: today });
@@ -101,6 +139,8 @@ module.exports = {
   getDayStart,
   checkIn,
   checkOut,
+  startLunch,
+  endLunch,
   getTodayStatus,
   getPresentTodayCount,
   getAttendanceReport,
