@@ -6,6 +6,9 @@ const attendanceSchema = new mongoose.Schema(
     date: { type: Date, required: true, index: true },
     checkInAt: { type: Date, default: null },
     checkOutAt: { type: Date, default: null },
+    lunchStartAt: { type: Date, default: null },
+    lunchEndAt: { type: Date, default: null },
+    lunchDurationMinutes: { type: Number, default: 0 },
     workingHours: { type: Number, default: 0 },
     status: {
       type: String,

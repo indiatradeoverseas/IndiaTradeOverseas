@@ -28,6 +28,40 @@ async function checkOut(req, res, next) {
   }
 }
 
+async function startLunch(req, res, next) {
+  try {
+    const record = await attendanceService.startLunch(req.user._id);
+    return ok(res, { attendance: record }, 'Lunch break started', 200, req);
+  } catch (error) {
+    const messages = {
+      NOT_CHECKED_IN: 'You must check in before starting your lunch break',
+      ALREADY_CHECKED_OUT: 'You have already checked out for the day',
+      LUNCH_ALREADY_TAKEN: 'Lunch break has already been recorded for today',
+      LUNCH_ALREADY_IN_PROGRESS: 'Lunch break is already in progress'
+    };
+    if (messages[error.message]) {
+      return fail(res, 400, error.message, messages[error.message]);
+    }
+    next(error);
+  }
+}
+
+async function endLunch(req, res, next) {
+  try {
+    const record = await attendanceService.endLunch(req.user._id);
+    return ok(res, { attendance: record }, 'Lunch break ended', 200, req);
+  } catch (error) {
+    const messages = {
+      LUNCH_NOT_STARTED: 'Lunch break has not been started yet',
+      LUNCH_ALREADY_ENDED: 'Lunch break has already been ended for today'
+    };
+    if (messages[error.message]) {
+      return fail(res, 400, error.message, messages[error.message]);
+    }
+    next(error);
+  }
+}
+
 async function getMyTodayStatus(req, res, next) {
   try {
     const record = await attendanceService.getTodayStatus(req.user._id);
@@ -59,6 +93,8 @@ async function cleanupOrphaned(req, res, next) {
 module.exports = {
   checkIn,
   checkOut,
+  startLunch,
+  endLunch,
   getMyTodayStatus,
   getReport,
   cleanupOrphaned
