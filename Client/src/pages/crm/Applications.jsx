@@ -67,12 +67,12 @@ export default function Applications() {
 
   const getStatusColor = (status) => {
     const colors = {
-      PENDING: 'bg-amber-50 text-amber-700 border-amber-200/60',
-      REVIEWED: 'bg-[#0B2D5B]/5 text-[#0B2D5B] border-[#0B2D5B]/10',
-      ACCEPTED: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-      REJECTED: 'bg-rose-50 text-rose-800 border-rose-200'
+      PENDING: 'bg-amber-950/20 text-amber-400 border-amber-500/20',
+      REVIEWED: 'bg-sky-950/20 text-sky-400 border-sky-500/20',
+      ACCEPTED: 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20',
+      REJECTED: 'bg-rose-950/20 text-rose-400 border-rose-500/20'
     };
-    return colors[status] || 'bg-gray-50 text-gray-700 border-gray-200';
+    return colors[status] || 'bg-[#121D29] text-[#6D7886] border-[#C5CBD3]/10';
   };
 
   const positions = ['ALL', ...new Set(applications.map(app => app.position))];
@@ -91,39 +91,39 @@ export default function Applications() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] bg-[#FBF7EF]">
+      <div className="flex items-center justify-center min-h-[60vh] bg-[#0E1116]">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#C99B38]"></div>
-          <p className="text-xs tracking-widest uppercase font-serif text-[#0B2D5B] opacity-70">Cataloging Talent Pipeline...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#F2F4F7]"></div>
+          <p className="text-xs tracking-widest uppercase font-serif text-[#C5CBD3] opacity-70">Cataloging Talent Pipeline...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FBF7EF] text-[#0B2D5B] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
-      
+    <div className="min-h-screen bg-[#0E1116] text-[#C5CBD3] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
+
       {/* Upper Deck Header */}
-      <div className="border-b border-[#C99B38]/10 pb-6">
-        <span className="text-xs uppercase tracking-widest text-[#C99B38] font-bold">Human Capital Matrix</span>
-        <h1 className="text-3xl font-serif text-[#0B2D5B] tracking-wide mt-1">Job Applications</h1>
-        <p className="text-sm text-gray-500 font-light mt-0.5">Audit global talent records, manage interview routing matrices, and evaluate candidate credentials.</p>
+      <div className="border-b border-[#C5CBD3]/10 pb-6">
+        <span className="text-xs uppercase tracking-widest text-[#6D7886] font-bold">Human Capital Matrix</span>
+        <h1 className="text-3xl font-serif text-[#F2F4F7] tracking-wide mt-1">Job Applications</h1>
+        <p className="text-sm text-[#6D7886] font-light mt-0.5">Audit global talent records, manage interview routing matrices, and evaluate candidate credentials.</p>
       </div>
 
       {/* Analytics Summary Panels */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Total Received", val: applications.length, icon: FiUser, bg: "bg-[#0B2D5B]/5", text: "text-[#0B2D5B]" },
-          { label: "Pending Review", val: applications.filter(a => a.status === 'PENDING').length, icon: FiClock, bg: "bg-amber-50", text: "text-amber-700" },
-          { label: "Accepted Nodes", val: applications.filter(a => a.status === 'ACCEPTED').length, icon: FiCheckCircle, bg: "bg-emerald-50", text: "text-emerald-800" },
-          { label: "Rejected Records", val: applications.filter(a => a.status === 'REJECTED').length, icon: FiXCircle, bg: "bg-rose-50", text: "text-rose-800" }
+          { label: "Total Received", val: applications.length, icon: FiUser, bg: "bg-[#0E1116]", text: "text-[#F2F4F7]" },
+          { label: "Pending Review", val: applications.filter(a => a.status === 'PENDING').length, icon: FiClock, bg: "bg-amber-950/30", text: "text-amber-400" },
+          { label: "Accepted Nodes", val: applications.filter(a => a.status === 'ACCEPTED').length, icon: FiCheckCircle, bg: "bg-emerald-950/30", text: "text-emerald-400" },
+          { label: "Rejected Records", val: applications.filter(a => a.status === 'REJECTED').length, icon: FiXCircle, bg: "bg-rose-950/30", text: "text-rose-400" }
         ].map((card, idx) => (
-          <div key={idx} className="bg-white rounded-xl border border-[#C99B38]/10 p-5 flex items-center justify-between shadow-sm">
+          <div key={idx} className="bg-[#121D29]/30 rounded-xl border border-[#C5CBD3]/15 p-5 flex items-center justify-between shadow-sm">
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400">{card.label}</p>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-[#6D7886]">{card.label}</p>
               <p className={`text-2xl font-serif mt-1 font-normal ${card.text}`}>{card.val}</p>
             </div>
-            <div className={`p-3 ${card.bg} text-[#C99B38] rounded-xl shadow-inner`}>
+            <div className={`p-3 ${card.bg} ${card.text} rounded-xl shadow-inner`}>
               <card.icon size={18} />
             </div>
           </div>
@@ -131,24 +131,24 @@ export default function Applications() {
       </div>
 
       {/* Control Console Filtering */}
-      <div className="bg-white p-4 rounded-xl border border-[#C99B38]/10 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+      <div className="bg-[#121D29]/20 p-4 rounded-xl border border-[#C5CBD3]/15 shadow-sm flex flex-col md:flex-row gap-4 items-center">
         <div className="flex-1 w-full relative">
-          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7886]" size={16} />
           <input
             type="text"
             placeholder="Search candidate index registry by name, email coordinates, or phone manifest..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] focus:ring-1 focus:ring-[#C99B38] rounded-lg outline-none text-sm transition text-[#0B2D5B]"
+            className="w-full pl-11 pr-4 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 focus:ring-1 focus:ring-[#F2F4F7]/20 rounded-lg outline-none text-sm transition text-[#F2F4F7]"
           />
         </div>
 
         <div className="w-full md:w-52 flex items-center gap-2">
-          <FiFilter className="text-gray-400 shrink-0" size={16} />
+          <FiFilter className="text-[#6D7886] shrink-0" size={16} />
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full px-3 py-2.5 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] rounded-lg outline-none text-sm cursor-pointer text-[#0B2D5B]"
+            className="w-full px-3 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-lg outline-none text-sm cursor-pointer text-[#F2F4F7]"
           >
             <option value="ALL">All Statuses</option>
             <option value="PENDING">Pending Review</option>
@@ -159,11 +159,11 @@ export default function Applications() {
         </div>
 
         <div className="w-full md:w-60 flex items-center gap-2">
-          <FiFilter className="text-gray-400 shrink-0" size={16} />
+          <FiFilter className="text-[#6D7886] shrink-0" size={16} />
           <select
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
-            className="w-full px-3 py-2.5 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] rounded-lg outline-none text-sm cursor-pointer text-[#0B2D5B]"
+            className="w-full px-3 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-lg outline-none text-sm cursor-pointer text-[#F2F4F7]"
           >
             <option value="ALL">All Positions</option>
             {positions.filter(pos => pos !== 'ALL').map(pos => (
@@ -174,11 +174,11 @@ export default function Applications() {
       </div>
 
       {/* Main Stream Table Registry */}
-      <div className="bg-white rounded-xl border border-[#C99B38]/10 shadow-sm overflow-hidden">
+      <div className="bg-[#121D29]/10 rounded-xl border border-[#C5CBD3]/15 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#0B2D5B] text-white text-[11px] uppercase tracking-wider">
+              <tr className="bg-[#040A12] text-[#6D7886] text-[11px] uppercase tracking-wider">
                 <th className="py-4 px-6 font-medium">Candidate Identity Details</th>
                 <th className="py-4 px-6 font-medium">Target Deployment Position</th>
                 <th className="py-4 px-6 font-medium">Inbound Timestamp</th>
@@ -187,10 +187,10 @@ export default function Applications() {
                 <th className="py-4 px-6 text-center font-medium">Lifecycle Routing</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className="divide-y divide-[#C5CBD3]/10 text-sm">
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-16 text-xs uppercase tracking-widest text-gray-400 bg-[#FBF7EF]/10">
+                  <td colSpan="6" className="text-center py-16 text-xs uppercase tracking-widest text-[#6D7886] bg-[#0E1116]/40">
                     No strategic candidate profiles discoverable within the active search criteria.
                   </td>
                 </tr>
@@ -200,37 +200,37 @@ export default function Applications() {
                   const isExpanded = expandedApp === appId;
                   return (
                     <React.Fragment key={appId}>
-                      <tr className="hover:bg-[#FBF7EF]/40 transition duration-150">
-                        
+                      <tr className="hover:bg-[#121D29]/40 transition duration-150">
+
                         {/* Name & Encrypted Data Toggles */}
                         <td className="py-4 px-6">
                           <div className="space-y-0.5">
-                            <div className="font-serif font-medium text-base text-[#0B2D5B] flex flex-wrap items-center gap-2">
+                            <div className="font-serif font-medium text-base text-[#F2F4F7] flex flex-wrap items-center gap-2">
                               {app.fullName}
                               {app.coverLetter && (
                                 <button
                                   onClick={() => setExpandedApp(isExpanded ? null : appId)}
-                                  className="inline-flex items-center text-xs font-sans font-normal text-[#C99B38] hover:text-[#0B2D5B] transition border border-[#C99B38]/20 bg-[#FBF7EF] px-2 py-0.5 rounded gap-1"
+                                  className="inline-flex items-center text-xs font-sans font-normal text-[#C5CBD3] hover:text-[#F2F4F7] transition border border-[#C5CBD3]/20 bg-[#0E1116] px-2 py-0.5 rounded gap-1"
                                 >
                                   <FiEye size={12} />
                                   <span>Cover Manifest</span>
                                 </button>
                               )}
                             </div>
-                            <div className="text-xs text-gray-400">{app.email}</div>
-                            <div className="text-xs text-gray-400">{app.phone}</div>
+                            <div className="text-xs text-[#6D7886]">{app.email}</div>
+                            <div className="text-xs text-[#6D7886]">{app.phone}</div>
                           </div>
                         </td>
 
                         {/* Staged Position */}
                         <td className="py-4 px-6">
-                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[#0B2D5B]/5 text-[#0B2D5B]">
+                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[#121D29] border border-[#C5CBD3]/10 text-[#C5CBD3]">
                             {app.position}
                           </span>
                         </td>
 
                         {/* Formatted Date */}
-                        <td className="py-4 px-6 text-xs font-mono text-gray-500 font-medium">
+                        <td className="py-4 px-6 text-xs font-mono text-[#6D7886] font-medium">
                           {new Date(app.createdAt).toLocaleDateString('en-IN', {
                             year: 'numeric',
                             month: 'short',
@@ -249,10 +249,10 @@ export default function Applications() {
                         <td className="py-4 px-6 text-center">
                           <button
                             onClick={() => handleDownloadResume(appId, app.resumeOriginalName)}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-gray-200/80 text-gray-600 hover:border-[#C99B38] hover:text-[#0B2D5B] text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-[#C5CBD3]/20 text-[#C5CBD3] hover:border-[#F2F4F7]/40 hover:text-[#F2F4F7] text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
                             title="Download PDF Credentials Dossier"
                           >
-                            <FiDownload size={13} className="text-[#C99B38]" />
+                            <FiDownload size={13} className="text-[#6D7886]" />
                             <span>Download CV</span>
                           </button>
                         </td>
@@ -262,7 +262,7 @@ export default function Applications() {
                           <select
                             value={app.status}
                             onChange={(e) => handleStatusChange(appId, e.target.value)}
-                            className="px-2.5 py-1.5 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-xs font-medium text-[#0B2D5B] rounded-lg outline-none cursor-pointer"
+                            className="px-2.5 py-1.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-xs font-medium text-[#F2F4F7] rounded-lg outline-none cursor-pointer"
                           >
                             <option value="PENDING">Pending</option>
                             <option value="REVIEWED">Reviewed</option>
@@ -275,19 +275,19 @@ export default function Applications() {
                       {/* Expanding Profile Section containing Cover Letter */}
                       <AnimatePresence>
                         {isExpanded && (
-                          
-                          <div className="bg-[#FBF7EF]/50">
-                            <td colSpan="6" className="py-5 px-8 border-t border-gray-100">
-                              <motion.div 
+
+                          <div className="bg-[#0E1116]/60">
+                            <td colSpan="6" className="py-5 px-8 border-t border-[#C5CBD3]/10">
+                              <motion.div
                                 initial={{ opacity: 0, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -4 }}
                                 className="space-y-2"
                               >
-                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                  <FiFileText className="text-[#C99B38]" size={12} /> Candidate Intent Justification / Statement of Purpose
+                                <h4 className="text-[10px] font-bold text-[#6D7886] uppercase tracking-widest flex items-center gap-1">
+                                  <FiFileText className="text-[#6D7886]" size={12} /> Candidate Intent Justification / Statement of Purpose
                                 </h4>
-                                <p className="text-gray-700 text-xs leading-relaxed font-light whitespace-pre-line bg-white p-4 border border-gray-100 rounded-xl shadow-inner max-w-4xl">
+                                <p className="text-[#C5CBD3] text-xs leading-relaxed font-light whitespace-pre-line bg-[#121D29]/30 p-4 border border-[#C5CBD3]/10 rounded-xl shadow-inner max-w-4xl">
                                   {app.coverLetter}
                                 </p>
                               </motion.div>
