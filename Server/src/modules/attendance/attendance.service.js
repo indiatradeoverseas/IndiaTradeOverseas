@@ -1,8 +1,11 @@
 const Attendance = require('./attendance.model');
 
-const LATE_THRESHOLD_HOUR = 10;
+// Official shift: 09:00 AM - 06:00 PM (9 working hours), with a 15-minute grace period.
+const SHIFT_START_HOUR = 9;
+const SHIFT_END_HOUR = 18;
+const LATE_THRESHOLD_HOUR = 9;
 const LATE_THRESHOLD_MINUTE = 15;
-const STANDARD_WORK_HOURS = 8;
+const STANDARD_WORK_HOURS = 9;
 
 function getDayStart(date = new Date()) {
   const d = new Date(date);
@@ -70,9 +73,15 @@ async function getPresentTodayCount() {
   return Attendance.countDocuments({ date: today, checkInAt: { $ne: null } });
 }
 
-async function getAttendanceReport({ employeeId, startDate, endDate } = {}) {
+async function getAttendanceReport({ employeeId, department, startDate, endDate } = {}) {
   const filter = {};
-  if (employeeId) filter.employeeId = employeeId;
+  if (employeeId) {
+    filter.employeeId = employeeId;
+  } else if (department) {
+    const User = require('../users/user.model');
+    const users = await User.find({ department }).select('_id');
+    filter.employeeId = { $in: users.map((u) => u._id) };
+  }
   if (startDate || endDate) {
     filter.date = {};
     if (startDate) filter.date.$gte = getDayStart(new Date(startDate));
@@ -83,11 +92,17 @@ async function getAttendanceReport({ employeeId, startDate, endDate } = {}) {
     .sort({ date: -1 });
 }
 
+async function cleanupOrphanedRecords() {
+  const result = await Attendance.deleteMany({ checkInAt: null });
+  return result.deletedCount;
+}
+
 module.exports = {
   getDayStart,
   checkIn,
   checkOut,
   getTodayStatus,
   getPresentTodayCount,
-  getAttendanceReport
+  getAttendanceReport,
+  cleanupOrphanedRecords
 };
