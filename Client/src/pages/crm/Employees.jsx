@@ -206,28 +206,28 @@ export default function Employees() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] bg-[#FBF7EF]">
+      <div className="flex items-center justify-center min-h-[60vh] bg-[#0E1116]">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#C99B38]"></div>
-          <p className="text-xs tracking-widest uppercase font-serif text-[#0B2D5B] opacity-70">Cataloging Global HR Assets...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#F2F4F7]"></div>
+          <p className="text-xs tracking-widest uppercase font-serif text-[#C5CBD3] opacity-70">Cataloging Global HR Assets...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FBF7EF] text-[#0B2D5B] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
-      
+    <div className="min-h-screen bg-[#0E1116] text-[#C5CBD3] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
+
       {/* Header Deck */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#C99B38]/10 pb-6 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#C5CBD3]/10 pb-6 gap-4">
         <div>
-          <span className="text-xs uppercase tracking-widest text-[#C99B38] font-bold">Personnel Infrastructure</span>
-          <h1 className="text-3xl font-serif text-[#0B2D5B] font-normal tracking-wide mt-1">Employees & Performance</h1>
-          <p className="text-sm text-gray-500 font-light mt-0.5">Manage system accounts, configure localized operational access, and track live pipeline conversions.</p>
+          <span className="text-xs uppercase tracking-widest text-[#6D7886] font-bold">Personnel Infrastructure</span>
+          <h1 className="text-3xl font-serif text-[#F2F4F7] font-normal tracking-wide mt-1">Employees & Performance</h1>
+          <p className="text-sm text-[#6D7886] font-light mt-0.5">Manage system accounts, configure localized operational access, and track live pipeline conversions.</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-[#0B2D5B] hover:bg-[#C99B38] text-white text-xs uppercase tracking-wider font-semibold px-5 py-3 rounded-lg flex items-center space-x-2 transition-all duration-300 shadow-md active:scale-98"
+          className="bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#040A12] text-xs uppercase tracking-wider font-semibold px-5 py-3 rounded-lg flex items-center space-x-2 transition-all duration-300 shadow-md active:scale-98"
         >
           <FiUserPlus size={14} />
           <span>Add Strategic Employee</span>
@@ -235,24 +235,24 @@ export default function Employees() {
       </div>
 
       {/* Control Filters and Intelligence Search */}
-      <div className="bg-white p-4 rounded-xl border border-[#C99B38]/10 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+      <div className="bg-[#121D29]/20 p-4 rounded-xl border border-[#C5CBD3]/15 shadow-sm flex flex-col md:flex-row gap-4 items-center">
         <div className="flex-1 w-full relative">
-          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7886]" size={16} />
           <input
             type="text"
             placeholder="Search operator by full name, registration token, or corporate email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] focus:ring-1 focus:ring-[#C99B38] rounded-lg outline-none text-sm transition text-[#0B2D5B]"
+            className="w-full pl-11 pr-4 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 focus:ring-1 focus:ring-[#F2F4F7]/20 rounded-lg outline-none text-sm transition text-[#F2F4F7]"
           />
         </div>
 
         <div className="w-full md:w-72 flex items-center gap-2">
-          <FiFilter className="text-gray-400 shrink-0" size={16} />
+          <FiFilter className="text-[#6D7886] shrink-0" size={16} />
           <select
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
-            className="w-full px-3 py-2.5 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] rounded-lg outline-none text-sm cursor-pointer text-[#0B2D5B]"
+            className="w-full px-3 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-lg outline-none text-sm cursor-pointer text-[#F2F4F7]"
           >
             <option value="ALL">All Trading Sectors</option>
             {departmentOptions.map(dept => (
@@ -263,13 +263,13 @@ export default function Employees() {
       </div>
 
       {/* Quick Access Department Horizontal Filter Row */}
-      <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none border-b border-gray-100">
+      <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none border-b border-[#C5CBD3]/10">
         <button
           onClick={() => setSelectedDept('ALL')}
           className={`px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider shrink-0 transition-all duration-200 ${
             selectedDept === 'ALL'
-              ? 'bg-[#0B2D5B] text-white shadow-sm'
-              : 'bg-white text-gray-500 border border-gray-200/60 hover:border-[#C99B38]/40 hover:text-[#0B2D5B]'
+              ? 'bg-[#F2F4F7] text-[#040A12] shadow-sm'
+              : 'bg-[#0E1116] text-[#6D7886] border border-[#C5CBD3]/20 hover:border-[#F2F4F7]/40 hover:text-[#C5CBD3]'
           }`}
         >
           All Clusters ({users.length})
@@ -282,8 +282,8 @@ export default function Employees() {
               onClick={() => setSelectedDept(dept.value)}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider shrink-0 transition-all duration-200 ${
                 selectedDept === dept.value
-                  ? 'bg-[#0B2D5B] text-white shadow-sm'
-                  : 'bg-white text-gray-500 border border-gray-200/60 hover:border-[#C99B38]/40 hover:text-[#0B2D5B]'
+                  ? 'bg-[#F2F4F7] text-[#040A12] shadow-sm'
+                  : 'bg-[#0E1116] text-[#6D7886] border border-[#C5CBD3]/20 hover:border-[#F2F4F7]/40 hover:text-[#C5CBD3]'
               }`}
             >
               {dept.label} ({count})
@@ -293,11 +293,11 @@ export default function Employees() {
       </div>
 
       {/* Core Operational Ledger Table */}
-      <div className="bg-white rounded-xl border border-[#C99B38]/10 shadow-sm overflow-hidden">
+      <div className="bg-[#121D29]/10 rounded-xl border border-[#C5CBD3]/15 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#0B2D5B] text-white text-[11px] uppercase tracking-wider">
+              <tr className="bg-[#040A12] text-[#6D7886] text-[11px] uppercase tracking-wider">
                 <th className="py-4 px-6 font-medium">Employee Operator</th>
                 <th className="py-4 px-6 font-medium">Sector Deployment</th>
                 <th className="py-4 px-6 text-center font-medium">Operational Status</th>
@@ -306,10 +306,10 @@ export default function Employees() {
                 <th className="py-4 px-6 text-center font-medium">Purge Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className="divide-y divide-[#C5CBD3]/10 text-sm">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-16 text-xs uppercase tracking-widest text-gray-400 bg-[#FBF7EF]/10">
+                  <td colSpan="6" className="text-center py-16 text-xs uppercase tracking-widest text-[#6D7886] bg-[#0E1116]/40">
                     No verified operators found matching the active cluster matrices.
                   </td>
                 </tr>
@@ -317,24 +317,24 @@ export default function Employees() {
                 filteredUsers.map((emp) => {
                   const perf = getPerfStats(emp.fullName);
                   return (
-                    <tr key={emp._id} className="hover:bg-[#FBF7EF]/40 transition duration-150">
-                      
+                    <tr key={emp._id} className="hover:bg-[#121D29]/40 transition duration-150">
+
                       {/* Identity Column */}
                       <td className="py-4 px-6">
                         <div className="space-y-0.5">
-                          <div className="font-serif text-[#0B2D5B] font-medium text-base">{emp.fullName}</div>
-                          <div className="text-xs font-mono text-gray-400 font-medium">ID Token: {emp.employeeId}</div>
-                          <div className="text-xs text-gray-500 font-light">{emp.email}</div>
+                          <div className="font-serif text-[#F2F4F7] font-medium text-base">{emp.fullName}</div>
+                          <div className="text-xs font-mono text-[#6D7886] font-medium">ID Token: {emp.employeeId}</div>
+                          <div className="text-xs text-[#6D7886] font-light">{emp.email}</div>
                         </div>
                       </td>
 
                       {/* Department and Structural Role */}
                       <td className="py-4 px-6">
                         <div className="space-y-1.5">
-                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[#0B2D5B]/5 text-[#0B2D5B]">
+                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[#121D29] border border-[#C5CBD3]/10 text-[#C5CBD3]">
                             {emp.department} Sector
                           </span>
-                          <div className="text-xs text-gray-500 font-medium tracking-wide pl-0.5">{emp.role}</div>
+                          <div className="text-xs text-[#6D7886] font-medium tracking-wide pl-0.5">{emp.role}</div>
                         </div>
                       </td>
 
@@ -344,8 +344,8 @@ export default function Employees() {
                           onClick={() => toggleUserStatus(emp._id, emp.isActive)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide border transition-all ${
                             emp.isActive
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100/40'
-                              : 'bg-rose-50 text-rose-800 border-rose-200/80 hover:bg-rose-100/40'
+                              ? 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/30'
+                              : 'bg-rose-950/20 text-rose-400 border-rose-500/20 hover:bg-rose-900/30'
                           }`}
                           title={emp.isActive ? "Click to Revoke Authorization" : "Click to Grant Access"}
                         >
@@ -357,42 +357,42 @@ export default function Employees() {
                       {/* Granular Permissions Mapping Grid */}
                       <td className="py-4 px-6">
                         <div className="flex flex-col gap-2 min-w-[200px]">
-                          
-                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-gray-600 gap-2 hover:text-[#0B2D5B]">
+
+                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-[#6D7886] gap-2 hover:text-[#C5CBD3]">
                             <input
                               type="checkbox"
                               checked={emp.productUploadPermission || false}
                               onChange={() => togglePermission(emp._id, 'upload', emp.productUploadPermission)}
-                              className="rounded text-[#0B2D5B] focus:ring-[#C99B38] border-gray-300 w-3.5 h-3.5 cursor-pointer accent-[#0B2D5B]"
+                              className="rounded text-[#F2F4F7] focus:ring-[#F2F4F7]/40 border-[#C5CBD3]/30 w-3.5 h-3.5 cursor-pointer accent-[#F2F4F7]"
                             />
                             <span className="flex items-center gap-1">
-                              <FiPackage className="text-gray-400" size={12} />
+                              <FiPackage className="text-[#6D7886]" size={12} />
                               Product Listing Authority
                             </span>
                           </label>
 
-                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-gray-600 gap-2 hover:text-[#0B2D5B]">
+                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-[#6D7886] gap-2 hover:text-[#C5CBD3]">
                             <input
                               type="checkbox"
                               checked={emp.exportPermission || false}
                               onChange={() => togglePermission(emp._id, 'export', emp.exportPermission)}
-                              className="rounded text-[#0B2D5B] focus:ring-[#C99B38] border-gray-300 w-3.5 h-3.5 cursor-pointer accent-[#0B2D5B]"
+                              className="rounded text-[#F2F4F7] focus:ring-[#F2F4F7]/40 border-[#C5CBD3]/30 w-3.5 h-3.5 cursor-pointer accent-[#F2F4F7]"
                             />
                             <span className="flex items-center gap-1">
-                              <FiDatabase className="text-gray-400" size={12} />
+                              <FiDatabase className="text-[#6D7886]" size={12} />
                               Database Export Rights
                             </span>
                           </label>
 
-                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-gray-600 gap-2 hover:text-[#0B2D5B]">
+                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-[#6D7886] gap-2 hover:text-[#C5CBD3]">
                             <input
                               type="checkbox"
                               checked={emp.jobPermission || false}
                               onChange={() => togglePermission(emp._id, 'job', emp.jobPermission)}
-                              className="rounded text-[#0B2D5B] focus:ring-[#C99B38] border-gray-300 w-3.5 h-3.5 cursor-pointer accent-[#0B2D5B]"
+                              className="rounded text-[#F2F4F7] focus:ring-[#F2F4F7]/40 border-[#C5CBD3]/30 w-3.5 h-3.5 cursor-pointer accent-[#F2F4F7]"
                             />
                             <span className="flex items-center gap-1">
-                              <FiBriefcase className="text-gray-400" size={12} />
+                              <FiBriefcase className="text-[#6D7886]" size={12} />
                               Careers Node Access
                             </span>
                           </label>
@@ -403,20 +403,20 @@ export default function Employees() {
                       {/* Performance Indicators & Dynamic Trackers */}
                       <td className="py-4 px-6">
                         <div className="space-y-2 max-w-[160px]">
-                          <div className="flex justify-between items-center text-[11px] text-gray-500 font-medium">
-                            <span>Leads: <strong className="text-[#0B2D5B]">{perf.leads}</strong></span>
-                            <span className="text-emerald-700">Won: {perf.won}</span>
+                          <div className="flex justify-between items-center text-[11px] text-[#6D7886] font-medium">
+                            <span>Leads: <strong className="text-[#F2F4F7]">{perf.leads}</strong></span>
+                            <span className="text-emerald-400">Won: {perf.won}</span>
                           </div>
 
-                          <div className="w-full bg-gray-100 rounded-full h-[4px] overflow-hidden">
+                          <div className="w-full bg-[#2B3440] rounded-full h-[4px] overflow-hidden">
                             <div
-                              className="bg-[#C99B38] h-full rounded-full transition-all duration-500"
+                              className="bg-sky-400 h-full rounded-full transition-all duration-500"
                               style={{ width: `${perf.rate}%` }}
                             ></div>
                           </div>
-                          
-                          <div className="flex items-center gap-1 text-[10px] text-[#0B2D5B] tracking-wider font-bold uppercase">
-                            <FiTrendingUp className="text-[#C99B38]" size={12} />
+
+                          <div className="flex items-center gap-1 text-[10px] text-sky-400 tracking-wider font-bold uppercase">
+                            <FiTrendingUp className="text-sky-400" size={12} />
                             <span>{perf.rate}% Conversion Matrix</span>
                           </div>
                         </div>
@@ -426,7 +426,7 @@ export default function Employees() {
                       <td className="py-4 px-6 text-center">
                         <button
                           onClick={() => handleDeleteUser(emp._id)}
-                          className="text-gray-400 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50/50 transition duration-200"
+                          className="text-[#6D7886] hover:text-rose-400 p-2 rounded-lg hover:bg-rose-950/30 transition duration-200"
                           title="Purge Operator Permanently"
                         >
                           <FiTrash2 size={15} />
@@ -445,27 +445,27 @@ export default function Employees() {
       {/* Add Employee Layer Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-[#0B2D5B]/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div 
+          <div className="fixed inset-0 bg-[#040A12]/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="bg-white rounded-xl p-6 w-full max-w-md border border-[#C99B38]/20 shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-[#121D29] rounded-xl p-6 w-full max-w-md border border-[#C5CBD3]/20 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-3">
-                <h2 className="text-base font-serif text-[#0B2D5B] tracking-wide uppercase">Provision New Operator Profile</h2>
+              <div className="flex justify-between items-center mb-6 border-b border-[#C5CBD3]/10 pb-3">
+                <h2 className="text-base font-serif text-[#F2F4F7] tracking-wide uppercase">Provision New Operator Profile</h2>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 font-light text-xl"
+                  className="text-[#6D7886] hover:text-[#C5CBD3] font-light text-xl"
                 >
                   &times;
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                
+
                 <div>
-                  <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                     Employee Registration ID *
                   </label>
                   <input
@@ -474,12 +474,12 @@ export default function Employees() {
                     value={formData.employeeId}
                     onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                     placeholder="e.g. ITO-ENG-402"
-                    className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none text-[#0B2D5B]"
+                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none text-[#F2F4F7]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                     Full Legal Name *
                   </label>
                   <input
@@ -488,12 +488,12 @@ export default function Employees() {
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     placeholder="e.g. Vikramaditya Singh"
-                    className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none text-[#0B2D5B]"
+                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none text-[#F2F4F7]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                     Corporate Email Address *
                   </label>
                   <input
@@ -502,12 +502,12 @@ export default function Employees() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="e.g. v.singh@indiatradeoverseas.com"
-                    className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none text-[#0B2D5B]"
+                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none text-[#F2F4F7]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                     Secured Telephony Contact
                   </label>
                   <input
@@ -515,12 +515,12 @@ export default function Employees() {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="e.g. +91 98765 43210"
-                    className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none text-[#0B2D5B]"
+                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none text-[#F2F4F7]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                     Initial System Passphrase *
                   </label>
                   <input
@@ -529,19 +529,19 @@ export default function Employees() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="••••••••"
-                    className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none text-[#0B2D5B]"
+                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none text-[#F2F4F7]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                       System Role *
                     </label>
                     <select
                       value={formData.role}
                       onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none cursor-pointer text-[#0B2D5B]"
+                      className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none cursor-pointer text-[#F2F4F7]"
                     >
                       {roleOptions.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -550,13 +550,13 @@ export default function Employees() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#0B2D5B] uppercase tracking-widest mb-1.5">
+                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">
                       Department Cluster *
                     </label>
                     <select
                       value={formData.department}
                       onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBF7EF] border border-gray-200 focus:border-[#C99B38] text-sm rounded-lg outline-none cursor-pointer text-[#0B2D5B]"
+                      className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-sm rounded-lg outline-none cursor-pointer text-[#F2F4F7]"
                     >
                       {departmentOptions.map(dept => (
                         <option key={dept.value} value={dept.value}>{dept.label}</option>
@@ -565,17 +565,17 @@ export default function Employees() {
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4 border-t border-gray-100">
+                <div className="flex space-x-3 pt-4 border-t border-[#C5CBD3]/10">
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-[#0B2D5B] hover:bg-[#C99B38] text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-md"
+                    className="flex-1 py-3 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#040A12] rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-md"
                   >
                     Commit Secure Profile
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300"
+                    className="flex-1 py-3 bg-[#0E1116] border border-[#C5CBD3]/20 hover:bg-[#121D29] text-[#C5CBD3] rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300"
                   >
                     Cancel
                   </button>
