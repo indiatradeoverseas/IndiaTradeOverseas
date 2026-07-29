@@ -38,7 +38,7 @@ export const leadsApi = {
   }
   , 
   async getDueReminders(){
-    const response = await axiosInstance.post('/leads/reminders/due');
+    const response = await axiosInstance.get('/leads/reminders/due');
     return response.data;
   }
 };

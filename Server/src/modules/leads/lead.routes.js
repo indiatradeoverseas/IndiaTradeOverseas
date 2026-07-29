@@ -37,9 +37,12 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for audio clips
 });
 
+// Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
+// and the public chat widget. Must stay above router.use(authenticate) below.
+router.post('/from-chat', createFromChat);
+
 router.use(authenticate);
 
-router.post('/from-chat', createFromChat);
 router.post('/score', async (req, res, next) => {
   try {
     const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
