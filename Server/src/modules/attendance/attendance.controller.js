@@ -39,9 +39,18 @@ async function getMyTodayStatus(req, res, next) {
 
 async function getReport(req, res, next) {
   try {
-    const { employeeId, startDate, endDate } = req.query;
-    const records = await attendanceService.getAttendanceReport({ employeeId, startDate, endDate });
+    const { employeeId, department, startDate, endDate } = req.query;
+    const records = await attendanceService.getAttendanceReport({ employeeId, department, startDate, endDate });
     return ok(res, { records }, 'Attendance report retrieved', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function cleanupOrphaned(req, res, next) {
+  try {
+    const deletedCount = await attendanceService.cleanupOrphanedRecords();
+    return ok(res, { deletedCount }, `Removed ${deletedCount} invalid attendance record(s)`, 200, req);
   } catch (error) {
     next(error);
   }
@@ -51,5 +60,6 @@ module.exports = {
   checkIn,
   checkOut,
   getMyTodayStatus,
-  getReport
+  getReport,
+  cleanupOrphaned
 };
