@@ -5,6 +5,7 @@ const Payment = require('../payments/payment.model');
 const Dispatch = require('../dispatch/dispatch.model');
 const Attendance = require('../attendance/attendance.model');
 const Ticket = require('../tickets/ticket.model');
+const Leave = require('../leave/leave.model');
 const SecurityAlert = require('../security-audit/securityAlert.model');
 const AuditLog = require('../security-audit/auditLog.model');
 
@@ -12,7 +13,7 @@ const CLOSED_STAGES = ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'];
 const WON_STAGES = ['CLOSED_WON', 'DEAL_WON'];
 const ORDER_PIPELINE_STAGES = ['QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 'LOI_PO_PENDING', 'PO_RECEIVED', 'QUOTATION_REQUESTED'];
 
-async function getAdminCommandCenterMetrics() {
+async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
   const now = new Date();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -20,11 +21,15 @@ async function getAdminCommandCenterMetrics() {
   todayEnd.setHours(23, 59, 59, 999);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
+  const revenueRangeStart = startDate ? new Date(startDate) : sixMonthsAgo;
+  const revenueRangeEnd = endDate ? new Date(endDate) : now;
+
 
   const totalEmployees = await User.countDocuments({ role: { $nin: ['SYSTEM', 'AI'] } });
   const activeEmployees = await User.countDocuments({ role: { $nin: ['SYSTEM', 'AI'] }, isActive: true });
   const presentToday = await Attendance.countDocuments({ date: todayStart, checkInAt: { $ne: null } });
   const openTickets = await Ticket.countDocuments({ status: { $nin: ['RESOLVED', 'CLOSED'] } });
+  const pendingLeaveRequests = await Leave.countDocuments({ status: 'PENDING' });
 
 
   const totalLeads = await Lead.countDocuments();
@@ -81,7 +86,7 @@ async function getAdminCommandCenterMetrics() {
     { $group: { _id: null, collected: { $sum: { $subtract: ['$totalAmount', '$balanceAmount'] } } } }
   ]);
   const monthlyRevenueAgg = await Payment.aggregate([
-    { $match: { createdAt: { $gte: sixMonthsAgo } } },
+    { $match: { createdAt: { $gte: revenueRangeStart, $lte: revenueRangeEnd } } },
     {
       $group: {
         _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
@@ -162,6 +167,7 @@ async function getAdminCommandCenterMetrics() {
       activeEmployees,
       presentToday,
       openTickets,
+      pendingLeaveRequests,
       totalLeads,
       activeLeads,
       pendingLeads,
