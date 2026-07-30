@@ -117,6 +117,10 @@ async function checkAccess(user, doc) {
     return canAccessLead(user, lead);
   }
 
+  if (doc.ownerType === 'USER') {
+    return doc.ownerId.toString() === user._id.toString();
+  }
+
   return true;
 }
 
