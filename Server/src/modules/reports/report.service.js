@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Lead = require('../leads/lead.model');
 const User = require('../users/user.model');
 const Quotation = require('../quotations/quotation.model');
@@ -8,9 +9,9 @@ const Ticket = require('../tickets/ticket.model');
 const Leave = require('../leave/leave.model');
 const SecurityAlert = require('../security-audit/securityAlert.model');
 const AuditLog = require('../security-audit/auditLog.model');
+const { WON_STAGES, LOST_STAGES } = require('../leads/lead.constants');
 
 const CLOSED_STAGES = ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'];
-const WON_STAGES = ['CLOSED_WON', 'DEAL_WON'];
 const ORDER_PIPELINE_STAGES = ['QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 'LOI_PO_PENDING', 'PO_RECEIVED', 'QUOTATION_REQUESTED'];
 
 async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
@@ -222,15 +223,20 @@ async function getPipelineStats() {
 }
 
 async function getEmployeePerformance(employeeId) {
-  const query = employeeId ? { assignedTo: employeeId } : {};
+  const matchStage = { assignedTo: { $ne: null } };
+  if (employeeId) {
+    matchStage.assignedTo = mongoose.Types.ObjectId.isValid(employeeId)
+      ? new mongoose.Types.ObjectId(employeeId)
+      : employeeId;
+  }
   return Lead.aggregate([
-    { $match: { assignedTo: { $ne: null } } },
+    { $match: matchStage },
     {
       $group: {
         _id: '$assignedTo',
         totalLeads: { $sum: 1 },
-        won: { $sum: { $cond: [{ $eq: ['$stage', 'CLOSED_WON'] }, 1, 0] } },
-        lost: { $sum: { $cond: [{ $eq: ['$stage', 'CLOSED_LOST'] }, 1, 0] } }
+        won: { $sum: { $cond: [{ $in: ['$stage', WON_STAGES] }, 1, 0] } },
+        lost: { $sum: { $cond: [{ $in: ['$stage', LOST_STAGES] }, 1, 0] } }
       }
     },
     { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },

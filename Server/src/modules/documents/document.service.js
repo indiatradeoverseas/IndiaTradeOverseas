@@ -15,7 +15,7 @@ function validateFileType(fileName) {
   }
 }
 
-async function uploadDoc({ ownerType, ownerId, accessLevel = 'RESTRICTED', file, user }) {
+async function uploadDoc({ ownerType, ownerId, accessLevel = 'RESTRICTED', file, user, exportDocType = 'OTHER' }) {
   validateFileType(file.originalname);
 
   
@@ -45,8 +45,9 @@ async function uploadDoc({ ownerType, ownerId, accessLevel = 'RESTRICTED', file,
     fileData: fileBuffer,
     uploadedBy: user ? user._id : null,
     accessLevel,
+    exportDocType,
     checksum,
-    virusScanStatus: 'CLEAN' 
+    virusScanStatus: 'CLEAN'
   });
 
   if (fs.existsSync(file.path)) {
@@ -63,6 +64,60 @@ async function uploadDoc({ ownerType, ownerId, accessLevel = 'RESTRICTED', file,
   });
 
   return doc;
+}
+
+async function createNewVersion({ originalId, file, user }) {
+  const original = await Document.findById(originalId);
+  if (!original || original.isDeleted) {
+    throw new Error('DOCUMENT_NOT_FOUND');
+  }
+
+  const isOwner = original.uploadedBy && original.uploadedBy.toString() === user._id.toString();
+  if (!(user.role === 'ADMIN' || user.role === 'MANAGER' || isOwner)) {
+    throw new Error('OWNERSHIP_FORBIDDEN');
+  }
+
+  validateFileType(file.originalname);
+
+  const MAX_SIZE = 10 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    throw new Error('LIMIT_FILE_SIZE: File size exceeds the maximum limit of 10MB.');
+  }
+
+  const fileBuffer = fs.readFileSync(file.path);
+  const checksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+  const newDoc = await Document.create({
+    ownerType: original.ownerType,
+    ownerId: original.ownerId,
+    fileName: file.originalname,
+    mimeType: file.mimetype,
+    storagePath: file.path,
+    fileData: fileBuffer,
+    uploadedBy: user._id,
+    accessLevel: original.accessLevel,
+    exportDocType: original.exportDocType,
+    checksum,
+    virusScanStatus: 'CLEAN',
+    version: original.version + 1,
+    previousVersionId: original._id,
+    approvalStatus: 'PENDING'
+  });
+
+  if (fs.existsSync(file.path)) {
+    fs.unlinkSync(file.path);
+  }
+
+  await recordAudit({
+    actorId: user._id,
+    actionType: 'DOCUMENT_NEW_VERSION',
+    entityType: 'DOCUMENT',
+    entityId: newDoc._id.toString(),
+    severity: 'LOW',
+    metadata: { previousVersionId: original._id.toString(), version: newDoc.version, fileName: newDoc.fileName }
+  });
+
+  return newDoc;
 }
 
 async function checkAccess(user, doc) {
@@ -147,6 +202,7 @@ async function getDocumentsForUser(user) {
 
 module.exports = {
   uploadDoc,
+  createNewVersion,
   checkAccess,
   getDocumentsForUser
 };

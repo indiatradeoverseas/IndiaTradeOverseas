@@ -196,6 +196,40 @@ async function streamVoiceNote(req, res, next) {
   }
 }
 
+// 5b. Log a generic activity (call/email/meeting/follow-up/note)
+async function addActivity(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { actionType, note, nextFollowupAt } = req.body;
+
+    if (!actionType || !note) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'actionType and note are required.');
+    }
+
+    const lead = await Lead.findById(id);
+    if (!lead) {
+      return fail(res, 404, 'NOT_FOUND', 'Lead not found.');
+    }
+
+    if (nextFollowupAt) {
+      lead.nextFollowupAt = new Date(nextFollowupAt);
+      await lead.save();
+    }
+
+    const activity = await LeadActivity.create({
+      leadId: lead._id,
+      actionType,
+      note,
+      nextFollowupAt: nextFollowupAt || null,
+      actorId: req.user._id
+    });
+
+    return ok(res, { activity }, 'Activity logged successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 // 5. Log WhatsApp Sent Activity
 async function logWhatsAppActivity(req, res, next) {
   try {
@@ -269,6 +303,7 @@ module.exports = {
   getDueReminders,
   uploadVoiceNote,
   streamVoiceNote,
+  addActivity,
   logWhatsAppActivity,
   logEmailActivity
 };

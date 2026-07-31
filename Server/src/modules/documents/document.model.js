@@ -32,7 +32,22 @@ const documentSchema = new mongoose.Schema(
     },
     checksum: { type: String, default: '' },
     virusScanStatus: { type: String, enum: ['PENDING', 'CLEAN', 'FLAGGED'], default: 'PENDING' },
-    isDeleted: { type: Boolean, default: false }
+    isDeleted: { type: Boolean, default: false },
+    exportDocType: {
+      type: String,
+      enum: [
+        'SCO', 'FCO', 'ICPO', 'LOI', 'NCNDA', 'IMFPA',
+        'PURCHASE_ORDER', 'PROFORMA_INVOICE', 'COMMERCIAL_INVOICE', 'PACKING_LIST',
+        'COO', 'PHYTOSANITARY_CERTIFICATE', 'TEST_REPORT', 'BL', 'AWB', 'INSURANCE', 'OTHER'
+      ],
+      default: 'OTHER'
+    },
+    approvalStatus: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    approvedAt: { type: Date, default: null },
+    approvalNote: { type: String, default: '' },
+    version: { type: Number, default: 1 },
+    previousVersionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document', default: null }
   },
   { timestamps: true }
 );
