@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload, FiDownload, FiTrash2, FiLock, FiUnlock, FiFileText, FiX } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiTrash2, FiLock, FiUnlock, FiFileText, FiX, FiCheckCircle, FiXCircle, FiRefreshCw, FiFilter } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { documentsApi } from '../../api/documents';
+import { useAuth } from '../../hooks/useAuth';
+
+const EXPORT_DOC_TYPES = [
+  'SCO', 'FCO', 'ICPO', 'LOI', 'NCNDA', 'IMFPA',
+  'PURCHASE_ORDER', 'PROFORMA_INVOICE', 'COMMERCIAL_INVOICE', 'PACKING_LIST',
+  'COO', 'PHYTOSANITARY_CERTIFICATE', 'TEST_REPORT', 'BL', 'AWB', 'INSURANCE', 'OTHER'
+];
 
 // Cinematic staggered entrance layouts
 const containerVariants = {
@@ -16,6 +23,7 @@ const blockVariants = {
 };
 
 export default function Documents() {
+  const { user } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -24,8 +32,21 @@ export default function Documents() {
   const [formData, setFormData] = useState({
     ownerType: 'LEAD',
     ownerId: '',
-    accessLevel: 'RESTRICTED'
+    accessLevel: 'RESTRICTED',
+    exportDocType: 'OTHER'
   });
+  const [filterExportDocType, setFilterExportDocType] = useState('');
+  const [filterApprovalStatus, setFilterApprovalStatus] = useState('');
+  const [versioningId, setVersioningId] = useState(null);
+
+  const isApprover = ['ADMIN', 'MANAGER'].includes(user?.role);
+  const canUploadNewVersion = (doc) =>
+    user?.role === 'ADMIN' || user?.role === 'MANAGER' || doc.uploadedBy === user?._id || doc.uploadedBy?._id === user?._id;
+
+  const filteredDocuments = documents.filter((d) =>
+    (!filterExportDocType || (d.exportDocType || 'OTHER') === filterExportDocType) &&
+    (!filterApprovalStatus || (d.approvalStatus || 'PENDING') === filterApprovalStatus)
+  );
 
   useEffect(() => {
     fetchDocuments();
@@ -63,6 +84,7 @@ export default function Documents() {
     data.append('ownerType', formData.ownerType);
     data.append('ownerId', formData.ownerId);
     data.append('accessLevel', formData.accessLevel);
+    data.append('exportDocType', formData.exportDocType);
 
     try {
       const response = await documentsApi.uploadDocument(data);
@@ -70,7 +92,7 @@ export default function Documents() {
         toast.success('Document uploaded successfully');
         setShowModal(false);
         setSelectedFile(null);
-        setFormData({ ownerType: 'LEAD', ownerId: '', accessLevel: 'RESTRICTED' });
+        setFormData({ ownerType: 'LEAD', ownerId: '', accessLevel: 'RESTRICTED', exportDocType: 'OTHER' });
         fetchDocuments();
       }
     } catch (error) {
@@ -108,6 +130,53 @@ export default function Documents() {
     } catch (error) {
       console.error('Error updating access level:', error);
       toast.error('Failed to update access level');
+    }
+  };
+
+  const approveDocument = async (id) => {
+    try {
+      const response = await documentsApi.approveDocument(id, '');
+      if (response.success) {
+        toast.success('Document approved');
+        fetchDocuments();
+      }
+    } catch (error) {
+      console.error('Error approving document:', error);
+      toast.error(error.response?.data?.message || 'Failed to approve document');
+    }
+  };
+
+  const rejectDocument = async (id) => {
+    const note = window.prompt('Reason for rejecting this document:');
+    if (!note) return;
+    try {
+      const response = await documentsApi.rejectDocument(id, note);
+      if (response.success) {
+        toast.success('Document rejected');
+        fetchDocuments();
+      }
+    } catch (error) {
+      console.error('Error rejecting document:', error);
+      toast.error(error.response?.data?.message || 'Failed to reject document');
+    }
+  };
+
+  const handleNewVersionFile = async (docId, file) => {
+    if (!file) return;
+    setVersioningId(docId);
+    const data = new FormData();
+    data.append('file', file);
+    try {
+      const response = await documentsApi.uploadNewVersion(docId, data);
+      if (response.success) {
+        toast.success('New document version uploaded');
+        fetchDocuments();
+      }
+    } catch (error) {
+      console.error('Error uploading new version:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload new version');
+    } finally {
+      setVersioningId(null);
     }
   };
 
@@ -157,6 +226,20 @@ export default function Documents() {
     );
   };
 
+  const getApprovalStatusBadge = (status) => {
+    const resolved = status || 'PENDING';
+    const badgeStyles = {
+      PENDING: 'bg-amber-950/20 text-amber-400 border-amber-500/20',
+      APPROVED: 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20',
+      REJECTED: 'bg-rose-950/20 text-rose-400 border-rose-500/20'
+    };
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[9px] font-mono font-bold uppercase border tracking-wider shadow-sm ${badgeStyles[resolved]}`}>
+        {resolved}
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0E1116] flex items-center justify-center">
@@ -190,25 +273,54 @@ export default function Documents() {
         </button>
       </motion.div>
 
+      {/* Filter Row */}
+      <motion.div variants={blockVariants} className="w-full pt-6 flex flex-col sm:flex-row gap-3">
+        <div className="w-full sm:w-56 flex items-center gap-2">
+          <FiFilter className="text-[#6D7886] shrink-0" size={14} />
+          <select
+            value={filterExportDocType}
+            onChange={(e) => setFilterExportDocType(e.target.value)}
+            className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-sm outline-none text-xs cursor-pointer text-[#F2F4F7]"
+          >
+            <option value="">All Export Doc Types</option>
+            {EXPORT_DOC_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div className="w-full sm:w-56">
+          <select
+            value={filterApprovalStatus}
+            onChange={(e) => setFilterApprovalStatus(e.target.value)}
+            className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-sm outline-none text-xs cursor-pointer text-[#F2F4F7]"
+          >
+            <option value="">All Approval Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+      </motion.div>
+
       {/* Main Table Container Workspace */}
       <div className="w-full py-8 bg-[#0E1116]">
         <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 overflow-hidden w-full bg-[#121D29]/10 rounded-sm shadow-2xl">
           <div className="overflow-x-auto w-full block custom-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[950px]">
+            <table className="w-full text-left border-collapse min-w-[1150px]">
               <thead>
                 <tr className="bg-[#040A12] text-[#6D7886] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[#C5CBD3]/15">
                   <th className="py-4 px-5">File Designation</th>
                   <th className="py-4 px-5">Owner Type</th>
                   <th className="py-4 px-5">Owner Node ID</th>
+                  <th className="py-4 px-5">Export Doc Type</th>
                   <th className="py-4 px-5">Access Level Authorization</th>
+                  <th className="py-4 px-5 text-center">Approval</th>
                   <th className="py-4 px-5 text-center">Uploaded On</th>
                   <th className="py-4 px-5 text-center">Execution Desk</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#C5CBD3]/10 text-xs">
-                {documents.length === 0 ? (
+                {filteredDocuments.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-20 bg-[#121D29]/5">
+                    <td colSpan="8" className="text-center py-20 bg-[#121D29]/5">
                       <div className="flex flex-col items-center justify-center opacity-40">
                         <FiFileText size={32} className="text-[#6D7886] mb-3" />
                         <p className="font-mono uppercase tracking-widest text-[10px]">No encrypted document entries mapped.</p>
@@ -216,15 +328,27 @@ export default function Documents() {
                     </td>
                   </tr>
                 ) : (
-                  documents.map((doc) => (
+                  filteredDocuments.map((doc) => (
                     <tr key={doc._id} className="hover:bg-[#121D29]/40 transition-colors">
-                      <td className="py-4 px-5 font-medium text-[#F2F4F7] break-all max-w-xs text-left">{doc.fileName}</td>
+                      <td className="py-4 px-5 font-medium text-[#F2F4F7] break-all max-w-xs text-left">
+                        {doc.fileName}
+                        {doc.version > 1 && (
+                          <span className="ml-2 inline-block px-1.5 py-0.5 text-[8px] font-mono font-bold bg-sky-950/20 text-sky-400 border border-sky-500/20 rounded-sm align-middle" title={`Replaces v${doc.version - 1}`}>
+                            v{doc.version}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-4 px-5 text-left">
                         <span className="bg-[#040A12]/60 text-[#C5CBD3] border border-[#C5CBD3]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
                           {doc.ownerType}
                         </span>
                       </td>
                       <td className="py-4 px-5 font-mono text-xs text-[#6D7886] text-left">{doc.ownerId || 'System Universal'}</td>
+                      <td className="py-4 px-5 text-left">
+                        <span className="bg-[#040A12]/60 text-[#C5CBD3] border border-[#C5CBD3]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
+                          {(doc.exportDocType || 'OTHER').replace(/_/g, ' ')}
+                        </span>
+                      </td>
                       <td className="py-4 px-5 text-left">
                         <div className="flex items-center space-x-3">
                           {getAccessLevelBadge(doc.accessLevel)}
@@ -260,6 +384,9 @@ export default function Documents() {
                           </div>
                         </div>
                       </td>
+                      <td className="py-4 px-5 text-center">
+                        {getApprovalStatusBadge(doc.approvalStatus)}
+                      </td>
                       <td className="py-4 px-5 text-center font-mono text-[#6D7886]">
                         {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
                       </td>
@@ -274,6 +401,39 @@ export default function Documents() {
                           >
                             <FiDownload size={14} />
                           </motion.button>
+                          {isApprover && (
+                            <>
+                              <motion.button
+                                whileHover={{ scale: 1.08 }}
+                                whileTap={{ scale: 0.92 }}
+                                onClick={() => approveDocument(doc._id)}
+                                className="w-8 h-8 rounded-sm bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                                title="Approve Document"
+                              >
+                                <FiCheckCircle size={14} />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.08 }}
+                                whileTap={{ scale: 0.92 }}
+                                onClick={() => rejectDocument(doc._id)}
+                                className="w-8 h-8 rounded-sm bg-amber-950/20 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                                title="Reject Document"
+                              >
+                                <FiXCircle size={14} />
+                              </motion.button>
+                            </>
+                          )}
+                          {canUploadNewVersion(doc) && (
+                            <label className="w-8 h-8 rounded-sm bg-sky-950/20 border border-sky-500/20 text-sky-400 hover:bg-sky-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md" title="Upload New Version">
+                              <FiRefreshCw size={14} className={versioningId === doc._id ? 'animate-spin' : ''} />
+                              <input
+                                type="file"
+                                className="hidden"
+                                disabled={versioningId === doc._id}
+                                onChange={(e) => { handleNewVersionFile(doc._id, e.target.files[0]); e.target.value = ''; }}
+                              />
+                            </label>
+                          )}
                           <motion.button
                             whileHover={{ scale: 1.08 }}
                             whileTap={{ scale: 0.92 }}
@@ -368,6 +528,24 @@ export default function Documents() {
                     />
                   </div>
                 )}
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Export Document Type</label>
+                  <div className="relative">
+                    <select
+                      value={formData.exportDocType}
+                      onChange={(e) => setFormData({ ...formData, exportDocType: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[#F2F4F7] focus:border-[#F2F4F7]/40"
+                    >
+                      {EXPORT_DOC_TYPES.map((t) => <option key={t} value={t} className="bg-[#0E1116]">{t.replace(/_/g, ' ')}</option>)}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#6D7886]">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Baseline Vault Access Level</label>

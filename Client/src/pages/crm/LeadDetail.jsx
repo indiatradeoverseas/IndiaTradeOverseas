@@ -5,10 +5,11 @@ import { leadsApi } from '../../api/leads';
 import { quotationsApi } from '../../api/quotations';
 import { adminApi } from '../../api/admin';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign, 
-  FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone, 
-  FiCheck, FiAward, FiXCircle, FiCheckCircle, FiCompass 
+import {
+  FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign,
+  FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone,
+  FiCheck, FiAward, FiXCircle, FiCheckCircle, FiCompass,
+  FiMessageCircle, FiMail
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -32,8 +33,14 @@ export default function LeadDetail() {
   const [loading, setLoading] = useState(true);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [newActivity, setNewActivity] = useState({ note: '', actionType: 'FOLLOW_UP', nextFollowupAt: '' });
   const [quotationData, setQuotationData] = useState({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
+  const [whatsAppMessage, setWhatsAppMessage] = useState('');
+  const [emailForm, setEmailForm] = useState({ subject: '', body: '' });
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [revealedPhone, setRevealedPhone] = useState('');
   const [revealedEmail, setRevealedEmail] = useState('');
@@ -178,6 +185,42 @@ export default function LeadDetail() {
     } catch (err) { console.error(err); }
   };
 
+  const handleLogWhatsApp = async (e) => {
+    e.preventDefault();
+    setSendingWhatsApp(true);
+    try {
+      const response = await leadsApi.logWhatsAppActivity(id, whatsAppMessage);
+      if (response.success) {
+        toast.success('WhatsApp activity logged successfully');
+        setShowWhatsAppModal(false);
+        setWhatsAppMessage('');
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log WhatsApp activity');
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  };
+
+  const handleSendEmail = async (e) => {
+    e.preventDefault();
+    setSendingEmail(true);
+    try {
+      const response = await leadsApi.sendEmailActivity(id, emailForm.subject, emailForm.body);
+      if (response.success) {
+        toast.success(response.data?.sentLive ? 'Email sent and logged successfully' : 'Email logged successfully');
+        setShowEmailModal(false);
+        setEmailForm({ subject: '', body: '' });
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleRequestQuotation = async (e) => {
     e.preventDefault();
     try {
@@ -257,6 +300,12 @@ export default function LeadDetail() {
           </button>
           <button onClick={() => setShowActivityModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
             <FiActivity size={13} className="text-[#6D7886]" /> <span>Log Activity</span>
+          </button>
+          <button onClick={() => setShowWhatsAppModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
+            <FiMessageCircle size={13} className="text-[#6D7886]" /> <span>Log WhatsApp</span>
+          </button>
+          <button onClick={() => setShowEmailModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
+            <FiMail size={13} className="text-[#6D7886]" /> <span>Send Email</span>
           </button>
           {user?.role === 'ADMIN' && (
             <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-rose-950/40 text-rose-400 border border-rose-500/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-rose-900/60">
@@ -458,6 +507,48 @@ export default function LeadDetail() {
                 <div className="flex gap-2 pt-2">
                   <button type="submit" className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors">Commit</button>
                   <button type="button" onClick={() => setShowActivityModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 1b. Log WhatsApp Modal */}
+        {showWhatsAppModal && (
+          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-[#C5CBD3]/15 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[#C5CBD3]/10 pb-3 text-[#F2F4F7]">Log WhatsApp Activity</h3>
+              <form onSubmit={handleLogWhatsApp} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Message Sent</label>
+                  <textarea rows="3" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Sent quotation template via WhatsApp..."/>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" disabled={sendingWhatsApp} className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors disabled:opacity-50">{sendingWhatsApp ? 'Logging...' : 'Log Activity'}</button>
+                  <button type="button" onClick={() => setShowWhatsAppModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 1c. Send Email Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-[#C5CBD3]/15 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[#C5CBD3]/10 pb-3 text-[#F2F4F7]">Send Email</h3>
+              <form onSubmit={handleSendEmail} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Subject *</label>
+                  <input type="text" required value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none font-sans" placeholder="Email subject"/>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Body *</label>
+                  <textarea required rows="4" value={emailForm.body} onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none resize-none font-sans" placeholder="Email body..."/>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" disabled={sendingEmail} className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors disabled:opacity-50">{sendingEmail ? 'Sending...' : 'Send Email'}</button>
+                  <button type="button" onClick={() => setShowEmailModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
                 </div>
               </form>
             </motion.div>

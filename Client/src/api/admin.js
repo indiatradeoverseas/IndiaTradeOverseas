@@ -1,8 +1,9 @@
 import axiosInstance from './axiosInstance';
 
 export const adminApi = {
-  async getDashboardSummary() {
-    const response = await axiosInstance.get('/admin/dashboard/summary');
+  async getDashboardSummary(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await axiosInstance.get(`/admin/dashboard/summary${queryString ? `?${queryString}` : ''}`);
     return response.data;
   },
 
