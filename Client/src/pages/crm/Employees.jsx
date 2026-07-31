@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { useSearchParams } from 'react-router-dom';
+=======
+import { Link } from 'react-router-dom';
+>>>>>>> ab3973d (Slaes Performance , etc)
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUserPlus,
@@ -11,7 +15,8 @@ import {
   FiSearch,
   FiFilter,
   FiCheckCircle,
-  FiXCircle
+  FiXCircle,
+  FiUser
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/admin';
@@ -424,13 +429,22 @@ export default function Employees() {
 
                       {/* Action Triggers */}
                       <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => handleDeleteUser(emp._id)}
-                          className="text-[#6D7886] hover:text-rose-400 p-2 rounded-lg hover:bg-rose-950/30 transition duration-200"
-                          title="Purge Operator Permanently"
-                        >
-                          <FiTrash2 size={15} />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Link
+                            to={`/crm/employees/${emp._id}`}
+                            className="text-[#6D7886] hover:text-[#F2F4F7] p-2 rounded-lg hover:bg-[#0E1116] transition duration-200 inline-flex"
+                            title="View Full Profile"
+                          >
+                            <FiUser size={15} />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteUser(emp._id)}
+                            className="text-[#6D7886] hover:text-rose-400 p-2 rounded-lg hover:bg-rose-950/30 transition duration-200"
+                            title="Purge Operator Permanently"
+                          >
+                            <FiTrash2 size={15} />
+                          </button>
+                        </div>
                       </td>
 
                     </tr>

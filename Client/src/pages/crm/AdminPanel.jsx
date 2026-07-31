@@ -354,10 +354,10 @@ export default function AdminPanel() {
         {/* Metric Cards grid */}
         <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Total Users", val: summary?.users || 0, icon: FiUsers, col: "text-[#F2F4F7]" },
-            { label: "Active Users", val: summary?.activeUsers || 0, icon: FiUserCheck, col: "text-emerald-400" },
-            { label: "Open Alerts", val: summary?.openAlerts || 0, icon: FiAlertCircle, col: "text-rose-400" },
-            { label: "Pending Quotations", val: summary?.pendingQuotations || 0, icon: FiFileText, col: "text-amber-400" }
+            { label: "Total Users", val: summary?.totalEmployees || 0, icon: FiUsers, col: "text-[#F2F4F7]" },
+            { label: "Active Users", val: summary?.activeEmployees || 0, icon: FiUserCheck, col: "text-emerald-400" },
+            { label: "Open Alerts", val: summary?.securityAlerts || 0, icon: FiAlertCircle, col: "text-rose-400" },
+            { label: "Pending Quotations", val: summary?.quotations?.pending || 0, icon: FiFileText, col: "text-amber-400" }
           ].map((item, idx) => (
             <motion.div 
               key={idx} 

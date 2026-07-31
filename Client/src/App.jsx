@@ -41,6 +41,11 @@ import Tasks from './pages/crm/Tasks';
 import Notifications from './pages/crm/Notifications';
 import Applications from './pages/crm/Applications';
 import Jobs from './pages/crm/Jobs';
+import Attendance from './pages/crm/Attendance';
+import Tickets from './pages/crm/Tickets';
+import Leave from './pages/crm/Leave';
+import EmployeeProfile from './pages/crm/EmployeeProfile';
+import SalesPerformance from './pages/crm/SalesPerformance';
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -156,6 +161,11 @@ function AppLayout() {
         <Routes>
           <Route path="/crm/dashboard" element={<Dashboard />} />
           <Route path="/crm/notifications" element={<Notifications />} />
+          <Route path="/crm/attendance" element={<Attendance />} />
+          <Route path="/crm/leave" element={<Leave />} />
+          <Route path="/crm/profile" element={<EmployeeProfile />} />
+          <Route path="/crm/tickets" element={<Tickets />} />
+          <Route path="/crm/sales" element={<SalesPerformance />} />
           <Route path="/crm/distributors" element={<Distributors />}/>
           <Route
             path="/crm/leads"
@@ -202,6 +212,7 @@ function AppLayout() {
             }
           />
           <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
+          <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
           <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
           <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
           <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

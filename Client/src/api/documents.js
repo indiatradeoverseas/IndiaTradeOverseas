@@ -24,5 +24,20 @@ export const documentsApi = {
   async downloadDocument(id) {
     const response = await axiosInstance.get(`/documents/${id}/download`, { responseType: 'blob' });
     return response.data;
+  },
+
+  async approveDocument(id, note) {
+    const response = await axiosInstance.patch(`/documents/${id}/approve`, { note });
+    return response.data;
+  },
+
+  async rejectDocument(id, note) {
+    const response = await axiosInstance.patch(`/documents/${id}/reject`, { note });
+    return response.data;
+  },
+
+  async uploadNewVersion(id, formData) {
+    const response = await axiosInstance.post(`/documents/${id}/new-version`, formData);
+    return response.data;
   }
 };

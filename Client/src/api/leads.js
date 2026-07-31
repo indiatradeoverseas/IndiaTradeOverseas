@@ -36,9 +36,19 @@ export const leadsApi = {
     const response = await axiosInstance.delete(`/admin/leads/${leadId}`);
     return response.data;
   }
-  , 
+  ,
   async getDueReminders(){
     const response = await axiosInstance.get('/leads/reminders/due');
+    return response.data;
+  },
+
+  async logWhatsAppActivity(leadId, message) {
+    const response = await axiosInstance.post(`/leads/${leadId}/log-whatsapp`, { message });
+    return response.data;
+  },
+
+  async sendEmailActivity(leadId, subject, body) {
+    const response = await axiosInstance.post(`/leads/${leadId}/send-email`, { subject, body });
     return response.data;
   }
 };
