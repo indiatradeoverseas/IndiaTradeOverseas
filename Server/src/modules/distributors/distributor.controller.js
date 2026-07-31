@@ -322,7 +322,6 @@ const toggleDistributorVerification = async (req, res, next) => {
       try {
         const subject = 'Account Approved - Prakriti Tea B2B Portal';
         const text = `Congratulations! Your distributor profile has been approved. You can now access our premium items.`;
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -390,7 +389,7 @@ const toggleDistributorVerification = async (req, res, next) => {
             <p>Congratulations! Your business registration has been verified and approved by our team.</p>
             <p>You can now access our premium items, view real-time bulk pricing, inspect tasting scores, and place orders.</p>
             <div class="btn-container">
-              <a href="https://www.indiatradeoverseas.com/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
+                <a href="https://www.indiatradeoverseas.com/prakriti" class="btn" style="color: #50C878;">Access Distributor Page</a>
             </div>
             <p>If you have any questions or require procurement support, feel free to contact your account manager.</p>
         </div>
@@ -486,23 +485,44 @@ const downloadUdyamCertificate = async (req, res, next) => {
 
 // Razorpay and PayPal Online Payment Integrations
 const getRazorpayAuth = () => {
-  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TDkYIhxFKBUK3K';
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || '2DL5K0rcm00absDWP8oniGT8';
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  
+  if (!keyId || !keySecret) {
+    throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables are missing.');
+  }
+
   return Buffer.from(`${keyId}:${keySecret}`).toString('base64');
 };
 
+/**
+ * 🟢 CREATE RAZORPAY ORDER
+ */
+/**
+ * 🟢 CREATE RAZORPAY ORDER
+ */
 const createRazorpayOrder = async (req, res, next) => {
   try {
+    console.log("Incoming Razorpay Order Payload:", req.body);
     const { amount, lotId, quantity } = req.body;
-    if (!amount || !lotId || !quantity) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Amount, lotId and quantity are required.');
+
+    // Standardize input parsing
+    const parsedAmount = Number(amount);
+    const parsedQuantity = Number(quantity);
+
+    if (amount === undefined || amount === null || isNaN(parsedAmount) || parsedAmount <= 0) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'A valid non-zero numerical amount is required.', [], req);
     }
 
-    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TDkYIhxFKBUK3K';
+    if (!lotId || isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Valid lotId and non-zero quantity parameters are required.', [], req);
+    }
+
     const auth = getRazorpayAuth();
-    
-    // Amount is in INR. Razorpay expects it in paise (multiply by 100)
-    const amountInPaise = Math.round(Number(amount) * 100);
+    const keyId = process.env.RAZORPAY_KEY_ID;
+
+    // Convert amount to minimum unit sub-currency (Paise for INR)
+    const amountInPaise = Math.round(parsedAmount * 100);
 
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -513,42 +533,51 @@ const createRazorpayOrder = async (req, res, next) => {
       body: JSON.stringify({
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `dist_receipt_${Date.now()}`
+        receipt: `dist_rcpt_${Date.now()}`
       })
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `Razorpay Order Error: ${errText}`);
+      console.error("Razorpay Gateway API Error:", errText);
+      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `Razorpay Order Error: ${errText}`, [], req);
     }
 
     const order = await response.json();
     return ok(res, { orderId: order.id, amount: order.amount, keyId }, 'Razorpay order created successfully', 201, req);
   } catch (error) {
+    console.error("Razorpay Order Creation Failure:", error);
     next(error);
   }
 };
 
+/**
+ * 🟢 VERIFY RAZORPAY PAYMENT
+ */
 const verifyRazorpayPayment = async (req, res, next) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, lotId, quantity, amount } = req.body;
+
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !lotId || !quantity || !amount) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Missing verification parameters.');
+      return fail(res, 400, 'VALIDATION_ERROR', 'Missing verification parameters.', [], req);
     }
 
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || '2DL5K0rcm00absDWP8oniGT8';
-    
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) {
+      return fail(res, 500, 'SERVER_ERROR', 'Missing Razorpay configuration on server.', [], req);
+    }
+
     const hmac = crypto.createHmac('sha256', keySecret);
     hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const generatedSignature = hmac.digest('hex');
 
     if (generatedSignature !== razorpay_signature) {
-      return fail(res, 400, 'PAYMENT_VERIFICATION_FAILED', 'Invalid signature verification.');
+      return fail(res, 400, 'PAYMENT_VERIFICATION_FAILED', 'Invalid signature verification.', [], req);
     }
 
-    // Save transaction
+    // Record verified transaction
     const transaction = new DistributorTransaction({
-      distributorId: req.distributor._id,
+      distributorId: req.distributor?._id || req.user?._id,
       lotId,
       quantity: Number(quantity),
       amount: Number(amount),
@@ -562,14 +591,22 @@ const verifyRazorpayPayment = async (req, res, next) => {
 
     return ok(res, { transaction }, 'Payment verified successfully and transaction recorded.', 200, req);
   } catch (error) {
+    console.error("Razorpay Verification Failure:", error);
     next(error);
   }
 };
 
+/**
+ * 🔵 PAYPAL ACCESS TOKEN HELPER
+ */
 const getPaypalAccessToken = async () => {
-  const clientId = process.env.PAYPAL_CLIENT_ID || 'AQsHOxpt4otfYTb2UO0WvHMH3q5ZkC-XZffGbPVL3QtcA-MQwZg6zuzOCWXpTJbdt3XbuUjz9N59CRRr';
-  const clientSecret = process.env.PAYPAL_SECRET || 'EIUlUHJZ_ohSB1yms0nKdI7SA2AvEqbb8uiDHCyD5dkrltSIAidRLiIDXSGYkGIWGXcMiChVWrvQFfsh';
-  
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('PAYPAL_CLIENT_ID or PAYPAL_SECRET environment variable is missing.');
+  }
+
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   const response = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
     method: 'POST',
@@ -589,16 +626,19 @@ const getPaypalAccessToken = async () => {
   return data.access_token;
 };
 
+/**
+ * 🔵 CREATE PAYPAL ORDER
+ */
 const createPaypalOrder = async (req, res, next) => {
   try {
     const { amount, lotId, quantity } = req.body;
     if (!amount || !lotId || !quantity) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Amount, lotId and quantity are required.');
+      return fail(res, 400, 'VALIDATION_ERROR', 'Amount, lotId, and quantity are required.', [], req);
     }
 
     const accessToken = await getPaypalAccessToken();
 
-    // Convert INR to USD (dividing by 85) for international gateway
+    // Convert INR to USD for international checkout
     const usdAmount = (Number(amount) / 85).toFixed(2);
 
     const response = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
@@ -623,21 +663,25 @@ const createPaypalOrder = async (req, res, next) => {
 
     if (!response.ok) {
       const errText = await response.text();
-      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `PayPal Create Order Error: ${errText}`);
+      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `PayPal Create Order Error: ${errText}`, [], req);
     }
 
     const order = await response.json();
     return ok(res, { orderId: order.id, usdAmount }, 'PayPal order created successfully', 201, req);
   } catch (error) {
+    console.error("PayPal Create Order Failure:", error);
     next(error);
   }
 };
 
+/**
+ * 🔵 CAPTURE PAYPAL ORDER
+ */
 const capturePaypalOrder = async (req, res, next) => {
   try {
     const { orderId, lotId, quantity, amount } = req.body;
     if (!orderId || !lotId || !quantity || !amount) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'orderId, lotId, quantity and amount are required.');
+      return fail(res, 400, 'VALIDATION_ERROR', 'orderId, lotId, quantity, and amount are required.', [], req);
     }
 
     const accessToken = await getPaypalAccessToken();
@@ -652,17 +696,16 @@ const capturePaypalOrder = async (req, res, next) => {
 
     if (!response.ok) {
       const errText = await response.text();
-      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `PayPal Capture Order Error: ${errText}`);
+      return fail(res, response.status, 'PAYMENT_GATEWAY_ERROR', `PayPal Capture Order Error: ${errText}`, [], req);
     }
 
     const capture = await response.json();
     if (capture.status !== 'COMPLETED') {
-      return fail(res, 400, 'PAYMENT_CAPTURE_FAILED', `PayPal Order not completed: Current status is ${capture.status}`);
+      return fail(res, 400, 'PAYMENT_CAPTURE_FAILED', `PayPal Order not completed: Current status is ${capture.status}`, [], req);
     }
 
-    // Save transaction
     const transaction = new DistributorTransaction({
-      distributorId: req.distributor._id,
+      distributorId: req.distributor?._id || req.user?._id,
       lotId,
       quantity: Number(quantity),
       amount: Number(amount),
@@ -676,6 +719,55 @@ const capturePaypalOrder = async (req, res, next) => {
 
     return ok(res, { transaction }, 'PayPal payment captured successfully and transaction recorded.', 200, req);
   } catch (error) {
+    console.error("PayPal Capture Order Failure:", error);
+    next(error);
+  }
+};
+
+const resendDistributorOtp = async (req, res, next) => {
+  try {
+    const { email, distributorId } = req.body;
+
+    if (!email && !distributorId) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Corporate email or distributorId is required.');
+    }
+
+    // Find existing distributor by email or ID
+    let distributor = null;
+    if (email) {
+      distributor = await Distributor.findOne({ email: email.toLowerCase().trim() });
+    } else if (distributorId) {
+      distributor = await Distributor.findById(distributorId);
+    }
+
+    if (!distributor) {
+      return fail(res, 404, 'NOT_FOUND', 'No registered trade profile found for this corporate address.');
+    }
+
+    // Generate new 6-digit OTP code & set 5-minute expiry (matches registerDistributor)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    distributor.otpToken = otpCode;
+    distributor.otpExpires = otpExpires;
+    distributor.isOtpVerified = false;
+    await distributor.save();
+
+    // Prepare & dispatch email
+    const subject = 'Distributor Login Verification OTP - Prakriti Tea Division';
+    const text = `Your security OTP code for accessing the Prakriti Tea terminal is: ${otpCode}. It will expire in 5 minutes.`;
+    const html = getOtpHtml(otpCode, distributor.email);
+
+    await sendEmail(distributor.email, subject, text, html);
+
+    return ok(
+      res,
+      { distributorId: distributor._id, email: distributor.email },
+      'Verification OTP sent to your registered corporate email.',
+      200,
+      req
+    );
+  } catch (error) {
     next(error);
   }
 };
@@ -684,6 +776,7 @@ module.exports = {
   registerDistributor,
   verifyDistributorOtp,
   getDistributorStatus,
+  resendDistributorOtp,
   getMarketplace,
   getDistributors,
   toggleDistributorVerification,

@@ -297,7 +297,40 @@ async function logEmailActivity(req, res, next) {
     next(error);
   }
 }
+// Add to leadManagement.controller.js
+async function getSalesMetrics(req, res, next) {
+  try {
+    const filter = {};
+    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+      filter.assignedTo = req.user._id;
+    }
 
+    const stats = await Lead.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalLeads: { $sum: 1 },
+          totalValuation: { $sum: "$leadValue" },
+          wonDeals: {
+            $sum: {
+              $cond: [{ $in: ["$stage", ["CLOSED_WON", "DEAL_WON"]] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    const result = stats[0] || { totalLeads: 0, totalValuation: 0, wonDeals: 0 };
+    const conversionRate = result.totalLeads > 0 
+      ? Math.round((result.wonDeals / result.totalLeads) * 100) 
+      : 0;
+
+    return ok(res, { ...result, conversionRate }, 'Sales metrics retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -305,5 +338,6 @@ module.exports = {
   streamVoiceNote,
   addActivity,
   logWhatsAppActivity,
-  logEmailActivity
+  logEmailActivity,
+  getSalesMetrics
 };

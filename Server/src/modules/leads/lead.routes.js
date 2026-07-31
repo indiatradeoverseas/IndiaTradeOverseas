@@ -5,7 +5,8 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage } = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage} = require('./lead.controller');
+const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
 const {
@@ -75,6 +76,7 @@ router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission
 router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
 router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
 router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
+router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
 
 router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
