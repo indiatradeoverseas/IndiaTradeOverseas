@@ -172,27 +172,11 @@ async function login(req, res, next) {
     );
 
 
-    let requiresDeviceApproval = false;
-    const isClient = user.employeeId && user.employeeId.startsWith('CL_');
-    const isBypassedRole = ['ADMIN', 'MANAGER', 'HR'].includes(user.role);
-    const bypassDeviceCheck = isClient || isBypassedRole;
-
-    if (!bypassDeviceCheck) {
-      if (deviceHash) {
-        const device = await TrustedDevice.findOne({ userId: user._id, deviceHash });
-        if (!device || !device.isApproved) {
-          requiresDeviceApproval = true;
-        }
-      } else {
-        requiresDeviceApproval = true;
-      }
-    }
-
     return ok(res, {
       user: sanitizeUser(user),
       token: accessToken,
       refreshToken,
-      requiresDeviceApproval
+      requiresDeviceApproval: false
     }, 'Login successful', 200, req);
   } catch (error) {
     if (error.message === 'ACCOUNT_LOCKED') {
@@ -248,7 +232,6 @@ async function requestOtp(req, res, next) {
 async function verifyOtp(req, res, next) {
   try {
     const { email, otp } = req.body;
-    const deviceHash = req.headers['x-device-hash'] || req.body.deviceHash || '';
 
     const user = await User.findOne({ email });
     if (!user || !user.isActive) {
@@ -264,22 +247,6 @@ async function verifyOtp(req, res, next) {
     user.otpExpires = null;
     await user.save();
 
-
-    let requiresDeviceApproval = false;
-    const isClient = user.employeeId && user.employeeId.startsWith('CL_');
-    const isBypassedRole = ['ADMIN', 'MANAGER', 'HR'].includes(user.role);
-    const bypassDeviceCheck = isClient || isBypassedRole;
-
-    if (!bypassDeviceCheck) {
-      if (deviceHash) {
-        const device = await TrustedDevice.findOne({ userId: user._id, deviceHash });
-        if (!device || !device.isApproved) {
-          requiresDeviceApproval = true;
-        }
-      } else {
-        requiresDeviceApproval = true;
-      }
-    }
 
     const accessToken = tokenService.generateAccessToken(user);
 
@@ -307,7 +274,7 @@ async function verifyOtp(req, res, next) {
       user: sanitizeUser(user),
       token: accessToken,
       refreshToken,
-      requiresDeviceApproval
+      requiresDeviceApproval: false
     }, 'OTP verified successfully', 200, req);
   } catch (error) {
     next(error);
