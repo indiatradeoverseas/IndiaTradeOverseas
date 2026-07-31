@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { useSearchParams } from 'react-router-dom';
-=======
-import { Link } from 'react-router-dom';
->>>>>>> ab3973d (Slaes Performance , etc)
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUserPlus,
