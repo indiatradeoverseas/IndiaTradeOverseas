@@ -23,6 +23,7 @@ const distributorRoutes = require('./modules/distributors/distributor.routes');
 const attendanceRoutes = require('./modules/attendance/attendance.routes');
 const ticketRoutes = require('./modules/tickets/ticket.routes');
 const leaveRoutes = require('./modules/leave/leave.routes');
+const salesRoutes = require('./modules/sales/sales.routes');
 
 
 const app = express();
@@ -93,7 +94,8 @@ const apiRoutes = [
   { path: '/distributors', router: distributorRoutes },
   { path: '/attendance', router: attendanceRoutes },
   { path: '/tickets', router: ticketRoutes },
-  { path: '/leaves', router: leaveRoutes }
+  { path: '/leaves', router: leaveRoutes },
+  { path: '/sales', router: salesRoutes }
 ];
 
 apiRoutes.forEach(route => {

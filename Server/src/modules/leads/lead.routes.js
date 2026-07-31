@@ -14,6 +14,7 @@ const {
   getDueReminders,
   uploadVoiceNote,
   streamVoiceNote,
+  addActivity,
   logWhatsAppActivity,
   logEmailActivity
 } = require('./leadManagement.controller');
@@ -70,6 +71,7 @@ router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission')
 router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
 
 // Voice Notes & Integration logs
+router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
 router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
 router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
 router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);

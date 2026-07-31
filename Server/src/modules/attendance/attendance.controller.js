@@ -81,6 +81,16 @@ async function getReport(req, res, next) {
   }
 }
 
+async function getMyHistory(req, res, next) {
+  try {
+    const { startDate, endDate } = req.query;
+    const records = await attendanceService.getAttendanceReport({ employeeId: req.user._id, startDate, endDate });
+    return ok(res, { records }, 'Attendance history retrieved', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function cleanupOrphaned(req, res, next) {
   try {
     const deletedCount = await attendanceService.cleanupOrphanedRecords();
@@ -97,5 +107,6 @@ module.exports = {
   endLunch,
   getMyTodayStatus,
   getReport,
+  getMyHistory,
   cleanupOrphaned
 };
