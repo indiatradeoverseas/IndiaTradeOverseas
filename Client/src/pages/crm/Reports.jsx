@@ -3,12 +3,12 @@ import { FiBarChart2, FiDownload, FiCalendar } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import api from '../../api/axiosInstance';
 
-const AXIS_TICK = { fill: '#6D7886', fontSize: 11 };
+const AXIS_TICK = { fill: 'var(--crm-ink-faint)', fontSize: 11 };
 const GRID_STROKE = 'rgba(197,203,211,0.12)';
-const TOOLTIP_STYLE = { backgroundColor: '#121D29', border: '1px solid rgba(197,203,211,0.2)', borderRadius: '4px', fontSize: '12px' };
-const TOOLTIP_LABEL_STYLE = { color: '#F2F4F7' };
-const TOOLTIP_ITEM_STYLE = { color: '#C5CBD3' };
-const LEGEND_STYLE = { fontSize: '11px', color: '#6D7886' };
+const TOOLTIP_STYLE = { backgroundColor: 'var(--crm-bg-raised)', border: '1px solid rgba(197,203,211,0.2)', borderRadius: '4px', fontSize: '12px' };
+const TOOLTIP_LABEL_STYLE = { color: 'var(--crm-heading)' };
+const TOOLTIP_ITEM_STYLE = { color: 'var(--crm-ink-soft)' };
+const LEGEND_STYLE = { fontSize: '11px', color: 'var(--crm-ink-faint)' };
 
 export default function Reports() {
   const [loading, setLoading] = useState(true);
@@ -80,21 +80,21 @@ export default function Reports() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F2F4F7]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--crm-heading)]"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#F2F4F7]">Reports & Analytics</h1>
-          <p className="text-[#6D7886] mt-1">View detailed business insights and analytics</p>
+          <h1 className="text-2xl font-bold text-[var(--crm-heading)]">Reports & Analytics</h1>
+          <p className="text-[var(--crm-ink-faint)] mt-1">View detailed business insights and analytics</p>
         </div>
         <button
           onClick={exportReport}
-          className="flex items-center space-x-2 bg-[#F2F4F7] text-[#040A12] hover:bg-[#C5CBD3] text-sm font-semibold px-4 py-2.5 rounded-lg transition-all"
+          className="flex items-center justify-center space-x-2 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] text-sm font-semibold px-4 py-2.5 rounded-lg transition-all self-start sm:self-auto"
         >
           <FiDownload size={18} />
           <span>Export Report</span>
@@ -102,27 +102,27 @@ export default function Reports() {
       </div>
 
       {/* Date Range Filter */}
-      <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-4">
+      <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-4">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
-            <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">Start Date</label>
+            <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5">Start Date</label>
             <input
               type="date"
-              className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-lg outline-none text-sm text-[#F2F4F7]"
+              className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-lg outline-none text-sm text-[var(--crm-heading)]"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
             />
           </div>
           <div className="flex-1">
-            <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5">End Date</label>
+            <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5">End Date</label>
             <input
               type="date"
-              className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-lg outline-none text-sm text-[#F2F4F7]"
+              className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-lg outline-none text-sm text-[var(--crm-heading)]"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
             />
           </div>
-          <button className="flex items-center space-x-2 bg-[#0E1116] border border-[#C5CBD3]/20 hover:bg-[#121D29] text-[#C5CBD3] text-sm font-semibold px-4 py-2.5 rounded-lg transition-all">
+          <button className="flex items-center space-x-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] text-sm font-semibold px-4 py-2.5 rounded-lg transition-all">
             <FiCalendar size={18} />
             <span>Apply Filter</span>
           </button>
@@ -130,8 +130,8 @@ export default function Reports() {
       </div>
 
 
-      <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-5">
-        <h2 className="text-lg font-semibold text-[#F2F4F7] mb-4">Lead Pipeline</h2>
+      <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
+        <h2 className="text-lg font-semibold text-[var(--crm-heading)] mb-4">Lead Pipeline</h2>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={reportData.leadStats}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
@@ -145,8 +145,8 @@ export default function Reports() {
       </div>
 
 
-      <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-5">
-        <h2 className="text-lg font-semibold text-[#F2F4F7] mb-4">Monthly Trends</h2>
+      <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
+        <h2 className="text-lg font-semibold text-[var(--crm-heading)] mb-4">Monthly Trends</h2>
         <ResponsiveContainer width="100%" height={350}>
           <LineChart data={reportData.monthlyLeads}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
@@ -162,8 +162,8 @@ export default function Reports() {
       </div>
 
 
-      <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-5">
-        <h2 className="text-lg font-semibold text-[#F2F4F7] mb-4">Employee Performance</h2>
+      <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
+        <h2 className="text-lg font-semibold text-[var(--crm-heading)] mb-4">Employee Performance</h2>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={reportData.performanceData}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
@@ -179,8 +179,8 @@ export default function Reports() {
       </div>
 
 
-      <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-5">
-        <h2 className="text-lg font-semibold text-[#F2F4F7] mb-4">Stage Distribution</h2>
+      <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
+        <h2 className="text-lg font-semibold text-[var(--crm-heading)] mb-4">Stage Distribution</h2>
         <ResponsiveContainer width="100%" height={350}>
           <PieChart>
             <Pie
@@ -205,41 +205,41 @@ export default function Reports() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-5">
-          <h3 className="font-semibold text-[#F2F4F7] mb-4">Quick Stats</h3>
+        <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
+          <h3 className="font-semibold text-[var(--crm-heading)] mb-4">Quick Stats</h3>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-[#6D7886]">Total Leads:</span>
-              <span className="font-semibold text-[#F2F4F7]">{reportData.leadStats.reduce((sum, s) => sum + s.total, 0)}</span>
+              <span className="text-[var(--crm-ink-faint)]">Total Leads:</span>
+              <span className="font-semibold text-[var(--crm-heading)]">{reportData.leadStats.reduce((sum, s) => sum + s.total, 0)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#6D7886]">Conversion Rate:</span>
-              <span className="font-semibold text-emerald-400">
+              <span className="text-[var(--crm-ink-faint)]">Conversion Rate:</span>
+              <span className="font-semibold text-[var(--crm-positive)]">
                 {Math.round((reportData.performanceData.reduce((sum, p) => sum + p.won, 0) /
                   Math.max(reportData.performanceData.reduce((sum, p) => sum + p.leads, 0), 1)) * 100)}%
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#6D7886]">Active Stages:</span>
-              <span className="font-semibold text-[#F2F4F7]">{reportData.stageDistribution.length}</span>
+              <span className="text-[var(--crm-ink-faint)]">Active Stages:</span>
+              <span className="font-semibold text-[var(--crm-heading)]">{reportData.stageDistribution.length}</span>
             </div>
           </div>
         </div>
-        <div className="bg-[#121D29]/20 rounded-xl border border-[#C5CBD3]/15 p-5">
-          <h3 className="font-semibold text-[#F2F4F7] mb-4">Top Performing Employee</h3>
+        <div className="bg-[var(--crm-bg-raised)]/20 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
+          <h3 className="font-semibold text-[var(--crm-heading)] mb-4">Top Performing Employee</h3>
           {reportData.performanceData.length > 0 && (
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-[#6D7886]">Name:</span>
-                <span className="font-semibold text-[#F2F4F7]">{reportData.performanceData[0]._id}</span>
+                <span className="text-[var(--crm-ink-faint)]">Name:</span>
+                <span className="font-semibold text-[var(--crm-heading)]">{reportData.performanceData[0]._id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#6D7886]">Leads Closed:</span>
-                <span className="font-semibold text-[#F2F4F7]">{reportData.performanceData[0].won}</span>
+                <span className="text-[var(--crm-ink-faint)]">Leads Closed:</span>
+                <span className="font-semibold text-[var(--crm-heading)]">{reportData.performanceData[0].won}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#6D7886]">Success Rate:</span>
-                <span className="font-semibold text-emerald-400">
+                <span className="text-[var(--crm-ink-faint)]">Success Rate:</span>
+                <span className="font-semibold text-[var(--crm-positive)]">
                   {Math.round((reportData.performanceData[0].won / Math.max(reportData.performanceData[0].leads, 1)) * 100)}%
                 </span>
               </div>

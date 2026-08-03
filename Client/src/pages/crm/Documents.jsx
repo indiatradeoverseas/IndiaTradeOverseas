@@ -197,22 +197,22 @@ export default function Documents() {
 
   const getAccessLevelBadge = (level) => {
     const badgeStyles = {
-      PUBLIC: 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20',
-      INTERNAL: 'bg-indigo-950/20 text-indigo-400 border-indigo-500/20',
-      RESTRICTED: 'bg-amber-950/20 text-amber-400 border-amber-500/20',
-      ADMIN: 'bg-rose-950/20 text-rose-400 border-rose-500/20',
-      MANAGER: 'bg-sky-950/20 text-sky-400 border-sky-500/20',
-      HR: 'bg-purple-950/20 text-purple-400 border-purple-500/20',
+      PUBLIC: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20',
+      INTERNAL: 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] border-[var(--crm-accent)]/20',
+      RESTRICTED: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20',
+      ADMIN: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20',
+      MANAGER: 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/20',
+      HR: 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent-soft)] border-[var(--crm-accent-soft)]/20',
       SALES: 'bg-cyan-950/20 text-cyan-400 border-cyan-500/20',
       ACCOUNTS: 'bg-teal-950/20 text-teal-400 border-teal-500/20',
       FINANCE: 'bg-teal-950/20 text-teal-400 border-teal-500/20',
       PROCUREMENT: 'bg-cyan-950/20 text-cyan-400 border-cyan-500/20',
       IT: 'bg-slate-950/20 text-slate-400 border-slate-500/20',
       SOFTWARE_ENGINEER: 'bg-zinc-950/20 text-zinc-400 border-zinc-500/20',
-      STONE: 'bg-amber-950/10 text-amber-400 border-amber-500/10',
+      STONE: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/10',
       COAL: 'bg-stone-950/20 text-stone-400 border-stone-500/20',
       TEA: 'bg-lime-950/20 text-lime-400 border-lime-500/20',
-      RICE: 'bg-yellow-950/10 text-yellow-400 border-yellow-500/10',
+      RICE: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/10',
       TRANSPORT: 'bg-orange-950/20 text-orange-400 border-orange-500/20'
     };
 
@@ -229,9 +229,9 @@ export default function Documents() {
   const getApprovalStatusBadge = (status) => {
     const resolved = status || 'PENDING';
     const badgeStyles = {
-      PENDING: 'bg-amber-950/20 text-amber-400 border-amber-500/20',
-      APPROVED: 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20',
-      REJECTED: 'bg-rose-950/20 text-rose-400 border-rose-500/20'
+      PENDING: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20',
+      APPROVED: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20',
+      REJECTED: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20'
     };
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[9px] font-mono font-bold uppercase border tracking-wider shadow-sm ${badgeStyles[resolved]}`}>
@@ -242,8 +242,8 @@ export default function Documents() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0E1116] flex items-center justify-center">
-        <div className="w-12 h-[1px] bg-[#C5CBD3]/40 animate-pulse" />
+      <div className="min-h-screen bg-[var(--crm-bg)] flex items-center justify-center">
+        <div className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40 animate-pulse" />
       </div>
     );
   }
@@ -253,20 +253,20 @@ export default function Documents() {
       initial="hidden" 
       animate="visible" 
       variants={containerVariants} 
-      className="min-h-screen w-full bg-[#0E1116] text-[#C5CBD3] block pb-12"
+      className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12"
     >
       {/* Upper Context Header Panel */}
-      <motion.div variants={blockVariants} className="w-full border-b border-[#C5CBD3]/10 py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-[#040A12]/40 backdrop-blur-sm">
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="space-y-1 text-left">
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[#6D7886] font-bold block font-mono">DOCUMENTATION CONTROL CENTER</span>
-          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[#F2F4F7] uppercase tracking-tight">Security & File Vault</h1>
-          <p className="text-xs text-[#6D7886] font-light max-w-xl mt-1">
+          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">DOCUMENTATION CONTROL CENTER</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Security & File Vault</h1>
+          <p className="text-xs text-[var(--crm-ink-faint)] font-light max-w-xl mt-1">
             Manage encrypted transaction documents, bills of lading, corporate clearance sheets, and department privileges.
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="w-full sm:w-auto bg-[#F2F4F7] text-[#040A12] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center justify-center space-x-1.5 transition-all shadow-md cursor-pointer hover:bg-[#C5CBD3]"
+          className="w-full sm:w-auto bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center justify-center space-x-1.5 transition-all shadow-md cursor-pointer hover:bg-[var(--crm-ink-soft)]"
         >
           <FiUpload size={14} />
           <span>Upload Document</span>
@@ -276,11 +276,11 @@ export default function Documents() {
       {/* Filter Row */}
       <motion.div variants={blockVariants} className="w-full pt-6 flex flex-col sm:flex-row gap-3">
         <div className="w-full sm:w-56 flex items-center gap-2">
-          <FiFilter className="text-[#6D7886] shrink-0" size={14} />
+          <FiFilter className="text-[var(--crm-ink-faint)] shrink-0" size={14} />
           <select
             value={filterExportDocType}
             onChange={(e) => setFilterExportDocType(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-sm outline-none text-xs cursor-pointer text-[#F2F4F7]"
+            className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs cursor-pointer text-[var(--crm-heading)]"
           >
             <option value="">All Export Doc Types</option>
             {EXPORT_DOC_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
@@ -290,7 +290,7 @@ export default function Documents() {
           <select
             value={filterApprovalStatus}
             onChange={(e) => setFilterApprovalStatus(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-sm outline-none text-xs cursor-pointer text-[#F2F4F7]"
+            className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs cursor-pointer text-[var(--crm-heading)]"
           >
             <option value="">All Approval Statuses</option>
             <option value="PENDING">Pending</option>
@@ -301,12 +301,12 @@ export default function Documents() {
       </motion.div>
 
       {/* Main Table Container Workspace */}
-      <div className="w-full py-8 bg-[#0E1116]">
-        <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 overflow-hidden w-full bg-[#121D29]/10 rounded-sm shadow-2xl">
+      <div className="w-full py-8 bg-[var(--crm-bg)]">
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 overflow-hidden w-full bg-[var(--crm-bg-raised)]/10 rounded-sm shadow-2xl">
           <div className="overflow-x-auto w-full block custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[1150px]">
               <thead>
-                <tr className="bg-[#040A12] text-[#6D7886] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[#C5CBD3]/15">
+                <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-ink-soft)]/15">
                   <th className="py-4 px-5">File Designation</th>
                   <th className="py-4 px-5">Owner Type</th>
                   <th className="py-4 px-5">Owner Node ID</th>
@@ -317,35 +317,35 @@ export default function Documents() {
                   <th className="py-4 px-5 text-center">Execution Desk</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#C5CBD3]/10 text-xs">
+              <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                 {filteredDocuments.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center py-20 bg-[#121D29]/5">
+                    <td colSpan="8" className="text-center py-20 bg-[var(--crm-bg-raised)]/5">
                       <div className="flex flex-col items-center justify-center opacity-40">
-                        <FiFileText size={32} className="text-[#6D7886] mb-3" />
+                        <FiFileText size={32} className="text-[var(--crm-ink-faint)] mb-3" />
                         <p className="font-mono uppercase tracking-widest text-[10px]">No encrypted document entries mapped.</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filteredDocuments.map((doc) => (
-                    <tr key={doc._id} className="hover:bg-[#121D29]/40 transition-colors">
-                      <td className="py-4 px-5 font-medium text-[#F2F4F7] break-all max-w-xs text-left">
+                    <tr key={doc._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                      <td className="py-4 px-5 font-medium text-[var(--crm-heading)] break-all max-w-xs text-left">
                         {doc.fileName}
                         {doc.version > 1 && (
-                          <span className="ml-2 inline-block px-1.5 py-0.5 text-[8px] font-mono font-bold bg-sky-950/20 text-sky-400 border border-sky-500/20 rounded-sm align-middle" title={`Replaces v${doc.version - 1}`}>
+                          <span className="ml-2 inline-block px-1.5 py-0.5 text-[8px] font-mono font-bold bg-[var(--crm-info-bg)] text-[var(--crm-info)] border border-[var(--crm-info)]/20 rounded-sm align-middle" title={`Replaces v${doc.version - 1}`}>
                             v{doc.version}
                           </span>
                         )}
                       </td>
                       <td className="py-4 px-5 text-left">
-                        <span className="bg-[#040A12]/60 text-[#C5CBD3] border border-[#C5CBD3]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
+                        <span className="bg-[var(--crm-bg-sunken)]/60 text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
                           {doc.ownerType}
                         </span>
                       </td>
-                      <td className="py-4 px-5 font-mono text-xs text-[#6D7886] text-left">{doc.ownerId || 'System Universal'}</td>
+                      <td className="py-4 px-5 font-mono text-xs text-[var(--crm-ink-faint)] text-left">{doc.ownerId || 'System Universal'}</td>
                       <td className="py-4 px-5 text-left">
-                        <span className="bg-[#040A12]/60 text-[#C5CBD3] border border-[#C5CBD3]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
+                        <span className="bg-[var(--crm-bg-sunken)]/60 text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
                           {(doc.exportDocType || 'OTHER').replace(/_/g, ' ')}
                         </span>
                       </td>
@@ -356,27 +356,27 @@ export default function Documents() {
                             <select
                               value={doc.accessLevel}
                               onChange={(e) => updateAccessLevel(doc._id, e.target.value)}
-                              className="text-[10px] font-mono uppercase bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 text-[#F2F4F7] rounded-sm pl-2 pr-6 py-1 cursor-pointer outline-none appearance-none shadow-sm"
+                              className="text-[10px] font-mono uppercase bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-[var(--crm-heading)] rounded-sm pl-2 pr-6 py-1 cursor-pointer outline-none appearance-none shadow-sm"
                             >
-                              <option value="PUBLIC" className="bg-[#0E1116]">Public</option>
-                              <option value="INTERNAL" className="bg-[#0E1116]">Internal</option>
-                              <option value="RESTRICTED" className="bg-[#0E1116]">Restricted</option>
-                              <option value="ADMIN" className="bg-[#0E1116]">Admin Only</option>
-                              <option value="MANAGER" className="bg-[#0E1116]">Manager Only</option>
-                              <option value="HR" className="bg-[#0E1116]">HR Only</option>
-                              <option value="SALES" className="bg-[#0E1116]">Sales Only</option>
-                              <option value="ACCOUNTS" className="bg-[#0E1116]">Accounts Only</option>
-                              <option value="FINANCE" className="bg-[#0E1116]">Finance Only</option>
-                              <option value="PROCUREMENT" className="bg-[#0E1116]">Procurement Only</option>
-                              <option value="IT" className="bg-[#0E1116]">IT Only</option>
-                              <option value="SOFTWARE_ENGINEER" className="bg-[#0E1116]">Software Engineer Only</option>
-                              <option value="STONE" className="bg-[#0E1116]">Stone Dept Only</option>
-                              <option value="COAL" className="bg-[#0E1116]">Coal Dept Only</option>
-                              <option value="TEA" className="bg-[#0E1116]">Tea Dept Only</option>
-                              <option value="RICE" className="bg-[#0E1116]">Rice Dept Only</option>
-                              <option value="TRANSPORT" className="bg-[#0E1116]">Transport Dept Only</option>
+                              <option value="PUBLIC" className="bg-[var(--crm-bg)]">Public</option>
+                              <option value="INTERNAL" className="bg-[var(--crm-bg)]">Internal</option>
+                              <option value="RESTRICTED" className="bg-[var(--crm-bg)]">Restricted</option>
+                              <option value="ADMIN" className="bg-[var(--crm-bg)]">Admin Only</option>
+                              <option value="MANAGER" className="bg-[var(--crm-bg)]">Manager Only</option>
+                              <option value="HR" className="bg-[var(--crm-bg)]">HR Only</option>
+                              <option value="SALES" className="bg-[var(--crm-bg)]">Sales Only</option>
+                              <option value="ACCOUNTS" className="bg-[var(--crm-bg)]">Accounts Only</option>
+                              <option value="FINANCE" className="bg-[var(--crm-bg)]">Finance Only</option>
+                              <option value="PROCUREMENT" className="bg-[var(--crm-bg)]">Procurement Only</option>
+                              <option value="IT" className="bg-[var(--crm-bg)]">IT Only</option>
+                              <option value="SOFTWARE_ENGINEER" className="bg-[var(--crm-bg)]">Software Engineer Only</option>
+                              <option value="STONE" className="bg-[var(--crm-bg)]">Stone Dept Only</option>
+                              <option value="COAL" className="bg-[var(--crm-bg)]">Coal Dept Only</option>
+                              <option value="TEA" className="bg-[var(--crm-bg)]">Tea Dept Only</option>
+                              <option value="RICE" className="bg-[var(--crm-bg)]">Rice Dept Only</option>
+                              <option value="TRANSPORT" className="bg-[var(--crm-bg)]">Transport Dept Only</option>
                             </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[#6D7886]">
+                            <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[var(--crm-ink-faint)]">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                               </svg>
@@ -387,7 +387,7 @@ export default function Documents() {
                       <td className="py-4 px-5 text-center">
                         {getApprovalStatusBadge(doc.approvalStatus)}
                       </td>
-                      <td className="py-4 px-5 text-center font-mono text-[#6D7886]">
+                      <td className="py-4 px-5 text-center font-mono text-[var(--crm-ink-faint)]">
                         {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
                       </td>
                       <td className="py-4 px-5 text-center">
@@ -396,7 +396,7 @@ export default function Documents() {
                             whileHover={{ scale: 1.08 }}
                             whileTap={{ scale: 0.92 }}
                             onClick={() => downloadDocument(doc._id, doc.fileName)}
-                            className="w-8 h-8 rounded-sm bg-indigo-950/20 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                            className="w-8 h-8 rounded-sm bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)]/20 text-[var(--crm-accent)] hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md"
                             title="Download Asset"
                           >
                             <FiDownload size={14} />
@@ -407,7 +407,7 @@ export default function Documents() {
                                 whileHover={{ scale: 1.08 }}
                                 whileTap={{ scale: 0.92 }}
                                 onClick={() => approveDocument(doc._id)}
-                                className="w-8 h-8 rounded-sm bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                                className="w-8 h-8 rounded-sm bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/20 text-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md"
                                 title="Approve Document"
                               >
                                 <FiCheckCircle size={14} />
@@ -416,7 +416,7 @@ export default function Documents() {
                                 whileHover={{ scale: 1.08 }}
                                 whileTap={{ scale: 0.92 }}
                                 onClick={() => rejectDocument(doc._id)}
-                                className="w-8 h-8 rounded-sm bg-amber-950/20 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                                className="w-8 h-8 rounded-sm bg-[var(--crm-warning-bg)] border border-[var(--crm-warning)]/20 text-[var(--crm-warning)] hover:bg-[var(--crm-warning)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md"
                                 title="Reject Document"
                               >
                                 <FiXCircle size={14} />
@@ -424,7 +424,7 @@ export default function Documents() {
                             </>
                           )}
                           {canUploadNewVersion(doc) && (
-                            <label className="w-8 h-8 rounded-sm bg-sky-950/20 border border-sky-500/20 text-sky-400 hover:bg-sky-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md" title="Upload New Version">
+                            <label className="w-8 h-8 rounded-sm bg-[var(--crm-info-bg)] border border-[var(--crm-info)]/20 text-[var(--crm-info)] hover:bg-[var(--crm-info)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md" title="Upload New Version">
                               <FiRefreshCw size={14} className={versioningId === doc._id ? 'animate-spin' : ''} />
                               <input
                                 type="file"
@@ -438,7 +438,7 @@ export default function Documents() {
                             whileHover={{ scale: 1.08 }}
                             whileTap={{ scale: 0.92 }}
                             onClick={() => deleteDocument(doc._id)}
-                            className="w-8 h-8 rounded-sm bg-rose-950/20 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-[#0E1116] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                            className="w-8 h-8 rounded-sm bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/20 text-[var(--crm-danger)] hover:bg-[var(--crm-danger)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md"
                             title="Purge Node"
                           >
                             <FiTrash2 size={14} />
@@ -457,57 +457,57 @@ export default function Documents() {
       {/* Upload Modal Overlay Structure */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
             <motion.div 
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.97, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-[#121D29] rounded-sm p-6 w-full max-w-md border border-[#C5CBD3]/15 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+              className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-ink-soft)]/15 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar relative"
             >
-              <div className="flex justify-between items-center mb-5 border-b border-[#C5CBD3]/10 pb-3 text-left">
+              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-3 text-left">
                 <div>
-                  <h2 className="text-base font-serif font-normal uppercase text-[#F2F4F7] flex items-center gap-2">
-                    <FiUpload className="text-[#6D7886]" size={16} /> Transmit File Payload
+                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)] flex items-center gap-2">
+                    <FiUpload className="text-[var(--crm-ink-faint)]" size={16} /> Transmit File Payload
                   </h2>
-                  <p className="text-[9px] text-[#6D7886] tracking-widest uppercase font-mono font-bold mt-1">Secure Clearance Database</p>
+                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Secure Clearance Database</p>
                 </div>
                 <button 
                   type="button" 
                   onClick={() => { setShowModal(false); setSelectedFile(null); }} 
-                  className="text-[#6D7886] hover:text-[#F2F4F7] p-1.5 rounded-sm hover:bg-[#0E1116] transition-all cursor-pointer"
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm hover:bg-[var(--crm-bg)] transition-all cursor-pointer"
                 >
                   <FiX size={16} />
                 </button>
               </div>
 
               <form onSubmit={handleUpload} className="space-y-4 text-left font-sans text-xs">
-                <div className="p-4 bg-[#0E1116] rounded-sm border border-dashed border-[#C5CBD3]/20 text-center shadow-inner mb-4">
-                  <label className="block text-[11px] font-bold text-[#C5CBD3] mb-3 uppercase tracking-wider font-mono">Select Clearance Document *</label>
+                <div className="p-4 bg-[var(--crm-bg)] rounded-sm border border-dashed border-[var(--crm-ink-soft)]/20 text-center shadow-inner mb-4">
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-soft)] mb-3 uppercase tracking-wider font-mono">Select Clearance Document *</label>
                   <input
                     type="file"
                     onChange={handleFileChange}
                     required
-                    className="w-full text-xs text-[#6D7886] file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-[#121D29] file:border file:border-[#C5CBD3]/20 file:text-[#C5CBD3] hover:file:bg-[#0E1116] hover:file:text-[#F2F4F7] cursor-pointer file:transition shadow-md"
+                    className="w-full text-xs text-[var(--crm-ink-faint)] file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-[var(--crm-bg-raised)] file:border file:border-[var(--crm-ink-soft)]/20 file:text-[var(--crm-ink-soft)] hover:file:bg-[var(--crm-bg)] hover:file:text-[var(--crm-heading)] cursor-pointer file:transition shadow-md"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Owner Category Mapping *</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Owner Category Mapping *</label>
                   <div className="relative">
                     <select
                       value={formData.ownerType}
                       onChange={(e) => setFormData({ ...formData, ownerType: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[#F2F4F7] focus:border-[#F2F4F7]/40"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40"
                     >
-                      <option value="LEAD" className="bg-[#0E1116]">Lead Node</option>
-                      <option value="USER" className="bg-[#0E1116]">User Account</option>
-                      <option value="QUOTATION" className="bg-[#0E1116]">Quotation Matrix</option>
-                      <option value="DISPATCH" className="bg-[#0E1116]">Dispatch Manifest</option>
-                      <option value="PAYMENT" className="bg-[#0E1116]">Payment Ledger</option>
-                      <option value="PUBLIC" className="bg-[#0E1116]">Public / Universal Corporate</option>
+                      <option value="LEAD" className="bg-[var(--crm-bg)]">Lead Node</option>
+                      <option value="USER" className="bg-[var(--crm-bg)]">User Account</option>
+                      <option value="QUOTATION" className="bg-[var(--crm-bg)]">Quotation Matrix</option>
+                      <option value="DISPATCH" className="bg-[var(--crm-bg)]">Dispatch Manifest</option>
+                      <option value="PAYMENT" className="bg-[var(--crm-bg)]">Payment Ledger</option>
+                      <option value="PUBLIC" className="bg-[var(--crm-bg)]">Public / Universal Corporate</option>
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#6D7886]">
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -517,29 +517,29 @@ export default function Documents() {
 
                 {formData.ownerType !== 'PUBLIC' && (
                   <div>
-                    <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Owner Target Coordinates *</label>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Owner Target Coordinates *</label>
                     <input
                       type="text"
                       required
                       value={formData.ownerId}
                       onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 placeholder-[#6D7886]"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
                       placeholder="Enter specific Gmail address or exact node ID mapping"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Export Document Type</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Export Document Type</label>
                   <div className="relative">
                     <select
                       value={formData.exportDocType}
                       onChange={(e) => setFormData({ ...formData, exportDocType: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[#F2F4F7] focus:border-[#F2F4F7]/40"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40"
                     >
-                      {EXPORT_DOC_TYPES.map((t) => <option key={t} value={t} className="bg-[#0E1116]">{t.replace(/_/g, ' ')}</option>)}
+                      {EXPORT_DOC_TYPES.map((t) => <option key={t} value={t} className="bg-[var(--crm-bg)]">{t.replace(/_/g, ' ')}</option>)}
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#6D7886]">
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -548,32 +548,32 @@ export default function Documents() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-widest mb-1.5 font-mono">Baseline Vault Access Level</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Baseline Vault Access Level</label>
                   <div className="relative">
                     <select
                       value={formData.accessLevel}
                       onChange={(e) => setFormData({ ...formData, accessLevel: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[#F2F4F7] focus:border-[#F2F4F7]/40"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none appearance-none cursor-pointer text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40"
                     >
-                      <option value="PUBLIC" className="bg-[#0E1116]">Public</option>
-                      <option value="INTERNAL" className="bg-[#0E1116]">Internal Operations</option>
-                      <option value="RESTRICTED" className="bg-[#0E1116]">Restricted</option>
-                      <option value="ADMIN" className="bg-[#0E1116]">Admin Only</option>
-                      <option value="MANAGER" className="bg-[#0E1116]">Manager Only</option>
-                      <option value="HR" className="bg-[#0E1116]">HR Only</option>
-                      <option value="SALES" className="bg-[#0E1116]">Sales Only</option>
-                      <option value="ACCOUNTS" className="bg-[#0E1116]">Accounts Only</option>
-                      <option value="FINANCE" className="bg-[#0E1116]">Finance Only</option>
-                      <option value="PROCUREMENT" className="bg-[#0E1116]">Procurement Only</option>
-                      <option value="IT" className="bg-[#0E1116]">IT Only</option>
-                      <option value="SOFTWARE_ENGINEER" className="bg-[#0E1116]">Software Engineer Only</option>
-                      <option value="STONE" className="bg-[#0E1116]">Stone Department Only</option>
-                      <option value="COAL" className="bg-[#0E1116]">Coal Department Only</option>
-                      <option value="TEA" className="bg-[#0E1116]">Tea Department Only</option>
-                      <option value="RICE" className="bg-[#0E1116]">Rice Department Only</option>
-                      <option value="TRANSPORT" className="bg-[#0E1116]">Transport Department Only</option>
+                      <option value="PUBLIC" className="bg-[var(--crm-bg)]">Public</option>
+                      <option value="INTERNAL" className="bg-[var(--crm-bg)]">Internal Operations</option>
+                      <option value="RESTRICTED" className="bg-[var(--crm-bg)]">Restricted</option>
+                      <option value="ADMIN" className="bg-[var(--crm-bg)]">Admin Only</option>
+                      <option value="MANAGER" className="bg-[var(--crm-bg)]">Manager Only</option>
+                      <option value="HR" className="bg-[var(--crm-bg)]">HR Only</option>
+                      <option value="SALES" className="bg-[var(--crm-bg)]">Sales Only</option>
+                      <option value="ACCOUNTS" className="bg-[var(--crm-bg)]">Accounts Only</option>
+                      <option value="FINANCE" className="bg-[var(--crm-bg)]">Finance Only</option>
+                      <option value="PROCUREMENT" className="bg-[var(--crm-bg)]">Procurement Only</option>
+                      <option value="IT" className="bg-[var(--crm-bg)]">IT Only</option>
+                      <option value="SOFTWARE_ENGINEER" className="bg-[var(--crm-bg)]">Software Engineer Only</option>
+                      <option value="STONE" className="bg-[var(--crm-bg)]">Stone Department Only</option>
+                      <option value="COAL" className="bg-[var(--crm-bg)]">Coal Department Only</option>
+                      <option value="TEA" className="bg-[var(--crm-bg)]">Tea Department Only</option>
+                      <option value="RICE" className="bg-[var(--crm-bg)]">Rice Department Only</option>
+                      <option value="TRANSPORT" className="bg-[var(--crm-bg)]">Transport Department Only</option>
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#6D7886]">
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -581,18 +581,18 @@ export default function Documents() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[#C5CBD3]/10 mt-4">
+                <div className="flex gap-3 pt-4 border-t border-[var(--crm-ink-soft)]/10 mt-4">
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#040A12] text-xs font-bold py-3 uppercase rounded-sm cursor-pointer shadow-md transition-colors disabled:opacity-40"
+                    className="flex-1 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] text-xs font-bold py-3 uppercase rounded-sm cursor-pointer shadow-md transition-colors disabled:opacity-40"
                   >
                     {isSubmitting ? 'Transmitting...' : 'Commit Upload'}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setShowModal(false); setSelectedFile(null); }}
-                    className="flex-1 bg-[#0E1116] hover:bg-[#121D29] border border-[#C5CBD3]/20 text-[#C5CBD3] text-xs font-bold py-3 rounded-sm cursor-pointer transition-colors"
+                    className="flex-1 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold py-3 rounded-sm cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
