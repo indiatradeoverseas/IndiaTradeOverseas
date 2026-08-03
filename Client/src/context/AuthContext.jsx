@@ -37,6 +37,14 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
+  const adminLogin = async (credentials) => {
+    const response = await authApi.adminLogin(credentials);
+    if (response.success) {
+      setUser(response.data.user);
+    }
+    return response;
+  };
+
   const verifyOtp = async (otpData) => {
     const deviceHash = localStorage.getItem('deviceHash');
     const response = await authApi.verifyOtp({ ...otpData, deviceHash });
@@ -68,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, verifyOtp, register, verifyEmail, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, adminLogin, verifyOtp, register, verifyEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

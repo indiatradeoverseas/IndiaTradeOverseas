@@ -179,6 +179,12 @@ const EmployeeLogin = () => {
                 <FiArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </p>
+            <p className="font-light">
+              Administrator?{' '}
+              <Link to="/admin-login" className="font-medium text-[#C5CBD3] hover:text-[#F2F4F7] hover:underline">
+                Admin login
+              </Link>
+            </p>
           </motion.div>
         </div>
 
