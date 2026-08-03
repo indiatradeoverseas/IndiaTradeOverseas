@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { rateLimiter } = require('./middlewares/rateLimit.middleware');
 const { errorHandler } = require('./middlewares/error.middleware');
 const authRoutes = require('./modules/auth/auth.routes');
+const adminAuthRoutes = require('./modules/admin-auth/adminAuth.routes');
 const userRoutes = require('./modules/users/user.routes');
 const leadRoutes = require('./modules/leads/lead.routes');
 const quotationRoutes = require('./modules/quotations/quotation.routes');
@@ -76,6 +77,7 @@ app.get('/', (req, res) => {
 
 const apiRoutes = [
   { path: '/auth', router: authRoutes },
+  { path: '/admin-auth', router: adminAuthRoutes },
   { path: '/users', router: userRoutes },
   { path: '/leads', router: leadRoutes },
   { path: '/ai/leads', router: leadRoutes },

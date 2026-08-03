@@ -16,6 +16,7 @@ import QuoteRequest from './pages/public/QuoteRequest';
 import Login from './pages/public/Login';
 import ClientLogin from './pages/public/ClientLogin';
 import EmployeeLogin from './pages/public/EmployeeLogin';
+import AdminLogin from './pages/public/AdminLogin';
 import Signup from './pages/public/Signup';
 import ClientSignup from './pages/public/ClientSignup';
 import EmployeeSignup from './pages/public/EmployeeSignup';
@@ -116,6 +117,7 @@ function AppLayout() {
     '/signup',
     '/client-login',
     '/employee-login',
+    '/admin-login',
     '/client-signup',
     '/employee-signup',
     '/device-pending',
@@ -139,6 +141,7 @@ function AppLayout() {
           <Route path="/login" element={<ClientLogin />} />
           <Route path="/client-login" element={<Navigate to="/login" replace />} />
           <Route path="/employee-login" element={<EmployeeLogin />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/client-signup" element={<ClientSignup />} />
           <Route path="/employee-signup" element={<EmployeeSignup />} />
@@ -275,7 +278,22 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#16181B',
+              color: '#E7E3D9',
+              border: '1px solid rgba(231,227,217,0.14)',
+              borderRadius: '6px',
+              fontSize: '13px',
+              padding: '10px 14px',
+              boxShadow: '0 20px 44px -20px rgba(0,0,0,0.6)'
+            },
+            success: { iconTheme: { primary: '#56A587', secondary: '#16181B' } },
+            error: { iconTheme: { primary: '#C96A57', secondary: '#16181B' } }
+          }}
+        />
         <AppLayout />
       </AuthProvider>
     </Router>
