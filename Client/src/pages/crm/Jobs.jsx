@@ -157,7 +157,7 @@ export default function Jobs() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F2F4F7]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--crm-heading)]"></div>
       </div>
     );
   }
@@ -168,12 +168,12 @@ export default function Jobs() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#F2F4F7]">Manage Job Openings</h1>
-          <p className="text-[#6D7886] mt-1">Post new roles, edit requirements, and toggle listing visibility.</p>
+          <h1 className="text-2xl font-bold text-[var(--crm-heading)]">Manage Job Openings</h1>
+          <p className="text-[var(--crm-ink-faint)] mt-1">Post new roles, edit requirements, and toggle listing visibility.</p>
         </div>
         <button
           onClick={handleOpenAddModal}
-          className="flex items-center space-x-2 bg-[#F2F4F7] text-[#040A12] hover:bg-[#C5CBD3] px-4 py-2.5 rounded-xl shadow-lg transition-transform active:scale-95 text-sm font-semibold"
+          className="flex items-center space-x-2 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] px-4 py-2.5 rounded-xl shadow-lg transition-transform active:scale-95 text-sm font-semibold"
         >
           <FiPlus size={18} />
           <span>Post a Job</span>
@@ -181,64 +181,64 @@ export default function Jobs() {
       </div>
 
       {/* Search Filter Panel */}
-      <div className="p-4 bg-[#121D29]/20 shadow-sm border border-[#C5CBD3]/15 rounded-2xl">
+      <div className="p-4 bg-[var(--crm-bg-raised)]/20 shadow-sm border border-[var(--crm-ink-soft)]/15 rounded-2xl">
         <div className="relative max-w-md">
-          <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#6D7886]" />
+          <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" />
           <input
             type="text"
             placeholder="Search by job title, department, or location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 text-sm text-[#F2F4F7]"
+            className="w-full pl-10 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-sm text-[var(--crm-heading)]"
           />
         </div>
       </div>
 
       {/* Jobs Table List */}
-      <div className="shadow-sm border border-[#C5CBD3]/15 rounded-2xl overflow-hidden bg-[#121D29]/10">
+      <div className="shadow-sm border border-[var(--crm-ink-soft)]/15 rounded-2xl overflow-hidden bg-[var(--crm-bg-raised)]/10">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-[#040A12] border-b border-[#C5CBD3]/15">
-                <th className="py-4 px-6 text-xs font-bold text-[#6D7886] uppercase tracking-wider">Job Listing</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#6D7886] uppercase tracking-wider">Department</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#6D7886] uppercase tracking-wider">Location & Type</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#6D7886] uppercase tracking-wider text-center">Status</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#6D7886] uppercase tracking-wider text-center">Actions</th>
+              <tr className="bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-ink-soft)]/15">
+                <th className="py-4 px-6 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Job Listing</th>
+                <th className="py-4 px-6 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Department</th>
+                <th className="py-4 px-6 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Location & Type</th>
+                <th className="py-4 px-6 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider text-center">Status</th>
+                <th className="py-4 px-6 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#C5CBD3]/10">
+            <tbody className="divide-y divide-[var(--crm-ink-soft)]/10">
               {filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-12 text-[#6D7886]">
+                  <td colSpan="5" className="text-center py-12 text-[var(--crm-ink-faint)]">
                     No job postings found.
                   </td>
                 </tr>
               ) : (
                 filteredJobs.map((job) => (
-                  <tr key={job._id} className="hover:bg-[#121D29]/40 transition-colors">
+                  <tr key={job._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
                     {/* Title & Experience */}
                     <td className="py-4 px-6">
                       <div>
-                        <div className="font-semibold text-[#F2F4F7] text-sm">{job.title}</div>
-                        <div className="text-xs text-[#6D7886] mt-0.5">Exp Required: {job.experience}</div>
+                        <div className="font-semibold text-[var(--crm-heading)] text-sm">{job.title}</div>
+                        <div className="text-xs text-[var(--crm-ink-faint)] mt-0.5">Exp Required: {job.experience}</div>
                       </div>
                     </td>
 
                     {/* Department */}
-                    <td className="py-4 px-6 text-sm text-[#C5CBD3] font-medium">
+                    <td className="py-4 px-6 text-sm text-[var(--crm-ink-soft)] font-medium">
                       {job.department}
                     </td>
 
                     {/* Location & Type */}
                     <td className="py-4 px-6">
                       <div className="space-y-1">
-                        <div className="text-xs font-medium text-[#6D7886] flex items-center gap-1">
-                          <FiMapPin size={12} className="text-[#6D7886]" />
+                        <div className="text-xs font-medium text-[var(--crm-ink-faint)] flex items-center gap-1">
+                          <FiMapPin size={12} className="text-[var(--crm-ink-faint)]" />
                           {job.location}
                         </div>
-                        <div className="text-[10px] font-bold text-[#6D7886] flex items-center gap-1 uppercase">
-                          <FiClock size={12} className="text-[#6D7886]" />
+                        <div className="text-[10px] font-bold text-[var(--crm-ink-faint)] flex items-center gap-1 uppercase">
+                          <FiClock size={12} className="text-[var(--crm-ink-faint)]" />
                           {job.type}
                         </div>
                       </div>
@@ -249,12 +249,12 @@ export default function Jobs() {
                       <button
                         onClick={() => handleToggleActive(job)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition ${job.isActive
-                          ? 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/30'
-                          : 'bg-[#121D29] text-[#6D7886] border-[#C5CBD3]/10 hover:bg-[#121D29]/70'
+                          ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive-bg)]'
+                          : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-faint)] border-[var(--crm-ink-soft)]/10 hover:bg-[var(--crm-bg-raised)]/70'
                         }`}
                         title={job.isActive ? "Click to Deactivate" : "Click to Activate"}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${job.isActive ? 'bg-emerald-500' : 'bg-[#6D7886]'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${job.isActive ? 'bg-[var(--crm-positive)]' : 'bg-[var(--crm-ink-faint)]'}`}></span>
                         {job.isActive ? 'Active' : 'Inactive'}
                       </button>
                     </td>
@@ -264,14 +264,14 @@ export default function Jobs() {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleOpenEditModal(job)}
-                          className="text-[#6D7886] hover:text-sky-400 p-2 rounded-lg hover:bg-sky-950/30 transition"
+                          className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-info)] p-2 rounded-lg hover:bg-[var(--crm-info-bg)] transition"
                           title="Edit Job Opening"
                         >
                           <FiEdit size={16} />
                         </button>
                         <button
                           onClick={() => handleDeleteJob(job._id)}
-                          className="text-[#6D7886] hover:text-rose-400 p-2 rounded-lg hover:bg-rose-950/30 transition"
+                          className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] p-2 rounded-lg hover:bg-[var(--crm-danger-bg)] transition"
                           title="Delete Job Opening"
                         >
                           <FiTrash2 size={16} />
@@ -288,15 +288,15 @@ export default function Jobs() {
 
       {/* Add / Edit Job Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#040A12]/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-[#121D29] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[#C5CBD3]/20 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[#C5CBD3]/10">
-              <h2 className="text-lg font-bold text-[#F2F4F7]">
+        <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--crm-bg-raised)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[var(--crm-ink-soft)]/20 shadow-2xl">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-ink-soft)]/10">
+              <h2 className="text-lg font-bold text-[var(--crm-heading)]">
                 {editingJob ? 'Edit Job Posting' : 'Post New Job Opening'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-[#6D7886] hover:text-[#C5CBD3] font-bold"
+                className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)] font-bold"
               >
                 ✕
               </button>
@@ -304,60 +304,60 @@ export default function Jobs() {
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Job Title *</label>
+                <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Job Title *</label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Senior Trade Executive"
-                  className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 text-[#F2F4F7]"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Department *</label>
+                  <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Department *</label>
                   <input
                     type="text"
                     required
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     placeholder="e.g. Sales, Operations"
-                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 text-[#F2F4F7]"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Experience Required *</label>
+                  <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Experience Required *</label>
                   <input
                     type="text"
                     required
                     value={formData.experience}
                     onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
                     placeholder="e.g. 2-5 Years, Freshers"
-                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 text-[#F2F4F7]"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Location *</label>
+                  <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Location *</label>
                   <input
                     type="text"
                     required
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g. Kishanganj, Bihar (Office)"
-                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 text-[#F2F4F7]"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Job Type *</label>
+                  <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Job Type *</label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 cursor-pointer text-[#F2F4F7]"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 cursor-pointer text-[var(--crm-heading)]"
                   >
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
@@ -368,25 +368,25 @@ export default function Jobs() {
               </div>
 
               <div>
-                <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Description *</label>
+                <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Description *</label>
                 <textarea
                   required
                   rows={4}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Enter detailed job overview, responsibilities..."
-                  className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 resize-none font-sans text-[#F2F4F7]"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 resize-none font-sans text-[var(--crm-heading)]"
                 />
               </div>
 
               <div>
-                <label className="block text-[#6D7886] uppercase tracking-wider mb-1">Requirements (one per line)</label>
+                <label className="block text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Requirements (one per line)</label>
                 <textarea
                   rows={4}
                   value={formData.requirements}
                   onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                   placeholder="e.g. Excellent communication skills&#10;Familiarity with Custom documentation"
-                  className="w-full px-3 py-2 bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F2F4F7]/20 resize-none font-sans text-[#F2F4F7]"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 resize-none font-sans text-[var(--crm-heading)]"
                 />
               </div>
 
@@ -396,24 +396,24 @@ export default function Jobs() {
                   id="isActive"
                   checked={formData.isActive}
                   onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded text-[#F2F4F7] focus:ring-[#F2F4F7]/40 border-[#C5CBD3]/30 w-4 h-4 cursor-pointer accent-[#F2F4F7]"
+                  className="rounded text-[var(--crm-heading)] focus:ring-[var(--crm-heading)]/40 border-[var(--crm-ink-soft)]/30 w-4 h-4 cursor-pointer accent-[var(--crm-heading)]"
                 />
-                <label htmlFor="isActive" className="text-[#C5CBD3] cursor-pointer select-none">
+                <label htmlFor="isActive" className="text-[var(--crm-ink-soft)] cursor-pointer select-none">
                   Make this job listing active and visible on the Careers page
                 </label>
               </div>
 
-              <div className="flex space-x-3 pt-4 border-t border-[#C5CBD3]/10">
+              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[#040A12] bg-[#F2F4F7] hover:bg-[#C5CBD3] transition"
+                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] transition"
                 >
                   {editingJob ? 'Update Listing' : 'Post Job'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[#C5CBD3] bg-[#0E1116] border border-[#C5CBD3]/20 hover:bg-[#121D29] transition"
+                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 hover:bg-[var(--crm-bg-raised)] transition"
                 >
                   Cancel
                 </button>
