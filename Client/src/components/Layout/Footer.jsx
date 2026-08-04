@@ -46,7 +46,7 @@ export default function Footer() {
     };
   }
 
-  const officialEmail = "info.indiatradeoverseas@gmail.com";
+  const officialEmail = "info@indiatradeoverseas.com";
   const registeredOfficeText = "Deramari, Kishanganj, Bihar - 855107, India";
 
   return (
