@@ -55,25 +55,25 @@ export default function ProductUpload() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0E1116] flex items-center justify-center">
-        <div className="w-12 h-[1px] bg-[#C5CBD3]/40 animate-pulse" />
+      <div className="min-h-screen bg-[var(--crm-bg)] flex items-center justify-center">
+        <div className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40 animate-pulse" />
       </div>
     );
   }
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[#0E1116] text-[#C5CBD3] block pb-12">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12">
       
       {/* Upper Context Header Panel */}
-      <motion.div variants={blockVariants} className="w-full border-b border-[#C5CBD3]/10 py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-[#040A12]/40 backdrop-blur-sm">
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="space-y-1 text-left">
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[#6D7886] font-bold block font-mono">MODULE 05 / INFRASTRUCTURE</span>
-          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[#F2F4F7] uppercase tracking-tight">Catalog Ledger Management</h1>
+          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MODULE 05 / INFRASTRUCTURE</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Catalog Ledger Management</h1>
         </div>
         {((user?.role && ['ADMIN', 'MANAGER', 'IT', 'SOFTWARE_ENGINEER'].includes(user.role)) || user?.productUploadPermission) && (
           <button 
             onClick={handleOpenUpload} 
-            className="w-full sm:w-auto bg-[#F2F4F7] text-[#040A12] text-[11px] uppercase tracking-widest font-bold h-[42px] px-6 rounded-sm flex items-center justify-center space-x-1.5 transition-all shadow-md cursor-pointer hover:bg-[#C5CBD3]"
+            className="w-full sm:w-auto bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-6 rounded-sm flex items-center justify-center space-x-1.5 transition-all shadow-md cursor-pointer hover:bg-[var(--crm-ink-soft)]"
           >
             <FiPlus size={14} /> <span>Upload Commodity</span>
           </button>
@@ -81,11 +81,11 @@ export default function ProductUpload() {
       </motion.div>
 
       {/* Main Container Content */}
-      <div className="w-full py-8 bg-[#0E1116]">
+      <div className="w-full py-8 bg-[var(--crm-bg)]">
         {products.length === 0 ? (
-          <motion.div variants={blockVariants} className="bg-[#121D29]/10 border border-[#C5CBD3]/15 text-center py-20 rounded-sm">
-            <FiGrid size={36} className="mx-auto text-[#6D7886] opacity-50 mb-4" />
-            <p className="text-[10px] font-mono uppercase tracking-widest text-[#6D7886] font-medium">No commodity entries indexed within the registry.</p>
+          <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/10 border border-[var(--crm-ink-soft)]/15 text-center py-20 rounded-sm">
+            <FiGrid size={36} className="mx-auto text-[var(--crm-ink-faint)] opacity-50 mb-4" />
+            <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-medium">No commodity entries indexed within the registry.</p>
           </motion.div>
         ) : (
           <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -94,11 +94,11 @@ export default function ProductUpload() {
                 key={product._id} 
                 variants={blockVariants}
                 whileHover={{ y: -4, borderColor: 'rgba(197,203,211,0.35)' }}
-                className="bg-[#121D29]/30 border border-[#C5CBD3]/15 p-5 flex flex-col justify-between rounded-sm shadow-2xl transition-all duration-300 group"
+                className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-5 flex flex-col justify-between rounded-sm shadow-2xl transition-all duration-300 group"
               >
                 <div>
                   {/* Container Box for Lazily Loaded Images */}
-                  <div className="overflow-hidden bg-[#040A12] border border-[#C5CBD3]/10 rounded-sm mb-4 h-48 flex items-center justify-center shadow-inner relative">
+                  <div className="overflow-hidden bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm mb-4 h-48 flex items-center justify-center shadow-inner relative">
                     <img 
                       src={product.image || product.imageUrl} 
                       alt={product.name} 
@@ -109,21 +109,21 @@ export default function ProductUpload() {
                   
                   {/* Title and Metadata Tag Strip */}
                   <div className="flex justify-between items-start mb-3 gap-3 text-left">
-                    <h3 className="text-sm font-serif font-normal text-[#F2F4F7] uppercase tracking-wide truncate flex-1">{product.name}</h3>
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#F2F4F7] bg-[#040A12]/60 border border-[#C5CBD3]/10 px-2 py-0.5 rounded-sm shrink-0">
+                    <h3 className="text-sm font-serif font-normal text-[var(--crm-heading)] uppercase tracking-wide truncate flex-1">{product.name}</h3>
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm shrink-0">
                       {categoryLabels[product.category] || product.category}
                     </span>
                   </div>
                   
                   {/* Description Box */}
-                  <p className="text-xs text-[#C5CBD3]/80 leading-relaxed font-light line-clamp-3 bg-[#040A12]/40 p-3 border border-[#C5CBD3]/10 h-16 overflow-hidden mb-4 text-left rounded-sm">
+                  <p className="text-xs text-[var(--crm-ink-soft)]/80 leading-relaxed font-light line-clamp-3 bg-[var(--crm-bg-sunken)]/40 p-3 border border-[var(--crm-ink-soft)]/10 h-16 overflow-hidden mb-4 text-left rounded-sm">
                     {product.description}
                   </p>
                 </div>
                 
                 {/* Lower Card Action / Details Footer */}
-                <div className="pt-3 border-t border-[#C5CBD3]/10 flex justify-between items-center text-[10px] font-mono tracking-wide">
-                  <span className="text-[#6D7886]">Origin Hub: <strong className="text-[#C5CBD3] font-medium uppercase">{product.origin || 'Global'}</strong></span>
+                <div className="pt-3 border-t border-[var(--crm-ink-soft)]/10 flex justify-between items-center text-[10px] font-mono tracking-wide">
+                  <span className="text-[var(--crm-ink-faint)]">Origin Hub: <strong className="text-[var(--crm-ink-soft)] font-medium uppercase">{product.origin || 'Global'}</strong></span>
                 </div>
               </motion.div>
             ))}

@@ -258,13 +258,13 @@ export default function LeadDetail() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#0E1116] flex items-center justify-center">
-      <div className="w-12 h-[1px] bg-[#C5CBD3]/40 animate-pulse" />
+    <div className="min-h-screen bg-[var(--crm-bg)] flex items-center justify-center">
+      <div className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40 animate-pulse" />
     </div>
   );
 
   if (!lead) return (
-    <div className="text-center py-20 text-xs uppercase tracking-widest text-[#6D7886] font-mono bg-[#0E1116] min-h-screen">
+    <div className="text-center py-20 text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono bg-[var(--crm-bg)] min-h-screen">
       Lead manifest record not mapped.
     </div>
   );
@@ -276,39 +276,39 @@ export default function LeadDetail() {
   const progressPercent = Math.min(100, Math.max(0, (currentStepIndex / activeStages.length) * 100));
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[#0E1116] text-[#C5CBD3] block pb-12">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12">
       
       {/* Top Context Header Section */}
-      <motion.div variants={blockVariants} className="w-full border-b border-[#C5CBD3]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[#040A12]/40 backdrop-blur-sm">
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="flex items-start space-x-4">
-          <button onClick={() => navigate('/crm/leads')} className="text-[#C5CBD3] hover:text-[#F2F4F7] mt-1 transition-colors cursor-pointer">
+          <button onClick={() => navigate('/crm/leads')} className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] mt-1 transition-colors cursor-pointer">
             <FiArrowLeft size={18} />
           </button>
           <div className="space-y-1 text-left">
-            <span className="text-[9px] uppercase tracking-[0.25em] text-[#6D7886] font-bold block font-mono">MANIFEST DETAIL // {lead.leadCode}</span>
+            <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MANIFEST DETAIL // {lead.leadCode}</span>
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[#F2F4F7] uppercase tracking-tight">{lead.customerName}</h1>
-              <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[#040A12]/60 border-[#C5CBD3]/10 text-[#C5CBD3]">
+              <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">{lead.customerName}</h1>
+              <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[var(--crm-bg-sunken)]/60 border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
                 {lead.stage.replace(/_/g, ' ')}
               </span>
             </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
-          <button onClick={() => setShowQuotationModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
-            <FiFileText size={13} className="text-[#6D7886]" /> <span>Request Quote</span>
+          <button onClick={() => setShowQuotationModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiFileText size={13} className="text-[var(--crm-ink-faint)]" /> <span>Request Quote</span>
           </button>
-          <button onClick={() => setShowActivityModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
-            <FiActivity size={13} className="text-[#6D7886]" /> <span>Log Activity</span>
+          <button onClick={() => setShowActivityModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiActivity size={13} className="text-[var(--crm-ink-faint)]" /> <span>Log Activity</span>
           </button>
-          <button onClick={() => setShowWhatsAppModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
-            <FiMessageCircle size={13} className="text-[#6D7886]" /> <span>Log WhatsApp</span>
+          <button onClick={() => setShowWhatsAppModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiMessageCircle size={13} className="text-[var(--crm-ink-faint)]" /> <span>Log WhatsApp</span>
           </button>
-          <button onClick={() => setShowEmailModal(true)} className="flex-1 md:flex-none justify-center bg-[#0E1116] text-[#C5CBD3] border border-[#C5CBD3]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[#F2F4F7]/40 hover:bg-[#121D29]">
-            <FiMail size={13} className="text-[#6D7886]" /> <span>Send Email</span>
+          <button onClick={() => setShowEmailModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiMail size={13} className="text-[var(--crm-ink-faint)]" /> <span>Send Email</span>
           </button>
           {user?.role === 'ADMIN' && (
-            <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-rose-950/40 text-rose-400 border border-rose-500/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-rose-900/60">
+            <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-[var(--crm-danger-bg)]">
               <FiTrash2 size={13} /> <span>Delete Node</span>
             </button>
           )}
@@ -325,44 +325,44 @@ export default function LeadDetail() {
             { label: 'Email Coordinates', val: revealedEmail || lead.emailMasked || '•••••', revealTarget: 'email' },
             { label: 'Commodity Sector', val: lead.productCategory },
             { label: 'Volume / Mass', val: lead.quantity || '—' },
-            { label: 'Assigned Custodian', val: lead.assignedTo?.fullName || lead.assignedTo || 'Unassigned', accent: 'text-sky-400' },
-            { label: 'Department Router', val: lead.assignedDepartment || 'None', accent: 'text-indigo-400' }
+            { label: 'Assigned Custodian', val: lead.assignedTo?.fullName || lead.assignedTo || 'Unassigned', accent: 'text-[var(--crm-info)]' },
+            { label: 'Department Router', val: lead.assignedDepartment || 'None', accent: 'text-[var(--crm-accent)]' }
           ].map((item, i) => (
-            <div key={i} className="bg-[#121D29]/30 border border-[#C5CBD3]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
+            <div key={i} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
               <div className="flex justify-between items-start gap-1">
-                <span className="text-[9px] uppercase tracking-wider text-[#6D7886] font-bold">{item.label}</span>
+                <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">{item.label}</span>
                 {item.revealTarget && !(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
-                  <button onClick={() => handleUnmaskClick(item.revealTarget)} className="text-[#6D7886] hover:text-[#F2F4F7] transition-colors cursor-pointer"><FiEye size={12} /></button>
+                  <button onClick={() => handleUnmaskClick(item.revealTarget)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition-colors cursor-pointer"><FiEye size={12} /></button>
                 )}
               </div>
-              <p className={`text-xs font-bold tracking-wide break-all mt-2 truncate ${item.accent || 'text-[#F2F4F7]'}`}>{item.val}</p>
+              <p className={`text-xs font-bold tracking-wide break-all mt-2 truncate ${item.accent || 'text-[var(--crm-heading)]'}`}>{item.val}</p>
             </div>
           ))}
         </motion.div>
 
         {/* Task Management Router Pane */}
         {(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
-          <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left">
+          <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left">
             <div className="mb-4">
-              <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold block mb-0.5 font-mono">ROUTING CORE</span>
-              <h3 className="text-base font-serif font-normal text-[#F2F4F7]">Assign Task / Lead Matrix</h3>
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">ROUTING CORE</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Assign Task / Lead Matrix</h3>
             </div>
             <form onSubmit={handleAssign} className="flex flex-col lg:flex-row gap-4 items-end">
               <div className="w-full lg:flex-1">
-                <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-wider mb-1.5 font-mono">Assign to Employee</label>
-                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 font-mono cursor-pointer">
-                  <option value="" className="bg-[#0E1116]">Select Employee (Unassigned)</option>
-                  {users.map((u) => <option key={u._id} value={u._id} className="bg-[#0E1116] text-[#C5CBD3]">{u.fullName} ({u.role} - {u.department})</option>)}
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1.5 font-mono">Assign to Employee</label>
+                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 font-mono cursor-pointer">
+                  <option value="" className="bg-[var(--crm-bg)]">Select Employee (Unassigned)</option>
+                  {users.map((u) => <option key={u._id} value={u._id} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{u.fullName} ({u.role} - {u.department})</option>)}
                 </select>
               </div>
               <div className="w-full lg:flex-1">
-                <label className="block text-[10px] font-bold text-[#6D7886] uppercase tracking-wider mb-1.5 font-mono">Assign to Department</label>
-                <select value={deptAssignee} onChange={(e) => setDeptAssignee(e.target.value)} className="w-full px-3.5 py-2.5 bg-[#0E1116] border border-[#C5CBD3]/15 text-xs rounded-sm outline-none text-[#F2F4F7] focus:border-[#F2F4F7]/40 font-mono cursor-pointer">
-                  <option value="" className="bg-[#0E1116]">Select Department (None)</option>
-                  {departments.map((dept) => <option key={dept} value={dept} className="bg-[#0E1116] text-[#C5CBD3]">{dept}</option>)}
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1.5 font-mono">Assign to Department</label>
+                <select value={deptAssignee} onChange={(e) => setDeptAssignee(e.target.value)} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 font-mono cursor-pointer">
+                  <option value="" className="bg-[var(--crm-bg)]">Select Department (None)</option>
+                  {departments.map((dept) => <option key={dept} value={dept} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{dept}</option>)}
                 </select>
               </div>
-              <button type="submit" disabled={isAssigning} className="w-full lg:w-auto bg-[#F2F4F7] text-[#040A12] text-[11px] font-bold uppercase tracking-widest px-6 h-[40px] rounded-sm transition-all cursor-pointer whitespace-nowrap font-mono hover:bg-[#C5CBD3]">
+              <button type="submit" disabled={isAssigning} className="w-full lg:w-auto bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] font-bold uppercase tracking-widest px-6 h-[40px] rounded-sm transition-all cursor-pointer whitespace-nowrap font-mono hover:bg-[var(--crm-ink-soft)]">
                 {isAssigning ? 'Synchronizing...' : 'Update Assignment'}
               </button>
             </form>
@@ -370,19 +370,19 @@ export default function LeadDetail() {
         )}
 
         {/* Stage Management Linear Tracker */}
-        <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 bg-[#121D29]/20 p-5 rounded-sm text-left">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#C5CBD3]/10 pb-4 mb-6">
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/20 p-5 rounded-sm text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--crm-ink-soft)]/10 pb-4 mb-6">
             <div>
-              <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold block mb-0.5 font-mono">PROGRESS MECHANISM</span>
-              <h3 className="text-base font-serif font-normal text-[#F2F4F7]">Lead Progression Pipeline</h3>
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">PROGRESS MECHANISM</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Lead Progression Pipeline</h3>
             </div>
             <div className="flex flex-col items-start sm:items-end gap-1 min-w-[180px] font-mono">
-              <div className="flex justify-between w-full text-[10px] font-bold uppercase tracking-wider text-[#6D7886]">
+              <div className="flex justify-between w-full text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">
                 <span>Pipeline Index</span>
                 <span>{Math.round(progressPercent)}%</span>
               </div>
-              <div className="w-full bg-[#0E1116] h-1.5 border border-[#C5CBD3]/15 rounded-xs overflow-hidden">
-                <div className={`h-full transition-all duration-500 ease-out ${isClosedWon ? 'bg-emerald-400' : isClosedLost ? 'bg-rose-500' : 'bg-[#F2F4F7]'}`} style={{ width: `${progressPercent}%` }}/>
+              <div className="w-full bg-[var(--crm-bg)] h-1.5 border border-[var(--crm-ink-soft)]/15 rounded-xs overflow-hidden">
+                <div className={`h-full transition-all duration-500 ease-out ${isClosedWon ? 'bg-[var(--crm-positive)]' : isClosedLost ? 'bg-[var(--crm-danger)]' : 'bg-[var(--crm-heading)]'}`} style={{ width: `${progressPercent}%` }}/>
               </div>
             </div>
           </div>
@@ -397,10 +397,10 @@ export default function LeadDetail() {
                 const isCompleted = isClosedWon || isClosedLost || activeStages.indexOf(currentStage) > idx;
                 const isClickable = allowedTransitions[currentStage]?.includes(stage);
                 
-                let currentStyle = isCurrent ? "border-[#F2F4F7] bg-[#121D29] text-[#F2F4F7] font-bold"
-                                  : isCompleted ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400 opacity-80"
-                                  : isClickable ? "border-[#C5CBD3]/20 bg-[#0E1116] text-[#C5CBD3] hover:border-[#F2F4F7]/50 cursor-pointer"
-                                  : "border-[#C5CBD3]/10 bg-[#0E1116]/40 text-[#6D7886] opacity-30 cursor-not-allowed";
+                let currentStyle = isCurrent ? "border-[var(--crm-heading)] bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-bold"
+                                  : isCompleted ? "border-[var(--crm-positive)]/30 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] opacity-80"
+                                  : isClickable ? "border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/50 cursor-pointer"
+                                  : "border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/40 text-[var(--crm-ink-faint)] opacity-30 cursor-not-allowed";
 
                 return (
                   <React.Fragment key={stage}>
@@ -409,7 +409,7 @@ export default function LeadDetail() {
                       <span className="text-[9px] font-bold tracking-wide uppercase truncate max-w-full">{details.label}</span>
                     </button>
                     {idx < activeStages.length - 1 && (
-                      <div className={`h-[1px] w-4 shrink-0 ${isCompleted ? 'bg-emerald-500/40' : 'bg-[#C5CBD3]/15'}`} />
+                      <div className={`h-[1px] w-4 shrink-0 ${isCompleted ? 'bg-[var(--crm-positive)]/40' : 'bg-[var(--crm-ink-soft)]/15'}`} />
                     )}
                   </React.Fragment>
                 );
@@ -418,27 +418,27 @@ export default function LeadDetail() {
           </div>
 
           {/* Deal Outcome Terminals */}
-          <div className="mt-6 pt-4 border-t border-[#C5CBD3]/10 grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
+          <div className="mt-6 pt-4 border-t border-[var(--crm-ink-soft)]/10 grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
             {['CLOSED_WON', 'CLOSED_LOST'].map((outcome) => {
               const isWon = outcome === 'CLOSED_WON';
               const isTargetActive = currentStage === outcome;
               const canTransition = allowedTransitions[currentStage]?.includes(outcome);
               
               let outcomeStyle = isTargetActive 
-                ? (isWon ? 'border-emerald-500/50 bg-emerald-950/30 text-emerald-400' : 'border-rose-500/50 bg-rose-950/30 text-rose-400')
+                ? (isWon ? 'border-[var(--crm-positive)]/50 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'border-[var(--crm-danger)]/50 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]')
                 : canTransition 
-                ? 'border-[#C5CBD3]/20 bg-[#0E1116] hover:border-[#F2F4F7]/40 cursor-pointer text-[#C5CBD3]'
-                : 'border-[#C5CBD3]/10 bg-[#0E1116]/30 opacity-40 cursor-not-allowed text-[#6D7886]';
+                ? 'border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:border-[var(--crm-heading)]/40 cursor-pointer text-[var(--crm-ink-soft)]'
+                : 'border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/30 opacity-40 cursor-not-allowed text-[var(--crm-ink-faint)]';
 
               return (
                 <button key={outcome} onClick={() => canTransition && handleStageChange(outcome)} disabled={isTargetActive || !canTransition} className={`flex items-center justify-between p-4 border rounded-sm text-left transition-all duration-200 focus:outline-none ${outcomeStyle}`}>
                   <div className="flex items-center space-x-3">
-                    <div className={`p-2 bg-[#121D29] ${isTargetActive ? (isWon ? 'text-emerald-400' : 'text-rose-400') : 'text-[#6D7886]'}`}>
+                    <div className={`p-2 bg-[var(--crm-bg-raised)] ${isTargetActive ? (isWon ? 'text-[var(--crm-positive)]' : 'text-[var(--crm-danger)]') : 'text-[var(--crm-ink-faint)]'}`}>
                       {isWon ? <FiAward size={18} /> : <FiXCircle size={18} />}
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs uppercase tracking-wider text-[#F2F4F7]">{isWon ? 'Closed Won' : 'Closed Lost'}</h4>
-                      <p className="text-[10px] text-[#6D7886] mt-0.5">{isWon ? 'Lead converted into verified customer node' : 'Lead dropped or qualified out'}</p>
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--crm-heading)]">{isWon ? 'Closed Won' : 'Closed Lost'}</h4>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-0.5">{isWon ? 'Lead converted into verified customer node' : 'Lead dropped or qualified out'}</p>
                     </div>
                   </div>
                   {isTargetActive && <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 border border-current">Active Outcome</span>}
@@ -449,27 +449,27 @@ export default function LeadDetail() {
         </motion.div>
 
         {/* Activity Timeline Records */}
-        <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left">
-          <div className="mb-4 flex items-center justify-between border-b border-[#C5CBD3]/10 pb-3">
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left">
+          <div className="mb-4 flex items-center justify-between border-b border-[var(--crm-ink-soft)]/10 pb-3">
             <div>
-              <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold block mb-0.5 font-mono">AUDIT TRAIL</span>
-              <h3 className="text-base font-serif font-normal text-[#F2F4F7]">Activity Timeline Stream</h3>
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">AUDIT TRAIL</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Activity Timeline Stream</h3>
             </div>
-            <FiCompass className="text-[#6D7886]" size={15} />
+            <FiCompass className="text-[var(--crm-ink-faint)]" size={15} />
           </div>
           <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             {activities.length === 0 ? (
-              <p className="text-xs tracking-wide text-center py-8 text-[#6D7886] font-mono uppercase">No activity records mapped inside this lead node.</p>
+              <p className="text-xs tracking-wide text-center py-8 text-[var(--crm-ink-faint)] font-mono uppercase">No activity records mapped inside this lead node.</p>
             ) : (
               activities.map((act) => (
-                <div key={act._id} className="border-l border-[#C5CBD3]/20 pl-4 py-1 text-left font-mono">
+                <div key={act._id} className="border-l border-[var(--crm-ink-soft)]/20 pl-4 py-1 text-left font-mono">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                    <span className="font-bold uppercase tracking-wider text-[#F2F4F7] text-xs">{act.actionType.replace(/_/g, ' ')}</span>
-                    <span className="text-[10px] text-[#6D7886]">{new Date(act.createdAt).toLocaleString()}</span>
+                    <span className="font-bold uppercase tracking-wider text-[var(--crm-heading)] text-xs">{act.actionType.replace(/_/g, ' ')}</span>
+                    <span className="text-[10px] text-[var(--crm-ink-faint)]">{new Date(act.createdAt).toLocaleString()}</span>
                   </div>
-                  <p className="text-xs text-[#C5CBD3] leading-relaxed font-sans">{act.note}</p>
+                  <p className="text-xs text-[var(--crm-ink-soft)] leading-relaxed font-sans">{act.note}</p>
                   {act.nextFollowupAt && (
-                    <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wide mt-1">Next Scheduled Interface: {new Date(act.nextFollowupAt).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-[var(--crm-warning)] font-bold uppercase tracking-wide mt-1">Next Scheduled Interface: {new Date(act.nextFollowupAt).toLocaleDateString()}</p>
                   )}
                 </div>
               ))
@@ -482,31 +482,31 @@ export default function LeadDetail() {
       <AnimatePresence>
         {/* 1. Add Activity Modal */}
         {showActivityModal && (
-          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-[#C5CBD3]/15 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
-              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[#C5CBD3]/10 pb-3 text-[#F2F4F7]">Log Activity Action</h3>
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Log Activity Action</h3>
               <form onSubmit={handleAddActivity} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Action Type</label>
-                  <select value={newActivity.actionType} onChange={(e) => setNewActivity({ ...newActivity, actionType: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none cursor-pointer">
-                    <option value="FOLLOW_UP" className="bg-[#0E1116]">Follow Up</option>
-                    <option value="CALL" className="bg-[#0E1116]">Call</option>
-                    <option value="EMAIL" className="bg-[#0E1116]">Email</option>
-                    <option value="MEETING" className="bg-[#0E1116]">Meeting</option>
-                    <option value="NOTE" className="bg-[#0E1116]">Note</option>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Action Type</label>
+                  <select value={newActivity.actionType} onChange={(e) => setNewActivity({ ...newActivity, actionType: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none cursor-pointer">
+                    <option value="FOLLOW_UP" className="bg-[var(--crm-bg)]">Follow Up</option>
+                    <option value="CALL" className="bg-[var(--crm-bg)]">Call</option>
+                    <option value="EMAIL" className="bg-[var(--crm-bg)]">Email</option>
+                    <option value="MEETING" className="bg-[var(--crm-bg)]">Meeting</option>
+                    <option value="NOTE" className="bg-[var(--crm-bg)]">Note</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Operational Summary Note</label>
-                  <textarea required rows="3" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none resize-none font-sans" placeholder="Log interaction specifics..."/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Operational Summary Note</label>
+                  <textarea required rows="3" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Log interaction specifics..."/>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Target Next Interface Schedule</label>
-                  <input type="datetime-local" value={newActivity.nextFollowupAt} onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none"/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Next Interface Schedule</label>
+                  <input type="datetime-local" value={newActivity.nextFollowupAt} onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors">Commit</button>
-                  <button type="button" onClick={() => setShowActivityModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Commit</button>
+                  <button type="button" onClick={() => setShowActivityModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
             </motion.div>
@@ -515,17 +515,17 @@ export default function LeadDetail() {
 
         {/* 1b. Log WhatsApp Modal */}
         {showWhatsAppModal && (
-          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-[#C5CBD3]/15 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
-              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[#C5CBD3]/10 pb-3 text-[#F2F4F7]">Log WhatsApp Activity</h3>
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Log WhatsApp Activity</h3>
               <form onSubmit={handleLogWhatsApp} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Message Sent</label>
-                  <textarea rows="3" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Sent quotation template via WhatsApp..."/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Message Sent</label>
+                  <textarea rows="3" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Sent quotation template via WhatsApp..."/>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" disabled={sendingWhatsApp} className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors disabled:opacity-50">{sendingWhatsApp ? 'Logging...' : 'Log Activity'}</button>
-                  <button type="button" onClick={() => setShowWhatsAppModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                  <button type="submit" disabled={sendingWhatsApp} className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-50">{sendingWhatsApp ? 'Logging...' : 'Log Activity'}</button>
+                  <button type="button" onClick={() => setShowWhatsAppModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
             </motion.div>
@@ -534,21 +534,21 @@ export default function LeadDetail() {
 
         {/* 1c. Send Email Modal */}
         {showEmailModal && (
-          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-[#C5CBD3]/15 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
-              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[#C5CBD3]/10 pb-3 text-[#F2F4F7]">Send Email</h3>
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Send Email</h3>
               <form onSubmit={handleSendEmail} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Subject *</label>
-                  <input type="text" required value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none font-sans" placeholder="Email subject"/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Subject *</label>
+                  <input type="text" required value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="Email subject"/>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Body *</label>
-                  <textarea required rows="4" value={emailForm.body} onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none resize-none font-sans" placeholder="Email body..."/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Body *</label>
+                  <textarea required rows="4" value={emailForm.body} onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Email body..."/>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" disabled={sendingEmail} className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors disabled:opacity-50">{sendingEmail ? 'Sending...' : 'Send Email'}</button>
-                  <button type="button" onClick={() => setShowEmailModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                  <button type="submit" disabled={sendingEmail} className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-50">{sendingEmail ? 'Sending...' : 'Send Email'}</button>
+                  <button type="button" onClick={() => setShowEmailModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
             </motion.div>
@@ -557,25 +557,25 @@ export default function LeadDetail() {
 
         {/* 2. Request Quotation Modal */}
         {showQuotationModal && (
-          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-[#C5CBD3]/15 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
-              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[#C5CBD3]/10 pb-3 text-[#F2F4F7]">Request Trade Valuation</h3>
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Request Trade Valuation</h3>
               <form onSubmit={handleRequestQuotation} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Target Base Value (₹) *</label>
-                  <input type="number" required value={quotationData.employeeRequestedPrice} onChange={(e) => setQuotationData({ ...quotationData, employeeRequestedPrice: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none" placeholder="Specify baseline transaction valuation"/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Base Value (₹) *</label>
+                  <input type="number" required value={quotationData.employeeRequestedPrice} onChange={(e) => setQuotationData({ ...quotationData, employeeRequestedPrice: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none" placeholder="Specify baseline transaction valuation"/>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Payment Protocols</label>
-                  <input type="text" value={quotationData.paymentTerms} onChange={(e) => setQuotationData({ ...quotationData, paymentTerms: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none font-sans" placeholder="e.g. 30% advance deposit tier"/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Payment Protocols</label>
+                  <input type="text" value={quotationData.paymentTerms} onChange={(e) => setQuotationData({ ...quotationData, paymentTerms: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="e.g. 30% advance deposit tier"/>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Validity Lifecycle (Days)</label>
-                  <input type="number" value={quotationData.validityDays} onChange={(e) => setQuotationData({ ...quotationData, validityDays: e.target.value })} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none"/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Validity Lifecycle (Days)</label>
+                  <input type="number" value={quotationData.validityDays} onChange={(e) => setQuotationData({ ...quotationData, validityDays: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-[#F2F4F7] text-[#040A12] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#C5CBD3] transition-colors">Submit Quote</button>
-                  <button type="button" onClick={() => setShowQuotationModal(false)} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Submit Quote</button>
+                  <button type="button" onClick={() => setShowQuotationModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
             </motion.div>
@@ -584,18 +584,18 @@ export default function LeadDetail() {
 
         {/* 3. Security Access Audit Warning Modal */}
         {showWarningModal && (
-          <div className="fixed inset-0 bg-[#040A12]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[#121D29] border border-rose-500/30 rounded-sm p-6 w-full max-w-md relative text-[#C5CBD3] text-left">
-              <div className="flex items-center space-x-2.5 mb-3 text-rose-400 font-mono"><FiShield size={18} /><h3 className="text-base font-serif uppercase tracking-wide">Security Access Protocol</h3></div>
-              <p className="text-xs text-[#6D7886] leading-relaxed mb-4 font-sans">WARNING: Unmasking raw database coordinates is tracked in global audit nodes. Enter a clear business justification to reveal this telemetry line.</p>
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-danger)]/30 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <div className="flex items-center space-x-2.5 mb-3 text-[var(--crm-danger)] font-mono"><FiShield size={18} /><h3 className="text-base font-serif uppercase tracking-wide">Security Access Protocol</h3></div>
+              <p className="text-xs text-[var(--crm-ink-faint)] leading-relaxed mb-4 font-sans">WARNING: Unmasking raw database coordinates is tracked in global audit nodes. Enter a clear business justification to reveal this telemetry line.</p>
               <form onSubmit={handleRevealSubmit} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6D7886] mb-1.5">Justification Token Entry</label>
-                  <textarea required rows="3" value={reason} onChange={(e) => setReason(e.target.value)} className="w-full p-2.5 border border-[#C5CBD3]/20 bg-[#0E1116] text-[#F2F4F7] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Reviewing dispatch schedules directly with client..."/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Justification Token Entry</label>
+                  <textarea required rows="3" value={reason} onChange={(e) => setReason(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Reviewing dispatch schedules directly with client..."/>
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" className="flex-1 bg-rose-950/60 text-rose-300 border border-rose-500/30 py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-rose-900/80 transition-colors">Confirm Reveal</button>
-                  <button type="button" onClick={() => { setShowWarningModal(false); setReason(''); }} className="flex-1 bg-[#0E1116] border border-[#C5CBD3]/20 text-[#C5CBD3] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[#121D29] transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-danger-bg)] transition-colors">Confirm Reveal</button>
+                  <button type="button" onClick={() => { setShowWarningModal(false); setReason(''); }} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
             </motion.div>

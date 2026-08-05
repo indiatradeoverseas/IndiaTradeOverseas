@@ -19,6 +19,15 @@ export const authApi = {
     return response.data;
   },
 
+  async adminLogin(credentials) {
+    const response = await axiosInstance.post('/admin-auth/login', credentials);
+    if (response.data.success && response.data.data?.token) {
+      localStorage.setItem('token', response.data.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.data.user));
+    }
+    return response.data;
+  },
+
   async getMe() {
     const response = await axiosInstance.get('/auth/me');
     return response.data;

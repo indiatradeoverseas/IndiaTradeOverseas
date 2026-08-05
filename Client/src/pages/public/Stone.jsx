@@ -29,7 +29,7 @@ const ALTERNATING_SHOWCASE = [
     id: "10mm",
     title: "10 MM Stone Chips",
     subtitle: "RCC Structural & Precast Elements",
-    image: "/images/stone_images/10mm_White_stone.png",
+    image: "/images/stone_images/10mmm.jpg",
     description: "Screened angular chips designed specifically for fine concrete mixes, precast pipes, solid concrete blocks, and dense RCC works. Offers exceptional compaction density and superior binding strength.",
     specs: ["Size: 10 Nominal", "Color: Black / White", "Origin: Bhutan & Pakur", "Usage: RCC & Precast"]
   },
@@ -45,7 +45,7 @@ const ALTERNATING_SHOWCASE = [
     id: "40mm",
     title: "40 MM Stone Chips",
     subtitle: "Heavy Roadways & Site Base Development",
-    image: "/images/stone_images/40mm_White_stone.png",
+    image: "/images/stone_images/40mmm.jpg",
     description: "Engineered larger aggregate primarily suited for national highway construction, site leveling, PCC foundation courses, and heavy civil drainage channels. High load resistance.",
     specs: ["Size: 30 Nominal", "Color: Black / White", "Crusher: RIGSAR / PSB / LPSQ", "Usage: Highways & PCC"]
   },
@@ -53,7 +53,7 @@ const ALTERNATING_SHOWCASE = [
     id: "60mm",
     title: "60 MM Heavy Stone",
     subtitle: "Railway Ballast & Heavy Foundations",
-    image: "/images/stone_images/60mm_white_stone.png",
+    image: "/images/stone_images/60mmm.jpg",
     description: "High-density crushed rock used in massive foundation mass-filling, railway track ballast layers, and heavy infrastructure sub-base preparation. Direct quarry loading.",
     specs: ["Size: 40MM & 60MM", "Color: Black / White", "Loading Point: Pasakha / Paskha", "Usage: Rail & Mass Fill"]
   },

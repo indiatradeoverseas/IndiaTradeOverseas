@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400..600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -48,6 +49,21 @@ body {
   background: var(--surface);
   color: var(--text-primary);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Prevents a flash of the public site's light background below short CRM pages on
+   mobile, where dynamic browser chrome can make 100vh taller than the visible area. */
+body:has(.crm-portal) {
+  background: #0B0C0E;
+}
+
+/* min-h-screen (100vh) is measured against the largest possible mobile viewport
+   (address bar collapsed). 100dvh tracks the actual visible viewport instead,
+   which is the real fix for the white-gap-below-short-pages issue on phones. */
+.crm-portal.min-h-screen,
+.crm-portal .min-h-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,
@@ -103,4 +119,55 @@ textarea {
   &::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
+}
+
+/* ============================================================
+   CRM design tokens — "Bonded Vault" direction.
+   Applied via .crm-portal on the portal root (PortalLayout.jsx).
+   Pages/components under Client/src/pages/crm and
+   Client/src/components/Layout should read colors through these
+   custom properties instead of hardcoding hex values.
+   ============================================================ */
+
+.crm-portal {
+  --crm-font-display: 'Newsreader', Georgia, serif;
+  --crm-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --crm-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --crm-bg: #0B0C0E;
+  --crm-bg-raised: #16181B;
+  --crm-bg-sunken: #08090A;
+  --crm-nav-bg: #0E0F11;
+  --crm-nav-bg-to: #0B0C0E;
+  --crm-ink: #E7E3D9;
+  --crm-ink-soft: #9B978C;
+  --crm-ink-faint: #6C6A62;
+  --crm-heading: #F1EEE5;
+  --crm-line: rgba(231,227,217,0.09);
+  --crm-line-strong: rgba(231,227,217,0.18);
+  --crm-accent: #C89A54;
+  --crm-accent-soft: #9A7639;
+  --crm-accent-bg: rgba(200,154,84,0.1);
+  --crm-positive: #56A587;
+  --crm-positive-bg: rgba(86,165,135,0.12);
+  --crm-warning: #D2A85C;
+  --crm-warning-bg: rgba(210,168,92,0.12);
+  --crm-danger: #C96A57;
+  --crm-danger-bg: rgba(201,106,87,0.12);
+  --crm-info: #5B9BB8;
+  --crm-info-bg: rgba(91,155,184,0.12);
+  --crm-shadow: 0 1px 0 rgba(231,227,217,0.04), 0 20px 44px -20px rgba(0,0,0,0.6);
+  --crm-shimmer: linear-gradient(90deg, rgba(231,227,217,0.03) 0%, rgba(231,227,217,0.08) 50%, rgba(231,227,217,0.03) 100%);
+  color-scheme: dark;
+}
+
+@keyframes crm-shimmer-sweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@utility crm-skeleton {
+  background-image: var(--crm-shimmer);
+  background-size: 200% 100%;
+  animation: crm-shimmer-sweep 1.6s ease-in-out infinite;
 }

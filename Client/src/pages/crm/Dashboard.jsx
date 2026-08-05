@@ -7,25 +7,32 @@ import { notificationsApi } from '../../api/notifications';
 import { useAuth } from '../../hooks/useAuth';
 import { FiUsers, FiAlertCircle, FiFileText, FiCheckSquare, FiClock, FiActivity, FiBell, FiArrowRight, FiTruck, FiTrendingUp, FiUserCheck, FiLifeBuoy, FiAward, FiDownload, FiCalendar } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { SkeletonStatGrid, SkeletonChartCard, SkeletonListCard } from '../../components/ui/Skeleton';
+import EmptyState from '../../components/ui/EmptyState';
 
 // Staggered layout entry configurations
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { 
-    opacity: 1, 
-    transition: { staggerChildren: 0.05, delayChildren: 0.1 } 
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.1 }
   }
 };
 
 const blockVariants = {
   hidden: { opacity: 0, y: 15, scale: 0.99 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
+  visible: {
+    opacity: 1,
+    y: 0,
     scale: 1,
-    transition: { type: 'spring', stiffness: 100, damping: 18, mass: 1 } 
+    transition: { type: 'spring', stiffness: 100, damping: 18, mass: 1 }
   }
 };
+
+const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
+const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
+const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' };
+const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -156,84 +163,115 @@ export default function Dashboard() {
     }
   };
 
+  const isAdmin = user?.role === 'ADMIN';
+  const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0E1116] flex items-center justify-center">
-        <motion.div 
-          animate={{ scale: [1, 1.15, 1], opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          className="w-16 h-[2px] bg-[#C5CBD3]" 
-        />
+      <div className="w-full space-y-8">
+        <div className="w-full border-b py-6" style={{ borderColor: 'var(--crm-line)' }}>
+          <div className="crm-skeleton h-3 w-56 rounded-sm mb-3" style={{ background: 'var(--crm-bg-sunken)' }} />
+          <div className="crm-skeleton h-7 w-72 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+        </div>
+        <SkeletonStatGrid count={isAdmin ? 8 : 5} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <SkeletonChartCard />
+          <SkeletonListCard />
+        </div>
       </div>
     );
   }
 
-  const isAdmin = user?.role === 'ADMIN';
-  const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
   const stats = isAdmin ? [
-    { title: 'Total Employees', value: summary?.totalEmployees || 0, icon: FiUsers, color: 'text-[#F2F4F7] bg-[#121D29]/60' },
-    { title: 'Active Leads', value: summary?.activeLeads || 0, icon: FiActivity, color: 'text-sky-400 bg-sky-950/20' },
-    { title: 'Pending Leads', value: summary?.pendingLeads || 0, icon: FiAlertCircle, color: 'text-amber-400 bg-amber-950/20' },
-    { title: 'Quotations Sent', value: summary?.quotations?.sent || 0, icon: FiFileText, color: 'text-[#C5CBD3] bg-[#121D29]/40' },
-    { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, icon: FiCheckSquare, color: 'text-emerald-400 bg-emerald-950/20' },
-    { title: 'Pending Orders', value: summary?.pendingOrders || 0, icon: FiClock, color: 'text-amber-400 bg-amber-950/20' },
-    { title: 'Total Revenue', value: fmtCurrency(summary?.revenue?.totalCollected), icon: FiTrendingUp, color: 'text-emerald-400 bg-emerald-950/20' },
-    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), icon: FiAlertCircle, color: 'text-rose-400 bg-rose-950/20' }
+    { title: 'Total Employees', value: summary?.totalEmployees || 0, icon: FiUsers, tone: 'ink' },
+    { title: 'Active Leads', value: summary?.activeLeads || 0, icon: FiActivity, tone: 'info' },
+    { title: 'Pending Leads', value: summary?.pendingLeads || 0, icon: FiAlertCircle, tone: 'warning' },
+    { title: 'Quotations Sent', value: summary?.quotations?.sent || 0, icon: FiFileText, tone: 'ink' },
+    { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, icon: FiCheckSquare, tone: 'positive' },
+    { title: 'Pending Orders', value: summary?.pendingOrders || 0, icon: FiClock, tone: 'warning' },
+    { title: 'Total Revenue', value: fmtCurrency(summary?.revenue?.totalCollected), icon: FiTrendingUp, tone: 'positive' },
+    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), icon: FiAlertCircle, tone: 'danger' }
   ] : [
-    { title: 'Assigned Pipeline Leads', value: summary?.totalLeads || 0, icon: FiUsers, color: 'text-[#F2F4F7] bg-[#121D29]/60' },
-    { title: 'Active Logistics Routing', value: summary?.activeLeads || 0, icon: FiTruck, color: 'text-indigo-400 bg-indigo-950/20' },
-    { title: 'Pending Quotations', value: summary?.pendingQuotations || 0, icon: FiFileText, color: 'text-[#C5CBD3] bg-[#121D29]/40' },
-    { title: 'Concluded Transactions', value: summary?.completedTasks || 0, icon: FiCheckSquare, color: 'text-emerald-400 bg-emerald-950/20' },
-    { title: 'Unread Node Alerts', value: unreadCount, icon: FiBell, color: 'text-amber-400 bg-amber-950/20' }
+    { title: 'Assigned Pipeline Leads', value: summary?.totalLeads || 0, icon: FiUsers, tone: 'ink' },
+    { title: 'Active Logistics Routing', value: summary?.activeLeads || 0, icon: FiTruck, tone: 'accent' },
+    { title: 'Pending Quotations', value: summary?.pendingQuotations || 0, icon: FiFileText, tone: 'ink' },
+    { title: 'Concluded Transactions', value: summary?.completedTasks || 0, icon: FiCheckSquare, tone: 'positive' },
+    { title: 'Unread Node Alerts', value: unreadCount, icon: FiBell, tone: 'warning' }
   ];
 
+  const toneColor = (tone) => ({
+    ink: 'var(--crm-heading)',
+    info: 'var(--crm-info)',
+    warning: 'var(--crm-warning)',
+    positive: 'var(--crm-positive)',
+    danger: 'var(--crm-danger)',
+    accent: 'var(--crm-accent)'
+  }[tone]);
+
+  const toneBg = (tone) => ({
+    ink: 'var(--crm-bg-sunken)',
+    info: 'var(--crm-info-bg)',
+    warning: 'var(--crm-warning-bg)',
+    positive: 'var(--crm-positive-bg)',
+    danger: 'var(--crm-danger-bg)',
+    accent: 'var(--crm-accent-bg)'
+  }[tone]);
+
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
-      variants={containerVariants} 
-      className="w-full bg-[#0E1116] text-[#C5CBD3] m-0 p-0 block"
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="w-full m-0 p-0 block"
     >
       {/* Page Header Content Row */}
-      <motion.div variants={blockVariants} className="w-full border-b border-[#C5CBD3]/10 py-6 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[#040A12]/40 backdrop-blur-sm">
+      <motion.div variants={blockVariants} className="w-full border-b py-6 flex flex-col md:flex-row md:items-end justify-between gap-4" style={{ borderColor: 'var(--crm-line)' }}>
         <div className="space-y-1 text-left">
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[#6D7886] font-bold block font-mono">INTERNAL OPERATIONS SUITE</span>
-          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[#F2F4F7] tracking-tight uppercase">Global Ledger Base</h1>
+          <span className="text-[9px] uppercase tracking-[0.25em] font-bold block" style={LABEL_MONO}>Internal Operations Suite</span>
+          <h1 className="text-2xl sm:text-3xl font-normal tracking-tight uppercase" style={HEADING}>Global Ledger Base</h1>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
           {isAdmin && (
             <button
               onClick={handleExportReport}
-              className="flex items-center gap-1.5 text-[10px] font-mono text-[#C5CBD3] bg-[#0E1116] border border-[#C5CBD3]/15 hover:border-[#F2F4F7]/40 hover:text-[#F2F4F7] px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all"
+              className="flex items-center gap-1.5 text-[10px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer"
+              style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
             >
               <FiDownload size={12} /> Export Report
             </button>
           )}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="text-[10px] font-mono text-[#6D7886] bg-[#0E1116] border border-[#C5CBD3]/10 px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm select-none"
+            className="text-[10px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm select-none"
+            style={{ ...LABEL_MONO, background: 'var(--crm-bg-raised)' }}
           >
-            NODE // SECURE_AUTH_LAYER_OK
+            Node // Secure Auth Layer OK
           </motion.div>
         </div>
       </motion.div>
 
       {/* Grid Stats Block View */}
-      <div className="w-full py-8 space-y-8 bg-[#0E1116]">
+      <div className="w-full py-8 space-y-8">
         <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
-            <motion.div 
-              key={i} 
+            <motion.div
+              key={i}
               variants={blockVariants}
-              whileHover={{ y: -4, borderColor: 'rgba(197,203,211,0.35)' }}
-              className="bg-[#121D29]/30 border border-[#C5CBD3]/15 p-5 transition-all duration-300 rounded-sm shadow-xl flex flex-col justify-between"
+              whileHover={{ y: -4 }}
+              className="border p-5 transition-all duration-300 rounded-sm flex flex-col justify-between"
+              style={CARD}
             >
               <div className="flex items-start justify-between gap-2 text-left">
-                <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold font-mono">{stat.title}</span>
-                <div className={`p-2 border border-[#C5CBD3]/10 rounded-sm transition-transform duration-300 ${stat.color}`}><stat.icon size={13} /></div>
+                <span className="text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>{stat.title}</span>
+                <div
+                  className="p-2 border rounded-sm transition-transform duration-300"
+                  style={{ borderColor: 'var(--crm-line)', color: toneColor(stat.tone), background: toneBg(stat.tone) }}
+                >
+                  <stat.icon size={13} />
+                </div>
               </div>
               <div className="flex items-end justify-between mt-4 text-left">
-                <span className="text-2xl font-serif font-light tracking-tight text-[#F2F4F7] whitespace-nowrap">{stat.value}</span>
+                <span className="text-2xl font-light tracking-tight whitespace-nowrap" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{stat.value}</span>
               </div>
             </motion.div>
           ))}
@@ -244,64 +282,77 @@ export default function Dashboard() {
           {isAdmin ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {/* Chart Block 1 */}
-              <div className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm w-full overflow-hidden text-left shadow-lg">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] mb-4 font-bold border-b border-[#C5CBD3]/10 pb-1.5">Lead Pipeline Manifest</h3>
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={pipeline} margin={{ left: -30 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#C5CBD3" opacity={0.03} vertical={false} />
-                    <XAxis dataKey="_id" stroke="#6D7886" opacity={0.7} fontSize={9} tickLine={false} />
-                    <YAxis stroke="#6D7886" opacity={0.7} fontSize={9} tickLine={false} />
-                    <Tooltip cursor={{ fill: '#121D29', opacity: 0.3 }} contentStyle={{ backgroundColor: '#0E1116', borderColor: 'rgba(197,203,211,0.2)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'monospace' }} />
-                    <Bar dataKey="total" fill="#C5CBD3" maxBarSize={20} radius={[1, 1, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="border p-5 rounded-sm w-full overflow-hidden text-left" style={CARD}>
+                <h3 className="text-xs uppercase tracking-widest mb-4 font-bold border-b pb-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Lead Pipeline Manifest</h3>
+                {pipeline.length === 0 ? (
+                  <EmptyState title="No pipeline data yet" description="Leads will appear here once routed." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={pipeline} margin={{ left: -30 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-ink-soft)" opacity={0.06} vertical={false} />
+                      <XAxis dataKey="_id" stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                      <YAxis stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                      <Tooltip cursor={{ fill: 'var(--crm-bg-sunken)', opacity: 0.4 }} contentStyle={{ backgroundColor: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line-strong)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'var(--crm-font-mono)' }} />
+                      <Bar dataKey="total" fill="var(--crm-accent)" maxBarSize={20} radius={[1, 1, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
               {/* Chart Block 2 */}
-              <div className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm w-full overflow-hidden text-left shadow-lg">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] mb-4 font-bold border-b border-[#C5CBD3]/10 pb-1.5">Employee Performance Matrix</h3>
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={performance} margin={{ left: -30 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#C5CBD3" opacity={0.03} vertical={false} />
-                    <XAxis dataKey="_id" stroke="#6D7886" opacity={0.7} fontSize={9} tickLine={false} />
-                    <YAxis stroke="#6D7886" opacity={0.7} fontSize={9} tickLine={false} />
-                    <Tooltip cursor={{ fill: '#121D29', opacity: 0.3 }} contentStyle={{ backgroundColor: '#0E1116', borderColor: 'rgba(197,203,211,0.2)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'monospace' }} />
-                    <Bar dataKey="leads" fill="#6D7886" maxBarSize={10} radius={[1, 1, 0, 0]} />
-                    <Bar dataKey="won" fill="#10B981" maxBarSize={10} radius={[1, 1, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="border p-5 rounded-sm w-full overflow-hidden text-left" style={CARD}>
+                <h3 className="text-xs uppercase tracking-widest mb-4 font-bold border-b pb-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Employee Performance Matrix</h3>
+                {performance.length === 0 ? (
+                  <EmptyState title="No performance data yet" description="Employee conversions will appear here." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={performance} margin={{ left: -30 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-ink-soft)" opacity={0.06} vertical={false} />
+                      <XAxis dataKey="_id" stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                      <YAxis stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                      <Tooltip cursor={{ fill: 'var(--crm-bg-sunken)', opacity: 0.4 }} contentStyle={{ backgroundColor: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line-strong)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'var(--crm-font-mono)' }} />
+                      <Bar dataKey="leads" fill="var(--crm-ink-faint)" maxBarSize={10} radius={[1, 1, 0, 0]} />
+                      <Bar dataKey="won" fill="var(--crm-positive)" maxBarSize={10} radius={[1, 1, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Employee Log Framework */}
-              <div className="lg:col-span-8 border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] mb-4 font-bold border-b border-[#C5CBD3]/10 pb-1.5">Personal Operational Audit</h3>
-                <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
-                  {history.map((act) => (
-                    <motion.div 
-                      key={act._id} 
-                      whileHover={{ x: 2 }}
-                      className="text-xs py-2.5 border-b border-[#C5CBD3]/10 flex justify-between items-center gap-4 hover:bg-[#121D29]/40 px-2 transition-colors duration-150 rounded-sm"
-                    >
-                      <span className="text-[#F2F4F7] font-light">{act.actionType}</span>
-                      <span className="opacity-60 font-mono text-[10px] tracking-wider bg-[#0E1116] px-2 py-0.5 border border-[#C5CBD3]/10 rounded-sm">{new Date(act.createdAt).toLocaleDateString()}</span>
-                    </motion.div>
-                  ))}
-                </div>
+              <div className="lg:col-span-8 border p-5 rounded-sm text-left" style={CARD}>
+                <h3 className="text-xs uppercase tracking-widest mb-4 font-bold border-b pb-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Personal Operational Audit</h3>
+                {history.length === 0 ? (
+                  <EmptyState title="No activity yet" description="Your recent actions will show up here." />
+                ) : (
+                  <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
+                    {history.map((act) => (
+                      <motion.div
+                        key={act._id}
+                        whileHover={{ x: 2 }}
+                        className="text-xs py-2.5 border-b flex justify-between items-center gap-4 px-2 transition-colors duration-150 rounded-sm"
+                        style={{ borderColor: 'var(--crm-line)' }}
+                      >
+                        <span className="font-light" style={{ color: 'var(--crm-heading)' }}>{act.actionType}</span>
+                        <span className="opacity-70 text-[10px] tracking-wider px-2 py-0.5 border rounded-sm" style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>{new Date(act.createdAt).toLocaleDateString()}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Conversion Statistics Tracker */}
-              <div className="lg:col-span-4 border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg flex flex-col justify-between gap-4">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] font-bold border-b border-[#C5CBD3]/10 pb-1.5">Conversion Performance</h3>
+              <div className="lg:col-span-4 border p-5 rounded-sm text-left flex flex-col justify-between gap-4" style={CARD}>
+                <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Conversion Performance</h3>
                 <div className="space-y-2.5 flex-1 flex flex-col justify-center">
-                  <motion.div whileHover={{ scale: 1.01 }} className="p-3.5 bg-[#040A12]/80 border border-[#C5CBD3]/10 text-xs flex justify-between items-center rounded-sm shadow-inner">
-                    <span className="text-[#6D7886] uppercase font-mono tracking-wider text-[10px]">Total Leads Linked:</span>
-                    <strong className="text-[#F2F4F7] text-sm font-medium font-serif">{summary?.totalLeads || 0}</strong>
+                  <motion.div whileHover={{ scale: 1.01 }} className="p-3.5 border text-xs flex justify-between items-center rounded-sm" style={CARD_SUNKEN}>
+                    <span className="uppercase text-[10px] tracking-wider" style={LABEL_MONO}>Total Leads Linked:</span>
+                    <strong className="text-sm font-medium" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.totalLeads || 0}</strong>
                   </motion.div>
-                  <motion.div whileHover={{ scale: 1.01 }} className="p-3.5 bg-[#040A12]/80 border border-[#C5CBD3]/10 text-xs flex justify-between items-center rounded-sm shadow-inner">
-                    <span className="text-[#6D7886] uppercase font-mono tracking-wider text-[10px]">Concluded Batches:</span>
-                    <strong className="text-emerald-400 text-sm font-medium font-serif">{summary?.completedTasks || 0}</strong>
+                  <motion.div whileHover={{ scale: 1.01 }} className="p-3.5 border text-xs flex justify-between items-center rounded-sm" style={CARD_SUNKEN}>
+                    <span className="uppercase text-[10px] tracking-wider" style={LABEL_MONO}>Concluded Batches:</span>
+                    <strong className="text-sm font-medium" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-positive)' }}>{summary?.completedTasks || 0}</strong>
                   </motion.div>
                 </div>
               </div>
@@ -312,15 +363,16 @@ export default function Dashboard() {
         {isAdmin && (
           <motion.div variants={blockVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Monthly Revenue Trend */}
-            <div className="lg:col-span-2 border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm w-full overflow-hidden text-left shadow-lg">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-[#C5CBD3]/10 pb-1.5">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] font-bold">Monthly Sales / Revenue Collected</h3>
+            <div className="lg:col-span-2 border p-5 rounded-sm w-full overflow-hidden text-left" style={CARD}>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b pb-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                <h3 className="text-xs uppercase tracking-widest font-bold" style={LABEL_MONO}>Monthly Sales / Revenue Collected</h3>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <FiCalendar size={11} className="text-[#6D7886]" />
+                  <FiCalendar size={11} style={{ color: 'var(--crm-ink-faint)' }} />
                   <select
                     value={dateRangeOption}
                     onChange={(e) => setDateRangeOption(e.target.value)}
-                    className="text-[9px] font-mono uppercase tracking-wide bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-sm px-2 py-1 outline-none cursor-pointer text-[#C5CBD3]"
+                    className="text-[9px] uppercase tracking-wide border rounded-sm px-2 py-1 outline-none cursor-pointer"
+                    style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}
                   >
                     <option value="THIS_MONTH">This Month</option>
                     <option value="LAST_3">Last 3 Months</option>
@@ -333,17 +385,20 @@ export default function Dashboard() {
                         type="date"
                         value={customStart}
                         onChange={(e) => setCustomStart(e.target.value)}
-                        className="text-[9px] font-mono bg-[#0E1116] border border-[#C5CBD3]/15 rounded-sm px-1.5 py-1 outline-none text-[#C5CBD3]"
+                        className="text-[9px] border rounded-sm px-1.5 py-1 outline-none"
+                        style={{ fontFamily: 'var(--crm-font-mono)', background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-ink-soft)' }}
                       />
                       <input
                         type="date"
                         value={customEnd}
                         onChange={(e) => setCustomEnd(e.target.value)}
-                        className="text-[9px] font-mono bg-[#0E1116] border border-[#C5CBD3]/15 rounded-sm px-1.5 py-1 outline-none text-[#C5CBD3]"
+                        className="text-[9px] border rounded-sm px-1.5 py-1 outline-none"
+                        style={{ fontFamily: 'var(--crm-font-mono)', background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-ink-soft)' }}
                       />
                       <button
                         onClick={handleApplyCustomRange}
-                        className="text-[9px] font-mono uppercase tracking-wide bg-[#0E1116] border border-[#C5CBD3]/20 hover:border-[#F2F4F7]/40 text-[#C5CBD3] px-2 py-1 rounded-sm transition-all"
+                        className="text-[9px] uppercase tracking-wide border px-2 py-1 rounded-sm transition-all cursor-pointer"
+                        style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)' }}
                       >
                         Apply
                       </button>
@@ -351,28 +406,32 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={summary?.revenue?.monthlyTrend || []} margin={{ left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#C5CBD3" opacity={0.03} vertical={false} />
-                  <XAxis dataKey="month" stroke="#6D7886" opacity={0.7} fontSize={9} tickLine={false} />
-                  <YAxis stroke="#6D7886" opacity={0.7} fontSize={9} tickLine={false} />
-                  <Tooltip cursor={{ fill: '#121D29', opacity: 0.3 }} contentStyle={{ backgroundColor: '#0E1116', borderColor: 'rgba(197,203,211,0.2)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'monospace' }} formatter={(val) => fmtCurrency(val)} />
-                  <Bar dataKey="collected" fill="#10B981" maxBarSize={28} radius={[1, 1, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {(summary?.revenue?.monthlyTrend || []).length === 0 ? (
+                <EmptyState title="No revenue data yet" description="Collected revenue will chart here as payments come in." />
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={summary?.revenue?.monthlyTrend || []} margin={{ left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-ink-soft)" opacity={0.06} vertical={false} />
+                    <XAxis dataKey="month" stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                    <YAxis stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                    <Tooltip cursor={{ fill: 'var(--crm-bg-sunken)', opacity: 0.4 }} contentStyle={{ backgroundColor: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line-strong)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'var(--crm-font-mono)' }} formatter={(val) => fmtCurrency(val)} />
+                    <Bar dataKey="collected" fill="var(--crm-positive)" maxBarSize={28} radius={[1, 1, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             {/* Follow-Ups */}
-            <div className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg flex flex-col justify-between gap-3">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] font-bold border-b border-[#C5CBD3]/10 pb-1.5">Follow-Ups</h3>
+            <div className="border p-5 rounded-sm text-left flex flex-col justify-between gap-3" style={CARD}>
+              <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Follow-Ups</h3>
               <div className="space-y-2.5">
-                <div className="p-3.5 bg-amber-950/20 border border-amber-500/20 flex justify-between items-center rounded-sm">
-                  <span className="text-amber-400 uppercase font-mono tracking-wider text-[10px]">Due Today</span>
-                  <strong className="text-amber-400 text-lg font-serif">{summary?.followUpsDueToday || 0}</strong>
+                <div className="p-3.5 border flex justify-between items-center rounded-sm" style={{ background: 'var(--crm-warning-bg)', borderColor: 'var(--crm-warning)', borderOpacity: 0.2 }}>
+                  <span className="uppercase tracking-wider text-[10px]" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-warning)' }}>Due Today</span>
+                  <strong className="text-lg" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-warning)' }}>{summary?.followUpsDueToday || 0}</strong>
                 </div>
-                <div className="p-3.5 bg-rose-950/20 border border-rose-500/20 flex justify-between items-center rounded-sm">
-                  <span className="text-rose-400 uppercase font-mono tracking-wider text-[10px]">Missed / Overdue</span>
-                  <strong className="text-rose-400 text-lg font-serif">{summary?.missedFollowUps || 0}</strong>
+                <div className="p-3.5 border flex justify-between items-center rounded-sm" style={{ background: 'var(--crm-danger-bg)', borderColor: 'var(--crm-danger)', borderOpacity: 0.2 }}>
+                  <span className="uppercase tracking-wider text-[10px]" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-danger)' }}>Missed / Overdue</span>
+                  <strong className="text-lg" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-danger)' }}>{summary?.missedFollowUps || 0}</strong>
                 </div>
               </div>
             </div>
@@ -382,52 +441,55 @@ export default function Dashboard() {
         {isAdmin && (
           <motion.div variants={blockVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Transport Running Status */}
-            <div className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] mb-4 font-bold border-b border-[#C5CBD3]/10 pb-1.5 flex items-center gap-1.5"><FiTruck size={12} /> Transport Running Status</h3>
+            <div className="border p-5 rounded-sm text-left" style={CARD}>
+              <h3 className="text-xs uppercase tracking-widest mb-4 font-bold border-b pb-1.5 flex items-center gap-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}><FiTruck size={12} /> Transport Running Status</h3>
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-sky-950/20 border border-sky-500/20 rounded-sm">
-                  <p className="text-[9px] uppercase tracking-widest text-sky-400 font-mono font-bold">In Transit</p>
-                  <p className="text-xl font-serif text-[#F2F4F7] mt-1">{summary?.transport?.inTransit || 0}</p>
+                <div className="p-3 border rounded-sm" style={{ background: 'var(--crm-info-bg)', borderColor: 'var(--crm-line)' }}>
+                  <p className="text-[9px] uppercase tracking-widest font-bold" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-info)' }}>In Transit</p>
+                  <p className="text-xl mt-1" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.transport?.inTransit || 0}</p>
                 </div>
-                <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-sm">
-                  <p className="text-[9px] uppercase tracking-widest text-emerald-400 font-mono font-bold">Delivered</p>
-                  <p className="text-xl font-serif text-[#F2F4F7] mt-1">{summary?.transport?.delivered || 0}</p>
+                <div className="p-3 border rounded-sm" style={{ background: 'var(--crm-positive-bg)', borderColor: 'var(--crm-line)' }}>
+                  <p className="text-[9px] uppercase tracking-widest font-bold" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-positive)' }}>Delivered</p>
+                  <p className="text-xl mt-1" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.transport?.delivered || 0}</p>
                 </div>
-                <div className="p-3 bg-amber-950/20 border border-amber-500/20 rounded-sm">
-                  <p className="text-[9px] uppercase tracking-widest text-amber-400 font-mono font-bold">Pending</p>
-                  <p className="text-xl font-serif text-[#F2F4F7] mt-1">{summary?.transport?.pending || 0}</p>
+                <div className="p-3 border rounded-sm" style={{ background: 'var(--crm-warning-bg)', borderColor: 'var(--crm-line)' }}>
+                  <p className="text-[9px] uppercase tracking-widest font-bold" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-warning)' }}>Pending</p>
+                  <p className="text-xl mt-1" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.transport?.pending || 0}</p>
                 </div>
-                <div className="p-3 bg-rose-950/20 border border-rose-500/20 rounded-sm">
-                  <p className="text-[9px] uppercase tracking-widest text-rose-400 font-mono font-bold">Issue Raised</p>
-                  <p className="text-xl font-serif text-[#F2F4F7] mt-1">{summary?.transport?.issueRaised || 0}</p>
+                <div className="p-3 border rounded-sm" style={{ background: 'var(--crm-danger-bg)', borderColor: 'var(--crm-line)' }}>
+                  <p className="text-[9px] uppercase tracking-widest font-bold" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-danger)' }}>Issue Raised</p>
+                  <p className="text-xl mt-1" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.transport?.issueRaised || 0}</p>
                 </div>
               </div>
             </div>
 
             {/* Top Performing Employees */}
-            <div className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] mb-4 font-bold border-b border-[#C5CBD3]/10 pb-1.5 flex items-center gap-1.5"><FiAward size={12} /> Top Performing Employees</h3>
-              <div className="space-y-2">
-                {(summary?.topEmployees || []).length === 0 ? (
-                  <p className="text-[10px] text-[#6D7886] font-mono uppercase tracking-widest py-4 text-center">No conversions yet</p>
-                ) : summary.topEmployees.map((emp, idx) => (
-                  <div key={emp._id} className="flex items-center justify-between text-xs py-2 border-b border-[#C5CBD3]/10 last:border-0">
-                    <span className="text-[#C5CBD3] font-light">{idx + 1}. {emp.fullName}</span>
-                    <span className="font-mono text-[10px] text-emerald-400">{emp.conversions}/{emp.totalLeads} won</span>
-                  </div>
-                ))}
-              </div>
+            <div className="border p-5 rounded-sm text-left" style={CARD}>
+              <h3 className="text-xs uppercase tracking-widest mb-4 font-bold border-b pb-1.5 flex items-center gap-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}><FiAward size={12} /> Top Performing Employees</h3>
+              {(summary?.topEmployees || []).length === 0 ? (
+                <EmptyState title="No conversions yet" />
+              ) : (
+                <div className="space-y-2">
+                  {summary.topEmployees.map((emp, idx) => (
+                    <div key={emp._id} className="flex items-center justify-between text-xs py-2 border-b last:border-0" style={{ borderColor: 'var(--crm-line)' }}>
+                      <span className="font-light" style={{ color: 'var(--crm-ink-soft)' }}>{idx + 1}. {emp.fullName}</span>
+                      <span className="text-[10px]" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-positive)' }}>{emp.conversions}/{emp.totalLeads} won</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Department Performance */}
-            <div className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg">
-              <div className="flex items-center justify-between gap-2 mb-4 border-b border-[#C5CBD3]/10 pb-1.5">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] font-bold">Department Performance</h3>
+            <div className="border p-5 rounded-sm text-left" style={CARD}>
+              <div className="flex items-center justify-between gap-2 mb-4 border-b pb-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                <h3 className="text-xs uppercase tracking-widest font-bold" style={LABEL_MONO}>Department Performance</h3>
                 {(summary?.departmentPerformance || []).length > 0 && (
                   <select
                     value={deptFilter}
                     onChange={(e) => setDeptFilter(e.target.value)}
-                    className="text-[9px] font-mono uppercase tracking-wide bg-[#0E1116] border border-[#C5CBD3]/15 focus:border-[#F2F4F7]/40 rounded-sm px-2 py-1 outline-none cursor-pointer text-[#C5CBD3]"
+                    className="text-[9px] uppercase tracking-wide border rounded-sm px-2 py-1 outline-none cursor-pointer"
+                    style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}
                   >
                     <option value="ALL">All</option>
                     {summary.departmentPerformance.map((d) => (
@@ -436,60 +498,63 @@ export default function Dashboard() {
                   </select>
                 )}
               </div>
-              <div className="space-y-2">
-                {(summary?.departmentPerformance || []).length === 0 ? (
-                  <p className="text-[10px] text-[#6D7886] font-mono uppercase tracking-widest py-4 text-center">No routed leads yet</p>
-                ) : summary.departmentPerformance
+              {(summary?.departmentPerformance || []).length === 0 ? (
+                <EmptyState title="No routed leads yet" />
+              ) : (
+                <div className="space-y-2">
+                  {summary.departmentPerformance
                     .filter((dept) => deptFilter === 'ALL' || dept.department === deptFilter)
                     .map((dept) => (
-                  <div key={dept.department} className="flex items-center justify-between text-xs py-2 border-b border-[#C5CBD3]/10 last:border-0">
-                    <span className="text-[#C5CBD3] font-mono uppercase tracking-wide text-[10px]">{dept.department}</span>
-                    <span className="font-mono text-[10px] text-[#F2F4F7]">{dept.won}/{dept.totalLeads} won</span>
-                  </div>
-                ))}
-              </div>
+                    <div key={dept.department} className="flex items-center justify-between text-xs py-2 border-b last:border-0" style={{ borderColor: 'var(--crm-line)' }}>
+                      <span className="uppercase tracking-wide text-[10px]" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-soft)' }}>{dept.department}</span>
+                      <span className="text-[10px]" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-heading)' }}>{dept.won}/{dept.totalLeads} won</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
 
         {isAdmin && (
           <motion.div variants={blockVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <Link to="/crm/attendance" className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg hover:border-[#C5CBD3]/35 transition-all flex items-center justify-between group">
+            <Link to="/crm/attendance" className="border p-5 rounded-sm text-left transition-all flex items-center justify-between group" style={CARD}>
               <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold font-mono flex items-center gap-1.5"><FiUserCheck size={12} /> Employees Present Today</span>
-                <p className="text-2xl font-serif font-light tracking-tight text-[#F2F4F7] mt-2">{summary?.presentToday || 0} <span className="text-xs text-[#6D7886] font-mono">/ {summary?.totalEmployees || 0}</span></p>
+                <span className="text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5" style={LABEL_MONO}><FiUserCheck size={12} /> Employees Present Today</span>
+                <p className="text-2xl font-light tracking-tight mt-2" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.presentToday || 0} <span className="text-xs" style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}>/ {summary?.totalEmployees || 0}</span></p>
               </div>
-              <FiArrowRight size={16} className="text-[#6D7886] group-hover:text-[#F2F4F7] transition-colors" />
+              <FiArrowRight size={16} className="transition-colors group-hover:opacity-100" style={{ color: 'var(--crm-ink-faint)' }} />
             </Link>
-            <Link to="/crm/tickets" className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg hover:border-[#C5CBD3]/35 transition-all flex items-center justify-between group">
+            <Link to="/crm/tickets" className="border p-5 rounded-sm text-left transition-all flex items-center justify-between group" style={CARD}>
               <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold font-mono flex items-center gap-1.5"><FiLifeBuoy size={12} /> Open Support Tickets</span>
-                <p className="text-2xl font-serif font-light tracking-tight text-[#F2F4F7] mt-2">{summary?.openTickets || 0}</p>
+                <span className="text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5" style={LABEL_MONO}><FiLifeBuoy size={12} /> Open Support Tickets</span>
+                <p className="text-2xl font-light tracking-tight mt-2" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.openTickets || 0}</p>
               </div>
-              <FiArrowRight size={16} className="text-[#6D7886] group-hover:text-[#F2F4F7] transition-colors" />
+              <FiArrowRight size={16} className="transition-colors group-hover:opacity-100" style={{ color: 'var(--crm-ink-faint)' }} />
             </Link>
-            <Link to="/crm/leave" className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm text-left shadow-lg hover:border-[#C5CBD3]/35 transition-all flex items-center justify-between group">
+            <Link to="/crm/leave" className="border p-5 rounded-sm text-left transition-all flex items-center justify-between group" style={CARD}>
               <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#6D7886] font-bold font-mono flex items-center gap-1.5"><FiCalendar size={12} /> Pending Leave Approvals</span>
-                <p className="text-2xl font-serif font-light tracking-tight text-[#F2F4F7] mt-2">{summary?.pendingLeaveRequests || 0}</p>
+                <span className="text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5" style={LABEL_MONO}><FiCalendar size={12} /> Pending Leave Approvals</span>
+                <p className="text-2xl font-light tracking-tight mt-2" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{summary?.pendingLeaveRequests || 0}</p>
               </div>
-              <FiArrowRight size={16} className="text-[#6D7886] group-hover:text-[#F2F4F7] transition-colors" />
+              <FiArrowRight size={16} className="transition-colors group-hover:opacity-100" style={{ color: 'var(--crm-ink-faint)' }} />
             </Link>
           </motion.div>
         )}
 
         {/* Grid Distribution System Summary */}
-        <motion.div variants={blockVariants} className="border border-[#C5CBD3]/15 p-5 bg-[#121D29]/20 rounded-sm shadow-xl text-left">
-          <h3 className="text-xs font-mono uppercase tracking-widest text-[#6D7886] mb-5 font-bold border-b border-[#C5CBD3]/10 pb-1.5">Lead Segment Distribution Matrix</h3>
+        <motion.div variants={blockVariants} className="border p-5 rounded-sm text-left" style={CARD}>
+          <h3 className="text-xs uppercase tracking-widest mb-5 font-bold border-b pb-1.5" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Lead Segment Distribution Matrix</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {summary?.stageCounts && Object.entries(summary.stageCounts).map(([stage, count]) => (
-              <motion.div 
-                key={stage} 
-                whileHover={{ scale: 1.02, bg: "#040A12" }}
-                className="p-4 bg-[#040A12]/60 border border-[#C5CBD3]/10 text-left rounded-sm shadow-inner transition-colors hover:border-[#C5CBD3]/30 cursor-default"
+              <motion.div
+                key={stage}
+                whileHover={{ scale: 1.02 }}
+                className="p-4 border text-left rounded-sm transition-colors cursor-default"
+                style={CARD_SUNKEN}
               >
-                <p className="text-[9px] uppercase tracking-widest text-[#6D7886] font-mono font-bold truncate">{stage.replace(/_/g, ' ')}</p>
-                <p className="text-2xl font-serif font-normal text-[#F2F4F7] mt-1.5">{count}</p>
+                <p className="text-[9px] uppercase tracking-widest font-bold truncate" style={LABEL_MONO}>{stage.replace(/_/g, ' ')}</p>
+                <p className="text-2xl font-normal mt-1.5" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{count}</p>
               </motion.div>
             ))}
           </div>
