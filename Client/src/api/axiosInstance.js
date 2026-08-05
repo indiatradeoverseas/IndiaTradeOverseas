@@ -14,7 +14,7 @@ axiosInstance.interceptors.request.use(
   (config) => {
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
     const requestUrl = config.url || '';
-    
+
     // Safely extract custom header
     const portalContext = config.headers ? config.headers['X-Portal-Context'] : null;
 
@@ -62,7 +62,7 @@ axiosInstance.interceptors.request.use(
       deviceHash = 'dev_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       localStorage.setItem('deviceHash', deviceHash);
     }
-    
+
     if (config.headers.set) {
       config.headers.set('x-device-hash', deviceHash);
     } else {
