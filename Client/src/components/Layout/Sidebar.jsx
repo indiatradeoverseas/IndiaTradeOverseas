@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   FiX,
   FiLogOut,
@@ -20,7 +20,6 @@ import {
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isDeptExpanded, setIsDeptExpanded] = useState(false);
 
   const menuItems = getCrmMainNavItems(user);
   const departments = getCrmDepartmentLinks();
