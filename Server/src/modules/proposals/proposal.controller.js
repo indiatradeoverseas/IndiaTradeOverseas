@@ -6,14 +6,14 @@ const mongoose = require('mongoose');
 // 🟢 CREATE proposal
 const createProposal = async (req, res, next) => {
   try {
-    const { distributorId, lotId, region, grade, quantity, basePrice, division } = req.body;
+    const { distributorId, lotId, region, grade, quantity, basePrice, division, paymentTerm } = req.body;
 
     if (!distributorId || !lotId || !quantity || !basePrice) {
       return fail(res, 400, 'VALIDATION_ERROR', "Missing essential transaction matrix parameters.", [], req);
     }
 
-    if (Number(quantity) < 200) {
-      return fail(res, 400, 'COMPLIANCE_VIOLATION', "Compliance Violation: Minimum trade scale constraint is 200 Kg.", [], req);
+    if (Number(quantity) < 40) {
+      return fail(res, 400, 'COMPLIANCE_VIOLATION', "Compliance Violation: Minimum trade scale constraint is 40 MT (one truckload).", [], req);
     }
 
     const distributor = await Distributor.findById(distributorId);
@@ -34,6 +34,7 @@ const createProposal = async (req, res, next) => {
       grade,
       quantity,
       basePrice,
+      paymentTerm,
       estimatedValue,
       status: 'pending'
     });

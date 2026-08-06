@@ -1,10 +1,39 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram } from 'react-icons/fi';
+import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram, FiChevronDown } from 'react-icons/fi';
 
 export default function Footer() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const servicesRef = useRef(null);
+
+  // Mirrors the "OUR SERVICES" dropdown in Navbar.jsx
+  const servicesGroups = [
+    {
+      groupLabel: 'PRAKRITI DIVISION',
+      links: [
+        { to: '/prakriti', label: 'Tea Division' },
+        { to: '/prakriti/rice', label: 'Rice Division' },
+      ]
+    },
+    {
+      groupLabel: 'STONE & INFRASTRUCTURE',
+      links: [
+        { to: '/stone', label: 'Stone Division' },
+      ]
+    }
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (servicesRef.current && !servicesRef.current.contains(event.target)) {
+        setIsServicesOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 1. Determine active colour scheme token object
   let theme = {
@@ -87,7 +116,39 @@ export default function Footer() {
             <h4 className="text-xs uppercase tracking-widest font-semibold">Quick Links</h4>
             <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
               <li><Link to="/" className="hover:underline transition-all cursor-pointer">Home</Link></li>
-              <li><Link to="/products" className="hover:underline transition-all cursor-pointer">Products</Link></li>
+              <li className="relative" ref={servicesRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsServicesOpen((prev) => !prev)}
+                  className="flex items-center gap-1 hover:underline transition-all cursor-pointer"
+                  style={{ color: theme.accentText }}
+                >
+                  <span>Our Services</span>
+                  <FiChevronDown size={11} className={`transition-transform duration-200 ${isServicesOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isServicesOpen && (
+                  <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#0E1116] border border-white/10 shadow-2xl py-2 z-50 rounded-[2px] text-left">
+                    {servicesGroups.map((group, gIdx) => (
+                      <div key={gIdx} className={gIdx > 0 ? "border-t border-white/10 mt-2 pt-2" : ""}>
+                        <div className="px-3 py-1 text-[9px] font-mono font-bold tracking-widest text-white/40 uppercase">
+                          {group.groupLabel}
+                        </div>
+                        {group.links.map((subLink) => (
+                          <Link
+                            key={subLink.to}
+                            to={subLink.to}
+                            onClick={() => setIsServicesOpen(false)}
+                            className="block px-3 py-1.5 text-xs text-[#C5CBD3] hover:bg-white/10 hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            {subLink.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
               <li><Link to="/about" className="hover:underline transition-all cursor-pointer">About Us</Link></li>
               <li><Link to="/contact" className="hover:underline transition-all cursor-pointer">Contact</Link></li>
               <li><Link to="/careers" className="hover:underline transition-all cursor-pointer">Careers</Link></li>
