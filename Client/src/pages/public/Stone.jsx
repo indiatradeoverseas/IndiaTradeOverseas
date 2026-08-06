@@ -37,7 +37,7 @@ const ALTERNATING_SHOWCASE = [
     id: "20mm",
     title: "20 MM Stone Chips",
     subtitle: "Roof Slabs & Commercial Concrete",
-    image: "/images/stone_images/20mm_white_stone.png",
+    image: "/images/stone_images/20mmm.jpg",
     description: "The primary standard aggregate for residential roof casting (RCC), structural beams, columns, and ready-mix concrete (RMC) batching plants. White 20MM is heavily demanded for housing project roofs.",
     specs: ["Size: 20 Nominal", "Color: Black & White Available", "Loading: Phuentsholing / Gomtu", "Usage: RCC Roofing & RMC"]
   },
