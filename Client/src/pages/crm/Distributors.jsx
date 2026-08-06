@@ -375,9 +375,10 @@ export default function Distributor() {
                                                                     >
                                                                         <div className="space-y-1 text-left">
                                                                             <div className="text-[var(--crm-ink-soft)]">
-                                                                                Lot Target: <span className="text-white font-bold">{activeProposal.lotId} ({activeProposal.grade})</span> 
-                                                                                {" | "} Volume: <span className="text-[var(--crm-positive)] font-bold">{activeProposal.quantity?.toLocaleString()} Kg</span>
-                                                                                {" | "} Base: <span className="text-[var(--crm-ink-soft)]">INR {activeProposal.basePrice}/Kg</span>
+                                                                                Lot Target: <span className="text-white font-bold">{activeProposal.lotId} ({activeProposal.grade})</span>
+                                                                                {" | "} Volume: <span className="text-[var(--crm-positive)] font-bold">{activeProposal.quantity?.toLocaleString()} {activeProposal.division === 'STONE' ? 'MT' : 'Kg'}</span>
+                                                                                {" | "} Base: <span className="text-[var(--crm-ink-soft)]">INR {activeProposal.basePrice}/{activeProposal.division === 'STONE' ? 'MT' : 'Kg'}</span>
+                                                                                {activeProposal.paymentTerm && <>{" | "} Terms: <span className="text-[var(--crm-ink-soft)]">{activeProposal.paymentTerm.replace('_', ' ')}</span></>}
                                                                                 {" | "} Gross Value: <span className="text-[var(--crm-positive)] font-bold">INR {activeProposal.estimatedValue?.toLocaleString()}</span>
                                                                             </div>
                                                                         </div>

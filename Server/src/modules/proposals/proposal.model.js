@@ -33,6 +33,11 @@ const proposalSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  paymentTerm: {
+    type: String,
+    enum: ['ADVANCE_100', 'ADVANCE_50', 'COD'],
+    required: false
+  },
   estimatedValue: {
     type: Number,
     required: true
