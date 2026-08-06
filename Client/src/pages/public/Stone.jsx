@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 // Hero Background Carousel
 const HERO_CAROUSEL_IMAGES = [
@@ -377,6 +378,7 @@ export default function Stone() {
       const res = await distributorApi.verifyOtp(distributorId, otp);
       if (res.success) {
         toast.success("B2B Credentials Verified!");
+        pushDataLayerEvent('stone_distributor_verified', { division: 'STONE' });
         const activeToken = res.token || res.data?.token || res.data?.accessToken;
         const activeId = res.data?.distributorId || res.data?._id || distributorId;
 
@@ -631,19 +633,31 @@ export default function Stone() {
                                             description: `Invoice Settlement - Lot ${prop.lotId}`,
                                             order_id: orderId,
                                             handler: async function (response) {
-                                              const verifyResult = await distributorApi.verifyRazorpayPayment({
-                                                razorpay_order_id: response.razorpay_order_id,
-                                                razorpay_payment_id: response.razorpay_payment_id,
-                                                razorpay_signature: response.razorpay_signature,
-                                                lotId: prop.lotId,
-                                                quantity: prop.quantity,
-                                                amount: singleAmount
-                                              });
+                                              try {
+                                                const verifyResult = await distributorApi.verifyRazorpayPayment({
+                                                  razorpay_order_id: response.razorpay_order_id,
+                                                  razorpay_payment_id: response.razorpay_payment_id,
+                                                  razorpay_signature: response.razorpay_signature,
+                                                  lotId: prop.lotId,
+                                                  quantity: prop.quantity,
+                                                  amount: singleAmount
+                                                });
 
-                                              if (verifyResult?.success) {
-                                                await distributorApi.updateProposalStatus(prop._id, 'paid');
-                                                toast.success(`Payment verified for Lot ${prop.lotId}!`);
-                                                fetchMyProposals();
+                                                if (verifyResult?.success) {
+                                                  await distributorApi.updateProposalStatus(prop._id, 'paid');
+                                                  toast.success(`Payment verified for Lot ${prop.lotId}!`);
+                                                  pushDataLayerEvent('stone_payment_success', {
+                                                    transaction_id: response.razorpay_payment_id,
+                                                    value: singleAmount,
+                                                    currency: 'INR',
+                                                    lot_id: prop.lotId,
+                                                    quantity: prop.quantity
+                                                  });
+                                                  fetchMyProposals();
+                                                }
+                                              } catch (verifyErr) {
+                                                console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
+                                                toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
                                               }
                                             },
                                             theme: { color: "#37424B" }
@@ -651,8 +665,9 @@ export default function Stone() {
 
                                           new window.Razorpay(options).open();
                                         } catch (err) {
+                                          console.error('Razorpay create-order failed:', err.response?.data || err);
                                           toast.dismiss(loadingToast);
-                                          toast.error(err.message || "Checkout failed.");
+                                          toast.error(err.response?.data?.message || err.message || "Checkout failed.");
                                         }
                                       }}
                                       className="bg-[#37424B] hover:bg-[#252c34] text-white px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase shadow-xs flex items-center gap-1"
@@ -754,11 +769,19 @@ export default function Stone() {
 
                                   toast.dismiss(verificationToast);
                                   toast.success("Transaction certified! Invoices cleared.");
+                                  pushDataLayerEvent('stone_payment_success', {
+                                    transaction_id: response.razorpay_payment_id,
+                                    value: aggregateAmount,
+                                    currency: 'INR',
+                                    lot_id: targetLotString,
+                                    quantity: combinedQuantity
+                                  });
                                   setIsProposalModalOpen(false);
                                   fetchMyProposals();
                                 } catch (verifyErr) {
+                                  console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
                                   toast.dismiss(verificationToast);
-                                  toast.error(verifyErr.message || "Payment verification failed.");
+                                  toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
                                 }
                               },
                               prefill: {
@@ -770,6 +793,7 @@ export default function Stone() {
 
                             new window.Razorpay(options).open();
                           } catch (err) {
+                            console.error('Razorpay create-order failed:', err.response?.data || err);
                             toast.dismiss(loadingToast);
                             toast.error(err.response?.data?.message || err.message || "Gateway initialization failed.");
                           }
@@ -1253,6 +1277,7 @@ export default function Stone() {
                   <form onSubmit={handleVerifyOtp} className="space-y-4 text-center py-4">
                     <h3 className="text-lg font-serif text-[#37424B]">Enter Verification Token</h3>
                     <p className="text-xs text-slate-500 font-light">Enter 6-digit token sent to <span className="font-bold text-slate-700">{email}</span></p>
+                    <p className="text-xs text-slate-500 font-light">Please Check the Spam Folder if you don't see the email.</p>
                     <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-lg font-mono text-[#37424B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
                     <button type="submit" disabled={isSubmitting} className="w-full bg-[#37424B] text-white font-mono font-bold py-3 rounded cursor-pointer">
                       Verify & Unlock
@@ -1319,6 +1344,12 @@ export default function Stone() {
                         const res = await distributorApi.createProposal(proposalPayload);
                         if (res.success) {
                           toast.success(`Stone sourcing proposal logged for ${orderQuantity} MT.`);
+                          pushDataLayerEvent('stone_proposal_submitted', {
+                            lot_id: activeDrawerLot.id,
+                            quantity: Number(orderQuantity),
+                            value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                            currency: 'INR'
+                          });
                           setIsOrderDrawerOpen(false);
                           fetchMyProposals();
                         }
