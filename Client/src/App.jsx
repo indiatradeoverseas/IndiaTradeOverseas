@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
+import { pushDataLayerEvent } from './utils/analytics';
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
 import Rice from './pages/public/Rice';
@@ -111,6 +112,19 @@ function RoleProtectedRoute({ children, allowedRoles }) {
 function AppLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
+
+  // SPA route changes don't trigger a new document load, so GTM's default
+  // pageview trigger only ever fires once. Push a virtual pageview per route
+  // change so ad-traffic landing on / then navigating to /stone (or any page)
+  // is captured.
+  useEffect(() => {
+    pushDataLayerEvent('virtual_page_view', {
+      page_path: location.pathname + location.search,
+      page_location: window.location.href,
+      page_title: document.title
+    });
+  }, [location.pathname, location.search]);
+
   const isCRM = location.pathname.startsWith('/crm');
   const isAuth = [
     '/login',
