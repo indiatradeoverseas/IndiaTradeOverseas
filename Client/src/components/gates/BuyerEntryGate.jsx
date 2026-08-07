@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiArrowRight, FiShield, FiKey } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiArrowRight, FiShield, FiKey, FiCheckCircle } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import GateMascot from './GateMascot';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,12 +23,15 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * conversion event (e.g. stone_distributor_verified) still lives in each
  * host page's onVerified/onComplete callback, same as before.
  */
-export default function BuyerEntryGate({ theme, division, requireOtp, onVerified, onComplete }) {
-  const [step, setStep] = useState('details'); // 'details' | 'otp'
+export default function BuyerEntryGate({ theme, division, requireOtp, onVerified, onComplete, mascotSrc }) {
+  const [step, setStep] = useState('details'); // 'details' | 'otp' | 'welcome'
   const [submitting, setSubmitting] = useState(false);
   const [distributorId, setDistributorId] = useState('');
   const [otp, setOtp] = useState('');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', city: '', state: '' });
+  const [pendingSession, setPendingSession] = useState(null);
+
+  const firstName = form.fullName.trim().split(/\s+/)[0] || '';
 
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
@@ -47,7 +51,7 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
 
     if (!requireOtp) {
       pushDataLayerEvent('entry_gate_details_submitted', { division: division || 'CAREERS', otp_required: false });
-      onComplete?.({ ...form });
+      setStep('welcome');
       return;
     }
 
@@ -86,8 +90,9 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       if (res.success) {
         const activeToken = res.token || res.data?.token || res.data?.accessToken;
         const activeId = res.data?.distributorId || res.data?._id || distributorId;
-        toast.success('Verified! Welcome aboard.');
-        onVerified?.(activeId, activeToken);
+        setPendingSession({ id: activeId, token: activeToken });
+        pushDataLayerEvent('entry_gate_otp_verified', { division });
+        setStep('welcome');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired code.');
@@ -119,6 +124,14 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
     }
   };
 
+  const handleContinue = () => {
+    if (requireOtp) {
+      onVerified?.(pendingSession?.id, pendingSession?.token);
+    } else {
+      onComplete?.({ ...form });
+    }
+  };
+
   const t = theme;
 
   return (
@@ -132,14 +145,17 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
         style={{ background: `radial-gradient(circle at 20% 20%, ${t.accent}, transparent 45%), radial-gradient(circle at 80% 80%, ${t.accent}, transparent 40%)` }}
       />
 
-      <AnimatePresence mode="wait">
+      <div className={`relative z-10 w-full flex items-end justify-center ${mascotSrc ? 'max-w-3xl gap-0.5 sm:gap-1' : 'max-w-md'}`}>
+        {mascotSrc && <GateMascot src={mascotSrc} alt="" />}
+        <div className="w-full max-w-md shrink-0">
+        <AnimatePresence mode="wait">
         <motion.div
           key={step}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -12 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="relative z-10 w-full max-w-md rounded-xl border shadow-2xl overflow-hidden"
+          className="relative w-full rounded-xl border shadow-2xl overflow-hidden"
           style={{ backgroundColor: t.panelBg, borderColor: t.border }}
         >
           <div className="px-7 pt-8 pb-2 text-center">
@@ -150,12 +166,14 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
               <FiShield size={11} /> {t.eyebrow}
             </div>
             <h2 className="text-2xl font-bold tracking-tight mb-2" style={{ color: t.text }}>
-              {step === 'details' ? t.headline : 'Check Your Email'}
+              {step === 'details' ? t.headline : step === 'otp' ? 'Check Your Email' : `Welcome, ${firstName || 'there'}!`}
             </h2>
             <p className="text-xs leading-relaxed max-w-[34ch] mx-auto" style={{ color: t.muted }}>
               {step === 'details'
                 ? t.subhead
-                : `We sent a 6-digit code to ${form.email}. Enter it below to continue.`}
+                : step === 'otp'
+                ? `We sent a 6-digit code to ${form.email}. Enter it below to continue.`
+                : `You're verified and ready to explore ${t.eyebrow}.`}
             </p>
           </div>
 
@@ -190,7 +208,7 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                   Takes less than 30 seconds. {requireOtp ? 'We just need to confirm your email.' : ''}
                 </p>
               </form>
-            ) : (
+            ) : step === 'otp' ? (
               <form onSubmit={handleOtpSubmit} className="space-y-4 text-xs">
                 <div className="flex justify-center">
                   <div
@@ -231,10 +249,32 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                   </button>
                 </div>
               </form>
+            ) : (
+              <div className="space-y-5 text-center">
+                <div className="flex justify-center">
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center border"
+                    style={{ borderColor: `${t.accent}66`, color: t.accent, backgroundColor: `${t.accent}14` }}
+                  >
+                    <FiCheckCircle size={24} />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
+                  style={{ backgroundColor: t.accent, color: t.accentText || t.panelBg }}
+                >
+                  <span>Continue</span>
+                  <FiArrowRight size={14} />
+                </button>
+              </div>
             )}
           </div>
         </motion.div>
-      </AnimatePresence>
+        </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }

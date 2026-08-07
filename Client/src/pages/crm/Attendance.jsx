@@ -192,6 +192,8 @@ export default function Attendance() {
       if (response.success) {
         toast.success('Lunch break started');
         setToday(response.data.attendance);
+        if (isManagerTier) fetchReport(filters);
+        else fetchMyHistory(getCurrentMonthBounds());
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to start lunch break');
@@ -207,6 +209,8 @@ export default function Attendance() {
       if (response.success) {
         toast.success(`Lunch break ended — ${response.data.attendance.lunchDurationMinutes} min recorded`);
         setToday(response.data.attendance);
+        if (isManagerTier) fetchReport(filters);
+        else fetchMyHistory(getCurrentMonthBounds());
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to end lunch break');

@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { distributorApi } from '../../api/distributor';
 import { adminApi } from '../../api/admin';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import { 
-    FiShield, FiUser, FiMail, FiPhone, FiMapPin, FiBriefcase, 
-    FiLayers, FiCalendar, FiCheckCircle, FiXCircle, FiClock, 
-    FiTrash2, FiFileText, FiDownload, FiSearch, FiFilter 
+    FiShield, FiUser, FiMail, FiPhone, FiMapPin, FiBriefcase,
+    FiLayers, FiCalendar, FiXCircle, FiClock,
+    FiTrash2, FiFileText, FiDownload, FiSearch, FiFilter
 } from 'react-icons/fi';
 
 export default function Distributor() {
@@ -20,6 +20,7 @@ export default function Distributor() {
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [divisionFilter, setDivisionFilter] = useState('ALL');
     const [selectedDistributor, setSelectedDistributor] = useState(null);
+    const detailPanelRef = useRef(null);
 
     // Consolidated execution hook loader
     const fetchCoreSystemData = async () => {
@@ -49,6 +50,14 @@ export default function Distributor() {
         fetchCoreSystemData();
     }, []);
 
+    // On narrow viewports the detail panel renders stacked below the table
+    // instead of side-by-side, so scroll it into view when it opens.
+    useEffect(() => {
+        if (selectedDistributor && detailPanelRef.current) {
+            detailPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [selectedDistributor?._id]);
+
     // Proposal Status Controller Integration
     const handleUpdateProposal = async (proposalId, statusUpdate) => {
         try {
@@ -60,28 +69,6 @@ export default function Distributor() {
             }
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to update target proposal parameters.");
-        }
-    };
-
-    const handleToggleVerification = async (id, currentStatus) => {
-        const targetAction = currentStatus === 'approved' ? 'Revoke Approval' : 'Grant Verified Access';
-        if (!window.confirm(`Are you sure you want to run compliance change: "${targetAction}" on this distributor?`)) return;
-
-        try {
-            const resData = await distributorApi.toggleVerify(id);
-            if (resData && resData.success) {
-                toast.success(resData.message || "Statutory access token status changed successfully.");
-                
-                if (selectedDistributor && selectedDistributor._id === id) {
-                    setSelectedDistributor(prev => ({
-                        ...prev,
-                        approvalStatus: prev.approvalStatus === 'approved' ? 'pending' : 'approved'
-                    }));
-                }
-                fetchCoreSystemData();
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Verification adjustment failure.");
         }
     };
 
@@ -344,16 +331,6 @@ export default function Distributor() {
 
                                                         {/* 5. AUTHORIZE CHANGE CONTROL DECK */}
                                                         <td className="p-4 text-right space-x-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                                                            <button 
-                                                                onClick={() => handleToggleVerification(dist._id, dist.approvalStatus)}
-                                                                className={`px-3 py-1 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] border transition-colors cursor-pointer ${
-                                                                    dist.approvalStatus === 'approved' 
-                                                                    ? 'border-[var(--crm-warning-bg)] text-[var(--crm-warning)] hover:bg-[var(--crm-warning-bg)]'
-                                                                    : 'bg-[var(--crm-bg-raised)] border-[var(--crm-ink-soft)]/10 text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]/80'
-                                                                }`}
-                                                            >
-                                                                {dist.approvalStatus === 'approved' ? 'Revoke' : 'Approve'}
-                                                            </button>
                                                             <button onClick={() => handleDeleteDistributor(dist._id)} className="p-1 text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] rounded-sm transition-all cursor-pointer">
                                                                 <FiTrash2 size={13} />
                                                             </button>
@@ -413,7 +390,8 @@ export default function Distributor() {
                     {/* Right Detailed Dossier Panel */}
                     <AnimatePresence>
                         {selectedDistributor && (
-                            <motion.div 
+                            <motion.div
+                                ref={detailPanelRef}
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 20 }}
@@ -524,19 +502,6 @@ export default function Distributor() {
                                     </div>
                                 </div>
 
-                                {/* Decision Quick Panel Container */}
-                                <div className="p-4 bg-[var(--crm-bg)]/80 border-t border-[var(--crm-ink-soft)]/10 flex gap-2">
-                                    <button 
-                                        onClick={() => handleToggleVerification(selectedDistributor._id, selectedDistributor.approvalStatus)}
-                                        className={`w-full font-mono text-xs font-bold uppercase tracking-wider py-3 rounded-sm text-center flex items-center justify-center gap-2 transition-colors cursor-pointer text-white ${
-                                            selectedDistributor.approvalStatus === 'approved'
-                                            ? 'bg-[var(--crm-warning)] hover:bg-[var(--crm-warning)]'
-                                            : 'bg-[var(--crm-bg-raised)] hover:bg-[var(--crm-bg-raised)]/80 border border-[var(--crm-ink-soft)]/10'
-                                        }`}
-                                    >
-                                        <FiCheckCircle /> {selectedDistributor.approvalStatus === 'approved' ? 'Revoke Active Sourcing Access' : 'Verify Credentials & Authenticate'}
-                                    </button>
-                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

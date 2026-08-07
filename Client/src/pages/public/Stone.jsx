@@ -265,6 +265,20 @@ export default function Stone() {
 
   // Session Initialization
   useEffect(() => {
+    // Retries transient failures (e.g. a cold-started free-tier backend) so a
+    // returning verified distributor isn't dropped back to the entry gate by
+    // a flaky first request. A real 404 (distributor deleted in CRM) is not
+    // retried — that's the one case that should log them out.
+    const fetchStatusWithRetry = async (id, attemptsLeft = 2) => {
+      try {
+        return await distributorApi.getDistributorStatus(id);
+      } catch (err) {
+        if (err.response?.status === 404 || attemptsLeft <= 0) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return fetchStatusWithRetry(id, attemptsLeft - 1);
+      }
+    };
+
     const initializeSession = async () => {
       const savedId = localStorage.getItem('ito_stone_buyer_id') || localStorage.getItem('prakriti_distributor_id');
       const token = localStorage.getItem('distributor_token');
@@ -272,7 +286,7 @@ export default function Stone() {
       if (savedId && token) {
         setDistributorId(savedId);
         try {
-          const res = await distributorApi.getDistributorStatus(savedId);
+          const res = await fetchStatusWithRetry(savedId);
           if (res.success) {
             const status = res.data.approvalStatus;
             if (status === 'approved') setUserAccessLayer(5);
@@ -280,7 +294,11 @@ export default function Stone() {
             else handleLogOut();
           }
         } catch (err) {
-          console.error("Session sync failed:", err);
+          if (err.response?.status === 404) {
+            handleLogOut();
+          } else {
+            console.error("Session sync failed:", err);
+          }
         }
       }
       setIsLoadingSession(false);
@@ -384,6 +402,7 @@ export default function Stone() {
         division="STONE"
         requireOtp={true}
         onVerified={handleGateVerified}
+        mascotSrc="/images/walking-man.png"
       />
     );
   }

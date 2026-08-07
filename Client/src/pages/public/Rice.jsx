@@ -115,7 +115,7 @@ export default function RicePage() {
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
     const [showEntryGate, setShowEntryGate] = useState(() =>
-        !(localStorage.getItem('prakriti_distributor_id') && localStorage.getItem('distributor_token'))
+        !(localStorage.getItem('rice_distributor_id') && localStorage.getItem('distributor_token'))
     );
     const [distributorId, setDistributorId] = useState('');
 
@@ -139,7 +139,7 @@ export default function RicePage() {
     const [activeTabSOP, setActiveTabSOP] = useState('commercial');
 
     const fetchMyProposals = async () => {
-        const storedDistributorId = distributorId || localStorage.getItem('prakriti_distributor_id');
+        const storedDistributorId = distributorId || localStorage.getItem('rice_distributor_id');
         const token = localStorage.getItem('distributor_token');
 
         if (!storedDistributorId || !token) {
@@ -181,14 +181,28 @@ export default function RicePage() {
 
     // Single Consolidated Session Initialization Lifecycle
     useEffect(() => {
+        // Retries transient failures (e.g. a cold-started free-tier backend) so a
+        // returning verified distributor isn't dropped back to the entry gate by
+        // a flaky first request. A real 404 (distributor deleted in CRM) is not
+        // retried — that's the one case that should log them out.
+        const fetchStatusWithRetry = async (id, attemptsLeft = 2) => {
+            try {
+                return await distributorApi.getDistributorStatus(id);
+            } catch (err) {
+                if (err.response?.status === 404 || attemptsLeft <= 0) throw err;
+                await new Promise((resolve) => setTimeout(resolve, 1200));
+                return fetchStatusWithRetry(id, attemptsLeft - 1);
+            }
+        };
+
         const initializeAuthenticationSession = async () => {
-            const savedId = localStorage.getItem('prakriti_distributor_id');
+            const savedId = localStorage.getItem('rice_distributor_id');
             const token = localStorage.getItem('distributor_token');
 
             if (savedId && token) {
                 setDistributorId(savedId);
                 try {
-                    const res = await distributorApi.getDistributorStatus(savedId);
+                    const res = await fetchStatusWithRetry(savedId);
                     if (res.success) {
                         const status = res.data.approvalStatus;
                         if (status === 'approved') {
@@ -200,7 +214,11 @@ export default function RicePage() {
                         }
                     }
                 } catch (err) {
-                    console.error("Session synchronization failure:", err);
+                    if (err.response?.status === 404) {
+                        handleLogOut();
+                    } else {
+                        console.error("Session synchronization failure:", err);
+                    }
                 }
             }
             setIsLoadingSession(false);
@@ -259,7 +277,7 @@ export default function RicePage() {
     const handleGateVerified = (activeId, activeToken) => {
         if (activeId) {
             setDistributorId(activeId);
-            localStorage.setItem('prakriti_distributor_id', activeId);
+            localStorage.setItem('rice_distributor_id', activeId);
         }
         if (activeToken) {
             localStorage.setItem('distributor_token', activeToken);
@@ -273,7 +291,7 @@ export default function RicePage() {
     const handleLogOut = () => {
         setUserAccessLayer(1);
         setDistributorId('');
-        localStorage.removeItem('prakriti_distributor_id');
+        localStorage.removeItem('rice_distributor_id');
         localStorage.removeItem('distributor_token');
         toast.success("Secured customer session terminated.");
     };
@@ -323,6 +341,7 @@ export default function RicePage() {
                 division="RICE"
                 requireOtp={true}
                 onVerified={handleGateVerified}
+                mascotSrc="/images/walking-man.png"
             />
         );
     }
