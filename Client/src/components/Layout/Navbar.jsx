@@ -410,6 +410,35 @@ export default function Navbar() {
                   <Link to="/client-signup" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center bg-[#2B3440] border border-transparent text-[#F2F4F7] text-xs tracking-widest">SIGN UP</Link>
                 </div>
               )}
+
+              {user && (
+                <div className="space-y-3 pt-1">
+                  {!user?.employeeId?.startsWith('CL_') && (
+                    <Link
+                      to="/crm/dashboard"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                    >
+                      <FiPackage size={14} /> <span>DASHBOARD</span>
+                    </Link>
+                  )}
+                  {user?.role === 'ADMIN' && (
+                    <Link
+                      to="/crm/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                    >
+                      <FiSettings size={14} /> <span>ADMIN PANEL</span>
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="w-full h-[48px] flex items-center justify-center space-x-2 bg-red-950/20 border border-red-400/30 text-red-400 text-xs tracking-widest font-semibold"
+                  >
+                    <FiLogOut size={14} /> <span>LOGOUT</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
