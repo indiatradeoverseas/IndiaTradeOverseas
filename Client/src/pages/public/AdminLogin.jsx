@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +24,7 @@ const AdminLogin = () => {
           icon: '🛡️',
           style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' }
         });
+        pushDataLayerEvent('login', { method: 'admin' });
         navigate('/crm/dashboard');
       }
     } catch (error) {

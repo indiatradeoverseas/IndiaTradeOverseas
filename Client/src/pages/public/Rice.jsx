@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -8,6 +8,22 @@ import {
 } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { pushDataLayerEvent } from '../../utils/analytics';
+import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+
+const RICE_GATE_THEME = {
+    bg: '#5A4422',
+    panelBg: '#4A3819',
+    accent: '#D9B85C',
+    accentText: '#2E2000',
+    text: '#FFF9EC',
+    muted: '#C9AE81',
+    border: '#6E5228',
+    eyebrow: 'Prakriti Rice Division',
+    headline: 'Welcome to Prakriti Rice',
+    subhead: 'Tell us who you are to unlock the official rice rate card and place sourcing requests directly.',
+    fontClass: 'font-serif'
+};
 
 const HERO_BACKGROUNDS = [
     "/images/rice_images/rice_1.jpeg",
@@ -43,53 +59,84 @@ const TEASER_CARGO_STREAM = [
     { id: 4, hub: "Brahmaputra Trade Corridor", grade: "Sugandha Aromatic - Polished Steam", size: "25 KG Trade Packs", destination: "Private Label Brands & Gourmet Chains" }
 ];
 
-const VERIFIED_MARKETPLACE_DATA = [
-    { id: "PK-BAS-1121", location: "Kishanganj Center", variety: "1121 Basmati (2025 Steam Lot)", traits: "Avg Length 8.35mm+ | Elongation 2.2x", inventory: "42,000 Kg", price: "107", route: "Bihar Logistics Hub", category: "Basmati" },
-    { id: "PK-BAS-1885", location: "Regional Warehouse", variety: "1885 Basmati (2025 Aged Raw)", traits: "Pristine Grade | High Natural Aroma", inventory: "25,000 Kg", price: "103", route: "Northern Freight Corridor", category: "Basmati" },
-    { id: "PK-NON-PR14", location: "Central Aggregator", variety: "PR11/14 (2025 Premium Sella)", traits: "Max 5% Broken | Sorted Clean Grain", inventory: "85,000 Kg", price: "56", route: "Mandi Depot Grid", category: "Non-Basmati" },
-    { id: "PK-VAL-SONA", location: "Kishanganj Center", variety: "Sona Masoori (2025 Steam Batch)", traits: "Optimal Moisten Caps | Fast Cook Yield", inventory: "90,000 Kg", price: "55", route: "Bihar Logistics Hub", category: "Aromatic" }
+// Official ITO Ex-Mill (Haryana) Rice Rate Card â€” variety -> processing-grade price per Metric Ton (MT)
+// Source: "ITO Rice Price List.pdf". Packing: 50 KG White PP Bag (Non-Branded), Crop Year 2025. `null` = not offered for that variety.
+const RICE_PROCESSING_KEYS = ['raw', 'steam', 'whiteSella', 'lemonSella', 'goldenSella', 'brown'];
+const RICE_PROCESSING_LABELS = {
+    raw: 'Raw / White',
+    steam: 'Steam',
+    whiteSella: 'White / Creamy Sella',
+    lemonSella: 'Lemon Sella',
+    goldenSella: 'Golden Sella',
+    brown: 'Brown'
+};
+
+// Regular / Conventional Basmati & Non-Basmati grades
+const REGULAR_RICE_RAW = [
+    ['1121 Basmati Rice', '8.35 MM', [113000, 109000, 103000, 104000, 108000, null]],
+    ['1885 Basmati Rice', '8.35 MM', [null, 107000, 99000, 100000, 104000, null]],
+    ['1718 Basmati Rice', '8.35 MM', [109000, 106000, 97000, 98000, 102000, null]],
+    ['1509 Basmati Rice', '8.40 MM', [null, 98000, 92000, 93000, 98000, null]],
+    ['1847 Basmati Rice', '8.40 MM', [null, 98000, 92000, 93000, 98000, null]],
+    ['1401 Basmati Rice', '7.70 MM', [null, 105000, null, null, null, null]],
+    ['PUSA Basmati Rice', '7.45 MM', [100000, 100000, 94000, null, 98000, null]],
+    ['Sugandha Rice', '7.90 MM', [null, 88000, 82000, 83000, 87000, null]],
+    ['Taj Rice', '8.15 MM', [null, 86500, 82000, null, 86000, null]],
+    ['Sharbati Rice', '7.10 MM', [null, null, 81000, null, 86000, null]],
+    ['RH-10 Rice', '7.40 MM', [null, 82000, 76000, null, 80000, null]],
+    ['PR-11 / PR-14 Rice', '6.90 MM', [56000, 56000, 55000, null, 57000, null]],
+    ['PR-106 / PR-47 Rice', '6.50 MM', [49000, 52000, 49000, null, 52000, null]],
+    ['PR-26 Rice', '6.40 MM', [48000, 49500, 47500, null, 51000, null]]
 ];
+
+// EU / UK / USA MRL-Compliant, Pesticide Residue Free grades
+const COMPLIANCE_RICE_RAW = [
+    ['1121 Basmati Rice', '8.35 MM', [114000, 113000, 107000, null, 112000, null]],
+    ['1718 Basmati Rice', '8.35 MM', [113000, 111000, 104000, null, 108000, null]],
+    ['1509 Basmati Rice', '8.40 MM', [null, 105000, 99000, null, 103000, null]],
+    ['PUSA Basmati Rice', '7.45 MM', [105000, 105000, 98000, null, 104000, 99000]],
+    ['Sharbati Rice', '7.10 MM', [null, null, 87000, null, null, null]],
+    ['Parmal Rice', '6.40 MM', [null, null, 57000, null, null, null]]
+];
+
+const buildRiceRateTable = (raw) => raw.map(([variety, mm, values]) => ({
+    variety,
+    mm,
+    rates: RICE_PROCESSING_KEYS.reduce((acc, key, i) => {
+        acc[key] = values[i];
+        return acc;
+    }, {})
+}));
+
+const REGULAR_RICE_RATES = buildRiceRateTable(REGULAR_RICE_RAW);
+const COMPLIANCE_RICE_RATES = buildRiceRateTable(COMPLIANCE_RICE_RAW);
 
 export default function RicePage() {
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
-    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-    const [formFlowStep, setFormFlowStep] = useState('collect');
-    const [modalMode, setModalMode] = useState('register'); // 'register' or 'login'
+    const [showEntryGate, setShowEntryGate] = useState(() =>
+        !(localStorage.getItem('prakriti_distributor_id') && localStorage.getItem('distributor_token'))
+    );
     const [distributorId, setDistributorId] = useState('');
-    const [formLoading, setFormLoading] = useState(false);
 
     // Proposals State
     const [myProposals, setMyProposals] = useState([]);
     const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
 
-    // Interactive Marketplace Variables
-    const [selectedMarketCategory, setSelectedMarketCategory] = useState('All');
+    // Official Rate Card Selector (Layer 5 marketplace pricing)
+    const [rateCompliance, setRateCompliance] = useState('REGULAR'); // 'REGULAR' | 'COMPLIANCE'
+    const [rateVariety, setRateVariety] = useState(REGULAR_RICE_RATES[0].variety);
+    const [rateProcessingType, setRateProcessingType] = useState(
+        RICE_PROCESSING_KEYS.find((key) => REGULAR_RICE_RATES[0].rates[key] != null)
+    );
+
     const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
-    const [orderQuantity, setOrderQuantity] = useState('1000');
+    const [orderQuantity, setOrderQuantity] = useState('20000');
 
     const [heroBgIndex, setHeroBgIndex] = useState(0);
     const [packageIndex, setPackageIndex] = useState(0);
     const [activeTabSOP, setActiveTabSOP] = useState('commercial');
-
-    // Form Processing State
-    const [businessType, setBusinessType] = useState('1');
-    const [name, setName] = useState('');
-    const [company, setCompany] = useState('');
-    const [mobile, setMobile] = useState('');
-    const [email, setEmail] = useState('');
-    const [loginEmail, setLoginEmail] = useState('');
-    const [address, setAddress] = useState('');
-    const [city, setCity] = useState('');
-    const [state, setState] = useState('');
-    const [country, setCountry] = useState('India');
-    const [riceType, setRiceType] = useState('Basmati');
-    const [monthlyVolume, setMonthlyVolume] = useState('');
-    const [purposeText, setPurposeText] = useState('');
-    const [complianceDoc1, setComplianceDoc1] = useState(null);
-    const [complianceDoc2, setComplianceDoc2] = useState(null);
-    const [verificationCode, setVerificationCode] = useState('');
 
     const fetchMyProposals = async () => {
         const storedDistributorId = distributorId || localStorage.getItem('prakriti_distributor_id');
@@ -207,99 +254,20 @@ export default function RicePage() {
         return () => clearInterval(packageLoop);
     }, []);
 
-    const executeRegistrationSubmit = async (e) => {
-        e.preventDefault();
-        if (!name.trim()) return toast.error("Applicant Name is required.");
-        if (!company.trim()) return toast.error("Company Name is required.");
-        if (!email.trim()) return toast.error("Corporate Email Address is required.");
-        if (!mobile.trim()) return toast.error("Mobile Contact is required.");
-        if (!address.trim()) return toast.error("Physical Address is required.");
-
-        if (['1', '2', '3'].includes(businessType) && !complianceDoc1) {
-            return toast.error("GST Certificate or Udyam Registration file is required.");
+    // Entry-gate verification (name/email/phone/location + OTP already handled
+    // inside BuyerEntryGate) â€” just adopt the resulting session.
+    const handleGateVerified = (activeId, activeToken) => {
+        if (activeId) {
+            setDistributorId(activeId);
+            localStorage.setItem('prakriti_distributor_id', activeId);
         }
-        if (businessType === '4' && !complianceDoc1) {
-            return toast.error("FSSAI License or GST Certificate upload is required.");
+        if (activeToken) {
+            localStorage.setItem('distributor_token', activeToken);
         }
-        if (['5', '6', '7'].includes(businessType) && (!complianceDoc1 || !complianceDoc2)) {
-            return toast.error("Dual documentation stack required for verification.");
-        }
-
-        setFormLoading(true);
-        const data = new FormData();
-        data.append('name', name);
-        data.append('company', company);
-        data.append('email', email);
-        data.append('mobile', mobile);
-        data.append('address', address);
-        data.append('city', city);
-        data.append('state', state);
-        data.append('country', country);
-        data.append('teaType', riceType);
-        data.append('monthlyReq', monthlyVolume);
-        data.append('purpose', purposeText);
-        data.append('businessType', businessType);
-        data.append('division', 'RICE');
-
-        if (complianceDoc1) data.append('doc1', complianceDoc1);
-        if (complianceDoc2) data.append('doc2', complianceDoc2);
-
-        try {
-            const res = await distributorApi.registerDistributor(data);
-            if (res.success) {
-                toast.success(res.message || "B2B profile recorded. Verification code sent.");
-                setDistributorId(res.data.distributorId);
-                localStorage.setItem('prakriti_distributor_id', res.data.distributorId);
-                setFormFlowStep('verify_key');
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Registration error. Please check uploaded files.");
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
-    const processSecureKeyAuthentication = async (e) => {
-        e.preventDefault();
-        if (verificationCode.length < 6) return toast.error("Security code must be 6 digits.");
-
-        setFormLoading(true);
-        try {
-            const res = await distributorApi.verifyOtp(distributorId, verificationCode);
-            if (res.success) {
-                toast.success(res.message || "B2B Credentials Authenticated!");
-
-                const activeToken = res.token || res.data?.token || res.data?.accessToken;
-                const activeId = res.data?.distributorId || res.data?._id || distributorId;
-
-                if (activeId) {
-                    setDistributorId(activeId);
-                    localStorage.setItem('prakriti_distributor_id', activeId);
-                }
-
-                if (activeToken) {
-                    localStorage.setItem('distributor_token', activeToken);
-                }
-
-                setIsFormModalOpen(false);
-                setFormFlowStep('collect');
-
-                const statusRes = await distributorApi.getDistributorStatus(activeId);
-                if (statusRes.data?.approvalStatus === 'approved') {
-                    setUserAccessLayer(5);
-                } else {
-                    setUserAccessLayer(4);
-                }
-
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                setName(''); setCompany(''); setEmail(''); setMobile(''); setAddress('');
-                setCity(''); setState(''); setComplianceDoc1(null); setComplianceDoc2(null); setVerificationCode('');
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Invalid or expired OTP entry.");
-        } finally {
-            setFormLoading(false);
-        }
+        pushDataLayerEvent('rice_distributor_verified', { division: 'RICE' });
+        setShowEntryGate(false);
+        setUserAccessLayer(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleLogOut = () => {
@@ -310,9 +278,54 @@ export default function RicePage() {
         toast.success("Secured customer session terminated.");
     };
 
-    const filteredMarketLots = VERIFIED_MARKETPLACE_DATA.filter(lot =>
-        selectedMarketCategory === 'All' ? true : lot.category === selectedMarketCategory
-    );
+    // Reset variety/grade whenever the compliance toggle changes
+    useEffect(() => {
+        const table = rateCompliance === 'REGULAR' ? REGULAR_RICE_RATES : COMPLIANCE_RICE_RATES;
+        const firstEntry = table[0];
+        setRateVariety(firstEntry.variety);
+        setRateProcessingType(RICE_PROCESSING_KEYS.find((key) => firstEntry.rates[key] != null));
+    }, [rateCompliance]);
+
+    // Fall back to an available processing grade if the current one isn't offered for the selected variety
+    useEffect(() => {
+        const table = rateCompliance === 'REGULAR' ? REGULAR_RICE_RATES : COMPLIANCE_RICE_RATES;
+        const entry = table.find((e) => e.variety === rateVariety);
+        if (entry && entry.rates[rateProcessingType] == null) {
+            setRateProcessingType(RICE_PROCESSING_KEYS.find((key) => entry.rates[key] != null));
+        }
+    }, [rateVariety]);
+
+    const riceRateTable = rateCompliance === 'REGULAR' ? REGULAR_RICE_RATES : COMPLIANCE_RICE_RATES;
+    const activeRiceRateEntry = riceRateTable.find((entry) => entry.variety === rateVariety);
+    const activeRiceRatePriceMT = activeRiceRateEntry?.rates?.[rateProcessingType] ?? null;
+    const availableProcessingTypes = activeRiceRateEntry
+        ? RICE_PROCESSING_KEYS.filter((key) => activeRiceRateEntry.rates[key] != null)
+        : [];
+
+    const openRiceRateDrawer = () => {
+        if (!activeRiceRateEntry || activeRiceRatePriceMT == null) return;
+        const processingLabel = RICE_PROCESSING_LABELS[rateProcessingType];
+        setActiveDrawerLot({
+            id: `${rateCompliance}-${activeRiceRateEntry.variety.toUpperCase().replace(/[^A-Z0-9]+/g, '-')}-${rateProcessingType.toUpperCase()}`,
+            variety: `${activeRiceRateEntry.variety} (${activeRiceRateEntry.mm}) â€” ${processingLabel}`,
+            location: rateCompliance === 'COMPLIANCE' ? 'EU / UK / USA Compliance â€” Ex-Mill Haryana' : 'Ex-Mill Haryana (Domestic Grade)',
+            price: Number((activeRiceRatePriceMT / 1000).toFixed(2)),
+            inventory: 'MOQ 20,000 Kg (20 MT / One Truckload)'
+        });
+        setOrderQuantity('20000');
+        setIsOrderDrawerOpen(true);
+    };
+
+    if (showEntryGate) {
+        return (
+            <BuyerEntryGate
+                theme={RICE_GATE_THEME}
+                division="RICE"
+                requireOtp={true}
+                onVerified={handleGateVerified}
+            />
+        );
+    }
 
     if (isSessionLoading) {
         return (
@@ -350,7 +363,7 @@ export default function RicePage() {
                         <h2 className="text-2xl uppercase tracking-wider font-bold">B2B Account Under Evaluation</h2>
                         <div className="h-0.5 w-16 mx-auto bg-[#A67C2D]" />
                         <blockquote className="font-sans text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed italic border-l-4 pl-4 py-2 border-[#D9B85C] bg-[#FFF9EC]/50 text-left">
-                            “Your Prakriti Rice buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.”
+                            â€œYour Prakriti Rice buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.â€
                         </blockquote>
                         <div className="p-5 rounded-xl border text-left text-xs font-sans text-neutral-500 space-y-2 max-w-md mx-auto" style={{ backgroundColor: '#FFF9EC', borderColor: '#F2E3B4' }}>
                             <div className="font-bold uppercase font-mono tracking-widest text-[10px]" style={{ color: '#5A4422' }}>Audit Authentication Pipeline:</div>
@@ -475,7 +488,7 @@ export default function RicePage() {
                                                                     {" | "} Route: <span className="text-slate-700">{prop.region}</span>
                                                                 </div>
                                                                 <div className="text-[11px] text-slate-500">
-                                                                    Rate Basis: INR {prop.basePrice}/Kg → Net Value: <span className="font-bold text-[#5A4422]">INR {prop.estimatedValue?.toLocaleString()}</span>
+                                                                    Rate Basis: INR {prop.basePrice}/Kg â†’ Net Value: <span className="font-bold text-[#5A4422]">INR {prop.estimatedValue?.toLocaleString()}</span>
                                                                 </div>
                                                             </div>
 
@@ -557,6 +570,13 @@ export default function RicePage() {
 
                                                                     toast.dismiss(verificationToast);
                                                                     toast.success("Transaction certified! Ledger cleared successfully.");
+                                                                    pushDataLayerEvent('rice_payment_success', {
+                                                                        transaction_id: response.razorpay_payment_id,
+                                                                        value: aggregateAmount,
+                                                                        currency: 'INR',
+                                                                        lot_id: targetLotString,
+                                                                        quantity: combinedQuantity
+                                                                    });
                                                                     setIsProposalModalOpen(false);
                                                                     fetchMyProposals();
                                                                 } catch (verifyErr) {
@@ -592,92 +612,98 @@ export default function RicePage() {
                             )}
                         </AnimatePresence>
 
-                        {/* Category Filter Controls */}
-                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
-                                {['All', 'Basmati', 'Aromatic', 'Non-Basmati'].map((cat) => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setSelectedMarketCategory(cat)}
-                                        className={`px-4 py-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider rounded transition-all font-bold cursor-pointer ${selectedMarketCategory === cat
-                                            ? 'bg-[#5A4422] text-[#D9B85C] shadow-md border border-[#5A4422]'
-                                            : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-                                            }`}
-                                    >
-                                        {cat}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-3 md:pt-0 md:border-none w-full md:w-auto justify-end">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                {filteredMarketLots.length} Live Commodity Lots Streamed
-                            </div>
-                        </div>
-
-                        {/* Marketplace Table */}
-                        <div className="space-y-4">
-                            <h3 className="font-serif text-lg text-[#5A4422] uppercase tracking-wider flex items-center gap-2 font-medium text-left">
-                                Active Grain Sourcing Lots & Live Pricing Matrix
+                        {/* Official Rate Card Selector */}
+                        <div className="space-y-4 text-left">
+                            <h3 className="font-serif text-lg text-[#5A4422] uppercase tracking-wider font-bold px-1">
+                                Official Rate Card â€” Select Compliance, Variety &amp; Processing Grade
                             </h3>
 
-                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl overflow-x-auto">
-                                <table className="w-full text-left border-collapse text-xs font-sans">
-                                    <thead>
-                                        <tr className="bg-[#5A4422] text-slate-200 border-b font-mono uppercase tracking-wider text-[10px]">
-                                            <th className="p-4 font-medium tracking-widest text-[#D9B85C]">Lot Hash</th>
-                                            <th className="p-4 font-medium tracking-widest">Aggregation Hub</th>
-                                            <th className="p-4 font-medium tracking-widest">Structural Grade</th>
-                                            <th className="p-4 font-medium tracking-widest">Grain Specs</th>
-                                            <th className="p-4 font-medium tracking-widest">Depot Tonnage</th>
-                                            <th className="p-4 font-medium tracking-widest text-[#D9B85C]">Base Rate</th>
-                                            <th className="p-4 font-medium tracking-widest text-right pr-6">Action Deck</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                                        {filteredMarketLots.map((row) => (
-                                            <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="p-4 font-mono font-bold text-[#5A4422] text-[13px] tracking-wide">
-                                                    {row.id}
-                                                </td>
-                                                <td className="p-4 space-y-0.5">
-                                                    <div className="font-semibold text-slate-900">{row.location}</div>
-                                                    <div className="text-[10px] text-slate-400 font-mono">Route: {row.route}</div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="bg-slate-100 px-2 py-0.5 border border-slate-200 font-mono text-[11px] text-slate-800 font-bold rounded-sm">
-                                                        {row.variety}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-slate-600 font-medium">
-                                                    {row.traits}
-                                                </td>
-                                                <td className="p-4 font-mono font-semibold text-slate-600">
-                                                    {row.inventory}
-                                                </td>
-                                                <td className="p-4 font-mono font-bold text-[14px] text-[#A67C2D]">
-                                                    INR {row.price}/Kg
-                                                </td>
-                                                <td className="p-4 text-right space-x-2 whitespace-nowrap pr-6">
-                                                    <button
-                                                        onClick={() => toast.success(`Sample token generated for ${row.id}`)}
-                                                        className="bg-slate-50 hover:bg-slate-200 border border-slate-200 text-slate-700 px-3 py-2 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer"
-                                                    >
-                                                        Request Sample
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setActiveDrawerLot(row);
-                                                            setIsOrderDrawerOpen(true);
-                                                        }}
-                                                        className="bg-[#5A4422] hover:bg-[#3d2c16] text-white px-4 py-2 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] shadow-sm transition-all cursor-pointer"
-                                                    >
-                                                        Place Order
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="bg-white border rounded-xl p-4 sm:p-6 shadow-sm space-y-4" style={{ borderColor: '#F2E3B4' }}>
+                                {/* Compliance Toggle */}
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRateCompliance('REGULAR')}
+                                        className="flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer"
+                                        style={rateCompliance === 'REGULAR'
+                                            ? { backgroundColor: '#5A4422', borderColor: '#5A4422', color: '#FFF9EC' }
+                                            : { backgroundColor: '#FFF9EC', borderColor: '#F2E3B4', color: '#5A4422' }}
+                                    >
+                                        Regular / Conventional
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRateCompliance('COMPLIANCE')}
+                                        className="flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer"
+                                        style={rateCompliance === 'COMPLIANCE'
+                                            ? { backgroundColor: '#5A4422', borderColor: '#5A4422', color: '#FFF9EC' }
+                                            : { backgroundColor: '#FFF9EC', borderColor: '#F2E3B4', color: '#5A4422' }}
+                                    >
+                                        EU / UK / USA Compliance
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-mono uppercase text-neutral-500 mb-1">Rice Variety *</label>
+                                        <select
+                                            value={rateVariety}
+                                            onChange={(e) => setRateVariety(e.target.value)}
+                                            className="w-full border rounded p-3 text-xs text-[#5A4422] font-mono"
+                                            style={{ backgroundColor: '#FFF9EC', borderColor: '#F2E3B4' }}
+                                        >
+                                            {riceRateTable.map((entry) => (
+                                                <option key={entry.variety} value={entry.variety}>
+                                                    {entry.variety} ({entry.mm})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-mono uppercase text-neutral-500 mb-1">Processing Grade *</label>
+                                        <select
+                                            value={rateProcessingType}
+                                            onChange={(e) => setRateProcessingType(e.target.value)}
+                                            className="w-full border rounded p-3 text-xs text-[#5A4422] font-mono"
+                                            style={{ backgroundColor: '#FFF9EC', borderColor: '#F2E3B4' }}
+                                        >
+                                            {availableProcessingTypes.map((key) => (
+                                                <option key={key} value={key}>{RICE_PROCESSING_LABELS[key]}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border rounded-xl p-4" style={{ backgroundColor: '#FFF9EC', borderColor: '#F2E3B4' }}>
+                                    {activeRiceRatePriceMT == null ? (
+                                        <span className="text-xs font-sans text-neutral-500 italic">Not available for this variety / processing grade combination.</span>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <span className="text-[9px] font-mono uppercase text-neutral-400 block">Commercial Rate (Ex-Mill Haryana)</span>
+                                                <span className="text-xl font-mono font-extrabold text-[#5A4422]">
+                                                    INR {activeRiceRatePriceMT.toLocaleString()}<span className="text-xs font-medium text-neutral-500">/MT</span>
+                                                </span>
+                                                <span className="text-[10px] font-mono text-neutral-400 block">
+                                                    &asymp; INR {(activeRiceRatePriceMT / 1000).toLocaleString()}/Kg
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={openRiceRateDrawer}
+                                                className="text-white px-5 py-3 rounded-lg font-mono font-bold uppercase tracking-wider text-[10px] shadow transition-all cursor-pointer flex items-center justify-center gap-2"
+                                                style={{ backgroundColor: '#5A4422' }}
+                                            >
+                                                <FiShoppingCart size={12} /> Request Sourcing Quote
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-sans text-neutral-500 pt-1">
+                                    <p>Packing: 50 KG White PP Bag (Non-Branded). Minimum Order Quantity: 20â€“25 MT (One Truckload).</p>
+                                    <p>Payment Terms: 20% Advance, balance against loading (Ex-Mill) / against LR (FOR). Rates valid until 01/08/2026.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -725,11 +751,11 @@ export default function RicePage() {
                                 </p>
                                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2 w-full sm:w-auto">
                                     <button
-                                        onClick={() => setIsFormModalOpen(true)}
+                                        onClick={() => setUserAccessLayer(5)}
                                         className="w-full sm:w-auto text-[#5A4422] text-[10px] xs:text-xs font-sans font-bold uppercase tracking-widest px-8 py-4 rounded shadow-xl transition-all hover:scale-105 transform duration-300 cursor-pointer"
                                         style={{ background: 'linear-gradient(to right, #E2C26A, #8D6A25)' }}
                                     >
-                                        Verify Business to View Rates
+                                        Explore Products
                                     </button>
                                     <a
                                         href="#teaser-matrix-anchor"
@@ -866,11 +892,11 @@ export default function RicePage() {
                                         </div>
 
                                         <button
-                                            onClick={() => setIsFormModalOpen(true)}
+                                            onClick={() => setUserAccessLayer(5)}
                                             className="w-full text-center border py-3 rounded font-sans font-bold text-[10px] xs:text-xs uppercase tracking-widest transition-all text-white cursor-pointer"
                                             style={{ background: 'linear-gradient(to right, #A67C2D, #5A4422)' }}
                                         >
-                                            Verify Business to View rates
+                                            Explore Products
                                         </button>
                                     </div>
                                 ))}
@@ -951,12 +977,12 @@ export default function RicePage() {
                                             Authorized pricing indexes, custom private labeling parameters, and super-stockist target frameworks open automatically upon passing sandbox identity checklists.
                                         </p>
                                         <button
-                                            onClick={() => setIsFormModalOpen(true)}
+                                            onClick={() => setUserAccessLayer(5)}
                                             className="font-sans text-[10px] font-bold uppercase tracking-widest px-8 py-3.5 rounded shadow text-white inline-flex items-center gap-2 cursor-pointer"
                                             style={{ background: 'linear-gradient(to right, #A67C2D, #5A4422)' }}
                                         >
                                             <FiFileText className="shrink-0" />
-                                            <span>Open Terminal</span>
+                                            <span>Explore Products</span>
                                         </button>
                                     </motion.div>
                                 )}
@@ -1064,272 +1090,6 @@ export default function RicePage() {
                 </>
             )}
 
-            {/* ================= LAYER 3: REGISTRATION & LOGIN MODAL ================= */}
-            <AnimatePresence>
-                {isFormModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-xs">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: 10 }}
-                            className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 my-8"
-                        >
-                            <div className="text-white p-6 sm:p-8 relative text-left" style={{ backgroundColor: '#5A4422' }}>
-                                <button onClick={() => { setIsFormModalOpen(false); setFormFlowStep('collect'); }} className="absolute top-6 right-6 text-neutral-300 hover:text-white focus:outline-none cursor-pointer"><FiX size={20} /></button>
-                                <div className="text-[#D9B85C] text-[9px] font-sans font-bold tracking-[0.2em] uppercase">Layer 3 Statutory Checkpoint</div>
-                                <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-wide text-[#FFF9EC] mt-1">Rice Buyer Sourcing Registry</h2>
-                            </div>
-
-                            <div className="p-6 sm:p-8 text-left max-h-[68vh] overflow-y-auto bg-white">
-                                {formFlowStep === 'collect' ? (
-                                    <div className="space-y-5 font-sans text-xs text-neutral-700">
-                                        <div className="flex border-b border-slate-100 pb-2 mb-4 gap-4 font-mono text-[10px]">
-                                            <button
-                                                type="button"
-                                                onClick={() => setModalMode('register')}
-                                                className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${modalMode === 'register'
-                                                    ? 'text-[#5A4422] border-b-2 border-[#5A4422]'
-                                                    : 'text-slate-400 hover:text-slate-600'
-                                                    }`}
-                                            >
-                                                New Registration
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setModalMode('login')}
-                                                className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${modalMode === 'login'
-                                                    ? 'text-[#5A4422] border-b-2 border-[#5A4422]'
-                                                    : 'text-slate-400 hover:text-slate-600'
-                                                    }`}
-                                            >
-                                                Existing Corporate Partner (Login)
-                                            </button>
-                                        </div>
-
-                                        {modalMode === 'register' ? (
-                                            <form onSubmit={executeRegistrationSubmit} className="space-y-5 font-sans text-xs text-neutral-700">
-                                                <div>
-                                                    <label className="block text-[11px] font-bold uppercase tracking-wide text-[#5A4422] mb-1.5">Business Classification Category *</label>
-                                                    <select value={businessType} onChange={(e) => { setBusinessType(e.target.value); setComplianceDoc1(null); setComplianceDoc2(null); }} className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 font-medium focus:outline-none focus:border-[#A67C2D]">
-                                                        <option value="1">Domestic Rice Trader</option>
-                                                        <option value="2">Rice Wholesaler</option>
-                                                        <option value="3">Rice Distributor / Super Stockist</option>
-                                                        <option value="4">Hotel / Café / Restaurant Buyer (HORECA)</option>
-                                                        <option value="5">Export Merchant Buyer</option>
-                                                        <option value="6">Private Label Branding Partner</option>
-                                                        <option value="7">Retail Pack Brand Buyer</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Full Name of Signatory *</label>
-                                                        <input type="text" required placeholder="Satyam Raj" className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={name} onChange={(e) => setName(e.target.value)} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Legal Firm / Company Name *</label>
-                                                        <input type="text" required placeholder="Enter Company Name" className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={company} onChange={(e) => setCompany(e.target.value)} />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Mobile Contact Line *</label>
-                                                        <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Corporate Email Address *</label>
-                                                        <input type="email" required placeholder="buyer@enterprise.com" className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={email} onChange={(e) => setEmail(e.target.value)} />
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Physical Operating Address *</label>
-                                                    <input type="text" required placeholder="Warehouse or Main Office Location" className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={address} onChange={(e) => setAddress(e.target.value)} />
-                                                </div>
-
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">City *</label>
-                                                        <input type="text" required placeholder="City" className="w-full bg-slate-50 border border-slate-200 rounded p-3 focus:outline-none focus:border-[#A67C2D]" value={city} onChange={(e) => setCity(e.target.value)} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">State *</label>
-                                                        <input type="text" required placeholder="State" className="w-full bg-slate-50 border border-slate-200 rounded p-3 focus:outline-none focus:border-[#A67C2D]" value={state} onChange={(e) => setState(e.target.value)} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Country *</label>
-                                                        <input type="text" required placeholder="Country" className="w-full bg-slate-50 border border-slate-200 rounded p-3 focus:outline-none focus:border-[#A67C2D]" value={country} onChange={(e) => setCountry(e.target.value)} />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Target Grain Portfolio *</label>
-                                                        <select value={riceType} onChange={(e) => setRiceType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]">
-                                                            <option value="Basmati">Ultra Premium Basmati (1121/1885 series)</option>
-                                                            <option value="Aromatic">Aromatic Selection (Sugandha/Taj/PUSA)</option>
-                                                            <option value="Non-Basmati">Commercial Non-Basmati (PR value grades)</option>
-                                                            <option value="Value">Everyday Staples (Sona Masoori/IR64 formats)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Approx Monthly Requirement (Metric Tons) *</label>
-                                                        <input type="number" required placeholder="Minimum standard MOQ is 25 MT" className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={monthlyVolume} onChange={(e) => setMonthlyVolume(e.target.value)} />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-bold uppercase tracking-wide text-neutral-600 mb-1.5">Purpose of Sourcing Contract *</label>
-                                                    <textarea rows="2" required placeholder="Describe retail distribution pipeline networks or institutional channel setups..." className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-slate-800 focus:outline-none focus:border-[#A67C2D]" value={purposeText} onChange={(e) => setPurposeText(e.target.value)} />
-                                                </div>
-
-                                                <div className="p-5 rounded-xl border border-dashed space-y-4" style={{ backgroundColor: '#FFF9EC', borderColor: '#A67C2D' }}>
-                                                    <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold tracking-wider" style={{ color: '#5A4422' }}>
-                                                        <FiShield size={13} /> DYNAMIC REGISTRY ATTACHMENT RULES
-                                                    </div>
-
-                                                    {['1', '2', '3'].includes(businessType) && (
-                                                        <div>
-                                                            <label className="block text-[11px] text-neutral-600 font-medium mb-2">Mandatory: Upload Corporate GST Certificate or valid Udyam Registration *</label>
-                                                            <label className="flex flex-col items-center justify-center w-full h-24 bg-white rounded-lg border-2 border-dashed hover:border-[#5A4422] cursor-pointer p-4 transition-colors" style={{ borderColor: '#F2E3B4' }}>
-                                                                <FiUploadCloud size={20} className={complianceDoc1 ? "text-[#5A4422]" : "text-neutral-400"} />
-                                                                <span className="text-[10px] font-bold text-neutral-700 mt-1 truncate max-w-full">{complianceDoc1 ? complianceDoc1.name : "Select Statutory PDF Asset"}</span>
-                                                                <input type="file" required className="hidden" onChange={(e) => setComplianceDoc1(e.target.files[0])} />
-                                                            </label>
-                                                        </div>
-                                                    )}
-
-                                                    {businessType === '4' && (
-                                                        <div>
-                                                            <label className="block text-[11px] text-neutral-600 font-medium mb-2">Mandatory: Upload Central FSSAI License or valid GST registration *</label>
-                                                            <label className="flex flex-col items-center justify-center w-full h-24 bg-white rounded-lg border-2 border-dashed hover:border-[#5A4422] cursor-pointer p-4 transition-colors" style={{ borderColor: '#F2E3B4' }}>
-                                                                <FiUploadCloud size={20} className={complianceDoc1 ? "text-[#5A4422]" : "text-neutral-400"} />
-                                                                <span className="text-[10px] font-bold text-neutral-700 mt-1 truncate max-w-full">{complianceDoc1 ? complianceDoc1.name : "Select FSSAI / GST PDF"}</span>
-                                                                <input type="file" required className="hidden" onChange={(e) => setComplianceDoc1(e.target.files[0])} />
-                                                            </label>
-                                                        </div>
-                                                    )}
-
-                                                    {['5', '6', '7'].includes(businessType) && (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <label className="block text-[11px] text-neutral-600 font-medium mb-2">{businessType === '5' ? 'Import Export Code (IEC) *' : 'Active FSSAI License *'}</label>
-                                                                <label className="flex flex-col items-center justify-center w-full h-24 bg-white rounded-lg border-2 border-dashed hover:border-[#5A4422] cursor-pointer p-4 transition-colors" style={{ borderColor: '#F2E3B4' }}>
-                                                                    <FiUploadCloud size={20} className={complianceDoc1 ? "text-[#5A4422]" : "text-neutral-400"} />
-                                                                    <span className="text-[10px] font-bold text-neutral-700 mt-1 truncate max-w-full">{complianceDoc1 ? complianceDoc1.name : "Primary Document"}</span>
-                                                                    <input type="file" required className="hidden" onChange={(e) => setComplianceDoc1(e.target.files[0])} />
-                                                                </label>
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[11px] text-neutral-600 font-medium mb-2">GST Certificate *</label>
-                                                                <label className="flex flex-col items-center justify-center w-full h-24 bg-white rounded-lg border-2 border-dashed hover:border-[#5A4422] cursor-pointer p-4 transition-colors" style={{ borderColor: '#F2E3B4' }}>
-                                                                    <FiUploadCloud size={20} className={complianceDoc2 ? "text-[#5A4422]" : "text-neutral-400"} />
-                                                                    <span className="text-[10px] font-bold text-neutral-700 mt-1 truncate max-w-full">{complianceDoc2 ? complianceDoc2.name : "Tax Certificate"}</span>
-                                                                    <input type="file" required className="hidden" onChange={(e) => setComplianceDoc2(e.target.files[0])} />
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <button
-                                                    type="submit"
-                                                    disabled={formLoading}
-                                                    className="w-full font-mono font-bold text-[10px] sm:text-xs uppercase tracking-wider py-4 rounded transition-all text-[#FFF9EC] cursor-pointer flex items-center justify-center"
-                                                    style={{ background: 'linear-gradient(to right, #A67C2D, #5A4422)' }}
-                                                >
-                                                    {formLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Confirm Details & Send OTP"}
-                                                </button>
-                                            </form>
-                                        ) : (
-                                            /* Corporate Login Form */
-                                            <form
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const cleanEmail = loginEmail.toLowerCase().trim();
-                                                    if (!cleanEmail) return toast.error("Corporate Email is required.");
-
-                                                    setFormLoading(true);
-                                                    try {
-                                                        const otpRes = await distributorApi.resendOtp(cleanEmail);
-                                                        if (otpRes && otpRes.success) {
-                                                            const id = otpRes.data?.distributorId || otpRes.distributorId;
-                                                            if (id) {
-                                                                setDistributorId(id);
-                                                                localStorage.setItem('prakriti_distributor_id', id);
-                                                            }
-                                                            setEmail(cleanEmail);
-                                                            toast.success(otpRes.message || "Verification OTP sent to your corporate email!");
-                                                            setFormFlowStep('verify_key');
-                                                        } else {
-                                                            throw new Error(otpRes?.message || "Failed to dispatch verification code.");
-                                                        }
-                                                    } catch (err) {
-                                                        toast.error(err.response?.data?.message || err.message || "Failed to dispatch OTP.");
-                                                    } finally {
-                                                        setFormLoading(false);
-                                                    }
-                                                }}
-                                                className="space-y-5 pt-2"
-                                            >
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#5A4422] mb-1.5">
-                                                        Registered Corporate Email Address *
-                                                    </label>
-                                                    <input
-                                                        type="email"
-                                                        required
-                                                        placeholder="buyer@enterprise.com"
-                                                        className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 text-xs focus:outline-none focus:border-[#5A4422]"
-                                                        value={loginEmail}
-                                                        onChange={(e) => setLoginEmail(e.target.value)}
-                                                    />
-                                                    <span className="text-[10px] text-slate-400 font-light mt-1.5 block">
-                                                        Provide the email associated with your verified business profile structure to pull your live transaction matrix ledger.
-                                                    </span>
-                                                </div>
-
-                                                <div className="pt-2">
-                                                    <button
-                                                        type="submit"
-                                                        disabled={formLoading}
-                                                        className="w-full text-white font-mono font-bold text-[10px] uppercase tracking-wider py-3.5 rounded-md transition-all shadow-md flex items-center justify-center cursor-pointer"
-                                                        style={{ backgroundColor: '#5A4422' }}
-                                                    >
-                                                        {formLoading ? (
-                                                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        ) : (
-                                                            "Access Sourcing Terminal"
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <form onSubmit={processSecureKeyAuthentication} className="space-y-6 max-w-sm mx-auto text-center py-6 font-sans text-xs">
-                                        <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto bg-[#FFF9EC] text-[#5A4422] border" style={{ borderColor: '#D9B85C' }}><FiKey size={18} /></div>
-                                        <div className="space-y-1">
-                                            <h4 className="text-base font-serif font-bold text-[#5A4422]">Authorize Sourcing Ledger</h4>
-                                            <p className="text-xs text-neutral-500 font-light">Supply the 6-digit cryptographic token routed to <span className="font-bold text-neutral-700">{email}</span>.</p>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-slate-50 border rounded-lg py-3 text-lg font-mono tracking-[0.35em] text-slate-800 focus:outline-none focus:border-[#5A4422]" style={{ borderColor: '#F2E3B4' }} value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} />
-                                            <div className="flex gap-2.5">
-                                                <button type="button" className="w-1/3 border text-neutral-400 font-mono uppercase tracking-wider text-[9px] sm:text-[10px] font-bold rounded cursor-pointer" style={{ borderColor: '#F2E3B4' }} onClick={() => setFormFlowStep('collect')}>Edit</button>
-                                                <button type="submit" disabled={formLoading} className="w-2/3 text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 rounded cursor-pointer flex items-center justify-center" style={{ backgroundColor: '#5A4422' }}>
-                                                    {formLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Verify Token"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                )}
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
             {/* ================= LAYER 5: BULK ORDER DRAWER AND ENQUIRY BENCH ================= */}
             <AnimatePresence>
                 {isOrderDrawerOpen && activeDrawerLot && (
@@ -1362,12 +1122,13 @@ export default function RicePage() {
                                             <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Negotiation Target Quantity (Kilograms) *</label>
                                             <input
                                                 type="number"
-                                                min="1000"
+                                                min="20000"
+                                                step="1000"
                                                 value={orderQuantity}
                                                 onChange={(e) => setOrderQuantity(e.target.value)}
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 font-mono focus:outline-none focus:border-[#5A4422] text-xs"
                                             />
-                                            <span className="text-[9px] text-slate-400 mt-1 block">Minimum bulk grain lot dispatch constraint matches 1,000 Kg configurations.</span>
+                                            <span className="text-[9px] text-slate-400 mt-1 block">Minimum order quantity per official rate card: 20,000 Kg (20 MT / One Truckload).</span>
                                         </div>
                                         <div className="bg-amber-50 border border-dashed border-amber-200 rounded-lg p-3 flex gap-2">
                                             <FiInfo className="text-amber-800 shrink-0 mt-0.5" size={14} />
@@ -1385,8 +1146,8 @@ export default function RicePage() {
                                     </div>
                                     <button
                                         onClick={async () => {
-                                            if (!orderQuantity || Number(orderQuantity) < 1000) {
-                                                return toast.error("Minimum quantity constraint matches 1,000 Kg configurations.");
+                                            if (!orderQuantity || Number(orderQuantity) < 20000) {
+                                                return toast.error("Minimum order quantity is 20,000 Kg (20 MT / One Truckload).");
                                             }
 
                                             try {
@@ -1403,6 +1164,12 @@ export default function RicePage() {
                                                 const res = await distributorApi.createProposal(proposalPayload);
                                                 if (res.success) {
                                                     toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
+                                                    pushDataLayerEvent('rice_proposal_submitted', {
+                                                        lot_id: activeDrawerLot.id,
+                                                        quantity: Number(orderQuantity),
+                                                        value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                                                        currency: 'INR'
+                                                    });
                                                     setIsOrderDrawerOpen(false);
                                                     fetchMyProposals();
                                                 }
@@ -1425,7 +1192,7 @@ export default function RicePage() {
 
             <footer className="py-12 border-t font-sans text-[11px] text-center" style={{ backgroundColor: '#5A4422', borderColor: '#A67C2D', color: '#F2E3B4' }}>
                 <div className="max-w-7xl mx-auto px-6 space-y-2">
-                    <p className="font-serif font-bold tracking-wide text-sm text-[#FFF9EC]">PRAKRITI AGRICULTURAL COMMODITY DIVISION — INDIA TRADE OVERSEAS</p>
+                    <p className="font-serif font-bold tracking-wide text-sm text-[#FFF9EC]">PRAKRITI AGRICULTURAL COMMODITY DIVISION â€” INDIA TRADE OVERSEAS</p>
                     <p className="max-w-md mx-auto opacity-75 font-light">
                         Corporate administrative offices handled out of Deramari, Kishanganj, Bihar - 855107. All lot pricing matrices are subject to direct confirmation.
                     </p>

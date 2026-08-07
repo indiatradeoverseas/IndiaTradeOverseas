@@ -160,12 +160,12 @@ export default function Footer() {
           <div className="md:col-span-3 space-y-4">
             <h4 className="text-xs uppercase tracking-widest font-semibold">Business Verticals</h4>
             <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
-              <li><Link to="/products" className="hover:underline transition-all">Trade &amp; Export</Link></li>
-              <li><Link to="/products" className="hover:underline transition-all">Food &amp; Agriculture</Link></li>
-              <li><Link to="/products" className="hover:underline transition-all">Coal &amp; Industrial Materials</Link></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Trade &amp; Export</button></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Food &amp; Agriculture</button></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Coal &amp; Industrial Materials</button></li>
               <li><Link to="/stone" className="hover:underline transition-all">Stone &amp; Construction Supply</Link></li>
-              <li><Link to="/products" className="hover:underline transition-all">ITO Transport &amp; Logistics</Link></li>
-              <li><Link to="/products" className="hover:underline transition-all">Clay &amp; Consumer Products</Link></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>ITO Transport &amp; Logistics</button></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Clay &amp; Consumer Products</button></li>
             </ul>
           </div>
 

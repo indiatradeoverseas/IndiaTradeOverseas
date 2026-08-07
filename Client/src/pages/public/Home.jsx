@@ -202,9 +202,13 @@ export default function Home() {
 
             {/* Primary & Secondary Action Targets */}
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2">
-              <Link to="/products" className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[50px] sm:h-[54px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event('ito:open-services-menu'))}
+                className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[50px] sm:h-[54px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md"
+              >
                 Explore Solutions &rarr;
-              </Link>
+              </button>
               <Link to="/quote-request" className="w-full sm:w-auto min-w-[220px] sm:min-w-[250px] bg-[#121D29]/58 backdrop-blur-[8px] border border-[#C5CBD3]/42 hover:bg-[#2B3440] hover:border-[#F2F4F7] text-[#F2F4F7] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[50px] sm:h-[54px] flex items-center justify-center rounded-[2px] transition-all duration-200">
                 Request Bulk Quote &rarr;
               </Link>

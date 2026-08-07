@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
@@ -24,6 +24,7 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isServicesDropdownOpen, setIsServicesDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const servicesRef = useRef(null);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -45,6 +46,31 @@ export default function Navbar() {
     setIsUserMenuOpen(false);
     setIsServicesDropdownOpen(false);
   }, [location]);
+
+  // Lets other pages (e.g. Home's "Explore Solutions") open the OUR SERVICES
+  // dropdown instead of navigating to a standalone Products page.
+  useEffect(() => {
+    const openServicesDropdown = () => {
+      if (window.innerWidth < 1024) {
+        setIsMobileMenuOpen(true);
+      } else {
+        setIsServicesDropdownOpen(true);
+      }
+    };
+    window.addEventListener('ito:open-services-menu', openServicesDropdown);
+    return () => window.removeEventListener('ito:open-services-menu', openServicesDropdown);
+  }, []);
+
+  useEffect(() => {
+    if (!isServicesDropdownOpen) return;
+    const handleClickOutside = (event) => {
+      if (servicesRef.current && !servicesRef.current.contains(event.target)) {
+        setIsServicesDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isServicesDropdownOpen]);
 
   const handleLogout = () => {
     logout();
@@ -171,6 +197,7 @@ export default function Navbar() {
 
             {/* OUR SERVICES DROPDOWN */}
             <div
+              ref={servicesRef}
               className="relative py-2"
               onMouseEnter={() => setIsServicesDropdownOpen(true)}
               onMouseLeave={() => setIsServicesDropdownOpen(false)}

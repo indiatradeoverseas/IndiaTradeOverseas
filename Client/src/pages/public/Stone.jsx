@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -10,6 +10,21 @@ import {
 
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+
+const STONE_GATE_THEME = {
+  bg: '#37424B',
+  panelBg: '#2B333A',
+  accent: '#C5A059',
+  accentText: '#20262B',
+  text: '#F4F2EE',
+  muted: '#A89E8E',
+  border: '#4A545E',
+  eyebrow: 'Stone & Infrastructure',
+  headline: 'Welcome to India Trade Overseas',
+  subhead: 'Tell us who you are to unlock live Bhutan & Pakur stone pricing and place sourcing requests directly.',
+  fontClass: 'font-serif'
+};
 
 // Hero Background Carousel
 const HERO_CAROUSEL_IMAGES = [
@@ -83,7 +98,7 @@ const TEASER_LISTINGS = [
   { id: "ST-PUG-04", region: "Pugli Loading Point", type: "Bhutan Black 60MM", baseGrade: "Mass Fill Grade", package: "Bulk Tipper Fleets", use: "Railway Ballast & Mass Civil" }
 ];
 
-// Official ITO Pakur Stone Rate List — location -> [20MM(5/8), 30MM, 40MM, 10MM] per payment term
+// Official ITO Pakur Stone Rate List â€” location -> [20MM(5/8), 30MM, 40MM, 10MM] per payment term
 // Source: "ITO Pakur Stone Rate List.pdf". `null` = not available at that location/size (e.g. Malda 40MM).
 const PAKUR_RAW = [
   ['Kolkata',      [2020, 2020, 1920, 1410], [2090, 2090, 1990, 1480], [2140, 2140, 2040, 1530]],
@@ -129,7 +144,7 @@ const PAYMENT_TERMS = [
   { key: 'COD', label: 'Cash on Delivery', priceField: 'cod' }
 ];
 
-// Official Bhutan Stone Material Rate Card — location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
+// Official Bhutan Stone Material Rate Card â€” location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
 // Source: "Bhutan Stone Rate List.pdf". Note on the card: up to Rs 100 may be negotiated off the listed rate.
 const BHUTAN_RAW = [
   ['Jalpaiguri',      'West Bengal', [1130, 1230, 1600, 1510, 1530, 1430, 1610, 1835, 1795, 1730]],
@@ -185,10 +200,10 @@ const BHUTAN_RATES = BHUTAN_RAW.map(([location, state, values]) => ({
 export default function Stone() {
   const [userAccessLayer, setUserAccessLayer] = useState(1);
   const [isSessionLoading, setIsLoadingSession] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [step, setStep] = useState('register');
+  const [showEntryGate, setShowEntryGate] = useState(() =>
+    !(localStorage.getItem('ito_stone_buyer_id') && localStorage.getItem('distributor_token'))
+  );
   const [distributorId, setDistributorId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [myProposals, setMyProposals] = useState([]);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
 
@@ -199,31 +214,12 @@ export default function Stone() {
   const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
   const [activeDrawerLot, setActiveDrawerLot] = useState(null);
   const [orderQuantity, setOrderQuantity] = useState('500');
-  const [modalMode, setModalMode] = useState('register');
-  const [loginEmail, setLoginEmail] = useState('');
 
   // Official Rate Card Selector (Layer 5 marketplace pricing)
   const [rateDivision, setRateDivision] = useState('PAKUR'); // 'PAKUR' | 'BHUTAN'
   const [rateLocation, setRateLocation] = useState(PAKUR_RATES[0].location);
   const [rateGrade, setRateGrade] = useState(PAKUR_SIZE_KEYS[0]);
   const [ratePaymentTerm, setRatePaymentTerm] = useState('ADVANCE_100');
-
-  // Verification Form Inputs
-  const [businessType, setBusinessType] = useState('1');
-  const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [country, setCountry] = useState('India');
-  const [stoneType, setStoneType] = useState('20 MM Stone Chips');
-  const [monthlyReq, setMonthlyReq] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [doc1, setDoc1] = useState(null);
-  const [doc2, setDoc2] = useState(null);
-  const [otp, setOtp] = useState('');
 
   // Global Navbar Visibility Control
   useEffect(() => {
@@ -322,89 +318,20 @@ export default function Stone() {
     return () => clearInterval(pollingTimer);
   }, [userAccessLayer, distributorId]);
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    if (!name.trim()) return toast.error("Full Name is required.");
-    if (!company.trim()) return toast.error("Company Name is required.");
-    if (!email.trim()) return toast.error("Corporate Email is required.");
-    if (!mobile.trim()) return toast.error("Mobile Contact is required.");
-    if (!address.trim()) return toast.error("Site/Yard Address is required.");
-
-    if (['1', '2', '3'].includes(businessType) && !doc1) {
-      return toast.error("GST Certificate or Udyam Registration is required.");
+  // Entry-gate verification (name/email/phone/location + OTP already handled
+  // inside BuyerEntryGate) â€” just adopt the resulting session.
+  const handleGateVerified = (activeId, activeToken) => {
+    if (activeId) {
+      setDistributorId(activeId);
+      localStorage.setItem('ito_stone_buyer_id', activeId);
+      localStorage.setItem('prakriti_distributor_id', activeId);
     }
+    if (activeToken) localStorage.setItem('distributor_token', activeToken);
 
-    setIsSubmitting(true);
-    const data = new FormData();
-    data.append('name', name);
-    data.append('company', company);
-    data.append('email', email);
-    data.append('mobile', mobile);
-    data.append('address', address);
-    data.append('city', city);
-    data.append('state', state);
-    data.append('country', country);
-    data.append('teaType', stoneType);
-    data.append('monthlyReq', monthlyReq);
-    data.append('purpose', purpose);
-    data.append('businessType', businessType);
-    data.append('division', 'STONE');
-
-    if (doc1) data.append('doc1', doc1);
-    if (doc2) data.append('doc2', doc2);
-
-    try {
-      const res = await distributorApi.registerDistributor(data);
-      if (res.success) {
-        toast.success(res.message || "B2B Profile submitted. OTP code dispatched.");
-        setDistributorId(res.data.distributorId);
-        localStorage.setItem('ito_stone_buyer_id', res.data.distributorId);
-        localStorage.setItem('prakriti_distributor_id', res.data.distributorId);
-        setStep('otp');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Registration failed. Check files.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (otp.length < 6) return toast.error("Security code must be 6 digits.");
-
-    setIsSubmitting(true);
-    try {
-      const res = await distributorApi.verifyOtp(distributorId, otp);
-      if (res.success) {
-        toast.success("B2B Credentials Verified!");
-        pushDataLayerEvent('stone_distributor_verified', { division: 'STONE' });
-        const activeToken = res.token || res.data?.token || res.data?.accessToken;
-        const activeId = res.data?.distributorId || res.data?._id || distributorId;
-
-        if (activeId) {
-          setDistributorId(activeId);
-          localStorage.setItem('ito_stone_buyer_id', activeId);
-          localStorage.setItem('prakriti_distributor_id', activeId);
-        }
-        if (activeToken) localStorage.setItem('distributor_token', activeToken);
-
-        setIsModalOpen(false);
-        setStep('register');
-
-        const statusRes = await distributorApi.getDistributorStatus(activeId);
-        if (statusRes.data?.approvalStatus === 'approved') {
-          setUserAccessLayer(5);
-        } else {
-          setUserAccessLayer(4);
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid or expired OTP.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    pushDataLayerEvent('stone_distributor_verified', { division: 'STONE' });
+    setShowEntryGate(false);
+    setUserAccessLayer(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLogOut = () => {
@@ -450,6 +377,17 @@ export default function Stone() {
     setIsOrderDrawerOpen(true);
   };
 
+  if (showEntryGate) {
+    return (
+      <BuyerEntryGate
+        theme={STONE_GATE_THEME}
+        division="STONE"
+        requireOtp={true}
+        onVerified={handleGateVerified}
+      />
+    );
+  }
+
   if (isSessionLoading) {
     return (
       <div className="min-h-screen bg-[#37424B] flex items-center justify-center">
@@ -471,7 +409,7 @@ export default function Stone() {
             <h2 className="text-3xl font-serif text-[#37424B] uppercase tracking-wide">Buyer Account Under Review</h2>
             <div className="w-16 h-[2px] bg-[#C5A059] mx-auto" />
             <p className="text-[#6D6760] text-sm leading-relaxed max-w-lg mx-auto font-sans font-light">
-              “Your India Trade Overseas stone buyer account is under review. Our team is verifying your GST/Udyam business documents. You will receive confirmation within 24 hours once approved.”
+              â€œYour India Trade Overseas stone buyer account is under review. Our team is verifying your GST/Udyam business documents. You will receive confirmation within 24 hours once approved.â€
             </p>
             <div className="bg-[#F4F2EE] border border-[#DCCCB4] rounded-xl p-4 text-left text-xs font-sans text-[#6D6760] space-y-1.5 max-w-md mx-auto">
               <div className="font-bold text-[#37424B] uppercase tracking-wider text-[10px] font-mono">VERIFICATION CHECKLIST PIPELINE:</div>
@@ -512,7 +450,7 @@ export default function Stone() {
                 </div>
               </div>
 
-              {/* 🟢 Responsive 2-Column Grid on Mobile, Flex on Desktop */}
+              {/* ðŸŸ¢ Responsive 2-Column Grid on Mobile, Flex on Desktop */}
               <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                 <div className="hidden md:flex flex-col text-right font-mono text-[10px] text-slate-300 border-r border-white/10 pr-4">
                   <span>BHUTAN & PAKUR DESKS DISPATCH ACTIVE</span>
@@ -718,7 +656,7 @@ export default function Stone() {
                           }, 0);
 
                           if (aggregateAmount > 500000) {
-                            return toast.error("Total exceeds Razorpay's single-transaction cap (₹5,00,000). Please pay invoices individually.");
+                            return toast.error("Total exceeds Razorpay's single-transaction cap (â‚¹5,00,000). Please pay invoices individually.");
                           }
 
                           const targetLotString = approvedProposals.map(p => p.lotId).filter(Boolean).join(", ");
@@ -816,7 +754,7 @@ export default function Stone() {
             {/* Official Rate Card Selector */}
             <div className="space-y-3 sm:space-y-4 text-left">
               <h3 className="font-serif text-base sm:text-lg text-[#37424B] uppercase tracking-wider font-bold px-1">
-                Official Rate Card — Select Origin, Delivery Location & Grade
+                Official Rate Card â€” Select Origin, Delivery Location & Grade
               </h3>
 
               <div className="bg-white border border-[#DCCCB4] rounded-xl p-4 sm:p-6 shadow-sm space-y-4">
@@ -911,7 +849,7 @@ export default function Stone() {
                 </div>
 
                 {rateDivision === 'BHUTAN' && (
-                  <p className="text-[10px] text-slate-400 font-sans">Rates per official Bhutan Stone rate card; up to ₹100/MT may be negotiable at final invoicing.</p>
+                  <p className="text-[10px] text-slate-400 font-sans">Rates per official Bhutan Stone rate card; up to â‚¹100/MT may be negotiable at final invoicing.</p>
                 )}
               </div>
             </div>
@@ -946,7 +884,7 @@ export default function Stone() {
                 <div className="inline-flex items-center gap-2 border px-4 py-1.5 rounded-full bg-[#37424B]/90 border-[#C5A059]/40">
                   <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-pulse" />
                   <span className="text-[10px] tracking-[0.25em] font-mono font-bold uppercase text-[#C5A059]">
-                    01 • GEOLOGICAL EXTRACTION
+                    01 â€¢ GEOLOGICAL EXTRACTION
                   </span>
                 </div>
 
@@ -967,10 +905,10 @@ export default function Stone() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
                   <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => setUserAccessLayer(5)}
                     className="w-full sm:w-auto text-[#37424B] text-xs font-mono font-bold uppercase tracking-widest px-8 py-4 rounded shadow-xl transition-all hover:scale-105 transform cursor-pointer bg-[#C5A059]"
                   >
-                    Verify Business to Access Rates
+                    Explore Products
                   </button>
                   <a
                     href="#teaser-deck"
@@ -983,10 +921,10 @@ export default function Stone() {
 
               <div className="lg:col-span-5 space-y-3">
                 {[
-                  { label: "01 • SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
-                  { label: "02 • NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
-                  { label: "03 • LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
-                  { label: "04 • TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
+                  { label: "01 â€¢ SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
+                  { label: "02 â€¢ NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
+                  { label: "03 â€¢ LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
+                  { label: "04 â€¢ TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
                 ].map((card, idx) => (
                   <div
                     key={idx}
@@ -1059,10 +997,10 @@ export default function Stone() {
                       </div>
                       <div className="pt-2">
                         <button
-                          onClick={() => setIsModalOpen(true)}
+                          onClick={() => setUserAccessLayer(5)}
                           className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-[10px] uppercase tracking-wider py-2.5 px-5 rounded shadow transition-all cursor-pointer inline-flex items-center gap-2"
                         >
-                          Verify Business to View Rates <FiArrowRight />
+                          Explore Products <FiArrowRight />
                         </button>
                       </div>
                     </div>
@@ -1096,7 +1034,7 @@ export default function Stone() {
 
                       <div className="bg-black/40 rounded-lg p-3 border border-white/5 text-[10px] font-mono space-y-1 relative">
                         <div className="filter blur-xs select-none space-y-1 opacity-40">
-                          <div>COMMERCIAL RATE: ₹X,XXX / MT</div>
+                          <div>COMMERCIAL RATE: â‚¹X,XXX / MT</div>
                           <div>CRUSHER: [Encrypted Plant]</div>
                           <div>DISPATCH: [Restricted Gate]</div>
                         </div>
@@ -1110,10 +1048,10 @@ export default function Stone() {
 
                     <div className="pt-4 border-t border-white/10 mt-5">
                       <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => setUserAccessLayer(5)}
                         className="w-full bg-white/5 hover:bg-[#C5A059] text-white hover:text-[#37424B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                       >
-                        Verify Business to Access Rates
+                        Explore Products
                       </button>
                     </div>
                   </div>
@@ -1123,172 +1061,6 @@ export default function Stone() {
           </section>
         </>
       )}
-
-      {/* ================= LAYER 3: VERIFICATION & LOGIN MODAL ================= */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-900/70 backdrop-blur-xs font-sans">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden border border-[#DCCCB4] my-8 text-left"
-            >
-              <div className="bg-[#37424B] text-white p-6 sm:p-8 space-y-1 relative">
-                <button onClick={() => { setIsModalOpen(false); setStep('register'); }} className="absolute top-6 right-6 text-slate-300 hover:text-white"><FiX size={20} /></button>
-                <div className="flex items-center gap-1.5 text-[#C5A059]">
-                  <span className="text-[9px] tracking-[0.2em] font-mono font-extrabold uppercase">Stone Buyer Verification Registry</span>
-                </div>
-                <h2 className="text-2xl font-serif text-white">India Trade Overseas Verification</h2>
-              </div>
-
-              <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto">
-                {step === 'register' ? (
-                  <div className="space-y-5 text-xs">
-                    <div className="flex border-b border-slate-200 pb-2 mb-4 gap-4 font-mono text-[10px]">
-                      <button
-                        type="button"
-                        onClick={() => setModalMode('register')}
-                        className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${
-                          modalMode === 'register' ? 'text-[#37424B] border-b-2 border-[#37424B]' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                      >
-                        New Registration
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setModalMode('login')}
-                        className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${
-                          modalMode === 'login' ? 'text-[#37424B] border-b-2 border-[#37424B]' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                      >
-                        Existing Corporate Partner (Login)
-                      </button>
-                    </div>
-
-                    {modalMode === 'register' ? (
-                      <form onSubmit={handleRegister} className="space-y-4 text-xs">
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase text-[#37424B] mb-1">Select Buyer Category *</label>
-                          <select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]">
-                            <option value="1">Construction Company</option>
-                            <option value="2">Government Contractor (PWD / NHAI)</option>
-                            <option value="3">Real Estate Developer</option>
-                            <option value="4">Infrastructure Firm</option>
-                            <option value="5">Stone Aggregator / Reseller</option>
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Full Name *</label>
-                            <input type="text" required placeholder="Full Name" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={name} onChange={(e) => setName(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Company Name *</label>
-                            <input type="text" required placeholder="Registered Firm Name" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={company} onChange={(e) => setCompany(e.target.value)} />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Mobile Number *</label>
-                            <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Corporate Email *</label>
-                            <input type="email" required placeholder="buyer@company.com" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={email} onChange={(e) => setEmail(e.target.value)} />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Unloading Site Address *</label>
-                          <input type="text" required placeholder="Physical Delivery Site Location" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={address} onChange={(e) => setAddress(e.target.value)} />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <input type="text" required placeholder="City *" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={city} onChange={(e) => setCity(e.target.value)} />
-                          <input type="text" required placeholder="State *" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={state} onChange={(e) => setState(e.target.value)} />
-                          <input type="text" required placeholder="Country *" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={country} onChange={(e) => setCountry(e.target.value)} />
-                        </div>
-
-                        <div className="p-4 bg-[#F4F2EE] border border-[#DCCCB4] rounded space-y-2">
-                          <span className="text-[11px] font-mono font-bold uppercase text-[#37424B] block">Upload GST Certificate or Udyam PDF *</span>
-                          <input type="file" required onChange={(e) => setDoc1(e.target.files[0])} className="block w-full text-xs text-[#6D6760]" />
-                        </div>
-
-                        <button type="submit" disabled={isSubmitting} className="w-full bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-xs uppercase py-3.5 rounded mt-4 cursor-pointer">
-                          {isSubmitting ? "Processing..." : "Submit Business Credentials & Send OTP"}
-                        </button>
-                      </form>
-                    ) : (
-                      /* Corporate Login Form */
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          const cleanEmail = loginEmail.toLowerCase().trim();
-                          if (!cleanEmail) return toast.error("Corporate Email is required.");
-
-                          setIsSubmitting(true);
-                          try {
-                            const otpRes = await distributorApi.resendOtp(cleanEmail);
-                            if (otpRes && otpRes.success) {
-                              const id = otpRes.data?.distributorId || otpRes.distributorId;
-                              if (id) {
-                                setDistributorId(id);
-                                localStorage.setItem('ito_stone_buyer_id', id);
-                                localStorage.setItem('prakriti_distributor_id', id);
-                              }
-                              setEmail(cleanEmail);
-                              toast.success(otpRes.message || "OTP sent to your corporate email!");
-                              setStep('otp');
-                            }
-                          } catch (err) {
-                            toast.error(err.response?.data?.message || err.message || "Failed to send OTP.");
-                          } finally {
-                            setIsSubmitting(false);
-                          }
-                        }}
-                        className="space-y-4 pt-1"
-                      >
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase text-[#37424B] mb-1">Registered Corporate Email Address *</label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="buyer@enterprise.com"
-                            className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B] text-xs"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="w-full bg-[#37424B] hover:bg-[#6D6760] text-white font-mono font-bold text-xs uppercase py-3.5 rounded cursor-pointer"
-                        >
-                          {isSubmitting ? "Processing..." : "Access Sourcing Terminal"}
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleVerifyOtp} className="space-y-4 text-center py-4">
-                    <h3 className="text-lg font-serif text-[#37424B]">Enter Verification Token</h3>
-                    <p className="text-xs text-slate-500 font-light">Enter 6-digit token sent to <span className="font-bold text-slate-700">{email}</span></p>
-                    <p className="text-xs text-slate-500 font-light">Please Check the Spam Folder if you don't see the email.</p>
-                    <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-lg font-mono text-[#37424B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                    <button type="submit" disabled={isSubmitting} className="w-full bg-[#37424B] text-white font-mono font-bold py-3 rounded cursor-pointer">
-                      Verify & Unlock
-                    </button>
-                  </form>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ================= BULK ORDER NEGOTIATION DRAWER ================= */}
       <AnimatePresence>

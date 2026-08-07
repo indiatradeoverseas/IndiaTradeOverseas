@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiBookmark } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -25,6 +26,7 @@ export default function Contact() {
     setSubmitting(true);
     setTimeout(() => {
       toast.success('Commercial dossier successfully generated inside trade intake system.');
+      pushDataLayerEvent('generate_lead', { lead_type: 'contact_form' });
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
       setSubmitting(false);
     }, 1000);
