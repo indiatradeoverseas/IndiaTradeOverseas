@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -9,6 +9,22 @@ import {
 import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icons/gi";
 
 import { distributorApi } from '../../api/distributor';
+import { pushDataLayerEvent } from '../../utils/analytics';
+import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+
+const PRAKRITI_GATE_THEME = {
+    bg: '#0B3D2E',
+    panelBg: '#0F2E24',
+    accent: '#50C878',
+    accentText: '#04140E',
+    text: '#FAF9F5',
+    muted: '#8FB5A3',
+    border: '#1B4B3A',
+    eyebrow: 'Prakriti Tea Division',
+    headline: 'Welcome to Prakriti',
+    subhead: 'Tell us who you are to unlock live tea garden pricing and place sourcing requests directly.',
+    fontClass: 'font-sans'
+};
 
 const HERO_BACKGROUNDS = [
     "/images/tea_images/g1.jpeg",
@@ -33,14 +49,14 @@ const PUBLIC_CATEGORIES = [
     { title: "Dust Tea", icon: GiThreeLeaves, desc: "Finely milled for exceptional quick-steeping liquor strength; highly favored for fast mass commercial brewing." },
     { title: "Premium Garden Tea", icon: FiAward, desc: "Direct, unblended lot assets hand-selected across premium seasonal pluckings to retain absolute single-origin integrity." },
     { title: "Bulk Tea for Traders", icon: GiBoxUnpacking, desc: "High-volume, loose invoice lots arranged purposefully for brokers, localized blending setups, and commodity merchants." },
-    { title: "Hotel, Café & Distributor Lines", icon: FiBriefcase, desc: "Standardized flavor profiles matched for commercial consistency, stable cost bases, and prolonged service workflows." },
+    { title: "Hotel, CafÃ© & Distributor Lines", icon: FiBriefcase, desc: "Standardized flavor profiles matched for commercial consistency, stable cost bases, and prolonged service workflows." },
     { title: "Export-Grade Tea", icon: GiCargoShip, desc: "Compliant tea selections optimized against heavy food safety regulations and international cargo standards." }
 ];
 
 const TEASER_LISTINGS = [
     { id: 1, region: "Siliguri Corridor", type: "CTC Blend Lot", baseGrade: "BP / BOPSM Mix", package: "30 kg / 35 kg Bags", use: "Wholesale Distribution / Blending" },
     { id: 2, region: "Assam Garden Track", type: "Export-Grade Leaf", baseGrade: "Pekoe / BOP Premium", package: "25 kg Crafts Bags", use: "International Cargo / Premium Brands" },
-    { id: 3, region: "Dooars Plains", type: "Bulk Commercial Dust", baseGrade: "Fine Dust Grade", package: "35 kg Bulk Sacks", use: "High Volume Tea Stalls & Cafés" },
+    { id: 3, region: "Dooars Plains", type: "Bulk Commercial Dust", baseGrade: "Fine Dust Grade", package: "35 kg Bulk Sacks", use: "High Volume Tea Stalls & CafÃ©s" },
     { id: 4, region: "Darjeeling Heights", type: "Fine Orthodox Lots", baseGrade: "TGFOP Whole Leaf", package: "20 kg Traditional Chests", use: "Gourmet Brands / Private Label" }
 ];
 
@@ -54,10 +70,10 @@ const APPROVED_MARKETPLACE_DATA = [
 export default function Prakriti() {
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [step, setStep] = useState('register');
+    const [showEntryGate, setShowEntryGate] = useState(() =>
+        !(localStorage.getItem('prakriti_distributor_id') && localStorage.getItem('distributor_token'))
+    );
     const [distributorId, setDistributorId] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [myProposals, setMyProposals] = useState([]);
     const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
 
@@ -70,24 +86,6 @@ export default function Prakriti() {
     const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
     const [orderQuantity, setOrderQuantity] = useState('500');
-    const [modalMode, setModalMode] = useState('register');
-    const [loginEmail, setLoginEmail] = useState('');
-
-    const [businessType, setBusinessType] = useState('1');
-    const [name, setName] = useState('');
-    const [company, setCompany] = useState('');
-    const [mobile, setMobile] = useState('');
-    const [email, setEmail] = useState('');
-    const [address, setAddress] = useState('');
-    const [city, setCity] = useState('');
-    const [state, setState] = useState('');
-    const [country, setCountry] = useState('India');
-    const [teaType, setTeaType] = useState('CTC Tea');
-    const [monthlyReq, setMonthlyReq] = useState('');
-    const [purpose, setPurpose] = useState('');
-    const [doc1, setDoc1] = useState(null);
-    const [doc2, setDoc2] = useState(null);
-    const [otp, setOtp] = useState('');
 
     const fetchMyProposals = async () => {
         const storedDistributorId = distributorId || localStorage.getItem('prakriti_distributor_id');
@@ -204,99 +202,21 @@ export default function Prakriti() {
         return () => clearInterval(packTimer);
     }, []);
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        if (!name.trim()) return toast.error("Applicant Name is required.");
-        if (!company.trim()) return toast.error("Company Name is required.");
-        if (!email.trim()) return toast.error("Corporate Email Address is required.");
-        if (!mobile.trim()) return toast.error("Mobile Contact is required.");
-        if (!address.trim()) return toast.error("Physical Address is required.");
-
-        if (['1', '2', '3'].includes(businessType) && !doc1) {
-            return toast.error("GST Certificate or Udyam Registration file is required.");
+    // Entry-gate verification (name/email/phone/location + OTP already handled
+    // inside BuyerEntryGate) â€” just adopt the resulting session, exactly the way
+    // the old handleVerifyOtp used to, minus the fields BuyerEntryGate never collects.
+    const handleGateVerified = async (activeId, activeToken) => {
+        if (activeId) {
+            setDistributorId(activeId);
+            localStorage.setItem('prakriti_distributor_id', activeId);
         }
-        if (businessType === '4' && !doc1) {
-            return toast.error("FSSAI License or GST Certificate upload is required.");
+        if (activeToken) {
+            localStorage.setItem('distributor_token', activeToken);
         }
-        if (['5', '6', '7'].includes(businessType) && (!doc1 || !doc2)) {
-            return toast.error("Dual documentation stack required for verification.");
-        }
-
-        setIsSubmitting(true);
-        const data = new FormData();
-        data.append('name', name);
-        data.append('company', company);
-        data.append('email', email);
-        data.append('mobile', mobile);
-        data.append('address', address);
-        data.append('city', city);
-        data.append('state', state);
-        data.append('country', country);
-        data.append('teaType', teaType);
-        data.append('monthlyReq', monthlyReq);
-        data.append('purpose', purpose);
-        data.append('businessType', businessType);
-        data.append('division', 'TEA');
-
-        if (doc1) data.append('doc1', doc1);
-        if (doc2) data.append('doc2', doc2);
-
-        try {
-            const res = await distributorApi.registerDistributor(data);
-            if (res.success) {
-                toast.success(res.message || "B2B profile recorded. Verification code sent.");
-                setDistributorId(res.data.distributorId);
-                localStorage.setItem('prakriti_distributor_id', res.data.distributorId);
-                setStep('otp');
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Registration error. Please check uploaded files.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        if (otp.length < 6) return toast.error("Security code must be 6 digits.");
-
-        setIsSubmitting(true);
-        try {
-            const res = await distributorApi.verifyOtp(distributorId, otp);
-            if (res.success) {
-                toast.success(res.message || "B2B Credentials Authenticated!");
-
-                const activeToken = res.token || res.data?.token || res.data?.accessToken;
-                const activeId = res.data?.distributorId || res.data?._id || distributorId;
-
-                if (activeId) {
-                    setDistributorId(activeId);
-                    localStorage.setItem('prakriti_distributor_id', activeId);
-                }
-
-                if (activeToken) {
-                    localStorage.setItem('distributor_token', activeToken);
-                }
-
-                setIsModalOpen(false);
-                setStep('register');
-
-                const statusRes = await distributorApi.getDistributorStatus(activeId);
-                if (statusRes.data?.approvalStatus === 'approved') {
-                    setUserAccessLayer(5);
-                } else {
-                    setUserAccessLayer(4);
-                }
-
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                setName(''); setCompany(''); setEmail(''); setMobile(''); setAddress('');
-                setCity(''); setState(''); setDoc1(null); setDoc2(null); setOtp('');
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Invalid or expired OTP entry.");
-        } finally {
-            setIsSubmitting(false);
-        }
+        pushDataLayerEvent('tea_distributor_verified', { division: 'TEA' });
+        setShowEntryGate(false);
+        setUserAccessLayer(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleLogOut = () => {
@@ -310,6 +230,17 @@ export default function Prakriti() {
     const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot =>
         selectedMarketCategory === 'All' ? true : lot.type === selectedMarketCategory
     );
+
+    if (showEntryGate) {
+        return (
+            <BuyerEntryGate
+                theme={PRAKRITI_GATE_THEME}
+                division="TEA"
+                requireOtp={true}
+                onVerified={handleGateVerified}
+            />
+        );
+    }
 
     if (isSessionLoading) {
         return (
@@ -335,7 +266,7 @@ export default function Prakriti() {
                         <h2 className="text-2xl sm:text-3xl font-serif text-[#0B3D2E] uppercase tracking-wide">Account Under Review</h2>
                         <div className="w-16 h-[2px] bg-amber-500 mx-auto" />
                         <p className="text-slate-600 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto font-light">
-                            “Your Prakriti Tea buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.”
+                            â€œYour Prakriti Tea buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.â€
                         </p>
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left text-xs text-slate-500 space-y-1.5 max-w-md mx-auto">
                             <div className="font-bold text-[#004B3B] uppercase tracking-wider text-[10px] mb-1 font-mono">STATUTORY CHECKLIST PIPELINE:</div>
@@ -533,6 +464,13 @@ export default function Prakriti() {
                                                                                                 await distributorApi.updateProposalStatus(prop._id, 'paid');
                                                                                                 toast.dismiss(verificationToast);
                                                                                                 toast.success(`Payment verified for Lot ${prop.lotId}!`);
+                                                                                                pushDataLayerEvent('tea_payment_success', {
+                                                                                                    transaction_id: response.razorpay_payment_id,
+                                                                                                    value: singleAmount,
+                                                                                                    currency: 'INR',
+                                                                                                    lot_id: prop.lotId,
+                                                                                                    quantity: prop.quantity
+                                                                                                });
                                                                                                 fetchMyProposals();
                                                                                             } catch (vErr) {
                                                                                                 toast.dismiss(verificationToast);
@@ -598,7 +536,7 @@ export default function Prakriti() {
                                                     }, 0);
 
                                                     if (aggregateAmount > 500000) {
-                                                        return toast.error("Total exceeds Razorpay's single-transaction cap (₹5,00,000). Please pay invoices individually.");
+                                                        return toast.error("Total exceeds Razorpay's single-transaction cap (â‚¹5,00,000). Please pay invoices individually.");
                                                     }
 
                                                     const targetLotString = approvedProposals.map(p => p.lotId).filter(Boolean).join(", ");
@@ -649,6 +587,13 @@ export default function Prakriti() {
 
                                                                     toast.dismiss(verificationToast);
                                                                     toast.success("Transaction certified! Invoices cleared.");
+                                                                    pushDataLayerEvent('tea_payment_success', {
+                                                                        transaction_id: response.razorpay_payment_id,
+                                                                        value: aggregateAmount,
+                                                                        currency: 'INR',
+                                                                        lot_id: targetLotString,
+                                                                        quantity: combinedQuantity
+                                                                    });
                                                                     setIsProposalModalOpen(false);
                                                                     fetchMyProposals();
                                                                 } catch (verifyErr) {
@@ -714,7 +659,7 @@ export default function Prakriti() {
                                 </h3>
                             </div>
 
-                            {/* 📱 MOBILE VIEW: Premium Card Deck (Shown on Mobile screens) */}
+                            {/* ðŸ“± MOBILE VIEW: Premium Card Deck (Shown on Mobile screens) */}
                             <div className="grid grid-cols-1 gap-3.5 md:hidden">
                                 {filteredMarketLots.map((row) => (
                                     <div key={row.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-[#50C878]/50 transition-all space-y-3">
@@ -764,7 +709,7 @@ export default function Prakriti() {
                                 ))}
                             </div>
 
-                            {/* 💻 DESKTOP/TABLET VIEW: Structured Table Layout */}
+                            {/* ðŸ’» DESKTOP/TABLET VIEW: Structured Table Layout */}
                             <div className="hidden md:block bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-xl overflow-x-auto">
                                 <table className="w-full text-left border-collapse text-xs">
                                     <thead>
@@ -906,10 +851,10 @@ export default function Prakriti() {
                                     transition={{ duration: 0.8, delay: 0.8 }}
                                 >
                                     <button
-                                        onClick={() => setIsModalOpen(true)}
+                                        onClick={() => setUserAccessLayer(5)}
                                         className="bg-[#50C878] hover:bg-[#40b064] text-[#0B3D2E] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider px-6 sm:px-8 py-3.5 sm:py-4 rounded-lg shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
                                     >
-                                        Verify Business to View Price
+                                        Explore Products
                                     </button>
                                     <a
                                         href="#teaser-deck"
@@ -922,7 +867,7 @@ export default function Prakriti() {
 
                             <div className="lg:col-span-4 space-y-4">
                                 {[
-                                    { label: "Sourcing Lot Spectrum", value: "200–300 Choices", desc: "Sourced continuously across seasonal pluckings from vetted garden desks. " },
+                                    { label: "Sourcing Lot Spectrum", value: "200â€“300 Choices", desc: "Sourced continuously across seasonal pluckings from vetted garden desks. " },
                                     { label: "Compliance & Safety", value: "Fully Certified", desc: "Rigorous alignment matching GST, FSSAI infrastructure, and IEC parameters." },
                                     { label: "Logistics Channels", value: "Pan-India / Export", desc: "Direct distribution pipelines serving local warehouses and major shipping ports." }
                                 ].map((item, idx) => (
@@ -1009,10 +954,10 @@ export default function Prakriti() {
 
                                         <div className="pt-4 border-t border-white/5 mt-5">
                                             <button
-                                                onClick={() => setIsModalOpen(true)}
+                                                onClick={() => setUserAccessLayer(5)}
                                                 className="w-full bg-white/5 hover:bg-[#50C878] text-white hover:text-[#004B3B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                                             >
-                                                <span className="tracking-tight">Verify Business For Bulk Rates</span>
+                                                <span className="tracking-tight">Explore Products</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1096,11 +1041,11 @@ export default function Prakriti() {
                                         </p>
                                         <div className="pt-2">
                                             <button
-                                                onClick={() => setIsModalOpen(true)}
+                                                onClick={() => setUserAccessLayer(5)}
                                                 className="bg-[#004B3B] hover:bg-[#06362a] text-[#50C878] font-mono text-[9px] sm:text-xs font-bold uppercase tracking-wider px-4 sm:px-10 py-3.5 sm:py-4 rounded-lg shadow-md transition-all inline-flex items-center justify-center gap-2 w-full sm:w-auto"
                                             >
                                                 <FiBriefcase className="shrink-0" />
-                                                <span>Open Authorization Form</span>
+                                                <span>Explore Products</span>
                                             </button>
                                         </div>
                                     </motion.div>
@@ -1211,287 +1156,6 @@ export default function Prakriti() {
                 </>
             )}
 
-            {/* ================= LAYER 3: REGISTRATION & LOGIN MODAL ================= */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-xs">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                            className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 my-4 sm:my-8"
-                        >
-                            <div className="bg-[#004B3B] text-white p-5 sm:p-8 space-y-1 relative text-left">
-                                <button onClick={() => { setIsModalOpen(false); setStep('register'); }} className="absolute top-5 right-5 text-slate-300 hover:text-white p-1 rounded-md bg-white/5 border border-white/10"><FiX size={18} /></button>
-                                <div className="flex items-center gap-1.5 text-[#50C878]"><span className="text-[9px] tracking-[0.2em] font-mono font-extrabold uppercase">Layer 3 Verification Registry</span></div>
-                                <h2 className="text-xl sm:text-2xl font-serif text-white">Tea Buyer Sourcing Registry</h2>
-                            </div>
-
-                            <div className="p-5 sm:p-8 text-left max-h-[75vh] overflow-y-auto">
-                                {step === 'register' ? (
-                                    <div className="space-y-5 text-xs">
-                                        <div className="flex border-b border-slate-100 pb-2 mb-4 gap-4 font-mono text-[10px]">
-                                            <button
-                                                type="button"
-                                                onClick={() => setModalMode('register')}
-                                                className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${modalMode === 'register'
-                                                    ? 'text-[#004B3B] border-b-2 border-[#004B3B]'
-                                                    : 'text-slate-400 hover:text-slate-600'
-                                                    }`}
-                                            >
-                                                New Registration
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setModalMode('login')}
-                                                className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${modalMode === 'login'
-                                                    ? 'text-[#004B3B] border-b-2 border-[#004B3B]'
-                                                    : 'text-slate-400 hover:text-slate-600'
-                                                    }`}
-                                            >
-                                                Existing Corporate Partner (Login)
-                                            </button>
-                                        </div>
-
-                                        {modalMode === 'register' ? (
-                                            <form onSubmit={handleRegister} className="space-y-4 sm:space-y-5 text-xs">
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">Select Buyer Classification Category *</label>
-                                                    <select value={businessType} onChange={(e) => { setBusinessType(e.target.value); setDoc1(null); setDoc2(null); }} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 font-medium focus:outline-none focus:border-[#004B3B]">
-                                                        <option value="1">Domestic Tea Trader</option>
-                                                        <option value="2">Tea Wholesaler</option>
-                                                        <option value="3">Tea Distributor</option>
-                                                        <option value="4">Hotel / Café / Restaurant Buyer</option>
-                                                        <option value="5">Export Buyer</option>
-                                                        <option value="6">Private Label Buyer</option>
-                                                        <option value="7">Retail Brand Buyer</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="space-y-3 sm:space-y-4">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Full Name *</label>
-                                                            <input type="text" required placeholder="Satyam Raj" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={name} onChange={(e) => setName(e.target.value)} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Company Name *</label>
-                                                            <input type="text" required placeholder="Enter Company Name" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={company} onChange={(e) => setCompany(e.target.value)} />
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Mobile Number *</label>
-                                                            <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Email Address *</label>
-                                                            <input type="email" required placeholder="buyer@enterprise.com" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={email} onChange={(e) => setEmail(e.target.value)} />
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Business Address *</label>
-                                                        <input type="text" required placeholder="Physical Operating Address" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={address} onChange={(e) => setAddress(e.target.value)} />
-                                                    </div>
-
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">City *</label>
-                                                            <input type="text" required placeholder="City" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={city} onChange={(e) => setCity(e.target.value)} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">State *</label>
-                                                            <input type="text" required placeholder="State" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={state} onChange={(e) => setState(e.target.value)} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Country *</label>
-                                                            <input type="text" required placeholder="Country" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={country} onChange={(e) => setCountry(e.target.value)} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3 sm:space-y-4 pt-1">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Required Tea Type *</label>
-                                                            <select value={teaType} onChange={(e) => setTeaType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]">
-                                                                <option>CTC Tea</option>
-                                                                <option>Orthodox Tea</option>
-                                                                <option>Green Tea</option>
-                                                                <option>Dust Tea</option>
-                                                                <option>Premium Garden Tea</option>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Monthly Requirement (Kg) *</label>
-                                                            <input type="number" required placeholder="Approx. Demand Scale" className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={monthlyReq} onChange={(e) => setMonthlyReq(e.target.value)} />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-1.5">Purpose of Purchase *</label>
-                                                        <textarea rows="2" required placeholder="Describe corporate target lines..." className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 focus:outline-none focus:border-[#004B3B]" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3 pt-1">
-                                                    <div className="flex items-center gap-2 text-[#004B3B] border-b border-slate-100 pb-1.5">
-                                                        <FiShield size={13} />
-                                                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Compliance Attachments</span>
-                                                    </div>
-
-                                                    {['1', '2', '3'].includes(businessType) && (
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">Upload GST Certificate or Udyam Registration *</label>
-                                                            <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                                <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                                <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Select Statutory PDF"}</span>
-                                                                <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
-                                                            </label>
-                                                        </div>
-                                                    )}
-
-                                                    {businessType === '4' && (
-                                                        <div>
-                                                            <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">Upload FSSAI License or GST Certificate *</label>
-                                                            <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                                <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                                <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Select FSSAI or GST PDF"}</span>
-                                                                <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
-                                                            </label>
-                                                        </div>
-                                                    )}
-
-                                                    {['5', '6', '7'].includes(businessType) && (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                            <div>
-                                                                <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">{businessType === '5' ? 'IEC Certificate *' : 'FSSAI License *'}</label>
-                                                                <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                                    <FiUploadCloud size={20} className={doc1 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                                    <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc1 ? doc1.name : "Upload Primary Doc"}</span>
-                                                                    <input type="file" required className="hidden" onChange={(e) => setDoc1(e.target.files[0])} />
-                                                                </label>
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-slate-600 mb-2">GST Certificate *</label>
-                                                                <label className="flex flex-col items-center justify-center w-full h-24 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-[#50C878] cursor-pointer p-4 text-center">
-                                                                    <FiUploadCloud size={20} className={doc2 ? "text-[#004B3B]" : "text-slate-400"} />
-                                                                    <span className="text-[10px] font-bold text-slate-700 mt-1 truncate max-w-full">{doc2 ? doc2.name : "Upload GST Certificate"}</span>
-                                                                    <input type="file" required className="hidden" onChange={(e) => setDoc2(e.target.files[0])} />
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="pt-2">
-                                                    <button
-                                                        type="submit"
-                                                        disabled={isSubmitting}
-                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] active:scale-98 text-white font-mono font-bold text-[10px] sm:text-xs uppercase tracking-wider py-3.5 sm:py-4 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                                                    >
-                                                        {isSubmitting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Confirm Details & Send OTP"}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        ) : (
-                                            /* Corporate Login Form */
-                                            <form
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const cleanEmail = loginEmail.toLowerCase().trim();
-                                                    if (!cleanEmail) return toast.error("Corporate Email is required.");
-
-                                                    setIsSubmitting(true);
-                                                    try {
-                                                        const otpRes = await distributorApi.resendOtp(cleanEmail);
-
-                                                        if (otpRes && otpRes.success) {
-                                                            const id = otpRes.data?.distributorId || otpRes.distributorId;
-                                                            if (id) {
-                                                                setDistributorId(id);
-                                                                localStorage.setItem('prakriti_distributor_id', id);
-                                                            }
-                                                            setEmail(cleanEmail);
-
-                                                            toast.success(otpRes.message || "Verification OTP sent to your corporate email!");
-                                                            setStep('otp');
-                                                        } else {
-                                                            throw new Error(otpRes?.message || "Failed to dispatch verification code.");
-                                                        }
-
-                                                    } catch (err) {
-                                                        console.error("Login OTP Dispatch Error:", err);
-                                                        toast.error(
-                                                            err.response?.data?.message ||
-                                                            err.message ||
-                                                            "Failed to dispatch OTP. Please verify your email."
-                                                        );
-                                                    } finally {
-                                                        setIsSubmitting(false);
-                                                    }
-                                                }}
-                                                className="space-y-4 sm:space-y-5 pt-1"
-                                            >
-                                                <div>
-                                                    <label className="block text-[11px] font-sans font-extrabold uppercase tracking-wide text-[#004B3B] mb-1.5">
-                                                        Registered Corporate Email Address *
-                                                    </label>
-                                                    <input
-                                                        type="email"
-                                                        required
-                                                        placeholder="buyer@enterprise.com"
-                                                        className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-slate-800 text-xs focus:outline-none focus:border-[#004B3B]"
-                                                        value={loginEmail}
-                                                        onChange={(e) => setLoginEmail(e.target.value)}
-                                                    />
-                                                    <span className="text-[10px] text-slate-400 font-light mt-1.5 block">
-                                                        Provide the email associated with your verified business profile structure to pull your live transaction matrix ledger.
-                                                    </span>
-                                                </div>
-
-                                                <div className="pt-2">
-                                                    <button
-                                                        type="submit"
-                                                        disabled={isSubmitting}
-                                                        className="w-full bg-[#004B3B] hover:bg-[#07362b] active:scale-98 text-white font-mono font-bold text-[10px] uppercase tracking-wider py-3.5 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                                                    >
-                                                        {isSubmitting ? (
-                                                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        ) : (
-                                                            "Access Sourcing Terminal"
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <form onSubmit={handleVerifyOtp} className="space-y-5 max-w-md mx-auto text-center py-2">
-                                        <div className="w-12 h-12 rounded-full bg-[#004B3B]/5 flex items-center justify-center text-[#004B3B] mx-auto"><FiKey size={20} /></div>
-                                        <div className="space-y-1">
-                                            <h3 className="text-base sm:text-lg font-serif text-[#004B3B]">Validate Secure Token</h3>
-                                            <p className="text-xs text-slate-500 font-light leading-relaxed">Enter the 6-digit credential code routed to <span className="font-bold text-slate-700">{email}</span>.</p>
-                                            <p className="text-[11px] text-amber-600 font-medium">Please check your Spam folder if code isn't in inbox.</p>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-slate-50 border border-slate-200 rounded-lg py-3 text-base sm:text-lg font-mono tracking-[0.35em] text-slate-800 focus:outline-none focus:border-[#004B3B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                                            <div className="flex gap-2.5">
-                                                <button type="button" className="w-1/3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-mono uppercase tracking-wider text-[9px] sm:text-[10px] font-bold rounded-lg" onClick={() => setStep('register')}>Edit</button>
-                                                <button type="submit" disabled={isSubmitting} className="w-2/3 bg-[#004B3B] hover:bg-[#07362b] active:scale-98 text-white font-mono font-bold text-[9px] sm:text-xs uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center cursor-pointer shadow-sm">
-                                                    {isSubmitting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Verify & Authenticate"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                )}
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
             {/* ================= LAYER 5: BULK ORDER DRAWER AND ENQUIRY BENCH ================= */}
             <AnimatePresence>
                 {isOrderDrawerOpen && activeDrawerLot && (
@@ -1565,6 +1229,12 @@ export default function Prakriti() {
                                                 const res = await distributorApi.createProposal(proposalPayload);
                                                 if (res.success) {
                                                     toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
+                                                    pushDataLayerEvent('tea_proposal_submitted', {
+                                                        lot_id: activeDrawerLot.id,
+                                                        quantity: Number(orderQuantity),
+                                                        value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                                                        currency: 'INR'
+                                                    });
                                                     setIsOrderDrawerOpen(false);
                                                     fetchMyProposals();
                                                 }
