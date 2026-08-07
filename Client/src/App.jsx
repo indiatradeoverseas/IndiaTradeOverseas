@@ -5,7 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
-import { pushDataLayerEvent } from './utils/analytics';
+import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
 import Rice from './pages/public/Rice';
@@ -124,6 +124,12 @@ function AppLayout() {
       page_title: document.title
     });
   }, [location.pathname, location.search]);
+
+  // Site-wide click + form-submit tracking (every button/link click and form
+  // submission), mounted once. See utils/analytics.js for what's captured.
+  useEffect(() => {
+    initActivityTracking();
+  }, []);
 
   const isCRM = location.pathname.startsWith('/crm');
   const isAuth = [

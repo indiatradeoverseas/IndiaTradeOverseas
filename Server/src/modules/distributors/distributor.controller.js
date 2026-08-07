@@ -26,7 +26,8 @@ const registerDistributor = async (req, res, next) => {
       purpose,
       businessType,
       gstNumber,
-      division
+      division,
+      registrationSource
     } = req.body;
 
     if (!name || !email || !mobile) {
@@ -53,44 +54,53 @@ const registerDistributor = async (req, res, next) => {
     const hasDoc1 = doc1 || (distributor && distributor.doc1Path);
     const hasDoc2 = doc2 || (distributor && distributor.doc2Path);
 
-    if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+    // The lightweight entry-gate (name/email/phone/location + OTP) never uploads
+    // certificates. Only bypass compliance validation for a brand-new record on
+    // that path — a RETURNING email (any existing distributor, any status) always
+    // goes through the normal checks below, so a real pending KYC record can never
+    // be reclassified into the no-document path by resubmitting through the gate.
+    const isQuickGateSubmission = registrationSource === 'QUICK_GATE' && !distributor;
+
+    if (!isQuickGateSubmission) {
+      if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
+        if (req.files) {
+          const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+          const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+          if (pDoc && fs.existsSync(pDoc[0].path)) {
+            try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+          }
+          if (sDoc && fs.existsSync(sDoc[0].path)) {
+            try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+          }
         }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
+        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
       }
-      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
-    }
-    if (currentBusinessType === '4' && !hasDoc1) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+      if (currentBusinessType === '4' && !hasDoc1) {
+        if (req.files) {
+          const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+          const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+          if (pDoc && fs.existsSync(pDoc[0].path)) {
+            try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+          }
+          if (sDoc && fs.existsSync(sDoc[0].path)) {
+            try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+          }
         }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
+        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
       }
-      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
-    }
-    if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+      if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
+        if (req.files) {
+          const pDoc = req.files['doc1'] || req.files['primaryDocument'];
+          const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
+          if (pDoc && fs.existsSync(pDoc[0].path)) {
+            try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
+          }
+          if (sDoc && fs.existsSync(sDoc[0].path)) {
+            try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
+          }
         }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
+        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
       }
-      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
     }
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -159,7 +169,8 @@ const registerDistributor = async (req, res, next) => {
         otpExpires,
         isOtpVerified: false,
         approvalStatus: 'pending',
-        division: division || 'TEA'
+        division: division || 'TEA',
+        registrationSource: isQuickGateSubmission ? 'QUICK_GATE' : 'STANDARD_KYC'
       });
       await distributor.save();
     }
@@ -207,7 +218,12 @@ const verifyDistributorOtp = async (req, res, next) => {
     }
 
     distributor.isOtpVerified = true;
-    if (distributor.approvalStatus !== 'approved') {
+    if (distributor.registrationSource === 'QUICK_GATE') {
+      // Lightweight entry-gate registrations never uploaded a compliance
+      // document, so there is nothing for staff to manually review — approve
+      // immediately on OTP verification.
+      distributor.approvalStatus = 'approved';
+    } else if (distributor.approvalStatus !== 'approved') {
       distributor.approvalStatus = 'pending';
     }
     distributor.otpToken = undefined;

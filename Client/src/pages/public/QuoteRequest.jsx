@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { FiSend, FiCheckCircle, FiAnchor } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 export default function QuoteRequest() {
   const [searchParams] = useSearchParams();
@@ -57,6 +58,10 @@ export default function QuoteRequest() {
         setSubmitted(true);
         toast.success('Quote request submitted successfully! Our team will contact you soon.', {
           style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3', fontSize: '12px' }
+        });
+        pushDataLayerEvent('generate_lead', {
+          lead_type: 'quote_request',
+          product_category: formData.productCategory || undefined
         });
         setTimeout(() => {
           setSubmitted(false);

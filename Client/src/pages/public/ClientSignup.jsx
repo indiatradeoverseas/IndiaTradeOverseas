@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiUserPlus, FiArrowRight, FiBriefcase, FiPercent, FiMapPin } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 const ClientSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +44,7 @@ const ClientSignup = () => {
             fontSize: '12px'
           },
         });
+        pushDataLayerEvent('sign_up', { method: 'client', business_type: formData.businessType || undefined });
         localStorage.setItem('verificationEmail', formData.email);
         navigate('/verify-email');
       }
