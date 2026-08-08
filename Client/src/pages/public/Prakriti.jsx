@@ -11,6 +11,11 @@ import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icon
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
+
+// Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
+// so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
+const ACTIVE_LAYER_KEY = 'prakriti_active_layer';
 
 const PRAKRITI_GATE_THEME = {
     bg: '#0B3D2E',
@@ -68,6 +73,12 @@ const APPROVED_MARKETPLACE_DATA = [
 ];
 
 export default function Prakriti() {
+    useDocumentMeta({
+        title: 'Premium Tea Sourcing & Export | Prakriti by India Trade Overseas',
+        description: 'Prakriti connects global buyers to premium Assam, Darjeeling, and Dooars tea — live marketplace pricing and verified B2B sourcing with India Trade Overseas.',
+        canonicalPath: '/prakriti'
+    });
+
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
     const [showEntryGate, setShowEntryGate] = useState(() =>
@@ -154,7 +165,8 @@ export default function Prakriti() {
                     if (res.success) {
                         const status = res.data.approvalStatus;
                         if (status === 'approved') {
-                            setUserAccessLayer(5);
+                            const savedLayer = localStorage.getItem(ACTIVE_LAYER_KEY);
+                            setUserAccessLayer(savedLayer === '5' ? 5 : 1);
                         } else if (status === 'pending') {
                             setUserAccessLayer(4);
                         } else {
@@ -173,6 +185,15 @@ export default function Prakriti() {
         };
         initializeAuthenticationSession();
     }, []);
+
+    // Persist the settled layer (storefront vs marketplace) so a refresh restores
+    // the same view instead of always snapping approved buyers to Layer 5.
+    useEffect(() => {
+        if (isSessionLoading) return;
+        if (userAccessLayer === 1 || userAccessLayer === 5) {
+            localStorage.setItem(ACTIVE_LAYER_KEY, String(userAccessLayer));
+        }
+    }, [userAccessLayer, isSessionLoading]);
 
     // Status Polling Loop for Pending Layer 4 Users
     useEffect(() => {
@@ -237,12 +258,23 @@ export default function Prakriti() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Only for the two genuinely destructive cases: the CRM record was deleted (404)
+    // or explicitly rejected. Clears the saved session so the entry gate reappears.
     const handleLogOut = () => {
         setUserAccessLayer(1);
         setDistributorId('');
         localStorage.removeItem('prakriti_distributor_id');
         localStorage.removeItem('distributor_token');
+        localStorage.removeItem(ACTIVE_LAYER_KEY);
         toast.success("Secured customer session terminated.");
+    };
+
+    // Manual "exit" from the marketplace — just switches the view back to the
+    // storefront. Does NOT clear the saved session, so a refresh/reopen restores
+    // straight back in without re-verification, as long as the CRM record still exists.
+    const handleExitTerminal = () => {
+        setUserAccessLayer(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot =>
@@ -350,10 +382,10 @@ export default function Prakriti() {
                                 </button>
 
                                 <button
-                                    onClick={handleLogOut}
+                                    onClick={handleExitTerminal}
                                     className="bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 active:scale-95 border border-white/10 text-slate-200 font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-2.5 px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap"
                                 >
-                                    Lock Terminal
+                                    Exit Terminal
                                 </button>
                             </div>
                         </div>

@@ -5,8 +5,15 @@ import { leadsApi } from '../../api/leads';
 import { FiSend, FiCheckCircle, FiAnchor } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 export default function QuoteRequest() {
+  useDocumentMeta({
+    title: 'Request a Quote | India Trade Overseas',
+    description: 'Request a bulk sourcing or export quote from India Trade Overseas for stone, rice, tea, or industrial materials.',
+    canonicalPath: '/quote-request'
+  });
+
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     customerName: '',

@@ -11,6 +11,11 @@ import {
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
+
+// Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
+// so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
+const ACTIVE_LAYER_KEY = 'ito_stone_active_layer';
 
 const STONE_GATE_THEME = {
   bg: '#37424B',
@@ -198,6 +203,12 @@ const BHUTAN_RATES = BHUTAN_RAW.map(([location, state, values]) => ({
 }));
 
 export default function Stone() {
+  useDocumentMeta({
+    title: 'Bhutan & Pakur Stone Chips Supplier | B2B Bulk Sourcing | India Trade Overseas',
+    description: 'Source Bhutan and Pakur stone chips in bulk — live location-wise rate cards, verified B2B buyer onboarding, and direct sourcing requests with India Trade Overseas.',
+    canonicalPath: '/stone'
+  });
+
   const [userAccessLayer, setUserAccessLayer] = useState(1);
   const [isSessionLoading, setIsLoadingSession] = useState(true);
   const [showEntryGate, setShowEntryGate] = useState(() =>
@@ -242,7 +253,7 @@ export default function Stone() {
 
   // Fetch STONE Proposals
   const fetchMyProposals = async () => {
-    const storedId = distributorId || localStorage.getItem('ito_stone_buyer_id') || localStorage.getItem('prakriti_distributor_id');
+    const storedId = distributorId || localStorage.getItem('ito_stone_buyer_id');
     const token = localStorage.getItem('distributor_token');
 
     if (!storedId || !token) return;
@@ -280,7 +291,7 @@ export default function Stone() {
     };
 
     const initializeSession = async () => {
-      const savedId = localStorage.getItem('ito_stone_buyer_id') || localStorage.getItem('prakriti_distributor_id');
+      const savedId = localStorage.getItem('ito_stone_buyer_id');
       const token = localStorage.getItem('distributor_token');
 
       if (savedId && token) {
@@ -289,7 +300,10 @@ export default function Stone() {
           const res = await fetchStatusWithRetry(savedId);
           if (res.success) {
             const status = res.data.approvalStatus;
-            if (status === 'approved') setUserAccessLayer(5);
+            if (status === 'approved') {
+              const savedLayer = localStorage.getItem(ACTIVE_LAYER_KEY);
+              setUserAccessLayer(savedLayer === '5' ? 5 : 1);
+            }
             else if (status === 'pending') setUserAccessLayer(4);
             else handleLogOut();
           }
@@ -305,6 +319,15 @@ export default function Stone() {
     };
     initializeSession();
   }, []);
+
+  // Persist the settled layer (storefront vs marketplace) so a refresh restores
+  // the same view instead of always snapping approved buyers to Layer 5.
+  useEffect(() => {
+    if (isSessionLoading) return;
+    if (userAccessLayer === 1 || userAccessLayer === 5) {
+      localStorage.setItem(ACTIVE_LAYER_KEY, String(userAccessLayer));
+    }
+  }, [userAccessLayer, isSessionLoading]);
 
   // Polling loop for pending users (Layer 4)
   useEffect(() => {
@@ -342,7 +365,6 @@ export default function Stone() {
     if (activeId) {
       setDistributorId(activeId);
       localStorage.setItem('ito_stone_buyer_id', activeId);
-      localStorage.setItem('prakriti_distributor_id', activeId);
     }
     if (activeToken) localStorage.setItem('distributor_token', activeToken);
 
@@ -352,13 +374,23 @@ export default function Stone() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Only for the two genuinely destructive cases: the CRM record was deleted (404)
+  // or explicitly rejected. Clears the saved session so the entry gate reappears.
   const handleLogOut = () => {
     setUserAccessLayer(1);
     setDistributorId('');
     localStorage.removeItem('ito_stone_buyer_id');
-    localStorage.removeItem('prakriti_distributor_id');
     localStorage.removeItem('distributor_token');
+    localStorage.removeItem(ACTIVE_LAYER_KEY);
     toast.success("Secured terminal session locked.");
+  };
+
+  // Manual "exit" from the marketplace — just switches the view back to the
+  // storefront. Does NOT clear the saved session, so a refresh/reopen restores
+  // straight back in without re-verification, as long as the CRM record still exists.
+  const handleExitTerminal = () => {
+    setUserAccessLayer(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Reset location/grade whenever the division toggle changes
@@ -490,10 +522,10 @@ export default function Stone() {
                 </button>
 
                 <button
-                  onClick={handleLogOut}
+                  onClick={handleExitTerminal}
                   className="w-full sm:w-auto bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 border border-white/10 text-slate-200 font-mono text-[9px] xs:text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-2.5 px-2 sm:px-3 rounded-lg transition-all cursor-pointer text-center truncate"
                 >
-                  Logout
+                  Exit Terminal
                 </button>
               </div>
 

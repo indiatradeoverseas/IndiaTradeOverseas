@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 import {
   FiAnchor,
   FiChevronRight,
@@ -36,6 +37,12 @@ const CINEMATIC_CAROUSEL_BACKDROPS = [
 ];
 
 export default function Home() {
+  useDocumentMeta({
+    title: 'India Trade Overseas | B2B Export & Sourcing of Stone, Rice & Tea',
+    description: 'India Trade Overseas is a B2B trading house sourcing and exporting Bhutan & Pakur stone chips, bulk rice, and premium tea for global buyers, backed by end-to-end compliance and logistics.',
+    canonicalPath: '/'
+  });
+
   const [activeStep, setActiveStep] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
 

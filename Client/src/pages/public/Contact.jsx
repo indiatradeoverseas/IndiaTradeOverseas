@@ -3,8 +3,15 @@ import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiBookmark } from 'react-ic
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 export default function Contact() {
+  useDocumentMeta({
+    title: 'Contact Us | India Trade Overseas',
+    description: 'Get in touch with India Trade Overseas for B2B sourcing and export enquiries on stone, rice, tea, and industrial materials.',
+    canonicalPath: '/contact'
+  });
+
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
 
