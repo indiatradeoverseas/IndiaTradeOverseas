@@ -11,6 +11,9 @@ import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
+import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
+import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
+import { riceTestimonials, RICE_ACCENT, RICE_ACCENT_TEXT, RICE_TRUST_PARAGRAPH } from '../../data/testimonials';
 
 // Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
 // so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
@@ -125,9 +128,14 @@ export default function RicePage() {
 
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
-    const [showEntryGate, setShowEntryGate] = useState(() =>
-        !(localStorage.getItem('rice_distributor_id') && localStorage.getItem('distributor_token'))
-    );
+    const [showEntryGate, setShowEntryGate] = useState(() => {
+        // Dev-only escape hatch (stripped out of production builds) so the storefront —
+        // including the Testimonials section — can be previewed locally without the OTP gate.
+        if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('previewTestimonials') === '1') {
+            return false;
+        }
+        return !(localStorage.getItem('rice_distributor_id') && localStorage.getItem('distributor_token'));
+    });
     const [distributorId, setDistributorId] = useState('');
 
     // Proposals State
@@ -1135,6 +1143,34 @@ export default function RicePage() {
                                         />
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* BUYER TESTIMONIAL COVERFLOW */}
+                    <section className="relative py-6 sm:py-8 bg-[#5A4422] px-4 sm:px-6 lg:px-8 border-t border-[#D9B85C]/15 overflow-hidden">
+                        <TestimonialSectionBackground accentColor={RICE_ACCENT} />
+                        <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                            <div className="text-center lg:text-left">
+                                <span className="inline-block text-[10px] sm:text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#D9B85C] bg-[#4A3819]/80 px-3 py-1 rounded-full border border-[#D9B85C]/30 mb-3">
+                                    Trusted By Buyers Worldwide
+                                </span>
+                                <h2 className="text-xl sm:text-3xl font-serif uppercase tracking-wide text-white drop-shadow-md leading-tight mb-4">
+                                    Why Trade Partners Choose Our Rice
+                                </h2>
+                                <p className="text-[#F0E3C4] text-xs sm:text-sm font-light leading-relaxed max-w-md mx-auto lg:mx-0">
+                                    {RICE_TRUST_PARAGRAPH}
+                                </p>
+                            </div>
+
+                            <div className="relative">
+                                <TestimonialCoverflow
+                                    items={riceTestimonials}
+                                    accentColor={RICE_ACCENT}
+                                    accentTextColor={RICE_ACCENT_TEXT}
+                                    aspectClass="aspect-[4/3]"
+                                    cardWidthClass="w-[155px] sm:w-[185px] md:w-[210px] lg:w-[230px]"
+                                />
                             </div>
                         </div>
                     </section>
