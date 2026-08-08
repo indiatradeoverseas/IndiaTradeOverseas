@@ -302,16 +302,16 @@ function App() {
           position="top-right"
           toastOptions={{
             style: {
-              background: '#16181B',
+              background: '#23262C',
               color: '#E7E3D9',
-              border: '1px solid rgba(231,227,217,0.14)',
+              border: '1px solid rgba(231,227,217,0.16)',
               borderRadius: '6px',
               fontSize: '13px',
               padding: '10px 14px',
-              boxShadow: '0 20px 44px -20px rgba(0,0,0,0.6)'
+              boxShadow: '0 20px 44px -20px rgba(0,0,0,0.5)'
             },
-            success: { iconTheme: { primary: '#56A587', secondary: '#16181B' } },
-            error: { iconTheme: { primary: '#C96A57', secondary: '#16181B' } }
+            success: { iconTheme: { primary: '#56A587', secondary: '#23262C' } },
+            error: { iconTheme: { primary: '#C96A57', secondary: '#23262C' } }
           }}
         />
         <AppLayout />

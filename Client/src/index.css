@@ -54,7 +54,7 @@ body {
 /* Prevents a flash of the public site's light background below short CRM pages on
    mobile, where dynamic browser chrome can make 100vh taller than the visible area. */
 body:has(.crm-portal) {
-  background: #0B0C0E;
+  background: #1B1E23;
 }
 
 /* min-h-screen (100vh) is measured against the largest possible mobile viewport
@@ -134,17 +134,17 @@ textarea {
   --crm-font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --crm-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  --crm-bg: #0B0C0E;
-  --crm-bg-raised: #16181B;
-  --crm-bg-sunken: #08090A;
-  --crm-nav-bg: #0E0F11;
-  --crm-nav-bg-to: #0B0C0E;
+  --crm-bg: #1B1E23;
+  --crm-bg-raised: #23262C;
+  --crm-bg-sunken: #131519;
+  --crm-nav-bg: #1D2025;
+  --crm-nav-bg-to: #1B1E23;
   --crm-ink: #E7E3D9;
-  --crm-ink-soft: #9B978C;
-  --crm-ink-faint: #6C6A62;
+  --crm-ink-soft: #ACA89C;
+  --crm-ink-faint: #7E7C72;
   --crm-heading: #F1EEE5;
-  --crm-line: rgba(231,227,217,0.09);
-  --crm-line-strong: rgba(231,227,217,0.18);
+  --crm-line: rgba(231,227,217,0.13);
+  --crm-line-strong: rgba(231,227,217,0.24);
   --crm-accent: #C89A54;
   --crm-accent-soft: #9A7639;
   --crm-accent-bg: rgba(200,154,84,0.1);
@@ -156,7 +156,7 @@ textarea {
   --crm-danger-bg: rgba(201,106,87,0.12);
   --crm-info: #5B9BB8;
   --crm-info-bg: rgba(91,155,184,0.12);
-  --crm-shadow: 0 1px 0 rgba(231,227,217,0.04), 0 20px 44px -20px rgba(0,0,0,0.6);
+  --crm-shadow: 0 1px 0 rgba(231,227,217,0.04), 0 20px 44px -20px rgba(0,0,0,0.5);
   --crm-shimmer: linear-gradient(90deg, rgba(231,227,217,0.03) 0%, rgba(231,227,217,0.08) 50%, rgba(231,227,217,0.03) 100%);
   color-scheme: dark;
 }
