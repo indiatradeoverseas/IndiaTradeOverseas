@@ -47,20 +47,6 @@ export default function Navbar() {
     setIsServicesDropdownOpen(false);
   }, [location]);
 
-  // Lets other pages (e.g. Home's "Explore Solutions") open the OUR SERVICES
-  // dropdown instead of navigating to a standalone Products page.
-  useEffect(() => {
-    const openServicesDropdown = () => {
-      if (window.innerWidth < 1024) {
-        setIsMobileMenuOpen(true);
-      } else {
-        setIsServicesDropdownOpen(true);
-      }
-    };
-    window.addEventListener('ito:open-services-menu', openServicesDropdown);
-    return () => window.removeEventListener('ito:open-services-menu', openServicesDropdown);
-  }, []);
-
   useEffect(() => {
     if (!isServicesDropdownOpen) return;
     const handleClickOutside = (event) => {

@@ -14,6 +14,7 @@ import {
   FiShield,
   FiClipboard
 } from 'react-icons/fi';
+import { GiTeapot, GiWheat, GiStonePile } from 'react-icons/gi';
 
 const CINEMATIC_CAROUSEL_BACKDROPS = [
   "./images/ito_images/ito_1.jpeg",
@@ -45,6 +46,9 @@ export default function Home() {
 
   const [activeStep, setActiveStep] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [isMobileCarousel, setIsMobileCarousel] = useState(false);
 
   useEffect(() => {
     const backdropTimer = setInterval(() => {
@@ -52,6 +56,61 @@ export default function Home() {
     }, 5000);
     return () => clearInterval(backdropTimer);
   }, []);
+
+  useEffect(() => {
+    if (!isSolutionsOpen) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsSolutionsOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isSolutionsOpen]);
+
+  useEffect(() => {
+    const checkScreenSize = () => setIsMobileCarousel(window.innerWidth < 640);
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  const DIVISIONS = [
+    {
+      to: '/prakriti',
+      icon: GiTeapot,
+      label: 'Tea Division',
+      image: '/images/tea_images/g4.jpeg',
+      points: [
+        'Premium Assam, Darjeeling & Dooars estates',
+        'CTC, Orthodox & Dust grade sourcing',
+        'Direct sourcing requests, no middlemen',
+        'Live marketplace pricing on approval'
+      ]
+    },
+    {
+      to: '/prakriti/rice',
+      icon: GiWheat,
+      label: 'Rice Division',
+      image: '/images/rice_images/rice_11.jpeg',
+      points: [
+        'Regular & compliance-grade paddy sourcing',
+        'Export-ready bulk packaging',
+        'Direct sourcing requests, no middlemen',
+        'Live marketplace pricing on approval'
+      ]
+    },
+    {
+      to: '/stone',
+      icon: GiStonePile,
+      label: 'Stone Division',
+      image: '/images/stone_images/Wmm.png',
+      points: [
+        'Bhutan & Pakur stone chips & aggregates',
+        'Multiple grades: 10/20/40/60mm & dust',
+        'Direct sourcing requests, no middlemen',
+        'Live marketplace pricing on approval'
+      ]
+    }
+  ];
 
   const trustBadges = [
     { label: 'APEDA ', img: 'cer_1.jpeg' },
@@ -130,6 +189,134 @@ export default function Home() {
 
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden">
+
+      {/* "Explore Solutions" division picker — fixed overlay so it's unaffected by the
+          hero section's overflow-hidden, and doesn't touch the Navbar at all. No panel/
+          heading — just the rotating cards over a blurred Home page; clicking anywhere
+          that isn't a card closes it. */}
+      <AnimatePresence>
+        {isSolutionsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-md px-4"
+            onClick={() => setIsSolutionsOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Explore Solutions"
+          >
+            {/* 3D rotating carousel — the whole stage spins continuously; hovering
+                any card pauses the rotation, leaving it resumes. Sized smaller on
+                mobile so cards stay comfortably on-screen. */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="relative"
+              style={{
+                width: isMobileCarousel ? 190 : 260,
+                height: isMobileCarousel ? 280 : 400,
+                perspective: isMobileCarousel ? 1000 : 1400
+              }}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  transformStyle: 'preserve-3d',
+                  animationName: 'solutions-carousel-spin',
+                  animationDuration: '20s',
+                  animationTimingFunction: 'linear',
+                  animationIterationCount: 'infinite',
+                  animationPlayState: isCarouselPaused ? 'paused' : 'running'
+                }}
+              >
+                {DIVISIONS.map((item, i) => {
+                  const cardContent = (
+                    <>
+                      <img
+                        src={item.image}
+                        alt={item.label}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0E1116]/55 via-[#0E1116]/25 to-transparent" />
+
+                      <div className="relative h-full flex flex-col justify-between p-3.5 sm:p-5">
+                        <div className="flex items-start justify-between">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#0E1116]/60 backdrop-blur-sm border border-[#C5CBD3]/25 flex items-center justify-center">
+                            <item.icon size={14} className="text-[#F2F4F7]" />
+                          </div>
+                          <span className="font-mono text-[10px] text-[#F2F4F7]/70 bg-[#0E1116]/50 backdrop-blur-sm px-1.5 py-0.5 rounded-sm">
+                            0{i + 1}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5 sm:space-y-2">
+                          <span className="block font-sans font-semibold text-[12px] sm:text-[13px] tracking-widest uppercase text-[#F2F4F7]">
+                            {item.label}
+                          </span>
+                          <ul className="space-y-0.5 sm:space-y-1">
+                            {item.points.map((point, idx) => (
+                              <li key={idx} className="flex items-start gap-1.5 text-[9px] sm:text-[10px] font-light text-[#F2F4F7]/85 leading-snug">
+                                <span className="mt-[5px] w-1 h-1 rounded-full bg-[#C5CBD3] shrink-0" />
+                                {point}
+                              </li>
+                            ))}
+                          </ul>
+                          <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold tracking-widest uppercase text-[#F2F4F7] pt-0.5">
+                            View <FiChevronRight size={11} />
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+
+                  return (
+                    <div
+                      key={item.to}
+                      className="absolute inset-0"
+                      style={{
+                        transform: `rotateY(${i * 120}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
+                        transformStyle: 'preserve-3d'
+                      }}
+                    >
+                      {/* Always-visible back layer — identical content to the front layer,
+                          full brightness (no dimming), no backface-visibility so it never
+                          gets culled and this slot is never empty. Purely decorative
+                          (pointer-events-none) — the front Link below is the only real
+                          click target, so there's never any ambiguity about which card a
+                          click should hit. */}
+                      <div className="group absolute inset-0 overflow-hidden rounded-[2px] border border-[#C5CBD3]/20 shadow-2xl pointer-events-none">
+                        {cardContent}
+                      </div>
+
+                      <Link
+                        to={item.to}
+                        onClick={() => setIsSolutionsOpen(false)}
+                        onMouseEnter={() => setIsCarouselPaused(true)}
+                        onMouseLeave={() => setIsCarouselPaused(false)}
+                        className="group absolute inset-0 overflow-hidden rounded-[2px] border border-[#C5CBD3]/20 hover:border-[#C5CBD3]/60 shadow-2xl transition-colors duration-200"
+                        style={{ backfaceVisibility: 'hidden' }}
+                      >
+                        {cardContent}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+
+            <style>
+              {`@keyframes solutions-carousel-spin {
+                from { transform: rotateY(0deg); }
+                to { transform: rotateY(360deg); }
+              }`}
+            </style>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Structural Double-Line Top Border Accent mapped to token metrics */}
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full absolute top-0 left-0 z-50"></div>
@@ -211,7 +398,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2">
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new Event('ito:open-services-menu'))}
+                onClick={() => setIsSolutionsOpen(true)}
                 className="w-full sm:w-auto min-w-[220px] sm:min-w-[240px] bg-[#F2F4F7] border border-transparent hover:bg-[#C5CBD3] text-[#0E1116] text-[11px] sm:text-[12px] tracking-widest uppercase font-semibold h-[50px] sm:h-[54px] flex items-center justify-center rounded-[2px] transition-all duration-200 shadow-md"
               >
                 Explore Solutions &rarr;
