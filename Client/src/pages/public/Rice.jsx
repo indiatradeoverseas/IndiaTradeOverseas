@@ -10,6 +10,11 @@ import {
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
+
+// Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
+// so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
+const ACTIVE_LAYER_KEY = 'rice_active_layer';
 
 const RICE_GATE_THEME = {
     bg: '#5A4422',
@@ -112,6 +117,12 @@ const REGULAR_RICE_RATES = buildRiceRateTable(REGULAR_RICE_RAW);
 const COMPLIANCE_RICE_RATES = buildRiceRateTable(COMPLIANCE_RICE_RAW);
 
 export default function RicePage() {
+    useDocumentMeta({
+        title: 'Bulk Rice Export & Sourcing | B2B Rice Supplier | India Trade Overseas',
+        description: 'Bulk rice sourcing and export — regular and compliance-grade varieties, live rate cards, and verified B2B buyer onboarding with India Trade Overseas.',
+        canonicalPath: '/prakriti/rice'
+    });
+
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
     const [showEntryGate, setShowEntryGate] = useState(() =>
@@ -206,7 +217,8 @@ export default function RicePage() {
                     if (res.success) {
                         const status = res.data.approvalStatus;
                         if (status === 'approved') {
-                            setUserAccessLayer(5);
+                            const savedLayer = localStorage.getItem(ACTIVE_LAYER_KEY);
+                            setUserAccessLayer(savedLayer === '5' ? 5 : 1);
                         } else if (status === 'pending') {
                             setUserAccessLayer(4);
                         } else {
@@ -225,6 +237,15 @@ export default function RicePage() {
         };
         initializeAuthenticationSession();
     }, []);
+
+    // Persist the settled layer (storefront vs marketplace) so a refresh restores
+    // the same view instead of always snapping approved buyers to Layer 5.
+    useEffect(() => {
+        if (isSessionLoading) return;
+        if (userAccessLayer === 1 || userAccessLayer === 5) {
+            localStorage.setItem(ACTIVE_LAYER_KEY, String(userAccessLayer));
+        }
+    }, [userAccessLayer, isSessionLoading]);
 
     // Status Polling Loop for Pending Layer 4 Users
     useEffect(() => {
@@ -288,12 +309,23 @@ export default function RicePage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Only for the two genuinely destructive cases: the CRM record was deleted (404)
+    // or explicitly rejected. Clears the saved session so the entry gate reappears.
     const handleLogOut = () => {
         setUserAccessLayer(1);
         setDistributorId('');
         localStorage.removeItem('rice_distributor_id');
         localStorage.removeItem('distributor_token');
+        localStorage.removeItem(ACTIVE_LAYER_KEY);
         toast.success("Secured customer session terminated.");
+    };
+
+    // Manual "exit" from the marketplace — just switches the view back to the
+    // storefront. Does NOT clear the saved session, so a refresh/reopen restores
+    // straight back in without re-verification, as long as the CRM record still exists.
+    const handleExitTerminal = () => {
+        setUserAccessLayer(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Reset variety/grade whenever the compliance toggle changes
@@ -434,10 +466,10 @@ export default function RicePage() {
                                     </button>
 
                                     <button
-                                        onClick={handleLogOut}
+                                        onClick={handleExitTerminal}
                                         className="bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 border border-white/10 text-slate-200 font-mono text-[10px] font-bold uppercase tracking-wider py-2 px-3 rounded transition-all cursor-pointer"
                                     >
-                                        Lock Session Terminal
+                                        Exit Terminal
                                     </button>
                                 </div>
                             </div>

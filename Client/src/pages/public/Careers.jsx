@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 const CAREERS_GATE_THEME = {
   bg: '#0E1116',
@@ -33,6 +34,12 @@ const CAREERS_GATE_THEME = {
 const CAREERS_GATE_STORAGE_KEY = 'careers_gate_profile';
 
 export default function Careers() {
+  useDocumentMeta({
+    title: 'Careers | Join India Trade Overseas',
+    description: 'Explore open roles at India Trade Overseas and build a career in global B2B trade, sourcing, and logistics.',
+    canonicalPath: '/careers'
+  });
+
   const [activeJob, setActiveJob] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

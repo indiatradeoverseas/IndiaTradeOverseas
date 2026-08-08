@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiGlobe, FiSend, FiInbox, FiCompass, FiShield, FiChevronRight } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { productsApi } from '../../api/products';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 const staticProducts = [
   {
@@ -100,6 +101,14 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useDocumentMeta({
+    title: product ? `${product.name} | India Trade Overseas` : 'Product Details | India Trade Overseas',
+    description: product?.description
+      ? product.description.replace(/\r?\n/g, ' ').slice(0, 160)
+      : 'B2B product sourcing details from India Trade Overseas.',
+    canonicalPath: `/products/${id}`
+  });
 
   useEffect(() => {
     const fetchProduct = async () => {

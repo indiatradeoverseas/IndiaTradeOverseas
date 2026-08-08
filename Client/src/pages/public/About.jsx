@@ -1,8 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiShield, FiAward, FiUsers, FiTrendingUp, FiActivity, FiLayers, FiCompass } from 'react-icons/fi';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 export default function About() {
+  useDocumentMeta({
+    title: 'About Us | India Trade Overseas',
+    description: 'Learn about India Trade Overseas — our governance, compliance standards, and commitment to trust and quality across our global stone, rice, and tea trading operations.',
+    canonicalPath: '/about'
+  });
+
   const coreValues = [
     { icon: FiShield, title: 'Integrity', description: 'Honest, transparent and ethical business practices in every transaction.' },
     { icon: FiAward, title: 'Quality', description: 'Products and services aligned with agreed buyer specifications and commercial expectations.' },
