@@ -12,6 +12,9 @@ import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
+import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
+import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
+import { teaTestimonials, TEA_ACCENT, TEA_ACCENT_TEXT, TEA_TRUST_PARAGRAPH } from '../../data/testimonials';
 
 // Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
 // so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
@@ -81,9 +84,14 @@ export default function Prakriti() {
 
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
-    const [showEntryGate, setShowEntryGate] = useState(() =>
-        !(localStorage.getItem('prakriti_distributor_id') && localStorage.getItem('distributor_token'))
-    );
+    const [showEntryGate, setShowEntryGate] = useState(() => {
+        // Dev-only escape hatch (stripped out of production builds) so the storefront —
+        // including the Testimonials section — can be previewed locally without the OTP gate.
+        if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('previewTestimonials') === '1') {
+            return false;
+        }
+        return !(localStorage.getItem('prakriti_distributor_id') && localStorage.getItem('distributor_token'));
+    });
     const [distributorId, setDistributorId] = useState('');
     const [myProposals, setMyProposals] = useState([]);
     const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
@@ -1201,6 +1209,33 @@ export default function Prakriti() {
                                         />
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* BUYER TESTIMONIAL COVERFLOW */}
+                    <section className="relative py-6 sm:py-8 bg-[#0B3D2E] px-4 sm:px-6 lg:px-8 border-t border-[#50C878]/15 overflow-hidden">
+                        <TestimonialSectionBackground accentColor={TEA_ACCENT} />
+                        <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                            <div className="text-center lg:text-left">
+                                <span className="inline-block text-[10px] sm:text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#50C878] bg-[#004B3B]/80 px-3 py-1 rounded-full border border-[#50C878]/30 mb-3">
+                                    Trusted By Buyers Worldwide
+                                </span>
+                                <h2 className="text-xl sm:text-3xl font-serif uppercase tracking-wide text-white drop-shadow-md leading-tight mb-4">
+                                    Why Trade Partners Choose Prakriti
+                                </h2>
+                                <p className="text-[#C5E3D3] text-xs sm:text-sm font-light leading-relaxed max-w-md mx-auto lg:mx-0">
+                                    {TEA_TRUST_PARAGRAPH}
+                                </p>
+                            </div>
+
+                            <div className="relative">
+                                <TestimonialCoverflow
+                                    items={teaTestimonials}
+                                    accentColor={TEA_ACCENT}
+                                    accentTextColor={TEA_ACCENT_TEXT}
+                                    aspectClass="aspect-[3/4]"
+                                />
                             </div>
                         </div>
                     </section>

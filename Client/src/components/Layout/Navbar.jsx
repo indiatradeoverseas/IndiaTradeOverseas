@@ -93,6 +93,28 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
   const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
 
+  // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
+  const mobileMenuContainer = {
+    hidden: {},
+    visible: {
+      transition: { staggerChildren: 0.055, delayChildren: 0.05 }
+    },
+    exit: {
+      transition: { staggerChildren: 0.03, staggerDirection: -1 }
+    }
+  };
+
+  const mobileMenuItem = {
+    hidden: { opacity: 0, y: -8, x: -6 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      x: 0,
+      transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }
+    },
+    exit: { opacity: 0, x: -6, transition: { duration: 0.15, ease: 'easeIn' } }
+  };
+
   return (
     <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 via-black/30 to-transparent transition-all duration-300">
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -136,7 +158,18 @@ export default function Navbar() {
               className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none"
               aria-label="Toggle Navigation Menu"
             >
-              {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={isMobileMenuOpen ? 'close' : 'open'}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="inline-flex"
+                >
+                  {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
+                </motion.span>
+              </AnimatePresence>
             </button>
           </div>
         </div>
@@ -307,8 +340,15 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Viewport Overlay */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]">
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
+        >
           <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
             <div className="flex items-center space-x-3">
               <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
@@ -338,97 +378,118 @@ export default function Navbar() {
             </button>
           </div>
 
-          <div className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]">
+          <motion.div
+            variants={mobileMenuContainer}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]"
+          >
             {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`block text-base tracking-wider ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
+              <motion.div key={link.to} variants={mobileMenuItem}>
+                <Link
+                  to={link.to}
+                  className={`block text-base tracking-wider ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              </motion.div>
             ))}
 
-            <Link
-              to="/contact"
-              className={`block text-base tracking-wider ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              CONTACT
-            </Link>
-
-            {/* OUR SERVICES MOBILE ACCORDION */}
-            <div className="border-t border-[#C5CBD3]/10 pt-6 space-y-4">
-              <div className="text-[#F2F4F7] text-[11px] tracking-widest font-mono font-bold uppercase">
-                OUR SERVICES
-              </div>
-              {servicesGroups.map((group, gIdx) => (
-                <div key={gIdx} className="space-y-2 pt-1">
-                  <div className="text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase pl-2">
-                    {group.groupLabel}
-                  </div>
-                  {group.links.map((subLink) => (
-                    <Link
-                      key={subLink.to}
-                      to={subLink.to}
-                      className="block pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      {subLink.label}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-[#C5CBD3]/24 pt-6 space-y-3">
+            <motion.div variants={mobileMenuItem}>
               <Link
-                to="/quote-request"
-                className="w-full h-[52px] flex items-center justify-center bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] font-semibold text-xs tracking-widest rounded-[2px]"
+                to="/contact"
+                className={`block text-base tracking-wider ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                REQUEST BULK QUOTE
+                CONTACT
               </Link>
+            </motion.div>
+
+            {/* OUR SERVICES MOBILE ACCORDION */}
+            <motion.div
+              variants={mobileMenuContainer}
+              className="border-t border-[#C5CBD3]/10 pt-6 space-y-4"
+            >
+              <motion.div variants={mobileMenuItem} className="text-[#F2F4F7] text-[11px] tracking-widest font-mono font-bold uppercase">
+                OUR SERVICES
+              </motion.div>
+              {servicesGroups.map((group, gIdx) => (
+                <motion.div key={gIdx} variants={mobileMenuContainer} className="space-y-2 pt-1">
+                  <motion.div variants={mobileMenuItem} className="text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase pl-2">
+                    {group.groupLabel}
+                  </motion.div>
+                  {group.links.map((subLink) => (
+                    <motion.div key={subLink.to} variants={mobileMenuItem}>
+                      <Link
+                        to={subLink.to}
+                        className="block pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {subLink.label}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <motion.div variants={mobileMenuContainer} className="border-t border-[#C5CBD3]/24 pt-6 space-y-3">
+              <motion.div variants={mobileMenuItem}>
+                <Link
+                  to="/quote-request"
+                  className="w-full h-[52px] flex items-center justify-center bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] font-semibold text-xs tracking-widest rounded-[2px]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  REQUEST BULK QUOTE
+                </Link>
+              </motion.div>
               {!user && (
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <motion.div variants={mobileMenuItem} className="grid grid-cols-2 gap-3 pt-1">
                   <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest">LOGIN</Link>
                   <Link to="/client-signup" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center bg-[#2B3440] border border-transparent text-[#F2F4F7] text-xs tracking-widest">SIGN UP</Link>
-                </div>
+                </motion.div>
               )}
 
               {user && (
-                <div className="space-y-3 pt-1">
+                <motion.div variants={mobileMenuContainer} className="space-y-3 pt-1">
                   {!user?.employeeId?.startsWith('CL_') && (
-                    <Link
-                      to="/crm/dashboard"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                    >
-                      <FiPackage size={14} /> <span>DASHBOARD</span>
-                    </Link>
+                    <motion.div variants={mobileMenuItem}>
+                      <Link
+                        to="/crm/dashboard"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                      >
+                        <FiPackage size={14} /> <span>DASHBOARD</span>
+                      </Link>
+                    </motion.div>
                   )}
                   {user?.role === 'ADMIN' && (
-                    <Link
-                      to="/crm/admin"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                    >
-                      <FiSettings size={14} /> <span>ADMIN PANEL</span>
-                    </Link>
+                    <motion.div variants={mobileMenuItem}>
+                      <Link
+                        to="/crm/admin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                      >
+                        <FiSettings size={14} /> <span>ADMIN PANEL</span>
+                      </Link>
+                    </motion.div>
                   )}
-                  <button
+                  <motion.button
+                    variants={mobileMenuItem}
                     onClick={handleLogout}
                     className="w-full h-[48px] flex items-center justify-center space-x-2 bg-red-950/20 border border-red-400/30 text-red-400 text-xs tracking-widest font-semibold"
                   >
                     <FiLogOut size={14} /> <span>LOGOUT</span>
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
