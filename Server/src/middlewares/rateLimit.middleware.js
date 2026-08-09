@@ -24,11 +24,13 @@ function rateLimiter(req, res, next) {
       resetTime: now
     };
     ipCache.set(ip, record);
+    console.log(`[rateLimiter] new window ip=${ip} xff=${req.headers['x-forwarded-for'] || '-'} socket=${req.socket.remoteAddress || '-'} trackedIps=${ipCache.size}`);
   }
 
   record.hits += 1;
 
   if (record.hits > securityConfig.rateLimiting.max) {
+    console.warn(`[rateLimiter] BLOCKED ip=${ip} hits=${record.hits} max=${securityConfig.rateLimiting.max} path=${req.method} ${req.originalUrl}`);
     return fail(
       res,
       429,
