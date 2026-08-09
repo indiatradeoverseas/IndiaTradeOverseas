@@ -15,6 +15,7 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
 import { teaTestimonials, TEA_ACCENT, TEA_ACCENT_TEXT, TEA_TRUST_PARAGRAPH } from '../../data/testimonials';
+import { OrderButton } from '../../components/ui/AnimatedActionButton';
 
 // Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
 // so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
@@ -1295,44 +1296,53 @@ export default function Prakriti() {
                                         <span className="text-slate-500 font-bold uppercase">Estimated Lot Base Value:</span>
                                         <span className="text-[#004B3B] font-extrabold text-sm sm:text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price)).toLocaleString()}</span>
                                     </div>
-                                    <button
-                                        onClick={async () => {
+                                    <OrderButton
+                                        action={async () => {
                                             if (!orderQuantity || Number(orderQuantity) < 200) {
-                                                return toast.error("Minimum quantity constraint matches 200 Kg configurations.");
+                                                toast.error("Minimum quantity constraint matches 200 Kg configurations.");
+                                                throw new Error('validation');
                                             }
 
-                                            try {
-                                                const proposalPayload = {
-                                                    distributorId: distributorId,
-                                                    divison: 'TEA',
-                                                    lotId: activeDrawerLot.id,
-                                                    region: activeDrawerLot.region,
-                                                    grade: activeDrawerLot.grade,
-                                                    quantity: Number(orderQuantity),
-                                                    basePrice: Number(activeDrawerLot.price)
-                                                };
+                                            const proposalPayload = {
+                                                distributorId: distributorId,
+                                                divison: 'TEA',
+                                                lotId: activeDrawerLot.id,
+                                                region: activeDrawerLot.region,
+                                                grade: activeDrawerLot.grade,
+                                                quantity: Number(orderQuantity),
+                                                basePrice: Number(activeDrawerLot.price)
+                                            };
 
-                                                const res = await distributorApi.createProposal(proposalPayload);
-                                                if (res.success) {
-                                                    toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
-                                                    pushDataLayerEvent('tea_proposal_submitted', {
-                                                        lot_id: activeDrawerLot.id,
-                                                        quantity: Number(orderQuantity),
-                                                        value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
-                                                        currency: 'INR'
-                                                    });
-                                                    setIsOrderDrawerOpen(false);
-                                                    fetchMyProposals();
-                                                }
+                                            let res;
+                                            try {
+                                                res = await distributorApi.createProposal(proposalPayload);
                                             } catch (err) {
                                                 console.error(err);
                                                 toast.error(err.response?.data?.message || "Failed to route custom sourcing proposal.");
+                                                throw err;
                                             }
+
+                                            if (!res.success) {
+                                                toast.error(res.message || "Failed to route custom sourcing proposal.");
+                                                throw new Error('api_failure');
+                                            }
+
+                                            toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
+                                            pushDataLayerEvent('tea_proposal_submitted', {
+                                                lot_id: activeDrawerLot.id,
+                                                quantity: Number(orderQuantity),
+                                                value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                                                currency: 'INR'
+                                            });
+                                            fetchMyProposals();
                                         }}
-                                        className="w-full bg-[#004B3B] hover:bg-[#053127] active:scale-98 text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                                    >
-                                        <FiShoppingCart /> Dispatch Sourcing Request
-                                    </button>
+                                        onDone={() => setIsOrderDrawerOpen(false)}
+                                        icon={FiShoppingCart}
+                                        idleLabel="Dispatch Sourcing Request"
+                                        busyLabel="Dispatching..."
+                                        doneLabel="Request Dispatched"
+                                        className="w-full bg-[#004B3B] hover:bg-[#053127] active:scale-98 text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg shadow-md cursor-pointer disabled:cursor-default disabled:opacity-90"
+                                    />
                                 </div>
                             </motion.div>
                         </div>

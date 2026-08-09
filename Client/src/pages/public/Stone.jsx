@@ -15,6 +15,7 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
 import { stoneTestimonials, STONE_ACCENT, STONE_ACCENT_TEXT, STONE_TRUST_PARAGRAPH } from '../../data/testimonials';
+import { OrderButton } from '../../components/ui/AnimatedActionButton';
 
 // Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
 // so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
@@ -1182,44 +1183,53 @@ export default function Stone() {
                     <span className="text-slate-500 font-bold uppercase">Estimated Base Value:</span>
                     <span className="text-[#37424B] font-extrabold text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price || 0)).toLocaleString()}</span>
                   </div>
-                  <button
-                    onClick={async () => {
+                  <OrderButton
+                    action={async () => {
                       if (!orderQuantity || Number(orderQuantity) < 40) {
-                        return toast.error("Minimum constraint is 40 MT.");
+                        toast.error("Minimum constraint is 40 MT.");
+                        throw new Error('validation');
                       }
 
-                      try {
-                        const proposalPayload = {
-                          distributorId: distributorId,
-                          division: 'STONE',
-                          lotId: activeDrawerLot.id,
-                          region: activeDrawerLot.region,
-                          grade: activeDrawerLot.grade,
-                          quantity: Number(orderQuantity),
-                          basePrice: Number(activeDrawerLot.price),
-                          paymentTerm: activeDrawerLot.paymentTerm
-                        };
+                      const proposalPayload = {
+                        distributorId: distributorId,
+                        division: 'STONE',
+                        lotId: activeDrawerLot.id,
+                        region: activeDrawerLot.region,
+                        grade: activeDrawerLot.grade,
+                        quantity: Number(orderQuantity),
+                        basePrice: Number(activeDrawerLot.price),
+                        paymentTerm: activeDrawerLot.paymentTerm
+                      };
 
-                        const res = await distributorApi.createProposal(proposalPayload);
-                        if (res.success) {
-                          toast.success(`Stone sourcing proposal logged for ${orderQuantity} MT.`);
-                          pushDataLayerEvent('stone_proposal_submitted', {
-                            lot_id: activeDrawerLot.id,
-                            quantity: Number(orderQuantity),
-                            value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
-                            currency: 'INR'
-                          });
-                          setIsOrderDrawerOpen(false);
-                          fetchMyProposals();
-                        }
+                      let res;
+                      try {
+                        res = await distributorApi.createProposal(proposalPayload);
                       } catch (err) {
                         toast.error(err.response?.data?.message || "Failed to dispatch proposal.");
+                        throw err;
                       }
+
+                      if (!res.success) {
+                        toast.error(res.message || "Failed to dispatch proposal.");
+                        throw new Error('api_failure');
+                      }
+
+                      toast.success(`Stone sourcing proposal logged for ${orderQuantity} MT.`);
+                      pushDataLayerEvent('stone_proposal_submitted', {
+                        lot_id: activeDrawerLot.id,
+                        quantity: Number(orderQuantity),
+                        value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                        currency: 'INR'
+                      });
+                      fetchMyProposals();
                     }}
-                    className="w-full bg-[#37424B] hover:bg-[#252c34] text-white text-xs font-mono font-bold uppercase py-3.5 rounded flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                  >
-                    <FiShoppingCart /> Dispatch Sourcing Request
-                  </button>
+                    onDone={() => setIsOrderDrawerOpen(false)}
+                    icon={FiShoppingCart}
+                    idleLabel="Dispatch Sourcing Request"
+                    busyLabel="Dispatching..."
+                    doneLabel="Request Dispatched"
+                    className="w-full bg-[#37424B] hover:bg-[#252c34] text-white text-xs font-mono font-bold uppercase py-3.5 rounded shadow-md cursor-pointer disabled:cursor-default disabled:opacity-90"
+                  />
                 </div>
               </motion.div>
             </div>
