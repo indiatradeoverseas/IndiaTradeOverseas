@@ -9,6 +9,7 @@ import { FiUsers, FiAlertCircle, FiFileText, FiCheckSquare, FiClock, FiActivity,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SkeletonStatGrid, SkeletonChartCard, SkeletonListCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 // Staggered layout entry configurations
 const containerVariants = {
@@ -88,7 +89,7 @@ export default function Dashboard() {
   };
 
   const handleExportReport = () => {
-    if (!summary) return;
+    if (!summary) throw new Error('no_summary');
     const rows = [
       ['Metric', 'Value'],
       ['Total Employees', summary.totalEmployees || 0],
@@ -232,13 +233,16 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
           {isAdmin && (
-            <button
-              onClick={handleExportReport}
-              className="flex items-center gap-1.5 text-[10px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer"
+            <DownloadButton
+              action={handleExportReport}
+              className="text-[10px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer disabled:cursor-default"
               style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
-            >
-              <FiDownload size={12} /> Export Report
-            </button>
+              icon={FiDownload}
+              iconSize={12}
+              idleLabel="Export Report"
+              busyLabel="Exporting..."
+              doneLabel="Exported"
+            />
           )}
           <motion.div
             whileHover={{ scale: 1.02 }}

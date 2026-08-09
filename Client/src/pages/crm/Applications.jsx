@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 export default function Applications() {
   const [applications, setApplications] = useState([]);
@@ -56,12 +57,12 @@ export default function Applications() {
 
   const handleDownloadResume = async (id, originalName) => {
     try {
-      toast.loading('Downloading resume...', { id: 'download' });
       await careersApi.downloadResume(id, originalName);
       toast.success('Resume downloaded successfully', { id: 'download' });
     } catch (error) {
       console.error('Error downloading resume:', error);
       toast.error('Failed to download resume', { id: 'download' });
+      throw error;
     }
   };
 
@@ -269,14 +270,16 @@ export default function Applications() {
                               <FiEye size={13} className="text-[var(--crm-ink-faint)]" />
                               <span>View</span>
                             </button>
-                            <button
-                              onClick={() => handleDownloadResume(appId, app.resumeOriginalName)}
-                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/40 hover:text-[var(--crm-heading)] text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                            <DownloadButton
+                              action={() => handleDownloadResume(appId, app.resumeOriginalName)}
+                              className="px-3 py-1.5 bg-transparent border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/40 hover:text-[var(--crm-heading)] text-xs font-semibold rounded-lg transition duration-200 shadow-sm disabled:cursor-default"
                               title="Download PDF Credentials Dossier"
-                            >
-                              <FiDownload size={13} className="text-[var(--crm-ink-faint)]" />
-                              <span>Download CV</span>
-                            </button>
+                              icon={FiDownload}
+                              iconSize={13}
+                              idleLabel="Download CV"
+                              busyLabel="Downloading..."
+                              doneLabel="Downloaded"
+                            />
                           </div>
                         </td>
 

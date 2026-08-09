@@ -5,6 +5,7 @@ import { FiUser, FiShield, FiFolder, FiEye, FiUpload, FiDownload, FiClock } from
 import toast from 'react-hot-toast';
 import { employeeProfileApi } from '../../api/employeeProfile';
 import { useAuth } from '../../hooks/useAuth';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -185,6 +186,7 @@ export default function EmployeeProfile() {
       URL.revokeObjectURL(url);
     } catch (error) {
       toast.error('Failed to download document');
+      throw error;
     }
   };
 
@@ -420,9 +422,14 @@ export default function EmployeeProfile() {
             ) : documents.map((doc) => (
               <div key={doc._id} className="flex items-center justify-between text-xs py-2.5 px-3 bg-[var(--crm-bg)]/60 border border-[var(--crm-ink-soft)]/10 rounded-sm">
                 <span className="text-[var(--crm-ink-soft)] font-light truncate">{doc.fileName}</span>
-                <button onClick={() => handleDownload(doc)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 shrink-0">
-                  <FiDownload size={13} />
-                </button>
+                <DownloadButton
+                  action={() => handleDownload(doc)}
+                  iconOnly
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 shrink-0 disabled:cursor-default"
+                  icon={FiDownload}
+                  iconSize={13}
+                  title="Download document"
+                />
               </div>
             ))}
           </div>

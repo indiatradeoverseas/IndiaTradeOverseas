@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FiMenu, FiX } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
@@ -36,12 +37,23 @@ export default function PortalLayout({ children }) {
         <div className="flex items-center justify-between px-4 py-3">
           <button
             type="button"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setSidebarOpen((open) => !open)}
             className="inline-flex items-center justify-center rounded-sm p-2 transition duration-200 focus:outline-none"
             style={{ color: 'var(--crm-ink)' }}
-            aria-label="Open menu"
+            aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
           >
-            <FiMenu size={22} />
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={sidebarOpen ? 'close' : 'open'}
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="inline-flex"
+              >
+                {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+              </motion.span>
+            </AnimatePresence>
           </button>
           <div
             className="text-sm font-medium uppercase tracking-wider"
@@ -62,17 +74,26 @@ export default function PortalLayout({ children }) {
           }`}
           style={{ borderColor: 'var(--crm-line)' }}
         >
-          <Sidebar onClose={() => isMobile && setSidebarOpen(false)} />
+          <Sidebar
+            key={isMobile ? `mobile-${sidebarOpen}` : 'desktop'}
+            onClose={() => isMobile && setSidebarOpen(false)}
+          />
         </div>
 
         {/* Dynamic Mobile Shield Mask Overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-xs md:hidden animate-fadeIn"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
-          />
-        )}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-xs md:hidden"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+            />
+          )}
+        </AnimatePresence>
 
         {/* Core Main Viewport Workspace Terminal Container */}
         <div className="flex-1 flex flex-col min-h-screen" style={{ background: 'var(--crm-bg)' }}>
@@ -94,17 +115,6 @@ export default function PortalLayout({ children }) {
           </main>
         </div>
       </div>
-
-      <style>
-        {`@keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-in-out;
-        }
-        `}
-      </style>
     </div>
   );
 }

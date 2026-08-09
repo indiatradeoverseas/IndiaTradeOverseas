@@ -14,6 +14,7 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
 import { riceTestimonials, RICE_ACCENT, RICE_ACCENT_TEXT, RICE_TRUST_PARAGRAPH } from '../../data/testimonials';
+import { OrderButton } from '../../components/ui/AnimatedActionButton';
 
 // Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
 // so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
@@ -1231,45 +1232,54 @@ export default function RicePage() {
                                         <span className="text-slate-500 font-bold uppercase">Estimated Base Value:</span>
                                         <span className="text-[#5A4422] font-extrabold text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price)).toLocaleString()}</span>
                                     </div>
-                                    <button
-                                        onClick={async () => {
+                                    <OrderButton
+                                        action={async () => {
                                             if (!orderQuantity || Number(orderQuantity) < 20000) {
-                                                return toast.error("Minimum order quantity is 20,000 Kg (20 MT / One Truckload).");
+                                                toast.error("Minimum order quantity is 20,000 Kg (20 MT / One Truckload).");
+                                                throw new Error('validation');
                                             }
 
-                                            try {
-                                                const proposalPayload = {
-                                                    distributorId: distributorId,
-                                                    division : 'RICE',
-                                                    lotId: activeDrawerLot.id,
-                                                    region: activeDrawerLot.location,
-                                                    grade: activeDrawerLot.variety,
-                                                    quantity: Number(orderQuantity),
-                                                    basePrice: Number(activeDrawerLot.price)
-                                                };
+                                            const proposalPayload = {
+                                                distributorId: distributorId,
+                                                division : 'RICE',
+                                                lotId: activeDrawerLot.id,
+                                                region: activeDrawerLot.location,
+                                                grade: activeDrawerLot.variety,
+                                                quantity: Number(orderQuantity),
+                                                basePrice: Number(activeDrawerLot.price)
+                                            };
 
-                                                const res = await distributorApi.createProposal(proposalPayload);
-                                                if (res.success) {
-                                                    toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
-                                                    pushDataLayerEvent('rice_proposal_submitted', {
-                                                        lot_id: activeDrawerLot.id,
-                                                        quantity: Number(orderQuantity),
-                                                        value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
-                                                        currency: 'INR'
-                                                    });
-                                                    setIsOrderDrawerOpen(false);
-                                                    fetchMyProposals();
-                                                }
+                                            let res;
+                                            try {
+                                                res = await distributorApi.createProposal(proposalPayload);
                                             } catch (err) {
                                                 console.error(err);
                                                 toast.error(err.response?.data?.message || "Failed to route sourcing proposal.");
+                                                throw err;
                                             }
+
+                                            if (!res.success) {
+                                                toast.error(res.message || "Failed to route sourcing proposal.");
+                                                throw new Error('api_failure');
+                                            }
+
+                                            toast.success(`Trade proposal submitted for ${orderQuantity} Kg of lot ${activeDrawerLot.id}.`);
+                                            pushDataLayerEvent('rice_proposal_submitted', {
+                                                lot_id: activeDrawerLot.id,
+                                                quantity: Number(orderQuantity),
+                                                value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                                                currency: 'INR'
+                                            });
+                                            fetchMyProposals();
                                         }}
-                                        className="w-full text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                                        onDone={() => setIsOrderDrawerOpen(false)}
+                                        icon={FiShoppingCart}
+                                        idleLabel="Dispatch Sourcing Request"
+                                        busyLabel="Dispatching..."
+                                        doneLabel="Request Dispatched"
+                                        className="w-full text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg shadow-lg cursor-pointer disabled:cursor-default disabled:opacity-90"
                                         style={{ backgroundColor: '#5A4422' }}
-                                    >
-                                        <FiShoppingCart /> Dispatch Sourcing Request
-                                    </button>
+                                    />
                                 </div>
                             </motion.div>
                         </div>

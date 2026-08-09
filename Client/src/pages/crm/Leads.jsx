@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 // Staggered animation configurations
 const containerVariants = {
@@ -132,6 +133,7 @@ export default function Leads() {
       toast.success("Database exported safely!");
     } catch (error) {
       toast.error("Export execution failed.");
+      throw error;
     }
   };
 
@@ -187,10 +189,15 @@ export default function Leads() {
             </button>
           </div>
 
-          <button onClick={handleExportLeads} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] uppercase tracking-widest font-semibold h-[42px] px-4 rounded-sm flex items-center space-x-2 transition-all hover:bg-[var(--crm-bg-raised)]">
-            <FiDownload size={13} className="text-[var(--crm-ink-faint)]" />
-            <span>Export</span>
-          </button>
+          <DownloadButton
+            action={handleExportLeads}
+            className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] uppercase tracking-widest font-semibold h-[42px] px-4 rounded-sm transition-all hover:bg-[var(--crm-bg-raised)] disabled:cursor-default"
+            icon={FiDownload}
+            iconSize={13}
+            idleLabel="Export"
+            busyLabel="Exporting..."
+            doneLabel="Exported"
+          />
           <button onClick={() => setShowCreateModal(true)} className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center space-x-1.5 transition-all hover:bg-[var(--crm-ink-soft)]">
             <FiPlus size={14} /> <span>New Lead</span>
           </button>

@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import { dispatchesApi } from '../../api/dispatches';
 import { useAuth } from '../../hooks/useAuth';
 import axiosInstance from '../../api/axiosInstance';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 // Cinematic staggered entrance transitions
 const containerVariants = {
@@ -206,9 +207,8 @@ export default function Dispatches() {
   };
 
   const handleDownloadProof = (docId, truckNo) => {
-    if (!docId) return;
-    toast.loading('Downloading dispatch proof...', { id: 'download' });
-    axiosInstance.get(`/documents/${docId}/download`, { responseType: 'blob' })
+    if (!docId) return Promise.reject(new Error('no_doc_id'));
+    return axiosInstance.get(`/documents/${docId}/download`, { responseType: 'blob' })
       .then((res) => {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
@@ -217,11 +217,12 @@ export default function Dispatches() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success('Document downloaded successfully!', { id: 'download' });
+        toast.success('Document downloaded successfully!');
       })
       .catch((err) => {
         console.error('Download error:', err);
-        toast.error('Failed to download document. Unauthorized access.', { id: 'download' });
+        toast.error('Failed to download document. Unauthorized access.');
+        throw err;
       });
   };
 
@@ -361,12 +362,15 @@ export default function Dispatches() {
                       <td className="py-4 px-6 text-left">
                         {dispatch.proofDocumentId ? (
                           <div className="flex flex-col gap-1 items-start">
-                            <button
-                              onClick={() => handleDownloadProof(dispatch.proofDocumentId, dispatch.truckNo)}
-                              className="inline-flex items-center gap-1.5 text-xs text-[var(--crm-heading)] font-semibold hover:text-[var(--crm-ink-soft)] transition cursor-pointer"
-                            >
-                              <FiFileText className="text-[var(--crm-ink-faint)]" size={13} /> Verified Slip
-                            </button>
+                            <DownloadButton
+                              action={() => handleDownloadProof(dispatch.proofDocumentId, dispatch.truckNo)}
+                              className="text-xs text-[var(--crm-heading)] font-semibold hover:text-[var(--crm-ink-soft)] transition cursor-pointer disabled:cursor-default"
+                              icon={FiFileText}
+                              iconSize={13}
+                              idleLabel="Verified Slip"
+                              busyLabel="Downloading..."
+                              doneLabel="Downloaded"
+                            />
                             <button
                               onClick={() => handleOpenUploadModal(dispatch._id)}
                               className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm transition uppercase tracking-wider cursor-pointer mt-1"

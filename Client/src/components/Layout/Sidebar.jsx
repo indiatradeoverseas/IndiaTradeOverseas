@@ -40,6 +40,17 @@ export default function Sidebar({ onClose }) {
         : 'text-[var(--crm-ink-soft)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
     }`;
 
+  // Staggered cascade for nav sections, mirroring the mobile Navbar menu entrance
+  const navSection = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } }
+  };
+
+  const navItem = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }
+  };
+
   return (
     <aside
       className="h-full w-full flex flex-col select-none border-r"
@@ -85,7 +96,7 @@ export default function Sidebar({ onClose }) {
       {/* Navigation Stream Matrix */}
       <nav className="flex-1 py-6 overflow-y-auto custom-scrollbar space-y-6 px-3">
         {/* Main Section */}
-        <div className="space-y-1">
+        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
           <div className="px-4 mb-2 text-left">
             <p
               className="text-[9px] uppercase tracking-[0.25em] font-bold"
@@ -95,28 +106,30 @@ export default function Sidebar({ onClose }) {
             </p>
           </div>
           {menuItems.map((item) => (
-            <NavLink key={item.to} to={item.to} className={linkClass}>
-              {({ isActive }) => (
-                <>
-                  <item.icon
-                    size={16}
-                    style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                    className="transition-colors group-hover:opacity-100"
-                  />
-                  <span>{item.label}</span>
-                  {isActive && (
-                    <motion.span
-                      layoutId="activeIndicator"
-                      className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
-                      style={{ background: 'var(--crm-accent)' }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            <motion.div key={item.to} variants={navItem}>
+              <NavLink to={item.to} className={linkClass}>
+                {({ isActive }) => (
+                  <>
+                    <item.icon
+                      size={16}
+                      style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                      className="transition-colors group-hover:opacity-100"
                     />
-                  )}
-                </>
-              )}
-            </NavLink>
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeIndicator"
+                        className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                        style={{ background: 'var(--crm-accent)' }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Department Section */}
         <div className="space-y-1">
@@ -138,25 +151,29 @@ export default function Sidebar({ onClose }) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden space-y-1 pl-3"
               >
-                {departments.map((dept) => (
-                  <NavLink key={dept.to} to={dept.to} onClick={onClose} className={linkClass}>
-                    {({ isActive }) => (
-                      <>
-                        <FiLayers
-                          size={13}
-                          style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                        />
-                        <span className="text-[11px]">{dept.label}</span>
-                        {isActive && (
-                          <span
-                            className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
-                            style={{ background: 'var(--crm-accent)' }}
-                          />
+                <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
+                  {departments.map((dept) => (
+                    <motion.div key={dept.to} variants={navItem}>
+                      <NavLink to={dept.to} onClick={onClose} className={linkClass}>
+                        {({ isActive }) => (
+                          <>
+                            <FiLayers
+                              size={13}
+                              style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                            />
+                            <span className="text-[11px]">{dept.label}</span>
+                            {isActive && (
+                              <span
+                                className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
+                                style={{ background: 'var(--crm-accent)' }}
+                              />
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
+                      </NavLink>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -164,7 +181,7 @@ export default function Sidebar({ onClose }) {
 
         {/* Administration Section */}
         {showAdminMenu && (
-          <div className="space-y-1">
+          <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
             <div className="px-4 mb-2 text-left">
               <p
                 className="text-[9px] uppercase tracking-[0.25em] font-bold"
@@ -174,7 +191,8 @@ export default function Sidebar({ onClose }) {
               </p>
             </div>
             {adminMenuItems.map((item) => (
-              <NavLink key={item.to} to={item.to} className={linkClass}>
+              <motion.div key={item.to} variants={navItem}>
+              <NavLink to={item.to} className={linkClass}>
                 {({ isActive }) => (
                   <>
                     <item.icon
@@ -193,8 +211,9 @@ export default function Sidebar({ onClose }) {
                   </>
                 )}
               </NavLink>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Action Bottom Section Layer */}
