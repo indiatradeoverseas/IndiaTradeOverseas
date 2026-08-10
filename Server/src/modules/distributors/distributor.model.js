@@ -71,10 +71,13 @@ const DistributorSchema = new mongoose.Schema(
       default: "India",
     },
 
-    // Optional Sourcing Parameters for Admin CRM panel compatibility
+    // Optional Sourcing Parameters for Admin CRM panel compatibility.
+    // No division-specific default here: the lightweight quick-gate signup
+    // (Tea/Rice/Stone) never collects a company name, and a Tea-flavored
+    // fallback previously leaked into Rice/Stone records. A division-aware
+    // fallback is applied in the controller instead, at creation time.
     company: {
       type: String,
-      default: "Prakriti Tea Partner",
       trim: true,
     },
     address: {
@@ -84,7 +87,6 @@ const DistributorSchema = new mongoose.Schema(
     },
     teaType: {
       type: String,
-      default: "CTC & Orthodox Bulk",
     },
     monthlyReq: {
       type: Number,

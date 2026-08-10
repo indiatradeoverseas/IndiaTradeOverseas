@@ -8,6 +8,12 @@ const { sendEmail } = require('../../utils/mailer');
 const { ok, fail } = require('../../utils/response');
 const { getRelativePath, resolveUploadPath } = require('../../utils/file');
 
+// The quick-gate signup (Tea/Rice/Stone) never collects a company name, so a
+// brand-new record with none falls back to this division-aware label instead
+// of a hardcoded Tea-specific one bleeding into other divisions.
+const DIVISION_LABELS = { TEA: 'Tea', RICE: 'Rice', STONE: 'Stone', COAL: 'Coal' };
+const fallbackCompanyName = (division) => `Independent ${DIVISION_LABELS[division] || 'Sourcing'} Buyer`;
+
 // 1. Register Distributor (Upload Details & Certificates + Send OTP)
 const registerDistributor = async (req, res, next) => {
   try {
@@ -90,7 +96,7 @@ const registerDistributor = async (req, res, next) => {
       distributor.city = city;
       distributor.state = state;
       distributor.country = country || distributor.country;
-      distributor.company = company || distributor.company;
+      distributor.company = company || distributor.company || fallbackCompanyName(division || distributor.division || 'TEA');
       distributor.teaType = teaType || distributor.teaType;
       distributor.monthlyReq = monthlyReq ? Number(monthlyReq) : distributor.monthlyReq;
       distributor.purpose = purpose || distributor.purpose;
@@ -114,7 +120,7 @@ const registerDistributor = async (req, res, next) => {
         city: city || 'N/A',
         state: state || 'N/A',
         country: country || 'India',
-        company,
+        company: company || fallbackCompanyName(division || 'TEA'),
         teaType,
         monthlyReq: monthlyReq ? Number(monthlyReq) : 0,
         purpose,

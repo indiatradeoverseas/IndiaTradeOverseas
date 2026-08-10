@@ -210,6 +210,8 @@ export default function Careers() {
           setFormData((prev) => ({ ...prev, fullName: values.fullName, email: values.email, phone: values.phone }));
           localStorage.setItem(CAREERS_GATE_STORAGE_KEY, JSON.stringify(values));
           pushDataLayerEvent('careers_gate_completed', {});
+          careersApi.submitGateLead({ fullName: values.fullName, email: values.email, phone: values.phone })
+            .catch((err) => console.error('Failed to record careers gate lead:', err));
           setShowEntryGate(false);
         }}
       />

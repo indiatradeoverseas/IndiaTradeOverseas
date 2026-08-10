@@ -35,6 +35,7 @@ import Payments from './pages/crm/Payments';
 import Documents from './pages/crm/Documents';
 import Employees from './pages/crm/Employees';
 import Distributors from './pages/crm/Distributors';
+import Visitors from './pages/crm/Visitors';
 import Security from './pages/crm/Security';
 import Reports from './pages/crm/Reports';
 import AdminPanel from './pages/crm/AdminPanel';
@@ -42,6 +43,7 @@ import ProductUpload from './pages/crm/ProductUpload';
 import Tasks from './pages/crm/Tasks';
 import Notifications from './pages/crm/Notifications';
 import Applications from './pages/crm/Applications';
+import CareerLeads from './pages/crm/CareerLeads';
 import Jobs from './pages/crm/Jobs';
 import Attendance from './pages/crm/Attendance';
 import Tickets from './pages/crm/Tickets';
@@ -189,7 +191,20 @@ function AppLayout() {
           <Route path="/crm/profile" element={<EmployeeProfile />} />
           <Route path="/crm/tickets" element={<Tickets />} />
           <Route path="/crm/sales" element={<SalesPerformance />} />
-          <Route path="/crm/distributors" element={<Distributors />}/>
+          <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
+          <Route path="/crm/distributors/:division" element={<Distributors />}/>
+          <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
+          <Route path="/crm/visitors/:division" element={<Visitors />}/>
+          <Route
+            path="/crm/career-leads"
+            element={
+              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
+                <CareerLeads />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
           <Route
             path="/crm/leads"
             element={

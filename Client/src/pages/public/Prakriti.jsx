@@ -1305,7 +1305,7 @@ export default function Prakriti() {
 
                                             const proposalPayload = {
                                                 distributorId: distributorId,
-                                                divison: 'TEA',
+                                                division: 'TEA',
                                                 lotId: activeDrawerLot.id,
                                                 region: activeDrawerLot.region,
                                                 grade: activeDrawerLot.grade,

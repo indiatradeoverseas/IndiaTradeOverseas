@@ -22,9 +22,16 @@ const careerApplicationSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  resumePath: {
-    type: String,
-    required: true
+  // Resume/cover-letter bytes live in MongoDB, not on local disk - Render's
+  // filesystem is ephemeral and wipes uploads/ on every restart/redeploy,
+  // which was silently losing previously-uploaded resumes. Files are capped
+  // at 5MB by multer (see career.routes.js), well within MongoDB's 16MB
+  // document limit.
+  resumeData: {
+    type: Buffer
+  },
+  resumeContentType: {
+    type: String
   },
   resumeOriginalName: {
     type: String,
@@ -34,11 +41,23 @@ const careerApplicationSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  coverLetterPath: {
+  coverLetterData: {
+    type: Buffer
+  },
+  coverLetterContentType: {
+    type: String
+  },
+  coverLetterOriginalName: {
     type: String,
     trim: true
   },
-  coverLetterOriginalName: {
+  // Legacy disk-path fields, kept only so applications submitted before this
+  // migration can still be looked up by downloadResume/downloadCoverLetter's
+  // fallback path - no longer written for new applications.
+  resumePath: {
+    type: String
+  },
+  coverLetterPath: {
     type: String,
     trim: true
   },

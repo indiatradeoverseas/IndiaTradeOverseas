@@ -16,8 +16,25 @@ export const careersApi = {
     return response.data;
   },
 
+  // Buyer-entry-gate leads: everyone who filled the Careers page gate form,
+  // whether or not they went on to submit a full job application.
+  submitGateLead: async ({ fullName, email, phone }) => {
+    const response = await axiosInstance.post('/careers/gate-leads', { fullName, email, phone });
+    return response.data;
+  },
+
+  getGateLeads: async () => {
+    const response = await axiosInstance.get('/careers/gate-leads');
+    return response.data;
+  },
+
   updateApplicationStatus: async (id, status) => {
     const response = await axiosInstance.patch(`/careers/${id}/status`, { status });
+    return response.data;
+  },
+
+  deleteApplication: async (id) => {
+    const response = await axiosInstance.delete(`/careers/${id}`);
     return response.data;
   },
 

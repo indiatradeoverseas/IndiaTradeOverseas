@@ -15,7 +15,8 @@ import {
   FiLifeBuoy,
   FiCalendar,
   FiUser,
-  FiTrendingUp
+  FiTrendingUp,
+  FiUserPlus
 } from 'react-icons/fi';
 
 export function getCrmMainNavItems(user) {
@@ -33,7 +34,26 @@ export function getCrmMainNavItems(user) {
     (['ADMIN', 'MANAGER', 'PROCUREMENT'].includes(user?.role) || user?.dispatchPermission === true) && { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
     (['ADMIN', 'MANAGER', 'ACCOUNTS'].includes(user?.role) || user?.paymentPermission === true) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
     (user?.role === 'ADMIN' || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder },
-    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && { to: '/crm/distributors', label: 'Distributors', icon: FiBriefcase }
+    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && {
+      to: '/crm/distributors',
+      label: 'Distributors',
+      icon: FiBriefcase,
+      children: [
+        { to: '/crm/distributors/tea', label: 'Tea Orders', dotColor: '#2dd4a7' },
+        { to: '/crm/distributors/rice', label: 'Rice Orders', dotColor: '#f5b942' },
+        { to: '/crm/distributors/stone', label: 'Stone Orders', dotColor: '#94a3b8' }
+      ]
+    },
+    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && {
+      to: '/crm/visitors',
+      label: 'Buyer Visitors',
+      icon: FiUserPlus,
+      children: [
+        { to: '/crm/visitors/tea', label: 'Tea Visitors', dotColor: '#2dd4a7' },
+        { to: '/crm/visitors/rice', label: 'Rice Visitors', dotColor: '#f5b942' },
+        { to: '/crm/visitors/stone', label: 'Stone Visitors', dotColor: '#94a3b8' }
+      ]
+    }
   ].filter(Boolean);
 }
 
@@ -53,6 +73,7 @@ export function getCrmAdminNavItems(user) {
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/employees', label: 'Employees', icon: FiUsers },
     { to: '/crm/applications', label: 'Job Applications', icon: FiFileText },
+    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && { to: '/crm/career-leads', label: 'Career Leads', icon: FiUserPlus },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR' || user?.jobPermission === true) && { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/security', label: 'Security', icon: FiShield },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 }

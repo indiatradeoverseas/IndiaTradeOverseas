@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -20,7 +20,9 @@ import {
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isDeptExpanded, setIsDeptExpanded] = useState(false);
+  const [manualToggle, setManualToggle] = useState({});
 
   const menuItems = getCrmMainNavItems(user);
   const departments = getCrmDepartmentLinks();
@@ -105,30 +107,140 @@ export default function Sidebar({ onClose }) {
               Main Core
             </p>
           </div>
-          {menuItems.map((item) => (
-            <motion.div key={item.to} variants={navItem}>
-              <NavLink to={item.to} className={linkClass}>
-                {({ isActive }) => (
-                  <>
-                    <item.icon
-                      size={16}
-                      style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                      className="transition-colors group-hover:opacity-100"
-                    />
-                    <span>{item.label}</span>
-                    {isActive && (
+          {menuItems.map((item) => {
+            if (item.children && item.children.length > 0) {
+              const routeActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+              const isOpen = manualToggle[item.to] ?? routeActive;
+
+              return (
+                <motion.div key={item.to} variants={navItem} className="space-y-1">
+                  <div
+                    className="flex items-center rounded-md transition-colors duration-200"
+                    style={{ background: routeActive ? 'var(--crm-accent-bg)' : 'transparent' }}
+                  >
+                    <NavLink
+                      to={item.to}
+                      end
+                      onClick={onClose}
+                      className="flex-1 flex items-center space-x-3 px-4 py-3 text-xs font-medium tracking-wide uppercase relative group min-w-0"
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            size={16}
+                            style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                            className="transition-colors group-hover:opacity-100 shrink-0"
+                          />
+                          <span
+                            className="truncate"
+                            style={{ color: isActive ? 'var(--crm-heading)' : 'var(--crm-ink-soft)' }}
+                          >
+                            {item.label}
+                          </span>
+                          {isActive && (
+                            <motion.span
+                              layoutId="activeIndicator"
+                              className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                              style={{ background: 'var(--crm-accent)' }}
+                              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                    <button
+                      type="button"
+                      onClick={() => setManualToggle((prev) => ({ ...prev, [item.to]: !isOpen }))}
+                      className="px-3 py-3 cursor-pointer transition-colors"
+                      style={{ color: 'var(--crm-ink-faint)' }}
+                      aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.label}`}
+                      aria-expanded={isOpen}
+                    >
                       <motion.span
-                        layoutId="activeIndicator"
-                        className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
-                        style={{ background: 'var(--crm-accent)' }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      />
+                        animate={{ rotate: isOpen ? 90 : 0 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex"
+                      >
+                        <FiChevronRight size={13} />
+                      </motion.span>
+                    </button>
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden ml-[26px] pl-3 border-l"
+                        style={{ borderColor: 'var(--crm-line)' }}
+                      >
+                        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1 py-1">
+                          {item.children.map((child) => (
+                            <motion.div key={child.to} variants={navItem}>
+                              <NavLink
+                                to={child.to}
+                                onClick={onClose}
+                                className={({ isActive }) =>
+                                  `flex items-center gap-2.5 px-3 py-2 rounded-md text-[11px] font-medium tracking-wide uppercase transition-all duration-200 relative group ${
+                                    isActive
+                                      ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
+                                      : 'text-[var(--crm-ink-faint)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                                  }`
+                                }
+                              >
+                                {({ isActive }) => (
+                                  <>
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                                      style={{ background: child.dotColor || 'var(--crm-accent)' }}
+                                    />
+                                    <span>{child.label}</span>
+                                    {isActive && (
+                                      <span
+                                        className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
+                                        style={{ background: 'var(--crm-accent)' }}
+                                      />
+                                    )}
+                                  </>
+                                )}
+                              </NavLink>
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      </motion.div>
                     )}
-                  </>
-                )}
-              </NavLink>
-            </motion.div>
-          ))}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            }
+
+            return (
+              <motion.div key={item.to} variants={navItem}>
+                <NavLink to={item.to} className={linkClass}>
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        size={16}
+                        style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                        className="transition-colors group-hover:opacity-100"
+                      />
+                      <span>{item.label}</span>
+                      {isActive && (
+                        <motion.span
+                          layoutId="activeIndicator"
+                          className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                          style={{ background: 'var(--crm-accent)' }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         {/* Department Section */}
