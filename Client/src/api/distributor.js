@@ -70,6 +70,13 @@ export const distributorApi = {
     return response.data;
   },
 
+  deleteProposal: async (id) => {
+    const response = await axiosInstance.delete(`/distributors/proposals/${id}`, {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
+    return response.data;
+  },
+
   // 🟢 FIXED: Handles both object payload { amount, lotId, quantity } and positional arguments safely
   createRazorpayOrder: async (paymentData, lotIdArg, quantityArg) => {
     let payload;
