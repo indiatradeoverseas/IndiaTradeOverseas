@@ -30,16 +30,6 @@ const registerDistributor = async (req, res, next) => {
     } = req.body;
 
     if (!name || !email || !mobile) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
-        }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
-      }
       return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, and mobile are required.');
     }
 
@@ -50,46 +40,16 @@ const registerDistributor = async (req, res, next) => {
 
     const currentBusinessType = businessType || (distributor ? distributor.businessType : '1');
 
-    const hasDoc1 = doc1 || (distributor && distributor.doc1Path);
-    const hasDoc2 = doc2 || (distributor && distributor.doc2Path);
+    const hasDoc1 = doc1 || (distributor && (distributor.doc1Data || distributor.doc1Path));
+    const hasDoc2 = doc2 || (distributor && (distributor.doc2Data || distributor.doc2Path));
 
     if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
-        }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
-      }
       return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
     }
     if (currentBusinessType === '4' && !hasDoc1) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
-        }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
-      }
       return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
     }
     if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
-      if (req.files) {
-        const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-        const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-        if (pDoc && fs.existsSync(pDoc[0].path)) {
-          try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
-        }
-        if (sDoc && fs.existsSync(sDoc[0].path)) {
-          try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-        }
-      }
       return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
     }
 
@@ -97,24 +57,18 @@ const registerDistributor = async (req, res, next) => {
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     if (distributor) {
-      if (doc1 && distributor.doc1Path) {
-        const oldDoc1 = path.join(process.cwd(), distributor.doc1Path);
-        if (fs.existsSync(oldDoc1)) {
-          try { fs.unlinkSync(oldDoc1); } catch (e) { }
-        }
-        distributor.doc1Path = getRelativePath(doc1.path);
-      } else if (doc1) {
-        distributor.doc1Path = getRelativePath(doc1.path);
+      if (doc1) {
+        distributor.doc1Data = doc1.buffer;
+        distributor.doc1Name = doc1.originalname;
+        distributor.doc1MimeType = doc1.mimetype;
+        distributor.doc1Path = `uploads/distributor_docs/${Date.now()}-${doc1.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
       }
 
-      if (doc2 && distributor.doc2Path) {
-        const oldDoc2 = path.join(process.cwd(), distributor.doc2Path);
-        if (fs.existsSync(oldDoc2)) {
-          try { fs.unlinkSync(oldDoc2); } catch (e) { }
-        }
-        distributor.doc2Path = getRelativePath(doc2.path);
-      } else if (doc2) {
-        distributor.doc2Path = getRelativePath(doc2.path);
+      if (doc2) {
+        distributor.doc2Data = doc2.buffer;
+        distributor.doc2Name = doc2.originalname;
+        distributor.doc2MimeType = doc2.mimetype;
+        distributor.doc2Path = `uploads/distributor_docs/${Date.now()}-${doc2.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
       }
 
       distributor.name = name;
@@ -153,8 +107,14 @@ const registerDistributor = async (req, res, next) => {
         purpose,
         businessType,
         gstNumber,
-        doc1Path: doc1 ? getRelativePath(doc1.path) : '',
-        doc2Path: doc2 ? getRelativePath(doc2.path) : undefined,
+        doc1Data: doc1 ? doc1.buffer : undefined,
+        doc1Name: doc1 ? doc1.originalname : undefined,
+        doc1MimeType: doc1 ? doc1.mimetype : undefined,
+        doc1Path: doc1 ? `uploads/distributor_docs/${Date.now()}-${doc1.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_') : '',
+        doc2Data: doc2 ? doc2.buffer : undefined,
+        doc2Name: doc2 ? doc2.originalname : undefined,
+        doc2MimeType: doc2 ? doc2.mimetype : undefined,
+        doc2Path: doc2 ? `uploads/distributor_docs/${Date.now()}-${doc2.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_') : undefined,
         otpToken: otpCode,
         otpExpires,
         isOtpVerified: false,
@@ -172,16 +132,6 @@ const registerDistributor = async (req, res, next) => {
 
     return ok(res, { distributorId: distributor._id, email: distributor.email }, 'Distributor registration initiated. OTP sent to email.', 201, req);
   } catch (error) {
-    if (req.files) {
-      const pDoc = req.files['doc1'] || req.files['primaryDocument'];
-      const sDoc = req.files['doc2'] || req.files['secondaryDocument'];
-      if (pDoc && fs.existsSync(pDoc[0].path)) {
-        try { fs.unlinkSync(pDoc[0].path); } catch (e) { }
-      }
-      if (sDoc && fs.existsSync(sDoc[0].path)) {
-        try { fs.unlinkSync(sDoc[0].path); } catch (e) { }
-      }
-    }
     next(error);
   }
 };
@@ -450,6 +400,12 @@ const downloadGstCertificate = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
     }
 
+    if (distributor.doc1Data) {
+      res.setHeader('Content-Type', distributor.doc1MimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(distributor.doc1Name || 'gst_certificate.pdf')}"`);
+      return res.send(distributor.doc1Data);
+    }
+
     const filePath = resolveUploadPath(distributor.doc1Path, 'distributor_docs');
     if (!filePath || !fs.existsSync(filePath)) {
       return fail(res, 404, 'FILE_NOT_FOUND', 'GST/FSSAI/IEC document file not found on disk.');
@@ -466,6 +422,12 @@ const downloadUdyamCertificate = async (req, res, next) => {
     const distributor = await Distributor.findById(req.params.id);
     if (!distributor) {
       return fail(res, 404, 'NOT_FOUND', 'Distributor not found.');
+    }
+
+    if (distributor.doc2Data) {
+      res.setHeader('Content-Type', distributor.doc2MimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(distributor.doc2Name || 'udyam_certificate.pdf')}"`);
+      return res.send(distributor.doc2Data);
     }
 
     if (!distributor.doc2Path) {

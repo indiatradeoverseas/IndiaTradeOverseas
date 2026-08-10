@@ -33,6 +33,31 @@ const DistributorSchema = new mongoose.Schema(
       type: String,
     }, // Udyam Certificate (Optional)
 
+    doc1Data: {
+      type: Buffer,
+      required: false,
+    },
+    doc1Name: {
+      type: String,
+      required: false,
+    },
+    doc1MimeType: {
+      type: String,
+      required: false,
+    },
+    doc2Data: {
+      type: Buffer,
+      required: false,
+    },
+    doc2Name: {
+      type: String,
+      required: false,
+    },
+    doc2MimeType: {
+      type: String,
+      required: false,
+    },
+
     city: {
       type: String,
       required: false,
