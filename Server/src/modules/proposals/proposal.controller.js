@@ -88,8 +88,10 @@ const getProposalsByDistributorId = async (req, res, next) => {
 // 🔵 GET all proposals (Admin/Staff)
 const getAllProposals = async (req, res, next) => {
   try {
+    // Populates everything the order-detail view needs from the buyer's
+    // original entry-gate submission, not just company/name.
     const proposals = await Proposal.find()
-      .populate('distributorId', 'company name email approvalStatus')
+      .populate('distributorId', 'company name email mobile city state country division approvalStatus isOtpVerified registrationSource createdAt')
       .sort({ createdAt: -1 });
 
     return ok(res, proposals, "Retrieved active proposals ledger successfully", 200, req);
@@ -131,9 +133,25 @@ const updateProposalStatus = async (req, res, next) => {
   }
 };
 
+// 🔵 DELETE proposal (Admin/Staff)
+const deleteProposal = async (req, res, next) => {
+  try {
+    const proposal = await Proposal.findByIdAndDelete(req.params.id);
+    if (!proposal) {
+      return fail(res, 404, 'NOT_FOUND', "Target proposal asset line could not be found.", [], req);
+    }
+
+    return ok(res, null, `Sourcing request for lot ${proposal.lotId} deleted successfully.`, 200, req);
+  } catch (error) {
+    console.error("Error deleting proposal:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   createProposal,
   getAllProposals,
   updateProposalStatus,
+  deleteProposal,
   getProposalsByDistributorId
 };

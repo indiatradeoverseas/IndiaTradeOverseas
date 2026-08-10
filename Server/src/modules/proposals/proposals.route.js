@@ -5,6 +5,7 @@ const {
   createProposal,
   getAllProposals,
   updateProposalStatus,
+  deleteProposal,
   getProposalsByDistributorId
 } = require('./proposal.controller');
 
@@ -24,5 +25,6 @@ router.get('/proposals/distributor/:distributorId', authenticateDistributor, get
 // Admin / Staff Management Routes
 router.get('/proposals/active', authenticate, checkAdminManagerHR, getAllProposals);
 router.patch('/proposals/:id/status', authenticate, checkAdminManagerHR, updateProposalStatus);
+router.delete('/proposals/:id', authenticate, checkAdminManagerHR, deleteProposal);
 
 module.exports = router;
