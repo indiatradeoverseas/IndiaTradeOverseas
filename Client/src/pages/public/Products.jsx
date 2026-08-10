@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiMapPin, FiCheckCircle, FiChevronRight, FiGrid, FiSliders } from 'react-icons/fi';
 import { productsApi } from '../../api/products';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 const renderFormattedDescription = (description) => {
   if (!description) return null;
@@ -49,6 +50,12 @@ const renderFormattedDescription = (description) => {
 };
 
 export default function Products() {
+  useDocumentMeta({
+    title: 'Our Products | Stone, Rice, Tea & Industrial Sourcing | India Trade Overseas',
+    description: 'Browse India Trade Overseas\' full B2B product catalog — construction stone, bulk rice, premium tea, and industrial materials sourced and exported to global buyers.',
+    canonicalPath: '/products'
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('all');
   const [dbProducts, setDbProducts] = useState([]);

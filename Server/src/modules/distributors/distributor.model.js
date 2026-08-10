@@ -98,6 +98,14 @@ const DistributorSchema = new mongoose.Schema(
       type: String,
       default: "1",
     },
+    // Distinguishes the new lightweight name/email/phone/location + OTP entry
+    // gate (auto-approved on OTP verify) from the legacy full KYC registration
+    // flow (GST/Udyam certificate upload, manual staff approval in the CRM).
+    registrationSource: {
+      type: String,
+      default: "STANDARD_KYC",
+      enum: ["STANDARD_KYC", "QUICK_GATE"],
+    },
     division: {
       type: String,
       default: "TEA",

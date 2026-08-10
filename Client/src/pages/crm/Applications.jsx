@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 export default function Applications() {
   const [applications, setApplications] = useState([]);
@@ -56,12 +57,25 @@ export default function Applications() {
 
   const handleDownloadResume = async (id, originalName) => {
     try {
-      toast.loading('Downloading resume...', { id: 'download' });
       await careersApi.downloadResume(id, originalName);
       toast.success('Resume downloaded successfully', { id: 'download' });
     } catch (error) {
       console.error('Error downloading resume:', error);
       toast.error('Failed to download resume', { id: 'download' });
+      throw error;
+    }
+  };
+
+  const handleViewResume = async (id) => {
+    // Open the tab synchronously (before the await below) so browsers don't
+    // treat it as a blocked popup.
+    const viewerWindow = window.open('', '_blank');
+    try {
+      await careersApi.viewResume(id, viewerWindow);
+    } catch (error) {
+      console.error('Error viewing resume:', error);
+      toast.error('Failed to view resume');
+      if (viewerWindow && !viewerWindow.closed) viewerWindow.close();
     }
   };
 
@@ -247,14 +261,26 @@ export default function Applications() {
 
                         {/* Digital CV Download Node */}
                         <td className="py-4 px-6 text-center">
-                          <button
-                            onClick={() => handleDownloadResume(appId, app.resumeOriginalName)}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/40 hover:text-[var(--crm-heading)] text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
-                            title="Download PDF Credentials Dossier"
-                          >
-                            <FiDownload size={13} className="text-[var(--crm-ink-faint)]" />
-                            <span>Download CV</span>
-                          </button>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              onClick={() => handleViewResume(appId)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/40 hover:text-[var(--crm-heading)] text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                              title="View Resume"
+                            >
+                              <FiEye size={13} className="text-[var(--crm-ink-faint)]" />
+                              <span>View</span>
+                            </button>
+                            <DownloadButton
+                              action={() => handleDownloadResume(appId, app.resumeOriginalName)}
+                              className="px-3 py-1.5 bg-transparent border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/40 hover:text-[var(--crm-heading)] text-xs font-semibold rounded-lg transition duration-200 shadow-sm disabled:cursor-default"
+                              title="Download PDF Credentials Dossier"
+                              icon={FiDownload}
+                              iconSize={13}
+                              idleLabel="Download CV"
+                              busyLabel="Downloading..."
+                              doneLabel="Downloaded"
+                            />
+                          </div>
                         </td>
 
                         {/* Pipeline Stage Action Selector */}

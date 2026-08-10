@@ -4,6 +4,7 @@ import { FiUpload, FiDownload, FiTrash2, FiLock, FiUnlock, FiFileText, FiX, FiCh
 import toast from 'react-hot-toast';
 import { documentsApi } from '../../api/documents';
 import { useAuth } from '../../hooks/useAuth';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 const EXPORT_DOC_TYPES = [
   'SCO', 'FCO', 'ICPO', 'LOI', 'NCNDA', 'IMFPA',
@@ -117,6 +118,7 @@ export default function Documents() {
     } catch (error) {
       console.error('Error downloading document:', error);
       toast.error('Could not download file. Security protocol check required.');
+      throw error;
     }
   };
 
@@ -392,15 +394,15 @@ export default function Documents() {
                       </td>
                       <td className="py-4 px-5 text-center">
                         <div className="flex items-center justify-center space-x-2.5">
-                          <motion.button
+                          <DownloadButton
+                            iconOnly
                             whileHover={{ scale: 1.08 }}
-                            whileTap={{ scale: 0.92 }}
-                            onClick={() => downloadDocument(doc._id, doc.fileName)}
-                            className="w-8 h-8 rounded-sm bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)]/20 text-[var(--crm-accent)] hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md"
+                            action={() => downloadDocument(doc._id, doc.fileName)}
+                            className="w-8 h-8 rounded-sm bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)]/20 text-[var(--crm-accent)] hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md disabled:cursor-default"
                             title="Download Asset"
-                          >
-                            <FiDownload size={14} />
-                          </motion.button>
+                            icon={FiDownload}
+                            iconSize={14}
+                          />
                           {isApprover && (
                             <>
                               <motion.button

@@ -2,8 +2,16 @@ import React, { useState } from 'react';
 import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiBookmark } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { pushDataLayerEvent } from '../../utils/analytics';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 export default function Contact() {
+  useDocumentMeta({
+    title: 'Contact Us | India Trade Overseas',
+    description: 'Get in touch with India Trade Overseas for B2B sourcing and export enquiries on stone, rice, tea, and industrial materials.',
+    canonicalPath: '/contact'
+  });
+
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,6 +33,7 @@ export default function Contact() {
     setSubmitting(true);
     setTimeout(() => {
       toast.success('Commercial dossier successfully generated inside trade intake system.');
+      pushDataLayerEvent('generate_lead', { lead_type: 'contact_form' });
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
       setSubmitting(false);
     }, 1000);

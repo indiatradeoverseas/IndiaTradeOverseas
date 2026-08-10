@@ -13,18 +13,48 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
+import { pushDataLayerEvent } from '../../utils/analytics';
+import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
+
+const CAREERS_GATE_THEME = {
+  bg: '#0E1116',
+  panelBg: '#121D29',
+  accent: '#F2F4F7',
+  accentText: '#0E1116',
+  text: '#F2F4F7',
+  muted: '#6D7886',
+  border: '#2B3440',
+  eyebrow: 'Careers at India Trade Overseas',
+  headline: 'Before You Apply',
+  subhead: 'A few quick details so we can personalize your application experience.',
+  fontClass: 'font-sans'
+};
+
+const CAREERS_GATE_STORAGE_KEY = 'careers_gate_profile';
 
 export default function Careers() {
+  useDocumentMeta({
+    title: 'Careers | Join India Trade Overseas',
+    description: 'Explore open roles at India Trade Overseas and build a career in global B2B trade, sourcing, and logistics.',
+    canonicalPath: '/careers'
+  });
+
   const [activeJob, setActiveJob] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    position: '',
-    resume: null,
-    coverLetterFile: null
+  const [showEntryGate, setShowEntryGate] = useState(() => !localStorage.getItem(CAREERS_GATE_STORAGE_KEY));
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem(CAREERS_GATE_STORAGE_KEY);
+    if (!saved) {
+      return { fullName: '', email: '', phone: '', position: '', resume: null, coverLetterFile: null };
+    }
+    try {
+      const parsed = JSON.parse(saved);
+      return { fullName: parsed.fullName || '', email: parsed.email || '', phone: parsed.phone || '', position: '', resume: null, coverLetterFile: null };
+    } catch {
+      return { fullName: '', email: '', phone: '', position: '', resume: null, coverLetterFile: null };
+    }
   });
 
   const defaultJobs = [
@@ -144,6 +174,7 @@ export default function Careers() {
 
       setSubmitted(true);
       toast.success('Your application has been submitted successfully!');
+      pushDataLayerEvent('generate_lead', { lead_type: 'job_application', position: formData.position || undefined });
     } catch (error) {
       console.error('Failed to submit application:', error);
       const errMsg = error.response?.data?.message || 'Failed to submit application. Please try again.';
@@ -168,6 +199,22 @@ export default function Careers() {
     hidden: { opacity: 0, y: 15 },
     show: { opacity: 1, y: 0, transition: { type: 'linear', duration: 0.55 } }
   };
+
+  if (showEntryGate) {
+    return (
+      <BuyerEntryGate
+        theme={CAREERS_GATE_THEME}
+        requireOtp={false}
+        mascotSrc="/images/walking-man.png"
+        onComplete={(values) => {
+          setFormData((prev) => ({ ...prev, fullName: values.fullName, email: values.email, phone: values.phone }));
+          localStorage.setItem(CAREERS_GATE_STORAGE_KEY, JSON.stringify(values));
+          pushDataLayerEvent('careers_gate_completed', {});
+          setShowEntryGate(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden relative">

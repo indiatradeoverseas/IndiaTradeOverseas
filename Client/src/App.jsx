@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
+import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
 import Rice from './pages/public/Rice';
@@ -111,6 +112,25 @@ function RoleProtectedRoute({ children, allowedRoles }) {
 function AppLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
+
+  // SPA route changes don't trigger a new document load, so GTM's default
+  // pageview trigger only ever fires once. Push a virtual pageview per route
+  // change so ad-traffic landing on / then navigating to /stone (or any page)
+  // is captured.
+  useEffect(() => {
+    pushDataLayerEvent('virtual_page_view', {
+      page_path: location.pathname + location.search,
+      page_location: window.location.href,
+      page_title: document.title
+    });
+  }, [location.pathname, location.search]);
+
+  // Site-wide click + form-submit tracking (every button/link click and form
+  // submission), mounted once. See utils/analytics.js for what's captured.
+  useEffect(() => {
+    initActivityTracking();
+  }, []);
+
   const isCRM = location.pathname.startsWith('/crm');
   const isAuth = [
     '/login',
@@ -282,16 +302,16 @@ function App() {
           position="top-right"
           toastOptions={{
             style: {
-              background: '#16181B',
+              background: '#23262C',
               color: '#E7E3D9',
-              border: '1px solid rgba(231,227,217,0.14)',
+              border: '1px solid rgba(231,227,217,0.16)',
               borderRadius: '6px',
               fontSize: '13px',
               padding: '10px 14px',
-              boxShadow: '0 20px 44px -20px rgba(0,0,0,0.6)'
+              boxShadow: '0 20px 44px -20px rgba(0,0,0,0.5)'
             },
-            success: { iconTheme: { primary: '#56A587', secondary: '#16181B' } },
-            error: { iconTheme: { primary: '#C96A57', secondary: '#16181B' } }
+            success: { iconTheme: { primary: '#56A587', secondary: '#23262C' } },
+            error: { iconTheme: { primary: '#C96A57', secondary: '#23262C' } }
           }}
         />
         <AppLayout />

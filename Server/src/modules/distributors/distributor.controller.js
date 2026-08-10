@@ -26,7 +26,8 @@ const registerDistributor = async (req, res, next) => {
       purpose,
       businessType,
       gstNumber,
-      division
+      division,
+      registrationSource
     } = req.body;
 
     if (!name || !email || !mobile) {
@@ -43,14 +44,26 @@ const registerDistributor = async (req, res, next) => {
     const hasDoc1 = doc1 || (distributor && (distributor.doc1Data || distributor.doc1Path));
     const hasDoc2 = doc2 || (distributor && (distributor.doc2Data || distributor.doc2Path));
 
-    if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
-    }
-    if (currentBusinessType === '4' && !hasDoc1) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
-    }
-    if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
+    // The lightweight entry-gate (name/email/phone/location + OTP) never uploads
+    // certificates. Bypass compliance validation for a brand-new record on that
+    // path, or when resubmitting (resend code / edit details / retry) for an
+    // email that already went through the gate itself — but never for a
+    // RETURNING email whose existing record came from the full STANDARD_KYC
+    // form, so a real pending KYC record can never be reclassified into the
+    // no-document path by resubmitting through the gate.
+    const isQuickGateSubmission = registrationSource === 'QUICK_GATE' &&
+      (!distributor || distributor.registrationSource === 'QUICK_GATE');
+
+    if (!isQuickGateSubmission) {
+      if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
+        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
+      }
+      if (currentBusinessType === '4' && !hasDoc1) {
+        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
+      }
+      if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
+        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
+      }
     }
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -119,7 +132,8 @@ const registerDistributor = async (req, res, next) => {
         otpExpires,
         isOtpVerified: false,
         approvalStatus: 'pending',
-        division: division || 'TEA'
+        division: division || 'TEA',
+        registrationSource: isQuickGateSubmission ? 'QUICK_GATE' : 'STANDARD_KYC'
       });
       await distributor.save();
     }
@@ -157,7 +171,12 @@ const verifyDistributorOtp = async (req, res, next) => {
     }
 
     distributor.isOtpVerified = true;
-    if (distributor.approvalStatus !== 'approved') {
+    if (distributor.registrationSource === 'QUICK_GATE') {
+      // Lightweight entry-gate registrations never uploaded a compliance
+      // document, so there is nothing for staff to manually review — approve
+      // immediately on OTP verification.
+      distributor.approvalStatus = 'approved';
+    } else if (distributor.approvalStatus !== 'approved') {
       distributor.approvalStatus = 'pending';
     }
     distributor.otpToken = undefined;
@@ -166,10 +185,13 @@ const verifyDistributorOtp = async (req, res, next) => {
 
     const jwt = require('jsonwebtoken');
     const env = require('../../config/env');
+    // Long-lived on purpose: a verified distributor's session should remain
+    // valid until their record is deleted in the CRM (authenticateDistributor
+    // already 401s once the record is gone), not expire on its own.
     const token = jwt.sign(
       { sub: distributor._id.toString(), role: 'DISTRIBUTOR', email: distributor.email },
       env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '365d' }
     );
 
     return ok(res, {

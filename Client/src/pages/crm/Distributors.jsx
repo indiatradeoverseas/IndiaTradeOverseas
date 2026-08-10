@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { distributorApi } from '../../api/distributor';
 import { adminApi } from '../../api/admin';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import { 
-    FiShield, FiUser, FiMail, FiPhone, FiMapPin, FiBriefcase, 
-    FiLayers, FiCalendar, FiCheckCircle, FiXCircle, FiClock, 
-    FiTrash2, FiFileText, FiDownload, FiSearch, FiFilter 
+    FiShield, FiUser, FiMail, FiPhone, FiMapPin, FiBriefcase,
+    FiLayers, FiCalendar, FiXCircle, FiClock,
+    FiTrash2, FiFileText, FiDownload, FiSearch, FiFilter
 } from 'react-icons/fi';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 export default function Distributor() {
     const [distributors, setDistributors] = useState([]);
@@ -20,6 +21,7 @@ export default function Distributor() {
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [divisionFilter, setDivisionFilter] = useState('ALL');
     const [selectedDistributor, setSelectedDistributor] = useState(null);
+    const detailPanelRef = useRef(null);
 
     // Consolidated execution hook loader
     const fetchCoreSystemData = async () => {
@@ -49,6 +51,14 @@ export default function Distributor() {
         fetchCoreSystemData();
     }, []);
 
+    // On narrow viewports the detail panel renders stacked below the table
+    // instead of side-by-side, so scroll it into view when it opens.
+    useEffect(() => {
+        if (selectedDistributor && detailPanelRef.current) {
+            detailPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [selectedDistributor?._id]);
+
     // Proposal Status Controller Integration
     const handleUpdateProposal = async (proposalId, statusUpdate) => {
         try {
@@ -60,28 +70,6 @@ export default function Distributor() {
             }
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to update target proposal parameters.");
-        }
-    };
-
-    const handleToggleVerification = async (id, currentStatus) => {
-        const targetAction = currentStatus === 'approved' ? 'Revoke Approval' : 'Grant Verified Access';
-        if (!window.confirm(`Are you sure you want to run compliance change: "${targetAction}" on this distributor?`)) return;
-
-        try {
-            const resData = await distributorApi.toggleVerify(id);
-            if (resData && resData.success) {
-                toast.success(resData.message || "Statutory access token status changed successfully.");
-                
-                if (selectedDistributor && selectedDistributor._id === id) {
-                    setSelectedDistributor(prev => ({
-                        ...prev,
-                        approvalStatus: prev.approvalStatus === 'approved' ? 'pending' : 'approved'
-                    }));
-                }
-                fetchCoreSystemData();
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Verification adjustment failure.");
         }
     };
 
@@ -115,6 +103,7 @@ export default function Distributor() {
         } catch (err) {
             console.error(err);
             toast.error("Failed to extract statutory file from server volume.");
+            throw err;
         }
     };
 
@@ -144,6 +133,7 @@ export default function Distributor() {
             toast.success("Distributor registry exported safely!");
         } catch (error) {
             toast.error("Export execution failed.");
+            throw error;
         }
     };
 
@@ -186,13 +176,15 @@ export default function Distributor() {
                     </div>
                     
                     <div className="flex flex-wrap gap-2 font-mono text-xs">
-                        <button
-                            onClick={handleExportDistributors}
-                            className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm flex items-center space-x-2 transition-all hover:bg-[var(--crm-bg-raised)] cursor-pointer"
-                        >
-                            <FiDownload size={13} className="text-[var(--crm-ink-faint)]" />
-                            <span>Export</span>
-                        </button>
+                        <DownloadButton
+                            action={handleExportDistributors}
+                            className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm transition-all hover:bg-[var(--crm-bg-raised)] cursor-pointer disabled:cursor-default"
+                            icon={FiDownload}
+                            iconSize={13}
+                            idleLabel="Export"
+                            busyLabel="Exporting..."
+                            doneLabel="Exported"
+                        />
                         <div className="bg-[var(--crm-bg)]/40 px-4 py-2.5 rounded-sm border border-[var(--crm-ink-soft)]/10 text-center">
                             <span className="block text-[var(--crm-ink-faint)] font-bold uppercase tracking-wider text-[9px]">Pipeline Volume</span>
                             <span className="text-lg font-bold text-[var(--crm-heading)]">{distributors.length} Partners</span>
@@ -344,16 +336,6 @@ export default function Distributor() {
 
                                                         {/* 5. AUTHORIZE CHANGE CONTROL DECK */}
                                                         <td className="p-4 text-right space-x-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                                                            <button 
-                                                                onClick={() => handleToggleVerification(dist._id, dist.approvalStatus)}
-                                                                className={`px-3 py-1 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] border transition-colors cursor-pointer ${
-                                                                    dist.approvalStatus === 'approved' 
-                                                                    ? 'border-[var(--crm-warning-bg)] text-[var(--crm-warning)] hover:bg-[var(--crm-warning-bg)]'
-                                                                    : 'bg-[var(--crm-bg-raised)] border-[var(--crm-ink-soft)]/10 text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]/80'
-                                                                }`}
-                                                            >
-                                                                {dist.approvalStatus === 'approved' ? 'Revoke' : 'Approve'}
-                                                            </button>
                                                             <button onClick={() => handleDeleteDistributor(dist._id)} className="p-1 text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] rounded-sm transition-all cursor-pointer">
                                                                 <FiTrash2 size={13} />
                                                             </button>
@@ -375,9 +357,10 @@ export default function Distributor() {
                                                                     >
                                                                         <div className="space-y-1 text-left">
                                                                             <div className="text-[var(--crm-ink-soft)]">
-                                                                                Lot Target: <span className="text-white font-bold">{activeProposal.lotId} ({activeProposal.grade})</span> 
-                                                                                {" | "} Volume: <span className="text-[var(--crm-positive)] font-bold">{activeProposal.quantity?.toLocaleString()} Kg</span>
-                                                                                {" | "} Base: <span className="text-[var(--crm-ink-soft)]">INR {activeProposal.basePrice}/Kg</span>
+                                                                                Lot Target: <span className="text-white font-bold">{activeProposal.lotId} ({activeProposal.grade})</span>
+                                                                                {" | "} Volume: <span className="text-[var(--crm-positive)] font-bold">{activeProposal.quantity?.toLocaleString()} {activeProposal.division === 'STONE' ? 'MT' : 'Kg'}</span>
+                                                                                {" | "} Base: <span className="text-[var(--crm-ink-soft)]">INR {activeProposal.basePrice}/{activeProposal.division === 'STONE' ? 'MT' : 'Kg'}</span>
+                                                                                {activeProposal.paymentTerm && <>{" | "} Terms: <span className="text-[var(--crm-ink-soft)]">{activeProposal.paymentTerm.replace('_', ' ')}</span></>}
                                                                                 {" | "} Gross Value: <span className="text-[var(--crm-positive)] font-bold">INR {activeProposal.estimatedValue?.toLocaleString()}</span>
                                                                             </div>
                                                                         </div>
@@ -412,7 +395,8 @@ export default function Distributor() {
                     {/* Right Detailed Dossier Panel */}
                     <AnimatePresence>
                         {selectedDistributor && (
-                            <motion.div 
+                            <motion.div
+                                ref={detailPanelRef}
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 20 }}
@@ -488,12 +472,15 @@ export default function Distributor() {
                                                         <FiFileText className="text-[var(--crm-positive)] shrink-0" />
                                                         <span className="truncate">Primary Certificate (GST/FSSAI)</span>
                                                     </div>
-                                                    <button 
-                                                        onClick={(e) => handleDownloadDoc(e, 'GST', selectedDistributor._id, selectedDistributor.company)}
-                                                        className="text-[var(--crm-positive)] hover:text-[var(--crm-positive)] flex items-center gap-1 font-bold text-[10px] uppercase cursor-pointer"
-                                                    >
-                                                        <FiDownload /> Extract
-                                                    </button>
+                                                    <DownloadButton
+                                                        action={(e) => handleDownloadDoc(e, 'GST', selectedDistributor._id, selectedDistributor.company)}
+                                                        className="text-[var(--crm-positive)] hover:text-[var(--crm-positive)] font-bold text-[10px] uppercase cursor-pointer disabled:cursor-default"
+                                                        icon={FiDownload}
+                                                        iconSize={12}
+                                                        idleLabel="Extract"
+                                                        busyLabel="Extracting..."
+                                                        doneLabel="Extracted"
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="p-2 text-[var(--crm-ink-faint)] bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm text-center italic text-[10px]">
@@ -507,12 +494,15 @@ export default function Distributor() {
                                                         <FiFileText className="text-[var(--crm-warning)] shrink-0" />
                                                         <span className="truncate">Secondary Document (Udyam Registry)</span>
                                                     </div>
-                                                    <button 
-                                                        onClick={(e) => handleDownloadDoc(e, 'UDYAM', selectedDistributor._id, selectedDistributor.company)}
-                                                        className="text-[var(--crm-warning)] hover:text-[var(--crm-warning)] flex items-center gap-1 font-bold text-[10px] uppercase cursor-pointer"
-                                                    >
-                                                        <FiDownload /> Extract
-                                                    </button>
+                                                    <DownloadButton
+                                                        action={(e) => handleDownloadDoc(e, 'UDYAM', selectedDistributor._id, selectedDistributor.company)}
+                                                        className="text-[var(--crm-warning)] hover:text-[var(--crm-warning)] font-bold text-[10px] uppercase cursor-pointer disabled:cursor-default"
+                                                        icon={FiDownload}
+                                                        iconSize={12}
+                                                        idleLabel="Extract"
+                                                        busyLabel="Extracting..."
+                                                        doneLabel="Extracted"
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="p-2 text-[var(--crm-ink-faint)] bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm text-center italic text-[10px]">
@@ -523,19 +513,6 @@ export default function Distributor() {
                                     </div>
                                 </div>
 
-                                {/* Decision Quick Panel Container */}
-                                <div className="p-4 bg-[var(--crm-bg)]/80 border-t border-[var(--crm-ink-soft)]/10 flex gap-2">
-                                    <button 
-                                        onClick={() => handleToggleVerification(selectedDistributor._id, selectedDistributor.approvalStatus)}
-                                        className={`w-full font-mono text-xs font-bold uppercase tracking-wider py-3 rounded-sm text-center flex items-center justify-center gap-2 transition-colors cursor-pointer text-white ${
-                                            selectedDistributor.approvalStatus === 'approved'
-                                            ? 'bg-[var(--crm-warning)] hover:bg-[var(--crm-warning)]'
-                                            : 'bg-[var(--crm-bg-raised)] hover:bg-[var(--crm-bg-raised)]/80 border border-[var(--crm-ink-soft)]/10'
-                                        }`}
-                                    >
-                                        <FiCheckCircle /> {selectedDistributor.approvalStatus === 'approved' ? 'Revoke Active Sourcing Access' : 'Verify Credentials & Authenticate'}
-                                    </button>
-                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

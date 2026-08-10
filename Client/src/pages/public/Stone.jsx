@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -9,6 +9,31 @@ import {
 } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { pushDataLayerEvent } from '../../utils/analytics';
+import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
+import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
+import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
+import { stoneTestimonials, STONE_ACCENT, STONE_ACCENT_TEXT, STONE_TRUST_PARAGRAPH } from '../../data/testimonials';
+import { OrderButton } from '../../components/ui/AnimatedActionButton';
+
+// Tracks which layer (1 = storefront, 5 = marketplace) the buyer was last viewing,
+// so a refresh restores the same view instead of always jumping approved buyers to Layer 5.
+const ACTIVE_LAYER_KEY = 'ito_stone_active_layer';
+
+const STONE_GATE_THEME = {
+  bg: '#37424B',
+  panelBg: '#2B333A',
+  accent: '#C5A059',
+  accentText: '#20262B',
+  text: '#F4F2EE',
+  muted: '#A89E8E',
+  border: '#4A545E',
+  eyebrow: 'Stone & Infrastructure',
+  headline: 'Welcome to India Trade Overseas',
+  subhead: 'Tell us who you are to unlock live Bhutan & Pakur stone pricing and place sourcing requests directly.',
+  fontClass: 'font-serif'
+};
 
 // Hero Background Carousel
 const HERO_CAROUSEL_IMAGES = [
@@ -37,7 +62,7 @@ const ALTERNATING_SHOWCASE = [
     id: "20mm",
     title: "20 MM Stone Chips",
     subtitle: "Roof Slabs & Commercial Concrete",
-    image: "/images/stone_images/20mm_white_stone.png",
+    image: "/images/stone_images/20mmm.jpg",
     description: "The primary standard aggregate for residential roof casting (RCC), structural beams, columns, and ready-mix concrete (RMC) batching plants. White 20MM is heavily demanded for housing project roofs.",
     specs: ["Size: 20 Nominal", "Color: Black & White Available", "Loading: Phuentsholing / Gomtu", "Usage: RCC Roofing & RMC"]
   },
@@ -82,20 +107,123 @@ const TEASER_LISTINGS = [
   { id: "ST-PUG-04", region: "Pugli Loading Point", type: "Bhutan Black 60MM", baseGrade: "Mass Fill Grade", package: "Bulk Tipper Fleets", use: "Railway Ballast & Mass Civil" }
 ];
 
-const APPROVED_MARKETPLACE_DATA = [
-  { id: "LOT-PAK-101", region: "Pakur, Jharkhand", grade: "20 MM Black Basalt", source: "Pakur Central Crusher", stock: "18,500 MT", price: "185", dispatch: "Siliguri / Kishanganj Hubs", crusher: "Pakur Lines" },
-  { id: "LOT-GOM-204", region: "Gomtu, Bhutan", grade: "10 MM / 20 MM White", source: "RIGSAR / PSB Crusher", stock: "24,000 MT", price: "220", dispatch: "Phuentsholing / Jaigaon Border", crusher: "RIGSAR / PSB" },
-  { id: "LOT-PAS-308", region: "Pasakha, Bhutan", grade: "0 MM Stone Dust", source: "LPSQ Crusher", stock: "12,200 MT", price: "95", dispatch: "Pasakha Gate", crusher: "LPSQ" },
-  { id: "LOT-SAM-412", region: "Samtse, Bhutan", grade: "WMM / Road Base Mix", source: "Gomtu / Pugli Plants", stock: "31,000 MT", price: "140", dispatch: "Direct Site Freight", crusher: "Gomtu Primary" }
+// Official ITO Pakur Stone Rate List â€” location -> [20MM(5/8), 30MM, 40MM, 10MM] per payment term
+// Source: "ITO Pakur Stone Rate List.pdf". `null` = not available at that location/size (e.g. Malda 40MM).
+const PAKUR_RAW = [
+  ['Kolkata',      [2020, 2020, 1920, 1410], [2090, 2090, 1990, 1480], [2140, 2140, 2040, 1530]],
+  ['Siliguri',     [2330, 2330, 2230, 1755], [2400, 2400, 2300, 1825], [2450, 2450, 2350, 1875]],
+  ['Malda',        [1555, 1555, null, 905],  [1625, 1625, null, 975],  [1675, 1675, null, 1025]],
+  ['Sitamarhi',    [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
+  ['Chhapra',      [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
+  ['Madhepura',    [2455, 2455, 2305, 1855], [2525, 2525, 2375, 1925], [2575, 2575, 2425, 1975]],
+  ['Hajipur',      [2605, 2605, 2455, 2005], [2675, 2675, 2525, 2075], [2725, 2725, 2575, 2125]],
+  ['Katihar',      [2055, 2055, 1905, 1455], [2125, 2125, 1975, 1525], [2175, 2175, 2025, 1575]],
+  ['Purnia',       [2055, 2055, 1905, 1555], [2125, 2125, 1975, 1625], [2175, 2175, 2025, 1675]],
+  ['Bhagalpur',    [1880, 1880, 1830, 1280], [1950, 1950, 1900, 1350], [2000, 2000, 1950, 1400]],
+  ['Bihar Sharif', [2380, 2380, 2230, 1780], [2450, 2450, 2300, 1850], [2500, 2500, 2350, 1900]],
+  ['Siwan',        [2730, 2730, 2580, 2130], [2800, 2800, 2650, 2200], [2850, 2850, 2700, 2250]],
+  ['Darbhanga',    [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
+  ['Araria',       [2155, 2155, 2005, 1555], [2225, 2225, 2075, 1625], [2275, 2275, 2125, 1675]],
+  ['Sheikhpura',   [2380, 2380, 2230, 1780], [2450, 2450, 2300, 1850], [2500, 2500, 2350, 1900]],
+  ['Madhubani',    [2605, 2605, 2455, 2005], [2675, 2675, 2525, 2075], [2725, 2725, 2575, 2125]],
+  ['Muzaffarpur',  [2505, 2505, 2355, 1905], [2575, 2575, 2425, 1975], [2625, 2625, 2475, 2025]],
+  ['Kahalgaon',    [1780, 1780, 1630, 1180], [1850, 1850, 1700, 1250], [1900, 1900, 1750, 1300]],
+  ['Patna',        [2480, 2480, 2330, 1880], [2550, 2550, 2400, 1950], [2600, 2600, 2450, 2000]],
+  ['Kishanganj',   [2005, 2005, 1905, 1505], [2075, 2075, 1975, 1575], [2125, 2125, 2025, 1625]],
+  ['Forbesganj',   [2205, 2205, 2055, 1705], [2275, 2275, 2125, 1775], [2325, 2325, 2175, 1825]],
+  ['Naugachia',    [2205, 2205, 2055, 1755], [2275, 2275, 2125, 1825], [2325, 2325, 2175, 1875]],
+  ['Banka',        [1780, 1780, 1630, 1180], [1850, 1850, 1700, 1250], [1900, 1900, 1750, 1300]],
+  ['Sheohar',      [2680, 2680, 2530, 2080], [2750, 2750, 2600, 2150], [2800, 2800, 2650, 2200]]
 ];
 
+const PAKUR_SIZE_KEYS = ['20mm', '30mm', '40mm', '10mm'];
+const PAKUR_SIZE_LABELS = { '20mm': '20 MM (5/8)', '30mm': '30 MM', '40mm': '40 MM', '10mm': '10 MM' };
+
+const PAKUR_RATES = PAKUR_RAW.map(([location, adv100, adv50, cod]) => ({
+  location,
+  rates: PAKUR_SIZE_KEYS.reduce((acc, key, i) => {
+    acc[key] = { adv100: adv100[i], adv50: adv50[i], cod: cod[i] };
+    return acc;
+  }, {})
+}));
+
+const PAYMENT_TERMS = [
+  { key: 'ADVANCE_100', label: '100% Advance', priceField: 'adv100' },
+  { key: 'ADVANCE_50', label: '50% Advance', priceField: 'adv50' },
+  { key: 'COD', label: 'Cash on Delivery', priceField: 'cod' }
+];
+
+// Official Bhutan Stone Material Rate Card â€” location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
+// Source: "Bhutan Stone Rate List.pdf". Note on the card: up to Rs 100 may be negotiated off the listed rate.
+const BHUTAN_RAW = [
+  ['Jalpaiguri',      'West Bengal', [1130, 1230, 1600, 1510, 1530, 1430, 1610, 1835, 1795, 1730]],
+  ['Siliguri',        'West Bengal', [1180, 1280, 1650, 1560, 1580, 1480, 1660, 1885, 1845, 1780]],
+  ['Sonapur',         'West Bengal', [1200, 1300, 1670, 1580, 1600, 1500, 1680, 1905, 1865, 1800]],
+  ['Islampur',        'West Bengal', [1230, 1330, 1700, 1610, 1630, 1530, 1710, 1935, 1895, 1830]],
+  ['Kanki',            'West Bengal', [1300, 1400, 1770, 1680, 1700, 1600, 1780, 2005, 1965, 1900]],
+  ['Thakurganj',       'Bihar', [1230, 1330, 1700, 1610, 1630, 1530, 1710, 1935, 1895, 1830]],
+  ['Kishanganj',       'Bihar', [1280, 1380, 1750, 1660, 1680, 1580, 1760, 1985, 1945, 1880]],
+  ['Bahadurganj',      'Bihar', [1330, 1430, 1800, 1710, 1730, 1630, 1810, 2035, 1995, 1930]],
+  ['Araria',           'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Kursakata',        'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Bardha',           'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Supaul',           'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Forbisganj',       'Bihar', [1410, 1510, 1880, 1790, 1810, 1710, 1890, 2115, 2075, 2010]],
+  ['Narpatganj',       'Bihar', [1430, 1530, 1900, 1810, 1830, 1730, 1910, 2135, 2095, 2030]],
+  ['Kositool',         'Bihar', [1480, 1580, 1950, 1860, 1880, 1780, 1960, 2185, 2145, 2080]],
+  ['Birpur',           'Bihar', [1480, 1580, 1950, 1860, 1880, 1780, 1960, 2185, 2145, 2080]],
+  ['Phulparas',        'Bihar', [1530, 1630, 2000, 1910, 1930, 1830, 2010, 2235, 2195, 2130]],
+  ['Narhiya S Bihar',  'Bihar', [1530, 1630, 2000, 1910, 1930, 1830, 2010, 2235, 2195, 2130]],
+  ['Jhanjharpur',      'Bihar', [1580, 1680, 2050, 1960, 1980, 1880, 2060, 2285, 2245, 2180]],
+  ['Khutauna',         'Bihar', [1580, 1680, 2050, 1960, 1980, 1880, 2060, 2285, 2245, 2180]],
+  ['Darbhanga',        'Bihar', [1630, 1730, 2100, 2010, 2030, 1930, 2110, 2335, 2295, 2230]],
+  ['Madhubani',        'Bihar', [1630, 1730, 2100, 2010, 2030, 1930, 2110, 2335, 2295, 2230]],
+  ['Samastipur',       'Bihar', [1680, 1780, 2150, 2060, 2080, 1980, 2160, 2385, 2345, 2280]],
+  ['Sitamarhi',        'Bihar', [1740, 1840, 2210, 2120, 2140, 2040, 2220, 2445, 2405, 2340]],
+  ['Muzaffarpur',      'Bihar', [1800, 1900, 2270, 2180, 2200, 2100, 2280, 2505, 2465, 2400]]
+];
+
+const BHUTAN_TYPE_KEYS = ['dust', 'white10', 'white20', 'white3040', 'white30', 'white4060', 'black10', 'black20', 'black30', 'black4060'];
+const BHUTAN_TYPE_LABELS = {
+  dust: 'Stone Dust',
+  white10: '10 MM White',
+  white20: '20 MM White',
+  white3040: '30/40 White',
+  white30: '30 MM White',
+  white4060: '40/60 White',
+  black10: '10 MM Black Kamji',
+  black20: '20 MM Black Kamji',
+  black30: '30 MM Black Kamji',
+  black4060: '40/60 Black Kamji'
+};
+
+const BHUTAN_RATES = BHUTAN_RAW.map(([location, state, values]) => ({
+  location,
+  state,
+  rates: BHUTAN_TYPE_KEYS.reduce((acc, key, i) => {
+    acc[key] = values[i];
+    return acc;
+  }, {})
+}));
+
 export default function Stone() {
+  useDocumentMeta({
+    title: 'Bhutan & Pakur Stone Chips Supplier | B2B Bulk Sourcing | India Trade Overseas',
+    description: 'Source Bhutan and Pakur stone chips in bulk — live location-wise rate cards, verified B2B buyer onboarding, and direct sourcing requests with India Trade Overseas.',
+    canonicalPath: '/stone'
+  });
+
   const [userAccessLayer, setUserAccessLayer] = useState(1);
   const [isSessionLoading, setIsLoadingSession] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [step, setStep] = useState('register');
+  const [showEntryGate, setShowEntryGate] = useState(() => {
+    // Dev-only escape hatch (stripped out of production builds) so the storefront —
+    // including the Testimonials section — can be previewed locally without the OTP gate.
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('previewTestimonials') === '1') {
+      return false;
+    }
+    return !(localStorage.getItem('ito_stone_buyer_id') && localStorage.getItem('distributor_token'));
+  });
   const [distributorId, setDistributorId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [myProposals, setMyProposals] = useState([]);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
 
@@ -106,25 +234,12 @@ export default function Stone() {
   const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
   const [activeDrawerLot, setActiveDrawerLot] = useState(null);
   const [orderQuantity, setOrderQuantity] = useState('500');
-  const [modalMode, setModalMode] = useState('register');
-  const [loginEmail, setLoginEmail] = useState('');
 
-  // Verification Form Inputs
-  const [businessType, setBusinessType] = useState('1');
-  const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [country, setCountry] = useState('India');
-  const [stoneType, setStoneType] = useState('20 MM Stone Chips');
-  const [monthlyReq, setMonthlyReq] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [doc1, setDoc1] = useState(null);
-  const [doc2, setDoc2] = useState(null);
-  const [otp, setOtp] = useState('');
+  // Official Rate Card Selector (Layer 5 marketplace pricing)
+  const [rateDivision, setRateDivision] = useState('PAKUR'); // 'PAKUR' | 'BHUTAN'
+  const [rateLocation, setRateLocation] = useState(PAKUR_RATES[0].location);
+  const [rateGrade, setRateGrade] = useState(PAKUR_SIZE_KEYS[0]);
+  const [ratePaymentTerm, setRatePaymentTerm] = useState('ADVANCE_100');
 
   // Global Navbar Visibility Control
   useEffect(() => {
@@ -147,7 +262,7 @@ export default function Stone() {
 
   // Fetch STONE Proposals
   const fetchMyProposals = async () => {
-    const storedId = distributorId || localStorage.getItem('ito_stone_buyer_id') || localStorage.getItem('prakriti_distributor_id');
+    const storedId = distributorId || localStorage.getItem('ito_stone_buyer_id');
     const token = localStorage.getItem('distributor_token');
 
     if (!storedId || !token) return;
@@ -170,28 +285,58 @@ export default function Stone() {
 
   // Session Initialization
   useEffect(() => {
+    // Retries transient failures (e.g. a cold-started free-tier backend) so a
+    // returning verified distributor isn't dropped back to the entry gate by
+    // a flaky first request. A real 404 (distributor deleted in CRM) is not
+    // retried — that's the one case that should log them out.
+    const fetchStatusWithRetry = async (id, attemptsLeft = 2) => {
+      try {
+        return await distributorApi.getDistributorStatus(id);
+      } catch (err) {
+        if (err.response?.status === 404 || attemptsLeft <= 0) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return fetchStatusWithRetry(id, attemptsLeft - 1);
+      }
+    };
+
     const initializeSession = async () => {
-      const savedId = localStorage.getItem('ito_stone_buyer_id') || localStorage.getItem('prakriti_distributor_id');
+      const savedId = localStorage.getItem('ito_stone_buyer_id');
       const token = localStorage.getItem('distributor_token');
 
       if (savedId && token) {
         setDistributorId(savedId);
         try {
-          const res = await distributorApi.getDistributorStatus(savedId);
+          const res = await fetchStatusWithRetry(savedId);
           if (res.success) {
             const status = res.data.approvalStatus;
-            if (status === 'approved') setUserAccessLayer(5);
+            if (status === 'approved') {
+              const savedLayer = localStorage.getItem(ACTIVE_LAYER_KEY);
+              setUserAccessLayer(savedLayer === '5' ? 5 : 1);
+            }
             else if (status === 'pending') setUserAccessLayer(4);
             else handleLogOut();
           }
         } catch (err) {
-          console.error("Session sync failed:", err);
+          if (err.response?.status === 404) {
+            handleLogOut();
+          } else {
+            console.error("Session sync failed:", err);
+          }
         }
       }
       setIsLoadingSession(false);
     };
     initializeSession();
   }, []);
+
+  // Persist the settled layer (storefront vs marketplace) so a refresh restores
+  // the same view instead of always snapping approved buyers to Layer 5.
+  useEffect(() => {
+    if (isSessionLoading) return;
+    if (userAccessLayer === 1 || userAccessLayer === 5) {
+      localStorage.setItem(ACTIVE_LAYER_KEY, String(userAccessLayer));
+    }
+  }, [userAccessLayer, isSessionLoading]);
 
   // Polling loop for pending users (Layer 4)
   useEffect(() => {
@@ -223,98 +368,85 @@ export default function Stone() {
     return () => clearInterval(pollingTimer);
   }, [userAccessLayer, distributorId]);
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    if (!name.trim()) return toast.error("Full Name is required.");
-    if (!company.trim()) return toast.error("Company Name is required.");
-    if (!email.trim()) return toast.error("Corporate Email is required.");
-    if (!mobile.trim()) return toast.error("Mobile Contact is required.");
-    if (!address.trim()) return toast.error("Site/Yard Address is required.");
-
-    if (['1', '2', '3'].includes(businessType) && !doc1) {
-      return toast.error("GST Certificate or Udyam Registration is required.");
+  // Entry-gate verification (name/email/phone/location + OTP already handled
+  // inside BuyerEntryGate) â€” just adopt the resulting session.
+  const handleGateVerified = (activeId, activeToken) => {
+    if (activeId) {
+      setDistributorId(activeId);
+      localStorage.setItem('ito_stone_buyer_id', activeId);
     }
+    if (activeToken) localStorage.setItem('distributor_token', activeToken);
 
-    setIsSubmitting(true);
-    const data = new FormData();
-    data.append('name', name);
-    data.append('company', company);
-    data.append('email', email);
-    data.append('mobile', mobile);
-    data.append('address', address);
-    data.append('city', city);
-    data.append('state', state);
-    data.append('country', country);
-    data.append('teaType', stoneType);
-    data.append('monthlyReq', monthlyReq);
-    data.append('purpose', purpose);
-    data.append('businessType', businessType);
-    data.append('division', 'STONE');
-
-    if (doc1) data.append('doc1', doc1);
-    if (doc2) data.append('doc2', doc2);
-
-    try {
-      const res = await distributorApi.registerDistributor(data);
-      if (res.success) {
-        toast.success(res.message || "B2B Profile submitted. OTP code dispatched.");
-        setDistributorId(res.data.distributorId);
-        localStorage.setItem('ito_stone_buyer_id', res.data.distributorId);
-        localStorage.setItem('prakriti_distributor_id', res.data.distributorId);
-        setStep('otp');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Registration failed. Check files.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    pushDataLayerEvent('stone_distributor_verified', { division: 'STONE' });
+    setShowEntryGate(false);
+    setUserAccessLayer(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (otp.length < 6) return toast.error("Security code must be 6 digits.");
-
-    setIsSubmitting(true);
-    try {
-      const res = await distributorApi.verifyOtp(distributorId, otp);
-      if (res.success) {
-        toast.success("B2B Credentials Verified!");
-        const activeToken = res.token || res.data?.token || res.data?.accessToken;
-        const activeId = res.data?.distributorId || res.data?._id || distributorId;
-
-        if (activeId) {
-          setDistributorId(activeId);
-          localStorage.setItem('ito_stone_buyer_id', activeId);
-          localStorage.setItem('prakriti_distributor_id', activeId);
-        }
-        if (activeToken) localStorage.setItem('distributor_token', activeToken);
-
-        setIsModalOpen(false);
-        setStep('register');
-
-        const statusRes = await distributorApi.getDistributorStatus(activeId);
-        if (statusRes.data?.approvalStatus === 'approved') {
-          setUserAccessLayer(5);
-        } else {
-          setUserAccessLayer(4);
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid or expired OTP.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  // Only for the two genuinely destructive cases: the CRM record was deleted (404)
+  // or explicitly rejected. Clears the saved session so the entry gate reappears.
   const handleLogOut = () => {
     setUserAccessLayer(1);
     setDistributorId('');
     localStorage.removeItem('ito_stone_buyer_id');
-    localStorage.removeItem('prakriti_distributor_id');
     localStorage.removeItem('distributor_token');
+    localStorage.removeItem(ACTIVE_LAYER_KEY);
     toast.success("Secured terminal session locked.");
   };
+
+  // Manual "exit" from the marketplace — just switches the view back to the
+  // storefront. Does NOT clear the saved session, so a refresh/reopen restores
+  // straight back in without re-verification, as long as the CRM record still exists.
+  const handleExitTerminal = () => {
+    setUserAccessLayer(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Reset location/grade whenever the division toggle changes
+  useEffect(() => {
+    if (rateDivision === 'PAKUR') {
+      setRateLocation(PAKUR_RATES[0].location);
+      setRateGrade(PAKUR_SIZE_KEYS[0]);
+    } else {
+      setRateLocation(BHUTAN_RATES[0].location);
+      setRateGrade(BHUTAN_TYPE_KEYS[0]);
+    }
+  }, [rateDivision]);
+
+  const activeRateEntry = (rateDivision === 'PAKUR' ? PAKUR_RATES : BHUTAN_RATES)
+    .find((entry) => entry.location === rateLocation);
+
+  const activeRatePrice = rateDivision === 'PAKUR'
+    ? activeRateEntry?.rates?.[rateGrade]?.[PAYMENT_TERMS.find((t) => t.key === ratePaymentTerm).priceField] ?? null
+    : activeRateEntry?.rates?.[rateGrade] ?? null;
+
+  const openRateQuoteDrawer = () => {
+    if (!activeRateEntry || activeRatePrice == null) return;
+    const gradeLabel = rateDivision === 'PAKUR' ? PAKUR_SIZE_LABELS[rateGrade] : BHUTAN_TYPE_LABELS[rateGrade];
+    const termLabel = rateDivision === 'PAKUR' ? PAYMENT_TERMS.find((t) => t.key === ratePaymentTerm).label : null;
+
+    setActiveDrawerLot({
+      id: `${rateDivision}-${rateLocation.toUpperCase().replace(/\s+/g, '-')}-${rateGrade.toUpperCase()}`,
+      division: rateDivision === 'PAKUR' ? 'Pakur Stone' : 'Bhutan Stone',
+      region: activeRateEntry.state ? `${rateLocation}, ${activeRateEntry.state}` : rateLocation,
+      grade: termLabel ? `${gradeLabel} (${termLabel})` : gradeLabel,
+      price: activeRatePrice,
+      paymentTerm: rateDivision === 'PAKUR' ? ratePaymentTerm : undefined
+    });
+    setIsOrderDrawerOpen(true);
+  };
+
+  if (showEntryGate) {
+    return (
+      <BuyerEntryGate
+        theme={STONE_GATE_THEME}
+        division="STONE"
+        requireOtp={true}
+        onVerified={handleGateVerified}
+        mascotSrc="/images/walking-man.png"
+      />
+    );
+  }
 
   if (isSessionLoading) {
     return (
@@ -337,7 +469,7 @@ export default function Stone() {
             <h2 className="text-3xl font-serif text-[#37424B] uppercase tracking-wide">Buyer Account Under Review</h2>
             <div className="w-16 h-[2px] bg-[#C5A059] mx-auto" />
             <p className="text-[#6D6760] text-sm leading-relaxed max-w-lg mx-auto font-sans font-light">
-              “Your India Trade Overseas stone buyer account is under review. Our team is verifying your GST/Udyam business documents. You will receive confirmation within 24 hours once approved.”
+              â€œYour India Trade Overseas stone buyer account is under review. Our team is verifying your GST/Udyam business documents. You will receive confirmation within 24 hours once approved.â€
             </p>
             <div className="bg-[#F4F2EE] border border-[#DCCCB4] rounded-xl p-4 text-left text-xs font-sans text-[#6D6760] space-y-1.5 max-w-md mx-auto">
               <div className="font-bold text-[#37424B] uppercase tracking-wider text-[10px] font-mono">VERIFICATION CHECKLIST PIPELINE:</div>
@@ -378,7 +510,7 @@ export default function Stone() {
                 </div>
               </div>
 
-              {/* 🟢 Responsive 2-Column Grid on Mobile, Flex on Desktop */}
+              {/* ðŸŸ¢ Responsive 2-Column Grid on Mobile, Flex on Desktop */}
               <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                 <div className="hidden md:flex flex-col text-right font-mono text-[10px] text-slate-300 border-r border-white/10 pr-4">
                   <span>BHUTAN & PAKUR DESKS DISPATCH ACTIVE</span>
@@ -399,10 +531,10 @@ export default function Stone() {
                 </button>
 
                 <button
-                  onClick={handleLogOut}
+                  onClick={handleExitTerminal}
                   className="w-full sm:w-auto bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 border border-white/10 text-slate-200 font-mono text-[9px] xs:text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-2.5 px-2 sm:px-3 rounded-lg transition-all cursor-pointer text-center truncate"
                 >
-                  Logout
+                  Exit Terminal
                 </button>
               </div>
 
@@ -499,19 +631,31 @@ export default function Stone() {
                                             description: `Invoice Settlement - Lot ${prop.lotId}`,
                                             order_id: orderId,
                                             handler: async function (response) {
-                                              const verifyResult = await distributorApi.verifyRazorpayPayment({
-                                                razorpay_order_id: response.razorpay_order_id,
-                                                razorpay_payment_id: response.razorpay_payment_id,
-                                                razorpay_signature: response.razorpay_signature,
-                                                lotId: prop.lotId,
-                                                quantity: prop.quantity,
-                                                amount: singleAmount
-                                              });
+                                              try {
+                                                const verifyResult = await distributorApi.verifyRazorpayPayment({
+                                                  razorpay_order_id: response.razorpay_order_id,
+                                                  razorpay_payment_id: response.razorpay_payment_id,
+                                                  razorpay_signature: response.razorpay_signature,
+                                                  lotId: prop.lotId,
+                                                  quantity: prop.quantity,
+                                                  amount: singleAmount
+                                                });
 
-                                              if (verifyResult?.success) {
-                                                await distributorApi.updateProposalStatus(prop._id, 'paid');
-                                                toast.success(`Payment verified for Lot ${prop.lotId}!`);
-                                                fetchMyProposals();
+                                                if (verifyResult?.success) {
+                                                  await distributorApi.updateProposalStatus(prop._id, 'paid');
+                                                  toast.success(`Payment verified for Lot ${prop.lotId}!`);
+                                                  pushDataLayerEvent('stone_payment_success', {
+                                                    transaction_id: response.razorpay_payment_id,
+                                                    value: singleAmount,
+                                                    currency: 'INR',
+                                                    lot_id: prop.lotId,
+                                                    quantity: prop.quantity
+                                                  });
+                                                  fetchMyProposals();
+                                                }
+                                              } catch (verifyErr) {
+                                                console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
+                                                toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
                                               }
                                             },
                                             theme: { color: "#37424B" }
@@ -519,8 +663,9 @@ export default function Stone() {
 
                                           new window.Razorpay(options).open();
                                         } catch (err) {
+                                          console.error('Razorpay create-order failed:', err.response?.data || err);
                                           toast.dismiss(loadingToast);
-                                          toast.error(err.message || "Checkout failed.");
+                                          toast.error(err.response?.data?.message || err.message || "Checkout failed.");
                                         }
                                       }}
                                       className="bg-[#37424B] hover:bg-[#252c34] text-white px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase shadow-xs flex items-center gap-1"
@@ -571,7 +716,7 @@ export default function Stone() {
                           }, 0);
 
                           if (aggregateAmount > 500000) {
-                            return toast.error("Total exceeds Razorpay's single-transaction cap (₹5,00,000). Please pay invoices individually.");
+                            return toast.error("Total exceeds Razorpay's single-transaction cap (â‚¹5,00,000). Please pay invoices individually.");
                           }
 
                           const targetLotString = approvedProposals.map(p => p.lotId).filter(Boolean).join(", ");
@@ -622,11 +767,19 @@ export default function Stone() {
 
                                   toast.dismiss(verificationToast);
                                   toast.success("Transaction certified! Invoices cleared.");
+                                  pushDataLayerEvent('stone_payment_success', {
+                                    transaction_id: response.razorpay_payment_id,
+                                    value: aggregateAmount,
+                                    currency: 'INR',
+                                    lot_id: targetLotString,
+                                    quantity: combinedQuantity
+                                  });
                                   setIsProposalModalOpen(false);
                                   fetchMyProposals();
                                 } catch (verifyErr) {
+                                  console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
                                   toast.dismiss(verificationToast);
-                                  toast.error(verifyErr.message || "Payment verification failed.");
+                                  toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
                                 }
                               },
                               prefill: {
@@ -638,6 +791,7 @@ export default function Stone() {
 
                             new window.Razorpay(options).open();
                           } catch (err) {
+                            console.error('Razorpay create-order failed:', err.response?.data || err);
                             toast.dismiss(loadingToast);
                             toast.error(err.response?.data?.message || err.message || "Gateway initialization failed.");
                           }
@@ -657,89 +811,106 @@ export default function Stone() {
               )}
             </AnimatePresence>
 
-            {/* Live Pricing Section */}
+            {/* Official Rate Card Selector */}
             <div className="space-y-3 sm:space-y-4 text-left">
               <h3 className="font-serif text-base sm:text-lg text-[#37424B] uppercase tracking-wider font-bold px-1">
-                Available Crusher Lots & Live Freight Quotations
+                Official Rate Card â€” Select Origin, Delivery Location & Grade
               </h3>
 
-              {/* 📱 MOBILE VIEW: Cards */}
-              <div className="grid grid-cols-1 gap-3.5 md:hidden">
-                {APPROVED_MARKETPLACE_DATA.map((row) => (
-                  <div key={row.id} className="bg-white border border-[#DCCCB4] rounded-xl p-4 shadow-sm space-y-3">
-                    <div className="flex items-start justify-between border-b border-slate-100 pb-2.5">
-                      <div>
-                        <div className="text-xs font-mono font-bold text-[#37424B] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mb-1">
-                          {row.id}
-                        </div>
-                        <h4 className="font-serif font-bold text-slate-900 text-sm">{row.region}</h4>
-                      </div>
-                      <span className="bg-slate-100 px-2 py-0.5 border border-slate-200 font-mono text-[10px] text-slate-800 font-bold rounded">
-                        {row.crusher}
-                      </span>
-                    </div>
+              <div className="bg-white border border-[#DCCCB4] rounded-xl p-4 sm:p-6 shadow-sm space-y-4">
+                {/* Division Toggle */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRateDivision('PAKUR')}
+                    className={`flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      rateDivision === 'PAKUR' ? 'bg-[#37424B] text-white border-[#37424B]' : 'bg-[#F4F2EE] text-[#6D6760] border-[#DCCCB4]'
+                    }`}
+                  >
+                    Pakur Stone
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRateDivision('BHUTAN')}
+                    className={`flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      rateDivision === 'BHUTAN' ? 'bg-[#37424B] text-white border-[#37424B]' : 'bg-[#F4F2EE] text-[#6D6760] border-[#DCCCB4]'
+                    }`}
+                  >
+                    Bhutan Stone
+                  </button>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs font-sans">
-                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <span className="text-[9px] font-mono uppercase text-slate-400 block">Nominal Spec</span>
-                        <span className="font-medium text-slate-800">{row.grade}</span>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <span className="text-[9px] font-mono uppercase text-slate-400 block">Rate / Stock</span>
-                        <span className="font-bold text-[#37424B] block font-mono">INR {row.price}/MT</span>
-                        <span className="text-[10px] text-slate-500 font-mono block">Stock: {row.stock}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setActiveDrawerLot(row);
-                        setIsOrderDrawerOpen(true);
-                      }}
-                      className="w-full bg-[#37424B] hover:bg-[#252c34] active:scale-98 text-white py-2.5 rounded-lg font-mono font-bold uppercase text-[9px] tracking-wider shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                <div className={`grid grid-cols-1 ${rateDivision === 'PAKUR' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-[#6D6760] mb-1">Delivery Location *</label>
+                    <select
+                      value={rateLocation}
+                      onChange={(e) => setRateLocation(e.target.value)}
+                      className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-xs text-[#37424B] font-mono"
                     >
-                      <FiShoppingCart size={11} /> Request Freight Quote
-                    </button>
+                      {(rateDivision === 'PAKUR' ? PAKUR_RATES : BHUTAN_RATES).map((entry) => (
+                        <option key={entry.location} value={entry.location}>
+                          {entry.location}{entry.state ? ` (${entry.state})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ))}
-              </div>
 
-              {/* 💻 DESKTOP VIEW: Table */}
-              <div className="hidden md:block bg-white border border-[#DCCCB4] rounded-xl overflow-hidden shadow-xl overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#37424B] text-[#F4F2EE] border-b border-[#C5A059] font-mono uppercase tracking-wider text-[10px]">
-                      <th className="p-4 font-medium text-[#C5A059]">Lot Ref</th>
-                      <th className="p-4 font-medium">Origin Quarry / Gate</th>
-                      <th className="p-4 font-medium">Nominal Size & Color</th>
-                      <th className="p-4 font-medium">Crusher Plant</th>
-                      <th className="p-4 font-medium">Available Inventory</th>
-                      <th className="p-4 font-medium text-[#C5A059]">Commercial Price</th>
-                      <th className="p-4 font-medium text-right pr-6">Order Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#DCCCB4]/40 font-sans text-[#37424B]">
-                    {APPROVED_MARKETPLACE_DATA.map((row) => (
-                      <tr key={row.id} className="hover:bg-[#F4F2EE] transition-colors">
-                        <td className="p-4 font-mono font-bold text-[#37424B] text-[13px]">{row.id}</td>
-                        <td className="p-4 font-semibold">{row.region}</td>
-                        <td className="p-4">
-                          <span className="bg-[#DCCCB4]/30 px-2 py-0.5 border border-[#A89E8E]/40 font-mono text-[11px] font-bold rounded-sm">
-                            {row.grade}
-                          </span>
-                        </td>
-                        <td className="p-4 font-mono">{row.crusher}</td>
-                        <td className="p-4 font-mono font-semibold">{row.stock}</td>
-                        <td className="p-4 font-mono font-bold text-[13px] text-[#C5A059]">INR {row.price}/MT</td>
-                        <td className="p-4 text-right space-x-2 whitespace-nowrap pr-6">
-                          <button onClick={() => { setActiveDrawerLot(row); setIsOrderDrawerOpen(true); }} className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] px-4 py-2 rounded-sm font-mono font-bold uppercase tracking-wider text-[10px] shadow transition-all cursor-pointer">
-                            Request Freight Quote
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-[#6D6760] mb-1">
+                      {rateDivision === 'PAKUR' ? 'Nominal Size *' : 'Material Grade *'}
+                    </label>
+                    <select
+                      value={rateGrade}
+                      onChange={(e) => setRateGrade(e.target.value)}
+                      className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-xs text-[#37424B] font-mono"
+                    >
+                      {(rateDivision === 'PAKUR' ? PAKUR_SIZE_KEYS : BHUTAN_TYPE_KEYS).map((key) => (
+                        <option key={key} value={key}>
+                          {rateDivision === 'PAKUR' ? PAKUR_SIZE_LABELS[key] : BHUTAN_TYPE_LABELS[key]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {rateDivision === 'PAKUR' && (
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-[#6D6760] mb-1">Payment Term *</label>
+                      <select
+                        value={ratePaymentTerm}
+                        onChange={(e) => setRatePaymentTerm(e.target.value)}
+                        className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-xs text-[#37424B] font-mono"
+                      >
+                        {PAYMENT_TERMS.map((term) => (
+                          <option key={term.key} value={term.key}>{term.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F4F2EE] border border-[#DCCCB4] rounded-xl p-4">
+                  {activeRatePrice == null ? (
+                    <span className="text-xs font-sans text-slate-500 italic">Not available at this location for the selected grade.</span>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="text-[9px] font-mono uppercase text-slate-400 block">Commercial Rate</span>
+                        <span className="text-xl font-mono font-extrabold text-[#37424B]">INR {activeRatePrice.toLocaleString()}<span className="text-xs font-medium text-slate-500">/MT</span></span>
+                      </div>
+                      <button
+                        onClick={openRateQuoteDrawer}
+                        className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] px-5 py-3 rounded-lg font-mono font-bold uppercase tracking-wider text-[10px] shadow transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <FiShoppingCart size={12} /> Request Freight Quote
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {rateDivision === 'BHUTAN' && (
+                  <p className="text-[10px] text-slate-400 font-sans">Rates per official Bhutan Stone rate card; up to â‚¹100/MT may be negotiable at final invoicing.</p>
+                )}
               </div>
             </div>
           </div>
@@ -773,7 +944,7 @@ export default function Stone() {
                 <div className="inline-flex items-center gap-2 border px-4 py-1.5 rounded-full bg-[#37424B]/90 border-[#C5A059]/40">
                   <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-pulse" />
                   <span className="text-[10px] tracking-[0.25em] font-mono font-bold uppercase text-[#C5A059]">
-                    01 • GEOLOGICAL EXTRACTION
+                    01 â€¢ GEOLOGICAL EXTRACTION
                   </span>
                 </div>
 
@@ -794,10 +965,10 @@ export default function Stone() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
                   <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => setUserAccessLayer(5)}
                     className="w-full sm:w-auto text-[#37424B] text-xs font-mono font-bold uppercase tracking-widest px-8 py-4 rounded shadow-xl transition-all hover:scale-105 transform cursor-pointer bg-[#C5A059]"
                   >
-                    Verify Business to Access Rates
+                    Explore Products
                   </button>
                   <a
                     href="#teaser-deck"
@@ -810,10 +981,10 @@ export default function Stone() {
 
               <div className="lg:col-span-5 space-y-3">
                 {[
-                  { label: "01 • SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
-                  { label: "02 • NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
-                  { label: "03 • LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
-                  { label: "04 • TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
+                  { label: "01 â€¢ SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
+                  { label: "02 â€¢ NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
+                  { label: "03 â€¢ LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
+                  { label: "04 â€¢ TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
                 ].map((card, idx) => (
                   <div
                     key={idx}
@@ -886,10 +1057,10 @@ export default function Stone() {
                       </div>
                       <div className="pt-2">
                         <button
-                          onClick={() => setIsModalOpen(true)}
+                          onClick={() => setUserAccessLayer(5)}
                           className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-[10px] uppercase tracking-wider py-2.5 px-5 rounded shadow transition-all cursor-pointer inline-flex items-center gap-2"
                         >
-                          Verify Business to View Rates <FiArrowRight />
+                          Explore Products <FiArrowRight />
                         </button>
                       </div>
                     </div>
@@ -923,7 +1094,7 @@ export default function Stone() {
 
                       <div className="bg-black/40 rounded-lg p-3 border border-white/5 text-[10px] font-mono space-y-1 relative">
                         <div className="filter blur-xs select-none space-y-1 opacity-40">
-                          <div>COMMERCIAL RATE: ₹X,XXX / MT</div>
+                          <div>COMMERCIAL RATE: â‚¹X,XXX / MT</div>
                           <div>CRUSHER: [Encrypted Plant]</div>
                           <div>DISPATCH: [Restricted Gate]</div>
                         </div>
@@ -937,10 +1108,10 @@ export default function Stone() {
 
                     <div className="pt-4 border-t border-white/10 mt-5">
                       <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => setUserAccessLayer(5)}
                         className="w-full bg-white/5 hover:bg-[#C5A059] text-white hover:text-[#37424B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                       >
-                        Verify Business to Access Rates
+                        Explore Products
                       </button>
                     </div>
                   </div>
@@ -948,173 +1119,36 @@ export default function Stone() {
               </div>
             </div>
           </section>
+
+          {/* BUYER TESTIMONIAL COVERFLOW */}
+          <section className="relative py-6 sm:py-8 bg-[#37424B] px-4 sm:px-6 lg:px-8 border-t border-[#C5A059]/15 overflow-hidden">
+            <TestimonialSectionBackground accentColor={STONE_ACCENT} />
+            <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              <div className="text-center lg:text-left">
+                <span className="inline-block text-[10px] sm:text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#C5A059] bg-[#2B333A]/80 px-3 py-1 rounded-full border border-[#C5A059]/30 mb-3">
+                  Trusted By Buyers Worldwide
+                </span>
+                <h2 className="text-xl sm:text-3xl font-serif uppercase tracking-wide text-white drop-shadow-md leading-tight mb-4">
+                  Why Trade Partners Choose Our Stone
+                </h2>
+                <p className="text-[#DCD3C4] text-xs sm:text-sm font-light leading-relaxed max-w-md mx-auto lg:mx-0">
+                  {STONE_TRUST_PARAGRAPH}
+                </p>
+              </div>
+
+              <div className="relative">
+                <TestimonialCoverflow
+                  items={stoneTestimonials}
+                  accentColor={STONE_ACCENT}
+                  accentTextColor={STONE_ACCENT_TEXT}
+                  aspectClass="aspect-[4/3]"
+                  cardWidthClass="w-[155px] sm:w-[185px] md:w-[210px] lg:w-[230px]"
+                />
+              </div>
+            </div>
+          </section>
         </>
       )}
-
-      {/* ================= LAYER 3: VERIFICATION & LOGIN MODAL ================= */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-900/70 backdrop-blur-xs font-sans">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden border border-[#DCCCB4] my-8 text-left"
-            >
-              <div className="bg-[#37424B] text-white p-6 sm:p-8 space-y-1 relative">
-                <button onClick={() => { setIsModalOpen(false); setStep('register'); }} className="absolute top-6 right-6 text-slate-300 hover:text-white"><FiX size={20} /></button>
-                <div className="flex items-center gap-1.5 text-[#C5A059]">
-                  <span className="text-[9px] tracking-[0.2em] font-mono font-extrabold uppercase">Stone Buyer Verification Registry</span>
-                </div>
-                <h2 className="text-2xl font-serif text-white">India Trade Overseas Verification</h2>
-              </div>
-
-              <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto">
-                {step === 'register' ? (
-                  <div className="space-y-5 text-xs">
-                    <div className="flex border-b border-slate-200 pb-2 mb-4 gap-4 font-mono text-[10px]">
-                      <button
-                        type="button"
-                        onClick={() => setModalMode('register')}
-                        className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${
-                          modalMode === 'register' ? 'text-[#37424B] border-b-2 border-[#37424B]' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                      >
-                        New Registration
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setModalMode('login')}
-                        className={`pb-1 uppercase tracking-wider font-bold cursor-pointer transition-all ${
-                          modalMode === 'login' ? 'text-[#37424B] border-b-2 border-[#37424B]' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                      >
-                        Existing Corporate Partner (Login)
-                      </button>
-                    </div>
-
-                    {modalMode === 'register' ? (
-                      <form onSubmit={handleRegister} className="space-y-4 text-xs">
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase text-[#37424B] mb-1">Select Buyer Category *</label>
-                          <select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]">
-                            <option value="1">Construction Company</option>
-                            <option value="2">Government Contractor (PWD / NHAI)</option>
-                            <option value="3">Real Estate Developer</option>
-                            <option value="4">Infrastructure Firm</option>
-                            <option value="5">Stone Aggregator / Reseller</option>
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Full Name *</label>
-                            <input type="text" required placeholder="Full Name" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={name} onChange={(e) => setName(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Company Name *</label>
-                            <input type="text" required placeholder="Registered Firm Name" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={company} onChange={(e) => setCompany(e.target.value)} />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Mobile Number *</label>
-                            <input type="tel" required placeholder="+91 XXXXX XXXXX" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Corporate Email *</label>
-                            <input type="email" required placeholder="buyer@company.com" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={email} onChange={(e) => setEmail(e.target.value)} />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase text-[#6D6760] mb-1">Unloading Site Address *</label>
-                          <input type="text" required placeholder="Physical Delivery Site Location" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={address} onChange={(e) => setAddress(e.target.value)} />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <input type="text" required placeholder="City *" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={city} onChange={(e) => setCity(e.target.value)} />
-                          <input type="text" required placeholder="State *" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={state} onChange={(e) => setState(e.target.value)} />
-                          <input type="text" required placeholder="Country *" className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B]" value={country} onChange={(e) => setCountry(e.target.value)} />
-                        </div>
-
-                        <div className="p-4 bg-[#F4F2EE] border border-[#DCCCB4] rounded space-y-2">
-                          <span className="text-[11px] font-mono font-bold uppercase text-[#37424B] block">Upload GST Certificate or Udyam PDF *</span>
-                          <input type="file" required onChange={(e) => setDoc1(e.target.files[0])} className="block w-full text-xs text-[#6D6760]" />
-                        </div>
-
-                        <button type="submit" disabled={isSubmitting} className="w-full bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-xs uppercase py-3.5 rounded mt-4 cursor-pointer">
-                          {isSubmitting ? "Processing..." : "Submit Business Credentials & Send OTP"}
-                        </button>
-                      </form>
-                    ) : (
-                      /* Corporate Login Form */
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          const cleanEmail = loginEmail.toLowerCase().trim();
-                          if (!cleanEmail) return toast.error("Corporate Email is required.");
-
-                          setIsSubmitting(true);
-                          try {
-                            const otpRes = await distributorApi.resendOtp(cleanEmail);
-                            if (otpRes && otpRes.success) {
-                              const id = otpRes.data?.distributorId || otpRes.distributorId;
-                              if (id) {
-                                setDistributorId(id);
-                                localStorage.setItem('ito_stone_buyer_id', id);
-                                localStorage.setItem('prakriti_distributor_id', id);
-                              }
-                              setEmail(cleanEmail);
-                              toast.success(otpRes.message || "OTP sent to your corporate email!");
-                              setStep('otp');
-                            }
-                          } catch (err) {
-                            toast.error(err.response?.data?.message || err.message || "Failed to send OTP.");
-                          } finally {
-                            setIsSubmitting(false);
-                          }
-                        }}
-                        className="space-y-4 pt-1"
-                      >
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase text-[#37424B] mb-1">Registered Corporate Email Address *</label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="buyer@enterprise.com"
-                            className="w-full bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-[#37424B] text-xs"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="w-full bg-[#37424B] hover:bg-[#6D6760] text-white font-mono font-bold text-xs uppercase py-3.5 rounded cursor-pointer"
-                        >
-                          {isSubmitting ? "Processing..." : "Access Sourcing Terminal"}
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleVerifyOtp} className="space-y-4 text-center py-4">
-                    <h3 className="text-lg font-serif text-[#37424B]">Enter Verification Token</h3>
-                    <p className="text-xs text-slate-500 font-light">Enter 6-digit token sent to <span className="font-bold text-slate-700">{email}</span></p>
-                    <input type="text" required maxLength="6" placeholder="0 0 0 0 0 0" className="w-full text-center bg-[#F4F2EE] border border-[#DCCCB4] rounded p-3 text-lg font-mono text-[#37424B]" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                    <button type="submit" disabled={isSubmitting} className="w-full bg-[#37424B] text-white font-mono font-bold py-3 rounded cursor-pointer">
-                      Verify & Unlock
-                    </button>
-                  </form>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ================= BULK ORDER NEGOTIATION DRAWER ================= */}
       <AnimatePresence>
@@ -1132,7 +1166,7 @@ export default function Stone() {
                   <div className="bg-[#F4F2EE] border border-[#DCCCB4] p-3.5 rounded-xl space-y-2 text-xs">
                     <span className="text-[9px] font-mono bg-[#37424B] text-[#C5A059] px-2 py-0.5 rounded font-bold">{activeDrawerLot.id}</span>
                     <div className="text-sm font-bold text-[#37424B]">{activeDrawerLot.region}</div>
-                    <div className="text-xs text-[#6D6760] font-mono">Crusher: {activeDrawerLot.crusher}</div>
+                    <div className="text-xs text-[#6D6760] font-mono">Division: {activeDrawerLot.division}</div>
                     <div className="text-xs text-[#6D6760] font-mono">Grade: {activeDrawerLot.grade}</div>
                     <div className="text-xs text-[#6D6760] font-mono">Base Price: INR {activeDrawerLot.price}/MT</div>
                   </div>
@@ -1149,37 +1183,53 @@ export default function Stone() {
                     <span className="text-slate-500 font-bold uppercase">Estimated Base Value:</span>
                     <span className="text-[#37424B] font-extrabold text-base">INR {(Number(orderQuantity || 0) * Number(activeDrawerLot.price || 0)).toLocaleString()}</span>
                   </div>
-                  <button
-                    onClick={async () => {
+                  <OrderButton
+                    action={async () => {
                       if (!orderQuantity || Number(orderQuantity) < 40) {
-                        return toast.error("Minimum constraint is 40 MT.");
+                        toast.error("Minimum constraint is 40 MT.");
+                        throw new Error('validation');
                       }
 
-                      try {
-                        const proposalPayload = {
-                          distributorId: distributorId,
-                          division: 'STONE',
-                          lotId: activeDrawerLot.id,
-                          region: activeDrawerLot.region,
-                          grade: activeDrawerLot.grade,
-                          quantity: Number(orderQuantity),
-                          basePrice: Number(activeDrawerLot.price)
-                        };
+                      const proposalPayload = {
+                        distributorId: distributorId,
+                        division: 'STONE',
+                        lotId: activeDrawerLot.id,
+                        region: activeDrawerLot.region,
+                        grade: activeDrawerLot.grade,
+                        quantity: Number(orderQuantity),
+                        basePrice: Number(activeDrawerLot.price),
+                        paymentTerm: activeDrawerLot.paymentTerm
+                      };
 
-                        const res = await distributorApi.createProposal(proposalPayload);
-                        if (res.success) {
-                          toast.success(`Stone sourcing proposal logged for ${orderQuantity} MT.`);
-                          setIsOrderDrawerOpen(false);
-                          fetchMyProposals();
-                        }
+                      let res;
+                      try {
+                        res = await distributorApi.createProposal(proposalPayload);
                       } catch (err) {
                         toast.error(err.response?.data?.message || "Failed to dispatch proposal.");
+                        throw err;
                       }
+
+                      if (!res.success) {
+                        toast.error(res.message || "Failed to dispatch proposal.");
+                        throw new Error('api_failure');
+                      }
+
+                      toast.success(`Stone sourcing proposal logged for ${orderQuantity} MT.`);
+                      pushDataLayerEvent('stone_proposal_submitted', {
+                        lot_id: activeDrawerLot.id,
+                        quantity: Number(orderQuantity),
+                        value: Number(orderQuantity) * Number(activeDrawerLot.price || 0),
+                        currency: 'INR'
+                      });
+                      fetchMyProposals();
                     }}
-                    className="w-full bg-[#37424B] hover:bg-[#252c34] text-white text-xs font-mono font-bold uppercase py-3.5 rounded flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                  >
-                    <FiShoppingCart /> Dispatch Sourcing Request
-                  </button>
+                    onDone={() => setIsOrderDrawerOpen(false)}
+                    icon={FiShoppingCart}
+                    idleLabel="Dispatch Sourcing Request"
+                    busyLabel="Dispatching..."
+                    doneLabel="Request Dispatched"
+                    className="w-full bg-[#37424B] hover:bg-[#252c34] text-white text-xs font-mono font-bold uppercase py-3.5 rounded shadow-md cursor-pointer disabled:cursor-default disabled:opacity-90"
+                  />
                 </div>
               </motion.div>
             </div>

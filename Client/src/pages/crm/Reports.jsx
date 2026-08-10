@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiBarChart2, FiDownload, FiCalendar } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import api from '../../api/axiosInstance';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 const AXIS_TICK = { fill: 'var(--crm-ink-faint)', fontSize: 11 };
 const GRID_STROKE = 'rgba(197,203,211,0.12)';
@@ -92,13 +93,15 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-[var(--crm-heading)]">Reports & Analytics</h1>
           <p className="text-[var(--crm-ink-faint)] mt-1">View detailed business insights and analytics</p>
         </div>
-        <button
-          onClick={exportReport}
-          className="flex items-center justify-center space-x-2 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] text-sm font-semibold px-4 py-2.5 rounded-lg transition-all self-start sm:self-auto"
-        >
-          <FiDownload size={18} />
-          <span>Export Report</span>
-        </button>
+        <DownloadButton
+          action={exportReport}
+          className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] text-sm font-semibold px-4 py-2.5 rounded-lg transition-all self-start sm:self-auto disabled:cursor-default"
+          icon={FiDownload}
+          iconSize={18}
+          idleLabel="Export Report"
+          busyLabel="Exporting..."
+          doneLabel="Exported"
+        />
       </div>
 
       {/* Date Range Filter */}
