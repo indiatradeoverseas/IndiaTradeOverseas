@@ -9,7 +9,8 @@ import {
   FiXCircle,
   FiClock,
   FiEye,
-  FiUser
+  FiUser,
+  FiTrash2
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { careersApi } from '../../api/careers';
@@ -63,6 +64,21 @@ export default function Applications() {
       console.error('Error downloading resume:', error);
       toast.error('Failed to download resume', { id: 'download' });
       throw error;
+    }
+  };
+
+  const handleDeleteApplication = async (id, fullName) => {
+    if (!window.confirm(`Permanently delete ${fullName}'s application? This also removes their uploaded resume/cover letter and cannot be undone.`)) return;
+
+    try {
+      const response = await careersApi.deleteApplication(id);
+      if (response && response.success) {
+        toast.success('Application deleted successfully');
+        setApplications((prev) => prev.filter((app) => app._id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting application:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete application');
     }
   };
 
@@ -199,12 +215,13 @@ export default function Applications() {
                 <th className="py-4 px-6 text-center font-medium">Pipeline Status</th>
                 <th className="py-4 px-6 text-center font-medium">Credentials File</th>
                 <th className="py-4 px-6 text-center font-medium">Lifecycle Routing</th>
+                <th className="py-4 px-6 text-center font-medium">Remove</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-sm">
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-16 text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] bg-[var(--crm-bg)]/40">
+                  <td colSpan="7" className="text-center py-16 text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] bg-[var(--crm-bg)]/40">
                     No strategic candidate profiles discoverable within the active search criteria.
                   </td>
                 </tr>
@@ -296,6 +313,17 @@ export default function Applications() {
                             <option value="REJECTED">Rejected</option>
                           </select>
                         </td>
+
+                        {/* Remove Record */}
+                        <td className="py-4 px-6 text-center">
+                          <button
+                            onClick={() => handleDeleteApplication(appId, app.fullName)}
+                            className="inline-flex items-center justify-center p-2 bg-transparent border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:border-[var(--crm-danger)]/40 hover:text-[var(--crm-danger)] rounded-lg transition duration-200 cursor-pointer"
+                            title="Delete Application"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </td>
                       </tr>
 
                       {/* Expanding Profile Section containing Cover Letter */}
@@ -303,7 +331,7 @@ export default function Applications() {
                         {isExpanded && (
 
                           <div className="bg-[var(--crm-bg)]/60">
-                            <td colSpan="6" className="py-5 px-8 border-t border-[var(--crm-ink-soft)]/10">
+                            <td colSpan="7" className="py-5 px-8 border-t border-[var(--crm-ink-soft)]/10">
                               <motion.div
                                 initial={{ opacity: 0, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}

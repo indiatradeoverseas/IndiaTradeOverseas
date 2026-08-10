@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const CareerApplication = require('./career.model');
+const CareerLead = require('./careerLead.model');
 const Job = require('./job.model');
 const { ok, fail } = require('../../utils/response');
 const { resolveUploadPath, getRelativePath, proxyFromProduction } = require('../../utils/file');
@@ -32,10 +33,12 @@ const applyJob = async (req, res, next) => {
       email,
       phone,
       position,
-      resumePath: getRelativePath(resumeFile.path),
+      resumeData: resumeFile.buffer,
+      resumeContentType: resumeFile.mimetype,
       resumeOriginalName: resumeFile.originalname,
       coverLetter,
-      coverLetterPath: coverLetterFile ? getRelativePath(coverLetterFile.path) : undefined,
+      coverLetterData: coverLetterFile ? coverLetterFile.buffer : undefined,
+      coverLetterContentType: coverLetterFile ? coverLetterFile.mimetype : undefined,
       coverLetterOriginalName: coverLetterFile ? coverLetterFile.originalname : undefined
     });
 
@@ -53,7 +56,11 @@ const listApplications = async (req, res, next) => {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can view applications.');
     }
 
-    const applications = await CareerApplication.find().sort({ appliedAt: -1 });
+    // Excludes the resume/cover-letter binary fields - the list view only
+    // needs metadata, and those blobs would otherwise bloat every fetch.
+    const applications = await CareerApplication.find()
+      .select('-resumeData -coverLetterData')
+      .sort({ appliedAt: -1 });
 
     return ok(res, { applications }, 'Job applications retrieved successfully', 200, req);
   } catch (error) {
@@ -99,6 +106,14 @@ const downloadResume = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
     }
 
+    if (application.resumeData) {
+      res.setHeader('Content-Type', application.resumeContentType || 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(application.resumeOriginalName || 'resume.pdf')}"`);
+      return res.send(application.resumeData);
+    }
+
+    // Legacy fallback: applications submitted before resumes moved into
+    // MongoDB may still only have a disk path (see career.model.js).
     const filePath = resolveUploadPath(application.resumePath, 'resumes');
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
@@ -129,6 +144,14 @@ const downloadCoverLetter = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
     }
 
+    if (application.coverLetterData) {
+      res.setHeader('Content-Type', application.coverLetterContentType || 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(application.coverLetterOriginalName || 'cover_letter.pdf')}"`);
+      return res.send(application.coverLetterData);
+    }
+
+    // Legacy fallback: applications submitted before cover letters moved
+    // into MongoDB may still only have a disk path (see career.model.js).
     const filePath = resolveUploadPath(application.coverLetterPath, 'cover_letters');
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
@@ -148,6 +171,40 @@ const downloadCoverLetter = async (req, res, next) => {
   }
 };
 
+
+const submitGateLead = async (req, res, next) => {
+  try {
+    const { fullName, email, phone } = req.body;
+
+    if (!fullName || !email || !phone) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Full name, email, and phone are required.');
+    }
+
+    const lead = await CareerLead.findOneAndUpdate(
+      { email: email.toLowerCase().trim() },
+      { fullName, email, phone },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    return ok(res, { lead }, 'Career gate details captured.', 201, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const listGateLeads = async (req, res, next) => {
+  try {
+    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can view career leads.');
+    }
+
+    const leads = await CareerLead.find().sort({ createdAt: -1 });
+
+    return ok(res, { leads }, 'Career gate leads retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
 
 const listJobs = async (req, res, next) => {
   try {
@@ -365,6 +422,8 @@ module.exports = {
   updateApplicationStatus,
   downloadResume,
   downloadCoverLetter,
+  submitGateLead,
+  listGateLeads,
   listJobs,
   listAllJobs,
   createJob,

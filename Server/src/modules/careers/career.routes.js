@@ -3,12 +3,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
-const { 
-  applyJob, 
-  listApplications, 
-  updateApplicationStatus, 
+const {
+  applyJob,
+  listApplications,
+  updateApplicationStatus,
   downloadResume,
   downloadCoverLetter,
+  submitGateLead,
+  listGateLeads,
   listJobs,
   listAllJobs,
   createJob,
@@ -45,19 +47,29 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
+// Resumes/cover letters are stored as bytes in MongoDB (see career.model.js),
+// not on disk, so they're read into memory here instead of written to
+// uploads/ - JD uploads below still use the disk-backed `upload` above.
+const uploadToMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
 // ----------------------------------------------------
 // Public Endpoints
 // ----------------------------------------------------
-router.post('/', upload.fields([
+router.post('/', uploadToMemory.fields([
   { name: 'resume', maxCount: 1 },
   { name: 'coverLetter', maxCount: 1 }
 ]), applyJob);
+router.post('/gate-leads', submitGateLead);
 router.get('/jobs', listJobs);
 router.get('/jobs/:id/jd', downloadJobJD);
 
 // ----------------------------------------------------
 // Authenticated Endpoints
 // ----------------------------------------------------
+router.get('/gate-leads', authenticate, listGateLeads);
 router.get('/', authenticate, listApplications);
 router.patch('/:id/status', authenticate, updateApplicationStatus);
 router.get('/:id/resume', authenticate, downloadResume);
