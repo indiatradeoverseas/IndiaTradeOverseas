@@ -5,6 +5,10 @@ import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
+
+const toastStyle = { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' };
+const toastErrorStyle = { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444' };
 
 const ClientLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -51,6 +55,16 @@ const ClientLogin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = () => {
+    toast.success('Welcome back, client!', { icon: '🤝', style: toastStyle });
+    pushDataLayerEvent('login', { method: 'google_client' });
+    navigate('/');
+  };
+
+  const handleGoogleError = (message) => {
+    toast.error(message, { style: toastErrorStyle });
   };
 
   return (
@@ -170,8 +184,18 @@ const ClientLogin = () => {
             </motion.div>
           </form>
 
+          {/* Google Sign-In */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "linear", duration: 0.5, delay: 0.4 }}
+            className="mt-5"
+          >
+            <GoogleAuthButton portal="client" onSuccess={handleGoogleSuccess} onError={handleGoogleError} disabled={loading} />
+          </motion.div>
+
           {/* Navigation Links Footer */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}

@@ -9,6 +9,9 @@ const { sendEmail } = require('../../utils/mailer');
 const { generateOtp, getOtpHtml } = require('../../utils/otp');
 const otpModel = require('./Model.otp');
 const sessionModel = require('./session.model');
+const { verifyGoogleIdToken } = require('../../utils/googleAuth');
+
+const COMPANY_EMAIL_DOMAIN = 'indiatradeoverseas.com';
 
 function sanitizeUser(user) {
   const plain = user.toObject ? user.toObject() : user;
@@ -187,6 +190,151 @@ async function login(req, res, next) {
     }
     next(error);
   }
+}
+
+async function googleLogin(req, res, next) {
+  try {
+    const { credential, portal } = req.body;
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || '';
+
+    if (!credential) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Google credential is required');
+    }
+    if (portal !== 'employee' && portal !== 'client') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'A valid portal (employee or client) is required');
+    }
+
+    let googlePayload;
+    try {
+      googlePayload = await verifyGoogleIdToken(credential);
+    } catch (verifyErr) {
+      return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Google sign-in verification failed');
+    }
+
+    const { email, name } = googlePayload;
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (!user.isActive) {
+        await raiseAccountLockedAlert(user, ipAddress);
+        return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
+      }
+
+      if (!user.isEmailVerified) user.isEmailVerified = true;
+      user.failedLoginCount = 0;
+      user.lastLoginAt = new Date();
+      await user.save();
+    } else {
+      if (portal === 'employee') {
+        if (!email.endsWith('@' + COMPANY_EMAIL_DOMAIN)) {
+          return fail(res, 403, 'DOMAIN_NOT_ALLOWED', 'Only ' + COMPANY_EMAIL_DOMAIN + ' company emails can sign in as an employee');
+        }
+
+        const userService = require('../users/user.service');
+        const employeeId = 'EMP_G' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 10);
+        const crypto = require('crypto');
+        user = await userService.createUser({
+          employeeId,
+          fullName: name,
+          email,
+          phone: '',
+          password: crypto.randomBytes(32).toString('hex'),
+          role: 'SALES',
+          department: 'SALES'
+        });
+        user.isEmailVerified = true;
+        await user.save();
+      } else {
+        const userService = require('../users/user.service');
+        const employeeId = 'CL_' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 10);
+        const crypto = require('crypto');
+        user = await userService.createUser({
+          employeeId,
+          fullName: name,
+          email,
+          phone: '',
+          password: crypto.randomBytes(32).toString('hex'),
+          role: 'SALES',
+          department: 'SALES'
+        });
+
+        try {
+          const Client = require('../clients/client.model');
+          await Client.create({
+            userId: user._id,
+            email: user.email,
+            phone: '',
+            companyName: '',
+            address: '',
+            gstin: '',
+            businessType: '',
+            status: 'PENDING'
+          });
+        } catch (clientErr) {
+          await User.deleteOne({ _id: user._id });
+          throw clientErr;
+        }
+
+        user.isEmailVerified = true;
+        await user.save();
+      }
+    }
+
+    const accessToken = tokenService.generateAccessToken(user);
+
+    const crypto = require('crypto');
+    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
+
+    const session = await sessionModel.create({
+      user: user._id,
+      refreshTokenHash: tokenHash,
+      ip: ipAddress,
+      userAgent: req.headers['user-agent'] || 'unknown'
+    });
+
+    const jwt = require('jsonwebtoken');
+    const env = require('../../config/env');
+    const refreshToken = jwt.sign(
+      { sub: user._id.toString(), sid: session._id.toString(), raw: rawRefreshToken },
+      env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    await recordAudit({
+      actorId: user._id,
+      actionType: 'LOGIN_SUCCESS',
+      entityType: 'USER',
+      entityId: user._id.toString(),
+      severity: 'LOW',
+      ipAddress,
+      metadata: { method: 'google', portal }
+    });
+
+    return ok(res, {
+      user: sanitizeUser(user),
+      token: accessToken,
+      refreshToken,
+      requiresDeviceApproval: false
+    }, 'Google sign-in successful', 200, req);
+  } catch (error) {
+    if (error.code === 11000 || (error.message && error.message.includes('duplicate key'))) {
+      return fail(res, 409, 'DUPLICATE_FOUND', 'An account with this email already exists');
+    }
+    next(error);
+  }
+}
+
+async function raiseAccountLockedAlert(user, ipAddress) {
+  const { raiseAlert } = require('../security-audit/securityAlert.service');
+  await raiseAlert({
+    actorId: user._id,
+    alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
+    severity: 'HIGH',
+    message: `Locked user ${user.fullName} (${user.employeeId}) attempted to log in via Google.`,
+    metadata: { ipAddress }
+  });
 }
 
 async function requestOtp(req, res, next) {
@@ -612,6 +760,7 @@ async function resetPassword(req, res, next) {
 module.exports = {
   register,
   login,
+  googleLogin,
   requestOtp,
   verifyOtp,
   refresh,
