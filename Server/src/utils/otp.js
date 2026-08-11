@@ -91,7 +91,7 @@ function getOtpHtml(otp, email = '') {
             <p>If you did not create an account, you can safely ignore this email.</p>
         </div>
         <div class="footer">
-            <p>&copy; 2026 IndiaTradeOverseas. All rights reserved.</p>
+            <p>&copy; 2026 India Trade Overseas. All rights reserved.</p>
         </div>
     </div>
 
