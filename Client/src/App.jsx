@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
@@ -6,56 +6,68 @@ import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
 import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
+// Home stays a static import - it's the most common landing page and needs
+// to be in the initial bundle for prerendering/first paint. Every other
+// route (including the entire CRM, which is most of this app's code) is
+// lazy-loaded so a marketing visitor never downloads the CRM bundle, and a
+// CRM user never downloads pages they haven't navigated to yet.
 import Home from './pages/public/Home';
-import Products from './pages/public/Products';
-import Rice from './pages/public/Rice';
-import ProductDetail from './pages/public/ProductDetail';
-import About from './pages/public/About';
-import Contact from './pages/public/Contact';
-import Careers from './pages/public/Careers';
-import QuoteRequest from './pages/public/QuoteRequest';
-import Login from './pages/public/Login';
-import ClientLogin from './pages/public/ClientLogin';
-import EmployeeLogin from './pages/public/EmployeeLogin';
-import AdminLogin from './pages/public/AdminLogin';
-import Signup from './pages/public/Signup';
-import ClientSignup from './pages/public/ClientSignup';
-import EmployeeSignup from './pages/public/EmployeeSignup';
-import DevicePending from './pages/public/DevicePending';
-import VerifyEmail from './pages/public/VerifyEmail';
-import ForgotPassword from './pages/public/ForgotPassword';
+const Products = lazy(() => import('./pages/public/Products'));
+const Rice = lazy(() => import('./pages/public/Rice'));
+const ProductDetail = lazy(() => import('./pages/public/ProductDetail'));
+const About = lazy(() => import('./pages/public/About'));
+const Contact = lazy(() => import('./pages/public/Contact'));
+const Careers = lazy(() => import('./pages/public/Careers'));
+const QuoteRequest = lazy(() => import('./pages/public/QuoteRequest'));
+const ClientLogin = lazy(() => import('./pages/public/ClientLogin'));
+const EmployeeLogin = lazy(() => import('./pages/public/EmployeeLogin'));
+const AdminLogin = lazy(() => import('./pages/public/AdminLogin'));
+const Signup = lazy(() => import('./pages/public/Signup'));
+const ClientSignup = lazy(() => import('./pages/public/ClientSignup'));
+const EmployeeSignup = lazy(() => import('./pages/public/EmployeeSignup'));
+const DevicePending = lazy(() => import('./pages/public/DevicePending'));
+const VerifyEmail = lazy(() => import('./pages/public/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/public/ForgotPassword'));
 
-import Dashboard from './pages/crm/Dashboard';
-import Leads from './pages/crm/Leads';
-import Stone from './pages/public/Stone';
-import LeadDetail from './pages/crm/LeadDetail';
-import Quotations from './pages/crm/Quotations';
-import Dispatches from './pages/crm/Dispatches';
-import Payments from './pages/crm/Payments';
-import Documents from './pages/crm/Documents';
-import Employees from './pages/crm/Employees';
-import Distributors from './pages/crm/Distributors';
-import Visitors from './pages/crm/Visitors';
-import Security from './pages/crm/Security';
-import Reports from './pages/crm/Reports';
-import AdminPanel from './pages/crm/AdminPanel';
-import ProductUpload from './pages/crm/ProductUpload';
-import Tasks from './pages/crm/Tasks';
-import Notifications from './pages/crm/Notifications';
-import Applications from './pages/crm/Applications';
-import CareerLeads from './pages/crm/CareerLeads';
-import Jobs from './pages/crm/Jobs';
-import Attendance from './pages/crm/Attendance';
-import Tickets from './pages/crm/Tickets';
-import Leave from './pages/crm/Leave';
-import EmployeeProfile from './pages/crm/EmployeeProfile';
-import SalesPerformance from './pages/crm/SalesPerformance';
+const Dashboard = lazy(() => import('./pages/crm/Dashboard'));
+const Leads = lazy(() => import('./pages/crm/Leads'));
+const Stone = lazy(() => import('./pages/public/Stone'));
+const LeadDetail = lazy(() => import('./pages/crm/LeadDetail'));
+const Quotations = lazy(() => import('./pages/crm/Quotations'));
+const Dispatches = lazy(() => import('./pages/crm/Dispatches'));
+const Payments = lazy(() => import('./pages/crm/Payments'));
+const Documents = lazy(() => import('./pages/crm/Documents'));
+const Employees = lazy(() => import('./pages/crm/Employees'));
+const Distributors = lazy(() => import('./pages/crm/Distributors'));
+const Visitors = lazy(() => import('./pages/crm/Visitors'));
+const Security = lazy(() => import('./pages/crm/Security'));
+const Reports = lazy(() => import('./pages/crm/Reports'));
+const AdminPanel = lazy(() => import('./pages/crm/AdminPanel'));
+const ProductUpload = lazy(() => import('./pages/crm/ProductUpload'));
+const Tasks = lazy(() => import('./pages/crm/Tasks'));
+const Notifications = lazy(() => import('./pages/crm/Notifications'));
+const Applications = lazy(() => import('./pages/crm/Applications'));
+const CareerLeads = lazy(() => import('./pages/crm/CareerLeads'));
+const Jobs = lazy(() => import('./pages/crm/Jobs'));
+const Attendance = lazy(() => import('./pages/crm/Attendance'));
+const Tickets = lazy(() => import('./pages/crm/Tickets'));
+const Leave = lazy(() => import('./pages/crm/Leave'));
+const EmployeeProfile = lazy(() => import('./pages/crm/EmployeeProfile'));
+const SalesPerformance = lazy(() => import('./pages/crm/SalesPerformance'));
+const Prakriti = lazy(() => import('./pages/public/Prakriti'));
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
-import Prakriti from './pages/public/Prakriti';
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -159,18 +171,20 @@ function AppLayout() {
     return (
       <>
         <ScrollToTop /> {/* <-- INJECTED TO HANDLE AUTH ENTRY ROUTES */}
-        <Routes>
-          <Route path="/login" element={<ClientLogin />} />
-          <Route path="/client-login" element={<Navigate to="/login" replace />} />
-          <Route path="/employee-login" element={<EmployeeLogin />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/client-signup" element={<ClientSignup />} />
-          <Route path="/employee-signup" element={<EmployeeSignup />} />
-          <Route path="/device-pending" element={<DevicePending />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/login" element={<ClientLogin />} />
+            <Route path="/client-login" element={<Navigate to="/login" replace />} />
+            <Route path="/employee-login" element={<EmployeeLogin />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/client-signup" element={<ClientSignup />} />
+            <Route path="/employee-signup" element={<EmployeeSignup />} />
+            <Route path="/device-pending" element={<DevicePending />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+          </Routes>
+        </Suspense>
       </>
     );
   }
@@ -183,6 +197,7 @@ function AppLayout() {
     return (
       <PortalLayout>
         <ScrollToTop /> {/* <-- INJECTED TO HANDLE CRM DASHBOARD CHANNELS */}
+        <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/crm/dashboard" element={<Dashboard />} />
           <Route path="/crm/notifications" element={<Notifications />} />
@@ -276,6 +291,7 @@ function AppLayout() {
           />
           <Route path="*" element={<Navigate to="/crm/dashboard" />} />
         </Routes>
+        </Suspense>
         <ChatWidget />
       </PortalLayout>
     );
@@ -290,6 +306,7 @@ function AppLayout() {
       <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
       <Navbar />
       <main>
+        <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
@@ -302,6 +319,7 @@ function AppLayout() {
           <Route path='/prakriti/rice' element={<Rice/>}/>
           <Route path="/stone" element={<Stone />} />
         </Routes>
+        </Suspense>
       </main>
       <Footer />
       <ChatWidget />

@@ -10,6 +10,7 @@ import {
 
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
@@ -661,6 +662,7 @@ export default function Stone() {
                                             theme: { color: "#37424B" }
                                           };
 
+                                          await loadRazorpayScript();
                                           new window.Razorpay(options).open();
                                         } catch (err) {
                                           console.error('Razorpay create-order failed:', err.response?.data || err);
@@ -789,6 +791,7 @@ export default function Stone() {
                               theme: { color: "#37424B" }
                             };
 
+                            await loadRazorpayScript();
                             new window.Razorpay(options).open();
                           } catch (err) {
                             console.error('Razorpay create-order failed:', err.response?.data || err);

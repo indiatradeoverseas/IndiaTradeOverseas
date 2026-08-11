@@ -23,6 +23,26 @@
   <meta name="twitter:description" content="B2B trading house sourcing and exporting Bhutan & Pakur stone chips, bulk rice, and premium tea for global buyers." />
   <meta name="twitter:image" content="https://www.indiatradeoverseas.com/images/Company_logo.png" />
 
+  <!-- Default self-referencing canonical (www is the primary host - see
+       vercel.json for the non-www -> www redirect). useDocumentMeta
+       overrides this with the exact per-route path client-side; the
+       prerender step (scripts/prerender.mjs) bakes the per-route value
+       into the static HTML too, so this is only the fallback for anything
+       not covered by either. -->
+  <link rel="canonical" href="https://www.indiatradeoverseas.com/" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "India Trade Overseas",
+    "url": "https://www.indiatradeoverseas.com/",
+    "logo": "https://www.indiatradeoverseas.com/images/Company_logo.png",
+    "description": "India Trade Overseas is a B2B trading house sourcing and exporting Bhutan & Pakur stone chips, bulk rice, and premium tea for global buyers, backed by end-to-end compliance and logistics.",
+    "sameAs": []
+  }
+  </script>
+
   <script>
     (function(w,d,s,l,i){
       w[l]=w[l]||[];
@@ -55,7 +75,6 @@
     </noscript>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 
 </html>
