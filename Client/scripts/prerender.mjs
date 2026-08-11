@@ -10,7 +10,13 @@
 // list - they need no SEO and stay pure client-rendered, same as today.
 //
 // Usage: node scripts/prerender.mjs (run after `vite build`)
-import puppeteer from 'puppeteer';
+//
+// Browser launch is environment-aware: full `puppeteer` bundles its own
+// Chromium and works out of the box for local dev, but Vercel's build
+// container is missing system libraries (libnspr4 etc.) that bundled
+// Chromium needs, so on Vercel this uses `puppeteer-core` with
+// `@sparticuz/chromium` - a Chromium build packaged specifically to run in
+// serverless/minimal Linux build environments like Vercel's.
 import http from 'node:http';
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
@@ -56,6 +62,22 @@ function outPathFor(route) {
   return join(DIST, route.replace(/^\//, ''), 'index.html');
 }
 
+async function launchBrowser() {
+  if (process.env.VERCEL) {
+    const [{ default: puppeteerCore }, { default: chromium }] = await Promise.all([
+      import('puppeteer-core'),
+      import('@sparticuz/chromium')
+    ]);
+    return puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless
+    });
+  }
+  const { default: puppeteer } = await import('puppeteer');
+  return puppeteer.launch({ headless: true });
+}
+
 async function prerenderRoute(browser, route) {
   const page = await browser.newPage();
   // Don't record fake pageviews / fire real pixels for the build machine's
@@ -99,7 +121,7 @@ async function run() {
   }
 
   const server = await startServer();
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
 
   try {
     for (const route of ROUTES) {
@@ -114,7 +136,12 @@ async function run() {
   console.log(`\nDone: ${ROUTES.length} route(s) prerendered.`);
 }
 
+// A prerender failure (browser launch, a route timing out, etc.) must never
+// take down the whole deploy - the site is fully functional as plain CSR
+// without it (that's the state it was in before this script existed). Log
+// it loudly so it's visible in the Vercel build log, but always exit 0.
 run().catch((error) => {
-  console.error('Prerendering failed:', error);
-  process.exit(1);
+  console.error('Prerendering failed - continuing deploy WITHOUT prerendered pages:');
+  console.error(error);
+  process.exitCode = 0;
 });

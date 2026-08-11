@@ -24,10 +24,12 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",
     "puppeteer": "^25.5.0",
+    "puppeteer-core": "^25.5.0",
     "react-is": "^19.2.7",
     "sharp": "^0.35.3",
     "tailwindcss": "^4.0.0",
