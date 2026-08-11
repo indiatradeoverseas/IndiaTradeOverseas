@@ -10,6 +10,7 @@ import { GiThreeLeaves, GiTeapot, GiBoxUnpacking, GiCargoShip } from "react-icon
 
 import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
@@ -540,6 +541,7 @@ export default function Prakriti() {
                                                                                         theme: { color: "#004B3B" }
                                                                                     };
 
+                                                                                    await loadRazorpayScript();
                                                                                     const checkout = new window.Razorpay(options);
                                                                                     checkout.open();
 
@@ -668,6 +670,7 @@ export default function Prakriti() {
                                                             theme: { color: "#004B3B" }
                                                         };
 
+                                                        await loadRazorpayScript();
                                                         const checkoutWindow = new window.Razorpay(options);
                                                         checkoutWindow.open();
 

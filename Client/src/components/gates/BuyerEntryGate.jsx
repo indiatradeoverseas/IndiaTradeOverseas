@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiArrowRight, FiShield, FiKey, FiCheckCircle } from 'react-icons/fi';
@@ -8,6 +8,8 @@ import { pushDataLayerEvent } from '../../utils/analytics';
 import GateMascot from './GateMascot';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN_SECONDS = 30;
 
 /**
  * Full-page, theme-driven entry gate shown before any page content on
@@ -27,9 +29,15 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
   const [step, setStep] = useState('details'); // 'details' | 'otp' | 'welcome'
   const [submitting, setSubmitting] = useState(false);
   const [distributorId, setDistributorId] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
+  const [otpError, setOtpError] = useState(false);
+  const [focusedDigit, setFocusedDigit] = useState(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', city: '', state: '' });
   const [pendingSession, setPendingSession] = useState(null);
+
+  const otpRefs = useRef([]);
+  const lastAutoSubmitRef = useRef('');
 
   const firstName = form.fullName.trim().split(/\s+/)[0] || '';
 
@@ -81,12 +89,12 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
   };
 
   const handleOtpSubmit = async (e) => {
-    e.preventDefault();
-    if (otp.length < 6) return toast.error('Enter the 6-digit code sent to your email.');
+    e?.preventDefault();
+    if (otp.some((digit) => !digit)) return toast.error('Enter the 6-digit code sent to your email.');
 
     setSubmitting(true);
     try {
-      const res = await distributorApi.verifyOtp(distributorId, otp);
+      const res = await distributorApi.verifyOtp(distributorId, otp.join(''));
       if (res.success) {
         const activeToken = res.token || res.data?.token || res.data?.accessToken;
         const activeId = res.data?.distributorId || res.data?._id || distributorId;
@@ -96,9 +104,57 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired code.');
+      setOtpError(true);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleOtpDigitChange = (index, e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(-1);
+    setOtp((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+    if (value && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (otp[index]) {
+        setOtp((prev) => {
+          const next = [...prev];
+          next[index] = '';
+          return next;
+        });
+      } else if (index > 0) {
+        setOtp((prev) => {
+          const next = [...prev];
+          next[index - 1] = '';
+          return next;
+        });
+        otpRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+      e.preventDefault();
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    setOtp(Array.from({ length: OTP_LENGTH }, (_, i) => pasted[i] || ''));
+    const lastIndex = Math.min(pasted.length, OTP_LENGTH) - 1;
+    requestAnimationFrame(() => otpRefs.current[Math.max(lastIndex, 0)]?.focus());
   };
 
   const handleResend = async () => {
@@ -131,6 +187,49 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       onComplete?.({ ...form });
     }
   };
+
+  // Entering the OTP step (first send, or a fresh code from Resend changing
+  // distributorId) resets the boxes, error flash, auto-submit guard and
+  // cooldown, then focuses the first box.
+  useEffect(() => {
+    if (step !== 'otp') return undefined;
+    setOtp(Array(OTP_LENGTH).fill(''));
+    setOtpError(false);
+    lastAutoSubmitRef.current = '';
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    const raf = requestAnimationFrame(() => otpRefs.current[0]?.focus());
+    return () => cancelAnimationFrame(raf);
+  }, [step, distributorId]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const id = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    if (!otpError) return undefined;
+    const id = setTimeout(() => setOtpError(false), 500);
+    return () => clearTimeout(id);
+  }, [otpError]);
+
+  // Auto-submit the moment all 6 digits are present. Guarded by
+  // lastAutoSubmitRef so a failed attempt doesn't re-fire on the same code;
+  // editing any digit changes the joined value and re-arms it.
+  useEffect(() => {
+    const value = otp.join('');
+    if (
+      step === 'otp' &&
+      value.length === OTP_LENGTH &&
+      !otp.some((digit) => !digit) &&
+      !submitting &&
+      lastAutoSubmitRef.current !== value
+    ) {
+      lastAutoSubmitRef.current = value;
+      handleOtpSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, step, submitting]);
 
   const t = theme;
 
@@ -209,8 +308,8 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                 </p>
               </form>
             ) : step === 'otp' ? (
-              <form onSubmit={handleOtpSubmit} className="space-y-4 text-xs">
-                <div className="flex justify-center">
+              <form onSubmit={handleOtpSubmit} className="text-xs">
+                <div className="flex justify-center mb-6">
                   <div
                     className="w-11 h-11 rounded-full flex items-center justify-center border"
                     style={{ borderColor: `${t.accent}66`, color: t.accent, backgroundColor: `${t.accent}14` }}
@@ -218,16 +317,42 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                     <FiKey size={16} />
                   </div>
                 </div>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="0 0 0 0 0 0"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="w-full text-center text-lg font-mono tracking-[0.4em] rounded-lg py-3 border outline-none"
-                  style={{ backgroundColor: t.bg, borderColor: t.border, color: t.text }}
-                />
+
+                <motion.div
+                  role="group"
+                  aria-label="6-digit verification code"
+                  animate={otpError ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                  transition={{ duration: 0.35, ease: 'easeInOut' }}
+                  className="flex justify-center gap-1.5 sm:gap-2.5 mb-6"
+                >
+                  {otp.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { otpRefs.current[i] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpDigitChange(i, e)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      onPaste={handleOtpPaste}
+                      onFocus={() => setFocusedDigit(i)}
+                      onBlur={() => setFocusedDigit((cur) => (cur === i ? null : cur))}
+                      disabled={submitting}
+                      aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
+                      className="flex-1 max-w-11 aspect-4/5 text-center text-base sm:text-lg font-mono rounded-lg outline-none transition-colors duration-150 ease-out disabled:opacity-50"
+                      style={{
+                        backgroundColor: t.bg,
+                        color: t.text,
+                        borderWidth: focusedDigit === i || otpError ? '1.5px' : '1px',
+                        borderStyle: 'solid',
+                        borderColor: otpError ? '#ef4444' : focusedDigit === i ? t.accent : t.border,
+                      }}
+                    />
+                  ))}
+                </motion.div>
+
                 <button
                   type="submit"
                   disabled={submitting}
@@ -240,12 +365,24 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                     'Verify & Continue'
                   )}
                 </button>
-                <div className="flex items-center justify-between text-[10px] pt-1" style={{ color: t.muted }}>
-                  <button type="button" onClick={() => setStep('details')} className="underline underline-offset-2 cursor-pointer">
+
+                <div className="flex items-center justify-between text-[10px] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setStep('details')}
+                    className="underline underline-offset-2 cursor-pointer"
+                    style={{ color: t.muted }}
+                  >
                     Edit details
                   </button>
-                  <button type="button" onClick={handleResend} disabled={submitting} className="underline underline-offset-2 cursor-pointer disabled:opacity-50">
-                    Resend code
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={submitting || resendCooldown > 0}
+                    className="underline underline-offset-2 cursor-pointer disabled:no-underline disabled:cursor-not-allowed"
+                    style={{ color: resendCooldown > 0 ? t.muted : t.text, opacity: resendCooldown > 0 ? 0.6 : 1 }}
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
                   </button>
                 </div>
               </form>

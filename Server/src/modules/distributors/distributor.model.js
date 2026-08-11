@@ -8,9 +8,11 @@ const DistributorSchema = new mongoose.Schema(
       trim: true,
     },
     email: {
+      // No longer unique on its own: the same person can hold one record
+      // per division (Tea/Rice/Stone are independent registrations). See
+      // the compound { email, division } index below.
       type: String,
       required: true,
-      unique: true,
       trim: true,
       lowercase: true,
     },
@@ -137,5 +139,12 @@ const DistributorSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// One record per (email, division): the same buyer can independently
+// register for Tea, Rice and Stone without one submission overwriting
+// another's division/company/OTP state. Replaces the old email-only unique
+// index — see Server/scripts/fixDistributorEmailDivisionIndex.js for the
+// one-off migration that drops the old index on existing databases.
+DistributorSchema.index({ email: 1, division: 1 }, { unique: true });
 
 module.exports = mongoose.model("Distributor", DistributorSchema);

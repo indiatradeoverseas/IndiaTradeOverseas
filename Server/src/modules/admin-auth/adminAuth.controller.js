@@ -9,6 +9,7 @@ const securityConfig = require('../../config/security');
 const { ok, fail } = require('../../utils/response');
 const { recordAudit } = require('../security-audit/auditLog.service');
 const { raiseAlert } = require('../security-audit/securityAlert.service');
+const { verifyGoogleIdToken } = require('../../utils/googleAuth');
 
 function sanitizeAdmin(admin) {
   const plain = admin.toObject ? admin.toObject() : admin;
@@ -122,4 +123,87 @@ async function adminLogin(req, res, next) {
   }
 }
 
-module.exports = { adminLogin };
+async function adminGoogleLogin(req, res, next) {
+  try {
+    const { credential } = req.body;
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || '';
+
+    if (!credential) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Google credential is required');
+    }
+
+    let googlePayload;
+    try {
+      googlePayload = await verifyGoogleIdToken(credential);
+    } catch (verifyErr) {
+      return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Google sign-in verification failed');
+    }
+
+    const admin = await Admin.findOne({ email: googlePayload.email });
+
+    if (!admin) {
+      await recordAudit({
+        actionType: 'LOGIN_FAILED',
+        entityType: 'ADMIN',
+        entityId: 'UNKNOWN_ADMIN',
+        severity: 'MEDIUM',
+        ipAddress,
+        metadata: { email: googlePayload.email, method: 'google' }
+      });
+      return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'No admin account found for this Google account');
+    }
+
+    if (!admin.isActive) {
+      await raiseAlert({
+        actorId: admin._id,
+        alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
+        severity: 'HIGH',
+        message: `Locked admin ${admin.fullName} attempted to log in via Google.`,
+        metadata: { ipAddress }
+      });
+      return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
+    }
+
+    admin.failedLoginCount = 0;
+    admin.lastLoginAt = new Date();
+    await admin.save();
+
+    await recordAudit({
+      actorId: admin._id,
+      actionType: 'LOGIN_SUCCESS',
+      entityType: 'ADMIN',
+      entityId: admin._id.toString(),
+      severity: 'LOW',
+      ipAddress,
+      metadata: { lastLoginAt: admin.lastLoginAt, method: 'google' }
+    });
+
+    const accessToken = tokenService.generateAccessToken(admin);
+
+    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
+
+    const session = await sessionModel.create({
+      user: admin._id,
+      refreshTokenHash: tokenHash,
+      ip: ipAddress,
+      userAgent: req.headers['user-agent'] || 'unknown'
+    });
+
+    const refreshToken = jwt.sign(
+      { sub: admin._id.toString(), sid: session._id.toString(), raw: rawRefreshToken },
+      env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return ok(res, {
+      user: sanitizeAdmin(admin),
+      token: accessToken,
+      refreshToken
+    }, 'Admin login successful', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { adminLogin, adminGoogleLogin };
