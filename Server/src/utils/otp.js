@@ -13,7 +13,7 @@ function getOtpHtml(otp, email = '') {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Email Verification - IndiaTradeOverseas</title>
+    <title>Email Verification - India Trade Overseas</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -78,22 +78,20 @@ function getOtpHtml(otp, email = '') {
 
     <div class="container">
         <div class="header">
-            <h2>IndiaTradeOverseas</h2>
+            <h2>India Trade Overseas</h2>
         </div>
         <div class="content">
             <p>Hello,</p>
-            <p>Thank you for registering with <strong>IndiaTradeOverseas</strong>. To complete your sign-up and secure your account, please verify your email address by clicking the button below:</p>
+            <p>Thank you for registering with <strong>India Trade Overseas</strong>. To complete your sign-up and secure your account, please verify your email address by submitting the OTP</p>
             
-            <div class="btn-container">
-                <a href="${verificationUrl}" class="btn">Verify Email Address</a>
-            </div>
+           
             
-            <p>Alternatively, you can use the following 6-digit OTP code to verify your account:</p>
+            <p>Use the following 6-digit OTP code to verify your account:</p>
             <p class="otp">${otp}</p>
             <p>If you did not create an account, you can safely ignore this email.</p>
         </div>
         <div class="footer">
-            <p>&copy; 2026 IndiaTradeOverseas. All rights reserved.</p>
+            <p>&copy; 2026 India Trade Overseas. All rights reserved.</p>
         </div>
     </div>
 
