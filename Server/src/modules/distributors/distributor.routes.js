@@ -22,19 +22,7 @@ const {
 
 const { authenticate } = require('../../middlewares/auth.middleware');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'distributor_docs');
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    cb(null, destDir);
-  },
-  filename: (req, file, cb) => {
-    const safeName = `${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, safeName);
-  }
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];

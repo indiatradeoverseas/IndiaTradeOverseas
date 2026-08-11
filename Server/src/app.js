@@ -29,6 +29,8 @@ const salesRoutes = require('./modules/sales/sales.routes');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 
 app.use(helmet());
 
