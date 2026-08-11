@@ -4,7 +4,7 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return 'https://indiatradeoverseas-ito.onrender.com/api';
+      return 'https://indiatradeoverseas-1.onrender.com/api';
     }
   }
   return 'http://localhost:5000/api';
