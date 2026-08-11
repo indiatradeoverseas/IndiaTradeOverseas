@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiMenu, FiX } from 'react-icons/fi';
+import { FiMenu, FiX, FiSun, FiMoon } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 // Removed the duplicate main-site Navbar import from here to protect CRM view real estate
@@ -8,6 +8,11 @@ import CommandPalette from './CommandPalette';
 export default function PortalLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
+
+  useEffect(() => {
+    localStorage.setItem('crm-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -25,7 +30,7 @@ export default function PortalLayout({ children }) {
 
   return (
     <div
-      className="crm-portal min-h-screen antialiased"
+      className={`crm-portal min-h-screen antialiased ${theme === 'light' ? 'light-theme' : ''}`}
       style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)', fontFamily: 'var(--crm-font-body)' }}
     >
 
@@ -61,7 +66,16 @@ export default function PortalLayout({ children }) {
           >
             India Trade Center
           </div>
-          <div className="w-8" />
+          <button
+            type="button"
+            onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+            className="flex items-center justify-center rounded-sm p-2 transition duration-200 focus:outline-none cursor-pointer"
+            style={{ color: 'var(--crm-ink-soft)' }}
+            aria-label={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+          >
+            {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
+          </button>
         </div>
       </div>
 
@@ -102,10 +116,23 @@ export default function PortalLayout({ children }) {
 
           {/* Desktop utility bar */}
           <div
-            className="hidden md:flex items-center justify-end px-8 py-3 border-b"
+            className="hidden md:flex items-center justify-end px-8 py-3 border-b gap-4"
             style={{ borderColor: 'var(--crm-line)' }}
           >
             <CommandPalette />
+            <button
+              type="button"
+              onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+              className="flex items-center justify-center rounded-sm p-1.5 transition-all duration-200 border cursor-pointer hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-heading)]"
+              style={{
+                color: 'var(--crm-ink-soft)',
+                borderColor: 'var(--crm-line)',
+                background: 'var(--crm-bg-raised)'
+              }}
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            >
+              {theme === 'light' ? <FiMoon size={14} /> : <FiSun size={14} />}
+            </button>
           </div>
 
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 pt-6 md:pt-8">

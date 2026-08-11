@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiArrowRight, FiShield, FiKey, FiCheckCircle } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { authApi } from '../../api/auth';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import GateMascot from './GateMascot';
 
@@ -30,6 +31,52 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
   const [otp, setOtp] = useState('');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', city: '', state: '' });
   const [pendingSession, setPendingSession] = useState(null);
+
+  // Completely automatic OTP background fetching (Polling)
+  useEffect(() => {
+    if (step !== 'otp' || !form.email) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 15) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const res = await authApi.getLatestOtp(form.email);
+        if (res.success && res.data?.otp) {
+          const foundOtp = res.data.otp;
+          setOtp(foundOtp);
+          clearInterval(interval);
+          toast.success(`OTP auto-fetched: ${foundOtp} 🎉`);
+          await verifyOtpDirectly(foundOtp);
+        }
+      } catch (err) {
+        console.error('Error auto-fetching OTP:', err);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [step, form.email]);
+
+  const verifyOtpDirectly = async (code) => {
+    setSubmitting(true);
+    try {
+      const res = await distributorApi.verifyOtp(distributorId, code);
+      if (res.success) {
+        const activeToken = res.token || res.data?.token || res.data?.accessToken;
+        const activeId = res.data?.distributorId || res.data?._id || distributorId;
+        setPendingSession({ id: activeId, token: activeToken });
+        pushDataLayerEvent('entry_gate_otp_verified', { division });
+        setStep('welcome');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid or expired code.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const firstName = form.fullName.trim().split(/\s+/)[0] || '';
 
@@ -228,6 +275,8 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                   className="w-full text-center text-lg font-mono tracking-[0.4em] rounded-lg py-3 border outline-none"
                   style={{ backgroundColor: t.bg, borderColor: t.border, color: t.text }}
                 />
+
+
                 <button
                   type="submit"
                   disabled={submitting}

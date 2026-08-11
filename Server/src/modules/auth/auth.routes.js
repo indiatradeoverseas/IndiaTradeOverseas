@@ -14,7 +14,9 @@ const {
   logoutAll,
   verifyEmail,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getGoogleClientId,
+  getLatestOtp
 } = require('./auth.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
 
@@ -28,6 +30,8 @@ router.get('/refresh-token', refreshToken);
 router.post('/verify-email', verifyEmail);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.get('/google-client-id', getGoogleClientId);
+router.get('/latest-otp', getLatestOtp);
 
 
 router.get('/me', authenticate, me);

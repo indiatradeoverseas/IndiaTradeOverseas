@@ -40,6 +40,11 @@ const sendEmail = async (to, subject, text, html) => {
   const otpMatch = html ? html.match(/<p class="otp">(\d+)<\/p>/) : null;
   const extractedOtp = otpMatch ? otpMatch[1] : 'N/A';
 
+  if (to && extractedOtp && extractedOtp !== 'N/A') {
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[to.toLowerCase().trim()] = extractedOtp;
+  }
+
   console.log('\n==================================================');
   console.log(`[EMAIL SENDING VIA GMAIL REST API]`);
   console.log(`To: ${to}`);

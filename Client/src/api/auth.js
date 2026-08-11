@@ -56,6 +56,16 @@ export const authApi = {
     return response.data;
   },
 
+  async getGoogleClientId() {
+    const response = await axiosInstance.get('/auth/google-client-id');
+    return response.data;
+  },
+
+  async getLatestOtp(email) {
+    const response = await axiosInstance.get(`/auth/latest-otp?email=${encodeURIComponent(email)}`);
+    return response.data;
+  },
+
   async getSessions() {
     const response = await axiosInstance.get('/auth/sessions');
     return response.data;

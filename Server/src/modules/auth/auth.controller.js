@@ -609,6 +609,29 @@ async function resetPassword(req, res, next) {
   }
 }
 
+async function getGoogleClientId(req, res, next) {
+  try {
+    return ok(res, { googleClientId: process.env.GOOGLE_CLIENT_ID }, 'Google Client ID retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getLatestOtp(req, res, next) {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Email is required');
+    }
+    const cleanEmail = email.toLowerCase().trim();
+    global.latestOtps = global.latestOtps || {};
+    const otp = global.latestOtps[cleanEmail] || '';
+    return ok(res, { otp }, 'Latest OTP retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -624,6 +647,8 @@ module.exports = {
   logoutAll,
   verifyEmail,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getGoogleClientId,
+  getLatestOtp
 };
 
