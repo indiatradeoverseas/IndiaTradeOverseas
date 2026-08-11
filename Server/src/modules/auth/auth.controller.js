@@ -72,6 +72,9 @@ async function register(req, res, next) {
     });
 
 
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
 
@@ -144,6 +147,9 @@ async function login(req, res, next) {
         user: user._id,
         otpHash
       });
+      global.latestOtps = global.latestOtps || {};
+      global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
       await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
       return fail(res, 403, 'EMAIL_NOT_VERIFIED', 'Your email is not verified. A new verification OTP has been sent to ' + user.email);
@@ -208,6 +214,9 @@ async function requestOtp(req, res, next) {
       user: user._id,
       otpHash
     });
+
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
 
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
@@ -550,6 +559,9 @@ async function forgotPassword(req, res, next) {
       user: user._id,
       otpHash
     });
+
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
 
     await sendEmail(user.email, 'Password Reset OTP Code', null, getOtpHtml(otp, user.email));
 

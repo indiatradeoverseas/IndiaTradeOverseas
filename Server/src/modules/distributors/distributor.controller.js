@@ -11,7 +11,7 @@ const { getRelativePath, resolveUploadPath } = require('../../utils/file');
 // The quick-gate signup (Tea/Rice/Stone) never collects a company name, so a
 // brand-new record with none falls back to this division-aware label instead
 // of a hardcoded Tea-specific one bleeding into other divisions.
-const DIVISION_LABELS = { TEA: 'Tea', RICE: 'Rice', STONE: 'Stone', COAL: 'Coal' };
+const DIVISION_LABELS = { TEA: 'Tea', RICE: 'Rice', STONE: 'Stone', COAL: 'Coal', CAREERS: 'Careers' };
 const fallbackCompanyName = (division) => `Independent ${DIVISION_LABELS[division] || 'Sourcing'} Buyer`;
 
 // 1. Register Distributor (Upload Details & Certificates + Send OTP)
@@ -138,9 +138,12 @@ const registerDistributor = async (req, res, next) => {
       await distributor.save();
     }
 
-    const subject = 'Distributor Verification OTP - Prakriti Tea Division';
+    const subject = `Distributor Verification OTP - India Trade Overseas ${DIVISION_LABELS[division] || 'Prakriti Tea'} Division`;
     const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
     const html = getOtpHtml(otpCode, email);
+
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[email.toLowerCase().trim()] = otpCode;
 
     await sendEmail(email, subject, text, html);
 
@@ -741,6 +744,9 @@ const resendDistributorOtp = async (req, res, next) => {
     const subject = 'Distributor Login Verification OTP - Prakriti Tea Division';
     const text = `Your security OTP code for accessing the Prakriti Tea terminal is: ${otpCode}. It will expire in 5 minutes.`;
     const html = getOtpHtml(otpCode, distributor.email);
+
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[distributor.email.toLowerCase().trim()] = otpCode;
 
     await sendEmail(distributor.email, subject, text, html);
 

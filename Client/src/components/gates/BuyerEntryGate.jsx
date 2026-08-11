@@ -67,9 +67,12 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       if (res.success) {
         const activeToken = res.token || res.data?.token || res.data?.accessToken;
         const activeId = res.data?.distributorId || res.data?._id || distributorId;
-        setPendingSession({ id: activeId, token: activeToken });
         pushDataLayerEvent('entry_gate_otp_verified', { division });
-        setStep('welcome');
+        if (requireOtp) {
+          onVerified?.(activeId, activeToken, { ...form });
+        } else {
+          onComplete?.({ ...form });
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired code.');
@@ -137,9 +140,12 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       if (res.success) {
         const activeToken = res.token || res.data?.token || res.data?.accessToken;
         const activeId = res.data?.distributorId || res.data?._id || distributorId;
-        setPendingSession({ id: activeId, token: activeToken });
         pushDataLayerEvent('entry_gate_otp_verified', { division });
-        setStep('welcome');
+        if (requireOtp) {
+          onVerified?.(activeId, activeToken, { ...form });
+        } else {
+          onComplete?.({ ...form });
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired code.');

@@ -111,7 +111,7 @@ const DistributorSchema = new mongoose.Schema(
     division: {
       type: String,
       default: "TEA",
-      enum: ["TEA", "RICE", "COAL", "STONE"],
+      enum: ["TEA", "RICE", "COAL", "STONE", "CAREERS"],
     },
 
     // Security Tokens & Lifecycles

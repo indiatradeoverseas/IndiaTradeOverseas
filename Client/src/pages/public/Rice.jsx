@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -329,12 +329,19 @@ export default function RicePage() {
         toast.success("Secured customer session terminated.");
     };
 
-    // Manual "exit" from the marketplace — just switches the view back to the
-    // storefront. Does NOT clear the saved session, so a refresh/reopen restores
-    // straight back in without re-verification, as long as the CRM record still exists.
     const handleExitTerminal = () => {
-        setUserAccessLayer(1);
+        handleLogOut();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleExploreProducts = () => {
+        const savedId = localStorage.getItem('rice_distributor_id');
+        const token = localStorage.getItem('distributor_token');
+        if (!savedId || !token) {
+            setShowEntryGate(true);
+        } else {
+            setUserAccessLayer(5);
+        }
     };
 
     // Reset variety/grade whenever the compliance toggle changes
@@ -811,7 +818,7 @@ export default function RicePage() {
                                 </p>
                                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2 w-full sm:w-auto">
                                     <button
-                                        onClick={() => setUserAccessLayer(5)}
+                                        onClick={handleExploreProducts}
                                         className="w-full sm:w-auto text-[#5A4422] text-[10px] xs:text-xs font-sans font-bold uppercase tracking-widest px-8 py-4 rounded shadow-xl transition-all hover:scale-105 transform duration-300 cursor-pointer"
                                         style={{ background: 'linear-gradient(to right, #E2C26A, #8D6A25)' }}
                                     >
@@ -952,7 +959,7 @@ export default function RicePage() {
                                         </div>
 
                                         <button
-                                            onClick={() => setUserAccessLayer(5)}
+                                            onClick={handleExploreProducts}
                                             className="w-full text-center border py-3 rounded font-sans font-bold text-[10px] xs:text-xs uppercase tracking-widest transition-all text-white cursor-pointer"
                                             style={{ background: 'linear-gradient(to right, #A67C2D, #5A4422)' }}
                                         >
@@ -1037,7 +1044,7 @@ export default function RicePage() {
                                             Authorized pricing indexes, custom private labeling parameters, and super-stockist target frameworks open automatically upon passing sandbox identity checklists.
                                         </p>
                                         <button
-                                            onClick={() => setUserAccessLayer(5)}
+                                            onClick={handleExploreProducts}
                                             className="font-sans text-[10px] font-bold uppercase tracking-widest px-8 py-3.5 rounded shadow text-white inline-flex items-center gap-2 cursor-pointer"
                                             style={{ background: 'linear-gradient(to right, #A67C2D, #5A4422)' }}
                                         >
