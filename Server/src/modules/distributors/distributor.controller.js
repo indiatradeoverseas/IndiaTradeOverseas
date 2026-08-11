@@ -50,13 +50,7 @@ const registerDistributor = async (req, res, next) => {
     const hasDoc1 = doc1 || (distributor && (distributor.doc1Data || distributor.doc1Path));
     const hasDoc2 = doc2 || (distributor && (distributor.doc2Data || distributor.doc2Path));
 
-    // The lightweight entry-gate (name/email/phone/location + OTP) never uploads
-    // certificates. Bypass compliance validation for a brand-new record on that
-    // path, or when resubmitting (resend code / edit details / retry) for an
-    // email that already went through the gate itself — but never for a
-    // RETURNING email whose existing record came from the full STANDARD_KYC
-    // form, so a real pending KYC record can never be reclassified into the
-    // no-document path by resubmitting through the gate.
+
     const isQuickGateSubmission = registrationSource === 'QUICK_GATE' &&
       (!distributor || distributor.registrationSource === 'QUICK_GATE');
 
