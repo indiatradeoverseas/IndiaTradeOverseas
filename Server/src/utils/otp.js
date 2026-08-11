@@ -82,13 +82,11 @@ function getOtpHtml(otp, email = '') {
         </div>
         <div class="content">
             <p>Hello,</p>
-            <p>Thank you for registering with <strong>India Trade Overseas</strong>. To complete your sign-up and secure your account, please verify your email address by clicking the button below:</p>
+            <p>Thank you for registering with <strong>India Trade Overseas</strong>. To complete your sign-up and secure your account, please verify your email address by submitting the OTP</p>
             
-            <div class="btn-container">
-                <a href="${verificationUrl}" class="btn">Verify Email Address</a>
-            </div>
+           
             
-            <p>Alternatively, you can use the following 6-digit OTP code to verify your account:</p>
+            <p>Use the following 6-digit OTP code to verify your account:</p>
             <p class="otp">${otp}</p>
             <p>If you did not create an account, you can safely ignore this email.</p>
         </div>
