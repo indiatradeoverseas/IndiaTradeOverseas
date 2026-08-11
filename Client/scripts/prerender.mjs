@@ -54,7 +54,10 @@ function startServer() {
     res.setHeader('Content-Type', MIME[extname(filePath)] || 'application/octet-stream');
     createReadStream(filePath).pipe(res);
   });
-  return new Promise((resolve) => server.listen(PORT, () => resolve(server)));
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(PORT, () => resolve(server));
+  });
 }
 
 function outPathFor(route) {
