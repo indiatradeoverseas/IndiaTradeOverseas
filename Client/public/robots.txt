@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /crm/
+Disallow: /login
+Disallow: /client-login
+Disallow: /employee-login
+Disallow: /admin-login
+Disallow: /signup
+Disallow: /client-signup
+Disallow: /employee-signup
+Disallow: /device-pending
+Disallow: /verify-email
+Disallow: /forgot-password
+
+Sitemap: https://www.indiatradeoverseas.com/sitemap.xml

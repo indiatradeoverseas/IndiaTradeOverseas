@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
   FiTruck,
@@ -10,27 +11,38 @@ import {
   FiFileText,
   FiShield,
   FiCalendar,
-  FiAlertTriangle
+  FiAlertTriangle,
+  FiX
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { dispatchesApi } from '../../api/dispatches';
 import { useAuth } from '../../hooks/useAuth';
 import axiosInstance from '../../api/axiosInstance';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
+
+// Cinematic staggered entrance transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.02, delayChildren: 0.1 } }
+};
+
+const blockVariants = {
+  hidden: { opacity: 0, y: 12, scale: 0.99 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 20 } }
+};
 
 export default function Dispatches() {
   const { user } = useAuth();
-  const [dispatches, setDispatches] = useState([]);
+  const [dispatches, setLeads] = useState([]); // Kept variable mapping matching project scope array
+  const [dispatchesList, setDispatches] = useState([]); // Internal alias state mapping
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRevealModal, setShowRevealModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const [selectedDispatchId, setSelectedDispatchId] = useState(null);
-
-
   const [revealedPhones, setRevealedPhones] = useState({});
   const [revealReason, setRevealReason] = useState('');
-
 
   const [proofFile, setProofFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -61,6 +73,7 @@ export default function Dispatches() {
 
   const fetchDispatches = async () => {
     try {
+      setLoading(true);
       const response = await dispatchesApi.getDispatches();
       if (response.success) {
         setDispatches(response.data.dispatches || []);
@@ -193,9 +206,8 @@ export default function Dispatches() {
   };
 
   const handleDownloadProof = (docId, truckNo) => {
-    if (!docId) return;
-    toast.loading('Downloading dispatch proof...', { id: 'download' });
-    axiosInstance.get(`/documents/${docId}/download`, { responseType: 'blob' })
+    if (!docId) return Promise.reject(new Error('no_doc_id'));
+    return axiosInstance.get(`/documents/${docId}/download`, { responseType: 'blob' })
       .then((res) => {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
@@ -204,387 +216,439 @@ export default function Dispatches() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success('Document downloaded successfully!', { id: 'download' });
+        toast.success('Document downloaded successfully!');
       })
       .catch((err) => {
         console.error('Download error:', err);
-        toast.error('Failed to download document. Unauthorized access.', { id: 'download' });
+        toast.error('Failed to download document. Unauthorized access.');
+        throw err;
       });
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      'Pending': 'bg-slate-100 text-slate-700 border border-slate-200',
-      'Truck Assigned': 'bg-indigo-50 text-indigo-700 border border-indigo-100',
-      'Loading': 'bg-purple-50 text-purple-700 border border-purple-100',
-      'In Transit': 'bg-amber-50 text-amber-700 border border-amber-100',
-      'Delivered': 'bg-green-100 text-green-800 border border-green-200 font-bold',
-      'Issue Raised': 'bg-rose-50 text-rose-700 border border-rose-100 font-semibold flex items-center gap-1 justify-center',
-      'Closed': 'bg-slate-100 text-slate-500 border border-slate-200 line-through'
+      'Pending': 'bg-gray-950/40 text-gray-400 border border-gray-500/20',
+      'Truck Assigned': 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] border border-[var(--crm-accent)]/20',
+      'Loading': 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent-soft)] border border-[var(--crm-accent-soft)]/20',
+      'In Transit': 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border border-[var(--crm-warning)]/20',
+      'Delivered': 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 font-bold',
+      'Issue Raised': 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 font-semibold flex items-center gap-1 justify-center',
+      'Closed': 'bg-gray-950/20 text-gray-500 border border-gray-500/20 opacity-40 line-through'
     };
-
-    if (status === 'Issue Raised') {
-      return colors[status];
-    }
-    return colors[status] || 'bg-gray-100 text-gray-800 border border-gray-200';
+    return colors[status] || 'bg-gray-950/20 text-gray-400 border border-gray-500/20';
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-[var(--crm-bg)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40 animate-pulse" />
+          <p className="text-[10px] tracking-widest uppercase font-mono text-[var(--crm-ink-faint)]">Synchronizing Logistics Telemetry...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dispatch & Transport</h1>
-          <p className="text-gray-600 mt-1">Track vehicle scheduling, driver details, and loading/delivery documentation.</p>
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants} 
+      className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12"
+    >
+      
+      {/* Top Deck Banner */}
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
+        <div className="space-y-1 text-left">
+          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">Fleet Telemetry Console</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Dispatch & Transport</h1>
+          <p className="text-xs text-[var(--crm-ink-faint)] font-light max-w-2xl mt-1">Track vehicle load distributions, secure driver parameters, and manage electronic bills of lading.</p>
         </div>
 
         {isProcurementAuthorized && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-lg transition-transform active:scale-95"
+            className="w-full sm:w-auto bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center justify-center space-x-1.5 transition-all shadow-md cursor-pointer hover:bg-[var(--crm-ink-soft)]"
           >
-            <FiPlus size={18} />
-            <span>New Dispatch</span>
+            <FiPlus size={14} />
+            <span>Schedule New Dispatch</span>
           </button>
         )}
-      </div>
+      </motion.div>
 
-      {/* Dispatches Table */}
-      <div className="card shadow-sm border border-slate-100 rounded-2xl overflow-hidden bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Truck No & Driver</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Material & Quantity</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Routes (Load & Destination)</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Delivery Proof</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {dispatches.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-12 text-slate-500">No dispatches found.</td>
+      {/* Main Ledger Core */}
+      <div className="w-full py-8 bg-[var(--crm-bg)]">
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 overflow-hidden w-full bg-[var(--crm-bg-raised)]/10 rounded-sm shadow-2xl">
+          <div className="overflow-x-auto w-full block custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[950px]">
+              <thead>
+                <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-ink-soft)]/15">
+                  <th className="py-4 px-6">Manifest & Transporter</th>
+                  <th className="py-4 px-6">Commodity Profile</th>
+                  <th className="py-4 px-6">Global Routing Matrix</th>
+                  <th className="py-4 px-6 text-center">Tracking Status</th>
+                  <th className="py-4 px-6">Delivery Verification</th>
+                  <th className="py-4 px-6 text-center">Authorize Change</th>
                 </tr>
-              ) : (
-                dispatches.map((dispatch) => (
-                  <tr key={dispatch._id} className="hover:bg-slate-50/40 transition">
-                    {/* Truck & Driver details with decryption */}
-                    <td className="py-4 px-6">
-                      <div>
-                        <div className="font-semibold text-slate-900 text-sm uppercase">{dispatch.truckNo}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Driver: {dispatch.driverName || 'N/A'}</div>
-
-                        {/* Driver phone decryption block */}
-                        {dispatch.driverPhoneMasked ? (
-                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-400">
-                            <span className="font-mono">{revealedPhones[dispatch._id] || dispatch.driverPhoneMasked}</span>
-                            {!revealedPhones[dispatch._id] && (
-                              <button
-                                onClick={() => handleRevealClick(dispatch._id)}
-                                className="text-slate-400 hover:text-indigo-600 transition"
-                                title="Reveal Driver Phone (Security Audit Logged)"
-                              >
-                                <FiEye size={13} />
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-slate-400 italic">No phone details</div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Material & Quantity */}
-                    <td className="py-4 px-6 text-sm text-slate-700">
-                      <div>
-                        <div className="font-medium">{dispatch.material}</div>
-                        <div className="text-xs text-slate-400 mt-0.5">Qty: <strong>{dispatch.quantity}</strong></div>
-                      </div>
-                    </td>
-
-                    {/* Loading & Destination points */}
-                    <td className="py-4 px-6 text-xs text-slate-600">
-                      <div className="space-y-0.5">
-                        <div>Load: <span className="font-semibold text-slate-700">{dispatch.loadingPoint || 'N/A'}</span></div>
-                        <div>Deliver: <span className="font-semibold text-slate-700">{dispatch.destination || 'N/A'}</span></div>
-                      </div>
-                    </td>
-
-                    {/* Status badge */}
-                    <td className="py-4 px-6 text-center">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase rounded-full ${getStatusColor(dispatch.dispatchStatus)}`}>
-                        {dispatch.dispatchStatus === 'Issue Raised' && <FiAlertTriangle className="inline-block mr-0.5" />}
-                        {dispatch.dispatchStatus}
-                      </span>
-                    </td>
-
-                    {/* Delivery Proof doc link */}
-                    <td className="py-4 px-6">
-                      {dispatch.proofDocumentId ? (
-                        <div className="flex flex-col space-y-1 items-start">
-                          <button
-                            onClick={() => handleDownloadProof(dispatch.proofDocumentId, dispatch.truckNo)}
-                            className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline"
-                          >
-                            <FiFileText /> View Proof.pdf
-                          </button>
-                          <button
-                            onClick={() => handleOpenUploadModal(dispatch._id)}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 border border-slate-200 px-1.5 py-0.5 rounded bg-slate-50 hover:bg-slate-100 transition"
-                            title="Re-upload or replace proof document"
-                          >
-                            <FiUpload /> Re-upload
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <span className="text-xs text-slate-400 italic block">No proof uploaded</span>
-                          <button
-                            onClick={() => handleOpenUploadModal(dispatch._id)}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 border border-slate-200 px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
-                          >
-                            <FiUpload /> Upload Proof
-                          </button>
-                        </div>
-                      )}
-                    </td>
-
-
-                    {/* Actions dropdown status */}
-                    <td className="py-4 px-6 text-center">
-                      <select
-                        value={dispatch.dispatchStatus}
-                        onChange={(e) => updateStatus(dispatch._id, e.target.value)}
-                        className="text-xs border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        {statusOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+              </thead>
+              <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
+                {dispatchesList.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-20 font-mono uppercase tracking-widest text-[10px] opacity-40">
+                      No ongoing transit manifests recorded inside the ledger network.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  dispatchesList.map((dispatch) => (
+                    <tr key={dispatch._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                      
+                      {/* Truck & Secure Driver Metadata */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="space-y-1">
+                          <div className="font-mono text-xs font-bold uppercase text-[var(--crm-heading)] tracking-wider">{dispatch.truckNo}</div>
+                          <div className="text-[11px] text-[var(--crm-ink-soft)]/80 font-light">Operator: {dispatch.driverName || 'N/A'}</div>
+
+                          {dispatch.driverPhoneMasked ? (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="font-mono text-[var(--crm-ink-faint)] font-medium">{revealedPhones[dispatch._id] || dispatch.driverPhoneMasked}</span>
+                              {!revealedPhones[dispatch._id] && (
+                                <button
+                                  onClick={() => handleRevealClick(dispatch._id)}
+                                  className="text-[var(--crm-warning)] hover:text-white transition p-0.5 cursor-pointer"
+                                  title="Unmask Protected Communications (Audit Logged)"
+                                >
+                                  <FiEye size={12} />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-[var(--crm-ink-faint)] italic font-light">No encrypted phone data</div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Commodity Details */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="space-y-1">
+                          <div className="font-serif font-normal text-sm text-[var(--crm-heading)]">{dispatch.material}</div>
+                          <div className="text-[11px] font-mono text-[var(--crm-ink-faint)]">Net Vol: <strong className="text-[var(--crm-ink-soft)] font-medium">{dispatch.quantity}</strong></div>
+                        </div>
+                      </td>
+
+                      {/* Geographical Routes */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="space-y-1 text-[11px] text-[var(--crm-ink-soft)]/90">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--crm-warning)] block"></span>
+                            <span>Origin: <span className="text-[var(--crm-heading)] font-medium">{dispatch.loadingPoint || 'N/A'}</span></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--crm-positive)] block"></span>
+                            <span>Discharge Point: <span className="text-[var(--crm-heading)] font-medium">{dispatch.destination || 'N/A'}</span></span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Tracking Status Pill */}
+                      <td className="py-4 px-6 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-wider uppercase border ${getStatusColor(dispatch.dispatchStatus)}`}>
+                          {dispatch.dispatchStatus === 'Issue Raised' && <FiAlertTriangle className="mr-1 text-[var(--crm-danger)] animate-bounce" size={10} />}
+                          {dispatch.dispatchStatus}
+                        </span>
+                      </td>
+
+                      {/* Document Verification Proof */}
+                      <td className="py-4 px-6 text-left">
+                        {dispatch.proofDocumentId ? (
+                          <div className="flex flex-col gap-1 items-start">
+                            <DownloadButton
+                              action={() => handleDownloadProof(dispatch.proofDocumentId, dispatch.truckNo)}
+                              className="text-xs text-[var(--crm-heading)] font-semibold hover:text-[var(--crm-ink-soft)] transition cursor-pointer disabled:cursor-default"
+                              icon={FiFileText}
+                              iconSize={13}
+                              idleLabel="Verified Slip"
+                              busyLabel="Downloading..."
+                              doneLabel="Downloaded"
+                            />
+                            <button
+                              onClick={() => handleOpenUploadModal(dispatch._id)}
+                              className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm transition uppercase tracking-wider cursor-pointer mt-1"
+                            >
+                              Replace
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <span className="text-[11px] text-[var(--crm-ink-faint)] italic block font-light">Awaiting validation receipt</span>
+                            <button
+                              onClick={() => handleOpenUploadModal(dispatch._id)}
+                              className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/15 px-2.5 py-1 rounded-sm bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] transition uppercase tracking-wider cursor-pointer shadow-md"
+                            >
+                              <FiUpload size={10} /> Upload Proof
+                            </button>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Actions dropdown selector */}
+                      <td className="py-4 px-6 text-center">
+                        <div className="relative inline-block w-36">
+                          <select
+                            value={dispatch.dispatchStatus}
+                            onChange={(e) => updateStatus(dispatch._id, e.target.value)}
+                            className="w-full text-xs bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-[var(--crm-heading)] rounded-sm px-2.5 py-1.5 cursor-pointer outline-none appearance-none"
+                          >
+                            {statusOptions.map(opt => (
+                              <option key={opt} value={opt} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{opt}</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[var(--crm-ink-faint)]">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Create Dispatch Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-800">New Dispatch Delivery</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateDispatch} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Lead Code or ID *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.leadId}
-                  onChange={(e) => setFormData({ ...formData, leadId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g. ITO-LD-101 or 60af7b..."
-                />
+      {/* Creation Modal Matrix */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-ink-soft)]/15 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-[var(--crm-ink-soft)]/10 pb-3 text-left">
+                <div>
+                  <h2 className="text-base font-serif font-normal text-[var(--crm-heading)] tracking-wide uppercase">Initialize Transport Manifest</h2>
+                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Automated Fleet Node Setup</p>
+                </div>
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm hover:bg-[var(--crm-bg)] transition-all cursor-pointer"
+                >
+                  <FiX size={16} />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleCreateDispatch} className="space-y-4 text-left font-sans text-xs">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Loading Point *</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Lead Node Linkage *</label>
                   <input
                     type="text"
                     required
-                    value={formData.loadingPoint}
-                    onChange={(e) => setFormData({ ...formData, loadingPoint: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. Haldia Port"
+                    value={formData.leadId}
+                    onChange={(e) => setFormData({ ...formData, leadId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+                    placeholder="e.g. ITO-LD-101"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Loading Origin *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.loadingPoint}
+                      onChange={(e) => setFormData({ ...formData, loadingPoint: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+                      placeholder="e.g. Haldia Terminal"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Discharge Destination *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.destination}
+                      onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+                      placeholder="City / Port Location"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Destination *</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Vehicle License Registration *</label>
                   <input
                     type="text"
                     required
-                    value={formData.destination}
-                    onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="City / Site Location"
+                    value={formData.truckNo}
+                    onChange={(e) => setFormData({ ...formData, truckNo: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 font-mono uppercase placeholder-[var(--crm-ink-faint)]"
+                    placeholder="e.g. WB-14-AX-5520"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Truck Reg Number *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.truckNo}
-                  onChange={(e) => setFormData({ ...formData, truckNo: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g. MH-12-PQ-9999"
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Operator Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.driverName}
+                      onChange={(e) => setFormData({ ...formData, driverName: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Operator Contact</label>
+                    <input
+                      type="tel"
+                      value={formData.driverPhone}
+                      onChange={(e) => setFormData({ ...formData, driverPhone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40"
+                    />
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Material Specification *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.material}
+                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+                      placeholder="e.g. Basalt Chips"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Net Mass Vol *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+                      placeholder="e.g. 4800 MT"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Driver Name *</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Loading Date Signature</label>
                   <input
-                    type="text"
-                    required
-                    value={formData.driverName}
-                    onChange={(e) => setFormData({ ...formData, driverName: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type="date"
+                    value={formData.loadingDate}
+                    onChange={(e) => setFormData({ ...formData, loadingDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 cursor-pointer text-left"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Driver Phone</label>
-                  <input
-                    type="tel"
-                    value={formData.driverPhone}
-                    onChange={(e) => setFormData({ ...formData, driverPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Material Description *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.material}
-                    onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. 20mm Aggregates"
-                  />
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10">
+                  <button type="submit" className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md">Commit Manifest</button>
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cancel</button>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Quantity *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. 5000 MT"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Loading Date</label>
-                <input
-                  type="date"
-                  value={formData.loadingDate}
-                  onChange={(e) => setFormData({ ...formData, loadingDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4 border-t">
-                <button type="submit" className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">Create Dispatch</button>
-                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
-              </div>
-            </form>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* Warning Justification Modal for driver phone unmasking */}
-      {showRevealModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4 text-orange-600">
-                <FiShield size={24} />
-                <h3 className="text-lg font-bold text-slate-800">Driver Phone Reveal Audit</h3>
+      {/* Audit Form Justification layer */}
+      <AnimatePresence>
+        {showRevealModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-ink-soft)]/15 shadow-2xl"
+            >
+              <div className="flex items-center space-x-3 mb-4 text-[var(--crm-ink-faint)] text-left">
+                <FiShield size={22} />
+                <h3 className="text-base font-serif font-normal uppercase tracking-wide text-[var(--crm-heading)]">Protected Telemetry Decryption</h3>
               </div>
-              <p className="text-sm text-slate-600 mb-5 leading-relaxed">
-                WARNING: Accessing the unmasked driver contact details is monitored. Please enter a business justification to reveal this number.
+              <p className="text-xs text-[var(--crm-ink-faint)] mb-5 leading-relaxed font-light text-left">
+                CRITICAL WARNING: Access to raw telephony coordinates is fully tracked inside the global security ledger node. Provide a formal operational clearance reason to initiate unmasking.
               </p>
 
-              <form onSubmit={handleRevealSubmit}>
+              <form onSubmit={handleRevealSubmit} className="space-y-4 text-left font-sans text-xs">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Justification Reason</label>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2 font-mono">Audit Registry Justification</label>
                   <textarea
                     required
                     rows="3"
                     value={revealReason}
                     onChange={(e) => setRevealReason(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder:text-slate-400"
-                    placeholder="e.g. Need to contact transporter/driver about loading point delay..."
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none text-[var(--crm-heading)] font-light resize-none custom-scrollbar"
+                    placeholder="Provide exact commercial urgency requirement parameters..."
                   />
                 </div>
 
-                <div className="flex space-x-3 mt-6">
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition"
-                  >
-                    Confirm & Reveal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowRevealModal(false)}
-                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-                  >
-                    Cancel
-                  </button>
+                <div className="flex space-x-3 pt-2">
+                  <button type="submit" className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 shadow-md cursor-pointer">Authorize Unmasking</button>
+                  <button type="button" onClick={() => setShowRevealModal(false)} className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer">Abort</button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* Dispatch Proof Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-800">Upload Dispatch Delivery Proof</h2>
-              <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-
-            <form onSubmit={handleUploadProof} className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <label className="block text-xs font-bold text-slate-600 flex items-center gap-1 mb-2">
-                  <FiUpload /> Choose proof document (Weighment slip, Delivery Receipt, PDF or Image)
-                </label>
-                <input
-                  type="file"
-                  required
-                  onChange={(e) => setProofFile(e.target.files[0])}
-                  className="w-full text-xs cursor-pointer file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4 border-t">
-                <button type="submit" disabled={isUploading || !proofFile} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition">
-                  {isUploading ? 'Uploading...' : 'Confirm Upload'}
+      {/* Proof Submission Overlay */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-ink-soft)]/15 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-[var(--crm-ink-soft)]/10 pb-3 text-left">
+                <h2 className="text-base font-serif font-normal text-[var(--crm-heading)] tracking-wide uppercase">Transmit Waybill Proof Node</h2>
+                <button 
+                  onClick={() => setShowUploadModal(false)} 
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm hover:bg-[var(--crm-bg)] transition-all cursor-pointer"
+                >
+                  <FiX size={16} />
                 </button>
-                <button type="button" onClick={() => setShowUploadModal(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
               </div>
-            </form>
+
+              <form onSubmit={handleUploadProof} className="space-y-5 text-left font-sans text-xs">
+                <div className="p-5 bg-[var(--crm-bg)] rounded-sm border border-dashed border-[var(--crm-ink-soft)]/20 text-center shadow-inner">
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-soft)] mb-3 uppercase tracking-wider font-mono">
+                    Select Digital Clearance Asset (Receipt/Slip PDF)
+                  </label>
+                  <input
+                    type="file"
+                    required
+                    onChange={(e) => setProofFile(e.target.files[0])}
+                    className="w-full text-xs text-[var(--crm-ink-faint)] file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-[var(--crm-bg-raised)] file:border file:border-[var(--crm-ink-soft)]/20 file:text-[var(--crm-ink-soft)] hover:file:bg-[var(--crm-bg)] hover:file:text-[var(--crm-heading)] cursor-pointer file:transition shadow-md"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={isUploading || !proofFile} 
+                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 shadow-md cursor-pointer"
+                  >
+                    {isUploading ? 'Transmitting Node...' : 'Commit Upload'}
+                  </button>
+                  <button type="button" onClick={() => setShowUploadModal(false)} className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </AnimatePresence>
+
+    </motion.div>
   );
 }

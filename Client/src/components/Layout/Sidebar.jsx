@@ -1,103 +1,344 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  FiLayout,
-  FiUsers,
-  FiFileText,
-  FiTruck,
-  FiDollarSign,
-  FiFolder,
-  FiShield,
-  FiBarChart2,
-  FiSettings,
   FiX,
-  FiPackage,
-  FiCheckSquare,
-  FiBell,
-  FiBriefcase
+  FiLogOut,
+  FiLayers,
+  FiChevronDown,
+  FiChevronRight
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import {
+  getCrmMainNavItems,
+  getCrmDepartmentLinks,
+  getCrmAdminNavItems,
+  shouldShowCrmAdminMenu
+} from '../../config/crmNav';
 
 export default function Sidebar({ onClose }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isDeptExpanded, setIsDeptExpanded] = useState(false);
+  const [manualToggle, setManualToggle] = useState({});
 
-  const menuItems = [
-    { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
-    { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
-    (user?.role === 'ADMIN' || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
-    (user?.role === 'ADMIN' || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
-    { to: '/crm/products', label: 'Products', icon: FiPackage },
-    { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
-    { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
-    { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
-    (user?.role === 'ADMIN' || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder },
-  ].filter(Boolean);
+  const menuItems = getCrmMainNavItems(user);
+  const departments = getCrmDepartmentLinks();
+  const adminMenuItems = getCrmAdminNavItems(user);
+  const showAdminMenu = shouldShowCrmAdminMenu(user);
 
-  const adminMenuItems = [
-    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
-    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/employees', label: 'Employees', icon: FiUsers },
-    { to: '/crm/applications', label: 'Job Applications', icon: FiFileText },
-    (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR' || user?.jobPermission === true) && { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
-    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/security', label: 'Security', icon: FiShield },
-    (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 },
-  ].filter(Boolean);
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    toast.success('Logged out successfully');
+  };
 
-  const showAdminMenu = ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true;
+  const linkClass = ({ isActive }) =>
+    `flex items-center space-x-3 px-4 py-3 rounded-md text-xs font-medium tracking-wide uppercase transition-all duration-200 relative group ${
+      isActive
+        ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
+        : 'text-[var(--crm-ink-soft)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+    }`;
+
+  // Staggered cascade for nav sections, mirroring the mobile Navbar menu entrance
+  const navSection = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } }
+  };
+
+  const navItem = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }
+  };
 
   return (
-    <aside className="h-full bg-[#0B2D5B] text-[#FBF7EF] border-r border-[#C99B3B]/20 flex flex-col font-sans">
-      <div className="p-6 border-b border-[#C99B3B]/20 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-serif font-bold text-white">India Trade Overseas</h1>
-          <p className="text-xs text-[#C99B3B] mt-1 font-semibold uppercase tracking-wider">{user?.role}</p>
+    <aside
+      className="h-full w-full flex flex-col select-none border-r"
+      style={{
+        fontFamily: 'var(--crm-font-body)',
+        background: 'linear-gradient(180deg, var(--crm-nav-bg) 0%, var(--crm-nav-bg-to) 100%)',
+        color: 'var(--crm-ink-soft)',
+        borderColor: 'var(--crm-line)'
+      }}
+    >
+      {/* Sidebar Header Block */}
+      <div
+        className="p-6 border-b flex items-center justify-between"
+        style={{ borderColor: 'var(--crm-line)' }}
+      >
+        <div className="text-left">
+          <h1
+            className="text-lg font-normal uppercase tracking-wide"
+            style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}
+          >
+            India Trade Center
+          </h1>
+          <p
+            className="text-[9px] font-bold mt-1.5 uppercase tracking-[0.2em]"
+            style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-accent)' }}
+          >
+            Role // {user?.role}
+          </p>
         </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden rounded-lg p-2 text-slate-350 hover:bg-[#102F60] hover:text-white transition"
+            className="md:hidden rounded-sm p-1.5 transition-all cursor-pointer"
+            style={{ color: 'var(--crm-ink-faint)' }}
+            aria-label="Close Sidebar"
           >
-            <FiX size={20} />
+            <FiX size={18} />
           </button>
         )}
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin">
-        <div className="px-4 mb-2">
-          <p className="text-xs text-[#C99B3B]/60 uppercase tracking-widest font-bold">Main</p>
-        </div>
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center space-x-3 px-6 py-3 text-slate-300 hover:bg-[#102F60] hover:text-white transition-colors ${isActive ? 'bg-[#102F60] text-[#C99B3B] border-r-4 border-[#C99B3B] font-bold' : ''}`
-            }
-          >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+      {/* Navigation Stream Matrix */}
+      <nav className="flex-1 py-6 overflow-y-auto custom-scrollbar space-y-6 px-3">
+        {/* Main Section */}
+        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
+          <div className="px-4 mb-2 text-left">
+            <p
+              className="text-[9px] uppercase tracking-[0.25em] font-bold"
+              style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
+            >
+              Main Core
+            </p>
+          </div>
+          {menuItems.map((item) => {
+            if (item.children && item.children.length > 0) {
+              const routeActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+              const isOpen = manualToggle[item.to] ?? routeActive;
 
+              return (
+                <motion.div key={item.to} variants={navItem} className="space-y-1">
+                  <div
+                    className="flex items-center rounded-md transition-colors duration-200"
+                    style={{ background: routeActive ? 'var(--crm-accent-bg)' : 'transparent' }}
+                  >
+                    <NavLink
+                      to={item.to}
+                      end
+                      onClick={onClose}
+                      className="flex-1 flex items-center space-x-3 px-4 py-3 text-xs font-medium tracking-wide uppercase relative group min-w-0"
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            size={16}
+                            style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                            className="transition-colors group-hover:opacity-100 shrink-0"
+                          />
+                          <span
+                            className="truncate"
+                            style={{ color: isActive ? 'var(--crm-heading)' : 'var(--crm-ink-soft)' }}
+                          >
+                            {item.label}
+                          </span>
+                          {isActive && (
+                            <motion.span
+                              layoutId="activeIndicator"
+                              className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                              style={{ background: 'var(--crm-accent)' }}
+                              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                    <button
+                      type="button"
+                      onClick={() => setManualToggle((prev) => ({ ...prev, [item.to]: !isOpen }))}
+                      className="px-3 py-3 cursor-pointer transition-colors"
+                      style={{ color: 'var(--crm-ink-faint)' }}
+                      aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.label}`}
+                      aria-expanded={isOpen}
+                    >
+                      <motion.span
+                        animate={{ rotate: isOpen ? 90 : 0 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex"
+                      >
+                        <FiChevronRight size={13} />
+                      </motion.span>
+                    </button>
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden ml-[26px] pl-3 border-l"
+                        style={{ borderColor: 'var(--crm-line)' }}
+                      >
+                        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1 py-1">
+                          {item.children.map((child) => (
+                            <motion.div key={child.to} variants={navItem}>
+                              <NavLink
+                                to={child.to}
+                                onClick={onClose}
+                                className={({ isActive }) =>
+                                  `flex items-center gap-2.5 px-3 py-2 rounded-md text-[11px] font-medium tracking-wide uppercase transition-all duration-200 relative group ${
+                                    isActive
+                                      ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
+                                      : 'text-[var(--crm-ink-faint)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                                  }`
+                                }
+                              >
+                                {({ isActive }) => (
+                                  <>
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                                      style={{ background: child.dotColor || 'var(--crm-accent)' }}
+                                    />
+                                    <span>{child.label}</span>
+                                    {isActive && (
+                                      <span
+                                        className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
+                                        style={{ background: 'var(--crm-accent)' }}
+                                      />
+                                    )}
+                                  </>
+                                )}
+                              </NavLink>
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            }
+
+            return (
+              <motion.div key={item.to} variants={navItem}>
+                <NavLink to={item.to} className={linkClass}>
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        size={16}
+                        style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                        className="transition-colors group-hover:opacity-100"
+                      />
+                      <span>{item.label}</span>
+                      {isActive && (
+                        <motion.span
+                          layoutId="activeIndicator"
+                          className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                          style={{ background: 'var(--crm-accent)' }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* Department Section */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsDeptExpanded(!isDeptExpanded)}
+            className="flex items-center justify-between w-full px-4 py-2 text-left text-[9px] font-bold uppercase tracking-[0.25em] transition-colors cursor-pointer"
+            style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
+          >
+            <span>Department</span>
+            {isDeptExpanded ? <FiChevronDown size={12} /> : <FiChevronRight size={12} />}
+          </button>
+
+          <AnimatePresence>
+            {isDeptExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden space-y-1 pl-3"
+              >
+                <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
+                  {departments.map((dept) => (
+                    <motion.div key={dept.to} variants={navItem}>
+                      <NavLink to={dept.to} onClick={onClose} className={linkClass}>
+                        {({ isActive }) => (
+                          <>
+                            <FiLayers
+                              size={13}
+                              style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                            />
+                            <span className="text-[11px]">{dept.label}</span>
+                            {isActive && (
+                              <span
+                                className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
+                                style={{ background: 'var(--crm-accent)' }}
+                              />
+                            )}
+                          </>
+                        )}
+                      </NavLink>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Administration Section */}
         {showAdminMenu && (
-          <>
-            <div className="px-4 mt-6 mb-2">
-              <p className="text-xs text-[#C99B3B]/60 uppercase tracking-widest font-bold">Administration</p>
+          <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
+            <div className="px-4 mb-2 text-left">
+              <p
+                className="text-[9px] uppercase tracking-[0.25em] font-bold"
+                style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
+              >
+                Administration
+              </p>
             </div>
             {adminMenuItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 px-6 py-3 text-slate-300 hover:bg-[#102F60] hover:text-white transition-colors ${isActive ? 'bg-[#102F60] text-[#C99B3B] border-r-4 border-[#C99B3B] font-bold' : ''}`
-                }
-              >
-                <item.icon size={20} />
-                <span>{item.label}</span>
+              <motion.div key={item.to} variants={navItem}>
+              <NavLink to={item.to} className={linkClass}>
+                {({ isActive }) => (
+                  <>
+                    <item.icon
+                      size={16}
+                      style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                    />
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeIndicator"
+                        className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                        style={{ background: 'var(--crm-accent)' }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      />
+                    )}
+                  </>
+                )}
               </NavLink>
+              </motion.div>
             ))}
-          </>
+          </motion.div>
         )}
+
+        {/* Action Bottom Section Layer */}
+        <div className="pt-4 border-t px-1" style={{ borderColor: 'var(--crm-line)' }}>
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-3 w-full px-4 py-3 rounded-md font-medium text-xs uppercase tracking-wider transition-colors text-left cursor-pointer group"
+            style={{ color: 'var(--crm-danger)' }}
+          >
+            <FiLogOut size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
+            <span>Logout</span>
+          </button>
+        </div>
       </nav>
     </aside>
   );

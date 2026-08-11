@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { rateLimiter } = require('./middlewares/rateLimit.middleware');
 const { errorHandler } = require('./middlewares/error.middleware');
 const authRoutes = require('./modules/auth/auth.routes');
+const adminAuthRoutes = require('./modules/admin-auth/adminAuth.routes');
 const userRoutes = require('./modules/users/user.routes');
 const leadRoutes = require('./modules/leads/lead.routes');
 const quotationRoutes = require('./modules/quotations/quotation.routes');
@@ -20,9 +21,15 @@ const notificationRoutes = require('./modules/notifications/notification.routes'
 const chatRoutes = require('./modules/chat/chat.routes');
 const careerRoutes = require('./modules/careers/career.routes');
 const distributorRoutes = require('./modules/distributors/distributor.routes');
+const attendanceRoutes = require('./modules/attendance/attendance.routes');
+const ticketRoutes = require('./modules/tickets/ticket.routes');
+const leaveRoutes = require('./modules/leave/leave.routes');
+const salesRoutes = require('./modules/sales/sales.routes');
 
 
 const app = express();
+
+app.set('trust proxy', 1);
 
 
 app.use(helmet());
@@ -72,6 +79,7 @@ app.get('/', (req, res) => {
 
 const apiRoutes = [
   { path: '/auth', router: authRoutes },
+  { path: '/admin-auth', router: adminAuthRoutes },
   { path: '/users', router: userRoutes },
   { path: '/leads', router: leadRoutes },
   { path: '/ai/leads', router: leadRoutes },
@@ -87,7 +95,11 @@ const apiRoutes = [
   { path: '/security', router: auditRoutes },
   { path: '/chat', router: chatRoutes },
   { path: '/careers', router: careerRoutes },
-  { path: '/distributors', router: distributorRoutes }
+  { path: '/distributors', router: distributorRoutes },
+  { path: '/attendance', router: attendanceRoutes },
+  { path: '/tickets', router: ticketRoutes },
+  { path: '/leaves', router: leaveRoutes },
+  { path: '/sales', router: salesRoutes }
 ];
 
 apiRoutes.forEach(route => {

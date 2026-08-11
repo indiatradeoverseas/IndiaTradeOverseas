@@ -18,7 +18,7 @@ async function getDocuments(req, res, next) {
 async function uploadDocument(req, res, next) {
   try {
     if (!req.file) return fail(res, 400, 'VALIDATION_FAILED', 'File is required');
-    const { ownerType, ownerId, accessLevel } = req.body;
+    const { ownerType, ownerId, accessLevel, exportDocType } = req.body;
     if (!ownerType) {
       fs.unlinkSync(req.file.path);
       return fail(res, 400, 'VALIDATION_FAILED', 'ownerType is required');
@@ -116,7 +116,8 @@ async function uploadDocument(req, res, next) {
       ownerId: resolvedOwnerId,
       accessLevel: resolvedAccessLevel,
       file: req.file,
-      user: req.user
+      user: req.user,
+      exportDocType: exportDocType || 'OTHER'
     });
 
     return ok(res, { document: doc }, 'Document uploaded successfully', 201, req);
@@ -227,6 +228,91 @@ async function downloadDoc(req, res, next) {
 }
 
 
+async function approveDocument(req, res, next) {
+  try {
+    const { note } = req.body;
+    const doc = await Document.findByIdAndUpdate(
+      req.params.id,
+      { approvalStatus: 'APPROVED', approvedBy: req.user._id, approvedAt: new Date(), approvalNote: note || '' },
+      { new: true, runValidators: true }
+    );
+    if (!doc) return fail(res, 404, 'VALIDATION_FAILED', 'Document not found');
+
+    await recordAudit({
+      actorId: req.user._id,
+      actionType: 'DOCUMENT_APPROVED',
+      entityType: 'DOCUMENT',
+      entityId: doc._id.toString(),
+      severity: 'MEDIUM',
+      ipAddress: req.ip,
+      metadata: { fileName: doc.fileName, note }
+    });
+
+    return ok(res, { document: doc }, 'Document approved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function rejectDocument(req, res, next) {
+  try {
+    const { note } = req.body;
+    if (!note) return fail(res, 400, 'VALIDATION_FAILED', 'A rejection note is required');
+
+    const doc = await Document.findByIdAndUpdate(
+      req.params.id,
+      { approvalStatus: 'REJECTED', approvedBy: req.user._id, approvedAt: new Date(), approvalNote: note },
+      { new: true, runValidators: true }
+    );
+    if (!doc) return fail(res, 404, 'VALIDATION_FAILED', 'Document not found');
+
+    await recordAudit({
+      actorId: req.user._id,
+      actionType: 'DOCUMENT_REJECTED',
+      entityType: 'DOCUMENT',
+      entityId: doc._id.toString(),
+      severity: 'MEDIUM',
+      ipAddress: req.ip,
+      metadata: { fileName: doc.fileName, note }
+    });
+
+    return ok(res, { document: doc }, 'Document rejected successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function uploadNewVersion(req, res, next) {
+  try {
+    if (!req.file) return fail(res, 400, 'VALIDATION_FAILED', 'File is required');
+
+    const newDoc = await documentService.createNewVersion({
+      originalId: req.params.id,
+      file: req.file,
+      user: req.user
+    });
+
+    return ok(res, { document: newDoc }, 'New document version uploaded successfully', 201, req);
+  } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    if (error.message === 'DOCUMENT_NOT_FOUND') {
+      return fail(res, 404, 'VALIDATION_FAILED', 'Original document not found');
+    }
+    if (error.message === 'OWNERSHIP_FORBIDDEN') {
+      return fail(res, 403, 'OWNERSHIP_FORBIDDEN', 'Only the original uploader or an Admin/Manager can upload a new version of this document');
+    }
+    if (error.message.includes('BLOCKED_FILE_TYPE')) {
+      return fail(res, 400, 'VALIDATION_FAILED', error.message);
+    }
+    if (error.message.includes('LIMIT_FILE_SIZE')) {
+      return fail(res, 400, 'VALIDATION_FAILED', error.message);
+    }
+    next(error);
+  }
+}
+
 async function changeAccessLevel(req, res, next) {
   try {
     const { accessLevel } = req.body;
@@ -293,6 +379,9 @@ module.exports = {
   uploadDocument,
   getDocumentDetails,
   downloadDoc,
+  approveDocument,
+  rejectDocument,
+  uploadNewVersion,
   changeAccessLevel,
   deleteDocument
 };

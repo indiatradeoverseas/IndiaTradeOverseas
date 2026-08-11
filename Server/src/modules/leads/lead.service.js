@@ -5,7 +5,8 @@ const { recordAudit, raiseAlert } = require('../security-audit/auditLog.service'
 const { maskPhone, maskEmail } = require('../../utils/crypto');
 
 const allowedStageTransitions = {
-  NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_LOST'],
+ // Example from your lead.service.js:
+NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_LOST'],
   ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
   CONTACTED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'FOLLOW_UP', 'DEAL_LOST'],
   LEAD_QUALIFICATION: ['FOLLOW_UP', 'CLOSED_LOST', 'DEAL_LOST'],
@@ -33,7 +34,6 @@ const allowedStageTransitions = {
   PRICE_DISCUSSION: ['PAYMENT_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
   PAYMENT_DISCUSSION: ['PO_RECEIVED', 'DEAL_WON', 'DEAL_LOST'],
   PO_RECEIVED: ['ORDER_CONFIRMED', 'DEAL_WON', 'DEAL_LOST'],
-  ORDER_CONFIRMED: ['DEAL_WON', 'DEAL_LOST'],
   DEAL_WON: [],
   DEAL_LOST: []
 };
@@ -118,10 +118,11 @@ async function getLeadById(id, user) {
 }
 
 async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, user, ipAddress, deviceHash }) {
+  // 1. Fetch the lead record first so `lead` exists in memory
   const lead = await Lead.findById(leadId);
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
-
+  // 2. Access control check
   if (!canAccessLead(user, lead)) {
     await recordAudit({
       actorId: user._id,
@@ -136,20 +137,24 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
-
+  // 3. Stage transition check with Management Override
   const previousStage = lead.stage;
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
-  if (!isAllowed) {
+  
+  // Allow ADMIN and MANAGER roles to override pipeline rules
+  const canOverride = ['ADMIN', 'MANAGER'].includes(user.role);
+
+  if (!isAllowed && !canOverride) {
     throw new Error(`INVALID_STAGE_TRANSITION: Cannot transition from ${previousStage} to ${newStage}`);
   }
 
-
+  // 4. Persist the updated stage and optional fields
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
   await lead.save();
 
-
+  // 5. Record activity log
   const activity = await LeadActivity.create({
     leadId: lead._id,
     actionType: 'LEAD_STAGE_CHANGED',
@@ -159,7 +164,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     metadata: { fromStage: previousStage, toStage: newStage }
   });
 
-
+  // 6. Automation trigger: Create Quotation request when moving to QUOTATION_REQUIRED
   if (newStage === 'QUOTATION_REQUIRED') {
     const existingQuotation = await Quotation.findOne({ leadId: lead._id, status: 'PENDING' });
     if (!existingQuotation) {
@@ -173,7 +178,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     }
   }
 
-
+  // 7. Record security audit log
   await recordAudit({
     actorId: user._id,
     actionType: 'LEAD_STAGE_CHANGED',
@@ -185,9 +190,9 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     metadata: { previousStage, newStage, activityId: activity._id }
   });
 
+  // 8. Return formatted lead payload
   return getLeadDisplay(lead, user);
 }
-
 async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   const Lead = require('./lead.model');
   const LeadActivity = require('./leadActivity.model');

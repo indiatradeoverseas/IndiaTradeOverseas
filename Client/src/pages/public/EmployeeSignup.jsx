@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { FiBriefcase, FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiUserPlus, FiArrowRight } from 'react-icons/fi';
+import { FiBriefcase, FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiUserPlus, FiShield, FiTag } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 const EmployeeSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -34,6 +35,7 @@ const EmployeeSignup = () => {
         toast.success('Employee account created successfully! Verification OTP sent to your email. 🎉', {
           style: { borderRadius: '10px', background: '#333', color: '#fff' }
         });
+        pushDataLayerEvent('sign_up', { method: 'employee', role: formData.role || undefined });
         localStorage.setItem('verificationEmail', formData.email);
         navigate('/verify-email');
       }

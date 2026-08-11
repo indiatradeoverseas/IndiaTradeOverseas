@@ -1,5 +1,17 @@
 const mongoose = require('mongoose');
 
+const employmentHistorySchema = new mongoose.Schema(
+  {
+    event: { type: String, required: true },
+    fromValue: { type: String, default: '' },
+    toValue: { type: String, default: '' },
+    note: { type: String, default: '' },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    changedAt: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     employeeId: {
@@ -9,6 +21,7 @@ const userSchema = new mongoose.Schema(
       index: true
     },
     fullName: {
+      
       type: String,
       required: true
     },
@@ -101,7 +114,37 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: {
       type: Boolean,
       default: false
-    }
+    },
+
+    // Extended personal profile
+    fatherName: { type: String, default: '' },
+    dateOfBirth: { type: Date, default: null },
+    address: { type: String, default: '' },
+    emergencyContactName: { type: String, default: '' },
+    emergencyContactPhone: { type: String, default: '' },
+    dateOfJoining: { type: Date, default: null },
+
+    // Sensitive fields — stored encrypted, masked copy kept for list/display use
+    salaryEncrypted: { type: String, default: '' },
+    panEncrypted: { type: String, default: '' },
+    panMasked: { type: String, default: '' },
+    aadhaarEncrypted: { type: String, default: '' },
+    aadhaarMasked: { type: String, default: '' },
+    bankAccountEncrypted: { type: String, default: '' },
+    bankAccountMasked: { type: String, default: '' },
+    bankIFSC: { type: String, default: '' },
+    bankName: { type: String, default: '' },
+
+    // Employee lifecycle
+    employmentStatus: {
+      type: String,
+      enum: ['PROBATION', 'CONFIRMED', 'ON_NOTICE', 'RESIGNED', 'TERMINATED'],
+      default: 'CONFIRMED'
+    },
+    probationEndDate: { type: Date, default: null },
+    confirmationDate: { type: Date, default: null },
+    lastWorkingDay: { type: Date, default: null },
+    employmentHistory: { type: [employmentHistorySchema], default: [] }
   },
   { timestamps: true }
 );

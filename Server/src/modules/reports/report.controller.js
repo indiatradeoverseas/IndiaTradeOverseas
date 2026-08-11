@@ -3,7 +3,8 @@ const { ok, fail } = require('../../utils/response');
 
 async function getAdminSummary(req, res, next) {
   try {
-    const summary = await reportService.getAdminCommandCenterMetrics();
+    const { startDate, endDate } = req.query;
+    const summary = await reportService.getAdminCommandCenterMetrics({ startDate, endDate });
     return ok(res, summary, 'Admin summary metrics retrieved', 200, req);
   } catch (error) {
     next(error);

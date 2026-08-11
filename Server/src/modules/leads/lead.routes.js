@@ -5,7 +5,8 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage } = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage} = require('./lead.controller');
+const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
 const {
@@ -13,6 +14,7 @@ const {
   getDueReminders,
   uploadVoiceNote,
   streamVoiceNote,
+  addActivity,
   logWhatsAppActivity,
   logEmailActivity
 } = require('./leadManagement.controller');
@@ -37,9 +39,12 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for audio clips
 });
 
+// Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
+// and the public chat widget. Must stay above router.use(authenticate) below.
+router.post('/from-chat', createFromChat);
+
 router.use(authenticate);
 
-router.post('/from-chat', createFromChat);
 router.post('/score', async (req, res, next) => {
   try {
     const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
@@ -66,10 +71,12 @@ router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission')
 router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
 
 // Voice Notes & Integration logs
+router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
 router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
 router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
 router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
 router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
+router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
 
 router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);

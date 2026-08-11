@@ -29,27 +29,27 @@ export default function Security() {
 
   const getSeverityColor = (severity) => {
     const colors = {
-      LOW: 'bg-blue-100 text-blue-800',
-      MEDIUM: 'bg-yellow-100 text-yellow-800',
-      HIGH: 'bg-orange-100 text-orange-800',
-      CRITICAL: 'bg-red-100 text-red-800'
+      LOW: 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border border-[var(--crm-info)]/20',
+      MEDIUM: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border border-[var(--crm-warning)]/20',
+      HIGH: 'bg-orange-950/20 text-orange-400 border border-orange-500/20',
+      CRITICAL: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20'
     };
-    return colors[severity] || 'bg-gray-100 text-gray-800';
+    return colors[severity] || 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-faint)] border border-[var(--crm-ink-soft)]/10';
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      OPEN: 'bg-red-100 text-red-800',
-      ACKNOWLEDGED: 'bg-yellow-100 text-yellow-800',
-      RESOLVED: 'bg-green-100 text-green-800'
+      OPEN: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20',
+      ACKNOWLEDGED: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border border-[var(--crm-warning)]/20',
+      RESOLVED: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-faint)] border border-[var(--crm-ink-soft)]/10';
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--crm-heading)]"></div>
       </div>
     );
   }
@@ -57,58 +57,58 @@ export default function Security() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Security Center</h1>
-        <p className="text-gray-600 mt-1">Monitor security alerts and audit logs</p>
+        <h1 className="text-2xl font-bold text-[var(--crm-heading)]">Security Center</h1>
+        <p className="text-[var(--crm-ink-faint)] mt-1">Monitor security alerts and audit logs</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card">
+        <div className="bg-[var(--crm-bg-raised)]/30 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Open Alerts</p>
-              <p className="text-2xl font-bold text-red-600">{alerts.filter(a => a.status === 'OPEN').length}</p>
+              <p className="text-sm text-[var(--crm-ink-faint)]">Open Alerts</p>
+              <p className="text-2xl font-bold text-[var(--crm-danger)]">{alerts.filter(a => a.status === 'OPEN').length}</p>
             </div>
-            <FiAlertTriangle className="text-red-500" size={32} />
+            <FiAlertTriangle className="text-[var(--crm-danger)]" size={32} />
           </div>
         </div>
-        <div className="card">
+        <div className="bg-[var(--crm-bg-raised)]/30 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Resolved Alerts</p>
-              <p className="text-2xl font-bold text-green-600">{alerts.filter(a => a.status === 'RESOLVED').length}</p>
+              <p className="text-sm text-[var(--crm-ink-faint)]">Resolved Alerts</p>
+              <p className="text-2xl font-bold text-[var(--crm-positive)]">{alerts.filter(a => a.status === 'RESOLVED').length}</p>
             </div>
-            <FiCheckCircle className="text-green-500" size={32} />
+            <FiCheckCircle className="text-[var(--crm-positive)]" size={32} />
           </div>
         </div>
-        <div className="card">
+        <div className="bg-[var(--crm-bg-raised)]/30 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Logs</p>
-              <p className="text-2xl font-bold text-gray-900">{logs.length}</p>
+              <p className="text-sm text-[var(--crm-ink-faint)]">Total Logs</p>
+              <p className="text-2xl font-bold text-[var(--crm-heading)]">{logs.length}</p>
             </div>
-            <FiEye className="text-blue-500" size={32} />
+            <FiEye className="text-[var(--crm-info)]" size={32} />
           </div>
         </div>
-        <div className="card">
+        <div className="bg-[var(--crm-bg-raised)]/30 rounded-xl border border-[var(--crm-ink-soft)]/15 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Critical Alerts</p>
-              <p className="text-2xl font-bold text-orange-600">{alerts.filter(a => a.severity === 'CRITICAL' && a.status === 'OPEN').length}</p>
+              <p className="text-sm text-[var(--crm-ink-faint)]">Critical Alerts</p>
+              <p className="text-2xl font-bold text-[var(--crm-warning)]">{alerts.filter(a => a.severity === 'CRITICAL' && a.status === 'OPEN').length}</p>
             </div>
-            <FiShield className="text-orange-500" size={32} />
+            <FiShield className="text-[var(--crm-warning)]" size={32} />
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-[var(--crm-ink-soft)]/10">
         <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab('alerts')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'alerts'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
+                : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)] hover:border-[var(--crm-ink-soft)]/30'
               }`}
           >
             Security Alerts
@@ -116,8 +116,8 @@ export default function Security() {
           <button
             onClick={() => setActiveTab('logs')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'logs'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
+                : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)] hover:border-[var(--crm-ink-soft)]/30'
               }`}
           >
             Audit Logs
@@ -127,32 +127,32 @@ export default function Security() {
 
       {/* Alerts Tab */}
       {activeTab === 'alerts' && (
-        <div className="card overflow-x-auto">
+        <div className="bg-[var(--crm-bg-raised)]/10 rounded-xl border border-[var(--crm-ink-soft)]/15 overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4">Type</th>
-                <th className="text-left py-3 px-4">Severity</th>
-                <th className="text-left py-3 px-4">Message</th>
-                <th className="text-left py-3 px-4">Status</th>
-                <th className="text-left py-3 px-4">Time</th>
+              <tr className="bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-ink-soft)]/15">
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Type</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Severity</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Message</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Status</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Time</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[var(--crm-ink-soft)]/10">
               {alerts.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-500">No alerts found</td>
+                  <td colSpan="5" className="text-center py-8 text-[var(--crm-ink-faint)]">No alerts found</td>
                 </tr>
               ) : (
                 alerts.map((alert) => (
-                  <tr key={alert._id} className="border-b border-gray-100">
-                    <td className="py-3 px-4">{alert.alertType}</td>
+                  <tr key={alert._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                    <td className="py-3 px-4 text-sm text-[var(--crm-ink-soft)]">{alert.alertType}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${getSeverityColor(alert.severity)}`}>
                         {alert.severity}
                       </span>
                     </td>
-                    <td className="py-3 px-4">{alert.message}</td>
+                    <td className="py-3 px-4 text-sm text-[var(--crm-ink-soft)]">{alert.message}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(alert.status)}`}>
                         {alert.status}
@@ -160,8 +160,8 @@ export default function Security() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-1">
-                        <FiClock size={14} className="text-gray-400" />
-                        <span className="text-sm text-gray-600">{new Date(alert.createdAt).toLocaleString()}</span>
+                        <FiClock size={14} className="text-[var(--crm-ink-faint)]" />
+                        <span className="text-sm text-[var(--crm-ink-faint)]">{new Date(alert.createdAt).toLocaleString()}</span>
                       </div>
                     </td>
                   </tr>
@@ -172,39 +172,39 @@ export default function Security() {
         </div>
       )}
 
-      
+
       {activeTab === 'logs' && (
-        <div className="card overflow-x-auto">
+        <div className="bg-[var(--crm-bg-raised)]/10 rounded-xl border border-[var(--crm-ink-soft)]/15 overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4">Action</th>
-                <th className="text-left py-3 px-4">Entity</th>
-                <th className="text-left py-3 px-4">Severity</th>
-                <th className="text-left py-3 px-4">User ID</th>
-                <th className="text-left py-3 px-4">Time</th>
+              <tr className="bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-ink-soft)]/15">
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Action</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Entity</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Severity</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">User ID</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">Time</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[var(--crm-ink-soft)]/10">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-500">No logs found</td>
+                  <td colSpan="5" className="text-center py-8 text-[var(--crm-ink-faint)]">No logs found</td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log._id} className="border-b border-gray-100">
-                    <td className="py-3 px-4">{log.actionType}</td>
-                    <td className="py-3 px-4">{log.entityType}</td>
+                  <tr key={log._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                    <td className="py-3 px-4 text-sm text-[var(--crm-ink-soft)]">{log.actionType}</td>
+                    <td className="py-3 px-4 text-sm text-[var(--crm-ink-soft)]">{log.entityType}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${getSeverityColor(log.severity)}`}>
                         {log.severity}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm">{log.actorId}</td>
+                    <td className="py-3 px-4 text-sm text-[var(--crm-ink-soft)]">{log.actorId}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-1">
-                        <FiClock size={14} className="text-gray-400" />
-                        <span className="text-sm text-gray-600">{new Date(log.createdAt).toLocaleString()}</span>
+                        <FiClock size={14} className="text-[var(--crm-ink-faint)]" />
+                        <span className="text-sm text-[var(--crm-ink-faint)]">{new Date(log.createdAt).toLocaleString()}</span>
                       </div>
                     </td>
                   </tr>

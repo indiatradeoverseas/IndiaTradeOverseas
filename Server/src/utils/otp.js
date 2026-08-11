@@ -4,7 +4,7 @@ function generateOtp() {
     // retrun '123456';
 }
 function getOtpHtml(otp, email = '') {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = "https://www.indiatradeoverseas.com/";
     const verificationUrl = email 
       ? `${frontendUrl}/verify-email?email=${encodeURIComponent(email)}&otp=${otp}`
       : `${frontendUrl}/verify-email`;
@@ -13,7 +13,7 @@ function getOtpHtml(otp, email = '') {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Email Verification - IndiaTradeOverseas</title>
+    <title>Email Verification - India Trade Overseas</title>
     <style>
         body {
             font-family: Arial, sans-serif;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -18,6 +19,17 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
+// Staggered cinematic entrance variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.1 } }
+};
+
+const blockVariants = {
+  hidden: { opacity: 0, y: 15, scale: 0.99 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 18 } }
+};
+
 export default function Tasks() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -28,13 +40,11 @@ export default function Tasks() {
   const [selectedLead, setSelectedLead] = useState(null);
   const [showPerformModal, setShowPerformModal] = useState(false);
 
-
   const [actionType, setActionType] = useState('STAGE_CHANGE');
   const [nextStage, setNextStage] = useState('');
   const [activityNote, setActivityNote] = useState('');
   const [nextFollowup, setNextFollowup] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
 
   const allowedTransitions = {
     NEW_LEAD: ['ASSIGNED', 'CLOSED_LOST'],
@@ -75,7 +85,6 @@ export default function Tasks() {
     setSelectedLead(lead);
     setActivityNote('');
     setNextFollowup('');
-
 
     const options = allowedTransitions[lead.stage] || [];
     if (options.length > 0) {
@@ -129,24 +138,23 @@ export default function Tasks() {
     }
   };
 
-
+  // Fixed: Converted state badge colors to high contrast deep shades
   const getStageColor = (stage) => {
     const colors = {
-      NEW_LEAD: 'bg-blue-50 text-blue-700 border-blue-100',
-      ASSIGNED: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-      CONTACTED: 'bg-purple-50 text-purple-700 border-purple-100',
-      QUOTATION_REQUIRED: 'bg-amber-50 text-amber-700 border-amber-100',
-      QUOTATION_REQUESTED: 'bg-orange-50 text-orange-700 border-orange-100',
-      QUOTATION_SHARED: 'bg-teal-50 text-teal-700 border-teal-100',
-      DISPATCH_PLANNED: 'bg-cyan-50 text-cyan-700 border-cyan-100',
-      PAYMENT_PENDING: 'bg-rose-50 text-rose-700 border-rose-100',
-      DOCUMENT_PENDING: 'bg-violet-50 text-violet-700 border-violet-100',
-      CLOSED_WON: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-      CLOSED_LOST: 'bg-slate-100 text-slate-700 border-slate-200'
+      NEW_LEAD: 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/20',
+      ASSIGNED: 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] border-[var(--crm-accent)]/20',
+      CONTACTED: 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent-soft)] border-[var(--crm-accent-soft)]/20',
+      QUOTATION_REQUIRED: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20',
+      QUOTATION_REQUESTED: 'bg-orange-950/20 text-orange-400 border-orange-500/20',
+      QUOTATION_SHARED: 'bg-teal-950/20 text-teal-400 border-teal-500/20',
+      DISPATCH_PLANNED: 'bg-cyan-950/20 text-cyan-400 border-cyan-500/20',
+      PAYMENT_PENDING: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20',
+      DOCUMENT_PENDING: 'bg-violet-950/20 text-violet-400 border-violet-500/20',
+      CLOSED_WON: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20 font-bold',
+      CLOSED_LOST: 'bg-gray-950/20 text-gray-400 border-gray-500/20 opacity-60 line-through'
     };
-    return colors[stage] || 'bg-slate-50 text-slate-700 border-slate-100';
+    return colors[stage] || 'bg-slate-950/20 text-slate-400 border-slate-500/20';
   };
-
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch =
@@ -163,362 +171,373 @@ export default function Tasks() {
     return matchesSearch && matchesTab;
   });
 
-
   const totalTasks = leads.length;
   const pendingCount = leads.filter(l => l.stage !== 'CLOSED_WON' && l.stage !== 'CLOSED_LOST').length;
   const completedCount = leads.filter(l => l.stage === 'CLOSED_WON').length;
   const lostCount = leads.filter(l => l.stage === 'CLOSED_LOST').length;
 
-  return (
-    <div className="space-y-6">
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Task Performance Board</h1>
-          <p className="text-gray-600 mt-1">Review your assigned leads/tasks, log activities, and progress stages to closure.</p>
-        </div>
-      </div>
-
-      {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="card bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-            <FiGrid size={24} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Tasks</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">{totalTasks}</p>
-          </div>
-        </div>
-
-        <div className="card bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <FiClock size={24} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Active Pending</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">{pendingCount}</p>
-          </div>
-        </div>
-
-        <div className="card bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <FiCheckSquare size={24} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Closed Won</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">{completedCount}</p>
-          </div>
-        </div>
-
-        <div className="card bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-slate-100 text-slate-600 rounded-xl">
-            <FiAlertCircle size={24} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Closed Lost</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">{lostCount}</p>
-          </div>
-        </div>
-      </div>
-
-
-      <div className="card p-4 bg-white shadow-sm border border-slate-100 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex-1 w-full relative">
-          <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by customer, code, or product..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--crm-bg)]">
+        <div className="flex flex-col items-center gap-4">
+          <motion.div 
+            animate={{ scale: [1, 1.15, 1], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40" 
           />
-        </div>
-
-        {/* Tab Buttons */}
-        <div className="flex border border-slate-200 p-1 rounded-xl bg-slate-50/50 shrink-0 w-full md:w-auto">
-          <button
-            onClick={() => setActiveTab('PENDING')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${activeTab === 'PENDING'
-              ? 'bg-white text-indigo-600 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            Pending ({pendingCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('COMPLETED')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${activeTab === 'COMPLETED'
-              ? 'bg-white text-indigo-600 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            Closed ({completedCount + lostCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${activeTab === 'ALL'
-              ? 'bg-white text-indigo-600 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-              }`}
-          >
-            All ({totalTasks})
-          </button>
+          <p className="text-[10px] tracking-widest uppercase font-mono text-[var(--crm-ink-faint)]">Cataloguing Pipeline Grains...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Task List Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+  return (
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants} 
+      className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12"
+    >
+      
+      {/* Header Panel Option */}
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
+        <div className="space-y-1 text-left">
+          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">Operational Workflow Grid</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] tracking-tight uppercase">Task Performance Board</h1>
+          <p className="text-xs text-[var(--crm-ink-faint)] font-light max-w-2xl mt-1">Review assigned global charters, log real-time fulfillment progress, and execute lifecycle stage transitions.</p>
         </div>
-      ) : filteredLeads.length === 0 ? (
-        <div className="card text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm">
-          <FiCheckSquare size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-500 font-medium">No tasks found matching your filter criteria.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLeads.map((lead) => {
-            const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
-            const availableOptions = allowedTransitions[lead.stage] || [];
+      </motion.div>
 
-            return (
-              <div
-                key={lead._id}
-                className="card flex flex-col justify-between hover:shadow-lg transition-all border border-slate-100 hover:border-slate-200 bg-white rounded-2xl p-6 shadow-sm group"
+      <div className="w-full py-8 space-y-6 bg-[var(--crm-bg)]">
+
+        {/* Metric Cards grid */}
+        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Total Tasks Allocated", val: totalTasks, icon: FiGrid, bg: "bg-[var(--crm-bg-raised)]/60", text: "text-[var(--crm-heading)]" },
+            { label: "Active Pipeline Elements", val: pendingCount, icon: FiClock, bg: "bg-[var(--crm-accent-bg)]", text: "text-[var(--crm-accent)]" },
+            { label: "Closed Contracts Won", val: completedCount, icon: FiCheckSquare, bg: "bg-[var(--crm-positive-bg)]", text: "text-[var(--crm-positive)]" },
+            { label: "Contracts Dismissed", val: lostCount, icon: FiAlertCircle, bg: "bg-[var(--crm-danger-bg)]", text: "text-[var(--crm-danger)]" }
+          ].map((card, idx) => (
+            <motion.div 
+              key={idx} 
+              variants={blockVariants}
+              whileHover={{ y: -3, borderColor: 'rgba(197,203,211,0.25)' }}
+              className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 p-5 flex items-center justify-between shadow-xl transition-all duration-300"
+            >
+              <div className="text-left">
+                <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-[var(--crm-ink-faint)]">{card.label}</p>
+                <p className="text-2xl font-serif mt-2 font-normal text-[var(--crm-heading)]">{card.val}</p>
+              </div>
+              <div className={`p-3 border border-[var(--crm-ink-soft)]/10 rounded-sm text-[var(--crm-ink-soft)] shadow-inner ${card.bg}`}>
+                <card.icon size={16} />
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Filter Toolbar Area */}
+        <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/20 p-4 rounded-sm border border-[var(--crm-ink-soft)]/15 shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex-1 w-full relative">
+            <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={15} />
+            <input
+              type="text"
+              placeholder="Filter operations registry by corporate name, lead charter hash, or material classification..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none transition text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)]"
+            />
+          </div>
+
+          {/* Nav Categories tab */}
+          <div className="flex border border-[var(--crm-ink-soft)]/15 p-1 bg-[var(--crm-bg-sunken)]/60 rounded-sm shrink-0 w-full md:w-auto">
+            {[
+              { id: 'PENDING', label: 'Pending', count: pendingCount },
+              { id: 'COMPLETED', label: 'Closed', count: completedCount + lostCount },
+              { id: 'ALL', label: 'All Records', count: totalTasks }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 md:flex-initial px-4 py-1.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] shadow-md'
+                    : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+                }`}
               >
-                <div
-                  onClick={() => navigate(`/crm/leads/${lead._id}`)}
-                  className="cursor-pointer hover:opacity-90 transition-opacity"
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Cards matrix grid rendering */}
+        {filteredLeads.length === 0 ? (
+          <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/10 rounded-sm text-center py-20 border border-[var(--crm-ink-soft)]/15 shadow-sm">
+            <FiCheckSquare size={36} className="mx-auto text-[var(--crm-ink-faint)] opacity-50 mb-4" />
+            <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-medium">No workflow cards matched this active grid cluster parameter.</p>
+          </motion.div>
+        ) : (
+          <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLeads.map((lead) => {
+              const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
+
+              return (
+                <motion.div
+                  key={lead._id}
+                  variants={blockVariants}
+                  whileHover={{ y: -4, borderColor: 'rgba(197,203,211,0.35)' }}
+                  className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 hover:border-[var(--crm-heading)]/40 shadow-2xl transition-all duration-300 flex flex-col justify-between p-6 group"
                 >
-                  {/* Category and Code Header */}
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-xs font-bold font-mono text-slate-400 tracking-wider">
-                      {lead.leadCode}
-                    </span>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                      {lead.productCategory}
-                    </span>
-                  </div>
-
-                  {/* Customer Info */}
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                      {lead.customerName}
-                    </h3>
-                    {lead.companyName && (
-                      <p className="text-xs text-slate-400 font-medium mt-0.5">{lead.companyName}</p>
-                    )}
-                  </div>
-
-                  {/* Details */}
-                  <div className="space-y-2.5 text-xs text-slate-600 py-3 border-t border-b border-slate-50 mb-4">
-                    {lead.quantity && (
-                      <div className="flex items-center gap-2">
-                        <FiLayers className="text-slate-400 shrink-0" />
-                        <span>Qty: <strong>{lead.quantity}</strong></span>
-                      </div>
-                    )}
-                    {lead.destination && (
-                      <div className="flex items-center gap-2">
-                        <FiMapPin className="text-slate-400 shrink-0" />
-                        <span>To: <strong>{lead.destination}</strong></span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <FiClock className="text-slate-400 shrink-0" />
-                      <span>Current Stage:</span>
-                      <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider ${getStageColor(lead.stage)}`}>
-                        {getStageDisplay(lead.stage)}
+                  <div className="text-left">
+                    {/* Unique Identifier Strip */}
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] tracking-wider">
+                        {lead.leadCode}
+                      </span>
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]/90 border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm">
+                        {lead.productCategory}
                       </span>
                     </div>
-                    {lead.nextFollowupAt && (
-                      <div className="flex items-center gap-2 text-rose-600 font-medium bg-rose-50/50 p-1.5 rounded-lg border border-rose-100/50">
-                        <FiCalendar className="shrink-0" />
-                        <span>Follow-up: <strong>{new Date(lead.nextFollowupAt).toLocaleString()}</strong></span>
+
+                    {/* Consignee Data */}
+                    <div className="mb-4">
+                      <h3 onClick={() => navigate(`/crm/leads/${lead._id}`)} className="text-base font-serif font-normal text-[var(--crm-heading)] cursor-pointer hover:text-white transition-colors leading-tight">
+                        {lead.customerName}
+                      </h3>
+                      {lead.companyName && (
+                        <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1.5">{lead.companyName}</p>
+                      )}
+                    </div>
+
+                    {/* Specifications Metrics list */}
+                    <div className="space-y-3 text-xs text-[var(--crm-ink-soft)]/80 py-3.5 border-t border-b border-[var(--crm-ink-soft)]/10 mb-4">
+                      {lead.quantity && (
+                        <div className="flex items-center gap-2">
+                          <FiLayers className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                          <span>Mass Metrics: <strong className="text-[var(--crm-heading)] font-medium">{lead.quantity}</strong></span>
+                        </div>
+                      )}
+                      {lead.destination && (
+                        <div className="flex items-center gap-2">
+                          <FiMapPin className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                          <span>Discharge Point: <strong className="text-[var(--crm-heading)] font-medium">{lead.destination}</strong></span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <FiClock className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                        <span>Stage Axis:</span>
+                        <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border ${getStageColor(lead.stage)}`}>
+                          {getStageDisplay(lead.stage)}
+                        </span>
+                      </div>
+                      {lead.nextFollowupAt && (
+                        <div className="flex items-center gap-2 text-[var(--crm-danger)] font-medium bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/20 p-2 rounded-sm font-mono text-[10px]">
+                          <FiCalendar className="shrink-0 text-[var(--crm-danger)]" size={13} />
+                          <span>Follow-up: <strong>{new Date(lead.nextFollowupAt).toLocaleString()}</strong></span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Remarks Block */}
+                    {lead.remarks && (
+                      <div className="mb-4 bg-[var(--crm-bg)] p-3 rounded-sm border border-[var(--crm-ink-soft)]/10">
+                        <p className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1">Latest Manifest Remark</p>
+                        <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic line-clamp-2">"{lead.remarks}"</p>
                       </div>
                     )}
                   </div>
 
-                  {/* Remarks */}
-                  {lead.remarks && (
-                    <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Latest Remark</p>
-                      <p className="text-xs text-slate-600 italic line-clamp-2">"{lead.remarks}"</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Buttons */}
-                <div className="flex gap-2 pt-2">
-                  <Link
-                    to={`/crm/leads/${lead._id}`}
-                    className="flex-1 py-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all text-center flex items-center justify-center gap-1.5"
-                  >
-                    <FiEye />
-                    <span>View History</span>
-                  </Link>
-
-                  {!isClosed ? (
-                    <button
-                      onClick={() => handleOpenPerform(lead)}
-                      className="flex-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1.5 active:scale-95"
+                  {/* Actions Hub Row */}
+                  <div className="flex gap-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10">
+                    <Link
+                      to={`/crm/leads/${lead._id}`}
+                      className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-ink-soft)]/40 rounded-sm transition-all text-center flex items-center justify-center gap-1.5"
                     >
-                      <FiEdit />
-                      <span>Perform Task</span>
-                    </button>
-                  ) : (
-                    <span className="flex-1 py-2 text-xs font-semibold text-center border border-slate-100 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed">
-                      <FiCheckSquare />
-                      <span>Task Closed</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                      <FiEye size={12} />
+                      <span>History</span>
+                    </Link>
 
-      {/* Perform Task Progress Form Modal */}
-      {showPerformModal && selectedLead && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">Perform Task: {selectedLead.leadCode}</h3>
-                <p className="text-xs text-slate-400 mt-1">Customer: <strong>{selectedLead.customerName}</strong> | Current Stage: <strong className="uppercase">{getStageDisplay(selectedLead.stage)}</strong></p>
-              </div>
-              <button
-                onClick={() => setShowPerformModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition"
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-
-            {/* Modal Form */}
-            <form onSubmit={handleSubmitPerform} className="p-6 overflow-y-auto space-y-5 flex-1">
-              {/* Action Category Selector */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Action Mode *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionType('STAGE_CHANGE');
-                      const ops = allowedTransitions[selectedLead.stage] || [];
-                      if (ops.length > 0) setNextStage(ops[0]);
-                    }}
-                    className={`py-3 px-4 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all text-center ${actionType === 'STAGE_CHANGE'
-                      ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-1 ring-indigo-600'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                  >
-                    <FiLayers size={18} />
-                    <span>Progress Stage</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionType('ACTIVITY_ONLY');
-                      setNextStage('');
-                    }}
-                    className={`py-3 px-4 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all text-center ${actionType === 'ACTIVITY_ONLY'
-                      ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-1 ring-indigo-600'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                  >
-                    <FiTrendingUp size={18} />
-                    <span>Log Activity Only</span>
-                  </button>
-                </div>
-              </div>
-
-              {actionType === 'STAGE_CHANGE' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    Choose Next Stage *
-                  </label>
-                  <select
-                    required
-                    value={nextStage}
-                    onChange={(e) => setNextStage(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm cursor-pointer"
-                  >
-                    {(allowedTransitions[selectedLead.stage] || []).length === 0 ? (
-                      <option value="">No transitions allowed from this stage</option>
+                    {!isClosed ? (
+                      <button
+                        onClick={() => handleOpenPerform(lead)}
+                        className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-bg)] bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] rounded-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      >
+                        <FiEdit size={12} />
+                        <span>Perform Task</span>
+                      </button>
                     ) : (
-                      (allowedTransitions[selectedLead.stage] || []).map((stage) => (
-                        <option key={stage} value={stage}>
-                          {getStageDisplay(stage)} {stage === 'CLOSED_WON' ? '🏆 (Won)' : stage === 'CLOSED_LOST' ? '❌ (Lost)' : ''}
-                        </option>
-                      ))
+                      <span className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-center border border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)] text-[var(--crm-ink-faint)]/60 rounded-sm flex items-center justify-center gap-1.5 cursor-not-allowed select-none">
+                        <FiCheckSquare size={12} />
+                        <span>Node Finalized</span>
+                      </span>
                     )}
-                  </select>
-                  {/* baad me add krunga chart */}
-                </div>
-              )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
 
-              {/* Action Note/Remarks */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Activity Details *
-                </label>
-                <textarea
-                  required
-                  rows="4"
-                  value={activityNote}
-                  onChange={(e) => setActivityNote(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm placeholder:text-slate-400"
-                  placeholder="Describe your progress"
-                />
+      {/* Perform Task Modal Block */}
+      <AnimatePresence>
+        {showPerformModal && selectedLead && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-[var(--crm-bg-raised)] rounded-sm w-full max-w-lg overflow-hidden border border-[var(--crm-ink-soft)]/15 shadow-2xl max-h-[90vh] flex flex-col relative"
+            >
+              {/* Form header overlay */}
+              <div className="p-6 border-b border-[var(--crm-ink-soft)]/10 flex justify-between items-center shrink-0 bg-[var(--crm-bg)]/80 text-left">
+                <div>
+                  <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--crm-ink-faint)] font-bold block">Fulfillment Terminal</span>
+                  <h3 className="text-base font-serif text-[var(--crm-heading)] uppercase tracking-wide mt-1">Report Task Progress: {selectedLead.leadCode}</h3>
+                  <p className="text-xs text-[var(--crm-ink-faint)] mt-1.5 font-light leading-relaxed">
+                    Consignee: <strong className="text-[var(--crm-heading)] font-medium">{selectedLead.customerName}</strong> | Active Stage Axis: <strong className="uppercase font-mono text-[var(--crm-warning)]">{getStageDisplay(selectedLead.stage)}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPerformModal(false)}
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm hover:bg-[var(--crm-bg-raised)] transition-all cursor-pointer"
+                >
+                  <FiX size={18} />
+                </button>
               </div>
 
-              {/* Followup Date Picker */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Schedule Next Follow-up (Optional)
-                </label>
-                <div className="relative">
+              {/* Form input fields element wrapper */}
+              <form onSubmit={handleSubmitPerform} className="p-6 overflow-y-auto space-y-5 flex-1 text-left">
+                
+                {/* Switch Mode Toggle buttons */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2.5 font-mono">
+                    Fulfillment Execution Mode *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionType('STAGE_CHANGE');
+                        const ops = allowedTransitions[selectedLead.stage] || [];
+                        if (ops.length > 0) setNextStage(ops[0]);
+                      }}
+                      className={`py-3 px-4 rounded-sm border text-xs font-bold flex flex-col items-center gap-2.5 transition-all duration-200 text-center cursor-pointer ${
+                        actionType === 'STAGE_CHANGE'
+                          ? 'border-[var(--crm-heading)] bg-[var(--crm-bg)] text-[var(--crm-heading)] ring-1 ring-[var(--crm-heading)]'
+                          : 'border-[var(--crm-ink-soft)]/15 text-[var(--crm-ink-faint)] bg-[var(--crm-bg)]/50 hover:bg-[var(--crm-bg-raised)]'
+                      }`}
+                    >
+                      <FiLayers size={16} />
+                      <span className="uppercase tracking-wider font-mono text-[9px]">Transition Lifecycle Stage</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionType('ACTIVITY_ONLY');
+                        setNextStage('');
+                      }}
+                      className={`py-3 px-4 rounded-sm border text-xs font-bold flex flex-col items-center gap-2.5 transition-all duration-200 text-center cursor-pointer ${
+                        actionType === 'ACTIVITY_ONLY'
+                          ? 'border-[var(--crm-heading)] bg-[var(--crm-bg)] text-[var(--crm-heading)] ring-1 ring-[var(--crm-heading)]'
+                          : 'border-[var(--crm-ink-soft)]/15 text-[var(--crm-ink-faint)] bg-[var(--crm-bg)]/50 hover:bg-[var(--crm-bg-raised)]'
+                      }`}
+                    >
+                      <FiTrendingUp size={16} />
+                      <span className="uppercase tracking-wider font-mono text-[9px]">Log Sub-Activity Matrix</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Transition Stage selector dropdown */}
+                {actionType === 'STAGE_CHANGE' && (
+                  <div className="animate-fadeIn">
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">
+                      Target Stage *
+                    </label>
+                    <div className="relative">
+                      <select
+                        required
+                        value={nextStage}
+                        onChange={(e) => setNextStage(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none cursor-pointer text-[var(--crm-heading)] appearance-none"
+                      >
+                        {(allowedTransitions[selectedLead.stage] || []).length === 0 ? (
+                          <option value="" className="bg-[var(--crm-bg)]">Terminal state reached; no exits authorized</option>
+                        ) : (
+                          (allowedTransitions[selectedLead.stage] || []).map((stage) => (
+                            <option key={stage} value={stage} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">
+                              {getStageDisplay(stage)} {stage === 'CLOSED_WON' ? '🏆 (Won Portfolio)' : stage === 'CLOSED_LOST' ? '❌ (Lost Portfolio)' : ''}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Manifest Remarks Area */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">
+                    Fulfillment Work Details Remarks *
+                  </label>
+                  <textarea
+                    required
+                    rows="4"
+                    value={activityNote}
+                    onChange={(e) => setActivityNote(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none text-[var(--crm-heading)] font-light resize-none custom-scrollbar"
+                    placeholder="Enter precise operational descriptions, partner correspondence notes, or dynamic trade conditions..."
+                  />
+                </div>
+
+                {/* DateTime Picker Follow-up field */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">
+                    Schedule Linked Pipeline Follow-up (Optional)
+                  </label>
                   <input
                     type="datetime-local"
                     value={nextFollowup}
                     onChange={(e) => setNextFollowup(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none text-[var(--crm-heading)] font-mono cursor-pointer"
                   />
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-2 font-light leading-relaxed">
+                    Leave parameter void if the target charter profile lifecycle transitions completely out of manual follow-up dependencies.
+                  </p>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Leave empty if no further follow-up is required.
-                </p>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex space-x-3 pt-4 border-t border-slate-100 shrink-0">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/10 cursor-pointer"
-                >
-                  {submitting ? 'Submitting...' : 'Save & Log Work'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPerformModal(false)}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+                {/* Action buttons footer block */}
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 cursor-pointer shadow-md"
+                  >
+                    {submitting ? 'Transmitting Work Logs...' : 'Commit Work Parameters'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPerformModal(false)}
+                    className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

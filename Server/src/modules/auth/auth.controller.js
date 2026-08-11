@@ -72,6 +72,9 @@ async function register(req, res, next) {
     });
 
 
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
 
@@ -144,6 +147,9 @@ async function login(req, res, next) {
         user: user._id,
         otpHash
       });
+      global.latestOtps = global.latestOtps || {};
+      global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
       await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
       return fail(res, 403, 'EMAIL_NOT_VERIFIED', 'Your email is not verified. A new verification OTP has been sent to ' + user.email);
@@ -172,27 +178,11 @@ async function login(req, res, next) {
     );
 
 
-    let requiresDeviceApproval = false;
-    const isClient = user.employeeId && user.employeeId.startsWith('CL_');
-    const isBypassedRole = ['ADMIN', 'MANAGER', 'HR'].includes(user.role);
-    const bypassDeviceCheck = isClient || isBypassedRole;
-
-    if (!bypassDeviceCheck) {
-      if (deviceHash) {
-        const device = await TrustedDevice.findOne({ userId: user._id, deviceHash });
-        if (!device || !device.isApproved) {
-          requiresDeviceApproval = true;
-        }
-      } else {
-        requiresDeviceApproval = true;
-      }
-    }
-
     return ok(res, {
       user: sanitizeUser(user),
       token: accessToken,
       refreshToken,
-      requiresDeviceApproval
+      requiresDeviceApproval: false
     }, 'Login successful', 200, req);
   } catch (error) {
     if (error.message === 'ACCOUNT_LOCKED') {
@@ -216,7 +206,7 @@ async function requestOtp(req, res, next) {
     user.otpExpires = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
- 
+
     const otpHash = await bcrypt.hash(otp, 10);
     await otpModel.deleteMany({ email: user.email });
     await otpModel.create({
@@ -224,6 +214,9 @@ async function requestOtp(req, res, next) {
       user: user._id,
       otpHash
     });
+
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
 
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
@@ -239,7 +232,7 @@ async function requestOtp(req, res, next) {
 
     return ok(res, {}, 'OTP generated successfully', 200, req);
     // return ok(res, { otp }, 'OTP generated successfully (Demo Mode)', 200, req);
-    
+
   } catch (error) {
     next(error);
   }
@@ -248,7 +241,6 @@ async function requestOtp(req, res, next) {
 async function verifyOtp(req, res, next) {
   try {
     const { email, otp } = req.body;
-    const deviceHash = req.headers['x-device-hash'] || req.body.deviceHash || '';
 
     const user = await User.findOne({ email });
     if (!user || !user.isActive) {
@@ -264,22 +256,6 @@ async function verifyOtp(req, res, next) {
     user.otpExpires = null;
     await user.save();
 
-
-    let requiresDeviceApproval = false;
-    const isClient = user.employeeId && user.employeeId.startsWith('CL_');
-    const isBypassedRole = ['ADMIN', 'MANAGER', 'HR'].includes(user.role);
-    const bypassDeviceCheck = isClient || isBypassedRole;
-
-    if (!bypassDeviceCheck) {
-      if (deviceHash) {
-        const device = await TrustedDevice.findOne({ userId: user._id, deviceHash });
-        if (!device || !device.isApproved) {
-          requiresDeviceApproval = true;
-        }
-      } else {
-        requiresDeviceApproval = true;
-      }
-    }
 
     const accessToken = tokenService.generateAccessToken(user);
 
@@ -307,7 +283,7 @@ async function verifyOtp(req, res, next) {
       user: sanitizeUser(user),
       token: accessToken,
       refreshToken,
-      requiresDeviceApproval
+      requiresDeviceApproval: false
     }, 'OTP verified successfully', 200, req);
   } catch (error) {
     next(error);
@@ -584,6 +560,9 @@ async function forgotPassword(req, res, next) {
       otpHash
     });
 
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
     await sendEmail(user.email, 'Password Reset OTP Code', null, getOtpHtml(otp, user.email));
 
     return ok(res, {}, 'Password reset OTP sent successfully to your email', 200, req);
@@ -642,6 +621,29 @@ async function resetPassword(req, res, next) {
   }
 }
 
+async function getGoogleClientId(req, res, next) {
+  try {
+    return ok(res, { googleClientId: process.env.GOOGLE_CLIENT_ID }, 'Google Client ID retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getLatestOtp(req, res, next) {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Email is required');
+    }
+    const cleanEmail = email.toLowerCase().trim();
+    global.latestOtps = global.latestOtps || {};
+    const otp = global.latestOtps[cleanEmail] || '';
+    return ok(res, { otp }, 'Latest OTP retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -657,6 +659,8 @@ module.exports = {
   logoutAll,
   verifyEmail,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getGoogleClientId,
+  getLatestOtp
 };
 

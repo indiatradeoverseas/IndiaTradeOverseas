@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400..600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -48,6 +49,24 @@ body {
   background: var(--surface);
   color: var(--text-primary);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Prevents a flash of the public site's light background below short CRM pages on
+   mobile, where dynamic browser chrome can make 100vh taller than the visible area. */
+body:has(.crm-portal) {
+  background: #000000;
+}
+body:has(.crm-portal.light-theme) {
+  background: #FFFFFF;
+}
+
+/* min-h-screen (100vh) is measured against the largest possible mobile viewport
+   (address bar collapsed). 100dvh tracks the actual visible viewport instead,
+   which is the real fix for the white-gap-below-short-pages issue on phones. */
+.crm-portal.min-h-screen,
+.crm-portal .min-h-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,
@@ -103,4 +122,91 @@ textarea {
   &::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
+}
+
+/* ============================================================
+   CRM design tokens — "Bonded Vault" direction.
+   Applied via .crm-portal on the portal root (PortalLayout.jsx).
+   Pages/components under Client/src/pages/crm and
+   Client/src/components/Layout should read colors through these
+   custom properties instead of hardcoding hex values.
+   ============================================================ */
+
+.crm-portal {
+  --crm-font-display: 'Newsreader', Georgia, serif;
+  --crm-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --crm-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --crm-bg: #000000;
+  --crm-bg-raised: #121212;
+  --crm-bg-sunken: #080808;
+  --crm-nav-bg: #000000;
+  --crm-nav-bg-to: #121212;
+  --crm-ink: #FFFFFF;
+  --crm-ink-soft: #E5E7EB;
+  --crm-ink-faint: #9CA3AF;
+  --crm-heading: #FFFFFF;
+  --crm-line: rgba(255,255,255,0.15);
+  --crm-line-strong: rgba(255,255,255,0.25);
+  --crm-accent: #C89A54;
+  --crm-accent-soft: #9A7639;
+  --crm-accent-bg: rgba(200,154,84,0.1);
+  --crm-positive: #56A587;
+  --crm-positive-bg: rgba(86,165,135,0.12);
+  --crm-warning: #D2A85C;
+  --crm-warning-bg: rgba(210,168,92,0.12);
+  --crm-danger: #C96A57;
+  --crm-danger-bg: rgba(201,106,87,0.12);
+  --crm-info: #5B9BB8;
+  --crm-info-bg: rgba(91,155,184,0.12);
+  --crm-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 20px 44px -20px rgba(0,0,0,0.8);
+  --crm-shimmer: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
+  color-scheme: dark;
+}
+
+.crm-portal.light-theme {
+  --crm-bg: #FFFFFF;
+  --crm-bg-raised: #F3F4F6;
+  --crm-bg-sunken: #E5E7EB;
+  --crm-nav-bg: #FFFFFF;
+  --crm-nav-bg-to: #F3F4F6;
+  --crm-ink: #000000;
+  --crm-ink-soft: #000000;
+  --crm-ink-faint: #374151;
+  --crm-heading: #000000;
+  --crm-line: rgba(0, 0, 0, 0.15);
+  --crm-line-strong: rgba(0, 0, 0, 0.25);
+  --crm-accent: #000000;
+  --crm-accent-soft: #111827;
+  --crm-accent-bg: rgba(0, 0, 0, 0.06);
+  --crm-positive: #166534;
+  --crm-positive-bg: rgba(22, 101, 52, 0.1);
+  --crm-warning: #9a3412;
+  --crm-warning-bg: rgba(154, 52, 18, 0.1);
+  --crm-danger: #991b1b;
+  --crm-danger-bg: rgba(153, 27, 27, 0.1);
+  --crm-info: #075985;
+  --crm-info-bg: rgba(7, 89, 133, 0.1);
+  --crm-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  --crm-shimmer: linear-gradient(90deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.06) 50%, rgba(0, 0, 0, 0.02) 100%);
+  color-scheme: light;
+}
+
+.crm-portal.light-theme *, 
+.crm-portal.light-theme input, 
+.crm-portal.light-theme button, 
+.crm-portal.light-theme select, 
+.crm-portal.light-theme textarea {
+  font-weight: 700 !important;
+}
+
+@keyframes crm-shimmer-sweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@utility crm-skeleton {
+  background-image: var(--crm-shimmer);
+  background-size: 200% 100%;
+  animation: crm-shimmer-sweep 1.6s ease-in-out infinite;
 }

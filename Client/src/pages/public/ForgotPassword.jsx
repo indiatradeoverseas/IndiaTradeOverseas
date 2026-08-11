@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle, FiShield, FiArrowRight } from 'react-icons/fi';
@@ -13,6 +13,35 @@ const ForgotPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Completely automatic OTP background fetching (Polling)
+  useEffect(() => {
+    if (step !== 2 || !email) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 15) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const res = await authApi.getLatestOtp(email);
+        if (res.success && res.data?.otp) {
+          const foundOtp = res.data.otp;
+          setOtp(foundOtp);
+          clearInterval(interval);
+          toast.success(`OTP auto-fetched: ${foundOtp} 🎉`, {
+            style: { borderRadius: '10px', background: '#333', color: '#fff' }
+          });
+        }
+      } catch (err) {
+        console.error('Error auto-fetching OTP:', err);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [step, email]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();

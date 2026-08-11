@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
+import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
+import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
+import Rice from './pages/public/Rice';
 import ProductDetail from './pages/public/ProductDetail';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
@@ -14,6 +17,7 @@ import QuoteRequest from './pages/public/QuoteRequest';
 import Login from './pages/public/Login';
 import ClientLogin from './pages/public/ClientLogin';
 import EmployeeLogin from './pages/public/EmployeeLogin';
+import AdminLogin from './pages/public/AdminLogin';
 import Signup from './pages/public/Signup';
 import ClientSignup from './pages/public/ClientSignup';
 import EmployeeSignup from './pages/public/EmployeeSignup';
@@ -23,12 +27,15 @@ import ForgotPassword from './pages/public/ForgotPassword';
 
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
+import Stone from './pages/public/Stone';
 import LeadDetail from './pages/crm/LeadDetail';
 import Quotations from './pages/crm/Quotations';
 import Dispatches from './pages/crm/Dispatches';
 import Payments from './pages/crm/Payments';
 import Documents from './pages/crm/Documents';
 import Employees from './pages/crm/Employees';
+import Distributors from './pages/crm/Distributors';
+import Visitors from './pages/crm/Visitors';
 import Security from './pages/crm/Security';
 import Reports from './pages/crm/Reports';
 import AdminPanel from './pages/crm/AdminPanel';
@@ -36,12 +43,19 @@ import ProductUpload from './pages/crm/ProductUpload';
 import Tasks from './pages/crm/Tasks';
 import Notifications from './pages/crm/Notifications';
 import Applications from './pages/crm/Applications';
+import CareerLeads from './pages/crm/CareerLeads';
 import Jobs from './pages/crm/Jobs';
+import Attendance from './pages/crm/Attendance';
+import Tickets from './pages/crm/Tickets';
+import Leave from './pages/crm/Leave';
+import EmployeeProfile from './pages/crm/EmployeeProfile';
+import SalesPerformance from './pages/crm/SalesPerformance';
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
+import Prakriti from './pages/public/Prakriti';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -100,12 +114,32 @@ function RoleProtectedRoute({ children, allowedRoles }) {
 function AppLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
+
+  // SPA route changes don't trigger a new document load, so GTM's default
+  // pageview trigger only ever fires once. Push a virtual pageview per route
+  // change so ad-traffic landing on / then navigating to /stone (or any page)
+  // is captured.
+  useEffect(() => {
+    pushDataLayerEvent('virtual_page_view', {
+      page_path: location.pathname + location.search,
+      page_location: window.location.href,
+      page_title: document.title
+    });
+  }, [location.pathname, location.search]);
+
+  // Site-wide click + form-submit tracking (every button/link click and form
+  // submission), mounted once. See utils/analytics.js for what's captured.
+  useEffect(() => {
+    initActivityTracking();
+  }, []);
+
   const isCRM = location.pathname.startsWith('/crm');
   const isAuth = [
     '/login',
     '/signup',
     '/client-login',
     '/employee-login',
+    '/admin-login',
     '/client-signup',
     '/employee-signup',
     '/device-pending',
@@ -123,17 +157,21 @@ function AppLayout() {
 
   if (isAuth) {
     return (
-      <Routes>
-        <Route path="/login" element={<ClientLogin />} />
-        <Route path="/client-login" element={<Navigate to="/login" replace />} />
-        <Route path="/employee-login" element={<EmployeeLogin />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/client-signup" element={<ClientSignup />} />
-        <Route path="/employee-signup" element={<EmployeeSignup />} />
-        <Route path="/device-pending" element={<DevicePending />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-      </Routes>
+      <>
+        <ScrollToTop /> {/* <-- INJECTED TO HANDLE AUTH ENTRY ROUTES */}
+        <Routes>
+          <Route path="/login" element={<ClientLogin />} />
+          <Route path="/client-login" element={<Navigate to="/login" replace />} />
+          <Route path="/employee-login" element={<EmployeeLogin />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/client-signup" element={<ClientSignup />} />
+          <Route path="/employee-signup" element={<EmployeeSignup />} />
+          <Route path="/device-pending" element={<DevicePending />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        </Routes>
+      </>
     );
   }
 
@@ -144,9 +182,29 @@ function AppLayout() {
     }
     return (
       <PortalLayout>
+        <ScrollToTop /> {/* <-- INJECTED TO HANDLE CRM DASHBOARD CHANNELS */}
         <Routes>
           <Route path="/crm/dashboard" element={<Dashboard />} />
           <Route path="/crm/notifications" element={<Notifications />} />
+          <Route path="/crm/attendance" element={<Attendance />} />
+          <Route path="/crm/leave" element={<Leave />} />
+          <Route path="/crm/profile" element={<EmployeeProfile />} />
+          <Route path="/crm/tickets" element={<Tickets />} />
+          <Route path="/crm/sales" element={<SalesPerformance />} />
+          <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
+          <Route path="/crm/distributors/:division" element={<Distributors />}/>
+          <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
+          <Route path="/crm/visitors/:division" element={<Visitors />}/>
+          <Route
+            path="/crm/career-leads"
+            element={
+              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
+                <CareerLeads />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
           <Route
             path="/crm/leads"
             element={
@@ -192,6 +250,7 @@ function AppLayout() {
             }
           />
           <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
+          <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
           <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
           <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
           <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
@@ -228,6 +287,7 @@ function AppLayout() {
 
   return (
     <div>
+      <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
       <Navbar />
       <main>
         <Routes>
@@ -238,6 +298,9 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/prakriti" element={<Prakriti />} />
+          <Route path='/prakriti/rice' element={<Rice/>}/>
+          <Route path="/stone" element={<Stone />} />
         </Routes>
       </main>
       <Footer />
@@ -250,7 +313,22 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#23262C',
+              color: '#E7E3D9',
+              border: '1px solid rgba(231,227,217,0.16)',
+              borderRadius: '6px',
+              fontSize: '13px',
+              padding: '10px 14px',
+              boxShadow: '0 20px 44px -20px rgba(0,0,0,0.5)'
+            },
+            success: { iconTheme: { primary: '#56A587', secondary: '#23262C' } },
+            error: { iconTheme: { primary: '#C96A57', secondary: '#23262C' } }
+          }}
+        />
         <AppLayout />
       </AuthProvider>
     </Router>

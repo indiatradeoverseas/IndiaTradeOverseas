@@ -1,116 +1,191 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram, FiCopy } from 'react-icons/fi';
-import toast from 'react-hot-toast';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram, FiChevronDown } from 'react-icons/fi';
 
 export default function Footer() {
-  // Mandated Copy Context Blocks from the Directive
-  const footerContactText = `Phone: +91 82506 14079\nEmail: info.indiatradeoverseas@gmail.com`;
-  const registeredOfficeText = `Vill-Deramari, Tola-Maujabari, panch-Deramari, Block-Khochadham, dist - kishanganj, Near imambada pani bagh, Kishanganj, Bihar - 855107`;
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const servicesRef = useRef(null);
 
-  const copyToClipboard = (text, typeLabel) => {
-    navigator.clipboard.writeText(text)
-      .then(() => toast.success('Copied to Clipboard'))
-      .catch(() => toast.error('Clipboard access disabled'));
+  // Mirrors the "OUR SERVICES" dropdown in Navbar.jsx
+  const servicesGroups = [
+    {
+      groupLabel: 'PRAKRITI DIVISION',
+      links: [
+        { to: '/prakriti', label: 'Tea Division' },
+        { to: '/prakriti/rice', label: 'Rice Division' },
+      ]
+    },
+    {
+      groupLabel: 'STONE & INFRASTRUCTURE',
+      links: [
+        { to: '/stone', label: 'Stone Division' },
+      ]
+    }
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (servicesRef.current && !servicesRef.current.contains(event.target)) {
+        setIsServicesOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 1. Determine active colour scheme token object
+  let theme = {
+    bg: 'bg-[#08121D]',
+    text: 'text-white',
+    border: 'border-[#6D7886]/10',
+    doubleBorder: '#C5CBD3',
+    accentText: '#C5CBD3',
+    subtleAccent: '#6D7886'
   };
 
-  return (
-    <footer className="bg-[#0B2D5B] text-slate-300 font-sans border-t-2 border-[#C99B38] relative overflow-hidden">
-      
-      {/* Structural Double Gold Line Border Accent */}
-      <div className="border-t-[3px] border-double border-[#C99B38] w-full opacity-30"></div>
+  if (currentPath === '/prakriti') {
+    theme = {
+      bg: 'bg-[#0B3D2E]',
+      text: 'text-white',
+      border: 'border-[#004B3B]/30',
+      doubleBorder: '#50C878',
+      accentText: '#50C878',
+      subtleAccent: '#50C878'
+    };
+  } else if (currentPath === '/prakriti/rice') {
+    theme = {
+      bg: 'bg-[#5A4422]',
+      text: 'text-[#FFF9EC]',
+      border: 'border-[#A67C2D]/30',
+      doubleBorder: '#D9B85C',
+      accentText: '#F2E3B4',
+      subtleAccent: '#D9B85C'
+    };
+  } else if (currentPath === '/stone') {
+    // Strictly Mapped Palette Tokens for Stone Division
+    theme = {
+      bg: 'bg-[#37424B]',           // Primary Slate Blue Background
+      text: 'text-[#F4F2EE]',         // Sand White Text
+      border: 'border-[#A89E8E]/40',  // Stone Taupe Border
+      doubleBorder: '#C5A059',        // Metallic Gold Double Line Accent
+      accentText: '#DCCCB4',          // Warm Beige Body / Secondary Links
+      subtleAccent: '#A89E8E'         // Stone Taupe Icons & Subtle Details
+    };
+  }
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8">
-          
-          {/* Column 1: Brand Authority and Mottos */}
+  const officialEmail = "info@indiatradeoverseas.com";
+  const registeredOfficeText = "Deramari, Kishanganj, Bihar - 855107, India";
+
+  return (
+    <footer className={`w-full py-6 px-4 transition-colors duration-300 font-serif ${theme.bg} ${theme.text} border-t ${theme.border}`}>
+      
+      {/* Structural Double Line Border Accent */}
+      <div 
+        className="border-t-[3px] border-double w-full opacity-40 mb-8" 
+        style={{ borderColor: theme.doubleBorder }}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 text-left">
+
+          {/* Column 1: Brand Authority */}
           <div className="md:col-span-4 space-y-4">
-            <h3 className="text-xl font-serif text-white tracking-wide font-normal">
-              India Trade Overseas
-            </h3>
-            <div className="w-12 h-[1px] bg-[#C99B38]"></div>
-            <p className="text-[#C99B38] text-xs uppercase tracking-widest font-semibold">
-              Empowering Trade. Enabling Growth.
-            </p>
-            <p className="text-slate-400 font-serif italic text-xs tracking-wide">
+            <div>
+              <h3 className="text-xl tracking-wide font-normal uppercase">
+                India Trade Overseas
+              </h3>
+              <div className="w-12 h-[1px] mt-2" style={{ backgroundColor: theme.doubleBorder }} />
+            </div>
+
+            <p className="font-serif italic text-xs tracking-wide" style={{ color: theme.accentText }}>
               "Where Quality Meets Global Demand."
             </p>
-            
-            {/* Social Channels with Guarded Link Tracking */}
-            <div className="flex space-x-4 pt-2">
-              <a href="#" className="text-slate-400 hover:text-[#C99B38] transition-colors"><FiFacebook size={18} /></a>
-              <a href="#" className="text-slate-400 hover:text-[#C99B38] transition-colors"><FiTwitter size={18} /></a>
-              <a href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-[#C99B38] transition-colors"><FiLinkedin size={18} /></a>
-              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-[#C99B38] transition-colors"><FiInstagram size={18} /></a>
+
+            <div className="flex space-x-4 pt-1">
+              <a href="#" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiFacebook size={18} /></a>
+              <a href="#" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiTwitter size={18} /></a>
+              <a href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiLinkedin size={18} /></a>
+              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiInstagram size={18} /></a>
             </div>
           </div>
 
-          {/* Column 2: Architecture Navigation Links */}
+          {/* Column 2: Quick Links */}
           <div className="md:col-span-2 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Quick Links</h4>
-            <ul className="space-y-2.5 text-xs text-slate-400 font-light">
-              <li><Link to="/" className="hover:text-[#C99B38] transition-colors">Home</Link></li>
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">Products</Link></li>
-              <li><Link to="/about" className="hover:text-[#C99B38] transition-colors">About Us</Link></li>
-              <li><Link to="/contact" className="hover:text-[#C99B38] transition-colors">Contact</Link></li>
-              <li><Link to="/careers" className="hover:text-[#C99B38] transition-colors">Careers</Link></li>
-              <li><Link to="/quote-request" className="hover:text-[#C99B38] transition-colors">Get Quote</Link></li>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">Quick Links</h4>
+            <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
+              <li><Link to="/" className="hover:underline transition-all cursor-pointer">Home</Link></li>
+              <li className="relative" ref={servicesRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsServicesOpen((prev) => !prev)}
+                  className="flex items-center gap-1 hover:underline transition-all cursor-pointer"
+                  style={{ color: theme.accentText }}
+                >
+                  <span>Our Services</span>
+                  <FiChevronDown size={11} className={`transition-transform duration-200 ${isServicesOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isServicesOpen && (
+                  <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#0E1116] border border-white/10 shadow-2xl py-2 z-50 rounded-[2px] text-left">
+                    {servicesGroups.map((group, gIdx) => (
+                      <div key={gIdx} className={gIdx > 0 ? "border-t border-white/10 mt-2 pt-2" : ""}>
+                        <div className="px-3 py-1 text-[9px] font-mono font-bold tracking-widest text-white/40 uppercase">
+                          {group.groupLabel}
+                        </div>
+                        {group.links.map((subLink) => (
+                          <Link
+                            key={subLink.to}
+                            to={subLink.to}
+                            onClick={() => setIsServicesOpen(false)}
+                            className="block px-3 py-1.5 text-xs text-[#C5CBD3] hover:bg-white/10 hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            {subLink.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
+              <li><Link to="/about" className="hover:underline transition-all cursor-pointer">About Us</Link></li>
+              <li><Link to="/contact" className="hover:underline transition-all cursor-pointer">Contact</Link></li>
+              <li><Link to="/careers" className="hover:underline transition-all cursor-pointer">Careers</Link></li>
+              <li><Link to="/quote-request" className="hover:underline transition-all cursor-pointer">Get Quote</Link></li>
             </ul>
           </div>
 
-          {/* Column 3: Brand Mandatory Business Verticals */}
+          {/* Column 3: Business Verticals */}
           <div className="md:col-span-3 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Business Verticals</h4>
-            <ul className="space-y-2.5 text-xs text-slate-400 font-light">
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">Trade &amp; Export</Link></li>
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">Food &amp; Agriculture</Link></li>
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">Coal &amp; Industrial Materials</Link></li>
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">Stone &amp; Construction Supply</Link></li>
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">ITO Transport &amp; Logistics</Link></li>
-              <li><Link to="/products" className="hover:text-[#C99B38] transition-colors">Clay &amp; Consumer Products</Link></li>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">Business Verticals</h4>
+            <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Trade &amp; Export</button></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Food &amp; Agriculture</button></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Coal &amp; Industrial Materials</button></li>
+              <li><Link to="/stone" className="hover:underline transition-all">Stone &amp; Construction Supply</Link></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>ITO Transport &amp; Logistics</button></li>
+              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Clay &amp; Consumer Products</button></li>
             </ul>
           </div>
 
-          {/* Column 4: Document Contact Info Layer with Action Triggers */}
+          {/* Column 4: Contact Info */}
           <div className="md:col-span-3 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-white">Contact Info</h4>
-            <div className="space-y-3 font-sans text-xs text-slate-400 font-light leading-relaxed">
-              
-              <div className="relative group bg-[#102F60]/40 p-2.5 border border-slate-800 rounded-sm">
-                <p className="pr-6 text-[11px]">
+            <h4 className="text-xs uppercase tracking-widest font-semibold">Contact Info</h4>
+            <div className="space-y-3 font-sans text-xs font-light leading-relaxed" style={{ color: theme.accentText }}>
+
+              <div className="space-y-1">
+                <div className="font-bold uppercase tracking-wider text-[9px] opacity-70">Registered Office Address:</div>
+                <p className="text-[11px] font-serif leading-normal opacity-90">
                   {registeredOfficeText}
                 </p>
-                <button 
-                  onClick={() => copyToClipboard(registeredOfficeText)}
-                  className="absolute top-2 right-2 text-slate-500 hover:text-[#C99B38] transition-colors"
-                  title="Copy Registered Office Path"
-                >
-                  <FiCopy size={12} />
-                </button>
               </div>
 
-              <div className="space-y-1.5 pt-1 border-t border-slate-800 relative group">
-                <div className="flex items-center justify-between">
-                  <a href="tel:+918250614079" className="hover:text-white transition-colors block text-xs tracking-wide">
-                    Phone: <span className="font-medium text-slate-300">+91 82506 14079</span>
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between group">
+                  <a href={`mailto:${officialEmail}`} className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]">
+                    Email: <span className="font-medium underline">{officialEmail}</span>
                   </a>
-                  <button 
-                    onClick={() => copyToClipboard('+918250614079')}
-                    className="text-slate-500 hover:text-[#C99B38] transition-colors"
-                  >
-                    <FiCopy size={12} />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <a href="mailto:info.indiatradeoverseas@gmail.com" className="hover:text-white transition-colors block text-xs tracking-wide truncate max-w-[190px]">
-                    Email: <span className="font-medium text-slate-300">info.indiatradeoverseas@gmail.com</span>
-                  </a>
-                  <button 
-                    onClick={() => copyToClipboard('info.indiatradeoverseas@gmail.com')}
-                    className="text-slate-500 hover:text-[#C99B38] transition-colors"
-                  >
-                    <FiCopy size={12} />
-                  </button>
                 </div>
               </div>
 
@@ -119,13 +194,13 @@ export default function Footer() {
 
         </div>
 
-        {/* Brand Dictated Verification Notice Bar */}
-        <div className="border-t border-slate-800/80 mt-12 pt-8 text-center space-y-3">
-          <p className="text-[10px] text-slate-500 font-light max-w-2xl mx-auto leading-relaxed">
-            Rates, availability, product specifications, freight, GST, dispatch timelines and delivery commitments are subject to final commercial confirmation.
+        {/* Verification Notice Bar */}
+        <div className="border-t mt-8 pt-8 text-center border-white/10">
+          <p className="text-[10px] font-sans font-light max-w-3xl mx-auto leading-relaxed tracking-wider" style={{ color: theme.accentText }}>
+            Every appointment, price, margin, scheme, target, product specification, and territory protection right must be confirmed explicitly through authorized written company communication loops.
           </p>
-          <p className="text-[10px] tracking-wider text-slate-600 uppercase font-mono font-light">
-            &copy; {new Date().getFullYear()} India Trade Overseas. All rights reserved.
+          <p className="text-[10px] tracking-wider uppercase font-mono font-light mt-3" style={{ color: theme.subtleAccent }}>
+            &copy; 2026 India Trade Overseas. All rights reserved. Protected Environment Terminal.
           </p>
         </div>
       </div>

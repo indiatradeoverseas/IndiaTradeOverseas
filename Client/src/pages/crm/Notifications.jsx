@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { notificationsApi } from '../../api/notifications';
 import { useAuth } from '../../hooks/useAuth';
 import { 
@@ -7,12 +8,22 @@ import {
   FiCheck, 
   FiShield, 
   FiFolder, 
-  FiInfo, 
   FiClock, 
   FiChevronRight,
-  FiMail
+  FiMail,
+  FiInbox
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.1 } }
+};
+
+const blockVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 20 } }
+};
 
 export default function Notifications() {
   const { user } = useAuth();
@@ -53,7 +64,6 @@ export default function Notifications() {
       const response = await notificationsApi.markAllRead();
       if (response.success) {
         toast.success('All notifications marked as read');
-        
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       }
     } catch (error) {
@@ -66,18 +76,15 @@ export default function Notifications() {
     try {
       setActionLoadingId(notification._id);
       
-      
       if (!notification.isRead) {
         const res = await notificationsApi.markRead(notification._id);
         if (res.success) {
-          
           setNotifications(prev => prev.map(n => 
             n._id === notification._id ? { ...n, isRead: true } : n
           ));
         }
       }
 
-      
       if (notification.type === 'TASK_ASSIGNMENT' && notification.metadata?.leadId) {
         navigate(`/crm/leads/${notification.metadata.leadId}`);
       } else if (notification.type === 'SECURITY_ALERT') {
@@ -98,27 +105,26 @@ export default function Notifications() {
       case 'SECURITY_ALERT':
         return {
           icon: FiShield,
-          bgClass: 'bg-red-50 text-red-600 border border-red-100',
+          bgClass: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20',
         };
       case 'TASK_ASSIGNMENT':
         return {
           icon: FiFolder,
-          bgClass: 'bg-blue-50 text-blue-600 border border-blue-100',
+          bgClass: 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] border border-[var(--crm-accent)]/20',
         };
       case 'MESSAGE':
         return {
           icon: FiMail,
-          bgClass: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+          bgClass: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20',
         };
       default:
         return {
           icon: FiBell,
-          bgClass: 'bg-slate-50 text-slate-600 border border-slate-100',
+          bgClass: 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/10',
         };
     }
   };
 
-  
   const filteredNotifications = notifications.filter(n => {
     if (activeTab === 'unread') return !n.isRead;
     if (activeTab === 'read') return n.isRead;
@@ -129,154 +135,172 @@ export default function Notifications() {
   const readCount = notifications.filter(n => n.isRead).length;
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants} 
+      className="w-full min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] m-0 p-0 block pb-12"
+    >
       
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-950 flex items-center gap-2">
-            <FiBell className="text-[#0f4c75]" /> Notifications
+      {/* Top Deck Header Context Panel */}
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
+        <div className="space-y-1 text-left">
+          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">Communications Center</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] tracking-tight uppercase flex items-center gap-3.5">
+            <FiBell className="text-[var(--crm-ink-faint)]" size={24} /> Notifications
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Stay updated with tasks, security alerts, and system notifications.
+          <p className="text-xs text-[#a4afbc] font-light max-w-2xl">
+            Monitor real-time task dispatches, cross-border shipping anomalies, and system operations logs.
           </p>
         </div>
-        <button
+        <motion.button
+          whileHover={unreadCount > 0 ? { scale: 1.02 } : {}}
+          whileTap={unreadCount > 0 ? { scale: 0.98 } : {}}
           onClick={handleMarkAllRead}
           disabled={unreadCount === 0}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+          className={`flex items-center gap-2 px-5 h-[42px] rounded-sm text-[11px] uppercase tracking-widest font-semibold transition-all rounded-sm ${
             unreadCount === 0
-              ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50'
-              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-sm'
+              ? 'bg-[var(--crm-bg-raised)]/20 text-[var(--crm-ink-faint)]/40 border border-[var(--crm-ink-soft)]/5 cursor-not-allowed opacity-40'
+              : 'bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-heading)] hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)] shadow-md cursor-pointer'
           }`}
         >
-          <FiCheck size={16} /> Mark all as read
-        </button>
-      </div>
+          <FiCheck size={13} /> Clear Active Buffer
+        </motion.button>
+      </motion.div>
 
-      
-      <div className="flex items-center border-b border-slate-200 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-5 py-3 border-b-2 text-sm font-semibold transition-all whitespace-nowrap ${
-            activeTab === 'all'
-              ? 'border-[#0f4c75] text-[#0f4c75]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          All Notifications
-          <span className="ml-2 px-2 py-0.5 text-xs bg-slate-100 text-slate-700 rounded-full font-bold">
-            {notifications.length}
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('unread')}
-          className={`px-5 py-3 border-b-2 text-sm font-semibold transition-all whitespace-nowrap ${
-            activeTab === 'unread'
-              ? 'border-[#0f4c75] text-[#0f4c75]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          Unread
-          {unreadCount > 0 && (
-            <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full font-bold">
-              {unreadCount}
+      <div className="w-full py-8 space-y-6 bg-[var(--crm-bg)]">
+        
+        {/* Structured Segment Navigation Categories */}
+        <motion.div variants={blockVariants} className="flex items-center border-b border-[var(--crm-ink-soft)]/10 overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-5 py-3 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'all'
+                ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
+                : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+            }`}
+          >
+            All Records
+            <span className="ml-2 px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">
+              {notifications.length}
             </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('read')}
-          className={`px-5 py-3 border-b-2 text-sm font-semibold transition-all whitespace-nowrap ${
-            activeTab === 'read'
-              ? 'border-[#0f4c75] text-[#0f4c75]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          Read
-          <span className="ml-2 px-2 py-0.5 text-xs bg-slate-100 text-slate-700 rounded-full font-bold">
-            {readCount}
-          </span>
-        </button>
-      </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('unread')}
+            className={`px-5 py-3 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'unread'
+                ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
+                : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+            }`}
+          >
+            Unread Payload
+            {unreadCount > 0 && (
+              <span className="ml-2 px-2 py-0.5 text-[9px] bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/30 text-[var(--crm-danger)] rounded-sm animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('read')}
+            className={`px-5 py-3 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'read'
+                ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
+                : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+            }`}
+          >
+            Archived Ledger
+            <span className="ml-2 px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-faint)] rounded-sm">
+              {readCount}
+            </span>
+          </button>
+        </motion.div>
 
-      {/* List Container */}
-      <div className="card">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 space-y-3">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0f4c75]"></div>
-            <p className="text-sm text-slate-500 font-medium">Fetching notifications...</p>
-          </div>
-        ) : filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="h-16 w-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-4 shadow-inner">
-              <FiBell size={28} />
+        {/* Master Queue Terminal Box */}
+        <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm shadow-2xl overflow-hidden">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-28 space-y-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--crm-ink-soft)] border-t-transparent"></div>
+              <p className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono">Polling Live Stream Nodes...</p>
             </div>
-            <h3 className="text-base font-semibold text-slate-900">No notifications found</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-xs">
-              {activeTab === 'unread' 
-                ? "You've read all your notifications! Good job."
-                : activeTab === 'read'
-                ? "No read notifications found."
-                : "You don't have any notifications at the moment."}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredNotifications.map((notification) => {
-              const { icon: Icon, bgClass } = getNotificationIcon(notification.type);
-              const isUnread = !notification.isRead;
-              const isActionLoading = actionLoadingId === notification._id;
+          ) : filteredNotifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="h-14 w-16 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm flex items-center justify-center text-gray-400 mb-4 shadow-inner">
+                <FiInbox size={22} className="text-[var(--crm-ink-faint)] opacity-70" />
+              </div>
+              <h3 className="text-base font-serif text-[var(--crm-heading)] uppercase tracking-wide">Stream Queue Cleared</h3>
+              <p className="text-xs text-[var(--crm-ink-faint)] mt-1.5 max-w-xs font-light leading-relaxed px-4">
+                {activeTab === 'unread' 
+                  ? "Excellent synchronization. All inbound operations vectors have been processed."
+                  : activeTab === 'read'
+                  ? "No archived elements discovered within this workspace filter."
+                  : "Your administrative stream is completely empty at this juncture."}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--crm-ink-soft)]/10">
+              <AnimatePresence mode="wait">
+                {filteredNotifications.map((notification) => {
+                  const { icon: Icon, bgClass } = getNotificationIcon(notification.type);
+                  const isUnread = !notification.isRead;
+                  const isActionLoading = actionLoadingId === notification._id;
 
-              return (
-                <div
-                  key={notification._id}
-                  onClick={() => !isActionLoading && handleNotificationClick(notification)}
-                  className={`group relative p-4 sm:p-5 flex items-start gap-4 transition-all duration-200 cursor-pointer -mx-6 first:rounded-t-2xl last:rounded-b-2xl border-l-4 ${
-                    isUnread
-                      ? 'bg-violet-50/20 border-[#0f4c75]/80 hover:bg-violet-50/40'
-                      : 'border-transparent hover:bg-slate-50 bg-white'
-                  }`}
-                >
-                  
-                  <div className={`p-2.5 rounded-xl shrink-0 ${bgClass} transition-transform duration-200 group-hover:scale-105`}>
-                    <Icon size={20} />
-                  </div>
+                  return (
+                    <motion.div
+                      layout
+                      key={notification._id}
+                      onClick={() => !isActionLoading && handleNotificationClick(notification)}
+                      className={`group relative p-5 flex items-start gap-5 transition-all duration-150 cursor-pointer border-l-2 text-left ${
+                        isUnread
+                          ? 'bg-[var(--crm-bg-raised)]/40 border-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]/60'
+                          : 'border-transparent hover:bg-[var(--crm-bg-raised)]/30 bg-transparent'
+                      }`}
+                    >
+                      
+                      {/* Indicator Icon Context Box */}
+                      <div className={`p-2.5 rounded-sm shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-md ${bgClass}`}>
+                        <Icon size={15} />
+                      </div>
 
-                  {/* Body Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        {notification.type ? notification.type.replace(/_/g, ' ') : 'General Alert'}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <FiClock size={12} />
-                        {new Date(notification.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className={`text-sm leading-relaxed ${isUnread ? 'font-semibold text-slate-950' : 'text-slate-700'}`}>
-                      {notification.message}
-                    </p>
-                  </div>
+                      {/* Body Parameter Cluster */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)]">
+                            {notification.type ? notification.type.replace(/_/g, ' ') : 'General Broadcast'}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--crm-ink-faint)] font-light">
+                            <FiClock size={11} className="text-[var(--crm-ink-faint)]" />
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className={`text-xs sm:text-sm leading-relaxed ${isUnread ? 'font-medium text-[var(--crm-heading)]' : 'text-[var(--crm-ink-soft)]/80 font-light'}`}>
+                          {notification.message}
+                        </p>
+                      </div>
 
-                  
-                  <div className="flex items-center gap-3 shrink-0 self-center">
-                    {isUnread && (
-                      <span className="h-2 w-2 rounded-full bg-violet-600 ring-4 ring-violet-100 animate-pulse"></span>
-                    )}
-                    {isActionLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#0f4c75]"></div>
-                    ) : (
-                      <FiChevronRight 
-                        size={18} 
-                        className="text-slate-400 group-hover:text-slate-700 transition-colors group-hover:translate-x-0.5" 
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                      {/* Telemetry Actions Node Flag */}
+                      <div className="flex items-center gap-3 shrink-0 self-center pl-2">
+                        {isUnread && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-[var(--crm-danger)] ring-4 ring-[var(--crm-danger-bg)] animate-pulse"></span>
+                        )}
+                        {isActionLoading ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-2 border-[var(--crm-ink-soft)] border-t-transparent"></div>
+                        ) : (
+                          <FiChevronRight 
+                            size={16} 
+                            className="text-[var(--crm-ink-faint)]/40 group-hover:text-[var(--crm-heading)] transition-colors transform group-hover:translate-x-0.5" 
+                          />
+                        )}
+                      </div>
+                      
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+
       </div>
-    </div>
+    </motion.div>
   );
 }

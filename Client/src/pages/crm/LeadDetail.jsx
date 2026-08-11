@@ -1,11 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { quotationsApi } from '../../api/quotations';
 import { adminApi } from '../../api/admin';
 import { useAuth } from '../../hooks/useAuth';
-import { FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign, FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone, FiCheck, FiAward, FiXCircle, FiCheckCircle } from 'react-icons/fi';
+import {
+  FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign,
+  FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone,
+  FiCheck, FiAward, FiXCircle, FiCheckCircle, FiCompass,
+  FiMessageCircle, FiMail
+} from 'react-icons/fi';
 import toast from 'react-hot-toast';
+
+// Fluid animation orchestration profiles
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.01 } }
+};
+
+const blockVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 140, damping: 20 } }
+};
 
 export default function LeadDetail() {
   const { id } = useParams();
@@ -16,8 +33,14 @@ export default function LeadDetail() {
   const [loading, setLoading] = useState(true);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [newActivity, setNewActivity] = useState({ note: '', actionType: 'FOLLOW_UP', nextFollowupAt: '' });
   const [quotationData, setQuotationData] = useState({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
+  const [whatsAppMessage, setWhatsAppMessage] = useState('');
+  const [emailForm, setEmailForm] = useState({ subject: '', body: '' });
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [revealedPhone, setRevealedPhone] = useState('');
   const [revealedEmail, setRevealedEmail] = useState('');
@@ -30,60 +53,43 @@ export default function LeadDetail() {
   const [deptAssignee, setDeptAssignee] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
 
-  const stages = [
-    'NEW_LEAD',
-    'LEAD_QUALIFICATION',
-    'FOLLOW_UP',
-    'REQUIREMENT_CAPTURED',
-    'QUOTATION_REQUIRED',
-    'QUOTATION_PENDING_APPROVAL',
-    'QUOTATION_APPROVED',
-    'NEGOTIATION',
-    'LOI_PO_PENDING',
-    'ORDER_CONFIRMED',
-    'DISPATCH_PENDING',
-    'PAYMENT_PENDING',
-    'CLOSED_WON',
-    'CLOSED_LOST'
-  ];
   const departments = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES'];
 
   const activeStages = [
-    'NEW_LEAD',
-    'LEAD_QUALIFICATION',
-    'FOLLOW_UP',
-    'REQUIREMENT_CAPTURED',
-    'QUOTATION_REQUIRED',
-    'QUOTATION_PENDING_APPROVAL',
-    'QUOTATION_APPROVED',
-    'NEGOTIATION',
-    'LOI_PO_PENDING',
-    'ORDER_CONFIRMED',
-    'DISPATCH_PENDING',
-    'PAYMENT_PENDING'
+    'NEW_LEAD', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED',
+    'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING',
+    'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING'
   ];
 
   const allowedTransitions = {
-    NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST'],
-    ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'CLOSED_LOST'],
-    CONTACTED: ['QUOTATION_REQUIRED', 'CLOSED_LOST'],
-    LEAD_QUALIFICATION: ['FOLLOW_UP', 'CLOSED_LOST'],
-    FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'CLOSED_LOST'],
-    REQUIREMENT_CAPTURED: ['QUOTATION_REQUIRED', 'CLOSED_LOST'],
-    QUOTATION_REQUIRED: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST'],
-    QUOTATION_PENDING_APPROVAL: ['QUOTATION_APPROVED', 'CLOSED_LOST'],
-    QUOTATION_APPROVED: ['NEGOTIATION', 'CLOSED_LOST'],
-    QUOTATION_REQUESTED: ['QUOTATION_SHARED', 'CLOSED_LOST'],
-    QUOTATION_SHARED: ['DISPATCH_PLANNED', 'CLOSED_WON', 'CLOSED_LOST'],
-    NEGOTIATION: ['LOI_PO_PENDING', 'CLOSED_LOST'],
-    LOI_PO_PENDING: ['ORDER_CONFIRMED', 'CLOSED_LOST'],
-    ORDER_CONFIRMED: ['DISPATCH_PENDING', 'CLOSED_LOST'],
-    DISPATCH_PENDING: ['PAYMENT_PENDING', 'CLOSED_LOST'],
-    DISPATCH_PLANNED: ['PAYMENT_PENDING', 'CLOSED_LOST'],
-    PAYMENT_PENDING: ['DOCUMENT_PENDING', 'CLOSED_WON', 'CLOSED_LOST'],
-    DOCUMENT_PENDING: ['CLOSED_WON', 'CLOSED_LOST'],
+    NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_LOST'],
+    ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+    CONTACTED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'FOLLOW_UP', 'DEAL_LOST'],
+    LEAD_QUALIFICATION: ['FOLLOW_UP', 'CLOSED_LOST', 'DEAL_LOST'],
+    FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
+    REQUIREMENT_CAPTURED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+    QUOTATION_REQUIRED: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST', 'DEAL_LOST'],
+    QUOTATION_PENDING_APPROVAL: ['QUOTATION_APPROVED', 'CLOSED_LOST', 'DEAL_LOST'],
+    QUOTATION_APPROVED: ['NEGOTIATION', 'CLOSED_LOST', 'DEAL_LOST'],
+    QUOTATION_REQUESTED: ['QUOTATION_SHARED', 'CLOSED_LOST', 'DEAL_LOST'],
+    QUOTATION_SHARED: ['DISPATCH_PLANNED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+    NEGOTIATION: ['LOI_PO_PENDING', 'CLOSED_LOST', 'SAMPLE_SENT', 'DEAL_WON', 'DEAL_LOST'],
+    LOI_PO_PENDING: ['ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+    ORDER_CONFIRMED: ['DISPATCH_PENDING', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+    DISPATCH_PENDING: ['PAYMENT_PENDING', 'CLOSED_LOST', 'DEAL_LOST'],
+    DISPATCH_PLANNED: ['PAYMENT_PENDING', 'CLOSED_LOST', 'DEAL_LOST'],
+    PAYMENT_PENDING: ['DOCUMENT_PENDING', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+    DOCUMENT_PENDING: ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
     CLOSED_WON: [],
-    CLOSED_LOST: []
+    CLOSED_LOST: [],
+    REQUIREMENT_RECEIVED: ['QUOTATION_SENT', 'DEAL_WON', 'DEAL_LOST'],
+    QUOTATION_SENT: ['NEGOTIATION', 'DEAL_WON', 'DEAL_LOST'],
+    SAMPLE_SENT: ['PRICE_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
+    PRICE_DISCUSSION: ['PAYMENT_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
+    PAYMENT_DISCUSSION: ['PO_RECEIVED', 'DEAL_WON', 'DEAL_LOST'],
+    PO_RECEIVED: ['ORDER_CONFIRMED', 'DEAL_WON', 'DEAL_LOST'],
+    DEAL_WON: [],
+    DEAL_LOST: []
   };
 
   const stageDetails = {
@@ -113,12 +119,8 @@ export default function LeadDetail() {
   const fetchUsers = async () => {
     try {
       const response = await adminApi.getUsers();
-      if (response.success) {
-        setUsers(response.data.users || []);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
+      if (response.success) setUsers(response.data.users || []);
+    } catch (e) { console.error(e); }
   };
 
   const fetchLeadDetails = async () => {
@@ -130,11 +132,7 @@ export default function LeadDetail() {
         setAssignee(response.data.lead.assignedTo?._id || response.data.lead.assignedTo || '');
         setDeptAssignee(response.data.lead.assignedDepartment || '');
       }
-    } catch (error) {
-      console.error('Error fetching lead details:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const handleDeleteLead = async () => {
@@ -145,10 +143,7 @@ export default function LeadDetail() {
           toast.success('Lead deleted successfully');
           navigate('/crm/leads');
         }
-      } catch (error) {
-        console.error('Error deleting lead:', error);
-        toast.error('Failed to delete lead');
-      }
+      } catch (e) { toast.error('Failed to delete lead'); }
     }
   };
 
@@ -164,12 +159,7 @@ export default function LeadDetail() {
         toast.success('Lead assignment updated successfully');
         fetchLeadDetails();
       }
-    } catch (error) {
-      console.error('Error updating assignment:', error);
-      toast.error('Failed to update assignment');
-    } finally {
-      setIsAssigning(false);
-    }
+    } catch (err) { toast.error('Failed to update assignment'); } finally { setIsAssigning(false); }
   };
 
   const handleStageChange = async (newStage) => {
@@ -179,10 +169,7 @@ export default function LeadDetail() {
         toast.success(`Stage updated to ${newStage.replace(/_/g, ' ')}`);
         fetchLeadDetails();
       }
-    } catch (error) {
-      console.error('Error updating stage:', error);
-      toast.error(error.response?.data?.message || 'Failed to update stage');
-    }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to update stage'); }
   };
 
   const handleAddActivity = async (e) => {
@@ -195,8 +182,42 @@ export default function LeadDetail() {
         setNewActivity({ note: '', actionType: 'FOLLOW_UP', nextFollowupAt: '' });
         fetchLeadDetails();
       }
-    } catch (error) {
-      console.error('Error adding activity:', error);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleLogWhatsApp = async (e) => {
+    e.preventDefault();
+    setSendingWhatsApp(true);
+    try {
+      const response = await leadsApi.logWhatsAppActivity(id, whatsAppMessage);
+      if (response.success) {
+        toast.success('WhatsApp activity logged successfully');
+        setShowWhatsAppModal(false);
+        setWhatsAppMessage('');
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log WhatsApp activity');
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  };
+
+  const handleSendEmail = async (e) => {
+    e.preventDefault();
+    setSendingEmail(true);
+    try {
+      const response = await leadsApi.sendEmailActivity(id, emailForm.subject, emailForm.body);
+      if (response.success) {
+        toast.success(response.data?.sentLive ? 'Email sent and logged successfully' : 'Email logged successfully');
+        setShowEmailModal(false);
+        setEmailForm({ subject: '', body: '' });
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -210,9 +231,7 @@ export default function LeadDetail() {
         setQuotationData({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
         fetchLeadDetails();
       }
-    } catch (error) {
-      console.error('Error requesting quotation:', error);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleUnmaskClick = (field) => {
@@ -226,333 +245,171 @@ export default function LeadDetail() {
     try {
       const deviceHash = localStorage.getItem('deviceHash');
       const response = await adminApi.revealField({
-        entityType: 'LEAD',
-        entityId: id,
-        fieldName: revealFieldTarget,
-        reason,
-        deviceHash
+        entityType: 'LEAD', entityId: id, fieldName: revealFieldTarget, reason, deviceHash
       });
       if (response.success) {
-        if (revealFieldTarget === 'phone') {
-          setRevealedPhone(response.data.value);
-        } else {
-          setRevealedEmail(response.data.value);
-        }
+        if (revealFieldTarget === 'phone') setRevealedPhone(response.data.value);
+        else setRevealedEmail(response.data.value);
         toast.success('Field revealed successfully');
         setShowWarningModal(false);
         setReason('');
       }
-    } catch (error) {
-      console.error('Error revealing field:', error);
-      toast.error(error.response?.data?.message || 'Reveal attempt rejected.');
-    }
+    } catch (err) { toast.error(err.response?.data?.message || 'Reveal attempt rejected.'); }
   };
 
-  const getStageColor = (stage) => {
-    const colors = {
-      NEW_LEAD: 'bg-sky-50 text-sky-700 border border-sky-200/60',
-      LEAD_QUALIFICATION: 'bg-violet-50 text-violet-700 border border-violet-200/60',
-      FOLLOW_UP: 'bg-purple-50 text-purple-700 border border-purple-200/60',
-      REQUIREMENT_CAPTURED: 'bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200/60',
-      QUOTATION_REQUIRED: 'bg-amber-50 text-amber-700 border border-amber-200/60',
-      QUOTATION_PENDING_APPROVAL: 'bg-yellow-50 text-yellow-700 border border-yellow-200/60',
-      QUOTATION_APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
-      NEGOTIATION: 'bg-orange-50 text-orange-700 border border-orange-200/60',
-      LOI_PO_PENDING: 'bg-indigo-50 text-indigo-700 border border-indigo-200/60',
-      ORDER_CONFIRMED: 'bg-teal-50 text-teal-700 border border-teal-200/60',
-      DISPATCH_PENDING: 'bg-cyan-50 text-cyan-700 border border-cyan-200/60',
-      PAYMENT_PENDING: 'bg-rose-50 text-rose-700 border border-rose-200/60',
-      CLOSED_WON: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
-      CLOSED_LOST: 'bg-slate-100 text-slate-700 border border-slate-200'
-    };
-    return colors[stage] || 'bg-gray-100 text-gray-800';
-  };
+  if (loading) return (
+    <div className="min-h-screen bg-[var(--crm-bg)] flex items-center justify-center">
+      <div className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40 animate-pulse" />
+    </div>
+  );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (!lead) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Lead not found</p>
-      </div>
-    );
-  }
-
-  const selectedUser = users.find((u) => u._id === assignee);
+  if (!lead) return (
+    <div className="text-center py-20 text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono bg-[var(--crm-bg)] min-h-screen">
+      Lead manifest record not mapped.
+    </div>
+  );
 
   const currentStage = lead.stage;
-  const isClosedWon = currentStage === 'CLOSED_WON';
-  const isClosedLost = currentStage === 'CLOSED_LOST';
+  const isClosedWon = currentStage === 'CLOSED_WON' || currentStage === 'DEAL_WON';
+  const isClosedLost = currentStage === 'CLOSED_LOST' || currentStage === 'DEAL_LOST';
   const currentStepIndex = activeStages.includes(currentStage) ? activeStages.indexOf(currentStage) : (isClosedWon || isClosedLost ? activeStages.length : 0);
   const progressPercent = Math.min(100, Math.max(0, (currentStepIndex / activeStages.length) * 100));
 
   return (
-    <div className="space-y-6 px-4 py-2 max-w-7xl mx-auto">
-
-      {/* Top Bar Header Options */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12">
+      
+      {/* Top Context Header Section */}
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="flex items-start space-x-4">
-          <button onClick={() => navigate('/crm/leads')} className="text-gray-600 hover:text-gray-900 mt-1">
-            <FiArrowLeft size={24} />
+          <button onClick={() => navigate('/crm/leads')} className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] mt-1 transition-colors cursor-pointer">
+            <FiArrowLeft size={18} />
           </button>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 break-all">{lead.customerName}</h1>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${getStageColor(lead.stage)}`}>
+          <div className="space-y-1 text-left">
+            <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MANIFEST DETAIL // {lead.leadCode}</span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">{lead.customerName}</h1>
+              <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[var(--crm-bg-sunken)]/60 border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
                 {lead.stage.replace(/_/g, ' ')}
               </span>
             </div>
-            <p className="text-gray-600 text-sm mt-0.5">{lead.leadCode}</p>
           </div>
         </div>
-        <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full md:w-auto">
-          <button onClick={() => setShowQuotationModal(true)} className="btn-primary flex items-center justify-center space-x-2 flex-1 sm:flex-initial text-sm py-2 px-3">
-            <FiFileText size={18} />
-            <span>Request Quotation</span>
+        <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
+          <button onClick={() => setShowQuotationModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiFileText size={13} className="text-[var(--crm-ink-faint)]" /> <span>Request Quote</span>
           </button>
-          <button onClick={() => setShowActivityModal(true)} className="btn-secondary flex items-center justify-center space-x-2 flex-1 sm:flex-initial text-sm py-2 px-3">
-            <FiActivity size={18} />
-            <span>Add Activity</span>
+          <button onClick={() => setShowActivityModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiActivity size={13} className="text-[var(--crm-ink-faint)]" /> <span>Log Activity</span>
+          </button>
+          <button onClick={() => setShowWhatsAppModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiMessageCircle size={13} className="text-[var(--crm-ink-faint)]" /> <span>Log WhatsApp</span>
+          </button>
+          <button onClick={() => setShowEmailModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
+            <FiMail size={13} className="text-[var(--crm-ink-faint)]" /> <span>Send Email</span>
           </button>
           {user?.role === 'ADMIN' && (
-            <button
-              onClick={handleDeleteLead}
-              className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition font-medium flex items-center justify-center space-x-2 w-full sm:w-auto text-sm"
-            >
-              <FiTrash2 size={18} />
-              <span>Delete Task</span>
+            <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-[var(--crm-danger-bg)]">
+              <FiTrash2 size={13} /> <span>Delete Node</span>
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <div className="card relative p-4">
-          <div className="flex justify-between items-start">
-            <p className="text-xs text-gray-600 font-medium">Phone</p>
-            {!(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
-              <button
-                onClick={() => handleUnmaskClick('phone')}
-                className="text-slate-400 hover:text-blue-600 transition"
-                title="Reveal phone"
-              >
-                <FiEye size={16} />
-              </button>
-            )}
-          </div>
-          <p className="text-base font-semibold mt-1 break-all">{revealedPhone || lead.phoneMasked || 'N/A'}</p>
-        </div>
-        <div className="card relative p-4">
-          <div className="flex justify-between items-start">
-            <p className="text-xs text-gray-600 font-medium">Email</p>
-            {!(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
-              <button
-                onClick={() => handleUnmaskClick('email')}
-                className="text-slate-400 hover:text-blue-600 transition"
-                title="Reveal email"
-              >
-                <FiEye size={16} />
-              </button>
-            )}
-          </div>
-          <p className="text-base font-semibold mt-1 break-all">{revealedEmail || lead.emailMasked || 'N/A'}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-600 font-medium">Product</p>
-          <p className="text-base font-semibold mt-1 truncate">{lead.productCategory}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-600 font-medium">Quantity</p>
-          <p className="text-base font-semibold mt-1">{lead.quantity || 'N/A'}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-600 font-medium">Assigned To</p>
-          <p className="text-base font-semibold mt-1 truncate text-blue-600">
-            {lead.assignedTo?.fullName || lead.assignedTo || 'Unassigned'}
-          </p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-gray-600 font-medium">Department</p>
-          <p className="text-base font-semibold mt-1 truncate text-indigo-600">
-            {lead.assignedDepartment || 'None'}
-          </p>
-        </div>
-      </div>
-
-      {(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
-        <div className="card p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Assign Task / Lead</h2>
-          <form onSubmit={handleAssign} className="flex flex-col lg:flex-row gap-4 items-end">
-            <div className="w-full lg:flex-1">
-              <label className="label text-sm mb-1.5 block">Assign to Employee</label>
-              <select
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-                className="input w-full text-sm"
-              >
-                <option value="">Select Employee (Unassigned)</option>
-                {users.map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.fullName} ({u.role} - {u.department})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full lg:flex-1">
-              <label className="label text-sm mb-1.5 block">Assign to Department</label>
-              <select
-                value={deptAssignee}
-                onChange={(e) => setDeptAssignee(e.target.value)}
-                className="input w-full text-sm"
-              >
-                <option value="">Select Department (None)</option>
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={isAssigning}
-              className="btn-primary w-full lg:w-auto px-6 h-[42px] whitespace-nowrap text-sm"
-            >
-              {isAssigning ? 'Saving...' : 'Update Assignment'}
-            </button>
-          </form>
-
-          {/* Dynamic visual preview of assignment */}
-          <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Assignment Preview</h3>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">Employee:</span>
-                {selectedUser ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                    👤 {selectedUser.fullName} ({selectedUser.role})
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                    Unassigned
-                  </span>
+      {/* Main Core Viewport Data Stream Frame */}
+      <div className="w-full px-4 md:px-8 py-6 space-y-6">
+        
+        {/* Metric Specification Hex cards */}
+        <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[
+            { label: 'Telephony Line', val: revealedPhone || lead.phoneMasked || '••••• •••••', revealTarget: 'phone' },
+            { label: 'Email Coordinates', val: revealedEmail || lead.emailMasked || '•••••', revealTarget: 'email' },
+            { label: 'Commodity Sector', val: lead.productCategory },
+            { label: 'Volume / Mass', val: lead.quantity || '—' },
+            { label: 'Assigned Custodian', val: lead.assignedTo?.fullName || lead.assignedTo || 'Unassigned', accent: 'text-[var(--crm-info)]' },
+            { label: 'Department Router', val: lead.assignedDepartment || 'None', accent: 'text-[var(--crm-accent)]' }
+          ].map((item, i) => (
+            <div key={i} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
+              <div className="flex justify-between items-start gap-1">
+                <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">{item.label}</span>
+                {item.revealTarget && !(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
+                  <button onClick={() => handleUnmaskClick(item.revealTarget)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition-colors cursor-pointer"><FiEye size={12} /></button>
                 )}
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">Department:</span>
-                {deptAssignee ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
-                    🏢 {deptAssignee}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                    None
-                  </span>
-                )}
+              <p className={`text-xs font-bold tracking-wide break-all mt-2 truncate ${item.accent || 'text-[var(--crm-heading)]'}`}>{item.val}</p>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Task Management Router Pane */}
+        {(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
+          <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left">
+            <div className="mb-4">
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">ROUTING CORE</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Assign Task / Lead Matrix</h3>
+            </div>
+            <form onSubmit={handleAssign} className="flex flex-col lg:flex-row gap-4 items-end">
+              <div className="w-full lg:flex-1">
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1.5 font-mono">Assign to Employee</label>
+                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 font-mono cursor-pointer">
+                  <option value="" className="bg-[var(--crm-bg)]">Select Employee (Unassigned)</option>
+                  {users.map((u) => <option key={u._id} value={u._id} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{u.fullName} ({u.role} - {u.department})</option>)}
+                </select>
+              </div>
+              <div className="w-full lg:flex-1">
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1.5 font-mono">Assign to Department</label>
+                <select value={deptAssignee} onChange={(e) => setDeptAssignee(e.target.value)} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 font-mono cursor-pointer">
+                  <option value="" className="bg-[var(--crm-bg)]">Select Department (None)</option>
+                  {departments.map((dept) => <option key={dept} value={dept} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{dept}</option>)}
+                </select>
+              </div>
+              <button type="submit" disabled={isAssigning} className="w-full lg:w-auto bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] font-bold uppercase tracking-widest px-6 h-[40px] rounded-sm transition-all cursor-pointer whitespace-nowrap font-mono hover:bg-[var(--crm-ink-soft)]">
+                {isAssigning ? 'Synchronizing...' : 'Update Assignment'}
+              </button>
+            </form>
+          </motion.div>
+        )}
+
+        {/* Stage Management Linear Tracker */}
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/20 p-5 rounded-sm text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--crm-ink-soft)]/10 pb-4 mb-6">
+            <div>
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">PROGRESS MECHANISM</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Lead Progression Pipeline</h3>
+            </div>
+            <div className="flex flex-col items-start sm:items-end gap-1 min-w-[180px] font-mono">
+              <div className="flex justify-between w-full text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">
+                <span>Pipeline Index</span>
+                <span>{Math.round(progressPercent)}%</span>
+              </div>
+              <div className="w-full bg-[var(--crm-bg)] h-1.5 border border-[var(--crm-ink-soft)]/15 rounded-xs overflow-hidden">
+                <div className={`h-full transition-all duration-500 ease-out ${isClosedWon ? 'bg-[var(--crm-positive)]' : isClosedLost ? 'bg-[var(--crm-danger)]' : 'bg-[var(--crm-heading)]'}`} style={{ width: `${progressPercent}%` }}/>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {selectedUser
-                ? `This task will be assigned to ${selectedUser.fullName} (${selectedUser.role}).`
-                : 'No specific employee will be assigned to this task.'}
-              {deptAssignee
-                ? ` It will be routed to the ${deptAssignee} department.`
-                : ' It will not belong to any department.'}
-            </p>
           </div>
-        </div>
-      )}
 
-      {/* Stage Management Container */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition duration-200 overflow-hidden">
-        {/* Top Header Section */}
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Lead Progression Pipeline</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Click a stage block to update the lead's current stage.</p>
-          </div>
-          
-          {/* Progress Status Text & Bar */}
-          <div className="flex flex-col items-end gap-1.5 min-w-[200px]">
-            <div className="flex justify-between w-full text-xs font-semibold text-slate-600">
-              <span>Pipeline Progress</span>
-              <span>{Math.round(progressPercent)}%</span>
-            </div>
-            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ease-out ${
-                  isClosedWon 
-                    ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' 
-                    : isClosedLost 
-                    ? 'bg-slate-400' 
-                    : 'bg-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.4)]'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pipeline Tracker body */}
-        <div className="p-6">
-          {/* Horizontal scroll container for active stages */}
-          <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-            <div className="flex items-center min-w-[1200px] justify-between relative px-2">
+          {/* Table Timeline Ribbon Slider */}
+          <div className="overflow-x-auto pb-2 custom-scrollbar">
+            <div className="flex items-center min-w-[1100px] justify-between relative px-1">
               {activeStages.map((stage, idx) => {
                 const details = stageDetails[stage] || { label: stage, icon: FiStar };
                 const StageIcon = details.icon;
-                
-                // Determine stage status
                 const isCurrent = currentStage === stage;
                 const isCompleted = isClosedWon || isClosedLost || activeStages.indexOf(currentStage) > idx;
                 const isClickable = allowedTransitions[currentStage]?.includes(stage);
                 
-                let btnStyle = "";
-                let badgeStyle = "";
-                
-                if (isCurrent) {
-                  btnStyle = "border-indigo-600 bg-indigo-50/80 text-indigo-700 shadow-sm shadow-indigo-100 scale-[1.02] ring-2 ring-indigo-600/20 cursor-default";
-                  badgeStyle = "bg-indigo-600 text-white animate-pulse";
-                } else if (isCompleted) {
-                  btnStyle = "border-emerald-200 bg-emerald-50/40 text-emerald-700 cursor-default";
-                  badgeStyle = "bg-emerald-500 text-white";
-                } else if (isClickable) {
-                  btnStyle = "border-slate-300 bg-white text-slate-700 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50/20 cursor-pointer scale-[1.01]";
-                  badgeStyle = "bg-slate-300 text-slate-800";
-                } else {
-                  btnStyle = "border-slate-100 bg-slate-50/50 text-slate-400 opacity-40 cursor-not-allowed";
-                  badgeStyle = "bg-slate-100 text-slate-400";
-                }
+                let currentStyle = isCurrent ? "border-[var(--crm-heading)] bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-bold"
+                                  : isCompleted ? "border-[var(--crm-positive)]/30 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] opacity-80"
+                                  : isClickable ? "border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/50 cursor-pointer"
+                                  : "border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/40 text-[var(--crm-ink-faint)] opacity-30 cursor-not-allowed";
 
                 return (
                   <React.Fragment key={stage}>
-                    <button
-                      onClick={() => isClickable && handleStageChange(stage)}
-                      disabled={!isClickable}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 flex-1 mx-1.5 focus:outline-none select-none relative group ${btnStyle}`}
-                    >
-                      <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold mb-2 transition-all ${badgeStyle}`}>
-                        {isCompleted ? <FiCheck className="w-3.5 h-3.5" /> : idx + 1}
-                      </span>
-                      <StageIcon className={`w-5 h-5 mb-1.5 transition-transform ${isClickable ? 'group-hover:scale-110' : ''}`} />
-                      
-                      <span className="text-xs font-semibold whitespace-nowrap">{details.label}</span>
-                      
-                      <span className="absolute -top-10 scale-0 transition-all duration-150 rounded bg-slate-800 p-2 text-white text-[10px] whitespace-nowrap shadow-md group-hover:scale-100 z-10">
-                        {details.desc || stage.replace(/_/g, ' ')}
-                      </span>
+                    <button onClick={() => isClickable && handleStageChange(stage)} disabled={!isClickable} className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${currentStyle}`}>
+                      <StageIcon className="w-4 h-4 mb-1" />
+                      <span className="text-[9px] font-bold tracking-wide uppercase truncate max-w-full">{details.label}</span>
                     </button>
-
                     {idx < activeStages.length - 1 && (
-                      <div className="flex-1 h-[2px] min-w-[20px] max-w-[50px] relative">
-                        <div className={`absolute inset-0 transition-all duration-500 ${isCompleted ? 'bg-emerald-500' : 'bg-slate-200'}`}></div>
-                      </div>
+                      <div className={`h-[1px] w-4 shrink-0 ${isCompleted ? 'bg-[var(--crm-positive)]/40' : 'bg-[var(--crm-ink-soft)]/15'}`} />
                     )}
                   </React.Fragment>
                 );
@@ -560,268 +417,191 @@ export default function LeadDetail() {
             </div>
           </div>
 
-          <div className="relative my-6 flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className="w-full border-t border-slate-100"></div>
-            </div>
-            <div className="relative px-4 bg-white text-xs font-semibold text-slate-450 uppercase tracking-wider">
-              Deal Outcomes
-            </div>
-          </div>
+          {/* Deal Outcome Terminals */}
+          <div className="mt-6 pt-4 border-t border-[var(--crm-ink-soft)]/10 grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
+            {['CLOSED_WON', 'CLOSED_LOST'].map((outcome) => {
+              const isWon = outcome === 'CLOSED_WON';
+              const isTargetActive = currentStage === outcome;
+              const canTransition = allowedTransitions[currentStage]?.includes(outcome);
+              
+              let outcomeStyle = isTargetActive 
+                ? (isWon ? 'border-[var(--crm-positive)]/50 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'border-[var(--crm-danger)]/50 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]')
+                : canTransition 
+                ? 'border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:border-[var(--crm-heading)]/40 cursor-pointer text-[var(--crm-ink-soft)]'
+                : 'border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/30 opacity-40 cursor-not-allowed text-[var(--crm-ink-faint)]';
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(() => {
-              const canTransitionToWon = allowedTransitions[currentStage]?.includes('CLOSED_WON');
               return (
-                <button
-                  onClick={() => handleStageChange('CLOSED_WON')}
-                  disabled={isClosedWon || !canTransitionToWon}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 focus:outline-none text-left group ${
-                    isClosedWon 
-                      ? 'border-emerald-500 bg-emerald-50/50 shadow-sm ring-2 ring-emerald-500/20 cursor-default' 
-                      : !canTransitionToWon
-                      ? 'border-slate-100 bg-slate-50 text-slate-400 opacity-50 cursor-not-allowed'
-                      : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/10 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <div className={`p-2.5 rounded-lg transition-colors ${
-                      isClosedWon 
-                        ? 'bg-emerald-500 text-white' 
-                        : !canTransitionToWon
-                        ? 'bg-slate-100 text-slate-300'
-                        : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-600'
-                    }`}>
-                      <FiAward className="w-6 h-6" />
+                <button key={outcome} onClick={() => canTransition && handleStageChange(outcome)} disabled={isTargetActive || !canTransition} className={`flex items-center justify-between p-4 border rounded-sm text-left transition-all duration-200 focus:outline-none ${outcomeStyle}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2 bg-[var(--crm-bg-raised)] ${isTargetActive ? (isWon ? 'text-[var(--crm-positive)]' : 'text-[var(--crm-danger)]') : 'text-[var(--crm-ink-faint)]'}`}>
+                      {isWon ? <FiAward size={18} /> : <FiXCircle size={18} />}
                     </div>
                     <div>
-                      <h3 className={`font-bold text-sm ${isClosedWon ? 'text-emerald-800' : !canTransitionToWon ? 'text-slate-400' : 'text-slate-700'}`}>Closed Won</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Lead converted successfully into customer!</p>
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--crm-heading)]">{isWon ? 'Closed Won' : 'Closed Lost'}</h4>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-0.5">{isWon ? 'Lead converted into verified customer node' : 'Lead dropped or qualified out'}</p>
                     </div>
                   </div>
-                  {isClosedWon && (
-                    <span className="flex items-center text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full animate-bounce">
-                      Active Outcome 🎉
-                    </span>
-                  )}
+                  {isTargetActive && <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 border border-current">Active Outcome</span>}
                 </button>
               );
-            })()}
-
-            {(() => {
-              const canTransitionToLost = allowedTransitions[currentStage]?.includes('CLOSED_LOST');
-              return (
-                <button
-                  onClick={() => handleStageChange('CLOSED_LOST')}
-                  disabled={isClosedLost || !canTransitionToLost}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 focus:outline-none text-left group ${
-                    isClosedLost 
-                      ? 'border-rose-500 bg-rose-50/50 shadow-sm ring-2 ring-rose-500/20 cursor-default' 
-                      : !canTransitionToLost
-                      ? 'border-slate-100 bg-slate-50 text-slate-400 opacity-50 cursor-not-allowed'
-                      : 'border-slate-200 bg-white hover:border-rose-300 hover:bg-rose-50/10 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <div className={`p-2.5 rounded-lg transition-colors ${
-                      isClosedLost 
-                        ? 'bg-rose-500 text-white' 
-                        : !canTransitionToLost
-                        ? 'bg-slate-100 text-slate-300'
-                        : 'bg-slate-100 text-slate-500 group-hover:bg-rose-100 group-hover:text-rose-600'
-                    }`}>
-                      <FiXCircle className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className={`font-bold text-sm ${isClosedLost ? 'text-rose-800' : !canTransitionToLost ? 'text-slate-400' : 'text-slate-700'}`}>Closed Lost</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Lead was dropped, qualified out, or lost.</p>
-                    </div>
-                  </div>
-                  {isClosedLost && (
-                    <span className="flex items-center text-xs font-bold text-rose-700 bg-rose-100 px-2.5 py-1 rounded-full">
-                      Active Outcome
-                    </span>
-                  )}
-                </button>
-              );
-            })()}
+            })}
           </div>
+        </motion.div>
 
-          {isClosedWon && (
-            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex items-center justify-between shadow-md shadow-emerald-500/10 animate-fade-in">
-              <div className="flex items-center space-x-3">
-                <FiAward className="w-8 h-8 text-yellow-300" />
-                <div>
-                  <h4 className="font-bold text-sm">Congratulations! Deal Closed Won!</h4>
-                  <p className="text-xs text-emerald-100 mt-0.5">This task has been successfully resolved and won.</p>
-                </div>
-              </div>
+        {/* Activity Timeline Records */}
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left">
+          <div className="mb-4 flex items-center justify-between border-b border-[var(--crm-ink-soft)]/10 pb-3">
+            <div>
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">AUDIT TRAIL</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Activity Timeline Stream</h3>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="card p-4 sm:p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Activity Timeline</h2>
-        <div className="space-y-4">
-          {activities.length === 0 ? (
-            <p className="text-gray-500 text-center py-4 text-sm">No activities recorded yet</p>
-          ) : (
-            activities.map((activity) => (
-              <div key={activity._id} className="border-l-4 border-indigo-500 pl-4 py-1.5">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-2">
-                  <span className="font-semibold text-gray-900 text-sm sm:text-base">{activity.actionType}</span>
-                  <span className="text-xs text-gray-500">{new Date(activity.createdAt).toLocaleString()}</span>
+            <FiCompass className="text-[var(--crm-ink-faint)]" size={15} />
+          </div>
+          <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+            {activities.length === 0 ? (
+              <p className="text-xs tracking-wide text-center py-8 text-[var(--crm-ink-faint)] font-mono uppercase">No activity records mapped inside this lead node.</p>
+            ) : (
+              activities.map((act) => (
+                <div key={act._id} className="border-l border-[var(--crm-ink-soft)]/20 pl-4 py-1 text-left font-mono">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                    <span className="font-bold uppercase tracking-wider text-[var(--crm-heading)] text-xs">{act.actionType.replace(/_/g, ' ')}</span>
+                    <span className="text-[10px] text-[var(--crm-ink-faint)]">{new Date(act.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs text-[var(--crm-ink-soft)] leading-relaxed font-sans">{act.note}</p>
+                  {act.nextFollowupAt && (
+                    <p className="text-[10px] text-[var(--crm-warning)] font-bold uppercase tracking-wide mt-1">Next Scheduled Interface: {new Date(act.nextFollowupAt).toLocaleDateString()}</p>
+                  )}
                 </div>
-                <p className="text-gray-600 text-sm break-words">{activity.note}</p>
-                {activity.nextFollowupAt && (
-                  <p className="text-xs font-medium text-indigo-600 mt-1">Next Follow-up: {new Date(activity.nextFollowupAt).toLocaleDateString()}</p>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        </motion.div>
       </div>
 
-      {showActivityModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-md my-8">
-            <h2 className="text-xl font-bold mb-4">Add Activity</h2>
-            <form onSubmit={handleAddActivity}>
-              <div className="space-y-4">
+      {/* Overlays / Modals Interface Layer */}
+      <AnimatePresence>
+        {/* 1. Add Activity Modal */}
+        {showActivityModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Log Activity Action</h3>
+              <form onSubmit={handleAddActivity} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="label text-sm mb-1 block">Activity Type</label>
-                  <select
-                    value={newActivity.actionType}
-                    onChange={(e) => setNewActivity({ ...newActivity, actionType: e.target.value })}
-                    className="input w-full text-sm"
-                  >
-                    <option value="FOLLOW_UP">Follow Up</option>
-                    <option value="CALL">Call</option>
-                    <option value="EMAIL">Email</option>
-                    <option value="MEETING">Meeting</option>
-                    <option value="NOTE">Note</option>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Action Type</label>
+                  <select value={newActivity.actionType} onChange={(e) => setNewActivity({ ...newActivity, actionType: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none cursor-pointer">
+                    <option value="FOLLOW_UP" className="bg-[var(--crm-bg)]">Follow Up</option>
+                    <option value="CALL" className="bg-[var(--crm-bg)]">Call</option>
+                    <option value="EMAIL" className="bg-[var(--crm-bg)]">Email</option>
+                    <option value="MEETING" className="bg-[var(--crm-bg)]">Meeting</option>
+                    <option value="NOTE" className="bg-[var(--crm-bg)]">Note</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label text-sm mb-1 block">Note</label>
-                  <textarea
-                    required
-                    rows={3}
-                    value={newActivity.note}
-                    onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })}
-                    className="input w-full text-sm"
-                    placeholder="Enter activity details here"
-                  ></textarea>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Operational Summary Note</label>
+                  <textarea required rows="3" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Log interaction specifics..."/>
                 </div>
                 <div>
-                  <label className="label text-sm mb-1 block">Next Follow-up Date</label>
-                  <input
-                    type="datetime-local"
-                    value={newActivity.nextFollowupAt}
-                    onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })}
-                    className="input w-full text-sm"
-                  />
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Next Interface Schedule</label>
+                  <input type="datetime-local" value={newActivity.nextFollowupAt} onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
                 </div>
-              </div>
-              <div className="flex space-x-3 mt-6">
-                <button type="submit" className="btn-primary flex-1 text-sm py-2">Add</button>
-                <button type="button" onClick={() => setShowActivityModal(false)} className="btn-secondary flex-1 text-sm py-2">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showQuotationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-md my-8">
-            <h2 className="text-xl font-bold mb-4">Request Quotation</h2>
-            <form onSubmit={handleRequestQuotation}>
-              <div className="space-y-4">
-                <div>
-                  <label className="label text-sm mb-1 block">Requested Price (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    value={quotationData.employeeRequestedPrice}
-                    onChange={(e) => setQuotationData({ ...quotationData, employeeRequestedPrice: e.target.value })}
-                    className="input w-full text-sm"
-                    placeholder="Enter your requested price here"
-                  />
-                </div>
-                <div>
-                  <label className="label text-sm mb-1 block">Payment Terms</label>
-                  <input
-                    type="text"
-                    value={quotationData.paymentTerms}
-                    onChange={(e) => setQuotationData({ ...quotationData, paymentTerms: e.target.value })}
-                    className="input w-full text-sm"
-                    placeholder="e.g., 30% advance, 70% against documents"
-                  />
-                </div>
-                <div>
-                  <label className="label text-sm mb-1 block">Validity (Days)</label>
-                  <input
-                    type="number"
-                    value={quotationData.validityDays}
-                    onChange={(e) => setQuotationData({ ...quotationData, validityDays: e.target.value })}
-                    className="input w-full text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex space-x-3 mt-6">
-                <button type="submit" className="btn-primary flex-1 text-sm py-2">Submit</button>
-                <button type="button" onClick={() => setShowQuotationModal(false)} className="btn-secondary flex-1 text-sm py-2">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showWarningModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100 my-8">
-            <div className="p-5 sm:p-6">
-              <div className="flex items-center space-x-3 mb-4 text-orange-600">
-                <FiShield size={24} />
-                <h3 className="text-lg font-bold text-slate-800">Security Access Audit</h3>
-              </div>
-              <p className="text-sm text-slate-600 mb-5 leading-relaxed">
-                WARNING: Unmasking sensitive lead details is strictly monitored and audited. Please enter your business reason to justify revealing this field.
-              </p>
-              <form onSubmit={handleRevealSubmit}>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Business Justification</label>
-                  <textarea
-                    required
-                    rows="3"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm placeholder:text-slate-400 shadow-inner"
-                    placeholder="e.g., Calling customer for quotation review..."
-                  />
-                </div>
-                <div className="flex space-x-3 mt-6">
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow transition-colors"
-                  >
-                    Confirm Access
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowWarningModal(false); setReason(''); }}
-                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Commit</button>
+                  <button type="button" onClick={() => setShowActivityModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* 1b. Log WhatsApp Modal */}
+        {showWhatsAppModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Log WhatsApp Activity</h3>
+              <form onSubmit={handleLogWhatsApp} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Message Sent</label>
+                  <textarea rows="3" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Sent quotation template via WhatsApp..."/>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" disabled={sendingWhatsApp} className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-50">{sendingWhatsApp ? 'Logging...' : 'Log Activity'}</button>
+                  <button type="button" onClick={() => setShowWhatsAppModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 1c. Send Email Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Send Email</h3>
+              <form onSubmit={handleSendEmail} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Subject *</label>
+                  <input type="text" required value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="Email subject"/>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Body *</label>
+                  <textarea required rows="4" value={emailForm.body} onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Email body..."/>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" disabled={sendingEmail} className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-50">{sendingEmail ? 'Sending...' : 'Send Email'}</button>
+                  <button type="button" onClick={() => setShowEmailModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 2. Request Quotation Modal */}
+        {showQuotationModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Request Trade Valuation</h3>
+              <form onSubmit={handleRequestQuotation} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Base Value (₹) *</label>
+                  <input type="number" required value={quotationData.employeeRequestedPrice} onChange={(e) => setQuotationData({ ...quotationData, employeeRequestedPrice: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none" placeholder="Specify baseline transaction valuation"/>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Payment Protocols</label>
+                  <input type="text" value={quotationData.paymentTerms} onChange={(e) => setQuotationData({ ...quotationData, paymentTerms: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="e.g. 30% advance deposit tier"/>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Validity Lifecycle (Days)</label>
+                  <input type="number" value={quotationData.validityDays} onChange={(e) => setQuotationData({ ...quotationData, validityDays: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Submit Quote</button>
+                  <button type="button" onClick={() => setShowQuotationModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 3. Security Access Audit Warning Modal */}
+        {showWarningModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-danger)]/30 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
+              <div className="flex items-center space-x-2.5 mb-3 text-[var(--crm-danger)] font-mono"><FiShield size={18} /><h3 className="text-base font-serif uppercase tracking-wide">Security Access Protocol</h3></div>
+              <p className="text-xs text-[var(--crm-ink-faint)] leading-relaxed mb-4 font-sans">WARNING: Unmasking raw database coordinates is tracked in global audit nodes. Enter a clear business justification to reveal this telemetry line.</p>
+              <form onSubmit={handleRevealSubmit} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Justification Token Entry</label>
+                  <textarea required rows="3" value={reason} onChange={(e) => setReason(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Reviewing dispatch schedules directly with client..."/>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-danger-bg)] transition-colors">Confirm Reveal</button>
+                  <button type="button" onClick={() => { setShowWarningModal(false); setReason(''); }} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
