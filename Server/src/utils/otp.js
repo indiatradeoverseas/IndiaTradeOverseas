@@ -78,11 +78,11 @@ function getOtpHtml(otp, email = '') {
 
     <div class="container">
         <div class="header">
-            <h2>IndiaTradeOverseas</h2>
+            <h2>India Trade Overseas</h2>
         </div>
         <div class="content">
             <p>Hello,</p>
-            <p>Thank you for registering with <strong>IndiaTradeOverseas</strong>. To complete your sign-up and secure your account, please verify your email address by clicking the button below:</p>
+            <p>Thank you for registering with <strong>India Trade Overseas</strong>. To complete your sign-up and secure your account, please verify your email address by clicking the button below:</p>
             
             <div class="btn-container">
                 <a href="${verificationUrl}" class="btn">Verify Email Address</a>
