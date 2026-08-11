@@ -53,7 +53,12 @@ const registerDistributor = async (req, res, next) => {
     const doc1 = req.files && req.files['doc1'] ? req.files['doc1'][0] : (req.files && req.files['primaryDocument'] ? req.files['primaryDocument'][0] : null);
     const doc2 = req.files && req.files['doc2'] ? req.files['doc2'][0] : (req.files && req.files['secondaryDocument'] ? req.files['secondaryDocument'][0] : null);
 
-    let distributor = await Distributor.findOne({ email });
+    // Scoped by division as well as email: the same person can hold an
+    // independent record per division (Tea/Rice/Stone), so registering for
+    // a second division must create a new record instead of overwriting
+    // the first one's division/company/OTP state.
+    const lookupDivision = division || 'TEA';
+    let distributor = await Distributor.findOne({ email, division: lookupDivision });
 
     const currentBusinessType = businessType || (distributor ? distributor.businessType : '1');
 
