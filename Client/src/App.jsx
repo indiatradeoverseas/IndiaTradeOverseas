@@ -60,6 +60,7 @@ import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
+import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 
 function RouteFallback() {
   return (
@@ -195,105 +196,107 @@ function AppLayout() {
       return <Navigate to="/" replace />;
     }
     return (
-      <PortalLayout>
-        <ScrollToTop /> {/* <-- INJECTED TO HANDLE CRM DASHBOARD CHANNELS */}
-        <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/crm/dashboard" element={<Dashboard />} />
-          <Route path="/crm/notifications" element={<Notifications />} />
-          <Route path="/crm/attendance" element={<Attendance />} />
-          <Route path="/crm/leave" element={<Leave />} />
-          <Route path="/crm/profile" element={<EmployeeProfile />} />
-          <Route path="/crm/tickets" element={<Tickets />} />
-          <Route path="/crm/sales" element={<SalesPerformance />} />
-          <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
-          <Route path="/crm/distributors/:division" element={<Distributors />}/>
-          <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
-          <Route path="/crm/visitors/:division" element={<Visitors />}/>
-          <Route
-            path="/crm/career-leads"
-            element={
-              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
-                <CareerLeads />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route
-            path="/crm/leads"
-            element={
-              user?.role === 'ADMIN' || user?.leadPermission === true ? (
-                <Leads />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route
-            path="/crm/leads/:id"
-            element={
-              user?.role === 'ADMIN' || user?.leadPermission === true || user?.taskPermission === true ? (
-                <LeadDetail />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route path="/crm/quotations" element={<Quotations />} />
-          <Route path="/crm/dispatches" element={<Dispatches />} />
-          <Route path="/crm/payments" element={<Payments />} />
-          <Route
-            path="/crm/documents"
-            element={
-              user?.role === 'ADMIN' || user?.documentPermission === true ? (
-                <Documents />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route path="/crm/products" element={<ProductUpload />} />
-          <Route
-            path="/crm/tasks"
-            element={
-              user?.role === 'ADMIN' || user?.taskPermission === true ? (
-                <Tasks />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
-          <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
-          <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
-          <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
-          <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-          <Route
-            path="/crm/applications"
-            element={
-              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
-                <Applications />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route
-            path="/crm/jobs"
-            element={
-              ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true ? (
-                <Jobs />
-              ) : (
-                <Navigate to="/crm/dashboard" replace />
-              )
-            }
-          />
-          <Route path="*" element={<Navigate to="/crm/dashboard" />} />
-        </Routes>
-        </Suspense>
-        <ChatWidget />
-      </PortalLayout>
+      <VoiceAssistantProvider>
+        <PortalLayout>
+          <ScrollToTop /> {/* <-- INJECTED TO HANDLE CRM DASHBOARD CHANNELS */}
+          <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/crm/dashboard" element={<Dashboard />} />
+            <Route path="/crm/notifications" element={<Notifications />} />
+            <Route path="/crm/attendance" element={<Attendance />} />
+            <Route path="/crm/leave" element={<Leave />} />
+            <Route path="/crm/profile" element={<EmployeeProfile />} />
+            <Route path="/crm/tickets" element={<Tickets />} />
+            <Route path="/crm/sales" element={<SalesPerformance />} />
+            <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
+            <Route path="/crm/distributors/:division" element={<Distributors />}/>
+            <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
+            <Route path="/crm/visitors/:division" element={<Visitors />}/>
+            <Route
+              path="/crm/career-leads"
+              element={
+                ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
+                  <CareerLeads />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route
+              path="/crm/leads"
+              element={
+                user?.role === 'ADMIN' || user?.leadPermission === true ? (
+                  <Leads />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route
+              path="/crm/leads/:id"
+              element={
+                user?.role === 'ADMIN' || user?.leadPermission === true || user?.taskPermission === true ? (
+                  <LeadDetail />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route path="/crm/quotations" element={<Quotations />} />
+            <Route path="/crm/dispatches" element={<Dispatches />} />
+            <Route path="/crm/payments" element={<Payments />} />
+            <Route
+              path="/crm/documents"
+              element={
+                user?.role === 'ADMIN' || user?.documentPermission === true ? (
+                  <Documents />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route path="/crm/products" element={<ProductUpload />} />
+            <Route
+              path="/crm/tasks"
+              element={
+                user?.role === 'ADMIN' || user?.taskPermission === true ? (
+                  <Tasks />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
+            <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
+            <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
+            <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
+            <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+            <Route
+              path="/crm/applications"
+              element={
+                ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
+                  <Applications />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route
+              path="/crm/jobs"
+              element={
+                ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true ? (
+                  <Jobs />
+                ) : (
+                  <Navigate to="/crm/dashboard" replace />
+                )
+              }
+            />
+            <Route path="*" element={<Navigate to="/crm/dashboard" />} />
+          </Routes>
+          </Suspense>
+          <ChatWidget />
+        </PortalLayout>
+      </VoiceAssistantProvider>
     );
   }
 
