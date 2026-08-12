@@ -62,7 +62,9 @@ export default function PortalLayout({ children }) {
           >
             India Trade Center
           </div>
-          <div className="w-8" />
+          <div className="w-8 flex items-center justify-end">
+            <VoiceStatusPill compact />
+          </div>
         </div>
       </div>
 

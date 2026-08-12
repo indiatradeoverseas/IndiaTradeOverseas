@@ -10,7 +10,14 @@ const STATUS_CONFIG = {
   unsupported: null
 };
 
-export default function VoiceStatusPill() {
+// `compact` renders an icon-only variant, always visible (no `md:` gating of
+// its own), sized to sit in the mobile top bar's tight space next to the
+// hamburger button. The default (non-compact) variant keeps its original
+// icon+label desktop appearance and stays `md:`-gated, for the existing
+// desktop utility bar usage. Click-to-retry (blocked state only) behaves
+// identically in both variants - this is still a status indicator, not a
+// new manual control.
+export default function VoiceStatusPill({ compact = false }) {
   const { status, retryListening } = useVoiceAssistant();
   const config = STATUS_CONFIG[status];
 
@@ -24,7 +31,11 @@ export default function VoiceStatusPill() {
       type="button"
       onClick={clickable ? retryListening : undefined}
       disabled={!clickable}
-      className="hidden md:flex items-center gap-1.5 text-[10px] uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-all"
+      className={
+        compact
+          ? 'flex items-center justify-center p-1.5 rounded-sm border transition-all'
+          : 'hidden md:flex items-center gap-1.5 text-[10px] uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-all'
+      }
       style={{
         fontFamily: 'var(--crm-font-mono)',
         color: config.color,
@@ -35,8 +46,8 @@ export default function VoiceStatusPill() {
       aria-label={config.label}
       title={config.label}
     >
-      <Icon size={12} />
-      <span>{config.label}</span>
+      <Icon size={compact ? 14 : 12} />
+      {!compact && <span>{config.label}</span>}
     </button>
   );
 }
