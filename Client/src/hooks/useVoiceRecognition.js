@@ -129,6 +129,13 @@ export function useVoiceRecognition({ onFinalTranscript } = {}) {
       recognitionRef.current.onerror = null;
       recognitionRef.current.onend = null;
       recognitionRef.current.stop();
+      // Discard the now-handler-less instance so a later start() (e.g. the
+      // second half of React 18 StrictMode's dev-only mount->cleanup->mount
+      // double-invoke, which runs start()->stop()->start() within
+      // milliseconds) builds a fresh engine with freshly-attached handlers
+      // via ensureEngine(), instead of reusing this permanently deaf one -
+      // ensureEngine() only creates a new instance when this ref is null.
+      recognitionRef.current = null;
     }
   }, [clearRestartTimeout]);
 
