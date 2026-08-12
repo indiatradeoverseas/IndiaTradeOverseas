@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="./public/images/ITO Logo.jpeg" />
-  <title>India Trade Overseas </title>
+  <title>India Trade Overseas</title>
 
   <!-- Default/fallback SEO + social preview tags. Social-preview crawlers (WhatsApp,
        Facebook, Twitter) don't execute JS, so they only ever see these static tags;
@@ -31,18 +31,73 @@
        not covered by either. -->
   <link rel="canonical" href="https://www.indiatradeoverseas.com/" />
 
+  <!-- Master JSON-LD Schema (Organization + Key Product Offerings) -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "India Trade Overseas",
-    "url": "https://www.indiatradeoverseas.com/",
-    "logo": "https://www.indiatradeoverseas.com/images/Company_logo.png",
-    "description": "India Trade Overseas is a B2B trading house sourcing and exporting Bhutan & Pakur stone chips, bulk rice, and premium tea for global buyers, backed by end-to-end compliance and logistics.",
-    "sameAs": []
-  }
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "India Trade Overseas",
+      "url": "https://www.indiatradeoverseas.com/",
+      "logo": "https://www.indiatradeoverseas.com/images/Company_logo.png",
+      "description": "India Trade Overseas is a B2B trading house sourcing and exporting Bhutan & Pakur stone chips, bulk rice, and premium tea for global buyers, backed by end-to-end compliance and logistics.",
+      "sameAs": []
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Prakriti Bulk Assam CTC Black Tea",
+      "url": "https://www.indiatradeoverseas.com/prakriti",
+      "image": "https://www.indiatradeoverseas.com/images/Company_logo.png",
+      "description": "Wholesale premium Assam CTC black tea exported by India Trade Overseas under the Prakriti brand. Available in BOP, GO P, PF, and Dust grades.",
+      "brand": {
+        "@type": "Brand",
+        "name": "Prakriti"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Prakriti Premium Basmati & Non-Basmati Rice",
+      "url": "https://www.indiatradeoverseas.com/prakriti/rice",
+      "image": "https://www.indiatradeoverseas.com/images/Company_logo.png",
+      "description": "APEDA certified bulk exporter of 1121 Golden Sella, 1509 Steam Basmati, and non-basmati rice varieties from India.",
+      "brand": {
+        "@type": "Brand",
+        "name": "Prakriti"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Bhutan & Pakur Stone Aggregates",
+      "url": "https://www.indiatradeoverseas.com/stone",
+      "image": "https://www.indiatradeoverseas.com/images/Company_logo.png",
+      "description": "High-density crushed basalt and quartzite stone chips (10mm, 20mm, 40mm, WMM, Stone Dust) sourced from Bhutan and Pakur quarries.",
+      "brand": {
+        "@type": "Brand",
+        "name": "India Trade Overseas"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "INR",
+        "availability": "https://schema.org/InStock"
+      }
+    }
+  ]
   </script>
 
+  <!-- Google Tag Manager -->
   <script>
     (function(w,d,s,l,i){
       w[l]=w[l]||[];
@@ -61,7 +116,7 @@
       f.parentNode.insertBefore(j,f);
     
     })(window,document,'script','dataLayer','GTM-MZKBG5Z5');
-    </script>
+  </script>
 </head>
 
 <body>
@@ -72,7 +127,7 @@
     width="0"
     style="display:none;visibility:hidden">
     </iframe>
-    </noscript>
+  </noscript>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
