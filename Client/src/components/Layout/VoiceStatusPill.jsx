@@ -3,8 +3,8 @@ import { FiMic, FiMicOff, FiAlertCircle } from 'react-icons/fi';
 import { useVoiceAssistant } from '../../context/VoiceAssistantContext';
 
 const STATUS_CONFIG = {
-  listening: { icon: FiMic, label: 'Listening', color: 'var(--crm-accent)' },
-  muted: { icon: FiMicOff, label: 'Muted', color: 'var(--crm-ink-faint)' },
+  listening: { icon: FiMic, label: 'Listening - click to mute', color: 'var(--crm-accent)' },
+  muted: { icon: FiMicOff, label: 'Muted - click to resume', color: 'var(--crm-ink-faint)' },
   blocked: { icon: FiAlertCircle, label: 'Mic blocked - click to retry', color: '#ef4444' },
   off: null,
   unsupported: null
@@ -14,22 +14,31 @@ const STATUS_CONFIG = {
 // its own), sized to sit in the mobile top bar's tight space next to the
 // hamburger button. The default (non-compact) variant keeps its original
 // icon+label desktop appearance and stays `md:`-gated, for the existing
-// desktop utility bar usage. Click-to-retry (blocked state only) behaves
-// identically in both variants - this is still a status indicator, not a
-// new manual control.
+// desktop utility bar usage. Click behavior is state-dependent: retries
+// listening when blocked, otherwise toggles mute - a manual fallback
+// alongside the voice "mute"/"resume" commands, for situations where
+// speaking a command out loud isn't practical.
 export default function VoiceStatusPill({ compact = false }) {
-  const { status, retryListening } = useVoiceAssistant();
+  const { status, retryListening, toggleMute } = useVoiceAssistant();
   const config = STATUS_CONFIG[status];
 
   if (!config) return null;
 
   const Icon = config.icon;
-  const clickable = status === 'blocked';
+  const clickable = status === 'blocked' || status === 'listening' || status === 'muted';
+
+  const handleClick = () => {
+    if (status === 'blocked') {
+      retryListening();
+    } else {
+      toggleMute();
+    }
+  };
 
   return (
     <button
       type="button"
-      onClick={clickable ? retryListening : undefined}
+      onClick={clickable ? handleClick : undefined}
       disabled={!clickable}
       className={
         compact

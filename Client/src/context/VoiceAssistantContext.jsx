@@ -68,7 +68,17 @@ export function VoiceAssistantProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = { status, lastTranscript, retryListening: start };
+  const toggleMute = useCallback(() => {
+    const nextMuted = status !== 'muted';
+    setMuted(nextMuted);
+    if (nextMuted) {
+      toast('Voice assistant muted. Say "resume" or click again to continue.');
+    } else {
+      toast.success('Voice assistant listening again.');
+    }
+  }, [status, setMuted]);
+
+  const value = { status, lastTranscript, retryListening: start, toggleMute };
 
   return (
     <VoiceAssistantContext.Provider value={value}>
