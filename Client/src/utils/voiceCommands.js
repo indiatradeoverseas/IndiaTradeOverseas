@@ -3,6 +3,7 @@
 const TRIGGER_PHRASES = ['navigate to', 'go to', 'show me', 'open', 'show'];
 const MUTE_WORDS = ['stop listening', 'mute', 'pause'];
 const RESUME_WORDS = ['resume listening', 'start listening', 'resume', 'unmute'];
+const FILLER_PHRASES = ['can you', 'could you', 'would you', 'please'];
 
 // Accidental navigation from an always-hot mic is the main risk here, so
 // fuzzy matching is deliberately conservative: exact/substring matches are
@@ -18,7 +19,27 @@ function normalize(str) {
 }
 
 function matchesLeadingPhrase(normalized, words) {
-  return words.some((word) => normalized === word || normalized.startsWith(`${word} `) || normalized.includes(` ${word}`));
+  return words.some((word) => normalized === word || normalized.startsWith(`${word} `));
+}
+
+function stripLeadingFiller(normalized) {
+  // Recursively strip common leading filler words/phrases to allow natural speech
+  // patterns like "please resume listening" or "can you mute". Sort by length
+  // descending so "can you" is stripped before "please".
+  const sorted = [...FILLER_PHRASES].sort((a, b) => b.length - a.length);
+  let stripped = normalized;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const phrase of sorted) {
+      if (stripped.startsWith(`${phrase} `)) {
+        stripped = stripped.slice(phrase.length + 1).trim();
+        changed = true;
+        break;
+      }
+    }
+  }
+  return stripped;
 }
 
 function flattenNavItems(navItems) {
@@ -87,10 +108,15 @@ export function matchCommand(transcript, navItems) {
   const normalized = normalize(transcript || '');
   if (!normalized) return null;
 
-  if (matchesLeadingPhrase(normalized, MUTE_WORDS)) {
+  // For mute/resume commands, strip leading filler words to support natural speech
+  // ("please resume listening", "can you mute"), then use strict leading-only matching.
+  // This avoids false positives from mid-sentence mentions (e.g., "did we get her resume yet"
+  // or "let's pause on that") where "resume" or "pause" are nouns/verbs in context, not commands.
+  const strippedForMuteResume = stripLeadingFiller(normalized);
+  if (matchesLeadingPhrase(strippedForMuteResume, MUTE_WORDS)) {
     return { type: 'mute' };
   }
-  if (matchesLeadingPhrase(normalized, RESUME_WORDS)) {
+  if (matchesLeadingPhrase(strippedForMuteResume, RESUME_WORDS)) {
     return { type: 'resume' };
   }
 
