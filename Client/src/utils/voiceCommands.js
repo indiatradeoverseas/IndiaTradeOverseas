@@ -7,7 +7,10 @@ const FILLER_PHRASES = ['can you', 'could you', 'would you', 'please'];
 
 // Accidental navigation from an always-hot mic is the main risk here, so
 // fuzzy matching is deliberately conservative: exact/substring matches are
-// free, anything else must be within 2 character edits of a real label.
+// free, anything else must be within this many character edits of a real
+// label - and even that ceiling is further scaled down for short labels in
+// bestLabelMatch (see below), since e.g. "leads" vs "leave" is only 2 edits
+// apart and a fixed budget of 2 would let them cross-match.
 const MAX_FUZZY_DISTANCE = 2;
 
 function normalize(str) {
@@ -88,11 +91,25 @@ function bestLabelMatch(remainder, flatItems) {
 
     if (label === target) {
       score = 0;
-    } else if (label.includes(target) || target.includes(label)) {
+    } else if (target.includes(label) && target.split(' ').length <= label.split(' ').length + 2) {
+      // "go to the leads page" -> target "the leads page" contains label "leads",
+      // and the remainder isn't wildly longer than the label, so this is still
+      // likely a genuine (if wordy) command rather than an unrelated sentence
+      // that happens to mention the label somewhere in the middle.
+      score = 1;
+    } else if (label.includes(target)) {
+      // Reverse direction (typed/spoken command shorter than the real label,
+      // e.g. "lead" for "Leads") is not risky the same way - target is short
+      // and fully contained in the label, so no length bound needed here.
       score = 1;
     } else {
+      // Scale the fuzzy budget to label length so short labels (e.g. "Leave",
+      // 5 chars) don't cross-match other short-but-different labels (e.g.
+      // "Leads", edit distance 2) under a fixed budget - only longer labels
+      // can absorb a 2-edit typo.
+      const maxDist = Math.min(MAX_FUZZY_DISTANCE, Math.floor(label.length / 4));
       const dist = levenshtein(target, label);
-      if (dist <= MAX_FUZZY_DISTANCE) score = 2 + dist;
+      if (maxDist > 0 && dist <= maxDist) score = 2 + dist;
     }
 
     if (score < bestScore) {
@@ -108,25 +125,30 @@ export function matchCommand(transcript, navItems) {
   const normalized = normalize(transcript || '');
   if (!normalized) return null;
 
-  // For mute/resume commands, strip leading filler words to support natural speech
-  // ("please resume listening", "can you mute"), then use strict leading-only matching.
-  // This avoids false positives from mid-sentence mentions (e.g., "did we get her resume yet"
-  // or "let's pause on that") where "resume" or "pause" are nouns/verbs in context, not commands.
-  const strippedForMuteResume = stripLeadingFiller(normalized);
-  if (matchesLeadingPhrase(strippedForMuteResume, MUTE_WORDS)) {
+  // Strip leading filler words to support natural speech ("please resume
+  // listening", "can you mute", "please go to dashboard", "can you open
+  // leads"), then use strict leading-only matching for both the mute/resume
+  // words and the navigation trigger phrases below. This avoids false
+  // positives from mid-sentence mentions (e.g., "did we get her resume yet"
+  // or "let's pause on that") where "resume" or "pause" are nouns/verbs in
+  // context, not commands - stripping only ever removes a LEADING filler
+  // phrase, it never searches mid-sentence.
+  const stripped = stripLeadingFiller(normalized);
+
+  if (matchesLeadingPhrase(stripped, MUTE_WORDS)) {
     return { type: 'mute' };
   }
-  if (matchesLeadingPhrase(strippedForMuteResume, RESUME_WORDS)) {
+  if (matchesLeadingPhrase(stripped, RESUME_WORDS)) {
     return { type: 'resume' };
   }
 
   const trigger = [...TRIGGER_PHRASES]
     .sort((a, b) => b.length - a.length)
-    .find((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `));
+    .find((phrase) => stripped === phrase || stripped.startsWith(`${phrase} `));
 
   if (!trigger) return null;
 
-  const remainder = normalized.slice(trigger.length).trim();
+  const remainder = stripped.slice(trigger.length).trim();
   const match = bestLabelMatch(remainder, flattenNavItems(navItems || []));
 
   return match ? { type: 'navigate', to: match.to, label: match.label } : null;
