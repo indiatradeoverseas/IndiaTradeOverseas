@@ -25,6 +25,7 @@ import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
 
+
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
 import Stone from './pages/public/Stone';
@@ -50,6 +51,10 @@ import Tickets from './pages/crm/Tickets';
 import Leave from './pages/crm/Leave';
 import EmployeeProfile from './pages/crm/EmployeeProfile';
 import SalesPerformance from './pages/crm/SalesPerformance';
+
+import HrManagerDashboard from './pages/crm/HrManagerDashboard';
+import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
+
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -109,6 +114,30 @@ function RoleProtectedRoute({ children, allowedRoles }) {
   }
 
   return children;
+}
+
+function HRRedirectGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (['ADMIN', 'MANAGER', 'HR_MANAGER'].includes(user.role)) {
+    return <Navigate to="/crm/hr/manager" replace />;
+  } else if (['HR_EXECUTIVE', 'HR'].includes(user.role)) {
+    return <Navigate to="/crm/hr/executive" replace />;
+  } else {
+    return <Navigate to="/crm/dashboard" replace />;
+  }
 }
 
 function AppLayout() {
@@ -272,6 +301,23 @@ function AppLayout() {
               ) : (
                 <Navigate to="/crm/dashboard" replace />
               )
+            }
+          />
+          <Route path="/crm/hr" element={<HRRedirectGate />} />
+          <Route
+            path="/crm/hr/manager"
+            element={
+              <RoleProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HR_MANAGER']}>
+                <HrManagerDashboard />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/hr/executive"
+            element={
+              <RoleProtectedRoute allowedRoles={['HR_EXECUTIVE', 'HR']}>
+                <HrExecutiveDashboard />
+              </RoleProtectedRoute>
             }
           />
           <Route path="*" element={<Navigate to="/crm/dashboard" />} />

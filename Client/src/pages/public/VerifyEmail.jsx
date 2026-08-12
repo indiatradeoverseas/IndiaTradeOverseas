@@ -22,63 +22,7 @@ const VerifyEmail = () => {
     }
   }, [navigate]);
 
-  // Completely automatic OTP background fetching (Polling)
-  useEffect(() => {
-    if (!email) return;
 
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (attempts > 15) {
-        clearInterval(interval);
-        return;
-      }
-      try {
-        const res = await authApi.getLatestOtp(email);
-        if (res.success && res.data?.otp) {
-          const foundOtp = res.data.otp;
-          setOtp(foundOtp);
-          clearInterval(interval);
-          toast.success(`OTP auto-fetched: ${foundOtp} 🎉`, {
-            style: { borderRadius: '10px', background: '#333', color: '#fff' }
-          });
-          await verifyOtpDirectly(foundOtp);
-        }
-      } catch (err) {
-        console.error('Error auto-fetching OTP:', err);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [email]);
-
-  const verifyOtpDirectly = async (code) => {
-    setLoading(true);
-    try {
-      const response = await verifyEmail(email, code);
-      if (response.success) {
-        toast.success('Email verified successfully! Welcome! 🎉', {
-          style: { borderRadius: '10px', background: '#333', color: '#fff' }
-        });
-        
-        localStorage.removeItem('verificationEmail');
-        
-        const user = response.data?.user;
-        const isClient = user?.employeeId && user.employeeId.startsWith('CL_');
-
-        if (isClient) {
-          navigate('/');
-        } else {
-          navigate('/crm/dashboard');
-        }
-      }
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Verification failed. Please check the code.';
-      toast.error(errorMsg, { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

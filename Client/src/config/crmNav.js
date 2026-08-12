@@ -61,7 +61,7 @@ export function getCrmDepartmentLinks() {
   return [
     { label: 'Sales', to: '/crm/employees?dept=SALES' },
     { label: 'Transport', to: '/crm/employees?dept=TRANSPORT' },
-    { label: 'HR', to: '/crm/employees?dept=HR' },
+    { label: 'HR', to: '/crm/hr' },
     { label: 'IT', to: '/crm/employees?dept=IT' },
     { label: 'Management', to: '/crm/employees?role=MANAGER' },
     { label: 'Co-founder', to: '/crm/employees?role=ADMIN' }

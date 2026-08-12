@@ -162,6 +162,33 @@ textarea {
   --crm-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 20px 44px -20px rgba(0,0,0,0.8);
   --crm-shimmer: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
   color-scheme: dark;
+  font-weight: 600;
+}
+
+.crm-portal[data-theme='light'] {
+  --crm-bg: #FFFFFF;
+  --crm-bg-raised: #FFFFFF;
+  --crm-bg-sunken: #F1F5F9;
+  --crm-nav-bg: #F8FAFC;
+  --crm-nav-bg-to: #FFFFFF;
+  --crm-ink: #000000;
+  --crm-ink-soft: #0F172A;
+  --crm-ink-faint: #475569;
+  --crm-heading: #000000;
+  --crm-line: rgba(0, 0, 0, 0.1);
+  --crm-line-strong: rgba(0, 0, 0, 0.18);
+  --crm-accent: #C89A54;
+  --crm-accent-soft: #9A7639;
+  --crm-accent-bg: rgba(200, 154, 84, 0.1);
+  --crm-positive: #10B981;
+  --crm-positive-bg: rgba(16, 185, 129, 0.1);
+  --crm-warning: #F59E0B;
+  --crm-warning-bg: rgba(245, 158, 11, 0.1);
+  --crm-danger: #EF4444;
+  --crm-danger-bg: rgba(239, 68, 68, 0.1);
+  --crm-info: #3B82F6;
+  --crm-info-bg: rgba(59, 130, 246, 0.1);
+  color-scheme: light;
 }
 
 .crm-portal.light-theme {
