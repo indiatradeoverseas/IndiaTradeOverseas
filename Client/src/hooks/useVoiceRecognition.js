@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const RESTART_DELAY_MS = 250;
+// Cap for the exponential backoff applied after consecutive transient errors
+// (e.g. a persistent `network` failure) so a dead engine retries at a slower,
+// bounded pace instead of hammering `start()` forever at a fixed 250ms.
+const MAX_RESTART_DELAY_MS = 20000;
 const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture']);
 
 function getSpeechRecognitionCtor() {
@@ -19,6 +23,12 @@ export function useVoiceRecognition({ onFinalTranscript } = {}) {
   const desiredStateRef = useRef('off');
   const restartTimeoutRef = useRef(null);
   const onFinalTranscriptRef = useRef(onFinalTranscript);
+  // Counts consecutive transient errors (e.g. repeated `network` failures)
+  // so onend can back off exponentially instead of retrying at a fixed
+  // interval forever. Reset to 0 whenever the engine successfully comes up
+  // (onstart) or successfully delivers a result (onresult) - either one
+  // proves the engine isn't in a dead retry loop anymore.
+  const consecutiveErrorsRef = useRef(0);
 
   useEffect(() => {
     onFinalTranscriptRef.current = onFinalTranscript;
@@ -37,9 +47,16 @@ export function useVoiceRecognition({ onFinalTranscript } = {}) {
     const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    recognition.lang = 'en-IN';
+
+    recognition.onstart = () => {
+      // The engine came up successfully - any prior run of consecutive
+      // errors is over, so drop back to the fast restart path.
+      consecutiveErrorsRef.current = 0;
+    };
 
     recognition.onresult = (event) => {
+      consecutiveErrorsRef.current = 0;
       const result = event.results[event.results.length - 1];
       if (result && result.isFinal) {
         const transcript = result[0].transcript;
@@ -53,22 +70,34 @@ export function useVoiceRecognition({ onFinalTranscript } = {}) {
         desiredStateRef.current = 'off';
         clearRestartTimeout();
         setStatus('blocked');
+        return;
       }
       // Transient errors (no-speech, network, aborted) are left to onend's
       // restart logic below — that's the actual fix for the silence-timeout
-      // problem, not anything done here.
+      // problem, not anything done here. But we do count them here so a
+      // *persistent* run of transient errors (e.g. offline/unreachable STT
+      // endpoint repeatedly failing with `network`) backs off instead of
+      // retrying at a fixed 250ms interval forever.
+      consecutiveErrorsRef.current += 1;
     };
 
     recognition.onend = () => {
       if (desiredStateRef.current === 'off') return;
       clearRestartTimeout();
+      const errorCount = consecutiveErrorsRef.current;
+      // Only errors push the delay up - a plain onend with no preceding
+      // error (the normal silence-timeout restart) always uses the fast
+      // fixed delay.
+      const delay = errorCount > 0
+        ? Math.min(RESTART_DELAY_MS * 2 ** errorCount, MAX_RESTART_DELAY_MS)
+        : RESTART_DELAY_MS;
       restartTimeoutRef.current = setTimeout(() => {
         try {
           recognitionRef.current && recognitionRef.current.start();
         } catch {
           // InvalidStateError from a start/stop race - next onend retries.
         }
-      }, RESTART_DELAY_MS);
+      }, delay);
     };
 
     recognitionRef.current = recognition;
@@ -92,6 +121,13 @@ export function useVoiceRecognition({ onFinalTranscript } = {}) {
     clearRestartTimeout();
     setStatus('off');
     if (recognitionRef.current) {
+      // Per the Web Speech spec, stop() can still emit one last buffered
+      // `result` (and then `end`) after being called. Detach the handlers
+      // first so a late event can't reach a consumer (VoiceAssistantContext)
+      // that has already unmounted - e.g. calling navigate() post-unmount.
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.onend = null;
       recognitionRef.current.stop();
     }
   }, [clearRestartTimeout]);
