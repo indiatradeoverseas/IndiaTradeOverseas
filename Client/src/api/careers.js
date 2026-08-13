@@ -28,8 +28,12 @@ export const careersApi = {
     return response.data;
   },
 
-  updateApplicationStatus: async (id, status) => {
-    const response = await axiosInstance.patch(`/careers/${id}/status`, { status });
+  updateApplicationStatus: async (id, status, interviewDetails = null) => {
+    const payload = { status };
+    if (interviewDetails) {
+      payload.interviewDetails = interviewDetails;
+    }
+    const response = await axiosInstance.patch(`/careers/${id}/status`, payload);
     return response.data;
   },
 

@@ -16,12 +16,14 @@ import {
   FiCalendar,
   FiUser,
   FiTrendingUp,
-  FiUserPlus
+  FiUserPlus,
+  FiAward
 } from 'react-icons/fi';
 
 export function getCrmMainNavItems(user) {
   return [
     { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
+    (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) && { to: '/crm/hr', label: 'HR Dashboard', icon: FiAward },
     { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
     { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
     { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
@@ -34,7 +36,7 @@ export function getCrmMainNavItems(user) {
     (['ADMIN', 'MANAGER', 'PROCUREMENT'].includes(user?.role) || user?.dispatchPermission === true) && { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
     (['ADMIN', 'MANAGER', 'ACCOUNTS'].includes(user?.role) || user?.paymentPermission === true) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
     (user?.role === 'ADMIN' || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder },
-    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && {
+    (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) && {
       to: '/crm/distributors',
       label: 'Distributors',
       icon: FiBriefcase,
@@ -44,7 +46,7 @@ export function getCrmMainNavItems(user) {
         { to: '/crm/distributors/stone', label: 'Stone Orders', dotColor: '#94a3b8' }
       ]
     },
-    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && {
+    (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) && {
       to: '/crm/visitors',
       label: 'Buyer Visitors',
       icon: FiUserPlus,
@@ -61,7 +63,7 @@ export function getCrmDepartmentLinks() {
   return [
     { label: 'Sales', to: '/crm/employees?dept=SALES' },
     { label: 'Transport', to: '/crm/employees?dept=TRANSPORT' },
-    { label: 'HR', to: '/crm/employees?dept=HR' },
+    { label: 'HR', to: '/crm/hr' },
     { label: 'IT', to: '/crm/employees?dept=IT' },
     { label: 'Management', to: '/crm/employees?role=MANAGER' },
     { label: 'Co-founder', to: '/crm/employees?role=ADMIN' }
@@ -73,15 +75,15 @@ export function getCrmAdminNavItems(user) {
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/employees', label: 'Employees', icon: FiUsers },
     { to: '/crm/applications', label: 'Job Applications', icon: FiFileText },
-    (['ADMIN', 'MANAGER', 'HR'].includes(user?.role)) && { to: '/crm/career-leads', label: 'Career Leads', icon: FiUserPlus },
-    (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR' || user?.jobPermission === true) && { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
+    (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) && { to: '/crm/career-leads', label: 'Career Leads', icon: FiUserPlus },
+    (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) || user?.jobPermission === true) && { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/security', label: 'Security', icon: FiShield },
     (user?.role === 'ADMIN' || user?.role === 'MANAGER') && { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 }
   ].filter(Boolean);
 }
 
 export function shouldShowCrmAdminMenu(user) {
-  return ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true;
+  return ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) || user?.jobPermission === true;
 }
 
 export function getCrmCommandItems(user) {

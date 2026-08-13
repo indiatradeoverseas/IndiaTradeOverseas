@@ -54,7 +54,10 @@ body {
 /* Prevents a flash of the public site's light background below short CRM pages on
    mobile, where dynamic browser chrome can make 100vh taller than the visible area. */
 body:has(.crm-portal) {
-  background: #1B1E23;
+  background: #000000;
+}
+body:has(.crm-portal.light-theme) {
+  background: #FFFFFF;
 }
 
 /* min-h-screen (100vh) is measured against the largest possible mobile viewport
@@ -134,17 +137,17 @@ textarea {
   --crm-font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --crm-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  --crm-bg: #1B1E23;
-  --crm-bg-raised: #23262C;
-  --crm-bg-sunken: #131519;
-  --crm-nav-bg: #1D2025;
-  --crm-nav-bg-to: #1B1E23;
-  --crm-ink: #E7E3D9;
-  --crm-ink-soft: #ACA89C;
-  --crm-ink-faint: #7E7C72;
-  --crm-heading: #F1EEE5;
-  --crm-line: rgba(231,227,217,0.13);
-  --crm-line-strong: rgba(231,227,217,0.24);
+  --crm-bg: #000000;
+  --crm-bg-raised: #121212;
+  --crm-bg-sunken: #080808;
+  --crm-nav-bg: #000000;
+  --crm-nav-bg-to: #121212;
+  --crm-ink: #FFFFFF;
+  --crm-ink-soft: #E5E7EB;
+  --crm-ink-faint: #9CA3AF;
+  --crm-heading: #FFFFFF;
+  --crm-line: rgba(255,255,255,0.15);
+  --crm-line-strong: rgba(255,255,255,0.25);
   --crm-accent: #C89A54;
   --crm-accent-soft: #9A7639;
   --crm-accent-bg: rgba(200,154,84,0.1);
@@ -156,9 +159,72 @@ textarea {
   --crm-danger-bg: rgba(201,106,87,0.12);
   --crm-info: #5B9BB8;
   --crm-info-bg: rgba(91,155,184,0.12);
-  --crm-shadow: 0 1px 0 rgba(231,227,217,0.04), 0 20px 44px -20px rgba(0,0,0,0.5);
-  --crm-shimmer: linear-gradient(90deg, rgba(231,227,217,0.03) 0%, rgba(231,227,217,0.08) 50%, rgba(231,227,217,0.03) 100%);
+  --crm-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 20px 44px -20px rgba(0,0,0,0.8);
+  --crm-shimmer: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
   color-scheme: dark;
+  font-weight: 600;
+}
+
+.crm-portal[data-theme='light'] {
+  --crm-bg: #FFFFFF;
+  --crm-bg-raised: #FFFFFF;
+  --crm-bg-sunken: #F1F5F9;
+  --crm-nav-bg: #F8FAFC;
+  --crm-nav-bg-to: #FFFFFF;
+  --crm-ink: #000000;
+  --crm-ink-soft: #0F172A;
+  --crm-ink-faint: #475569;
+  --crm-heading: #000000;
+  --crm-line: rgba(0, 0, 0, 0.1);
+  --crm-line-strong: rgba(0, 0, 0, 0.18);
+  --crm-accent: #C89A54;
+  --crm-accent-soft: #9A7639;
+  --crm-accent-bg: rgba(200, 154, 84, 0.1);
+  --crm-positive: #10B981;
+  --crm-positive-bg: rgba(16, 185, 129, 0.1);
+  --crm-warning: #F59E0B;
+  --crm-warning-bg: rgba(245, 158, 11, 0.1);
+  --crm-danger: #EF4444;
+  --crm-danger-bg: rgba(239, 68, 68, 0.1);
+  --crm-info: #3B82F6;
+  --crm-info-bg: rgba(59, 130, 246, 0.1);
+  color-scheme: light;
+}
+
+.crm-portal.light-theme {
+  --crm-bg: #FFFFFF;
+  --crm-bg-raised: #F3F4F6;
+  --crm-bg-sunken: #E5E7EB;
+  --crm-nav-bg: #FFFFFF;
+  --crm-nav-bg-to: #F3F4F6;
+  --crm-ink: #000000;
+  --crm-ink-soft: #000000;
+  --crm-ink-faint: #374151;
+  --crm-heading: #000000;
+  --crm-line: rgba(0, 0, 0, 0.15);
+  --crm-line-strong: rgba(0, 0, 0, 0.25);
+  --crm-accent: #000000;
+  --crm-accent-soft: #111827;
+  --crm-accent-bg: rgba(0, 0, 0, 0.06);
+  --crm-positive: #166534;
+  --crm-positive-bg: rgba(22, 101, 52, 0.1);
+  --crm-warning: #9a3412;
+  --crm-warning-bg: rgba(154, 52, 18, 0.1);
+  --crm-danger: #991b1b;
+  --crm-danger-bg: rgba(153, 27, 27, 0.1);
+  --crm-info: #075985;
+  --crm-info-bg: rgba(7, 89, 133, 0.1);
+  --crm-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  --crm-shimmer: linear-gradient(90deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.06) 50%, rgba(0, 0, 0, 0.02) 100%);
+  color-scheme: light;
+}
+
+.crm-portal.light-theme *, 
+.crm-portal.light-theme input, 
+.crm-portal.light-theme button, 
+.crm-portal.light-theme select, 
+.crm-portal.light-theme textarea {
+  font-weight: 700 !important;
 }
 
 @keyframes crm-shimmer-sweep {
