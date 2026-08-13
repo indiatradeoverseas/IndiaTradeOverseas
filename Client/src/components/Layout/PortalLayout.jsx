@@ -12,10 +12,12 @@ export default function PortalLayout({ children }) {
   const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
 
   const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('crm-theme', nextTheme);
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
+
+  useEffect(() => {
+    localStorage.setItem('crm-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const checkScreenSize = () => {

@@ -336,7 +336,7 @@ export default function Sidebar({ onClose }) {
             style={{ color: 'var(--crm-danger)' }}
           >
             <FiLogOut size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
-            <span>Terminate Session</span>
+            <span>Logout</span>
           </button>
         </div>
       </nav>

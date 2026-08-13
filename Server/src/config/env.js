@@ -14,7 +14,8 @@ const env = {
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS, 10),
   CORS_WHITELIST: process.env.CORS_WHITELIST ? process.env.CORS_WHITELIST.split(',') : ['https://ito-7u4q.vercel.app/', 'http://localhost:3000', 'http://localhost:5173'],
   DEVICE_VERIFICATION_ENABLED: process.env.DEVICE_VERIFICATION_ENABLED,
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://www.indiatradeoverseas.com'
 };
 
 module.exports = env;

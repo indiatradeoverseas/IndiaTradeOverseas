@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -399,8 +399,18 @@ export default function Stone() {
   // storefront. Does NOT clear the saved session, so a refresh/reopen restores
   // straight back in without re-verification, as long as the CRM record still exists.
   const handleExitTerminal = () => {
-    setUserAccessLayer(1);
+    handleLogOut();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleExploreProducts = () => {
+    const savedId = localStorage.getItem('ito_stone_buyer_id');
+    const token = localStorage.getItem('distributor_token');
+    if (!savedId || !token) {
+      setShowEntryGate(true);
+    } else {
+      setUserAccessLayer(5);
+    }
   };
 
   // Reset location/grade whenever the division toggle changes
@@ -968,7 +978,7 @@ export default function Stone() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
                   <button
-                    onClick={() => setUserAccessLayer(5)}
+                    onClick={handleExploreProducts}
                     className="w-full sm:w-auto text-[#37424B] text-xs font-mono font-bold uppercase tracking-widest px-8 py-4 rounded shadow-xl transition-all hover:scale-105 transform cursor-pointer bg-[#C5A059]"
                   >
                     Explore Products
@@ -1060,7 +1070,7 @@ export default function Stone() {
                       </div>
                       <div className="pt-2">
                         <button
-                          onClick={() => setUserAccessLayer(5)}
+                          onClick={handleExploreProducts}
                           className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-[10px] uppercase tracking-wider py-2.5 px-5 rounded shadow transition-all cursor-pointer inline-flex items-center gap-2"
                         >
                           Explore Products <FiArrowRight />
@@ -1111,7 +1121,7 @@ export default function Stone() {
 
                     <div className="pt-4 border-t border-white/10 mt-5">
                       <button
-                        onClick={() => setUserAccessLayer(5)}
+                        onClick={handleExploreProducts}
                         className="w-full bg-white/5 hover:bg-[#C5A059] text-white hover:text-[#37424B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                       >
                         Explore Products

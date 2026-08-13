@@ -204,9 +204,10 @@ export default function Careers() {
     return (
       <BuyerEntryGate
         theme={CAREERS_GATE_THEME}
-        requireOtp={false}
+        requireOtp={true}
+        division="CAREERS"
         mascotSrc="/images/walking-man.png"
-        onComplete={(values) => {
+        onVerified={(activeId, activeToken, values) => {
           setFormData((prev) => ({ ...prev, fullName: values.fullName, email: values.email, phone: values.phone }));
           localStorage.setItem(CAREERS_GATE_STORAGE_KEY, JSON.stringify(values));
           pushDataLayerEvent('careers_gate_completed', {});
