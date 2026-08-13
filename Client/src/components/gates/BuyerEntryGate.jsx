@@ -39,32 +39,7 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
   const otpRefs = useRef([]);
   const lastAutoSubmitRef = useRef('');
 
-  // Completely automatic OTP background fetching (Polling)
-  useEffect(() => {
-    if (step !== 'otp' || !form.email) return;
 
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (attempts > 15) {
-        clearInterval(interval);
-        return;
-      }
-      try {
-        const res = await authApi.getLatestOtp(form.email);
-        if (res.success && res.data?.otp) {
-          const foundOtp = res.data.otp.split('');
-          setOtp(foundOtp);
-          clearInterval(interval);
-          toast.success(`OTP auto-fetched: ${res.data.otp} 🎉`);
-        }
-      } catch (err) {
-        console.error('Error auto-fetching OTP:', err);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [step, form.email]);
 
   const firstName = form.fullName.trim().split(/\s+/)[0] || '';
 

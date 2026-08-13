@@ -14,34 +14,7 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Completely automatic OTP background fetching (Polling)
-  useEffect(() => {
-    if (step !== 2 || !email) return;
 
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (attempts > 15) {
-        clearInterval(interval);
-        return;
-      }
-      try {
-        const res = await authApi.getLatestOtp(email);
-        if (res.success && res.data?.otp) {
-          const foundOtp = res.data.otp;
-          setOtp(foundOtp);
-          clearInterval(interval);
-          toast.success(`OTP auto-fetched: ${foundOtp} 🎉`, {
-            style: { borderRadius: '10px', background: '#333', color: '#fff' }
-          });
-        }
-      } catch (err) {
-        console.error('Error auto-fetching OTP:', err);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [step, email]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
