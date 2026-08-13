@@ -424,8 +424,8 @@ export default function HrExecutiveDashboard() {
                             {item.date} @ {item.time}
                           </span>
                           <span className={`text-[9px] font-bold font-mono px-2 py-0.5 border rounded-sm ${
-                            item.status === 'HELD' || item.status === 'COMPLETED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' :
-                            item.status === 'CANCELLED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' :
+                            item.status === 'PASSED' || item.status === 'HELD' || item.status === 'COMPLETED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' :
+                            item.status === 'FAILED' || item.status === 'CANCELLED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' :
                             'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20 animate-pulse'
                           }`}>
                             {item.status}
@@ -571,9 +571,9 @@ export default function HrExecutiveDashboard() {
 
           {/* HELPDESK TICKETS PANEL */}
           {activeTab === 'helpdesk' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[600px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[600px]">
               {/* Ticket Cards side scroll */}
-              <div className="lg:col-span-5 border border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/10 p-4 rounded-sm overflow-y-auto custom-scrollbar space-y-2 h-full">
+              <div className="lg:col-span-5 border border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/10 p-4 rounded-sm overflow-y-auto custom-scrollbar space-y-2 h-[300px] lg:h-full">
                 <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--crm-ink-faint)] font-bold mb-4 border-b border-[var(--crm-line)] pb-1.5 flex justify-between items-center">
                   <span>Open Helpdesk Grievances</span>
                   <FiMessageSquare size={12} className="text-[var(--crm-accent)]" />
@@ -615,7 +615,7 @@ export default function HrExecutiveDashboard() {
               </div>
 
               {/* Chat Console Grievance */}
-              <div className="lg:col-span-7 border border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/20 rounded-sm overflow-hidden flex flex-col h-full shadow-lg">
+              <div className="lg:col-span-7 border border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/20 rounded-sm overflow-hidden flex flex-col h-[450px] lg:h-full shadow-lg">
                 {selectedTicket ? (
                   <>
                     <div className="bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-line)] p-4 flex justify-between items-center text-left shrink-0">
@@ -784,7 +784,7 @@ export default function HrExecutiveDashboard() {
       {/* FEEDBACK & OUTCOME MODAL */}
       {selectedInterview && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
               <div>
                 <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Record Interview Outcome</h2>
@@ -795,15 +795,41 @@ export default function HrExecutiveDashboard() {
             <form onSubmit={handleFeedbackSubmit} className="space-y-4 text-xs font-medium">
               <div>
                 <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Interview Outcome Status *</label>
-                <select
-                  value={interviewStatus}
-                  onChange={(e) => setInterviewStatus(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
-                >
-                  <option value="PENDING">PENDING</option>
-                  <option value="HELD">HELD / CONDUCTED</option>
-                  <option value="CANCELLED">CANCELLED</option>
-                </select>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInterviewStatus('PASSED')}
+                    className={`flex-1 py-2 rounded-sm text-xs font-mono font-bold uppercase transition duration-150 border cursor-pointer ${
+                      interviewStatus === 'PASSED'
+                        ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/50 shadow-md'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-white hover:text-white'
+                    }`}
+                  >
+                    Pass
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInterviewStatus('FAILED')}
+                    className={`flex-1 py-2 rounded-sm text-xs font-mono font-bold uppercase transition duration-150 border cursor-pointer ${
+                      interviewStatus === 'FAILED'
+                        ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/50 shadow-md'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-white hover:text-white'
+                    }`}
+                  >
+                    Fail
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInterviewStatus('PENDING')}
+                    className={`flex-1 py-2 rounded-sm text-xs font-mono font-bold uppercase transition duration-150 border cursor-pointer ${
+                      interviewStatus === 'PENDING'
+                        ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/50 shadow-md'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-white hover:text-white'
+                    }`}
+                  >
+                    Pending
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Candidate Rating (1-10 Scale) *</label>

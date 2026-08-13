@@ -317,7 +317,7 @@ function AppLayout() {
           <Route
             path="/crm/hr/executive"
             element={
-              <RoleProtectedRoute allowedRoles={['HR_EXECUTIVE', 'HR']}>
+              <RoleProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR']}>
                 <HrExecutiveDashboard />
               </RoleProtectedRoute>
             }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUsers,
@@ -28,7 +29,10 @@ import {
   FiSliders,
   FiActivity,
   FiInfo,
-  FiEye
+  FiEye,
+  FiGrid,
+  FiMessageSquare,
+  FiMoreHorizontal
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -82,10 +86,21 @@ const blockVariants = {
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100, damping: 18 } }
 };
 
+const getEmployeePhoto = (empId, fullName, profilesData) => {
+  if (profilesData && profilesData[empId]?.photo) {
+    return profilesData[empId].photo;
+  }
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || "User")}&background=1e293b&color=c89a54&bold=true&size=128`;
+};
+
 export default function HrManagerDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [payrollSubTab, setPayrollSubTab] = useState('payroll');
+
+  // View state for directory (grid vs list)
+  const [viewMode, setViewMode] = useState('grid');
+  const [activeDropdownEmpId, setActiveDropdownEmpId] = useState(null);
 
   // Backend state
   const [employees, setEmployees] = useState([]);
@@ -259,12 +274,21 @@ export default function HrManagerDashboard() {
       permanentAddress: '',
       doj: '',
       reportingManager: '',
-      employmentStatus: 'Permanent',
+      employmentStatus: 'Probation',
       aadhaarVerified: false,
       panVerified: false,
       degreeVerified: false,
       mobileVerified: false,
-      emailVerified: false
+      emailVerified: false,
+      fullNameOverride: '',
+      phoneOverride: '',
+      roleOverride: '',
+      departmentOverride: '',
+      bankName: '',
+      bankAccount: '',
+      bankIFSC: '',
+      aadhaar: '',
+      photo: ''
     };
     return { ...defaults, ...(profilesData[empId] || {}) };
   };
@@ -279,6 +303,16 @@ export default function HrManagerDashboard() {
     };
     setProfilesData(updated);
     toast.success('Employee profile master data updated! 💾');
+  };
+
+  const handlePhotoUpload = (empId, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      handleUpdateProfile(empId, { photo: e.target.result });
+      toast.success('Profile picture uploaded successfully! 📸');
+    };
+    reader.readAsDataURL(file);
   };
 
   // Salary data getter with default scale structure
@@ -457,15 +491,25 @@ export default function HrManagerDashboard() {
   };
 
   // Tasks handlers
-  const handleOpenAssignTask = () => {
+  const handleOpenAssignTask = (empId) => {
     setTaskForm({
       title: '',
       description: '',
-      assignedTo: '',
+      assignedTo: empId || '',
       priority: 'MEDIUM',
       dueDate: ''
     });
     setShowTaskModal(true);
+  };
+
+  const handleOpenAssignAsset = (empId) => {
+    setAssetForm({ name: '', serial: '', assignedTo: empId || '' });
+    setShowAssetModal(true);
+  };
+
+  const handleOpenAddPip = (empId) => {
+    setPipForm({ employeeId: empId || '', description: '', startDate: '', endDate: '' });
+    setShowPipModal(true);
   };
 
   const handleTaskSubmit = (e) => {
@@ -669,6 +713,13 @@ export default function HrManagerDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto flex-shrink-0">
+          <Link
+            to="/crm/hr/executive"
+            className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer hover:bg-[var(--crm-bg-raised)]/80 text-[var(--crm-accent)] hover:text-white"
+            style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+          >
+            Executive View
+          </Link>
           <button
             onClick={handleOpenAssignTask}
             className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer hover:bg-[var(--crm-bg-raised)]/80"
@@ -875,151 +926,591 @@ export default function HrManagerDashboard() {
                       ))}
                     </select>
                   </div>
+                  
+                  {/* Grid/List Toggle Group */}
+                  <div className="flex items-center border border-[var(--crm-line)] rounded-sm overflow-hidden shrink-0 self-stretch sm:self-auto">
+                    <button
+                      onClick={() => { setViewMode('grid'); setExpandedEmpId(null); }}
+                      className={`px-3 py-1.5 flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                        viewMode === 'grid' ? 'bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)]' : 'bg-transparent text-[var(--crm-ink-faint)] hover:text-white'
+                      }`}
+                    >
+                      <FiGrid size={12} />
+                      Grid
+                    </button>
+                    <button
+                      onClick={() => { setViewMode('list'); setExpandedEmpId(null); }}
+                      className={`px-3 py-1.5 flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                        viewMode === 'list' ? 'bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)]' : 'bg-transparent text-[var(--crm-ink-faint)] hover:text-white'
+                      }`}
+                    >
+                      <FiList size={12} />
+                      List
+                    </button>
+                  </div>
                 </div>
 
                 {loading ? (
-                  <div className="space-y-3">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="border p-4 rounded-sm" style={CARD}>
-                        <div className="flex items-center gap-3">
-                          <div className="crm-skeleton w-8 h-8 rounded-full" style={{ background: 'var(--crm-bg-sunken)' }} />
-                          <div className="flex-1">
-                            <div className="crm-skeleton h-3.5 w-32 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
-                            <div className="crm-skeleton h-2.5 w-48 rounded-sm mt-1" style={{ background: 'var(--crm-bg-sunken)' }} />
-                          </div>
-                          <div className="flex gap-2">
-                            <div className="crm-skeleton h-5 w-14 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
-                            <div className="crm-skeleton h-5 w-14 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                  viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                      {[1,2,3,4,5,6].map(i => (
+                        <div key={i} className="border rounded-sm overflow-hidden flex flex-col" style={CARD}>
+                          <div className="h-48 w-full crm-skeleton" style={{ background: 'var(--crm-bg-sunken)' }} />
+                          <div className="p-4 flex-1 space-y-3">
+                            <div className="crm-skeleton h-4 w-32 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            <div className="crm-skeleton h-3 w-48 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            <div className="flex gap-2 pt-2">
+                              <div className="crm-skeleton h-6 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                              <div className="crm-skeleton h-6 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            </div>
+                            <div className="flex gap-2 pt-4 border-t border-[var(--crm-line)]">
+                              <div className="crm-skeleton h-7 flex-1 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                              <div className="crm-skeleton h-7 flex-1 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                              <div className="crm-skeleton h-7 w-8 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {[1,2,3].map(i => (
+                        <div key={i} className="border p-4 rounded-sm" style={CARD}>
+                          <div className="flex items-center gap-3">
+                            <div className="crm-skeleton w-8 h-8 rounded-full" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            <div className="flex-1">
+                              <div className="crm-skeleton h-3.5 w-32 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                              <div className="crm-skeleton h-2.5 w-48 rounded-sm mt-1" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="crm-skeleton h-5 w-14 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                              <div className="crm-skeleton h-5 w-14 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
                 ) : (
-                  <div className="space-y-3 max-h-[calc(100vh-320px)] overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="max-h-[calc(100vh-320px)] overflow-y-auto pr-1 custom-scrollbar">
                     {filteredEmployees.length === 0 ? (
                       <div className="border p-8 rounded-sm text-center" style={CARD}>
                         <div className="text-xs text-[var(--crm-ink-faint)] font-mono">No employees found</div>
                       </div>
-                    ) : (
-                      filteredEmployees.map(emp => {
-                        const isExpanded = expandedEmpId === emp._id;
-                        const profile = getEmployeeProfile(emp.employeeId);
-                        return (
-                          <div
-                            key={emp._id}
-                            className="border rounded-sm p-4 transition-all duration-300"
-                            style={CARD}
-                          >
-                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)]/20 flex items-center justify-center text-[var(--crm-accent)] font-serif font-bold text-xs shrink-0">
-                                  {emp.fullName.split(' ').map(n => n[0]).join('')}
+                    ) : viewMode === 'grid' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                        {filteredEmployees.map(emp => {
+                          const profile = getEmployeeProfile(emp.employeeId);
+                          const displayName = profile.fullNameOverride || emp.fullName;
+                          const displayPhone = profile.phoneOverride || emp.phone || 'N/A';
+                          const displayRole = profile.roleOverride || emp.role;
+                          const displayDept = profile.departmentOverride || emp.department || 'HQ';
+                          const displayStatus = profile.employmentStatus || 'Probation';
+                          const photo = getEmployeePhoto(emp.employeeId, displayName, profilesData);
+                          return (
+                            <div
+                              key={emp._id}
+                              className="border rounded-sm overflow-hidden flex flex-col relative group transition-all duration-300 hover:border-[var(--crm-accent)]/40 hover:shadow-lg"
+                              style={CARD}
+                            >
+                              {/* Portrait Image Header */}
+                              <div className="h-48 w-full overflow-hidden relative bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-line)]">
+                                <img
+                                  src={photo}
+                                  alt={displayName}
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                {/* Fallback Initial Avatar */}
+                                <div className="absolute inset-0 hidden flex-col items-center justify-center bg-[var(--crm-bg-sunken)] text-[var(--crm-accent)] font-serif font-bold text-3xl">
+                                  {displayName.split(' ').map(n => n[0]).join('')}
                                 </div>
-                                <div className="text-left">
-                                  <h4 className="font-serif text-xs font-semibold text-[var(--crm-heading)] flex flex-wrap items-center gap-1.5">
-                                    <span>{emp.fullName}</span>
-                                    <span className="text-[8px] font-mono font-bold tracking-widest bg-[var(--crm-bg-raised)] px-1.5 py-0.5 border border-[var(--crm-line)] text-[var(--crm-accent)] uppercase rounded-sm">
-                                      {emp.employeeId}
-                                    </span>
+                                
+                                {/* Top badges on the image */}
+                                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                                  <span className="text-[7px] font-mono font-bold tracking-widest bg-black/75 px-1.5 py-0.5 border border-[var(--crm-line)]/50 text-[var(--crm-accent)] uppercase rounded-sm">
+                                    {emp.employeeId}
+                                  </span>
+                                  <span className={`text-[7px] font-mono font-bold tracking-widest bg-black/75 px-1.5 py-0.5 border rounded-sm uppercase ${
+                                    displayStatus === 'Notice Period' || displayStatus === 'Temporary'
+                                      ? 'text-[var(--crm-danger)] border-[var(--crm-danger)]/50' 
+                                      : displayStatus === 'Probation' 
+                                      ? 'text-[var(--crm-warning)] border-[var(--crm-warning)]/50' 
+                                      : 'text-[var(--crm-positive)] border-[var(--crm-positive)]/50'
+                                  }`}>
+                                    {displayStatus}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Card Content */}
+                              <div className="p-4 flex-1 flex flex-col justify-between text-left">
+                                <div className="space-y-1">
+                                  <h4 className="font-serif text-xs font-semibold text-[var(--crm-heading)] truncate">
+                                    {displayName}
                                   </h4>
-                                  <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{emp.email}</p>
+                                  <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono truncate">{emp.email}</p>
+                                  <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono truncate">Phone: {displayPhone}</p>
+                                  
+                                  <div className="flex flex-wrap gap-1.5 pt-2">
+                                    <span className="text-[8px] font-mono font-bold uppercase tracking-wider bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm">
+                                      {displayRole}
+                                    </span>
+                                    <span className="text-[8px] font-mono font-bold uppercase tracking-wider bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm">
+                                      {displayDept}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
 
-                              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto font-mono text-[8px] font-bold">
-                                <span className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm">
-                                  {emp.role}
-                                </span>
-                                <span className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm uppercase">
-                                  {emp.department || 'HQ'}
-                                </span>
-                                <button
-                                  onClick={() => setExpandedEmpId(isExpanded ? null : emp._id)}
-                                  className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] px-2 py-0.5 rounded-sm uppercase tracking-wider hover:bg-[var(--crm-ink-soft)] transition duration-150 cursor-pointer text-[8px]"
-                                >
-                                  {isExpanded ? 'Collapse' : 'Expand'}
-                                </button>
-                              </div>
-                            </div>
+                                {/* Action Buttons Row */}
+                                <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-[var(--crm-line)] relative">
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(emp.email);
+                                      toast.success(`Copied email for ${emp.fullName} to clipboard!`);
+                                      window.location.href = `mailto:${emp.email}`;
+                                    }}
+                                    className="flex-1 py-1.5 flex items-center justify-center gap-1 text-[8px] font-mono font-bold uppercase border border-[var(--crm-accent)] bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] rounded-sm hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition-all cursor-pointer"
+                                  >
+                                    <FiMessageSquare size={11} />
+                                    Message
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => setExpandedEmpId(emp._id)}
+                                    className="flex-1 py-1.5 flex items-center justify-center gap-1 text-[8px] font-mono font-bold uppercase border border-[var(--crm-line)] bg-transparent text-[var(--crm-heading)] rounded-sm hover:border-[var(--crm-heading)] transition-all cursor-pointer"
+                                  >
+                                    <FiEye size={11} />
+                                    Details
+                                  </button>
 
-                            <AnimatePresence>
-                              {isExpanded && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="overflow-hidden mt-3 pt-3 border-t border-[var(--crm-line)] grid grid-cols-1 md:grid-cols-3 gap-3 text-[10px] text-left font-sans"
-                                >
-                                  <div className="space-y-1.5">
-                                    <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-0.5 flex items-center gap-1"><FiUser size={11} /> Personal</h5>
-                                    <div className="space-y-1">
-                                      <div className="flex justify-between">
-                                        <span className="text-[var(--crm-ink-faint)]">DOB:</span>
-                                        <input type="date" value={profile.dob} onChange={(e) => handleUpdateProfile(emp.employeeId, { dob: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-[10px]" />
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-[var(--crm-ink-faint)]">Blood Group:</span>
-                                        <input type="text" value={profile.bloodGroup} onChange={(e) => handleUpdateProfile(emp.employeeId, { bloodGroup: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-20 text-center text-[10px]" />
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-[var(--crm-ink-faint)]">Emergency:</span>
-                                        <input type="text" value={profile.emergencyContact} onChange={(e) => handleUpdateProfile(emp.employeeId, { emergencyContact: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-right text-[10px]" />
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-0.5 flex items-center gap-1"><FiBriefcase size={11} /> Professional</h5>
-                                    <div className="space-y-1">
-                                      <div className="flex justify-between">
-                                        <span className="text-[var(--crm-ink-faint)]">DOJ:</span>
-                                        <input type="date" value={profile.doj} onChange={(e) => handleUpdateProfile(emp.employeeId, { doj: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-[10px]" />
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-[var(--crm-ink-faint)]">Manager:</span>
-                                        <input type="text" value={profile.reportingManager} onChange={(e) => handleUpdateProfile(emp.employeeId, { reportingManager: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-right text-[10px]" />
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-[var(--crm-ink-faint)]">Status:</span>
-                                        <select value={profile.employmentStatus} onChange={(e) => handleUpdateProfile(emp.employeeId, { employmentStatus: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-[10px]">
-                                          <option value="Probation">Probation</option>
-                                          <option value="Permanent">Permanent</option>
-                                          <option value="Notice Period">Notice Period</option>
-                                        </select>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-0.5 flex items-center gap-1"><FiShield size={11} /> Documents</h5>
-                                    <div className="space-y-1">
-                                      {[
-                                        { label: "PAN", key: "panVerified", val: profile.panVerified },
-                                        { label: "Aadhaar", key: "aadhaarVerified", val: profile.aadhaarVerified },
-                                        { label: "Degree", key: "degreeVerified", val: profile.degreeVerified }
-                                      ].map((doc) => (
-                                        <div key={doc.key} className="flex justify-between items-center">
-                                          <span className="text-[var(--crm-ink-soft)]">{doc.label}</span>
+                                  <div className="relative">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveDropdownEmpId(activeDropdownEmpId === emp._id ? null : emp._id);
+                                      }}
+                                      className="p-1.5 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] transition-all cursor-pointer text-[var(--crm-ink-soft)] hover:text-white"
+                                    >
+                                      <FiMoreHorizontal size={11} />
+                                    </button>
+
+                                    {/* Action Dropdown Menu */}
+                                    {activeDropdownEmpId === emp._id && (
+                                      <>
+                                        <div 
+                                          className="fixed inset-0 z-45" 
+                                          onClick={() => setActiveDropdownEmpId(null)}
+                                        />
+                                        <div className="absolute right-0 bottom-full mb-1.5 w-40 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] shadow-2xl rounded-sm p-1 z-50 text-[9px] font-mono font-bold uppercase text-left space-y-0.5">
                                           <button
-                                            onClick={() => handleUpdateProfile(emp.employeeId, { [doc.key]: !doc.val })}
-                                            className={`px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-sm border transition-all ${
-                                              doc.val ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-[var(--crm-accent)]'
-                                            }`}
+                                            onClick={() => {
+                                              setActiveDropdownEmpId(null);
+                                              handleOpenAssignTask(emp.employeeId);
+                                            }}
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-white"
                                           >
-                                            {doc.val ? 'Verified' : 'Verify'}
+                                            <FiCheckSquare size={10} />
+                                            Assign Task
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setActiveDropdownEmpId(null);
+                                              handleOpenAssignAsset(emp.employeeId);
+                                            }}
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-white"
+                                          >
+                                            <FiHardDrive size={10} />
+                                            Assign Asset
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setActiveDropdownEmpId(null);
+                                              handleOpenAddPip(emp.employeeId);
+                                            }}
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-danger)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-danger)]"
+                                          >
+                                            <FiAlertCircle size={10} />
+                                            Initiate PIP
                                           </button>
                                         </div>
-                                      ))}
-                                    </div>
+                                      </>
+                                    )}
                                   </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {filteredEmployees.map(emp => {
+                          const isExpanded = expandedEmpId === emp._id;
+                          const profile = getEmployeeProfile(emp.employeeId);
+                          const displayName = profile.fullNameOverride || emp.fullName;
+                          const displayPhone = profile.phoneOverride || emp.phone || 'N/A';
+                          const displayRole = profile.roleOverride || emp.role;
+                          const displayDept = profile.departmentOverride || emp.department || 'HQ';
+                          const displayStatus = profile.employmentStatus || 'Probation';
+                          const photo = getEmployeePhoto(emp.employeeId, displayName, profilesData);
+                          return (
+                            <div
+                              key={emp._id}
+                              className="border rounded-sm p-4 transition-all duration-300"
+                              style={CARD}
+                            >
+                              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full overflow-hidden border border-[var(--crm-line)] flex items-center justify-center shrink-0 bg-[var(--crm-bg-sunken)]">
+                                    <img src={photo} alt={displayName} className="w-full h-full object-cover" />
+                                  </div>
+                                  <div className="text-left">
+                                    <h4 className="font-serif text-xs font-semibold text-[var(--crm-heading)] flex flex-wrap items-center gap-1.5">
+                                      <span>{displayName}</span>
+                                      <span className="text-[8px] font-mono font-bold tracking-widest bg-[var(--crm-bg-raised)] px-1.5 py-0.5 border border-[var(--crm-line)] text-[var(--crm-accent)] uppercase rounded-sm">
+                                        {emp.employeeId}
+                                      </span>
+                                    </h4>
+                                    <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{emp.email} • {displayPhone}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto font-mono text-[8px] font-bold">
+                                  <span className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm">
+                                    {displayRole}
+                                  </span>
+                                  <span className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm uppercase">
+                                    {displayDept}
+                                  </span>
+                                  <button
+                                    onClick={() => setExpandedEmpId(isExpanded ? null : emp._id)}
+                                    className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] px-2 py-0.5 rounded-sm uppercase tracking-wider hover:bg-[var(--crm-ink-soft)] transition duration-150 cursor-pointer text-[8px]"
+                                  >
+                                    {isExpanded ? 'Collapse' : 'Expand'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <AnimatePresence>
+                                {isExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden mt-3 pt-3 border-t border-[var(--crm-line)] grid grid-cols-1 md:grid-cols-3 gap-3 text-[10px] text-left font-sans"
+                                  >
+                                    <div className="space-y-1.5">
+                                      <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-0.5 flex items-center gap-1"><FiUser size={11} /> Personal</h5>
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                          <span className="text-[var(--crm-ink-faint)]">DOB:</span>
+                                          <input type="date" value={profile.dob} onChange={(e) => handleUpdateProfile(emp.employeeId, { dob: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-[10px]" />
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-[var(--crm-ink-faint)]">Blood Group:</span>
+                                          <input type="text" value={profile.bloodGroup} onChange={(e) => handleUpdateProfile(emp.employeeId, { bloodGroup: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-20 text-center text-[10px]" />
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-[var(--crm-ink-faint)]">Emergency:</span>
+                                          <input type="text" value={profile.emergencyContact} onChange={(e) => handleUpdateProfile(emp.employeeId, { emergencyContact: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-right text-[10px]" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-0.5 flex items-center gap-1"><FiBriefcase size={11} /> Professional</h5>
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                          <span className="text-[var(--crm-ink-faint)]">DOJ:</span>
+                                          <input type="date" value={profile.doj} onChange={(e) => handleUpdateProfile(emp.employeeId, { doj: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-[10px]" />
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-[var(--crm-ink-faint)]">Manager:</span>
+                                          <input type="text" value={profile.reportingManager} onChange={(e) => handleUpdateProfile(emp.employeeId, { reportingManager: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-right text-[10px]" />
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-[var(--crm-ink-faint)]">Status:</span>
+                                          <select value={profile.employmentStatus} onChange={(e) => handleUpdateProfile(emp.employeeId, { employmentStatus: e.target.value })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1.5 py-0.5 rounded-sm w-28 text-[10px]">
+                                            <option value="Probation">Probation</option>
+                                            <option value="Permanent">Permanent</option>
+                                            <option value="Notice Period">Notice Period</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-0.5 flex items-center gap-1"><FiShield size={11} /> Documents</h5>
+                                      <div className="space-y-1">
+                                        {[
+                                          { label: "PAN", key: "panVerified", val: profile.panVerified },
+                                          { label: "Aadhaar", key: "aadhaarVerified", val: profile.aadhaarVerified },
+                                          { label: "Degree", key: "degreeVerified", val: profile.degreeVerified }
+                                        ].map((doc) => (
+                                          <div key={doc.key} className="flex justify-between items-center">
+                                            <span className="text-[var(--crm-ink-soft)]">{doc.label}</span>
+                                            <button
+                                              onClick={() => handleUpdateProfile(emp.employeeId, { [doc.key]: !doc.val })}
+                                              className={`px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-sm border transition-all ${
+                                                doc.val ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-[var(--crm-accent)]'
+                                              }`}
+                                            >
+                                              {doc.val ? 'Verified' : 'Verify'}
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 )}
+                
+                {/* Employee Details Modal (Grid View only) */}
+                {viewMode === 'grid' && expandedEmpId && (() => {
+                  const emp = employees.find(e => e._id === expandedEmpId);
+                  if (!emp) return null;
+                  const profile = getEmployeeProfile(emp.employeeId);
+                  const displayName = profile.fullNameOverride || emp.fullName;
+                  const photo = getEmployeePhoto(emp.employeeId, displayName, profilesData);
+                  return (
+                    <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
+                      <div className="bg-[var(--crm-bg-raised)] rounded-sm w-full max-w-3xl border border-[var(--crm-line)] shadow-2xl overflow-hidden flex flex-col text-left">
+                        {/* Modal Header */}
+                        <div className="relative border-b border-[var(--crm-line)] p-6 bg-[var(--crm-bg-sunken)]/40 flex items-start gap-4">
+                          <div className="w-16 h-16 rounded-full overflow-hidden border border-[var(--crm-line)] shrink-0 bg-[var(--crm-bg-sunken)]">
+                            <img src={photo} alt={displayName} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <span className="text-[8px] font-mono font-bold tracking-widest bg-[var(--crm-accent-bg)] px-2 py-0.5 border border-[var(--crm-accent)]/20 text-[var(--crm-accent)] uppercase rounded-sm inline-block">
+                              {emp.employeeId}
+                            </span>
+                            <h2 className="font-serif text-lg text-[var(--crm-heading)] leading-none">{displayName}</h2>
+                            <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{emp.email}</p>
+                          </div>
+                          <button
+                            onClick={() => setExpandedEmpId(null)}
+                            className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-sm bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-7 h-7 flex items-center justify-center rounded-sm transition cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)] space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] font-sans">
+                            
+                            {/* Personal / Identification Column */}
+                            <div className="space-y-3">
+                              <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-1 flex items-center gap-1.5">
+                                <FiUser size={12} className="text-[var(--crm-accent)]" /> Personal & Photo
+                              </h5>
+                              <div className="space-y-2">
+                                <div className="flex flex-col gap-1.5 items-center pb-3 border-b border-[var(--crm-line)]">
+                                  <div className="w-20 h-20 rounded-full overflow-hidden border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] relative group">
+                                    <img src={photo} alt="Avatar" className="w-full h-full object-cover" />
+                                  </div>
+                                  <label className="text-[8px] font-mono font-bold uppercase tracking-wider bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] text-[var(--crm-accent)] px-2.5 py-1 rounded-sm cursor-pointer hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition-all text-center">
+                                    Change Photo
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handlePhotoUpload(emp.employeeId, e.target.files[0])}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Employee Name *</span>
+                                  <input
+                                    type="text"
+                                    value={profile.fullNameOverride !== undefined && profile.fullNameOverride !== '' ? profile.fullNameOverride : emp.fullName}
+                                    onChange={(e) => handleUpdateProfile(emp.employeeId, { fullNameOverride: e.target.value })}
+                                    className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                                    placeholder="Full Name"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Phone Number *</span>
+                                  <input
+                                    type="text"
+                                    value={profile.phoneOverride !== undefined && profile.phoneOverride !== '' ? profile.phoneOverride : (emp.phone || '')}
+                                    onChange={(e) => handleUpdateProfile(emp.employeeId, { phoneOverride: e.target.value })}
+                                    className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                                    placeholder="Phone Number"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Status & Access Column */}
+                            <div className="space-y-3">
+                              <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-1 flex items-center gap-1.5">
+                                <FiBriefcase size={12} className="text-[var(--crm-accent)]" /> Role & Status
+                              </h5>
+                              <div className="space-y-2">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Corporate Role *</span>
+                                  <select
+                                    value={profile.roleOverride || emp.role}
+                                    onChange={async (e) => {
+                                      const nextRole = e.target.value;
+                                      handleUpdateProfile(emp.employeeId, { roleOverride: nextRole });
+                                      try {
+                                        await adminApi.updateUserRole(emp._id, nextRole);
+                                        toast.success(`Role synced to database! 🚀`);
+                                        fetchInitialData();
+                                      } catch (err) {
+                                        console.error(err);
+                                        toast.error('Failed to sync role to database');
+                                      }
+                                    }}
+                                    className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] cursor-pointer"
+                                  >
+                                    <option value="ADMIN">ADMIN</option>
+                                    <option value="MANAGER">MANAGER</option>
+                                    <option value="SALES">SALES</option>
+                                    <option value="PROCUREMENT">PROCUREMENT</option>
+                                    <option value="ACCOUNTS">ACCOUNTS</option>
+                                    <option value="HR">HR</option>
+                                    <option value="IT">IT</option>
+                                    <option value="FINANCE">FINANCE</option>
+                                    <option value="SOFTWARE_ENGINEER">SOFTWARE ENGINEER</option>
+                                    <option value="SYSTEM">SYSTEM</option>
+                                    <option value="AI">AI</option>
+                                  </select>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Department *</span>
+                                  <select
+                                    value={profile.departmentOverride || emp.department || 'HQ'}
+                                    onChange={async (e) => {
+                                      const nextDept = e.target.value;
+                                      handleUpdateProfile(emp.employeeId, { departmentOverride: nextDept });
+                                      try {
+                                        await adminApi.updateUserDepartment(emp._id, nextDept);
+                                        toast.success(`Department synced to database! 📁`);
+                                        fetchInitialData();
+                                      } catch (err) {
+                                        console.error(err);
+                                        toast.error('Failed to sync department to database');
+                                      }
+                                    }}
+                                    className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] cursor-pointer"
+                                  >
+                                    <option value="STONE">STONE</option>
+                                    <option value="COAL">COAL</option>
+                                    <option value="TEA">TEA</option>
+                                    <option value="RICE">RICE</option>
+                                    <option value="TRANSPORT">TRANSPORT</option>
+                                    <option value="ADMIN">ADMIN</option>
+                                    <option value="IT">IT</option>
+                                    <option value="PROCUREMENT">PROCUREMENT</option>
+                                    <option value="ACCOUNTS">ACCOUNTS</option>
+                                    <option value="HR">HR</option>
+                                    <option value="SALES">SALES</option>
+                                    <option value="CRM">CRM</option>
+                                    <option value="FINANCE">FINANCE</option>
+                                  </select>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Employment Status *</span>
+                                  <select
+                                    value={profile.employmentStatus || 'Probation'}
+                                    onChange={(e) => handleUpdateProfile(emp.employeeId, { employmentStatus: e.target.value })}
+                                    className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] cursor-pointer"
+                                  >
+                                    <option value="Full-time">Full-time</option>
+                                    <option value="Temporary">Temporary</option>
+                                    <option value="Probation">Probation</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Compliance & Financial Column */}
+                            <div className="space-y-3">
+                              <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-1 flex items-center gap-1.5">
+                                <FiShield size={12} className="text-[var(--crm-accent)]" /> Compliance & Bank
+                              </h5>
+                              <div className="space-y-2">
+                                <div className="space-y-2 pb-3 border-b border-[var(--crm-line)]">
+                                  <h6 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider">Aadhaar details</h6>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Aadhaar Card Number</span>
+                                    <input
+                                      type="text"
+                                      value={profile.aadhaar || ''}
+                                      onChange={(e) => handleUpdateProfile(emp.employeeId, { aadhaar: e.target.value })}
+                                      className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                                      placeholder="12-digit UIDAI Number"
+                                    />
+                                  </div>
+                                  <div className="flex justify-between items-center pt-1.5">
+                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Verification status</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateProfile(emp.employeeId, { aadhaarVerified: !profile.aadhaarVerified })}
+                                      className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                        profile.aadhaarVerified
+                                          ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25'
+                                          : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-[var(--crm-accent)] hover:text-white'
+                                      }`}
+                                    >
+                                      {profile.aadhaarVerified ? 'Verified ✓' : 'Verify'}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="space-y-2 pt-2">
+                                  <h6 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider">Bank Details</h6>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Bank Name</span>
+                                    <input
+                                      type="text"
+                                      value={profile.bankName || ''}
+                                      onChange={(e) => handleUpdateProfile(emp.employeeId, { bankName: e.target.value })}
+                                      className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                                      placeholder="e.g. State Bank of India"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Account Number</span>
+                                    <input
+                                      type="text"
+                                      value={profile.bankAccount || ''}
+                                      onChange={(e) => handleUpdateProfile(emp.employeeId, { bankAccount: e.target.value })}
+                                      className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                                      placeholder="Account Number"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">IFSC Code</span>
+                                    <input
+                                      type="text"
+                                      value={profile.bankIFSC || ''}
+                                      onChange={(e) => handleUpdateProfile(emp.employeeId, { bankIFSC: e.target.value })}
+                                      className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] uppercase"
+                                      placeholder="IFSC Code"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -1138,115 +1629,119 @@ export default function HrManagerDashboard() {
                   ))}
                 </div>
 
-                <div className="border rounded-sm overflow-hidden max-h-[300px] overflow-y-auto" style={CARD}>
-                  <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
-                      <tr className="text-[var(--crm-ink-faint)] text-[9px] font-mono uppercase border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                        <th className="py-1.5 px-3">Job</th>
-                        <th className="py-1.5 px-3">Dept</th>
-                        <th className="py-1.5 px-3 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
-                      {loading ? (
-                        [1,2,3].map(i => (
-                          <tr key={i}>
-                            <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-14 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                          </tr>
-                        ))
-                      ) : jobs.length === 0 ? (
-                        <tr><td colSpan="3" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No job vacancies</td></tr>
-                      ) : (
-                        jobs.slice(0, 5).map(job => (
-                          <tr key={job._id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                            <td className="py-2 px-3 font-semibold text-[var(--crm-heading)] text-[10px]">{job.title}</td>
-                            <td className="py-2 px-3 font-mono uppercase text-[9px] text-[var(--crm-ink-soft)]">{job.department}</td>
-                            <td className="py-2 px-3 text-center">
-                              <button onClick={() => handleToggleJobActiveFlag(job)} className={`px-1.5 py-0.5 rounded-sm border text-[8px] font-bold font-mono ${job.isActive ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'bg-transparent text-[var(--crm-ink-faint)]'}`}>
-                                {job.isActive ? 'ACTIVE' : 'INACTIVE'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div className="border rounded-sm overflow-hidden" style={CARD}>
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                        <tr className="text-[var(--crm-ink-faint)] text-[9px] font-mono uppercase border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                          <th className="py-1.5 px-3">Job</th>
+                          <th className="py-1.5 px-3">Dept</th>
+                          <th className="py-1.5 px-3 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
+                        {loading ? (
+                          [1,2,3].map(i => (
+                            <tr key={i}>
+                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-14 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                            </tr>
+                          ))
+                        ) : jobs.length === 0 ? (
+                          <tr><td colSpan="3" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No job vacancies</td></tr>
+                        ) : (
+                          jobs.slice(0, 5).map(job => (
+                            <tr key={job._id} className="hover:bg-[var(--crm-bg-raised)]/40">
+                              <td className="py-2 px-3 font-semibold text-[var(--crm-heading)] text-[10px]">{job.title}</td>
+                              <td className="py-2 px-3 font-mono uppercase text-[9px] text-[var(--crm-ink-soft)]">{job.department}</td>
+                              <td className="py-2 px-3 text-center">
+                                <button onClick={() => handleToggleJobActiveFlag(job)} className={`px-1.5 py-0.5 rounded-sm border text-[8px] font-bold font-mono ${job.isActive ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'bg-transparent text-[var(--crm-ink-faint)]'}`}>
+                                  {job.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Job Applications Section */}
                 <h4 className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mt-4">Job Applications</h4>
-                <div className="border rounded-sm overflow-hidden max-h-[300px] overflow-y-auto" style={CARD}>
-                  <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
-                      <tr className="text-[var(--crm-ink-faint)] text-[9px] font-mono uppercase border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                        <th className="py-1.5 px-3">Candidate</th>
-                        <th className="py-1.5 px-3">Position</th>
-                        <th className="py-1.5 px-3 text-center">Applied On</th>
-                        <th className="py-1.5 px-3 text-center">Status</th>
-                        <th className="py-1.5 px-3 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
-                      {loading ? (
-                        [1,2,3].map(i => (
-                          <tr key={i}>
-                            <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-12 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-20 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                          </tr>
-                        ))
-                      ) : applications.length === 0 ? (
-                        <tr><td colSpan="5" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No job applications</td></tr>
-                      ) : (
-                        applications.map(app => (
-                          <tr key={app._id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                            <td className="py-2 px-3 text-left">
-                              <div className="font-semibold text-[var(--crm-heading)] text-[10px]">{app.fullName}</div>
-                              <div className="text-[8px] text-[var(--crm-ink-faint)] font-mono">{app.email} | {app.phone}</div>
-                            </td>
-                            <td className="py-2 px-3 font-mono uppercase text-[9px] text-[var(--crm-ink-soft)]">{app.position}</td>
-                            <td className="py-2 px-3 text-center text-[9px] text-[var(--crm-ink-faint)] font-mono">
-                              {new Date(app.createdAt).toLocaleDateString()}
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              <select
-                                value={app.status}
-                                onChange={(e) => handleAppStatusChangeOption(app._id, e.target.value)}
-                                className="px-1.5 py-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[9px] font-mono rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer"
-                              >
-                                <option value="PENDING">PENDING</option>
-                                <option value="REVIEWED">REVIEWED</option>
-                                <option value="ACCEPTED">ACCEPTED</option>
-                                <option value="REJECTED">REJECTED</option>
-                              </select>
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              <div className="flex justify-center items-center gap-1.5">
-                                <button
-                                  onClick={() => handleViewResume(app._id)}
-                                  className="px-1.5 py-0.5 rounded-sm border border-[var(--crm-line)] bg-transparent text-[8px] font-bold font-mono hover:text-[var(--crm-heading)] hover:border-[var(--crm-heading)]/40 transition cursor-pointer"
-                                  title="View CV"
+                <div className="border rounded-sm overflow-hidden" style={CARD}>
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                        <tr className="text-[var(--crm-ink-faint)] text-[9px] font-mono uppercase border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                          <th className="py-1.5 px-3">Candidate</th>
+                          <th className="py-1.5 px-3">Position</th>
+                          <th className="py-1.5 px-3 text-center">Applied On</th>
+                          <th className="py-1.5 px-3 text-center">Status</th>
+                          <th className="py-1.5 px-3 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
+                        {loading ? (
+                          [1,2,3].map(i => (
+                            <tr key={i}>
+                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-12 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-20 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                            </tr>
+                          ))
+                        ) : applications.length === 0 ? (
+                          <tr><td colSpan="5" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No job applications</td></tr>
+                        ) : (
+                          applications.map(app => (
+                            <tr key={app._id} className="hover:bg-[var(--crm-bg-raised)]/40">
+                              <td className="py-2 px-3 text-left">
+                                <div className="font-semibold text-[var(--crm-heading)] text-[10px]">{app.fullName}</div>
+                                <div className="text-[8px] text-[var(--crm-ink-faint)] font-mono">{app.email} | {app.phone}</div>
+                              </td>
+                              <td className="py-2 px-3 font-mono uppercase text-[9px] text-[var(--crm-ink-soft)]">{app.position}</td>
+                              <td className="py-2 px-3 text-center text-[9px] text-[var(--crm-ink-faint)] font-mono">
+                                {new Date(app.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <select
+                                  value={app.status}
+                                  onChange={(e) => handleAppStatusChangeOption(app._id, e.target.value)}
+                                  className="px-1.5 py-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[9px] font-mono rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer"
                                 >
-                                  View CV
-                                </button>
-                                <button
-                                  onClick={() => handleOpenScheduleInterview(app)}
-                                  className="px-1.5 py-0.5 rounded-sm border border-[var(--crm-accent)]/30 bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] text-[8px] font-bold font-mono hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition cursor-pointer"
-                                  title="Schedule Interview"
-                                >
-                                  Schedule
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                                  <option value="PENDING">PENDING</option>
+                                  <option value="REVIEWED">REVIEWED</option>
+                                  <option value="ACCEPTED">ACCEPTED</option>
+                                  <option value="REJECTED">REJECTED</option>
+                                </select>
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <div className="flex justify-center items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleViewResume(app._id)}
+                                    className="px-1.5 py-0.5 rounded-sm border border-[var(--crm-line)] bg-transparent text-[8px] font-bold font-mono hover:text-[var(--crm-heading)] hover:border-[var(--crm-heading)]/40 transition cursor-pointer"
+                                    title="View CV"
+                                  >
+                                    View CV
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenScheduleInterview(app)}
+                                    className="px-1.5 py-0.5 rounded-sm border border-[var(--crm-accent)]/30 bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] text-[8px] font-bold font-mono hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition cursor-pointer"
+                                    title="Schedule Interview"
+                                  >
+                                    Schedule
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -1267,47 +1762,49 @@ export default function HrManagerDashboard() {
                 </div>
 
                 {payrollSubTab === 'payroll' && (
-                  <div className="border rounded-sm overflow-hidden max-h-[350px] overflow-y-auto" style={CARD}>
-                    <table className="w-full text-left border-collapse">
-                      <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
-                        <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                          <th className="py-1.5 px-3">Employee</th>
-                          <th className="py-1.5 px-3 text-right">Basic</th>
-                          <th className="py-1.5 px-3 text-right">HRA</th>
-                          <th className="py-1.5 px-3 text-center">Net CTC</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--crm-line)] text-[10px] font-mono">
-                        {loading ? (
-                          [1,2,3].map(i => (
-                            <tr key={i}>
-                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            </tr>
-                          ))
-                        ) : (
-                          employees.slice(0, 6).map(emp => {
-                            const sal = getEmployeeSalary(emp.employeeId);
-                            const gross = sal.basic + sal.hra + sal.allowance;
-                            const net = gross - (sal.pf + sal.esi);
-                            return (
-                              <tr key={emp._id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                                <td className="py-2 px-3 font-sans font-semibold text-[var(--crm-heading)] text-[10px]">{emp.fullName}</td>
-                                <td className="py-2 px-3 text-right">
-                                  <input type="number" value={sal.basic} onChange={(e) => handleUpdateSalary(emp.employeeId, { basic: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
-                                </td>
-                                <td className="py-2 px-3 text-right">
-                                  <input type="number" value={sal.hra} onChange={(e) => handleUpdateSalary(emp.employeeId, { hra: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
-                                </td>
-                                <td className="py-2 px-3 text-center font-bold text-[var(--crm-heading)] text-[10px]">₹{net.toLocaleString()}</td>
+                  <div className="border rounded-sm overflow-hidden" style={CARD}>
+                    <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                          <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                            <th className="py-1.5 px-3">Employee</th>
+                            <th className="py-1.5 px-3 text-right">Basic</th>
+                            <th className="py-1.5 px-3 text-right">HRA</th>
+                            <th className="py-1.5 px-3 text-center">Net CTC</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--crm-line)] text-[10px] font-mono">
+                          {loading ? (
+                            [1,2,3].map(i => (
+                              <tr key={i}>
+                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
                               </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                            ))
+                          ) : (
+                            employees.slice(0, 6).map(emp => {
+                              const sal = getEmployeeSalary(emp.employeeId);
+                              const gross = sal.basic + sal.hra + sal.allowance;
+                              const net = gross - (sal.pf + sal.esi);
+                              return (
+                                <tr key={emp._id} className="hover:bg-[var(--crm-bg-raised)]/40">
+                                  <td className="py-2 px-3 font-sans font-semibold text-[var(--crm-heading)] text-[10px]">{emp.fullName}</td>
+                                  <td className="py-2 px-3 text-right">
+                                    <input type="number" value={sal.basic} onChange={(e) => handleUpdateSalary(emp.employeeId, { basic: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
+                                  </td>
+                                  <td className="py-2 px-3 text-right">
+                                    <input type="number" value={sal.hra} onChange={(e) => handleUpdateSalary(emp.employeeId, { hra: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
+                                  </td>
+                                  <td className="py-2 px-3 text-center font-bold text-[var(--crm-heading)] text-[10px]">₹{net.toLocaleString()}</td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
@@ -1349,44 +1846,46 @@ export default function HrManagerDashboard() {
                 )}
 
                 {payrollSubTab === 'assets' && (
-                  <div className="border rounded-sm overflow-hidden max-h-[350px] overflow-y-auto" style={CARD}>
-                    <table className="w-full text-left border-collapse">
-                      <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
-                        <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                          <th className="py-1.5 px-3">Asset</th>
-                          <th className="py-1.5 px-3">Serial</th>
-                          <th className="py-1.5 px-3">Assigned To</th>
-                          <th className="py-1.5 px-3 text-center">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
-                        {loading ? (
-                          [1,2,3].map(i => (
-                            <tr key={i}>
-                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-14 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                            </tr>
-                          ))
-                        ) : assets.length === 0 ? (
-                          <tr><td colSpan="4" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No assets assigned</td></tr>
-                        ) : (
-                          assets.slice(0, 6).map(a => (
-                            <tr key={a.id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                              <td className="py-2 px-3 font-semibold text-[var(--crm-heading)] text-[10px]">{a.name}</td>
-                              <td className="py-2 px-3 font-mono text-[9px]">{a.serial}</td>
-                              <td className="py-2 px-3 text-[9px]">{a.employeeName}</td>
-                              <td className="py-2 px-3 text-center">
-                                <span className={`px-1.5 py-0.5 rounded-sm font-mono text-[7px] font-bold ${a.recoveryStatus === 'RECOVERED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : a.recoveryStatus === 'RETAINED' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
-                                  {a.recoveryStatus}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="border rounded-sm overflow-hidden" style={CARD}>
+                    <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                          <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                            <th className="py-1.5 px-3">Asset</th>
+                            <th className="py-1.5 px-3">Serial</th>
+                            <th className="py-1.5 px-3">Assigned To</th>
+                            <th className="py-1.5 px-3 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
+                          {loading ? (
+                            [1,2,3].map(i => (
+                              <tr key={i}>
+                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-14 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              </tr>
+                            ))
+                          ) : assets.length === 0 ? (
+                            <tr><td colSpan="4" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No assets assigned</td></tr>
+                          ) : (
+                            assets.slice(0, 6).map(a => (
+                              <tr key={a.id} className="hover:bg-[var(--crm-bg-raised)]/40">
+                                <td className="py-2 px-3 font-semibold text-[var(--crm-heading)] text-[10px]">{a.name}</td>
+                                <td className="py-2 px-3 font-mono text-[9px]">{a.serial}</td>
+                                <td className="py-2 px-3 text-[9px]">{a.employeeName}</td>
+                                <td className="py-2 px-3 text-center">
+                                  <span className={`px-1.5 py-0.5 rounded-sm font-mono text-[7px] font-bold ${a.recoveryStatus === 'RECOVERED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : a.recoveryStatus === 'RETAINED' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
+                                    {a.recoveryStatus}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1666,7 +2165,7 @@ export default function HrManagerDashboard() {
       {/* Task Allocation Modal */}
       {showTaskModal && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
               <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Assign Operations Task</h2>
               <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
@@ -1750,7 +2249,7 @@ export default function HrManagerDashboard() {
       {/* Schedule Interview Modal */}
       {showInterviewModal && selectedCandidate && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
               <div>
                 <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Schedule Panel Panel</h2>
@@ -1823,7 +2322,7 @@ export default function HrManagerDashboard() {
       {/* Asset Assign Modal */}
       {showAssetModal && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
               <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Assign Hardware Asset</h2>
               <button onClick={() => setShowAssetModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
@@ -1883,7 +2382,7 @@ export default function HrManagerDashboard() {
       {/* PIP Modal */}
       {showPipModal && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
               <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Initiate Performance Improvement Plan (PIP)</h2>
               <button onClick={() => setShowPipModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>

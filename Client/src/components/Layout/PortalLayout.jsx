@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiMenu, FiX } from 'react-icons/fi';
+import { FiMenu, FiX, FiSun, FiMoon } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
@@ -9,6 +9,13 @@ import VoiceStatusPill from './VoiceStatusPill';
 export default function PortalLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('crm-theme', nextTheme);
+  };
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -26,7 +33,7 @@ export default function PortalLayout({ children }) {
 
   return (
     <div
-      className="crm-portal min-h-screen antialiased"
+      className={`crm-portal min-h-screen antialiased ${theme === 'light' ? 'light-theme' : ''}`}
       style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)', fontFamily: 'var(--crm-font-body)' }}
     >
 
@@ -62,7 +69,15 @@ export default function PortalLayout({ children }) {
           >
             India Trade Center
           </div>
-          <div className="w-8 flex items-center justify-end">
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer p-1"
+              aria-label="Toggle Theme"
+            >
+              {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
+            </button>
             <VoiceStatusPill compact />
           </div>
         </div>
@@ -108,6 +123,14 @@ export default function PortalLayout({ children }) {
             className="hidden md:flex items-center justify-end gap-3 px-8 py-3 border-b"
             style={{ borderColor: 'var(--crm-line)' }}
           >
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-1.5 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] transition cursor-pointer text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]"
+              title="Toggle Theme"
+            >
+              {theme === 'light' ? <FiMoon size={13} /> : <FiSun size={13} />}
+            </button>
             <VoiceStatusPill />
             <CommandPalette />
           </div>
