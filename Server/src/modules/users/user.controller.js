@@ -188,6 +188,11 @@ async function deleteUser(req, res, next) {
 
 async function getMyProfile(req, res, next) {
   try {
+    const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    if (isEmployee) {
+      return ok(res, { profile: req.user }, 'Employee profile retrieved', 200, req);
+    }
+
     const profile = await userService.getProfile(req.user._id, req.user);
     if (!profile) return fail(res, 404, 'VALIDATION_FAILED', 'User not found');
     return ok(res, { profile }, 'Profile retrieved', 200, req);
@@ -198,6 +203,13 @@ async function getMyProfile(req, res, next) {
 
 async function updateMyProfile(req, res, next) {
   try {
+    const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    if (isEmployee) {
+      const Employee = require('../employee/employee.model');
+      const updated = await Employee.findByIdAndUpdate(req.user._id, req.body, { new: true });
+      return ok(res, { profile: updated }, 'Employee profile updated successfully', 200, req);
+    }
+
     const profile = await userService.updateOwnProfile(req.user._id, req.body);
     return ok(res, { profile }, 'Profile updated successfully', 200, req);
   } catch (error) {
@@ -318,7 +330,7 @@ async function uploadMyDocument(req, res, next) {
 
 async function listMyDocuments(req, res, next) {
   try {
-    const documents = await Document.find({ ownerType: 'USER', ownerId: req.user._id, isDeleted: false }).sort({ createdAt: -1 });
+    const documents = await Document.find({ ownerId: req.user._id, isDeleted: false }).sort({ createdAt: -1 });
     return ok(res, { documents }, 'Documents retrieved successfully', 200, req);
   } catch (error) {
     next(error);

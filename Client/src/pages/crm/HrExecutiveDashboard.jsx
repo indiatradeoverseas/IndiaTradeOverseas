@@ -20,6 +20,9 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { ticketsApi } from '../../api/tickets';
+import { taskApi } from '../../api/task';
+import { attendanceApi } from '../../api/attendance';
+import { leaveApi } from '../../api/leave';
 
 // Motion variants
 const containerVariants = {
@@ -65,11 +68,57 @@ export default function HrExecutiveDashboard() {
   const [candidateRating, setCandidateRating] = useState(5);
   const [interviewStatus, setInterviewStatus] = useState('PENDING');
 
+  // New Personal Attendance & Leave states for Executive Role
+  const [todayAttendance, setTodayAttendance] = useState(null);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [leaveBalance, setLeaveBalance] = useState({ remainingLeaves: 4, extraLeavesUsed: 0 });
+  const [leaveHistory, setLeaveHistory] = useState([]);
+  const [applyFromDate, setApplyFromDate] = useState('');
+  const [applyToDate, setApplyToDate] = useState('');
+  const [leaveType, setLeaveType] = useState('CASUAL');
+  const [leaveReason, setLeaveReason] = useState('');
+  const [extraReason, setExtraReason] = useState('');
+  const [applyingLeave, setApplyingLeave] = useState(false);
+
+  const fetchPersonalHRData = async () => {
+    try {
+      const [attToday, attLogs, lvBal, lvLogs, tskList] = await Promise.all([
+        attendanceApi.getMyToday().catch(() => null),
+        attendanceApi.getMyHistory({ limit: 5 }).catch(() => null),
+        leaveApi.getMyBalance().catch(() => null),
+        leaveApi.getLeaves().catch(() => null),
+        taskApi.getTasks().catch(() => null)
+      ]);
+
+      if (attToday && attToday.success) setTodayAttendance(attToday.data.attendance);
+      if (attLogs && attLogs.success) setAttendanceHistory(attLogs.data.logs || []);
+      if (lvBal && lvBal.success) setLeaveBalance(lvBal.data.balance || { remainingLeaves: 4, extraLeavesUsed: 0 });
+      if (lvLogs && lvLogs.success) {
+        setLeaveHistory(lvLogs.data.leaves || []);
+      } else if (Array.isArray(lvLogs)) {
+        setLeaveHistory(lvLogs);
+      }
+      if (tskList && tskList.success) setTasks(tskList.data.tasks || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    // Load tasks & interviews
-    const storedTasks = JSON.parse(localStorage.getItem('assigned_hr_tasks')) || [];
+    const handleSocketTask = () => {
+      fetchPersonalHRData();
+    };
+    window.addEventListener('task_assigned_event', handleSocketTask);
+    window.addEventListener('task_updated_event', handleSocketTask);
+    return () => {
+      window.removeEventListener('task_assigned_event', handleSocketTask);
+      window.removeEventListener('task_updated_event', handleSocketTask);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Load local storage fallback records
     const storedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews')) || [];
-    setTasks(storedTasks);
     setInterviews(storedInterviews);
 
     // Load user-specific checklist
@@ -84,6 +133,8 @@ export default function HrExecutiveDashboard() {
 
     // Load support tickets/grievances
     fetchTickets();
+    // Load backend tasks, logs, and balances
+    fetchPersonalHRData();
   }, [user]);
 
   useEffect(() => {
@@ -96,7 +147,6 @@ export default function HrExecutiveDashboard() {
       if (res && res.success) {
         setTicketsList(res.data.tickets || []);
       } else {
-        // Fallback mock helpdesk grievances
         const mockTickets = [
           { _id: 't_1', ticketCode: 'GRI-2026-09', title: 'Salary Discrepancy - Leave Deductions', description: 'My salary check for July had an extra day leave deduction though it was approved.', status: 'OPEN', priority: 'HIGH', createdBy: { fullName: 'Sunil Kumar' }, createdAt: new Date(Date.now() - 86400000).toISOString(), comments: [] },
           { _id: 't_2', ticketCode: 'GRI-2026-10', title: 'Policy Doubt - Maternity/Paternity Leave', description: 'Seeking details on paid paternity leave durations for new fathers.', status: 'INVESTIGATING', priority: 'MEDIUM', createdBy: { fullName: 'Neha Sharma' }, createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), comments: [] }
@@ -106,12 +156,6 @@ export default function HrExecutiveDashboard() {
     } catch (err) {
       console.error(err);
     }
-  };
-
-  // Synchronize state helpers
-  const saveTasks = (newTasks) => {
-    setTasks(newTasks);
-    localStorage.setItem('assigned_hr_tasks', JSON.stringify(newTasks));
   };
 
   const saveInterviews = (newInterviews) => {
@@ -124,17 +168,77 @@ export default function HrExecutiveDashboard() {
     localStorage.setItem(`hr_executive_checklist_${user?.employeeId}`, JSON.stringify(newChecklist));
   };
 
-  // Complete tasks
-  const handleToggleTaskStatus = (taskId) => {
-    const updated = tasks.map(t => {
-      if (t.id === taskId) {
-        const nextStatus = t.status === 'PENDING' ? 'COMPLETED' : 'PENDING';
-        toast.success(nextStatus === 'COMPLETED' ? 'Task marked as Completed! 🎉' : 'Task status restored to Pending');
-        return { ...t, status: nextStatus };
+  // Clock Actions for HR Executive
+  const handleCheckIn = async () => {
+    try {
+      const res = await attendanceApi.checkIn();
+      if (res.success) {
+        toast.success('Successfully checked in! ☀️');
+        fetchPersonalHRData();
       }
-      return t;
-    });
-    saveTasks(updated);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Check-in failed');
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      const res = await attendanceApi.checkOut();
+      if (res.success) {
+        toast.success('Successfully checked out! 🌙');
+        fetchPersonalHRData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Check-out failed');
+    }
+  };
+
+  // Leave Submit for HR Executive
+  const handleApplyLeave = async (e) => {
+    e.preventDefault();
+    if (!applyFromDate || !applyToDate || !leaveReason.trim()) {
+      return toast.error('Please specify dates and a valid reason.');
+    }
+    setApplyingLeave(true);
+    try {
+      const leaveData = { fromDate: applyFromDate, toDate: applyToDate, leaveType, reason: leaveReason };
+      const isExtra = leaveBalance.remainingLeaves === 0;
+      if (isExtra) {
+        if (!extraReason.trim()) {
+          setApplyingLeave(false);
+          return toast.error('Extra leaves require justificationRemarks');
+        }
+        leaveData.isExtraLeave = true;
+        leaveData.extraLeaveReason = extraReason;
+      }
+      const res = await leaveApi.applyForLeave(leaveData);
+      if (res.success) {
+        toast.success('Leave applied successfully!');
+        setApplyFromDate('');
+        setApplyToDate('');
+        setLeaveReason('');
+        setExtraReason('');
+        fetchPersonalHRData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit leave request');
+    } finally {
+      setApplyingLeave(false);
+    }
+  };
+
+  // Complete tasks (Backend connected)
+  const handleToggleTaskStatus = async (taskId, currentStatus) => {
+    const nextStatus = currentStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
+    try {
+      const res = await taskApi.updateTaskStatus(taskId, nextStatus, 'Checked from HR Executive Dashboard');
+      if (res && res.success) {
+        toast.success(nextStatus === 'COMPLETED' ? 'Task marked as Completed! 🎉' : 'Task status restored to Pending');
+        fetchPersonalHRData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update task status');
+    }
   };
 
   // Checklist items
@@ -264,11 +368,14 @@ export default function HrExecutiveDashboard() {
   };
 
   // Filter tasks & interviews for current logged-in employee
-  const myTasks = tasks.filter(t => t.assignedTo === user?.employeeId);
-  const myInterviews = interviews.filter(i => i.interviewerId === user?.employeeId);
+  const myTasks = tasks.filter(t => {
+    const assigneeId = typeof t.assignedTo === 'object' ? t.assignedTo?._id : t.assignedTo;
+    return String(assigneeId) === String(user?._id);
+  });
+  const myInterviews = interviews.filter(i => i.interviewerId === user?.employeeId || i.interviewerId === user?._id);
 
   // Statistics
-  const pendingTasksCount = myTasks.filter(t => t.status === 'PENDING').length;
+  const pendingTasksCount = myTasks.filter(t => t.status !== 'COMPLETED').length;
   const pendingInterviewsCount = myInterviews.filter(i => i.status === 'PENDING').length;
   const checklistCompletionRate = checklist.length > 0
     ? Math.round((checklist.filter(item => item.completed).length / checklist.length) * 100)
@@ -303,7 +410,10 @@ export default function HrExecutiveDashboard() {
             { id: 'interviews', label: `Interview Board (${pendingInterviewsCount})`, icon: FiCalendar },
             { id: 'telemetry', label: 'Documents Telemetry', icon: FiShield },
             { id: 'helpdesk', label: `Helpdesk Grievances (${ticketsList.filter(t => t.status === 'OPEN').length})`, icon: FiMessageSquare },
-            { id: 'checklist', label: `Daily Checklist (${checklistCompletionRate}%)`, icon: FiList }
+            { id: 'checklist', label: `Daily Checklist (${checklistCompletionRate}%)`, icon: FiList },
+            { id: 'attendance', label: 'My Attendance', icon: FiClock },
+            { id: 'leaves', label: 'My Leaves', icon: FiCalendar },
+            { id: 'profile', label: 'My Profile', icon: FiUser }
           ].map(tab => (
             <button
               key={tab.id}
@@ -349,7 +459,7 @@ export default function HrExecutiveDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {myTasks.map((t) => (
                     <div
-                      key={t.id}
+                      key={t._id || t.id}
                       className={`bg-[var(--crm-bg-raised)]/30 border p-5 rounded-sm shadow-xl flex flex-col justify-between transition-all duration-300 ${
                         t.status === 'COMPLETED'
                           ? 'border-[var(--crm-positive)]/25 opacity-75'
@@ -364,7 +474,7 @@ export default function HrExecutiveDashboard() {
                           <span className={`text-[8px] font-mono font-bold px-2 py-0.5 border rounded-sm ${
                             t.priority === 'HIGH' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/25' :
                             t.priority === 'LOW' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/25' :
-                            'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25'
+                            'bg-[var(--crm-warning-bg)] text(--crm-warning) border-[var(--crm-warning)]/25'
                           }`}>
                             {t.priority}
                           </span>
@@ -380,9 +490,9 @@ export default function HrExecutiveDashboard() {
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-[var(--crm-line)] flex items-center justify-between">
-                        <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">BY: {t.assignedBy}</span>
+                        <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">BY: {t.assignedBy?.name || t.assignedBy?.fullName || 'HR Manager'}</span>
                         <button
-                          onClick={() => handleToggleTaskStatus(t.id)}
+                          onClick={() => handleToggleTaskStatus(t._id || t.id, t.status)}
                           className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-sm border transition duration-200 cursor-pointer ${
                             t.status === 'COMPLETED'
                               ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
@@ -775,6 +885,241 @@ export default function HrExecutiveDashboard() {
                     Add Protocol
                   </button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* PERSONAL ATTENDANCE LOGGER */}
+          {activeTab === 'attendance' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-5 border p-5 rounded-sm space-y-4" style={CARD}>
+                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span>My Attendance marking</span>
+                  <FiClock size={12} className="text-[var(--crm-accent)]" />
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 border rounded-sm" style={CARD_SUNKEN}>
+                    <span className="text-xs font-mono text-[var(--crm-ink-faint)]">Status Today:</span>
+                    <strong className={`text-xs font-mono uppercase ${
+                      todayAttendance ? 'text-[var(--crm-positive)]' : 'text-[var(--crm-danger)] animate-pulse'
+                    }`}>
+                      {todayAttendance ? (todayAttendance.clockOut ? 'Shift Completed' : 'Clocked In') : 'Absent / Not Checked In'}
+                    </strong>
+                  </div>
+
+                  {todayAttendance && (
+                    <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                      <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
+                        <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check In</span>
+                        <span className="text-[var(--crm-heading)] font-bold">{new Date(todayAttendance.clockIn).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
+                        <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check Out</span>
+                        <span className="text-[var(--crm-heading)] font-bold">
+                          {todayAttendance.clockOut ? new Date(todayAttendance.clockOut).toLocaleTimeString() : '--:--'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCheckIn}
+                      disabled={!!todayAttendance}
+                      className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] disabled:opacity-30 disabled:cursor-not-allowed py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
+                    >
+                      Clock In
+                    </button>
+                    <button
+                      onClick={handleCheckOut}
+                      disabled={!todayAttendance || !!todayAttendance.clockOut}
+                      className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
+                    >
+                      Clock Out
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 border p-5 rounded-sm space-y-4" style={CARD}>
+                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span>Recent Clock Logs</span>
+                  <FiActivity size={12} className="text-[var(--crm-accent)]" />
+                </h3>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar">
+                  {attendanceHistory.length === 0 ? (
+                    <div className="text-center py-6 text-xs font-mono text-[var(--crm-ink-faint)]">No recent history logs</div>
+                  ) : (
+                    attendanceHistory.map((log) => (
+                      <div key={log._id} className="flex justify-between items-center border-b pb-2 text-xs font-mono last:border-0" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="text-[var(--crm-heading)]">{new Date(log.date).toLocaleDateString()}</span>
+                        <span className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
+                          log.status === 'PRESENT' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
+                          log.status === 'LATE' ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]' :
+                          'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]'
+                        }`}>{log.status}</span>
+                        <span className="text-[var(--crm-ink-faint)]">
+                          {log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'} - {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PERSONAL LEAVES DESK */}
+          {activeTab === 'leaves' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-5 border p-5 rounded-sm space-y-4" style={CARD}>
+                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span>Leave Balances (This Month)</span>
+                  <FiCalendar size={12} className="text-[var(--crm-accent)]" />
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="p-3 border rounded-sm text-center" style={CARD_SUNKEN}>
+                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mb-1">Paid Remaining</span>
+                    <strong className="text-xl font-serif text-[var(--crm-positive)]">{leaveBalance.remainingLeaves} / 4</strong>
+                  </div>
+                  <div className="p-3 border rounded-sm text-center" style={CARD_SUNKEN}>
+                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mb-1">Extra Used</span>
+                    <strong className="text-xl font-serif text-[var(--crm-warning)]">{leaveBalance.extraLeavesUsed || 0}</strong>
+                  </div>
+                </div>
+
+                <form onSubmit={handleApplyLeave} className="space-y-3 font-mono text-xs text-left">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">From Date</label>
+                      <input
+                        type="date"
+                        required
+                        value={applyFromDate}
+                        onChange={(e) => setApplyFromDate(e.target.value)}
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">To Date</label>
+                      <input
+                        type="date"
+                        required
+                        value={applyToDate}
+                        onChange={(e) => setApplyToDate(e.target.value)}
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">Leave Type</label>
+                    <select
+                      value={leaveType}
+                      onChange={(e) => setLeaveType(e.target.value)}
+                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
+                    >
+                      <option value="CASUAL">Casual Leave</option>
+                      <option value="MEDICAL">Medical Leave</option>
+                      <option value="SICK">Sick Leave</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">Reason</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={leaveReason}
+                      onChange={(e) => setLeaveReason(e.target.value)}
+                      placeholder="Specify reason..."
+                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px] resize-none"
+                    />
+                  </div>
+
+                  {leaveBalance.remainingLeaves === 0 && (
+                    <div className="p-2.5 border border-[var(--crm-warning)]/30 bg-[var(--crm-warning-bg)]/10 rounded-sm space-y-1">
+                      <span className="text-[8px] text-[var(--crm-warning)] font-bold uppercase block">⚠️ Paid Balance Exhausted!</span>
+                      <input
+                        type="text"
+                        required
+                        value={extraReason}
+                        onChange={(e) => setExtraReason(e.target.value)}
+                        placeholder="Provide Extra Leave remarks..."
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-warning)]/30 px-2 py-1 rounded-sm text-[10px]"
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={applyingLeave}
+                    className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-[10px] font-bold uppercase rounded-sm transition cursor-pointer"
+                  >
+                    File Application
+                  </button>
+                </form>
+              </div>
+
+              <div className="lg:col-span-7 border p-5 rounded-sm space-y-4" style={CARD}>
+                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span>My Leave Ledger</span>
+                  <FiFileText size={12} className="text-[var(--crm-accent)]" />
+                </h3>
+                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                  {leaveHistory.length === 0 ? (
+                    <div className="py-12 text-center text-xs text-[var(--crm-ink-faint)] font-mono">No leave requests filed</div>
+                  ) : (
+                    leaveHistory.map((item) => (
+                      <div key={item._id} className="p-3 border rounded-sm text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-bold text-[var(--crm-heading)]">
+                            {new Date(item.fromDate).toLocaleDateString()} - {new Date(item.toDate).toLocaleDateString()}
+                          </span>
+                          <span className={`text-[7px] font-bold px-1.5 py-0.5 border rounded-sm uppercase ${
+                            item.status === 'APPROVED' || item.status === 'HR_APPROVED_EXTRA' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
+                            item.status === 'REJECTED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'
+                          }`}>{item.status}</span>
+                        </div>
+                        <p className="text-[9px] text-[var(--crm-ink-soft)]">Type: {item.leaveType} {item.isExtraLeave && '(EXTRA)'} • Reason: "{item.reason}"</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MY PROFILE CARD */}
+          {activeTab === 'profile' && (
+            <div className="max-w-xl mx-auto border p-6 rounded-sm space-y-6" style={CARD}>
+              <div className="flex flex-col sm:flex-row items-center gap-5 border-b pb-6" style={{ borderColor: 'var(--crm-line)' }}>
+                <div className="w-16 h-16 bg-[var(--crm-bg-sunken)] rounded-full flex items-center justify-center text-[var(--crm-ink-faint)] overflow-hidden shrink-0 shadow-inner">
+                  {user?.profileImage ? (
+                    <img src={user.profileImage} alt="profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <FiUser size={30} />
+                  )}
+                </div>
+                <div className="text-center sm:text-left space-y-1">
+                  <h3 className="text-base font-serif text-[var(--crm-heading)]">{user?.name || user?.fullName}</h3>
+                  <p className="text-[10px] font-mono text-[var(--crm-accent)] uppercase tracking-wider">{user?.position || 'HR Executive'} • {user?.role}</p>
+                  <p className="text-[9px] font-mono text-[var(--crm-ink-faint)]">{user?.email}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-left">
+                <div>
+                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Department</span>
+                  <strong className="text-[var(--crm-heading)]">{user?.department}</strong>
+                </div>
+                <div>
+                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Joining Date</span>
+                  <strong className="text-[var(--crm-heading)]">{user?.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : '--'}</strong>
+                </div>
+                <div>
+                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Reporting Manager</span>
+                  <strong className="text-[var(--crm-heading)]">{user?.reportingManager ? user.reportingManager.name || 'Assigned Manager' : 'HR Manager / Admin'}</strong>
+                </div>
               </div>
             </div>
           )}

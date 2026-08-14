@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// const API_BASE_URL = 'https://indiatradeoverseas-1.onrender.com/api';
-const API_BASE_URL = 'https://indiatradeoverseas-ito.onrender.com/api';
+const API_BASE_URL = 'http://localhost:5000/api'
 
 
 const axiosInstance = axios.create({
@@ -95,7 +94,19 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      if (currentPath === '/login' || currentPath === '/signup') {
+      const authPaths = [
+        '/login',
+        '/signup',
+        '/client-login',
+        '/employee-login',
+        '/admin-login',
+        '/client-signup',
+        '/employee-signup',
+        '/verify-email',
+        '/forgot-password'
+      ];
+
+      if (authPaths.includes(currentPath) || currentPath.startsWith('/verify-email') || currentPath.startsWith('/forgot-password')) {
         return Promise.reject(error);
       }
 

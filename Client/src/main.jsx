@@ -4,6 +4,18 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import './index.css'
 import App from './App.jsx'
 
+// Suppress harmless [GSI_LOGGER] warnings caused by React StrictMode remounting Google Identity Services
+const ignoreGSI = (fn) => {
+  return (...args) => {
+    if (args.some(arg => typeof arg === 'string' && (arg.includes('[GSI_LOGGER]') || arg.includes('GSI_LOGGER')))) {
+      return;
+    }
+    fn(...args);
+  };
+};
+console.warn = ignoreGSI(console.warn);
+console.error = ignoreGSI(console.error);
+
 // Prerendered pages (see scripts/prerender.mjs) ship with real static markup
 // already inside #root for crawlers/first paint, but always still get a
 // plain client render here rather than hydrateRoot - framer-motion's

@@ -287,7 +287,7 @@ export default function Employees() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
+    <div className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] px-4 sm:px-4 py-4 space-y-4 font-sans antialiased">
 
       {/* Header Deck */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-ink-soft)]/10 pb-6 gap-4">

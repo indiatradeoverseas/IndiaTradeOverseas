@@ -81,6 +81,14 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function isAdminUser(user) {
+  return (
+    user?.role === 'ADMIN' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin'))
+  );
+}
+
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -92,7 +100,7 @@ function AdminRoute({ children }) {
     );
   }
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || !isAdminUser(user)) {
     return <Navigate to="/crm/dashboard" />;
   }
 
@@ -229,7 +237,7 @@ function AppLayout() {
           <Route
             path="/crm/career-leads"
             element={
-              ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) ? (
+              (isAdminUser(user) || ['MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) ? (
                 <CareerLeads />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -239,7 +247,7 @@ function AppLayout() {
           <Route
             path="/crm/leads"
             element={
-              user?.role === 'ADMIN' || user?.leadPermission === true ? (
+              (isAdminUser(user) || user?.leadPermission === true) ? (
                 <Leads />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -249,7 +257,7 @@ function AppLayout() {
           <Route
             path="/crm/leads/:id"
             element={
-              user?.role === 'ADMIN' || user?.leadPermission === true || user?.taskPermission === true ? (
+              (isAdminUser(user) || user?.leadPermission === true || user?.taskPermission === true) ? (
                 <LeadDetail />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -262,7 +270,7 @@ function AppLayout() {
           <Route
             path="/crm/documents"
             element={
-              user?.role === 'ADMIN' || user?.documentPermission === true ? (
+              (isAdminUser(user) || user?.documentPermission === true) ? (
                 <Documents />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -273,7 +281,7 @@ function AppLayout() {
           <Route
             path="/crm/tasks"
             element={
-              user?.role === 'ADMIN' || user?.taskPermission === true ? (
+              (isAdminUser(user) || user?.taskPermission === true) ? (
                 <Tasks />
               ) : (
                 <Navigate to="/crm/dashboard" replace />

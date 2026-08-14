@@ -35,6 +35,10 @@ async function login({ email, password, ipAddress = '', deviceHash = '' }) {
     throw new Error('ACCOUNT_LOCKED');
   }
 
+  if (!user.passwordHash) {
+    throw new Error('AUTH_INVALID_CREDENTIALS');
+  }
+
   const matched = await bcrypt.compare(password || '', user.passwordHash);
 
   if (!matched) {

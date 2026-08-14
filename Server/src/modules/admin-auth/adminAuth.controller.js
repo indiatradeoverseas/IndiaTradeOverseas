@@ -52,6 +52,10 @@ async function adminLogin(req, res, next) {
       return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
     }
 
+    if (!admin.passwordHash) {
+      return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid email or password');
+    }
+
     const matched = await bcrypt.compare(password, admin.passwordHash);
 
     if (!matched) {

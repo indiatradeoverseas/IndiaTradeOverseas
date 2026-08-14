@@ -25,6 +25,8 @@ const attendanceRoutes = require('./modules/attendance/attendance.routes');
 const ticketRoutes = require('./modules/tickets/ticket.routes');
 const leaveRoutes = require('./modules/leave/leave.routes');
 const salesRoutes = require('./modules/sales/sales.routes');
+const employeeRoutes = require('./modules/employee/employee.routes');
+const taskRoutes = require('./modules/task/task.routes');
 
 
 const app = express();
@@ -41,8 +43,8 @@ app.use(morgan('dev'));
 app.use(cors());
 
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 app.use(rateLimiter);
@@ -99,7 +101,9 @@ const apiRoutes = [
   { path: '/attendance', router: attendanceRoutes },
   { path: '/tickets', router: ticketRoutes },
   { path: '/leaves', router: leaveRoutes },
-  { path: '/sales', router: salesRoutes }
+  { path: '/sales', router: salesRoutes },
+  { path: '/employee', router: employeeRoutes },
+  { path: '/tasks', router: taskRoutes }
 ];
 
 apiRoutes.forEach(route => {

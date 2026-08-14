@@ -40,6 +40,7 @@ import { careersApi } from '../../api/careers';
 import { adminApi } from '../../api/admin';
 import { leaveApi } from '../../api/leave';
 import { attendanceApi } from '../../api/attendance';
+import { taskApi } from '../../api/task';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
@@ -109,6 +110,22 @@ export default function HrManagerDashboard() {
   const [leaves, setLeaves] = useState([]);
   const [attendanceReport, setAttendanceReport] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // New Attendance & Leave dashboard state variables
+  const [hrSettings, setHrSettings] = useState({
+    maxExtraLeavesPerYear: 4,
+    extraLeaveApprovalRequired: true,
+    autoApproveExtraLeaves: false,
+    notifyHROnExtraRequest: true,
+    extraLeaveReasonRequired: true
+  });
+  const [leaveBalances, setLeaveBalances] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [biometricSyncLog, setBiometricSyncLog] = useState(null);
+  const [resetMonthInput, setResetMonthInput] = useState(new Date().toISOString().slice(0, 7));
+  const [reviewRemarks, setReviewRemarks] = useState('');
+  const [selectedLeaveIdForReview, setSelectedLeaveIdForReview] = useState(null);
+  const [syncingBiometric, setSyncingBiometric] = useState(false);
 
   // Search & Filter states
   const [searchEmp, setSearchEmp] = useState('');
@@ -228,6 +245,36 @@ export default function HrManagerDashboard() {
     fetchInitialData();
   }, []);
 
+  const fetchAttendanceLeaveDetails = async () => {
+    try {
+      const [settingsRes, balancesRes, logsRes, syncRes, tasksRes] = await Promise.all([
+        leaveApi.getHRSettings().catch(() => null),
+        leaveApi.getAllBalances().catch(() => null),
+        leaveApi.getAuditLogs().catch(() => null),
+        attendanceApi.getBiometricStatus().catch(() => null),
+        taskApi.getTasks().catch(() => null)
+      ]);
+
+      if (settingsRes && settingsRes.success) setHrSettings(settingsRes.data.settings);
+      if (balancesRes && balancesRes.success) setLeaveBalances(balancesRes.data.balances || []);
+      if (logsRes && logsRes.success) setAuditLogs(logsRes.data.logs || []);
+      if (syncRes && syncRes.success) setBiometricSyncLog(syncRes.data.syncLog);
+      if (tasksRes && tasksRes.success) setAssignedTasks(tasksRes.data.tasks || []);
+    } catch (err) {
+      console.error('Error fetching detailed attendance/leave data:', err);
+    }
+  };
+
+  useEffect(() => {
+    const handleTaskUpdated = () => {
+      fetchAttendanceLeaveDetails();
+    };
+    window.addEventListener('task_updated_event', handleTaskUpdated);
+    return () => {
+      window.removeEventListener('task_updated_event', handleTaskUpdated);
+    };
+  }, []);
+
   const fetchInitialData = async () => {
     setLoading(true);
     try {
@@ -256,6 +303,8 @@ export default function HrManagerDashboard() {
       } else {
         setAttendanceReport({ presentCount: 0, absentCount: 0, lateCount: 0, totalEmployees: 0 });
       }
+
+      await fetchAttendanceLeaveDetails();
     } catch (error) {
       console.error('Error loading HR data:', error);
       toast.error('Failed to sync corporate catalog records');
@@ -512,37 +561,45 @@ export default function HrManagerDashboard() {
     setShowPipModal(true);
   };
 
-  const handleTaskSubmit = (e) => {
+  const handleTaskSubmit = async (e) => {
     e.preventDefault();
     if (!taskForm.title || !taskForm.description || !taskForm.assignedTo || !taskForm.dueDate) {
       return toast.error('Please fill in all task fields');
     }
 
-    const assignedEmployee = employees.find(emp => emp.employeeId === taskForm.assignedTo);
+    const assignedEmployee = employees.find(emp => emp.employeeId === taskForm.assignedTo || emp._id === taskForm.assignedTo);
     if (!assignedEmployee) return toast.error('Invalid employee selection');
 
-    const newTask = {
-      id: `task_${Date.now()}`,
-      title: taskForm.title,
-      description: taskForm.description,
-      assignedTo: taskForm.assignedTo,
-      assignedToName: assignedEmployee.fullName,
-      assignedBy: user?.fullName || 'HR Manager',
-      priority: taskForm.priority,
-      dueDate: taskForm.dueDate,
-      status: 'PENDING',
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const res = await taskApi.createTask({
+        title: taskForm.title,
+        description: taskForm.description,
+        assignedTo: assignedEmployee._id,
+        dueDate: taskForm.dueDate,
+        priority: taskForm.priority
+      });
 
-    setAssignedTasks(prev => [newTask, ...prev]);
-    toast.success(`Task successfully allocated to ${assignedEmployee.fullName}! 📝`);
-    setShowTaskModal(false);
+      if (res && res.success) {
+        toast.success(`Task successfully allocated to ${assignedEmployee.fullName}! 📝`);
+        setShowTaskModal(false);
+        fetchAttendanceLeaveDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to allocate task');
+    }
   };
 
-  const handleCancelTask = (taskId) => {
+  const handleCancelTask = async (taskId) => {
     if (!window.confirm('Revoke and delete this assigned task?')) return;
-    setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
-    toast.success('Task assignment revoked');
+    try {
+      const res = await taskApi.deleteTask(taskId);
+      if (res && res.success) {
+        toast.success('Task assignment revoked');
+        fetchAttendanceLeaveDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to revoke task');
+    }
   };
 
   // Interview handlers
@@ -650,18 +707,86 @@ export default function HrManagerDashboard() {
 
   // Leave Approvals
   const handleReviewLeaveRequest = async (leaveId, status) => {
+    setSelectedLeaveIdForReview(leaveId);
+    setReviewRemarks('');
+    
+    // For approval of normal leaves, do it quickly; else prompt for remarks
+    if (status === 'APPROVED') {
+      const targetLeave = leaves.find(l => l._id === leaveId);
+      if (targetLeave && !targetLeave.isExtraLeave) {
+        try {
+          const res = await leaveApi.reviewLeave(leaveId, 'APPROVED', 'Approved by HR Manager');
+          if (res && res.success) {
+            toast.success('Leave request approved!');
+            setSelectedLeaveIdForReview(null);
+            fetchInitialData();
+            fetchAttendanceLeaveDetails();
+            return;
+          }
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Error reviewing leave.');
+        }
+      }
+    }
+  };
+
+  const handleReviewLeaveWithRemarks = async (status) => {
+    if (!selectedLeaveIdForReview) return;
     try {
-      const res = await leaveApi.reviewLeave(leaveId, status, 'Reviewed by HR Manager').catch(() => null);
+      const res = await leaveApi.reviewLeave(selectedLeaveIdForReview, status, reviewRemarks);
       if (res && res.success) {
-        toast.success(`Leave request ${status}!`);
+        toast.success(`Leave request successfully ${status.toLowerCase()}!`);
+        setSelectedLeaveIdForReview(null);
+        setReviewRemarks('');
         fetchInitialData();
-      } else {
-        setLeaves(prev => prev.map(l => l._id === leaveId ? { ...l, status } : l));
-        toast.success(`Leave request ${status} (Local Sandbox Modified)!`);
+        fetchAttendanceLeaveDetails();
       }
     } catch (err) {
-      console.error(err);
-      toast.error('Error reviewing leave.');
+      toast.error(err.response?.data?.message || 'Error reviewing leave');
+    }
+  };
+
+  const handleUpdateHRSettings = async (fields) => {
+    try {
+      const res = await leaveApi.updateHRSettings({ ...hrSettings, ...fields });
+      if (res && res.success) {
+        setHrSettings(res.data.settings);
+        toast.success('HR settings saved successfully! 💾');
+      }
+    } catch (err) {
+      toast.error('Failed to update HR settings.');
+    }
+  };
+
+  const handleTriggerReset = async () => {
+    if (!window.confirm(`Are you sure you want to reset all employee balances for ${resetMonthInput} to 4 paid leaves?`)) return;
+    const toastId = toast.loading('Deducting unused leaves & resetting balance...');
+    try {
+      const res = await leaveApi.triggerMonthlyReset(resetMonthInput);
+      if (res && res.success) {
+        toast.success(res.message, { id: toastId });
+        fetchInitialData();
+        fetchAttendanceLeaveDetails();
+      }
+    } catch (err) {
+      toast.error('Reset failed', { id: toastId });
+    }
+  };
+
+  const handleTriggerBiometricSync = async () => {
+    setSyncingBiometric(true);
+    const toastId = toast.loading('Simulating biometric sync connection...');
+    try {
+      const res = await attendanceApi.triggerBiometricSync();
+      if (res && res.success) {
+        toast.success(res.message || 'Sync successful', { id: toastId });
+        fetchInitialData();
+        fetchAttendanceLeaveDetails();
+      }
+    } catch (err) {
+      toast.error('Sync failed', { id: toastId });
+    } finally {
+      setSyncingBiometric(false);
     }
   };
 
@@ -1516,90 +1641,370 @@ export default function HrManagerDashboard() {
 
             {/* TAB 3: ATTENDANCE & LEAVE */}
             {activeTab === 'attendance_leave' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
-                <div className="border p-4 rounded-sm space-y-3" style={CARD}>
-                  <h3 className="text-[10px] uppercase tracking-widest font-bold border-b pb-1 flex justify-between items-center" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-                    <span>Leave Requests</span>
-                    <FiCalendar size={12} className="text-[var(--crm-accent)]" />
-                  </h3>
-                  {loading ? (
-                    <div className="space-y-3">
-                      {[1,2].map(i => (
-                        <div key={i} className="border p-3 rounded-sm" style={CARD_SUNKEN}>
-                          <div className="flex justify-between">
-                            <div className="crm-skeleton h-3 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
-                            <div className="crm-skeleton h-3 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
-                          </div>
-                          <div className="crm-skeleton h-3 w-32 rounded-sm mt-1.5" style={{ background: 'var(--crm-bg-sunken)' }} />
-                          <div className="flex gap-2 mt-2">
-                            <div className="crm-skeleton h-6 flex-1 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
-                            <div className="crm-skeleton h-6 flex-1 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
-                          </div>
-                        </div>
-                      ))}
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 pb-6 text-left">
+                
+                {/* Left Column - Leave Requests & Settings (Col Span 7) */}
+                <div className="xl:col-span-7 space-y-6">
+                  
+                  {/* Leave Requests Panel */}
+                  <div className="border p-4 rounded-sm space-y-4" style={CARD}>
+                    <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                      <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] flex items-center gap-1.5">
+                        <FiCalendar size={12} className="text-[var(--crm-accent)]" /> Leave Requests Operations
+                      </h3>
+                      <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] bg-[var(--crm-bg-sunken)] px-2 py-0.5 rounded border border-[var(--crm-line)]">
+                        {leaves.length} Requests
+                      </span>
                     </div>
-                  ) : leaves.length === 0 ? (
-                    <div className="py-8 text-center text-[10px] font-mono uppercase text-[var(--crm-ink-faint)]">No leave requests</div>
-                  ) : (
-                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                      {leaves.slice(0, 4).map((item) => (
-                        <div key={item._id} className={`border p-3 rounded-sm flex flex-col gap-2 ${item.status === 'PENDING' ? 'border-[var(--crm-warning)]/30' : ''}`} style={CARD_SUNKEN}>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] bg-[var(--crm-bg-raised)] border px-1.5 py-0.5 rounded-sm uppercase">{item.type}</span>
-                            <span className="text-[9px] font-mono text-[var(--crm-accent)]">{item.days} Days</span>
-                          </div>
-                          <div className="text-[10px]">
-                            <span className="font-semibold text-[var(--crm-heading)]">{item.employeeId?.fullName || 'Employee'}</span>
-                            <p className="text-[9px] text-[var(--crm-ink-soft)] mt-0.5 italic truncate">"{item.reason}"</p>
-                          </div>
-                          {item.status === 'PENDING' ? (
-                            <div className="flex gap-1.5 pt-1.5 border-t border-[var(--crm-line)]">
-                              <button onClick={() => handleReviewLeaveRequest(item._id, 'APPROVED')} className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] py-1 rounded-sm text-[8px] font-bold uppercase border border-[var(--crm-positive)]/20 cursor-pointer">Approve</button>
-                              <button onClick={() => handleReviewLeaveRequest(item._id, 'REJECTED')} className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] py-1 rounded-sm text-[8px] font-bold uppercase border border-[var(--crm-danger)]/20 cursor-pointer">Reject</button>
-                            </div>
-                          ) : (
-                            <span className={`text-[8px] font-bold font-mono px-1.5 py-0.5 border rounded-sm self-start ${
-                              item.status === 'APPROVED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]'
-                            }`}>{item.status}</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                <div className="border p-4 rounded-sm flex flex-col justify-between" style={CARD}>
-                  <div>
-                    <h3 className="text-[10px] uppercase tracking-widest mb-3 font-bold border-b pb-1 flex justify-between items-center" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-                      <span>Biometric Sync</span>
-                      <FiHardDrive size={12} className="text-[var(--crm-accent)]" />
+                    {loading ? (
+                      <div className="space-y-3">
+                        {[1, 2].map(i => (
+                          <div key={i} className="border p-3 rounded-sm crm-skeleton h-24" style={CARD_SUNKEN} />
+                        ))}
+                      </div>
+                    ) : leaves.length === 0 ? (
+                      <div className="py-10 text-center text-xs text-[var(--crm-ink-faint)] font-mono border rounded-sm border-dashed" style={{ borderColor: 'var(--crm-line)' }}>
+                        No leave requests found in database
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
+                        {leaves.map((item) => {
+                          const emp = item.employeeId || {};
+                          const isPendingReview = ['PENDING', 'PENDING_HR_APPROVAL'].includes(item.status);
+                          return (
+                            <div 
+                              key={item._id} 
+                              className={`border p-3 rounded-sm space-y-2 transition-all hover:border-[var(--crm-accent)]/30 ${
+                                item.isExtraLeave ? 'border-dashed border-[var(--crm-warning)]/40 bg-[var(--crm-warning-bg)]/10' : ''
+                              }`} 
+                              style={CARD_SUNKEN}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="space-y-0.5">
+                                  <span className="text-[9px] font-mono font-bold text-[var(--crm-heading)]">
+                                    {emp.name || 'Unknown Employee'}
+                                  </span>
+                                  <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono">
+                                    {emp.department || 'HQ'} • {emp.role || 'STAFF'}
+                                  </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 border rounded-sm uppercase tracking-wider ${
+                                    item.isExtraLeave ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20' : 'bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] border-[var(--crm-accent)]/20'
+                                  }`}>
+                                    {item.leaveType} {item.isExtraLeave && '(EXTRA)'}
+                                  </span>
+                                  <span className="text-[9px] font-mono text-[var(--crm-ink-soft)]">
+                                    {item.numberOfDays} {item.numberOfDays === 1 ? 'Day' : 'Days'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="text-[10px] space-y-1 py-1 border-t border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                                <div className="flex justify-between text-[9px] font-mono text-[var(--crm-ink-faint)]">
+                                  <span>Period:</span>
+                                  <span className="text-[var(--crm-heading)]">
+                                    {new Date(item.fromDate).toLocaleDateString()} - {new Date(item.toDate).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-[var(--crm-ink-soft)] italic">
+                                  "Reason: {item.reason}"
+                                </p>
+                                {item.isExtraLeave && item.extraLeaveReason && (
+                                  <p className="text-[9px] text-[var(--crm-warning)] italic">
+                                    "Extra Leave justification: {item.extraLeaveReason}"
+                                  </p>
+                                )}
+                                {item.hrRemarks && (
+                                  <p className="text-[9px] text-[var(--crm-positive)] font-mono">
+                                    HR Remarks: {item.hrRemarks}
+                                  </p>
+                                )}
+                              </div>
+
+                              {isPendingReview ? (
+                                <div className="space-y-2 pt-1.5">
+                                  {selectedLeaveIdForReview === item._id ? (
+                                    <div className="space-y-2 bg-[var(--crm-bg-raised)] p-2 border rounded-sm" style={{ borderColor: 'var(--crm-line)' }}>
+                                      <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--crm-ink-faint)]">Provide HR Remarks for Audit log *</span>
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. Extra leaves approved due to medical emergency verification"
+                                        value={reviewRemarks}
+                                        onChange={(e) => setReviewRemarks(e.target.value)}
+                                        className="w-full px-2 py-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-xs rounded-sm outline-none text-[var(--crm-heading)]"
+                                      />
+                                      <div className="flex gap-1.5">
+                                        <button 
+                                          onClick={() => handleReviewLeaveWithRemarks('APPROVED')}
+                                          className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] py-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] transition-colors cursor-pointer"
+                                        >
+                                          Confirm Approval
+                                        </button>
+                                        <button 
+                                          onClick={() => handleReviewLeaveWithRemarks('REJECTED')}
+                                          className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] py-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider hover:bg-[var(--crm-danger)] hover:text-white transition-colors cursor-pointer"
+                                        >
+                                          Reject Request
+                                        </button>
+                                        <button 
+                                          onClick={() => setSelectedLeaveIdForReview(null)}
+                                          className="px-2 bg-transparent border border-[var(--crm-line)] text-[8px] font-mono text-[var(--crm-ink-faint)] rounded cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex gap-1.5">
+                                      <button 
+                                        onClick={() => handleReviewLeaveRequest(item._id, 'APPROVED')} 
+                                        className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] py-1 rounded-sm text-[8px] font-bold uppercase border border-[var(--crm-positive)]/25 cursor-pointer hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] transition-all"
+                                      >
+                                        Approve
+                                      </button>
+                                      <button 
+                                        onClick={() => setSelectedLeaveIdForReview(item._id)} 
+                                        className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] py-1 rounded-sm text-[8px] font-bold uppercase border border-[var(--crm-danger)]/25 cursor-pointer hover:bg-[var(--crm-danger)] hover:text-white transition-all"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex justify-between items-center text-[8px] font-mono">
+                                  <span className={`px-2 py-0.5 border rounded-sm font-bold uppercase ${
+                                    ['APPROVED', 'HR_APPROVED_EXTRA'].includes(item.status)
+                                      ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
+                                      : 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20'
+                                  }`}>
+                                    {item.status}
+                                  </span>
+                                  {item.approvedOn && (
+                                    <span className="text-[var(--crm-ink-faint)]">
+                                      Reviewed on {new Date(item.approvedOn).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* HR Settings & Rules Configuration */}
+                  <div className="border p-4 rounded-sm space-y-4" style={CARD}>
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                      <FiSliders size={12} className="text-[var(--crm-accent)]" /> Leave Policy Configuration
                     </h3>
-                    <div className="space-y-3">
-                      <div className="p-2.5 border rounded-sm text-[10px] flex justify-between items-center" style={CARD_SUNKEN}>
-                        <span className="font-mono text-[9px] text-[var(--crm-ink-faint)]">Sync Axis:</span>
-                        <strong className="text-[var(--crm-positive)] text-[9px]">ONLINE</strong>
+
+                    {hrSettings ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                        <div className="space-y-3">
+                          <div>
+                            <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] block mb-1">Max Extra Leaves/Year</span>
+                            <input 
+                              type="number" 
+                              value={hrSettings.maxExtraLeavesPerYear} 
+                              onChange={(e) => handleUpdateHRSettings({ maxExtraLeavesPerYear: Number(e.target.value) })}
+                              className="w-24 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1 rounded-sm text-center outline-none focus:border-[var(--crm-accent)]"
+                            />
+                          </div>
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] text-[var(--crm-ink-soft)]">
+                            <input 
+                              type="checkbox" 
+                              checked={hrSettings.extraLeaveApprovalRequired}
+                              onChange={(e) => handleUpdateHRSettings({ extraLeaveApprovalRequired: e.target.checked })}
+                              className="rounded-sm border-[var(--crm-line)] w-3.5 h-3.5 cursor-pointer accent-[var(--crm-accent)]"
+                            />
+                            Require HR Approval for Extra Leaves
+                          </label>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] text-[var(--crm-ink-soft)]">
+                            <input 
+                              type="checkbox" 
+                              checked={hrSettings.autoApproveExtraLeaves}
+                              onChange={(e) => handleUpdateHRSettings({ autoApproveExtraLeaves: e.target.checked })}
+                              className="rounded-sm border-[var(--crm-line)] w-3.5 h-3.5 cursor-pointer accent-[var(--crm-accent)]"
+                            />
+                            Auto-Approve Extra Leaves (No HR check)
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] text-[var(--crm-ink-soft)]">
+                            <input 
+                              type="checkbox" 
+                              checked={hrSettings.extraLeaveReasonRequired}
+                              onChange={(e) => handleUpdateHRSettings({ extraLeaveReasonRequired: e.target.checked })}
+                              className="rounded-sm border-[var(--crm-line)] w-3.5 h-3.5 cursor-pointer accent-[var(--crm-accent)]"
+                            />
+                            Mandatory Justification Reason
+                          </label>
+                        </div>
                       </div>
-                      <div className="p-2.5 border rounded-sm text-[10px] flex justify-between items-center" style={CARD_SUNKEN}>
-                        <span className="font-mono text-[9px] text-[var(--crm-ink-faint)]">Last Sync:</span>
-                        <strong className="text-[var(--crm-heading)] font-mono text-[9px]">{new Date().toLocaleString()}</strong>
+                    ) : (
+                      <div className="text-center py-4 text-xs text-[var(--crm-ink-faint)] font-mono animate-pulse">Loading policy details...</div>
+                    )}
+                  </div>
+
+                  {/* Manual Leaves Reset Console */}
+                  <div className="border p-4 rounded-sm space-y-4" style={CARD}>
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                      <FiClock size={12} className="text-[var(--crm-danger)]" /> Monthly Reset Operations
+                    </h3>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                      <div className="flex-1 text-[10px] text-[var(--crm-ink-faint)]">
+                        Resetting balances wipes unused leaves (no carry forward) and sets balance to exactly 4 for all active employees.
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                          <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Present</span>
-                          <strong className="text-base text-[var(--crm-positive)] font-serif block">{attendanceReport?.presentCount || 0}</strong>
-                        </div>
-                        <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                          <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Late</span>
-                          <strong className="text-base text-[var(--crm-warning)] font-serif block">{attendanceReport?.lateCount || 0}</strong>
-                        </div>
-                        <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                          <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Absent</span>
-                          <strong className="text-base text-[var(--crm-danger)] font-serif block">{attendanceReport?.absentCount || 0}</strong>
-                        </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <input 
+                          type="month" 
+                          value={resetMonthInput}
+                          onChange={(e) => setResetMonthInput(e.target.value)}
+                          className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1 rounded-sm text-xs font-mono outline-none"
+                        />
+                        <button
+                          onClick={handleTriggerReset}
+                          className="bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 hover:bg-[var(--crm-danger)] hover:text-white px-3 py-1.5 rounded-sm text-[9px] font-bold font-mono uppercase tracking-wider transition cursor-pointer"
+                        >
+                          Reset to 4
+                        </button>
                       </div>
                     </div>
                   </div>
+
                 </div>
+
+                {/* Right Column - Biometric Sync & Audit Trail (Col Span 5) */}
+                <div className="xl:col-span-5 space-y-6">
+
+                  {/* Biometric Sync Control Center */}
+                  <div className="border p-4 rounded-sm space-y-4" style={CARD}>
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
+                      <span>Biometric Sync Console</span>
+                      <FiHardDrive size={12} className="text-[var(--crm-accent)]" />
+                    </h3>
+                    
+                    <div className="space-y-3">
+                      <div className="p-2.5 border rounded-sm text-xs font-mono flex justify-between items-center" style={CARD_SUNKEN}>
+                        <span className="text-[var(--crm-ink-faint)]">Biometric Device Port:</span>
+                        <strong className="text-[var(--crm-positive)] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-[var(--crm-positive)] rounded-full animate-ping" /> ONLINE
+                        </strong>
+                      </div>
+                      
+                      <div className="p-2.5 border rounded-sm text-xs font-mono flex justify-between items-center" style={CARD_SUNKEN}>
+                        <span className="text-[var(--crm-ink-faint)]">Latest Import Sync:</span>
+                        <strong className="text-[var(--crm-heading)]">
+                          {biometricSyncLog ? new Date(biometricSyncLog.lastSyncTime).toLocaleString() : 'Never synced'}
+                        </strong>
+                      </div>
+
+                      {biometricSyncLog && (
+                        <div className="p-2.5 border rounded-sm text-xs font-mono flex justify-between items-center" style={CARD_SUNKEN}>
+                          <span className="text-[var(--crm-ink-faint)]">Synced Logs Count:</span>
+                          <strong className="text-[var(--crm-accent)]">
+                            {biometricSyncLog.totalSyncedRecords} records
+                          </strong>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleTriggerBiometricSync}
+                        disabled={syncingBiometric}
+                        className="w-full bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] disabled:opacity-50 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      >
+                        {syncingBiometric ? (
+                          <>
+                            <svg className="animate-spin h-3.5 w-3.5 text-[var(--crm-bg-sunken)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Connecting & Syncing...
+                          </>
+                        ) : (
+                          'Trigger Biometric Sync'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Leave Balances Sheet */}
+                  <div className="border p-4 rounded-sm space-y-3" style={CARD}>
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
+                      <span>Employee Leave Balances</span>
+                      <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">Month: {resetMonthInput}</span>
+                    </h3>
+
+                    {leaveBalances.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-[var(--crm-ink-faint)] font-mono">No active balances found</div>
+                    ) : (
+                      <div className="overflow-x-auto max-h-[220px] overflow-y-auto border rounded-sm custom-scrollbar" style={{ borderColor: 'var(--crm-line)' }}>
+                        <table className="w-full text-left border-collapse text-[10px] font-mono">
+                          <thead style={{ background: 'var(--crm-bg-sunken)' }}>
+                            <tr className="text-[var(--crm-ink-faint)] border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                              <th className="p-2">Employee</th>
+                              <th className="p-2 text-center">Remaining (Paid)</th>
+                              <th className="p-2 text-center">Extra Used</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--crm-line)]">
+                            {leaveBalances.map(bal => (
+                              <tr key={bal._id} className="hover:bg-[var(--crm-bg-raised)]/30">
+                                <td className="p-2 text-[var(--crm-heading)] font-sans font-semibold">
+                                  {bal.employeeId?.name || 'Unknown'}
+                                  <span className="block text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase">{bal.employeeId?.department}</span>
+                                </td>
+                                <td className="p-2 text-center text-[var(--crm-positive)] font-bold">{bal.remainingLeaves} / 4</td>
+                                <td className="p-2 text-center text-[var(--crm-warning)] font-bold">{bal.extraLeavesUsed}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Audit Trail Panel */}
+                  <div className="border p-4 rounded-sm space-y-3" style={CARD}>
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                      <FiCheckSquare size={12} className="text-[var(--crm-accent)]" /> Leave Audits Trail
+                    </h3>
+
+                    {auditLogs.length === 0 ? (
+                      <div className="py-6 text-center text-[8px] text-[var(--crm-ink-faint)] font-mono">No audit actions logged</div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
+                        {auditLogs.map(log => (
+                          <div key={log._id} className="text-[9px] font-mono border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                            <div className="flex justify-between items-center mb-0.5">
+                              <span className="text-[var(--crm-heading)] font-semibold">{log.employeeId?.name || 'Employee'}</span>
+                              <span className={`text-[7px] font-bold px-1 rounded-sm uppercase ${
+                                log.action === 'EXTRA_APPROVED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
+                                log.action === 'REJECTED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]' :
+                                log.action === 'AUTO_RESET' ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]' :
+                                'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-faint)]'
+                              }`}>
+                                {log.action}
+                              </span>
+                            </div>
+                            <div className="text-[var(--crm-ink-soft)] space-y-0.5">
+                              <p>Action Performed By: <span className="text-[var(--crm-heading)]">{log.performedBy}</span></p>
+                              {log.remarks && <p>Remarks: <span className="text-white italic">"{log.remarks}"</span></p>}
+                              <p className="text-[7px] text-[var(--crm-ink-faint)]">Logged: {new Date(log.performedAt || log.createdAt).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
               </div>
             )}
 
@@ -2012,9 +2417,9 @@ export default function HrManagerDashboard() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-                    {assignedTasks.slice(0, 6).map((t) => (
-                      <div key={t.id} className="border p-3.5 rounded-sm flex flex-col justify-between hover:border-[var(--crm-accent)]/35 transition" style={CARD}>
-                        <div className="space-y-1.5">
+                    {assignedTasks.slice(0, 20).map((t) => (
+                      <div key={t._id || t.id} className="border p-3.5 rounded-sm flex flex-col justify-between hover:border-[var(--crm-accent)]/35 transition" style={CARD}>
+                        <div className="space-y-1.5 text-left">
                           <div className="flex justify-between items-start gap-1.5">
                             <span className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase">{new Date(t.createdAt).toLocaleDateString()}</span>
                             <span className={`text-[7px] font-mono font-bold px-1.5 py-0.5 border rounded-sm ${t.priority === 'HIGH' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]' : t.priority === 'LOW' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
@@ -2022,16 +2427,17 @@ export default function HrManagerDashboard() {
                             </span>
                           </div>
                           <h4 className="font-serif text-xs font-normal text-[var(--crm-heading)]">{t.title}</h4>
-                          <div className="flex justify-between items-center text-[9px]">
+                          <p className="text-[9px] text-[var(--crm-ink-soft)] font-sans italic">"{t.description}"</p>
+                          <div className="flex justify-between items-center text-[9px] border-t border-[var(--crm-line)]/50 pt-1.5 mt-1.5">
                             <span className="text-[var(--crm-ink-faint)]">Assignee:</span>
-                            <strong className="text-[var(--crm-heading)] font-medium font-mono text-[9px]">{t.assignedToName}</strong>
+                            <strong className="text-[var(--crm-heading)] font-medium font-mono text-[9px]">{t.assignedTo?.name || t.assignedToName || 'Employee'}</strong>
                           </div>
                         </div>
                         <div className="mt-2 pt-2 border-t border-[var(--crm-line)] flex justify-between items-center">
-                          <span className={`px-1.5 py-0.5 border text-[7px] font-bold font-mono uppercase rounded-sm ${t.status === 'COMPLETED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] animate-pulse'}`}>
+                          <span className={`px-1.5 py-0.5 border text-[7px] font-bold font-mono uppercase rounded-sm ${t.status === 'COMPLETED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
                             {t.status}
                           </span>
-                          <button onClick={() => handleCancelTask(t.id)} className="text-[8px] font-mono font-bold uppercase text-[var(--crm-danger)] hover:text-white transition cursor-pointer">
+                          <button onClick={() => handleCancelTask(t._id || t.id)} className="text-[8px] font-mono font-bold uppercase text-[var(--crm-danger)] hover:text-white transition cursor-pointer">
                             Revoke
                           </button>
                         </div>

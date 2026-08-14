@@ -74,14 +74,30 @@ function checkPermission(...permissionNames) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Unauthorized: Authentication required', [], req);
     }
 
-    if (req.user.role === 'ADMIN') {
+    // Admin role, ADMIN department, or Admin designations get bypass access to all CRM resources
+    const isAdminUser =
+      req.user.role === 'ADMIN' ||
+      req.user.department === 'ADMIN' ||
+      (req.user.position && req.user.position.toLowerCase().includes('admin'));
+
+    if (isAdminUser) {
       return next();
     }
 
     const hasAnyPermission = permissionNames.some(perm => {
+      // 1. Check nested permissions on Employee model (e.g. exportPermission -> permissions.export)
+      if (req.user.permissions) {
+        const shortName = perm.replace('Permission', '');
+        if (req.user.permissions[shortName] === true) return true;
+      }
+
+      // 2. Check root properties on User model
       if (req.user[perm] === true) return true;
-      const rolePerms = rolePermissions[req.user.role];
+
+      // 3. Check role-based defaults
+      const rolePerms = rolePermissions[req.user.role] || rolePermissions[req.user.department];
       if (rolePerms && rolePerms[perm] === true) return true;
+
       return false;
     });
 

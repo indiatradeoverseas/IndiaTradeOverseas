@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { authApi } from '../api/auth';
+import { employeeSignupApi } from '../api/employee-signup';
+import { socketService } from '../services/socket';
 
 export const AuthContext = createContext();
 
@@ -11,15 +13,48 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      socketService.connect(user);
+    } else {
+      socketService.disconnect();
+    }
+    return () => {
+      socketService.disconnect();
+    };
+  }, [user]);
+
   const checkAuth = async () => {
     const token = authApi.getToken();
     if (token) {
       try {
-        const response = await authApi.getMe();
-        if (response.success) {
-          setUser(response.data.user);
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        const isEmployee = storedUser && [
+          'EMPLOYEE',
+          'HR_EXECUTIVE',
+          'HR_MANAGER',
+          'HR',
+          'ADMIN',
+          'MANAGER',
+          'SALES_EXECUTIVE',
+          'SALES_MANAGER'
+        ].includes(storedUser.role);
+
+        let response;
+        if (isEmployee) {
+          response = await employeeSignupApi.getMe();
+          if (response.success) {
+            setUser(response.data.employee);
+          } else {
+            authApi.logout();
+          }
         } else {
-          authApi.logout();
+          response = await authApi.getMe();
+          if (response.success) {
+            setUser(response.data.user);
+          } else {
+            authApi.logout();
+          }
         }
       } catch (error) {
         authApi.logout();
@@ -33,6 +68,14 @@ export const AuthProvider = ({ children }) => {
     const response = await authApi.login({ ...credentials, deviceHash });
     if (response.success && !response.data.requiresOtp) {
       setUser(response.data.user);
+    }
+    return response;
+  };
+
+  const employeeLogin = async (credentials) => {
+    const response = await employeeSignupApi.login(credentials);
+    if (response.success) {
+      setUser(response.data.employee);
     }
     return response;
   };
@@ -92,7 +135,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, adminLogin, googleLogin, adminGoogleLogin, verifyOtp, register, verifyEmail, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, employeeLogin, adminLogin, googleLogin, adminGoogleLogin, verifyOtp, register, verifyEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,6 +8,8 @@ const env = require('./src/config/env');
 const { connectDB } = require('./src/config/database');
 const { seedRoles } = require('./src/modules/users/roles/permission.service');
 
+const http = require('http');
+const socketService = require('./src/services/socket.service');
 const PORT = env.PORT || 5000;
 
 async function startServer() {
@@ -15,7 +17,9 @@ async function startServer() {
     await connectDB();
     await seedRoles();
     if (!process.env.VERCEL) {
-      app.listen(PORT, () => {
+      const server = http.createServer(app);
+      socketService.init(server);
+      server.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
       });
     } else {

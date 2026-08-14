@@ -11,14 +11,14 @@ const EmployeeLogin = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  const { login } = useAuth();
+  const { employeeLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await login(formData);
+      const response = await employeeLogin(formData);
       if (response.success) {
         if (response.data?.requiresDeviceApproval) {
           toast.success('Credentials verified! Device approval is pending.', {
