@@ -187,12 +187,12 @@ const EmployeeLogin = () => {
                 Admin login
               </Link>
             </p>
-             <p className="font-light">
+             {/* <p className="font-light">
               Employee Sign Up?{' '}
               <Link to="/employee-signup" className="font-medium text-[#C5CBD3] hover:text-[#F2F4F7] hover:underline">
                 Employee Sign Up
               </Link>
-            </p>
+            </p> */}
           </motion.div>
         </div>
 
