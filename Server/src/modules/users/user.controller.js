@@ -189,8 +189,9 @@ async function deleteUser(req, res, next) {
 async function getMyProfile(req, res, next) {
   try {
     const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
-    if (isEmployee) {
-      return ok(res, { profile: req.user }, 'Employee profile retrieved', 200, req);
+    const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
+    if (isEmployee || isAdmin) {
+      return ok(res, { profile: req.user }, 'Profile retrieved', 200, req);
     }
 
     const profile = await userService.getProfile(req.user._id, req.user);
@@ -204,10 +205,16 @@ async function getMyProfile(req, res, next) {
 async function updateMyProfile(req, res, next) {
   try {
     const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
     if (isEmployee) {
       const Employee = require('../employee/employee.model');
       const updated = await Employee.findByIdAndUpdate(req.user._id, req.body, { new: true });
       return ok(res, { profile: updated }, 'Employee profile updated successfully', 200, req);
+    }
+    if (isAdmin) {
+      const Admin = require('../admin-auth/admin.model');
+      const updated = await Admin.findByIdAndUpdate(req.user._id, req.body, { new: true });
+      return ok(res, { profile: updated }, 'Admin profile updated successfully', 200, req);
     }
 
     const profile = await userService.updateOwnProfile(req.user._id, req.body);
