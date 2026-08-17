@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle, FiShield, FiArrowRight } from 'react-icons/fi';
@@ -13,6 +13,8 @@ const ForgotPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+
 
   const handleSendOtp = async (e) => {
     e.preventDefault();

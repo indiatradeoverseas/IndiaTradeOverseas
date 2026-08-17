@@ -5,24 +5,20 @@ import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { pushDataLayerEvent } from '../../utils/analytics';
-import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
-
-const toastStyle = { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' };
-const toastErrorStyle = { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444' };
 
 const EmployeeLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  const { login } = useAuth();
+  const { employeeLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await login(formData);
+      const response = await employeeLogin(formData);
       if (response.success) {
         if (response.data?.requiresDeviceApproval) {
           toast.success('Credentials verified! Device approval is pending.', {
@@ -55,16 +51,6 @@ const EmployeeLogin = () => {
     } finally {
       setLoading && setLoading(false);
     }
-  };
-
-  const handleGoogleSuccess = () => {
-    toast.success('Welcome back, employee!', { icon: '👋', style: toastStyle });
-    pushDataLayerEvent('login', { method: 'google_employee' });
-    navigate('/crm/dashboard');
-  };
-
-  const handleGoogleError = (message) => {
-    toast.error(message, { style: toastErrorStyle });
   };
 
   return (
@@ -177,18 +163,8 @@ const EmployeeLogin = () => {
             </motion.div>
           </form>
 
-          {/* Google Sign-In */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "linear", duration: 0.5, delay: 0.4 }}
-            className="mt-5"
-          >
-            <GoogleAuthButton portal="employee" onSuccess={handleGoogleSuccess} onError={handleGoogleError} disabled={loading} />
-          </motion.div>
-
           {/* Navigation Links Footer */}
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
@@ -211,6 +187,12 @@ const EmployeeLogin = () => {
                 Admin login
               </Link>
             </p>
+             {/* <p className="font-light">
+              Employee Sign Up?{' '}
+              <Link to="/employee-signup" className="font-medium text-[#C5CBD3] hover:text-[#F2F4F7] hover:underline">
+                Employee Sign Up
+              </Link>
+            </p> */}
           </motion.div>
         </div>
 

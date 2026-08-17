@@ -75,6 +75,9 @@ async function register(req, res, next) {
     });
 
 
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
 
@@ -147,6 +150,9 @@ async function login(req, res, next) {
         user: user._id,
         otpHash
       });
+      global.latestOtps = global.latestOtps || {};
+      global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
       await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
       return fail(res, 403, 'EMAIL_NOT_VERIFIED', 'Your email is not verified. A new verification OTP has been sent to ' + user.email);
@@ -356,6 +362,9 @@ async function requestOtp(req, res, next) {
       user: user._id,
       otpHash
     });
+
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
 
     await sendEmail(user.email, 'Email Verification Code', null, getOtpHtml(otp, user.email));
 
@@ -699,6 +708,9 @@ async function forgotPassword(req, res, next) {
       otpHash
     });
 
+    global.latestOtps = global.latestOtps || {};
+    global.latestOtps[user.email.toLowerCase().trim()] = otp;
+
     await sendEmail(user.email, 'Password Reset OTP Code', null, getOtpHtml(otp, user.email));
 
     return ok(res, {}, 'Password reset OTP sent successfully to your email', 200, req);
@@ -757,6 +769,29 @@ async function resetPassword(req, res, next) {
   }
 }
 
+async function getGoogleClientId(req, res, next) {
+  try {
+    return ok(res, { googleClientId: process.env.GOOGLE_CLIENT_ID }, 'Google Client ID retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getLatestOtp(req, res, next) {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Email is required');
+    }
+    const cleanEmail = email.toLowerCase().trim();
+    global.latestOtps = global.latestOtps || {};
+    const otp = global.latestOtps[cleanEmail] || '';
+    return ok(res, { otp }, 'Latest OTP retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -773,6 +808,8 @@ module.exports = {
   logoutAll,
   verifyEmail,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getGoogleClientId,
+  getLatestOtp
 };
 

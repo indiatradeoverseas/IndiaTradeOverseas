@@ -22,6 +22,8 @@ const VerifyEmail = () => {
     }
   }, [navigate]);
 
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) {
@@ -36,7 +38,6 @@ const VerifyEmail = () => {
         toast.success('Email verified successfully! Welcome! 🎉', {
           style: { borderRadius: '10px', background: '#333', color: '#fff' }
         });
-        
         
         localStorage.removeItem('verificationEmail');
         

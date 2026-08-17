@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiArrowRight, FiShield, FiKey, FiCheckCircle } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { authApi } from '../../api/auth';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import GateMascot from './GateMascot';
 
@@ -35,9 +36,10 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
   const [resendCooldown, setResendCooldown] = useState(0);
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', city: '', state: '' });
   const [pendingSession, setPendingSession] = useState(null);
-
   const otpRefs = useRef([]);
   const lastAutoSubmitRef = useRef('');
+
+
 
   const firstName = form.fullName.trim().split(/\s+/)[0] || '';
 
@@ -98,9 +100,12 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       if (res.success) {
         const activeToken = res.token || res.data?.token || res.data?.accessToken;
         const activeId = res.data?.distributorId || res.data?._id || distributorId;
-        setPendingSession({ id: activeId, token: activeToken });
         pushDataLayerEvent('entry_gate_otp_verified', { division });
-        setStep('welcome');
+        if (requireOtp) {
+          onVerified?.(activeId, activeToken, { ...form });
+        } else {
+          onComplete?.({ ...form });
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired code.');
@@ -317,7 +322,6 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                     <FiKey size={16} />
                   </div>
                 </div>
-
                 <motion.div
                   role="group"
                   aria-label="6-digit verification code"

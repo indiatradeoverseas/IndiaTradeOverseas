@@ -41,5 +41,16 @@ export const attendanceApi = {
   async cleanupOrphaned() {
     const response = await axiosInstance.delete('/attendance/cleanup-orphaned');
     return response.data;
+  },
+
+  // Biometric sync methods
+  async triggerBiometricSync() {
+    const response = await axiosInstance.post('/attendance/biometric/sync');
+    return response.data;
+  },
+
+  async getBiometricStatus() {
+    const response = await axiosInstance.get('/attendance/biometric/status');
+    return response.data;
   }
 };

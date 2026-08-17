@@ -9,7 +9,7 @@ const { resolveUploadPath, getRelativePath, proxyFromProduction } = require('../
 
 const hasJobPermission = (user) => {
   if (!user) return false;
-  if (['ADMIN', 'MANAGER', 'HR'].includes(user.role)) return true;
+  if (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user.role)) return true;
   return user.jobPermission === true;
 };
 
@@ -52,7 +52,7 @@ const applyJob = async (req, res, next) => {
 
 const listApplications = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can view applications.');
     }
 
@@ -70,11 +70,11 @@ const listApplications = async (req, res, next) => {
 
 const updateApplicationStatus = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can update application status.');
     }
 
-    const { status } = req.body;
+    const { status, interviewDetails } = req.body;
     if (!status || !['PENDING', 'REVIEWED', 'ACCEPTED', 'REJECTED'].includes(status)) {
       return fail(res, 400, 'VALIDATION_ERROR', 'Please provide a valid status.');
     }
@@ -89,6 +89,37 @@ const updateApplicationStatus = async (req, res, next) => {
       return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
     }
 
+    // Send email to candidate when status is set to REVIEWED (meaning interview scheduled)
+    if (status === 'REVIEWED' && interviewDetails) {
+      const { date, time, interviewerName, notes } = interviewDetails;
+      const { sendEmail } = require('../../utils/mailer');
+      
+      const subject = 'Your Interview has been Scheduled - India Trade Overseas';
+      const text = `Dear ${application.fullName},\n\nYour interview for the position of ${application.position} has been scheduled.\n\nDate: ${date}\nTime: ${time}\nInterviewer: ${interviewerName}\n\nNotes: ${notes || 'None'}\n\nBest regards,\nIndia Trade Overseas`;
+      
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h2 style="color: #0E1116; border-bottom: 2px solid #C89A54; padding-bottom: 10px;">Interview Invitation</h2>
+          <p>Dear <strong>${application.fullName}</strong>,</p>
+          <p>We are pleased to invite you for an interview for the <strong>${application.position}</strong> position at India Trade Overseas.</p>
+          
+          <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #C89A54; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Date:</strong> ${date}</p>
+            <p style="margin: 5px 0;"><strong>Time:</strong> ${time}</p>
+            <p style="margin: 5px 0;"><strong>Interviewer:</strong> ${interviewerName}</p>
+            ${notes ? `<p style="margin: 5px 0;"><strong>Additional Info:</strong> ${notes}</p>` : ''}
+          </div>
+          
+          <p>Please stay tuned for further details or online meeting links.</p>
+          <p style="margin-top: 25px;">Best regards,<br/><strong>India Trade Overseas HR Team</strong></p>
+        </div>
+      `;
+      
+      sendEmail(application.email, subject, text, html).catch(err => {
+        console.error('Failed to send interview scheduled email:', err);
+      });
+    }
+
     return ok(res, { application }, `Application status updated to ${status}`, 200, req);
   } catch (error) {
     next(error);
@@ -97,7 +128,7 @@ const updateApplicationStatus = async (req, res, next) => {
 
 const downloadResume = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can download resumes.');
     }
 
@@ -135,7 +166,7 @@ const downloadResume = async (req, res, next) => {
 
 const downloadCoverLetter = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can download cover letters.');
     }
 
@@ -194,7 +225,7 @@ const submitGateLead = async (req, res, next) => {
 
 const listGateLeads = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can view career leads.');
     }
 
@@ -350,7 +381,7 @@ const deleteJob = async (req, res, next) => {
 
 const deleteApplication = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can delete applications.');
     }
 

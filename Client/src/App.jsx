@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
@@ -6,69 +6,62 @@ import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop'; // <-- Already imported cleanly here!
 import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
-// Home stays a static import - it's the most common landing page and needs
-// to be in the initial bundle for prerendering/first paint. Every other
-// route (including the entire CRM, which is most of this app's code) is
-// lazy-loaded so a marketing visitor never downloads the CRM bundle, and a
-// CRM user never downloads pages they haven't navigated to yet.
 import Home from './pages/public/Home';
-const Products = lazy(() => import('./pages/public/Products'));
-const Rice = lazy(() => import('./pages/public/Rice'));
-const ProductDetail = lazy(() => import('./pages/public/ProductDetail'));
-const About = lazy(() => import('./pages/public/About'));
-const Contact = lazy(() => import('./pages/public/Contact'));
-const Careers = lazy(() => import('./pages/public/Careers'));
-const QuoteRequest = lazy(() => import('./pages/public/QuoteRequest'));
-const ClientLogin = lazy(() => import('./pages/public/ClientLogin'));
-const EmployeeLogin = lazy(() => import('./pages/public/EmployeeLogin'));
-const AdminLogin = lazy(() => import('./pages/public/AdminLogin'));
-const Signup = lazy(() => import('./pages/public/Signup'));
-const ClientSignup = lazy(() => import('./pages/public/ClientSignup'));
-const EmployeeSignup = lazy(() => import('./pages/public/EmployeeSignup'));
-const DevicePending = lazy(() => import('./pages/public/DevicePending'));
-const VerifyEmail = lazy(() => import('./pages/public/VerifyEmail'));
-const ForgotPassword = lazy(() => import('./pages/public/ForgotPassword'));
+import Products from './pages/public/Products';
+import Rice from './pages/public/Rice';
+import ProductDetail from './pages/public/ProductDetail';
+import About from './pages/public/About';
+import Contact from './pages/public/Contact';
+import Careers from './pages/public/Careers';
+import QuoteRequest from './pages/public/QuoteRequest';
+import Login from './pages/public/Login';
+import ClientLogin from './pages/public/ClientLogin';
+import EmployeeLogin from './pages/public/EmployeeLogin';
+import AdminLogin from './pages/public/AdminLogin';
+import Signup from './pages/public/Signup';
+import ClientSignup from './pages/public/ClientSignup';
+import EmployeeSignup from './pages/public/EmployeeSignup';
+import DevicePending from './pages/public/DevicePending';
+import VerifyEmail from './pages/public/VerifyEmail';
+import ForgotPassword from './pages/public/ForgotPassword';
 
-const Dashboard = lazy(() => import('./pages/crm/Dashboard'));
-const Leads = lazy(() => import('./pages/crm/Leads'));
-const Stone = lazy(() => import('./pages/public/Stone'));
-const LeadDetail = lazy(() => import('./pages/crm/LeadDetail'));
-const Quotations = lazy(() => import('./pages/crm/Quotations'));
-const Dispatches = lazy(() => import('./pages/crm/Dispatches'));
-const Payments = lazy(() => import('./pages/crm/Payments'));
-const Documents = lazy(() => import('./pages/crm/Documents'));
-const Employees = lazy(() => import('./pages/crm/Employees'));
-const Distributors = lazy(() => import('./pages/crm/Distributors'));
-const Visitors = lazy(() => import('./pages/crm/Visitors'));
-const Security = lazy(() => import('./pages/crm/Security'));
-const Reports = lazy(() => import('./pages/crm/Reports'));
-const AdminPanel = lazy(() => import('./pages/crm/AdminPanel'));
-const ProductUpload = lazy(() => import('./pages/crm/ProductUpload'));
-const Tasks = lazy(() => import('./pages/crm/Tasks'));
-const Notifications = lazy(() => import('./pages/crm/Notifications'));
-const Applications = lazy(() => import('./pages/crm/Applications'));
-const CareerLeads = lazy(() => import('./pages/crm/CareerLeads'));
-const Jobs = lazy(() => import('./pages/crm/Jobs'));
-const Attendance = lazy(() => import('./pages/crm/Attendance'));
-const Tickets = lazy(() => import('./pages/crm/Tickets'));
-const Leave = lazy(() => import('./pages/crm/Leave'));
-const EmployeeProfile = lazy(() => import('./pages/crm/EmployeeProfile'));
-const SalesPerformance = lazy(() => import('./pages/crm/SalesPerformance'));
-const Prakriti = lazy(() => import('./pages/public/Prakriti'));
+
+import Dashboard from './pages/crm/Dashboard';
+import Leads from './pages/crm/Leads';
+import Stone from './pages/public/Stone';
+import LeadDetail from './pages/crm/LeadDetail';
+import Quotations from './pages/crm/Quotations';
+import Dispatches from './pages/crm/Dispatches';
+import Payments from './pages/crm/Payments';
+import Documents from './pages/crm/Documents';
+import Employees from './pages/crm/Employees';
+import Distributors from './pages/crm/Distributors';
+import Visitors from './pages/crm/Visitors';
+import Security from './pages/crm/Security';
+import Reports from './pages/crm/Reports';
+import AdminPanel from './pages/crm/AdminPanel';
+import ProductUpload from './pages/crm/ProductUpload';
+import Tasks from './pages/crm/Tasks';
+import Notifications from './pages/crm/Notifications';
+import Applications from './pages/crm/Applications';
+import CareerLeads from './pages/crm/CareerLeads';
+import Jobs from './pages/crm/Jobs';
+import Attendance from './pages/crm/Attendance';
+import Tickets from './pages/crm/Tickets';
+import Leave from './pages/crm/Leave';
+import EmployeeProfile from './pages/crm/EmployeeProfile';
+import SalesPerformance from './pages/crm/SalesPerformance';
+
+import HrManagerDashboard from './pages/crm/HrManagerDashboard';
+import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
+
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
+import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
-import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
-
-function RouteFallback() {
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-    </div>
-  );
-}
+import Prakriti from './pages/public/Prakriti';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -88,6 +81,14 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function isAdminUser(user) {
+  return (
+    user?.role === 'ADMIN' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin'))
+  );
+}
+
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -99,7 +100,7 @@ function AdminRoute({ children }) {
     );
   }
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || !isAdminUser(user)) {
     return <Navigate to="/crm/dashboard" />;
   }
 
@@ -122,6 +123,30 @@ function RoleProtectedRoute({ children, allowedRoles }) {
   }
 
   return children;
+}
+
+function HRRedirectGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (['ADMIN', 'MANAGER', 'HR_MANAGER'].includes(user.role)) {
+    return <Navigate to="/crm/hr/manager" replace />;
+  } else if (['HR_EXECUTIVE', 'HR'].includes(user.role)) {
+    return <Navigate to="/crm/hr/executive" replace />;
+  } else {
+    return <Navigate to="/crm/dashboard" replace />;
+  }
 }
 
 function AppLayout() {
@@ -172,20 +197,18 @@ function AppLayout() {
     return (
       <>
         <ScrollToTop /> {/* <-- INJECTED TO HANDLE AUTH ENTRY ROUTES */}
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/login" element={<ClientLogin />} />
-            <Route path="/client-login" element={<Navigate to="/login" replace />} />
-            <Route path="/employee-login" element={<EmployeeLogin />} />
-            <Route path="/admin-login" element={<AdminLogin />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/client-signup" element={<ClientSignup />} />
-            <Route path="/employee-signup" element={<EmployeeSignup />} />
-            <Route path="/device-pending" element={<DevicePending />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-          </Routes>
-        </Suspense>
+        <Routes>
+          <Route path="/login" element={<ClientLogin />} />
+          <Route path="/client-login" element={<Navigate to="/login" replace />} />
+          <Route path="/employee-login" element={<EmployeeLogin />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/client-signup" element={<ClientSignup />} />
+          <Route path="/employee-signup" element={<EmployeeSignup />} />
+          <Route path="/device-pending" element={<DevicePending />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        </Routes>
       </>
     );
   }
@@ -199,103 +222,118 @@ function AppLayout() {
       <VoiceAssistantProvider>
         <PortalLayout>
           <ScrollToTop /> {/* <-- INJECTED TO HANDLE CRM DASHBOARD CHANNELS */}
-          <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/crm/dashboard" element={<Dashboard />} />
-            <Route path="/crm/notifications" element={<Notifications />} />
-            <Route path="/crm/attendance" element={<Attendance />} />
-            <Route path="/crm/leave" element={<Leave />} />
-            <Route path="/crm/profile" element={<EmployeeProfile />} />
-            <Route path="/crm/tickets" element={<Tickets />} />
-            <Route path="/crm/sales" element={<SalesPerformance />} />
-            <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
-            <Route path="/crm/distributors/:division" element={<Distributors />}/>
-            <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
-            <Route path="/crm/visitors/:division" element={<Visitors />}/>
-            <Route
-              path="/crm/career-leads"
-              element={
-                ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
-                  <CareerLeads />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route
-              path="/crm/leads"
-              element={
-                user?.role === 'ADMIN' || user?.leadPermission === true ? (
-                  <Leads />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route
-              path="/crm/leads/:id"
-              element={
-                user?.role === 'ADMIN' || user?.leadPermission === true || user?.taskPermission === true ? (
-                  <LeadDetail />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route path="/crm/quotations" element={<Quotations />} />
-            <Route path="/crm/dispatches" element={<Dispatches />} />
-            <Route path="/crm/payments" element={<Payments />} />
-            <Route
-              path="/crm/documents"
-              element={
-                user?.role === 'ADMIN' || user?.documentPermission === true ? (
-                  <Documents />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route path="/crm/products" element={<ProductUpload />} />
-            <Route
-              path="/crm/tasks"
-              element={
-                user?.role === 'ADMIN' || user?.taskPermission === true ? (
-                  <Tasks />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
-            <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
-            <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
-            <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
-            <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-            <Route
-              path="/crm/applications"
-              element={
-                ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) ? (
-                  <Applications />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route
-              path="/crm/jobs"
-              element={
-                ['ADMIN', 'MANAGER', 'HR'].includes(user?.role) || user?.jobPermission === true ? (
-                  <Jobs />
-                ) : (
-                  <Navigate to="/crm/dashboard" replace />
-                )
-              }
-            />
-            <Route path="*" element={<Navigate to="/crm/dashboard" />} />
-          </Routes>
-          </Suspense>
-          <ChatWidget />
-        </PortalLayout>
+        <Routes>
+          <Route path="/crm/dashboard" element={<Dashboard />} />
+          <Route path="/crm/notifications" element={<Notifications />} />
+          <Route path="/crm/attendance" element={<Attendance />} />
+          <Route path="/crm/leave" element={<Leave />} />
+          <Route path="/crm/profile" element={<EmployeeProfile />} />
+          <Route path="/crm/tickets" element={<Tickets />} />
+          <Route path="/crm/sales" element={<SalesPerformance />} />
+          <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
+          <Route path="/crm/distributors/:division" element={<Distributors />}/>
+          <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
+          <Route path="/crm/visitors/:division" element={<Visitors />}/>
+          <Route
+            path="/crm/career-leads"
+            element={
+              (isAdminUser(user) || ['MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) ? (
+                <CareerLeads />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/crm/leads"
+            element={
+              (isAdminUser(user) || user?.leadPermission === true) ? (
+                <Leads />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/crm/leads/:id"
+            element={
+              (isAdminUser(user) || user?.leadPermission === true || user?.taskPermission === true) ? (
+                <LeadDetail />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route path="/crm/quotations" element={<Quotations />} />
+          <Route path="/crm/dispatches" element={<Dispatches />} />
+          <Route path="/crm/payments" element={<Payments />} />
+          <Route
+            path="/crm/documents"
+            element={
+              (isAdminUser(user) || user?.documentPermission === true) ? (
+                <Documents />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route path="/crm/products" element={<ProductUpload />} />
+          <Route
+            path="/crm/tasks"
+            element={
+              (isAdminUser(user) || user?.taskPermission === true) ? (
+                <Tasks />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
+          <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
+          <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
+          <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
+          <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route
+            path="/crm/applications"
+            element={
+              ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) ? (
+                <Applications />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/crm/jobs"
+            element={
+              ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) || user?.jobPermission === true ? (
+                <Jobs />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route path="/crm/hr" element={<HRRedirectGate />} />
+          <Route
+            path="/crm/hr/manager"
+            element={
+              <RoleProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HR_MANAGER']}>
+                <HrManagerDashboard />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/hr/executive"
+            element={
+              <RoleProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR']}>
+                <HrExecutiveDashboard />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/crm/dashboard" />} />
+        </Routes>
+        <ChatWidget />
+      </PortalLayout>
       </VoiceAssistantProvider>
     );
   }
@@ -309,7 +347,6 @@ function AppLayout() {
       <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
       <Navbar />
       <main>
-        <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
@@ -322,7 +359,6 @@ function AppLayout() {
           <Route path='/prakriti/rice' element={<Rice/>}/>
           <Route path="/stone" element={<Stone />} />
         </Routes>
-        </Suspense>
       </main>
       <Footer />
       <ChatWidget />

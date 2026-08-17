@@ -12,7 +12,10 @@ import {
   FiFilter,
   FiCheckCircle,
   FiXCircle,
-  FiUser
+  FiUser,
+  FiEdit,
+  FiEye,
+  FiShield
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/admin';
@@ -30,6 +33,73 @@ export default function Employees() {
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
+  const [editingEmpId, setEditingEmpId] = useState(null);
+
+  // Profile Master Data persistence
+  const [profilesData, setProfilesData] = useState(() => {
+    return JSON.parse(localStorage.getItem('hr_employee_profiles_master')) || {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hr_employee_profiles_master', JSON.stringify(profilesData));
+  }, [profilesData]);
+
+  const getEmployeeProfile = (empId) => {
+    const defaults = {
+      dob: '',
+      bloodGroup: '',
+      emergencyContact: '',
+      currentAddress: '',
+      permanentAddress: '',
+      doj: '',
+      reportingManager: '',
+      employmentStatus: 'Probation',
+      aadhaarVerified: false,
+      panVerified: false,
+      degreeVerified: false,
+      mobileVerified: false,
+      emailVerified: false,
+      fullNameOverride: '',
+      phoneOverride: '',
+      roleOverride: '',
+      departmentOverride: '',
+      bankName: '',
+      bankAccount: '',
+      bankIFSC: '',
+      aadhaar: '',
+      photo: ''
+    };
+    return { ...defaults, ...(profilesData[empId] || {}) };
+  };
+
+  const handleUpdateProfile = (empId, fields) => {
+    const updated = {
+      ...profilesData,
+      [empId]: {
+        ...getEmployeeProfile(empId),
+        ...fields
+      }
+    };
+    setProfilesData(updated);
+    toast.success('Employee profile master data updated! 💾');
+  };
+
+  const handlePhotoUpload = (empId, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      handleUpdateProfile(empId, { photo: e.target.result });
+      toast.success('Profile picture uploaded successfully! 📸');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const getEmployeePhoto = (empId, fullName) => {
+    if (profilesData[empId]?.photo) {
+      return profilesData[empId].photo;
+    }
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || "User")}&background=1e293b&color=c89a54&bold=true&size=128`;
+  };
 
 
   const [formData, setFormData] = useState({
@@ -217,7 +287,7 @@ export default function Employees() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] px-4 sm:px-8 py-8 space-y-8 font-sans antialiased">
+    <div className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] px-4 sm:px-4 py-4 space-y-4 font-sans antialiased">
 
       {/* Header Deck */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-ink-soft)]/10 pb-6 gap-4">
@@ -317,25 +387,47 @@ export default function Employees() {
               ) : (
                 filteredUsers.map((emp) => {
                   const perf = getPerfStats(emp.fullName);
+                  const profile = getEmployeeProfile(emp.employeeId);
+                  const displayName = profile.fullNameOverride || emp.fullName;
+                  const displayPhone = profile.phoneOverride || emp.phone || 'N/A';
+                  const displayRole = profile.roleOverride || emp.role;
+                  const displayDept = profile.departmentOverride || emp.department || 'HQ';
+                  const displayStatus = profile.employmentStatus || 'Probation';
                   return (
                     <tr key={emp._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition duration-150">
 
                       {/* Identity Column */}
                       <td className="py-4 px-6">
-                        <div className="space-y-0.5">
-                          <div className="font-serif text-[var(--crm-heading)] font-medium text-base">{emp.fullName}</div>
-                          <div className="text-xs font-mono text-[var(--crm-ink-faint)] font-medium">ID Token: {emp.employeeId}</div>
-                          <div className="text-xs text-[var(--crm-ink-faint)] font-light">{emp.email}</div>
+                        <div className="flex items-center gap-3 text-left">
+                          <div className="w-9 h-9 rounded-full overflow-hidden border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] shrink-0">
+                            <img src={getEmployeePhoto(emp.employeeId, displayName)} alt={displayName} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="font-serif text-[var(--crm-heading)] font-medium text-base">{displayName}</div>
+                            <div className="text-xs font-mono text-[var(--crm-ink-faint)] font-medium">ID: {emp.employeeId} • Phone: {displayPhone}</div>
+                            <div className="text-xs text-[var(--crm-ink-faint)] font-light">{emp.email}</div>
+                          </div>
                         </div>
                       </td>
 
                       {/* Department and Structural Role */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 text-left">
                         <div className="space-y-1.5">
-                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
-                            {emp.department} Sector
-                          </span>
-                          <div className="text-xs text-[var(--crm-ink-faint)] font-medium tracking-wide pl-0.5">{emp.role}</div>
+                          <div className="flex flex-wrap gap-1 items-center">
+                            <span className="inline-block px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
+                              {displayDept} Sector
+                            </span>
+                            <span className={`inline-block px-1.5 py-0.5 text-[7px] font-mono font-bold tracking-wider uppercase rounded border ${
+                              displayStatus === 'Temporary' 
+                                ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/25' 
+                                : displayStatus === 'Probation' 
+                                ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25' 
+                                : 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25'
+                            }`}>
+                              {displayStatus}
+                            </span>
+                          </div>
+                          <div className="text-xs text-[var(--crm-ink-faint)] font-medium tracking-wide pl-0.5">{displayRole}</div>
                         </div>
                       </td>
 
@@ -426,6 +518,13 @@ export default function Employees() {
                       {/* Action Triggers */}
                       <td className="py-4 px-6 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setEditingEmpId(emp._id)}
+                            className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-accent)] p-2 rounded-lg hover:bg-[var(--crm-bg)] transition duration-200 cursor-pointer"
+                            title="Edit Details"
+                          >
+                            <FiEdit size={14} />
+                          </button>
                           <Link
                             to={`/crm/employees/${emp._id}`}
                             className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-2 rounded-lg hover:bg-[var(--crm-bg)] transition duration-200 inline-flex"
@@ -596,6 +695,244 @@ export default function Employees() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Edit Employee Details Modal */}
+      {editingEmpId && (() => {
+        const emp = users.find(e => e._id === editingEmpId);
+        if (!emp) return null;
+        const profile = getEmployeeProfile(emp.employeeId);
+        const displayName = profile.fullNameOverride || emp.fullName;
+        const photo = getEmployeePhoto(emp.employeeId, displayName);
+        return (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <div className="bg-[var(--crm-bg-raised)] rounded-sm w-full max-w-3xl border border-[var(--crm-line)] shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col text-left">
+              {/* Modal Header */}
+              <div className="relative border-b border-[var(--crm-line)] p-6 bg-[var(--crm-bg-sunken)]/40 flex items-start gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden border border-[var(--crm-line)] shrink-0 bg-[var(--crm-bg-sunken)]">
+                  <img src={photo} alt={displayName} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <span className="text-[8px] font-mono font-bold tracking-widest bg-[var(--crm-accent-bg)] px-2 py-0.5 border border-[var(--crm-accent)]/20 text-[var(--crm-accent)] uppercase rounded-sm inline-block">
+                    {emp.employeeId}
+                  </span>
+                  <h2 className="font-serif text-lg text-[var(--crm-heading)] leading-none">{displayName}</h2>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{emp.email}</p>
+                </div>
+                <button
+                  onClick={() => setEditingEmpId(null)}
+                  className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-sm bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-7 h-7 flex items-center justify-center rounded-sm transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)] space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] font-sans">
+                  
+                  {/* Personal / Identification Column */}
+                  <div className="space-y-3">
+                    <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-1 flex items-center gap-1.5">
+                      <FiUser size={12} className="text-[var(--crm-accent)]" /> Personal & Photo
+                    </h5>
+                    <div className="space-y-2">
+                      <div className="flex flex-col gap-1.5 items-center pb-3 border-b border-[var(--crm-line)]">
+                        <div className="w-20 h-20 rounded-full overflow-hidden border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] relative group">
+                          <img src={photo} alt="Avatar" className="w-full h-full object-cover" />
+                        </div>
+                        <label className="text-[8px] font-mono font-bold uppercase tracking-wider bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] text-[var(--crm-accent)] px-2.5 py-1 rounded-sm cursor-pointer hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition-all text-center">
+                          Change Photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUpload(emp.employeeId, e.target.files[0])}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Employee Name *</span>
+                        <input
+                          type="text"
+                          value={profile.fullNameOverride !== undefined && profile.fullNameOverride !== '' ? profile.fullNameOverride : emp.fullName}
+                          onChange={(e) => handleUpdateProfile(emp.employeeId, { fullNameOverride: e.target.value })}
+                          className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                          placeholder="Full Name"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Phone Number *</span>
+                        <input
+                          type="text"
+                          value={profile.phoneOverride !== undefined && profile.phoneOverride !== '' ? profile.phoneOverride : (emp.phone || '')}
+                          onChange={(e) => handleUpdateProfile(emp.employeeId, { phoneOverride: e.target.value })}
+                          className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                          placeholder="Phone Number"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status & Access Column */}
+                  <div className="space-y-3">
+                    <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-1 flex items-center gap-1.5">
+                      <FiBriefcase size={12} className="text-[var(--crm-accent)]" /> Role & Status
+                    </h5>
+                    <div className="space-y-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Corporate Role *</span>
+                        <select
+                          value={profile.roleOverride || emp.role}
+                          onChange={async (e) => {
+                            const nextRole = e.target.value;
+                            handleUpdateProfile(emp.employeeId, { roleOverride: nextRole });
+                            try {
+                              await adminApi.updateUserRole(emp._id, nextRole);
+                              toast.success(`Role synced to database! 🚀`);
+                              fetchData();
+                            } catch (err) {
+                              console.error(err);
+                              toast.error('Failed to sync role to database');
+                            }
+                          }}
+                          className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] cursor-pointer"
+                        >
+                          <option value="ADMIN">ADMIN</option>
+                          <option value="MANAGER">MANAGER</option>
+                          <option value="SALES">SALES</option>
+                          <option value="PROCUREMENT">PROCUREMENT</option>
+                          <option value="ACCOUNTS">ACCOUNTS</option>
+                          <option value="HR">HR</option>
+                          <option value="IT">IT</option>
+                          <option value="FINANCE">FINANCE</option>
+                          <option value="SOFTWARE_ENGINEER">SOFTWARE ENGINEER</option>
+                          <option value="SYSTEM">SYSTEM</option>
+                          <option value="AI">AI</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Department *</span>
+                        <select
+                          value={profile.departmentOverride || emp.department || 'HQ'}
+                          onChange={async (e) => {
+                            const nextDept = e.target.value;
+                            handleUpdateProfile(emp.employeeId, { departmentOverride: nextDept });
+                            try {
+                              await adminApi.updateUserDepartment(emp._id, nextDept);
+                              toast.success(`Department synced to database! 📁`);
+                              fetchData();
+                            } catch (err) {
+                              console.error(err);
+                              toast.error('Failed to sync department to database');
+                            }
+                          }}
+                          className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] cursor-pointer"
+                        >
+                          <option value="STONE">STONE</option>
+                          <option value="COAL">COAL</option>
+                          <option value="TEA">TEA</option>
+                          <option value="RICE">RICE</option>
+                          <option value="TRANSPORT">TRANSPORT</option>
+                          <option value="ADMIN">ADMIN</option>
+                          <option value="IT">IT</option>
+                          <option value="PROCUREMENT">PROCUREMENT</option>
+                          <option value="ACCOUNTS">ACCOUNTS</option>
+                          <option value="HR">HR</option>
+                          <option value="SALES">SALES</option>
+                          <option value="CRM">CRM</option>
+                          <option value="FINANCE">FINANCE</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Employment Status *</span>
+                        <select
+                          value={profile.employmentStatus || 'Probation'}
+                          onChange={(e) => handleUpdateProfile(emp.employeeId, { employmentStatus: e.target.value })}
+                          className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] cursor-pointer"
+                        >
+                          <option value="Full-time">Full-time</option>
+                          <option value="Temporary">Temporary</option>
+                          <option value="Probation">Probation</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Compliance & Financial Column */}
+                  <div className="space-y-3">
+                    <h5 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider border-b border-[var(--crm-line)] pb-1 flex items-center gap-1.5">
+                      <FiShield size={12} className="text-[var(--crm-accent)]" /> Compliance & Bank
+                    </h5>
+                    <div className="space-y-2">
+                      <div className="space-y-2 pb-3 border-b border-[var(--crm-line)]">
+                        <h6 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider">Aadhaar details</h6>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Aadhaar Card Number</span>
+                          <input
+                            type="text"
+                            value={profile.aadhaar || ''}
+                            onChange={(e) => handleUpdateProfile(emp.employeeId, { aadhaar: e.target.value })}
+                            className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                            placeholder="12-digit UIDAI Number"
+                          />
+                        </div>
+                        <div className="flex justify-between items-center pt-1.5">
+                          <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Verification status</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateProfile(emp.employeeId, { aadhaarVerified: !profile.aadhaarVerified })}
+                            className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                              profile.aadhaarVerified
+                                ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25'
+                                : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-[var(--crm-accent)] hover:text-white'
+                            }`}
+                          >
+                            {profile.aadhaarVerified ? 'Verified ✓' : 'Verify'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2 pt-2">
+                        <h6 className="text-[9px] font-mono font-bold text-[var(--crm-accent)] uppercase tracking-wider">Bank Details</h6>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Bank Name</span>
+                          <input
+                            type="text"
+                            value={profile.bankName || ''}
+                            onChange={(e) => handleUpdateProfile(emp.employeeId, { bankName: e.target.value })}
+                            className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                            placeholder="e.g. State Bank of India"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">Account Number</span>
+                          <input
+                            type="text"
+                            value={profile.bankAccount || ''}
+                            onChange={(e) => handleUpdateProfile(emp.employeeId, { bankAccount: e.target.value })}
+                            className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px]"
+                            placeholder="Account Number"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] uppercase tracking-wider font-mono text-[var(--crm-ink-faint)]">IFSC Code</span>
+                          <input
+                            type="text"
+                            value={profile.bankIFSC || ''}
+                            onChange={(e) => handleUpdateProfile(emp.employeeId, { bankIFSC: e.target.value })}
+                            className="bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 text-[var(--crm-heading)] px-2 py-1.5 rounded-sm w-full outline-none text-[11px] uppercase"
+                            placeholder="IFSC Code"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

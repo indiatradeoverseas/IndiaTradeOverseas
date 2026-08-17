@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { SkeletonStatGrid, SkeletonChartCard, SkeletonListCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
+import EmployeeDashboard from './EmployeeDashboard';
 
 // Staggered layout entry configurations
 const containerVariants = {
@@ -143,7 +144,12 @@ export default function Dashboard() {
         setNotifications(notificationsRes.data.notifications);
         setUnreadCount(notificationsRes.data.notifications.filter((item) => !item.isRead).length);
       }
-      if (user.role === 'ADMIN') {
+      const isAdminUser =
+        user?.role === 'ADMIN' ||
+        user?.department === 'ADMIN' ||
+        (user?.position && user.position.toLowerCase().includes('admin'));
+
+      if (isAdminUser) {
         const [summaryRes, pipelineRes, performanceRes] = await Promise.all([
           adminApi.getDashboardSummary(), adminApi.getPipeline(), adminApi.getEmployeePerformance()
         ]);
@@ -164,7 +170,10 @@ export default function Dashboard() {
     }
   };
 
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin =
+    user?.role === 'ADMIN' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin'));
   const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
 
   if (loading) {
@@ -181,6 +190,10 @@ export default function Dashboard() {
         </div>
       </div>
     );
+  }
+
+  if (user?.role === 'EMPLOYEE' && !isAdmin) {
+    return <EmployeeDashboard />;
   }
 
   const stats = isAdmin ? [

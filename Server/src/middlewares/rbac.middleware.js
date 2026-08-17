@@ -6,7 +6,12 @@ function rbac(...allowedRoles) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Unauthorized: Authentication required', [], req);
     }
 
-    if (allowedRoles.includes('*') || allowedRoles.includes(req.user.role)) {
+    const isAdminUser =
+      req.user.role === 'ADMIN' ||
+      req.user.department === 'ADMIN' ||
+      (req.user.position && req.user.position.toLowerCase().includes('admin'));
+
+    if (isAdminUser || allowedRoles.includes('*') || allowedRoles.includes(req.user.role)) {
       return next();
     }
 

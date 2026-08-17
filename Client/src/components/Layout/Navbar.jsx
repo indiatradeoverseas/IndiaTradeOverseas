@@ -18,6 +18,10 @@ import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const isAdmin =
+    user?.role === 'ADMIN' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin'));
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -305,7 +309,7 @@ export default function Navbar() {
                             <FiPackage size={12} /> <span>DASHBOARD</span>
                           </Link>
                         )}
-                        {user?.role === 'ADMIN' && (
+                        {isAdmin && (
                           <Link to="/crm/admin" className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]">
                             <FiSettings size={12} /> <span>ADMIN PANEL</span>
                           </Link>
@@ -465,7 +469,7 @@ export default function Navbar() {
                       </Link>
                     </motion.div>
                   )}
-                  {user?.role === 'ADMIN' && (
+                  {isAdmin && (
                     <motion.div variants={mobileMenuItem}>
                       <Link
                         to="/crm/admin"

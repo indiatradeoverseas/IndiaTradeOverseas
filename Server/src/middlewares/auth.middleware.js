@@ -20,8 +20,13 @@ async function authenticate(req, res, next) {
       user = await Admin.findById(decoded.sub);
     }
 
-    if (!user || !user.isActive) {
-      return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User is deactivated or invalid', [], req);
+    if (!user) {
+      const Employee = require('../modules/employee/employee.model');
+      user = await Employee.findById(decoded.sub);
+    }
+
+    if (!user || (user.isActive === false) || (user.status === 'INACTIVE')) {
+      return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User/Employee is deactivated or invalid', [], req);
     }
 
     req.user = user;

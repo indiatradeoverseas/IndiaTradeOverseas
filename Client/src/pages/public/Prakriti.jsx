@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -279,12 +279,19 @@ export default function Prakriti() {
         toast.success("Secured customer session terminated.");
     };
 
-    // Manual "exit" from the marketplace — just switches the view back to the
-    // storefront. Does NOT clear the saved session, so a refresh/reopen restores
-    // straight back in without re-verification, as long as the CRM record still exists.
     const handleExitTerminal = () => {
-        setUserAccessLayer(1);
+        handleLogOut();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleExploreProducts = () => {
+        const savedId = localStorage.getItem('prakriti_distributor_id');
+        const token = localStorage.getItem('distributor_token');
+        if (!savedId || !token) {
+            setShowEntryGate(true);
+        } else {
+            setUserAccessLayer(5);
+        }
     };
 
     const filteredMarketLots = APPROVED_MARKETPLACE_DATA.filter(lot =>
@@ -914,7 +921,7 @@ export default function Prakriti() {
                                     transition={{ duration: 0.8, delay: 0.8 }}
                                 >
                                     <button
-                                        onClick={() => setUserAccessLayer(5)}
+                                        onClick={handleExploreProducts}
                                         className="bg-[#50C878] hover:bg-[#40b064] text-[#0B3D2E] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider px-6 sm:px-8 py-3.5 sm:py-4 rounded-lg shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
                                     >
                                         Explore Products
@@ -1017,7 +1024,7 @@ export default function Prakriti() {
 
                                         <div className="pt-4 border-t border-white/5 mt-5">
                                             <button
-                                                onClick={() => setUserAccessLayer(5)}
+                                                onClick={handleExploreProducts}
                                                 className="w-full bg-white/5 hover:bg-[#50C878] text-white hover:text-[#004B3B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                                             >
                                                 <span className="tracking-tight">Explore Products</span>
@@ -1104,7 +1111,7 @@ export default function Prakriti() {
                                         </p>
                                         <div className="pt-2">
                                             <button
-                                                onClick={() => setUserAccessLayer(5)}
+                                                onClick={handleExploreProducts}
                                                 className="bg-[#004B3B] hover:bg-[#06362a] text-[#50C878] font-mono text-[9px] sm:text-xs font-bold uppercase tracking-wider px-4 sm:px-10 py-3.5 sm:py-4 rounded-lg shadow-md transition-all inline-flex items-center justify-center gap-2 w-full sm:w-auto"
                                             >
                                                 <FiBriefcase className="shrink-0" />
