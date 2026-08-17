@@ -362,6 +362,12 @@ export function VoiceAssistantProvider({ children }) {
   // handleTranscript (passed INTO that same call) needs to invoke it - a ref
   // breaks the circular dependency without relying on stale closures.
   const setMutedRef = useRef(() => {});
+  // useVoiceRecognition's onresult fires on EVERY final transcript
+  // regardless of mute state (mute is a concept this provider owns, not the
+  // hook) - so this provider, not the hook, must be the one that refuses to
+  // act on a navigate command while muted. A ref (not a status dependency
+  // on handleTranscript) avoids the same circularity as setMutedRef above.
+  const statusRef = useRef('off');
 
   const handleTranscript = useCallback((transcript) => {
     const navItems = getCrmCommandItems(user);
@@ -381,6 +387,7 @@ export function VoiceAssistantProvider({ children }) {
     }
 
     if (command.type === 'navigate') {
+      if (statusRef.current === 'muted') return;
       navigate(command.to);
       toast.success(`Voice: opening ${command.label}`);
     }
@@ -393,6 +400,10 @@ export function VoiceAssistantProvider({ children }) {
   useEffect(() => {
     setMutedRef.current = setMuted;
   }, [setMuted]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   // This provider only exists while a CRM user is logged in (see the mount
   // point in App.jsx), so mount/unmount IS login/logout - no separate

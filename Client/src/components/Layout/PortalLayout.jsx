@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FiMenu, FiX } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
+import VoiceStatusPill from './VoiceStatusPill';
 // Removed the duplicate main-site Navbar import from here to protect CRM view real estate
 
 export default function PortalLayout({ children }) {
@@ -61,7 +62,9 @@ export default function PortalLayout({ children }) {
           >
             India Trade Center
           </div>
-          <div className="w-8" />
+          <div className="w-8 flex items-center justify-end">
+            <VoiceStatusPill compact />
+          </div>
         </div>
       </div>
 
@@ -102,9 +105,10 @@ export default function PortalLayout({ children }) {
 
           {/* Desktop utility bar */}
           <div
-            className="hidden md:flex items-center justify-end px-8 py-3 border-b"
+            className="hidden md:flex items-center justify-end gap-3 px-8 py-3 border-b"
             style={{ borderColor: 'var(--crm-line)' }}
           >
+            <VoiceStatusPill />
             <CommandPalette />
           </div>
 
