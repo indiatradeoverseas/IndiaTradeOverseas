@@ -608,9 +608,9 @@ export default function Home() {
                   <h4 className="text-lg font-serif font-medium text-[#F2F4F7] mb-2.5">{v.title}</h4>
                   <p className="text-[#C5CBD3] text-xs font-sans font-light leading-[1.6] mb-6">{v.desc}</p>
                 </div>
-                <Link to="/products" className="w-full h-[40px] inline-flex items-center justify-center text-center bg-[#0E1116] hover:bg-[#2B3440] border border-[#C5CBD3]/24 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans text-[11px] uppercase tracking-widest font-semibold transition-colors duration-150 rounded-[2px]">
+                <button type="button" className="w-full h-[40px] inline-flex items-center justify-center text-center bg-[#0E1116] hover:bg-[#2B3440] border border-[#C5CBD3]/24 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans text-[11px] uppercase tracking-widest font-semibold transition-colors duration-150 rounded-[2px] cursor-pointer">
                   {v.cta}
-                </Link>
+                </button>
               </motion.div>
             ))}
           </motion.div>
