@@ -69,7 +69,7 @@ const TEASER_CARGO_STREAM = [
     { id: 4, hub: "Brahmaputra Trade Corridor", grade: "Sugandha Aromatic - Polished Steam", size: "25 KG Trade Packs", destination: "Private Label Brands & Gourmet Chains" }
 ];
 
-// Official ITO Ex-Mill (Haryana) Rice Rate Card â€” variety -> processing-grade price per Metric Ton (MT)
+// Official ITO Ex-Mill (Haryana) Rice Rate Card — variety -> processing-grade price per Metric Ton (MT)
 // Source: "ITO Rice Price List.pdf". Packing: 50 KG White PP Bag (Non-Branded), Crop Year 2025. `null` = not offered for that variety.
 const RICE_PROCESSING_KEYS = ['raw', 'steam', 'whiteSella', 'lemonSella', 'goldenSella', 'brown'];
 const RICE_PROCESSING_LABELS = {
@@ -304,7 +304,7 @@ export default function RicePage() {
     }, []);
 
     // Entry-gate verification (name/email/phone/location + OTP already handled
-    // inside BuyerEntryGate) â€” just adopt the resulting session.
+    // inside BuyerEntryGate) — just adopt the resulting session.
     const handleGateVerified = (activeId, activeToken) => {
         if (activeId) {
             setDistributorId(activeId);
@@ -374,8 +374,8 @@ export default function RicePage() {
         const processingLabel = RICE_PROCESSING_LABELS[rateProcessingType];
         setActiveDrawerLot({
             id: `${rateCompliance}-${activeRiceRateEntry.variety.toUpperCase().replace(/[^A-Z0-9]+/g, '-')}-${rateProcessingType.toUpperCase()}`,
-            variety: `${activeRiceRateEntry.variety} (${activeRiceRateEntry.mm}) â€” ${processingLabel}`,
-            location: rateCompliance === 'COMPLIANCE' ? 'EU / UK / USA Compliance â€” Ex-Mill Haryana' : 'Ex-Mill Haryana (Domestic Grade)',
+            variety: `${activeRiceRateEntry.variety} (${activeRiceRateEntry.mm}) — ${processingLabel}`,
+            location: rateCompliance === 'COMPLIANCE' ? 'EU / UK / USA Compliance — Ex-Mill Haryana' : 'Ex-Mill Haryana (Domestic Grade)',
             price: Number((activeRiceRatePriceMT / 1000).toFixed(2)),
             inventory: 'MOQ 20,000 Kg (20 MT / One Truckload)'
         });
@@ -431,7 +431,7 @@ export default function RicePage() {
                         <h2 className="text-2xl uppercase tracking-wider font-bold">B2B Account Under Evaluation</h2>
                         <div className="h-0.5 w-16 mx-auto bg-[#A67C2D]" />
                         <blockquote className="font-sans text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed italic border-l-4 pl-4 py-2 border-[#D9B85C] bg-[#FFF9EC]/50 text-left">
-                            â€œYour Prakriti Rice buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.â€
+                            "Your Prakriti Rice buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved."
                         </blockquote>
                         <div className="p-5 rounded-xl border text-left text-xs font-sans text-neutral-500 space-y-2 max-w-md mx-auto" style={{ backgroundColor: '#FFF9EC', borderColor: '#F2E3B4' }}>
                             <div className="font-bold uppercase font-mono tracking-widest text-[10px]" style={{ color: '#5A4422' }}>Audit Authentication Pipeline:</div>
@@ -684,7 +684,7 @@ export default function RicePage() {
                         {/* Official Rate Card Selector */}
                         <div className="space-y-4 text-left">
                             <h3 className="font-serif text-lg text-[#5A4422] uppercase tracking-wider font-bold px-1">
-                                Official Rate Card â€” Select Compliance, Variety &amp; Processing Grade
+                                Official Rate Card — Select Compliance, Variety &amp; Processing Grade
                             </h3>
 
                             <div className="bg-white border rounded-xl p-4 sm:p-6 shadow-sm space-y-4" style={{ borderColor: '#F2E3B4' }}>
@@ -770,7 +770,7 @@ export default function RicePage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-sans text-neutral-500 pt-1">
-                                    <p>Packing: 50 KG White PP Bag (Non-Branded). Minimum Order Quantity: 20â€“25 MT (One Truckload).</p>
+                                    <p>Packing: 50 KG White PP Bag (Non-Branded). Minimum Order Quantity: 20–25 MT (One Truckload).</p>
                                     <p>Payment Terms: 20% Advance, balance against loading (Ex-Mill) / against LR (FOR). Rates valid until 01/08/2026.</p>
                                 </div>
                             </div>
@@ -1298,7 +1298,7 @@ export default function RicePage() {
 
             <footer className="py-12 border-t font-sans text-[11px] text-center" style={{ backgroundColor: '#5A4422', borderColor: '#A67C2D', color: '#F2E3B4' }}>
                 <div className="max-w-7xl mx-auto px-6 space-y-2">
-                    <p className="font-serif font-bold tracking-wide text-sm text-[#FFF9EC]">PRAKRITI AGRICULTURAL COMMODITY DIVISION â€” INDIA TRADE OVERSEAS</p>
+                    <p className="font-serif font-bold tracking-wide text-sm text-[#FFF9EC]">PRAKRITI AGRICULTURAL COMMODITY DIVISION — INDIA TRADE OVERSEAS</p>
                     <p className="max-w-md mx-auto opacity-75 font-light">
                         Corporate administrative offices handled out of Deramari, Kishanganj, Bihar - 855107. All lot pricing matrices are subject to direct confirmation.
                     </p>
