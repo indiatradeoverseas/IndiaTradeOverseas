@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { distributorApi } from '../../api/distributor';
 import { toast } from 'react-hot-toast';
 import {
-    FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiSearch, FiChevronDown, FiLayers
+    FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiSearch, FiChevronDown, FiLayers, FiTrash2
 } from 'react-icons/fi';
 import ProposalCard from '../../components/crm/ProposalCard';
 import DivisionSection from '../../components/crm/DivisionSection';
@@ -55,6 +55,23 @@ export default function Visitors() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handleDeleteVisitor = async (visitorId) => {
+        if (!window.confirm("Permanently delete this visitor record? This cannot be undone.")) return;
+
+        try {
+            const res = await distributorApi.deleteDistributor(visitorId);
+            if (res && res.success) {
+                setVisitors(prev => prev.filter(v => v._id !== visitorId));
+                toast.success("Visitor record deleted.");
+            } else {
+                toast.error(res?.message || "Failed to delete visitor record.");
+            }
+        } catch (err) {
+            console.error("Failed to delete visitor record:", err);
+            toast.error("Failed to delete visitor record.");
+        }
+    };
 
     const divisionVisitors = visitors.filter(v => v.division === division);
 
@@ -140,16 +157,6 @@ export default function Visitors() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2 shrink-0">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[10px] font-mono uppercase font-bold tracking-tight bg-[var(--crm-bg)] border ${
-                                                            visitor.isOtpVerified ? 'text-[var(--crm-positive)] border-[var(--crm-positive-bg)]' : 'text-[var(--crm-ink-faint)] border-[var(--crm-ink-soft)]/20'
-                                                        }`}>
-                                                            {visitor.isOtpVerified ? 'OTP Verified' : 'OTP Pending'}
-                                                        </span>
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[10px] font-mono uppercase font-bold tracking-tight bg-[var(--crm-bg)] border ${
-                                                            visitor.approvalStatus === 'approved' ? 'text-[var(--crm-positive)] border-[var(--crm-positive-bg)]' : 'text-[var(--crm-warning)] border-[var(--crm-warning-bg)]'
-                                                        }`}>
-                                                            {visitor.approvalStatus}
-                                                        </span>
                                                         {visitorProposals.length > 0 && (
                                                             <button
                                                                 onClick={() => setExpandedVisitorId(isExpanded ? null : visitor._id)}
@@ -158,6 +165,13 @@ export default function Visitors() {
                                                                 Orders ({visitorProposals.length}) <FiChevronDown className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} size={11} />
                                                             </button>
                                                         )}
+                                                        <button
+                                                            onClick={() => handleDeleteVisitor(visitor._id)}
+                                                            title="Delete Visitor Record"
+                                                            className="p-1.5 text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] rounded-sm transition-all cursor-pointer"
+                                                        >
+                                                            <FiTrash2 size={13} />
+                                                        </button>
                                                     </div>
                                                 </div>
 
