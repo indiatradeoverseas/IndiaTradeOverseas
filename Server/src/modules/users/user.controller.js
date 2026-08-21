@@ -353,6 +353,35 @@ async function listEmployeeDocuments(req, res, next) {
   }
 }
 
+async function uploadMyProfileImage(req, res, next) {
+  try {
+    if (!req.file) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Profile image file is required');
+    }
+
+    const fileUrl = `uploads/profile-images/${req.file.filename}`;
+
+    const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
+
+    let updated;
+    if (isEmployee) {
+      const Employee = require('../employee/employee.model');
+      updated = await Employee.findByIdAndUpdate(req.user._id, { profileImage: fileUrl }, { new: true });
+    } else if (isAdmin) {
+      const Admin = require('../admin-auth/admin.model');
+      updated = await Admin.findByIdAndUpdate(req.user._id, { profileImage: fileUrl }, { new: true });
+    } else {
+      const User = require('./user.model');
+      updated = await User.findByIdAndUpdate(req.user._id, { profileImage: fileUrl }, { new: true });
+    }
+
+    return ok(res, { profile: updated }, 'Profile image uploaded successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createEmployee,
   listUsers,
@@ -370,5 +399,6 @@ module.exports = {
   updateEmploymentStatus,
   uploadMyDocument,
   listMyDocuments,
-  listEmployeeDocuments
+  listEmployeeDocuments,
+  uploadMyProfileImage
 };

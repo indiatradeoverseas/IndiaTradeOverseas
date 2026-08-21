@@ -7,7 +7,7 @@ router.use(authenticate);
 
 router.get('/performance/me', getMyPerformance);
 router.get('/targets/me', getMyTarget);
-router.post('/targets', rbac('ADMIN', 'MANAGER'), setTarget);
+router.post('/targets', rbac('ADMIN'), setTarget);
 router.get('/targets', rbac('ADMIN', 'MANAGER'), listTargets);
 router.get('/leaderboard', rbac('ADMIN', 'MANAGER'), getLeaderboard);
 

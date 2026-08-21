@@ -110,7 +110,7 @@ async function getMyHistory(req, res, next) {
 // 5. Get General Attendance Report & Telemetry Stats (HR/Manager)
 async function getReport(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
     }
 
@@ -181,7 +181,7 @@ async function getReport(req, res, next) {
 // 6. Trigger Biometric Sync Simulation (HR/Manager)
 async function triggerBiometricSync(req, res, next) {
   try {
-    if (!['ADMIN', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'HR_MANAGER'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin privilege required', [], req);
     }
 

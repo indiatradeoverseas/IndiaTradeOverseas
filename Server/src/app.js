@@ -27,6 +27,7 @@ const leaveRoutes = require('./modules/leave/leave.routes');
 const salesRoutes = require('./modules/sales/sales.routes');
 const employeeRoutes = require('./modules/employee/employee.routes');
 const taskRoutes = require('./modules/task/task.routes');
+const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 
 
 const app = express();
@@ -45,6 +46,9 @@ app.use(cors());
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+const path = require('path');
+app.use('/uploads/profile-images', express.static(path.join(__dirname, '../uploads/profile-images')));
 
 
 app.use(rateLimiter);
@@ -103,7 +107,8 @@ const apiRoutes = [
   { path: '/leaves', router: leaveRoutes },
   { path: '/sales', router: salesRoutes },
   { path: '/employee', router: employeeRoutes },
-  { path: '/tasks', router: taskRoutes }
+  { path: '/tasks', router: taskRoutes },
+  { path: '/shared-files', router: sharedFileRoutes }
 ];
 
 apiRoutes.forEach(route => {
@@ -122,7 +127,7 @@ const rbac = require('./middlewares/rbac.middleware');
 const { authenticate } = require('./middlewares/auth.middleware');
 
 adminFallbackRouter.patch('/leads/:leadId/assign', authenticate, rbac('ADMIN', 'MANAGER', 'HR'), require('./modules/leads/lead.controller').assignLead);
-adminFallbackRouter.get('/users', authenticate, rbac('ADMIN', 'MANAGER', 'HR'), require('./modules/users/user.controller').listUsers);
+adminFallbackRouter.get('/users', authenticate, rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), require('./modules/users/user.controller').listUsers);
 
 adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER'));
 adminFallbackRouter.get('/dashboard/summary', require('./modules/reports/report.controller').getAdminSummary);

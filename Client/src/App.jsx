@@ -51,9 +51,11 @@ import Tickets from './pages/crm/Tickets';
 import Leave from './pages/crm/Leave';
 import EmployeeProfile from './pages/crm/EmployeeProfile';
 import SalesPerformance from './pages/crm/SalesPerformance';
+import SalesDashboard from './pages/crm/SalesDashboard';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
+import FounderDashboard from './pages/crm/FounderDashboard/FounderDashboard';
 
 
 import Navbar from './components/Layout/Navbar';
@@ -230,6 +232,7 @@ function AppLayout() {
           <Route path="/crm/profile" element={<EmployeeProfile />} />
           <Route path="/crm/tickets" element={<Tickets />} />
           <Route path="/crm/sales" element={<SalesPerformance />} />
+          <Route path="/crm/sales-dashboard" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
           <Route path="/crm/distributors" element={<Navigate to="/crm/distributors/tea" replace />}/>
           <Route path="/crm/distributors/:division" element={<Distributors />}/>
           <Route path="/crm/visitors" element={<Navigate to="/crm/visitors/tea" replace />}/>
@@ -247,7 +250,7 @@ function AppLayout() {
           <Route
             path="/crm/leads"
             element={
-              (isAdminUser(user) || user?.leadPermission === true) ? (
+              (isAdminUser(user) || ['MANAGER', 'HR', 'SALES', 'EMPLOYEE'].includes(user?.role) || user?.leadPermission === true) ? (
                 <Leads />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -257,7 +260,7 @@ function AppLayout() {
           <Route
             path="/crm/leads/:id"
             element={
-              (isAdminUser(user) || user?.leadPermission === true || user?.taskPermission === true) ? (
+              (isAdminUser(user) || ['MANAGER', 'HR', 'SALES', 'EMPLOYEE'].includes(user?.role) || user?.leadPermission === true || user?.taskPermission === true) ? (
                 <LeadDetail />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -327,6 +330,14 @@ function AppLayout() {
             element={
               <RoleProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR']}>
                 <HrExecutiveDashboard />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/founder"
+            element={
+              <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                <FounderDashboard />
               </RoleProtectedRoute>
             }
           />

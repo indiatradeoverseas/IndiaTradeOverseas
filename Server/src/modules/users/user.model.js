@@ -14,6 +14,7 @@ const employmentHistorySchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.Mixed },
     employeeId: {
       type: String,
       unique: true,
@@ -117,9 +118,20 @@ const userSchema = new mongoose.Schema(
     },
 
     // Extended personal profile
+    profileImage: { type: String, default: '' },
     fatherName: { type: String, default: '' },
     dateOfBirth: { type: Date, default: null },
     address: { type: String, default: '' },
+    addressCont: { type: String, default: '' },
+    city: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
+    levelOfEducation: { type: String, default: 'Higher Education' },
+    degree: { type: String, default: 'Electrical Engineering' },
+    hardSkill: { type: String, default: 'Technical Support' },
+    softSkill: { type: String, default: 'Communication' },
+    taxNumber: { type: String, default: '' },
+    nationality: { type: String, default: 'India' },
+    age: { type: Number, default: 28 },
     emergencyContactName: { type: String, default: '' },
     emergencyContactPhone: { type: String, default: '' },
     dateOfJoining: { type: Date, default: null },

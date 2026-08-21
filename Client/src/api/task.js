@@ -8,7 +8,10 @@ export const taskApi = {
   },
 
   async createTask(taskData) {
-    const response = await axiosInstance.post('/tasks', taskData);
+    // Support both plain JSON and FormData (when file is attached)
+    const isFormData = taskData instanceof FormData;
+    const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const response = await axiosInstance.post('/tasks', taskData, config);
     return response.data;
   },
 
@@ -19,6 +22,12 @@ export const taskApi = {
 
   async deleteTask(taskId) {
     const response = await axiosInstance.delete(`/tasks/${taskId}`);
+    return response.data;
+  },
+
+  async getEmployeesByDepartment(department) {
+    const params = department ? `?department=${department}` : '';
+    const response = await axiosInstance.get(`/tasks/employees${params}`);
     return response.data;
   }
 };

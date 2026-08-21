@@ -50,5 +50,10 @@ export const leadsApi = {
   async sendEmailActivity(leadId, subject, body) {
     const response = await axiosInstance.post(`/leads/${leadId}/send-email`, { subject, body });
     return response.data;
+  },
+
+  async assignLeadsBulk(bulkData) {
+    const response = await axiosInstance.post('/leads/assign', bulkData);
+    return response.data;
   }
 };

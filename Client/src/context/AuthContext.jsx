@@ -29,16 +29,11 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       try {
         const storedUser = JSON.parse(localStorage.getItem('user'));
-        const isEmployee = storedUser && [
-          'EMPLOYEE',
-          'HR_EXECUTIVE',
-          'HR_MANAGER',
-          'HR',
-          'ADMIN',
-          'MANAGER',
-          'SALES_EXECUTIVE',
-          'SALES_MANAGER'
-        ].includes(storedUser.role);
+        const isEmployeeAuth = localStorage.getItem('isEmployeeAuth');
+        const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR', 'MANAGER', 'SALES', 'SALES_EXECUTIVE', 'SALES_MANAGER'];
+        const isEmployee = isEmployeeAuth !== null
+          ? isEmployeeAuth === 'true'
+          : (storedUser && EMPLOYEE_ROLES.includes(storedUser.role));
 
         let response;
         if (isEmployee) {
@@ -46,18 +41,18 @@ export const AuthProvider = ({ children }) => {
           if (response.success) {
             setUser(response.data.employee);
           } else {
-            authApi.logout();
+            logout();
           }
         } else {
           response = await authApi.getMe();
           if (response.success) {
             setUser(response.data.user);
           } else {
-            authApi.logout();
+            logout();
           }
         }
       } catch (error) {
-        authApi.logout();
+        logout();
       }
     }
     setLoading(false);
@@ -67,6 +62,7 @@ export const AuthProvider = ({ children }) => {
     const deviceHash = localStorage.getItem('deviceHash');
     const response = await authApi.login({ ...credentials, deviceHash });
     if (response.success && !response.data.requiresOtp) {
+      localStorage.setItem('isEmployeeAuth', 'false');
       setUser(response.data.user);
     }
     return response;
@@ -75,6 +71,7 @@ export const AuthProvider = ({ children }) => {
   const employeeLogin = async (credentials) => {
     const response = await employeeSignupApi.login(credentials);
     if (response.success) {
+      localStorage.setItem('isEmployeeAuth', 'true');
       setUser(response.data.employee);
     }
     return response;
@@ -83,6 +80,7 @@ export const AuthProvider = ({ children }) => {
   const adminLogin = async (credentials) => {
     const response = await authApi.adminLogin(credentials);
     if (response.success) {
+      localStorage.setItem('isEmployeeAuth', 'false');
       setUser(response.data.user);
     }
     return response;
@@ -91,6 +89,7 @@ export const AuthProvider = ({ children }) => {
   const googleLogin = async ({ credential, portal }) => {
     const response = await authApi.googleLogin({ credential, portal });
     if (response.success) {
+      localStorage.setItem('isEmployeeAuth', 'false');
       setUser(response.data.user);
     }
     return response;
@@ -99,6 +98,7 @@ export const AuthProvider = ({ children }) => {
   const adminGoogleLogin = async ({ credential }) => {
     const response = await authApi.adminGoogleLogin({ credential });
     if (response.success) {
+      localStorage.setItem('isEmployeeAuth', 'false');
       setUser(response.data.user);
     }
     return response;
@@ -108,6 +108,7 @@ export const AuthProvider = ({ children }) => {
     const deviceHash = localStorage.getItem('deviceHash');
     const response = await authApi.verifyOtp({ ...otpData, deviceHash });
     if (response.success && !response.data.requiresDeviceApproval) {
+      localStorage.setItem('isEmployeeAuth', 'false');
       setUser(response.data.user);
     }
     return response;
@@ -131,6 +132,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     authApi.logout();
+    localStorage.removeItem('isEmployeeAuth');
     setUser(null);
   };
 

@@ -24,6 +24,9 @@ import { taskApi } from '../../api/task';
 import { attendanceApi } from '../../api/attendance';
 import { leaveApi } from '../../api/leave';
 
+const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
+const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
+
 // Motion variants
 const containerVariants = {
   hidden: { opacity: 0 },

@@ -6,13 +6,11 @@ import {
   FiX,
   FiLogOut,
   FiLayers,
-  FiChevronDown,
   FiChevronRight
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import {
   getCrmMainNavItems,
-  getCrmDepartmentLinks,
   getCrmAdminNavItems,
   shouldShowCrmAdminMenu
 } from '../../config/crmNav';
@@ -21,11 +19,9 @@ export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isDeptExpanded, setIsDeptExpanded] = useState(false);
   const [manualToggle, setManualToggle] = useState({});
 
   const menuItems = getCrmMainNavItems(user);
-  const departments = getCrmDepartmentLinks();
   const adminMenuItems = getCrmAdminNavItems(user);
   const showAdminMenu = shouldShowCrmAdminMenu(user);
 
@@ -242,54 +238,6 @@ export default function Sidebar({ onClose }) {
             );
           })}
         </motion.div>
-
-        {/* Department Section */}
-        <div className="space-y-1">
-          <button
-            onClick={() => setIsDeptExpanded(!isDeptExpanded)}
-            className="flex items-center justify-between w-full px-4 py-2 text-left text-[9px] font-bold uppercase tracking-[0.25em] transition-colors cursor-pointer"
-            style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
-          >
-            <span>Department</span>
-            {isDeptExpanded ? <FiChevronDown size={12} /> : <FiChevronRight size={12} />}
-          </button>
-
-          <AnimatePresence>
-            {isDeptExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden space-y-1 pl-3"
-              >
-                <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
-                  {departments.map((dept) => (
-                    <motion.div key={dept.to} variants={navItem}>
-                      <NavLink to={dept.to} onClick={onClose} className={linkClass}>
-                        {({ isActive }) => (
-                          <>
-                            <FiLayers
-                              size={13}
-                              style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                            />
-                            <span className="text-[11px]">{dept.label}</span>
-                            {isActive && (
-                              <span
-                                className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
-                                style={{ background: 'var(--crm-accent)' }}
-                              />
-                            )}
-                          </>
-                        )}
-                      </NavLink>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
         {/* Administration Section */}
         {showAdminMenu && (

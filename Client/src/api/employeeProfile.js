@@ -53,5 +53,14 @@ export const employeeProfileApi = {
   async downloadDocument(id) {
     const response = await axiosInstance.get(`/documents/${id}/download`, { responseType: 'blob' });
     return response.data;
+  },
+
+  async uploadMyProfileImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await axiosInstance.patch('/users/me/profile-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
   }
 };

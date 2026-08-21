@@ -7,6 +7,7 @@ const API_BASE_URL =
     window.location.hostname.startsWith('192.168.'))
     ? 'http://localhost:5000/api'
     : 'https://indiatradeoverseas-ito.onrender.com/api';
+    
 
 
 const axiosInstance = axios.create({
@@ -118,6 +119,7 @@ axiosInstance.interceptors.response.use(
 
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('isEmployeeAuth');
       window.location.href = '/login';
     }
     return Promise.reject(error);
