@@ -59,14 +59,14 @@ const PUBLIC_CATEGORIES = [
     { title: "Dust Tea", icon: GiThreeLeaves, desc: "Finely milled for exceptional quick-steeping liquor strength; highly favored for fast mass commercial brewing." },
     { title: "Premium Garden Tea", icon: FiAward, desc: "Direct, unblended lot assets hand-selected across premium seasonal pluckings to retain absolute single-origin integrity." },
     { title: "Bulk Tea for Traders", icon: GiBoxUnpacking, desc: "High-volume, loose invoice lots arranged purposefully for brokers, localized blending setups, and commodity merchants." },
-    { title: "Hotel, CafÃ© & Distributor Lines", icon: FiBriefcase, desc: "Standardized flavor profiles matched for commercial consistency, stable cost bases, and prolonged service workflows." },
+    { title: "Hotel, Café & Distributor Lines", icon: FiBriefcase, desc: "Standardized flavor profiles matched for commercial consistency, stable cost bases, and prolonged service workflows." },
     { title: "Export-Grade Tea", icon: GiCargoShip, desc: "Compliant tea selections optimized against heavy food safety regulations and international cargo standards." }
 ];
 
 const TEASER_LISTINGS = [
     { id: 1, region: "Siliguri Corridor", type: "CTC Blend Lot", baseGrade: "BP / BOPSM Mix", package: "30 kg / 35 kg Bags", use: "Wholesale Distribution / Blending" },
     { id: 2, region: "Assam Garden Track", type: "Export-Grade Leaf", baseGrade: "Pekoe / BOP Premium", package: "25 kg Crafts Bags", use: "International Cargo / Premium Brands" },
-    { id: 3, region: "Dooars Plains", type: "Bulk Commercial Dust", baseGrade: "Fine Dust Grade", package: "35 kg Bulk Sacks", use: "High Volume Tea Stalls & CafÃ©s" },
+    { id: 3, region: "Dooars Plains", type: "Bulk Commercial Dust", baseGrade: "Fine Dust Grade", package: "35 kg Bulk Sacks", use: "High Volume Tea Stalls & Cafés" },
     { id: 4, region: "Darjeeling Heights", type: "Fine Orthodox Lots", baseGrade: "TGFOP Whole Leaf", package: "20 kg Traditional Chests", use: "Gourmet Brands / Private Label" }
 ];
 
@@ -252,7 +252,7 @@ export default function Prakriti() {
     }, []);
 
     // Entry-gate verification (name/email/phone/location + OTP already handled
-    // inside BuyerEntryGate) â€” just adopt the resulting session, exactly the way
+    // inside BuyerEntryGate) — just adopt the resulting session, exactly the way
     // the old handleVerifyOtp used to, minus the fields BuyerEntryGate never collects.
     const handleGateVerified = async (activeId, activeToken) => {
         if (activeId) {
@@ -334,7 +334,7 @@ export default function Prakriti() {
                         <h2 className="text-2xl sm:text-3xl font-serif text-[#0B3D2E] uppercase tracking-wide">Account Under Review</h2>
                         <div className="w-16 h-[2px] bg-amber-500 mx-auto" />
                         <p className="text-slate-600 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto font-light">
-                            â€œYour Prakriti Tea buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved.â€
+                            "Your Prakriti Tea buyer account is under review. Our team is verifying your business documents. You will receive confirmation within 24 hours once your account is approved."
                         </p>
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left text-xs text-slate-500 space-y-1.5 max-w-md mx-auto">
                             <div className="font-bold text-[#004B3B] uppercase tracking-wider text-[10px] mb-1 font-mono">STATUTORY CHECKLIST PIPELINE:</div>
@@ -937,7 +937,7 @@ export default function Prakriti() {
 
                             <div className="lg:col-span-4 space-y-4">
                                 {[
-                                    { label: "Sourcing Lot Spectrum", value: "200â€“300 Choices", desc: "Sourced continuously across seasonal pluckings from vetted garden desks. " },
+                                    { label: "Sourcing Lot Spectrum", value: "200–300 Choices", desc: "Sourced continuously across seasonal pluckings from vetted garden desks. " },
                                     { label: "Compliance & Safety", value: "Fully Certified", desc: "Rigorous alignment matching GST, FSSAI infrastructure, and IEC parameters." },
                                     { label: "Logistics Channels", value: "Pan-India / Export", desc: "Direct distribution pipelines serving local warehouses and major shipping ports." }
                                 ].map((item, idx) => (
