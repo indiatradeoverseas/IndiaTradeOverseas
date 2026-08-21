@@ -98,12 +98,12 @@ async function listLeads(user, query = {}) {
     filter.assignedTo = user._id;
   }
 
-  const leads = await Lead.find(filter).sort({ createdAt: -1 });
+  const leads = await Lead.find(filter).populate('assignedTo', 'fullName name email role profileImage').sort({ createdAt: -1 });
   return leads.map(l => getLeadDisplay(l, user));
 }
 
 async function getLeadById(id, user) {
-  const lead = await Lead.findById(id);
+  const lead = await Lead.findById(id).populate('assignedTo', 'fullName name email role profileImage');
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
   if (!canAccessLead(user, lead)) {
@@ -279,6 +279,58 @@ async function deleteLead(leadId, user) {
   return { success: true };
 }
 
+async function assignLeadsBulk({ leadIds, assignedTo, user }) {
+  const Lead = require('./lead.model');
+  const LeadActivity = require('./leadActivity.model');
+  const Notification = require('../notifications/notification.model');
+  const { recordAudit } = require('../security-audit/auditLog.service');
+
+  if (!Array.isArray(leadIds) || !leadIds.length) {
+    throw new Error('LEAD_IDS_REQUIRED');
+  }
+
+  const results = await Lead.updateMany(
+    { _id: { $in: leadIds } },
+    { 
+      $set: { 
+        assignedTo: assignedTo || null,
+        stage: 'ASSIGNED'
+      } 
+    }
+  );
+
+  for (const leadId of leadIds) {
+    await LeadActivity.create({
+      leadId,
+      actionType: 'LEAD_ASSIGNED',
+      note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
+      actorId: user._id
+    });
+
+    if (assignedTo) {
+      const lead = await Lead.findById(leadId);
+      if (lead) {
+        await Notification.create({
+          targetUserId: assignedTo,
+          message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName}.`,
+          type: 'TASK_ASSIGNMENT',
+          metadata: { leadId: lead._id }
+        });
+      }
+    }
+  }
+
+  await recordAudit({
+    actorId: user._id,
+    actionType: 'LEADS_BULK_ASSIGNED',
+    entityType: 'LEAD',
+    severity: 'MEDIUM',
+    metadata: { leadIds, assignedTo }
+  });
+
+  return { success: true, modifiedCount: results.modifiedCount };
+}
+
 module.exports = {
   listLeads,
   getLeadById,
@@ -286,5 +338,6 @@ module.exports = {
   canAccessLead,
   getLeadDisplay,
   assignLead,
-  deleteLead
+  deleteLead,
+  assignLeadsBulk
 };

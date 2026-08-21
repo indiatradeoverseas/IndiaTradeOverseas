@@ -180,7 +180,10 @@ async function checkAccess(user, doc) {
 }
 
 async function getDocumentsForUser(user) {
-  const docs = await Document.find({ isDeleted: false }).sort({ createdAt: -1 });
+  const docs = await Document.find({ isDeleted: false })
+    .populate('uploadedBy', 'fullName')
+    .populate({ path: 'ownerId', model: 'Lead', select: 'customerName companyName leadCode' })
+    .sort({ createdAt: -1 });
 
   if (!user) {
     return docs.filter((doc) => doc.accessLevel === 'PUBLIC');

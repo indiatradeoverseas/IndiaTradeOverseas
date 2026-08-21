@@ -32,7 +32,14 @@ const EmployeeLogin = () => {
             style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' }
           });
           pushDataLayerEvent('login', { method: 'employee' });
-          navigate('/crm/dashboard');
+          const role = response.data?.employee?.role;
+          if (role === 'HR_MANAGER') {
+            navigate('/crm/hr/manager');
+          } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
+            navigate('/crm/hr/executive');
+          } else {
+            navigate('/crm/dashboard');
+          }
         }
       }
     } catch (error) {

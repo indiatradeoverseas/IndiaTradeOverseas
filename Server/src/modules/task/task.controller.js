@@ -4,11 +4,11 @@ const socketService = require('../../services/socket.service');
 const { ok, fail } = require('../../utils/response');
 
 /**
- * Create/Assign a new task
+ * Create/Assign a new task (with optional file attachment)
  */
 async function createTask(req, res) {
   try {
-    const { title, description, assignedTo, dueDate, priority } = req.body;
+    const { title, description, assignedTo, dueDate, priority, department, category } = req.body;
 
     // Check authority: ADMIN, HR_MANAGER, MANAGER
     const allowedRoles = ['ADMIN', 'HR_MANAGER', 'MANAGER'];
@@ -26,16 +26,25 @@ async function createTask(req, res) {
       return fail(res, 404, 'NOT_FOUND', 'Target assignee employee not found', [], req);
     }
 
-    const task = new Task({
+    const taskData = {
       title,
       description,
       assignedTo,
       assignedBy: req.user._id,
       dueDate,
       priority: priority || 'MEDIUM',
-      status: 'PENDING'
-    });
+      status: 'PENDING',
+      department: department || req.user.department || 'GENERAL',
+      category: category || 'GENERAL'
+    };
 
+    // Handle file attachment if present
+    if (req.file) {
+      taskData.fileUrl = req.file.path.replace(/\\/g, '/');
+      taskData.fileOriginalName = req.file.originalname;
+    }
+
+    const task = new Task(taskData);
     await task.save();
 
     // Populate references for rich frontend details
@@ -63,9 +72,15 @@ async function getTasks(req, res) {
     let query = {};
     
     if (allowedManagers.includes(userRole)) {
-      // HR Managers/Admins can see everything or filter by specific employee
+      // Managers can filter by specific employee or see tasks they assigned
       if (req.query.employeeId) {
         query.assignedTo = req.query.employeeId;
+      } else if (req.query.assignedBy) {
+        query.assignedBy = req.query.assignedBy;
+      }
+      // If no filter, show tasks assigned BY this manager
+      if (!req.query.employeeId && !req.query.assignedBy && !req.query.all) {
+        query.assignedBy = req.user._id;
       }
     } else {
       // Regular employees/HR executives see only their own tasks
@@ -75,6 +90,11 @@ async function getTasks(req, res) {
     // Status filter
     if (req.query.status) {
       query.status = req.query.status;
+    }
+
+    // Department filter
+    if (req.query.department) {
+      query.department = req.query.department;
     }
 
     const tasks = await Task.find(query)
@@ -131,7 +151,7 @@ async function updateTaskStatus(req, res) {
     await task.populate('assignedBy', 'name email department position role');
 
     // Socket Notify managers about task completion/update
-    socketService.emitToRoles(['ADMIN', 'HR_MANAGER'], 'task_updated', task);
+    socketService.emitToRoles(['ADMIN', 'HR_MANAGER', 'MANAGER'], 'task_updated', task);
     // Also notify assignee if manager updated it
     if (isManager && !isAssignee) {
       socketService.emitToEmployee(task.assignedTo, 'task_updated', task);
@@ -169,9 +189,33 @@ async function deleteTask(req, res) {
   }
 }
 
+/**
+ * Get employees list filtered by department (for task assignment dropdowns)
+ */
+async function getEmployeesByDepartment(req, res) {
+  try {
+    const { department } = req.query;
+    
+    let query = { status: 'ACTIVE' };
+    if (department) {
+      query.department = department;
+    }
+
+    const employees = await Employee.find(query)
+      .select('name email department position role employeeId')
+      .sort({ name: 1 });
+
+    return ok(res, { employees }, 'Employees retrieved', 200, req);
+  } catch (error) {
+    console.error('Error getting employees by department:', error);
+    return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
+  }
+}
+
 module.exports = {
   createTask,
   getTasks,
   updateTaskStatus,
-  deleteTask
+  deleteTask,
+  getEmployeesByDepartment
 };

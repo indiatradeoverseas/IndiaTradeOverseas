@@ -38,6 +38,24 @@ const taskSchema = new mongoose.Schema(
       enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
       default: 'PENDING'
     },
+    department: {
+      type: String,
+      enum: ['SALES', 'HR', 'IT', 'ADMIN', 'GENERAL'],
+      default: 'GENERAL'
+    },
+    category: {
+      type: String,
+      enum: ['GENERAL', 'RECRUITMENT', 'FOLLOW_UP', 'DOCUMENT', 'CALL', 'MEETING'],
+      default: 'GENERAL'
+    },
+    fileUrl: {
+      type: String,
+      default: ''
+    },
+    fileOriginalName: {
+      type: String,
+      default: ''
+    },
     remarks: {
       type: String,
       default: '',

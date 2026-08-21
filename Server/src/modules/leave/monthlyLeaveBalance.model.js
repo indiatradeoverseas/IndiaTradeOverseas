@@ -4,9 +4,15 @@ const monthlyLeaveBalanceSchema = new mongoose.Schema(
   {
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      refPath: 'employeeModel',
       required: true,
       index: true
+    },
+    employeeModel: {
+      type: String,
+      required: true,
+      enum: ['Employee', 'User'],
+      default: 'Employee'
     },
     month: {
       type: String, // YYYY-MM

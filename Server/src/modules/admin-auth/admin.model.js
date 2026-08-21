@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const adminSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.Mixed },
     fullName: {
       type: String,
       required: true

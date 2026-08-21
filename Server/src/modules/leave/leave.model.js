@@ -4,9 +4,15 @@ const leaveRequestSchema = new mongoose.Schema(
   {
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      refPath: 'employeeModel',
       required: true,
       index: true
+    },
+    employeeModel: {
+      type: String,
+      required: true,
+      enum: ['Employee', 'User'],
+      default: 'Employee'
     },
     fromDate: {
       type: Date,

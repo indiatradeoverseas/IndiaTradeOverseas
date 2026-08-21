@@ -91,10 +91,28 @@ async function deleteLead(req, res, next) {
   }
 }
 
+async function assignLeadsBulk(req, res, next) {
+  try {
+    const { leadIds, assignedTo } = req.body;
+    const result = await leadService.assignLeadsBulk({
+      leadIds,
+      assignedTo,
+      user: req.user
+    });
+    return ok(res, result, 'Leads bulk assigned successfully', 200, req);
+  } catch (error) {
+    if (error.message === 'LEAD_IDS_REQUIRED') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'leadIds array is required');
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getLeadsList,
   getLeadDetails,
   changeLeadStage,
   assignLead,
-  deleteLead
+  deleteLead,
+  assignLeadsBulk
 };

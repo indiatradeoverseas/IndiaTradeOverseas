@@ -5,7 +5,7 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage} = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage, assignLead, assignLeadsBulk } = require('./lead.controller');
 const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
@@ -69,6 +69,7 @@ router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadP
 // Reminders & Creation Routes
 router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
 router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
+router.post('/assign', rbac('ADMIN', 'MANAGER'), assignLeadsBulk);
 
 // Voice Notes & Integration logs
 router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
