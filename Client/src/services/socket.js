@@ -12,8 +12,10 @@ export const socketService = {
     const role = user.role;
     const name = user.fullName || user.name;
 
-    // Connect to the express websocket port (http://localhost:5000)
-    socket = io('http://localhost:5000', {
+    // Hardcoded to the deployed Server, matching axiosInstance.js's convention -
+    // there's no local Server running by default, so a hostname-based switch
+    // would just break the WebSocket for anyone without one.
+    socket = io('https://indiatradeoverseas-ito.onrender.com', {
       query: { employeeId, role, name },
       autoConnect: true,
       transports: ['websocket', 'polling']
