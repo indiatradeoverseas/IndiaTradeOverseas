@@ -11,6 +11,26 @@ export const employeeSignupApi = {
     return response.data;
   },
 
+  async getAllEmployees() {
+    const response = await axiosInstance.get('/employee/all');
+    return response.data;
+  },
+
+  async createEmployee(employeeData) {
+    const response = await axiosInstance.post('/employee', employeeData);
+    return response.data;
+  },
+
+  async updateEmployee(id, employeeData) {
+    const response = await axiosInstance.patch(`/employee/${id}`, employeeData);
+    return response.data;
+  },
+
+  async deleteEmployee(id) {
+    const response = await axiosInstance.delete(`/employee/${id}`);
+    return response.data;
+  },
+
   async signup(employeeData) {
     const response = await axiosInstance.post('/employee/signup', employeeData);
     return response.data;
