@@ -12,7 +12,7 @@ import {
   FiCheckCircle, FiXCircle, FiArrowRight, FiAlertCircle, FiTarget,
   FiUserPlus, FiExternalLink, FiAward, FiShield, FiBarChart2,
   FiPieChart, FiCreditCard,
-  FiFileText, FiTruck, FiSettings,
+  FiFileText, FiTruck, FiSettings, FiGrid,
   FiRefreshCw, FiPlus, FiEdit, FiTrash2, FiEye
 } from 'react-icons/fi';
 import { SkeletonStatGrid, SkeletonListCard } from '../../components/ui/Skeleton';
