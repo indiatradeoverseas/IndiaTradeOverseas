@@ -338,11 +338,24 @@ async function signupEmployee(req, res, next) {
   }
 }
 
+async function getAllEmployees(req, res, next) {
+  try {
+    const employees = await Employee.find(
+      { status: { $ne: 'TERMINATED' } },
+      { _id: 1, name: 1, email: 1, employeeId: 1, role: 1, department: 1, position: 1, status: 1, joiningDate: 1 }
+    ).sort({ employeeId: 1 });
+    return ok(res, { employees }, 'Employees retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
   getProfile,
   getNextEmployeeId,
   getListManagers,
-  signupEmployee
+  signupEmployee,
+  getAllEmployees
 };
