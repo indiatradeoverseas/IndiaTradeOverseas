@@ -352,33 +352,150 @@ async function getAllEmployees(req, res, next) {
 
 async function createEmployee(req, res, next) {
   try {
-    const { name, email, phone, department, position, role, status, salary, joiningDate, password } = req.body;
+    const {
+      employeeId,
+      name,
+      email,
+      password,
+      phone,
+      dob,
+      gender,
+      fatherHusbandName,
+      permanentAddress,
+      currentAddress,
+      department,
+      position,
+      joiningDate,
+      employmentType,
+      probationEndDate,
+      reportingManager,
+      salary,
+      bankName,
+      bankAccountNumber,
+      ifscCode,
+      panCardNumber,
+      aadhaarNumber,
+      emergencyContactName,
+      emergencyContactRelationship,
+      emergencyContactPhone,
+      emergencyContactEmail,
+      profileImage,
+      resume,
+      panCardCopy,
+      aadhaarCardCopy,
+      passportPhoto,
+      offerLetter,
+      additionalDocs,
+      permissions,
+      role,
+      status
+    } = req.body;
 
+    // 1. Mandatory Validations
     if (!name || !email || !phone || !department || !position) {
       return fail(res, 400, 'BAD_REQUEST', 'Missing required fields: name, email, phone, department, position', [], req);
     }
 
-    const existingEmployee = await Employee.findOne({ email });
-    if (existingEmployee) {
-      return fail(res, 409, 'EMPLOYEE_EXISTS', 'Employee email already registered', [], req);
+    // 2. Format Validations (same as signupEmployee)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return fail(res, 400, 'INVALID_EMAIL', 'Email address format is invalid', [], req);
     }
 
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const cleanPhone = phone.replace(/[^0-9]/g, '').slice(-10);
+    if (!phoneRegex.test(cleanPhone)) {
+      return fail(res, 400, 'INVALID_PHONE', 'Phone number must be exactly 10 digits starting with 6-9', [], req);
+    }
+
+    const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
+    if (panCardNumber && !panRegex.test(panCardNumber.toUpperCase())) {
+      return fail(res, 400, 'INVALID_PAN', 'PAN card format must be ABCDE1234F', [], req);
+    }
+
+    const aadhaarRegex = /^\d{4}-\d{4}-\d{4}$/;
+    if (aadhaarNumber && !aadhaarRegex.test(aadhaarNumber)) {
+      return fail(res, 400, 'INVALID_AADHAAR', 'Aadhaar format must be XXXX-XXXX-XXXX', [], req);
+    }
+
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (ifscCode && !ifscRegex.test(ifscCode.toUpperCase())) {
+      return fail(res, 400, 'INVALID_IFSC', 'IFSC code must be a valid 11-character alphanumeric code', [], req);
+    }
+
+    // 3. Database uniqueness constraints
+    const duplicateEmail = await Employee.findOne({ email });
+    if (duplicateEmail) {
+      return fail(res, 409, 'DUPLICATE_EMAIL', 'Email address is already registered', [], req);
+    }
+
+    const duplicatePhone = await Employee.findOne({ phone });
+    if (duplicatePhone) {
+      return fail(res, 409, 'DUPLICATE_PHONE', 'Phone number is already registered', [], req);
+    }
+
+    if (employeeId) {
+      const duplicateId = await Employee.findOne({ employeeId });
+      if (duplicateId) {
+        return fail(res, 409, 'DUPLICATE_EMPLOYEE_ID', 'Employee ID is already assigned', [], req);
+      }
+    }
+
+    // Hash password
     const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 10;
     const passwordHash = await bcrypt.hash(password || 'ItoPass123!', bcryptRounds);
 
+    // Save Employee with all fields
     const employee = await Employee.create({
+      employeeId,
       name,
       email,
       password: passwordHash,
       phone,
+      dob,
+      gender,
+      fatherHusbandName,
+      permanentAddress,
+      currentAddress,
       department,
       position,
-      role: role || 'EMPLOYEE',
-      status: status || 'ACTIVE',
-      salary: salary || 0,
       joiningDate: joiningDate || new Date(),
+      employmentType: employmentType || 'Permanent',
+      probationEndDate: employmentType === 'Probation' ? probationEndDate : undefined,
+      reportingManager: reportingManager || null,
+      salary: salary || 0,
+      bankName,
+      bankAccountNumber,
+      ifscCode: ifscCode ? ifscCode.toUpperCase() : undefined,
+      panCardNumber: panCardNumber ? panCardNumber.toUpperCase() : undefined,
+      aadhaarNumber,
+      emergencyContactName,
+      emergencyContactRelationship: emergencyContactRelationship || 'Other',
+      emergencyContactPhone,
+      emergencyContactEmail,
+      profileImage,
+      resume,
+      panCardCopy,
+      aadhaarCardCopy,
+      passportPhoto,
+      offerLetter,
+      additionalDocs: additionalDocs || [],
+      permissions: permissions || {
+        productUpload: false,
+        lead: false,
+        export: false,
+        document: false,
+        task: false,
+        dispatch: false,
+        payment: false,
+        quotation: false,
+        job: false
+      },
+      role: role || 'EMPLOYEE',
+      status: status || 'ACTIVE'
     });
 
+    // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7);
     await MonthlyLeaveBalance.create({
       employeeId: employee._id,

@@ -25,7 +25,8 @@ async function authenticate(req, res, next) {
       user = await Employee.findById(decoded.sub);
     }
 
-    if (!user || (user.isActive === false) || (user.status === 'INACTIVE')) {
+    const isInactive = user.isActive === false || user.status === 'INACTIVE' || user.status === 'TERMINATED';
+    if (!user || isInactive) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User/Employee is deactivated or invalid', [], req);
     }
 
