@@ -9,7 +9,7 @@ const {
   getAllEmployees
 } = require('./employee.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
-const { rbac } = require('../../middlewares/rbac.middleware');
+const rbac = require('../../middlewares/rbac.middleware');
 
 router.get('/next-id', getNextEmployeeId);
 router.get('/list-managers', getListManagers);
