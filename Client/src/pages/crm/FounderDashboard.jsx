@@ -13,14 +13,18 @@ import {
   FiUserPlus, FiExternalLink, FiAward, FiShield, FiBarChart2,
   FiPieChart, FiCreditCard,
   FiFileText, FiTruck, FiSettings, FiGrid,
-  FiRefreshCw, FiPlus, FiEdit, FiTrash2, FiEye
+  FiRefreshCw, FiPlus, FiEdit, FiTrash2, FiEye,
+  FiActivity, FiDatabase, FiGlobe, FiLock, FiBell,
+  FiMessageSquare, FiZap, FiDownload, FiUpload,
+  FiFilter, FiColumns, FiList, FiArrowUpRight,
+  FiUserX, FiUserCheck, FiHome
 } from 'react-icons/fi';
 import { SkeletonStatGrid, SkeletonListCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
 
 const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING'];
-const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR'];
+const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const containerVariants = {
@@ -59,7 +63,7 @@ const toneBg = (tone) => ({
 const now = new Date();
 const CHART_COLORS = ['var(--crm-accent)', 'var(--crm-info)', 'var(--crm-positive)', 'var(--crm-warning)', 'var(--crm-danger)'];
 
-const STATUS_COLORS = {
+const STATUS_STYLES = {
   ACTIVE: { color: 'var(--crm-positive)', bg: 'var(--crm-positive-bg)', border: 'var(--crm-positive-bg)' },
   INACTIVE: { color: 'var(--crm-ink-faint)', bg: 'var(--crm-bg-sunken)', border: 'var(--crm-line)' },
   PENDING: { color: 'var(--crm-warning)', bg: 'var(--crm-warning-bg)', border: 'var(--crm-warning-bg)' },
@@ -70,12 +74,46 @@ const STATUS_COLORS = {
 const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
 const fmtNumber = (val) => (val || 0).toLocaleString('en-IN');
 
-function getStatusBadge(status) {
-  const s = STATUS_COLORS[status] || STATUS_COLORS.INACTIVE;
+function StatusBadge({ status }) {
+  const s = STATUS_STYLES[status] || STATUS_STYLES.INACTIVE;
   return (
     <span className="px-2 py-0.5 rounded-sm text-[9px] uppercase font-bold border" style={{ color: s.color, background: s.bg, borderColor: s.border }}>
       {status}
     </span>
+  );
+}
+
+function SectionHeader({ icon, title, count, action }) {
+  return (
+    <div className="p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)' }}>
+      <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
+        {icon && <icon size={14} style={{ color: 'var(--crm-heading)' }} />}{title}
+      </h3>
+      {count !== undefined && (
+        <span className="px-2 py-0.5 border rounded-sm text-[9px] uppercase tracking-wide" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
+          {count}
+        </span>
+      )}
+      {action && <div className="flex items-center gap-2">{action}</div>}
+    </div>
+  );
+}
+
+function StatCard({ title, value, subtitle, icon, tone, trend }) {
+  return (
+    <motion.div whileHover={{ y: -4 }} className="border p-5 transition-all duration-300 rounded-sm flex flex-col" style={CARD}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>{title}</span>
+        <div className="p-2 border rounded-sm" style={{ borderColor: 'var(--crm-line)', color: toneColor(tone), background: toneBg(tone) }}>
+          <icon size={13} />
+        </div>
+      </div>
+      <div className="flex flex-col mt-4">
+        <span className="text-xl sm:text-2xl font-light tracking-tight whitespace-nowrap" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{value}</span>
+        {subtitle && <span className="text-[10px] mt-1" style={LABEL_MONO}>{subtitle}</span>}
+        {trend && <span className="text-[10px] mt-1 flex items-center gap-1" style={{ color: 'var(--crm-positive)' }}><FiTrendingUp size={10} />{trend}</span>}
+      </div>
+    </motion.div>
   );
 }
 
@@ -286,14 +324,14 @@ export default function FounderDashboard() {
   const openJobs = jobs.filter((j) => j.isActive);
 
   const stats = [
-    { title: 'Total Employees', value: activeEmployees.length, icon: FiUsers, tone: 'ink', subtitle: `${employees.length} total` },
-    { title: 'Pending Leaves', value: leaves.length, icon: FiCalendar, tone: leaves.length > 0 ? 'warning' : 'ink', subtitle: 'Awaiting review' },
-    { title: 'Open Jobs', value: openJobs.length, icon: FiBriefcase, tone: openJobs.length > 0 ? 'info' : 'ink', subtitle: 'Active requisitions' },
-    { title: 'Active Leads', value: summary?.activeLeads || 0, icon: FiTrendingUp, tone: 'info', subtitle: 'Pipeline health' },
-    { title: 'Revenue Collected', value: fmtCurrency(summary?.revenue?.totalCollected), icon: FiDollarSign, tone: 'positive', subtitle: 'All time' },
-    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), icon: FiAlertCircle, tone: 'danger', subtitle: 'Awaiting collection' },
-    { title: 'Sales Targets Set', value: summary?.targetsSet || 0, icon: FiTarget, tone: 'accent', subtitle: 'This month' },
-    { title: 'Dept. Coverage', value: Object.keys(deptCounts).length, icon: FiGrid, tone: 'info', subtitle: `${EMPLOYEE_DEPARTMENTS.length} possible` }
+    { title: 'Total Employees', value: activeEmployees.length, subtitle: `${employees.length} total`, icon: FiUsers, tone: 'ink' },
+    { title: 'Pending Leaves', value: leaves.length, subtitle: 'Awaiting review', icon: FiCalendar, tone: leaves.length > 0 ? 'warning' : 'ink' },
+    { title: 'Open Jobs', value: openJobs.length, subtitle: 'Active requisitions', icon: FiBriefcase, tone: openJobs.length > 0 ? 'info' : 'ink' },
+    { title: 'Active Leads', value: summary?.activeLeads || 0, subtitle: 'Pipeline health', icon: FiTrendingUp, tone: 'info' },
+    { title: 'Revenue Collected', value: fmtCurrency(summary?.revenue?.totalCollected), subtitle: 'All time', icon: FiDollarSign, tone: 'positive' },
+    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), subtitle: 'Awaiting collection', icon: FiAlertCircle, tone: 'danger' },
+    { title: 'Sales Targets Set', value: summary?.targetsSet || 0, subtitle: 'This month', icon: FiTarget, tone: 'accent' },
+    { title: 'Dept. Coverage', value: Object.keys(deptCounts).length, subtitle: `${EMPLOYEE_DEPARTMENTS.length} possible`, icon: FiGrid, tone: 'info' }
   ];
 
   const deptChartData = useMemo(() => Object.entries(deptCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [deptCounts]);
@@ -301,7 +339,7 @@ export default function FounderDashboard() {
 
   if (loading) {
     return (
-      <div className="w-full space-y-8">
+      <div className="w-full space-y-6">
         <div className="w-full border-b py-6" style={{ borderColor: 'var(--crm-line)' }}>
           <div className="crm-skeleton h-3 w-56 rounded-sm mb-3" style={{ background: 'var(--crm-bg-sunken)' }} />
           <div className="crm-skeleton h-7 w-72 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
@@ -347,32 +385,19 @@ export default function FounderDashboard() {
         </div>
       </motion.div>
 
-      <div className="w-full px-6 py-8 space-y-8">
+      <div className="w-full px-6 py-6 space-y-6">
         {/* KPI Grid */}
         <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
           {stats.map((stat, i) => (
-            <motion.div key={i} variants={blockVariants} whileHover={{ y: -4 }} className="border p-5 transition-all duration-300 rounded-sm flex flex-col" style={CARD}>
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>{stat.title}</span>
-                <div className="p-2 border rounded-sm" style={{ borderColor: 'var(--crm-line)', color: toneColor(stat.tone), background: toneBg(stat.tone) }}>
-                  <stat.icon size={13} />
-                </div>
-              </div>
-              <div className="flex flex-col mt-4">
-                <span className="text-xl sm:text-2xl font-light tracking-tight whitespace-nowrap" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{stat.value}</span>
-                <span className="text-[10px] mt-1" style={LABEL_MONO}>{stat.subtitle}</span>
-              </div>
-            </motion.div>
+            <StatCard key={i} {...stat} />
           ))}
         </motion.div>
 
         {/* Charts Row */}
         <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <motion.div variants={blockVariants} className="border rounded-sm p-6 lg:col-span-2" style={CARD}>
-            <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-3 mb-4 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-              <FiPieChart size={14} style={{ color: 'var(--crm-heading)' }} /> Workforce by Department
-            </h3>
-            <div className="h-72">
+          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+            <SectionHeader icon={FiPieChart} title="Workforce by Department" />
+            <div className="p-5 h-72">
               {deptChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -388,11 +413,9 @@ export default function FounderDashboard() {
             </div>
           </motion.div>
 
-          <motion.div variants={blockVariants} className="border rounded-sm p-6" style={CARD}>
-            <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-3 mb-4 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-              <FiBarChart2 size={14} style={{ color: 'var(--crm-heading)' }} /> Workforce by Role
-            </h3>
-            <div className="h-72">
+          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden lg:col-span-2" style={CARD}>
+            <SectionHeader icon={FiBarChart2} title="Workforce by Role" />
+            <div className="p-5 h-72">
               {roleChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={roleChartData} layout="vertical">
@@ -410,54 +433,47 @@ export default function FounderDashboard() {
           </motion.div>
         </motion.div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT COLUMN - 8/12 */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Leave Approvals */}
-            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <div className="p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
-                  <FiCalendar size={14} style={{ color: 'var(--crm-heading)' }} /> Leave Approvals
-                </h3>
-                <span className="px-2 py-0.5 border rounded-sm text-[9px] uppercase tracking-wide" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>{leaves.length} Pending</span>
-              </div>
-              <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-                {leaves.length === 0 ? (
-                  <EmptyState title="No pending leave requests" description="Everything is up to date." className="py-12" />
-                ) : (
-                  leaves.map((lv) => (
-                    <div key={lv._id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={CARD_SUNKEN}>
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium" style={{ color: 'var(--crm-heading)' }}>{lv.employeeId?.name || 'Unknown Employee'}</span>
-                          <span className="text-[10px]" style={LABEL_MONO}>({lv.employeeId?.department || '—'})</span>
-                        </div>
-                        <p className="text-[11px]" style={LABEL_MONO}>
-                          {new Date(lv.fromDate).toLocaleDateString()} – {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} day{lv.numberOfDays === 1 ? '' : 's'}) · {lv.leaveType.replace('_', ' ')}
-                        </p>
-                        <p className="text-[11px] italic" style={{ color: 'var(--crm-ink-soft)' }}>"{lv.reason}"</p>
+        {/* Main Content Grid - Full width sections */}
+        <div className="space-y-6">
+          {/* Leave Approvals - Full Width */}
+          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+            <SectionHeader icon={FiCalendar} title="Leave Approvals" count={leaves.length} />
+            <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
+              {leaves.length === 0 ? (
+                <EmptyState title="No pending leave requests" description="Everything is up to date." className="py-12" />
+              ) : (
+                leaves.map((lv) => (
+                  <div key={lv._id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={CARD_SUNKEN}>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium" style={{ color: 'var(--crm-heading)' }}>{lv.employeeId?.name || 'Unknown Employee'}</span>
+                        <span className="text-[10px]" style={LABEL_MONO}>({lv.employeeId?.department || '—'})</span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-3 py-1.5 text-[10px] font-mono uppercase rounded-sm border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default flex items-center gap-1" style={{ borderColor: 'var(--crm-positive-bg)', color: 'var(--crm-positive)', background: 'var(--crm-positive-bg)' }}>
-                          <FiCheckCircle size={11} /> Approve
-                        </button>
-                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-3 py-1.5 text-[10px] font-mono uppercase rounded-sm border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default flex items-center gap-1" style={{ borderColor: 'var(--crm-danger-bg)', color: 'var(--crm-danger)', background: 'var(--crm-danger-bg)' }}>
-                          <FiXCircle size={11} /> Reject
-                        </button>
-                      </div>
+                      <p className="text-[11px]" style={LABEL_MONO}>
+                        {new Date(lv.fromDate).toLocaleDateString()} – {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} day{lv.numberOfDays === 1 ? '' : 's'}) · {lv.leaveType.replace('_', ' ')}
+                      </p>
+                      <p className="text-[11px] italic" style={{ color: 'var(--crm-ink-soft)' }}>"{lv.reason}"</p>
                     </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-3 py-1.5 text-[10px] font-mono uppercase rounded-sm border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default flex items-center gap-1" style={{ borderColor: 'var(--crm-positive-bg)', color: 'var(--crm-positive)', background: 'var(--crm-positive-bg)' }}>
+                        <FiCheckCircle size={11} /> Approve
+                      </button>
+                      <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-3 py-1.5 text-[10px] font-mono uppercase rounded-sm border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default flex items-center gap-1" style={{ borderColor: 'var(--crm-danger-bg)', color: 'var(--crm-danger)', background: 'var(--crm-danger-bg)' }}>
+                        <FiXCircle size={11} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
 
-            {/* Workforce Directory */}
-            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <div className="p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
-                  <FiUsers size={14} style={{ color: 'var(--crm-heading)' }} /> Workforce Directory
-                </h3>
+          {/* Workforce Directory - Full Width with Filters */}
+          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+            <SectionHeader 
+              icon={FiUsers} 
+              title="Workforce Directory" 
+              action={
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2" size={11} style={{ color: 'var(--crm-ink-faint)' }} />
@@ -477,72 +493,69 @@ export default function FounderDashboard() {
                     <option value="INACTIVE">INACTIVE</option>
                   </select>
                 </div>
+              }
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead className="sticky top-0">
+                  <tr className="border-b text-[9px] uppercase tracking-wider" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
+                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => { setSortBy('employeeId'); setSortOrder(sortBy === 'employeeId' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Employee {sortBy === 'employeeId' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => { setSortBy('department'); setSortOrder(sortBy === 'department' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Department {sortBy === 'department' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => { setSortBy('role'); setSortOrder(sortBy === 'role' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Role {sortBy === 'role' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => { setSortBy('status'); setSortOrder(sortBy === 'status' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Status {sortBy === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => { setSortBy('position'); setSortOrder(sortBy === 'position' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Position {sortBy === 'position' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th className="py-2.5 px-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y" style={{ borderColor: 'var(--crm-line)' }}>
+                  {filteredEmployees.length === 0 ? (
+                    <tr><td colSpan="6" className="text-center py-12" style={LABEL_MONO}>No employees match this filter.</td></tr>
+                  ) : (
+                    filteredEmployees.map((emp) => (
+                      <tr key={emp._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
+                        <td className="py-3 px-3">
+                          <div style={{ color: 'var(--crm-heading)' }}>{emp.name}</div>
+                          <div className="text-[10px]" style={LABEL_MONO}>{emp.employeeId} · {emp.email}</div>
+                        </td>
+                        <td className="py-3 px-3" style={LABEL_MONO}>
+                          <span className="px-2 py-0.5 rounded-sm text-[9px] uppercase font-bold border" style={{ color: 'var(--crm-accent)', background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent-bg)' }}>
+                            {emp.department}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3" style={LABEL_MONO}>{emp.role}</td>
+                        <td className="py-3 px-3"><StatusBadge status={emp.status} /></td>
+                        <td className="py-3 px-3 text-[10px]" style={{ color: 'var(--crm-ink-soft)' }}>{emp.position || '—'}</td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1">
+                            <Link to={`/crm/employees/${emp._id}`} className="text-[10px] uppercase flex items-center gap-1 hover:underline p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-accent)', background: 'var(--crm-accent-bg)' }}>
+                              <FiEye size={10} /> View
+                            </Link>
+                            <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-info)', background: 'var(--crm-info-bg)' }} title="Edit">
+                              <FiEdit size={11} />
+                            </button>
+                            <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-danger)', background: 'var(--crm-danger-bg)' }} title="Delete">
+                              <FiTrash2 size={11} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {filteredEmployees.length > 0 && (
+              <div className="p-3 border-t text-right text-[10px]" style={{ borderColor: 'var(--crm-line)', ...LABEL_MONO }}>
+                Showing {filteredEmployees.length} of {employees.length} employees
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[600px]">
-                  <thead className="sticky top-0">
-                    <tr className="border-b text-[9px] uppercase tracking-wider" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
-                      <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => setSortBy('employeeId')}>Employee {sortBy === 'employeeId' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                      <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => setSortBy('department')}>Department {sortBy === 'department' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                      <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => setSortBy('role')}>Role {sortBy === 'role' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                      <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => setSortBy('status')}>Status {sortBy === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                      <th className="py-2.5 px-3 cursor-pointer hover:opacity-80" onClick={() => setSortBy('position')}>Position</th>
-                      <th className="py-2.5 px-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-                    {filteredEmployees.length === 0 ? (
-                      <tr><td colSpan="6" className="text-center py-12" style={LABEL_MONO}>No employees match this filter.</td></tr>
-                    ) : (
-                      filteredEmployees.map((emp) => (
-                        <tr key={emp._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
-                          <td className="py-3 px-3">
-                            <div style={{ color: 'var(--crm-heading)' }}>{emp.name}</div>
-                            <div className="text-[10px]" style={LABEL_MONO}>{emp.employeeId} · {emp.email}</div>
-                          </td>
-                          <td className="py-3 px-3" style={LABEL_MONO}>
-                            <span className="px-2 py-0.5 rounded-sm text-[9px] uppercase font-bold border" style={{ color: 'var(--crm-accent)', background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent-bg)' }}>
-                              {emp.department}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3" style={LABEL_MONO}>{emp.role}</td>
-                          <td className="py-3 px-3">{getStatusBadge(emp.status)}</td>
-                          <td className="py-3 px-3 text-[10px]" style={{ color: 'var(--crm-ink-soft)' }}>{emp.position || '—'}</td>
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-1">
-                              <Link to={`/crm/employees/${emp._id}`} className="text-[10px] uppercase flex items-center gap-1 hover:underline p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-accent)', background: 'var(--crm-accent-bg)' }}>
-                                <FiEye size={10} /> View
-                              </Link>
-                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-info)', background: 'var(--crm-info-bg)' }} title="Edit">
-                                <FiEdit size={11} />
-                              </button>
-                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-danger)', background: 'var(--crm-danger-bg)' }} title="Delete">
-                                <FiTrash2 size={11} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {filteredEmployees.length > 0 && (
-                <div className="p-3 border-t text-right text-[10px]" style={{ borderColor: 'var(--crm-line)', ...LABEL_MONO }}>
-                  Showing {filteredEmployees.length} of {employees.length} employees
-                </div>
-              )}
-            </motion.div>
-          </div>
+            )}
+          </motion.div>
 
-          {/* RIGHT COLUMN - 4/12 */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* Sales Target Assignor */}
-            <motion.div variants={blockVariants} className="border rounded-sm p-5" style={CARD}>
-              <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-3 mb-4 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-                <FiTarget size={14} style={{ color: 'var(--crm-heading)' }} /> Assign Sales Target
-              </h3>
-              <form onSubmit={handleAssignTarget} className="space-y-3 text-xs">
+          {/* Sales Target Assignor + Leaderboard - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+              <SectionHeader icon={FiTarget} title="Assign Sales Target" />
+              <form onSubmit={handleAssignTarget} className="p-5 space-y-3 text-xs">
                 <div>
                   <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Sales Employee *</label>
                   <select required value={targetForm.employeeId} onChange={(e) => setTargetForm({ ...targetForm, employeeId: e.target.value })} className="w-full text-[11px] px-3 py-2 rounded-sm border outline-none cursor-pointer" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
@@ -581,18 +594,15 @@ export default function FounderDashboard() {
               </form>
             </motion.div>
 
-            {/* Leaderboard */}
-            <motion.div variants={blockVariants} className="border rounded-sm p-5" style={CARD}>
-              <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-3 mb-4 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-                <FiAward size={14} style={{ color: 'var(--crm-heading)' }} /> This Month's Leaderboard
-              </h3>
-              {leaderboard.length === 0 ? (
-                <EmptyState title="No sales activity yet" description="Rankings appear once deals are logged." />
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-                  {leaderboard.map((row, idx) => (
-                    <div key={row.employeeId} className="flex items-center justify-between p-2.5 border rounded-sm text-xs" style={CARD_SUNKEN}>
-                      <div className="flex items-center gap-2">
+            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+              <SectionHeader icon={FiAward} title="This Month's Leaderboard" />
+              <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
+                {leaderboard.length === 0 ? (
+                  <EmptyState title="No sales activity yet" description="Rankings appear once deals are logged." className="p-8" />
+                ) : (
+                  leaderboard.map((row, idx) => (
+                    <div key={row.employeeId} className="p-4 flex items-center justify-between" style={idx % 2 === 0 ? CARD_SUNKEN : {}}>
+                      <div className="flex items-center gap-3">
                         <span className="text-[10px] font-mono w-5" style={LABEL_MONO}>#{idx + 1}</span>
                         <div>
                           <div style={{ color: 'var(--crm-heading)' }}>{row.fullName}</div>
@@ -601,42 +611,40 @@ export default function FounderDashboard() {
                       </div>
                       <span className="font-mono font-bold" style={{ color: 'var(--crm-positive)' }}>{fmtCurrency(row.revenue)}</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-
-            {/* Hiring Pipeline */}
-            <motion.div variants={blockVariants} className="border rounded-sm p-5" style={CARD}>
-              <div className="flex items-center justify-between border-b pb-3 mb-4" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
-                  <FiBriefcase size={14} style={{ color: 'var(--crm-heading)' }} /> Hiring Pipeline
-                </h3>
-                <Link to="/crm/jobs" className="text-[10px] uppercase flex items-center gap-1 hover:underline" style={{ color: 'var(--crm-accent)' }}>
-                  Manage <FiExternalLink size={10} />
-                </Link>
+                  ))
+                )}
               </div>
-              {openJobs.length === 0 ? (
-                <EmptyState title="No open requisitions" description="Post a job from Manage Jobs to see it here." />
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
-                  {openJobs.map((job) => (
-                    <div key={job._id} className="p-2.5 border rounded-sm text-xs flex items-center justify-between gap-2" style={CARD_SUNKEN}>
+            </motion.div>
+          </div>
+
+          {/* Hiring Pipeline + Quick Actions - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+              <SectionHeader 
+                icon={FiBriefcase} 
+                title="Hiring Pipeline" 
+                action={<Link to="/crm/jobs" className="text-[10px] uppercase flex items-center gap-1 hover:underline" style={{ color: 'var(--crm-accent)' }}>Manage <FiExternalLink size={10} /></Link>}
+              />
+              <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
+                {openJobs.length === 0 ? (
+                  <EmptyState title="No open requisitions" description="Post a job from Manage Jobs to see it here." className="p-8" />
+                ) : (
+                  openJobs.map((job) => (
+                    <div key={job._id} className="p-4 flex items-center justify-between" style={CARD_SUNKEN}>
                       <div className="min-w-0">
                         <div className="truncate" style={{ color: 'var(--crm-heading)' }}>{job.title}</div>
                         <div className="text-[9px]" style={LABEL_MONO}>{job.department} · {job.location}</div>
                       </div>
                       <FiUserPlus size={12} style={{ color: 'var(--crm-ink-faint)' }} className="shrink-0" />
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </motion.div>
 
-            {/* Quick Actions */}
-            <motion.div variants={blockVariants} className="border rounded-sm p-5" style={CARD}>
-              <h3 className="text-xs uppercase tracking-widest font-bold border-b pb-3 mb-4" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>Quick Actions</h3>
-              <div className="space-y-2">
+            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+              <SectionHeader icon={FiZap} title="Quick Actions" />
+              <div className="p-5 space-y-2">
                 {[
                   { to: '/crm/hr/manager', label: 'HR Manager Dashboard', icon: FiAward },
                   { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
@@ -650,6 +658,8 @@ export default function FounderDashboard() {
                   { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
                   { to: '/crm/tasks', label: 'Task Board', icon: FiCheckSquare },
                   { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
+                  { to: '/crm/career-leads', label: 'Career Leads', icon: FiUserPlus },
+                  { to: '/crm/founder', label: 'Founder Dashboard', icon: FiHome },
                 ].map((link) => (
                   <Link key={link.to} to={link.to} className="flex items-center justify-between p-2.5 border rounded-sm text-xs transition-colors hover:opacity-80" style={CARD_SUNKEN}>
                     <span className="flex items-center gap-2" style={{ color: 'var(--crm-heading)' }}>
