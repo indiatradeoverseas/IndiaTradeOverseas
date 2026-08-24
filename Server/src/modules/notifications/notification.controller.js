@@ -104,10 +104,62 @@ async function markAllNotificationsRead(req, res, next) {
   }
 }
 
+async function getDashboardMetrics(req, res, next) {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const SalesTarget = require('../sales/salesTarget.model');
+    const Employee = require('../employee/employee.model');
+    const { WON_STAGES, LOST_STAGES } = require('../leads/lead.constants');
+
+    // 1. Total Target
+    const targets = await SalesTarget.find({ month: currentMonth, year: currentYear });
+    let totalTarget = targets.reduce((sum, t) => sum + (t.targetValue || 0), 0);
+    if (totalTarget === 0) totalTarget = 50000000; // default 5 Cr
+
+    // 2. Total Leads
+    const totalLeads = await Lead.countDocuments({});
+
+    // 3. Total Revenue
+    const revenueAgg = await Lead.aggregate([
+      { $match: { stage: { $in: WON_STAGES } } },
+      { $lookup: { from: 'payments', localField: '_id', foreignField: 'leadId', as: 'payments' } },
+      { $unwind: '$payments' },
+      { $group: { _id: null, revenue: { $sum: '$payments.totalAmount' } } }
+    ]);
+    const totalRevenue = revenueAgg[0]?.revenue || 0;
+
+    // 4. Won Leads
+    const wonLeads = await Lead.countDocuments({ stage: { $in: WON_STAGES } });
+
+    // 5. Pending Leads
+    const pendingLeads = await Lead.countDocuments({ stage: { $nin: [...WON_STAGES, ...LOST_STAGES] } });
+
+    // 6. Total Executives (Sales)
+    const totalExecutives = await Employee.countDocuments({ department: 'SALES', status: 'ACTIVE' });
+
+    return ok(res, {
+      metrics: {
+        totalTarget,
+        totalLeads,
+        totalRevenue,
+        wonLeads,
+        pendingLeads,
+        totalExecutives
+      }
+    }, 'Dashboard metrics retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   getDashboardSummary,
-  getDashboardHistory
+  getDashboardHistory,
+  getDashboardMetrics
 };

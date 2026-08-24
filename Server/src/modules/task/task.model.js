@@ -13,13 +13,13 @@ const taskSchema = new mongoose.Schema(
       default: ''
     },
     assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Employee',
       required: true,
       index: true
     },
     assignedBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Employee',
       required: true,
       index: true
@@ -56,6 +56,14 @@ const taskSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    completionFileUrl: {
+      type: String,
+      default: ''
+    },
+    completionFileOriginalName: {
+      type: String,
+      default: ''
+    },
     remarks: {
       type: String,
       default: '',
@@ -64,6 +72,12 @@ const taskSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
       default: null
+    },
+    leadId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lead',
+      default: null,
+      index: true
     }
   },
   {

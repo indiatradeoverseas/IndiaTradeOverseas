@@ -25,13 +25,13 @@ const sharedFileSchema = new mongoose.Schema(
       default: ''
     },
     sentBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Employee',
       required: true,
       index: true
     },
     sentTo: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Employee',
       required: true,
       index: true

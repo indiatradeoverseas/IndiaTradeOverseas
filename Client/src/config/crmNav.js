@@ -69,9 +69,6 @@ export function getCrmMainNavItems(user) {
     // Dashboard — ADMIN only
     admin && { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
 
-    // Founder Dashboard — ADMIN only
-    admin && { to: '/crm/founder', label: 'Founder Center', icon: FiShield },
-
     // HR Dashboard — ADMIN + HR_MANAGER
     (admin || hrMgr) && { to: '/crm/hr', label: 'HR Dashboard', icon: FiAward },
 
@@ -81,11 +78,11 @@ export function getCrmMainNavItems(user) {
     // Notifications — ADMIN only
     admin && { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
 
-    // Attendance — ADMIN only
-    admin && { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
+    // Attendance — ADMIN + HR_MANAGER
+    (admin || hrMgr) && { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
 
-    // Leave — ADMIN only
-    admin && { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
+    // Leave — ADMIN + HR_MANAGER
+    (admin || hrMgr) && { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
 
     // My Profile — everyone
     { to: '/crm/profile', label: 'My Profile', icon: FiUser },
@@ -96,11 +93,11 @@ export function getCrmMainNavItems(user) {
     // Sales Performance — ADMIN only
     admin && { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
 
-    // My Tasks — ADMIN, Sales Manager, or permission-based
-    (admin || salesMgr || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
+    // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
+    (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
 
-    // Leads — ADMIN, Sales Manager, or permission-based
-    (admin || salesMgr || user?.permissions?.lead === true || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
+    // Leads — ADMIN, Sales Manager, Sales Executive, or permission-based
+    (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
 
     // Quotations — ADMIN or permission-based
     (admin || user?.permissions?.quotation === true || user?.quotationPermission === true) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },

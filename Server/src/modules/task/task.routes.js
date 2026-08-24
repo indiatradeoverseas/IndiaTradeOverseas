@@ -46,9 +46,10 @@ const upload = multer({
 });
 
 router.post('/', authenticate, upload.single('file'), taskController.createTask);
+router.post('/assign', authenticate, upload.single('file'), taskController.createTask);
 router.get('/', authenticate, taskController.getTasks);
 router.get('/employees', authenticate, taskController.getEmployeesByDepartment);
-router.patch('/:id', authenticate, taskController.updateTaskStatus);
+router.patch('/:id', authenticate, upload.single('file'), taskController.updateTaskStatus);
 router.delete('/:id', authenticate, taskController.deleteTask);
 
 module.exports = router;

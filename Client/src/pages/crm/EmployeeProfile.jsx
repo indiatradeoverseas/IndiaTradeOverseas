@@ -24,11 +24,13 @@ import {
   FiBookOpen, 
   FiTrendingUp,
   FiDollarSign,
-  FiCalendar
+  FiCalendar,
+  FiTrash
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { employeeProfileApi } from '../../api/employeeProfile';
 import { leaveApi } from '../../api/leave';
+import { payslipApi } from '../../api/payslip';
 import { useAuth } from '../../hooks/useAuth';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 
@@ -57,7 +59,7 @@ export default function EmployeeProfile() {
   const { user } = useAuth();
   const isSelf = !id || id === user?._id;
   const targetId = isSelf ? 'me' : id;
-  const isAdminReviewer = ['ADMIN', 'MANAGER', 'HR'].includes(user?.role);
+  const isAdminReviewer = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'].includes(user?.role);
 
   const [profile, setProfile] = useState(null);
   const [documents, setDocuments] = useState([]);
@@ -91,6 +93,14 @@ export default function EmployeeProfile() {
   const [leaveForm, setLeaveForm] = useState({ leaveType: 'PAID', fromDate: '', toDate: '', reason: '' });
   const [submittingReviewId, setSubmittingReviewId] = useState(null);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
+
+  // Payslips states
+  const [payslips, setPayslips] = useState([]);
+  const [loadingPayslips, setLoadingPayslips] = useState(false);
+  const [uploadingPayslip, setUploadingPayslip] = useState(false);
+  const [payslipMonth, setPayslipMonth] = useState('');
+  const [payslipAmount, setPayslipAmount] = useState('');
+  const [payslipFile, setPayslipFile] = useState(null);
 
   const fetchLeavesData = async () => {
     setLoadingLeaves(true);
@@ -194,6 +204,94 @@ export default function EmployeeProfile() {
       fetchLeavesData();
     }
   }, [activeTab, id, profile]);
+
+  useEffect(() => {
+    if (activeTab === 'payslips') {
+      fetchPayslips();
+    }
+  }, [activeTab, id]);
+
+  const fetchPayslips = async () => {
+    const actualEmployeeId = isSelf ? user?._id : id;
+    if (!actualEmployeeId) return;
+    setLoadingPayslips(true);
+    try {
+      const res = await payslipApi.getEmployeePayslips(actualEmployeeId);
+      if (res.success) {
+        setPayslips(res.data.payslips || []);
+      }
+    } catch (err) {
+      console.error('Error fetching payslips:', err);
+    } finally {
+      setLoadingPayslips(false);
+    }
+  };
+
+  const handleUploadPayslipSubmit = async (e) => {
+    e.preventDefault();
+    if (!payslipMonth || !payslipAmount || !payslipFile) {
+      toast.error('Please fill all fields and select a PDF file.');
+      return;
+    }
+    const actualEmployeeId = isSelf ? user?._id : id;
+    if (!actualEmployeeId) return;
+
+    setUploadingPayslip(true);
+    try {
+      const formData = new FormData();
+      formData.append('employeeId', actualEmployeeId);
+      formData.append('month', payslipMonth);
+      formData.append('netAmount', payslipAmount);
+      formData.append('file', payslipFile);
+
+      const res = await payslipApi.uploadPayslip(formData);
+      if (res.success) {
+        toast.success('Payslip uploaded successfully!');
+        setPayslipMonth('');
+        setPayslipAmount('');
+        setPayslipFile(null);
+        fetchPayslips();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload payslip');
+    } finally {
+      setUploadingPayslip(false);
+    }
+  };
+
+  const handleDownloadPayslip = async (payslipId, month) => {
+    try {
+      toast.loading('Downloading payslip...', { id: 'download-payslip' });
+      const response = await payslipApi.downloadPayslip(payslipId);
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', `payslip-${month.replace(/\s+/g, '-')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      toast.success('Payslip downloaded successfully!', { id: 'download-payslip' });
+    } catch (err) {
+      toast.error('Failed to download payslip file', { id: 'download-payslip' });
+    }
+  };
+
+  const handleDeletePayslip = async (payslipId) => {
+    if (!window.confirm('Are you sure you want to delete this payslip?')) return;
+    try {
+      const res = await payslipApi.deletePayslip(payslipId);
+      if (res.success) {
+        toast.success('Payslip deleted successfully');
+        fetchPayslips();
+      }
+    } catch (err) {
+      toast.error('Failed to delete payslip');
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -1013,7 +1111,6 @@ export default function EmployeeProfile() {
               </motion.div>
             )}
 
-            {/* SCREEN 4: PAYSLIPS */}
             {activeTab === 'payslips' && (
               <motion.div
                 key="payslips"
@@ -1026,44 +1123,111 @@ export default function EmployeeProfile() {
                   <FiFileText className="text-teal-500" size={15} /> Salary Payslips
                 </h3>
 
+                {/* Upload Form - Rendered only for HR Managers and Admins */}
+                {isAdminReviewer && (
+                  <form onSubmit={handleUploadPayslipSubmit} className="bg-[var(--crm-bg-sunken)]/50 border border-[var(--crm-line)] p-4 rounded-xl space-y-3 font-mono text-xs">
+                    <h4 className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold mb-2">Upload New Payslip (PDF Only)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1">Select Month *</label>
+                        <select
+                          required
+                          value={payslipMonth}
+                          onChange={(e) => setPayslipMonth(e.target.value)}
+                          className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1.5 rounded outline-none focus:border-teal-500 transition"
+                        >
+                          <option value="">-- Choose Month --</option>
+                          {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => {
+                            const currentYear = new Date().getFullYear();
+                            const optionText = `${m} ${currentYear}`;
+                            return <option key={optionText} value={optionText}>{optionText}</option>;
+                          })}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1">Net Salary Amount (₹) *</label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="e.g. 45000"
+                          value={payslipAmount}
+                          onChange={(e) => setPayslipAmount(e.target.value)}
+                          className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1.5 rounded outline-none focus:border-teal-500 transition"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1">Payslip PDF *</label>
+                        <input
+                          type="file"
+                          required
+                          accept=".pdf"
+                          onChange={(e) => setPayslipFile(e.target.files[0])}
+                          className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1.5 rounded outline-none focus:border-teal-500 transition file:bg-teal-950 file:text-teal-400 file:border-0 file:py-0.5 file:px-1.5 file:rounded file:text-[9px] file:font-mono file:cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={uploadingPayslip}
+                        className="bg-teal-650 hover:bg-teal-600 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-4 rounded transition cursor-pointer"
+                      >
+                        {uploadingPayslip ? 'Uploading...' : 'Submit Payslip'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[500px]">
-                    <thead>
-                      <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
-                        <th className="py-3 px-4">Period</th>
-                        <th className="py-3 px-4">Salary Month</th>
-                        <th className="py-3 px-4">Net Amount</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono text-[var(--crm-ink-soft)]">
-                      {[
-                        { id: 1, period: 'July 2026', amount: 45000, status: 'PAID' },
-                        { id: 2, period: 'June 2026', amount: 45000, status: 'PAID' },
-                        { id: 3, period: 'May 2026', amount: 45000, status: 'PAID' }
-                      ].map(row => (
-                        <tr key={row.id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
-                          <td className="py-3 px-4 font-sans font-bold text-[var(--crm-heading)]">{row.period}</td>
-                          <td className="py-3 px-4 font-sans">Full working period</td>
-                          <td className="py-3 px-4 text-emerald-400 font-bold">{currency(row.amount)}</td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 bg-emerald-950/40 text-emerald-400 font-mono text-[8px] font-bold rounded border border-emerald-900/30 uppercase">
-                              {row.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => toast.success(`Salary slip for ${row.period} download initialized`)}
-                              className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition cursor-pointer flex items-center gap-1 mx-auto"
-                            >
-                              <FiDownload size={10} /> Download
-                            </button>
-                          </td>
+                  {loadingPayslips ? (
+                    <div className="py-8 text-center text-[var(--crm-ink-faint)] font-mono text-[10px]">Loading payslips...</div>
+                  ) : payslips.length === 0 ? (
+                    <div className="py-8 text-center text-[var(--crm-ink-faint)] font-mono text-[10px] uppercase border border-dashed border-[var(--crm-line)] rounded">No payslips uploaded yet</div>
+                  ) : (
+                    <table className="w-full text-left border-collapse min-w-[500px]">
+                      <thead>
+                        <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                          <th className="py-3 px-4">Period</th>
+                          <th className="py-3 px-4">Salary Month</th>
+                          <th className="py-3 px-4">Net Amount</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4 text-center">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono text-[var(--crm-ink-soft)]">
+                        {payslips.map(row => (
+                          <tr key={row._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                            <td className="py-3 px-4 font-sans font-bold text-[var(--crm-heading)]">{row.month}</td>
+                            <td className="py-3 px-4 font-sans">Full working period</td>
+                            <td className="py-3 px-4 text-emerald-400 font-bold">{currency(row.netAmount)}</td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 bg-emerald-950/40 text-emerald-400 font-mono text-[8px] font-bold rounded border border-emerald-900/30 uppercase">
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleDownloadPayslip(row._id, row.month)}
+                                  className="bg-teal-650 hover:bg-teal-600 text-white font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition cursor-pointer flex items-center gap-1"
+                                >
+                                  <FiDownload size={10} /> Download
+                                </button>
+                                {isAdminReviewer && (
+                                  <button
+                                    onClick={() => handleDeletePayslip(row._id)}
+                                    className="bg-rose-950/40 text-rose-400 hover:bg-rose-900/60 border border-rose-900/30 font-bold text-[9px] uppercase tracking-wider py-1.5 px-2.5 rounded transition cursor-pointer flex items-center gap-1"
+                                  >
+                                    <FiTrash size={10} /> Delete
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1149,7 +1313,7 @@ export default function EmployeeProfile() {
                 {isSelf && (
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 shadow-sm text-left">
                     <h3 className="text-sm font-bold text-[var(--crm-heading)] border-b border-[var(--crm-line)] pb-3 flex items-center gap-2">
-                      <FiCalendar className="text-teal-500" size={15} /> Request Leave Absence ("अवकाश हेतु आवेदन")
+                      <FiCalendar className="text-teal-500" size={15} /> Request Leave Absence
                     </h3>
                     <form onSubmit={handleApplyLeave} className="space-y-4 mt-4 text-xs">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

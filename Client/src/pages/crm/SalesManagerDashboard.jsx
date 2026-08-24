@@ -43,6 +43,9 @@ import { documentsApi } from '../../api/documents';
 import { taskApi } from '../../api/task';
 import { sharedFilesApi } from '../../api/sharedFiles';
 import { leaveApi } from '../../api/leave';
+import { dashboardApi } from '../../api/dashboard';
+import { employeesApi } from '../../api/employees';
+import { socketService } from '../../services/socket';
 
 // Framer motion variants
 const containerVariants = {
@@ -78,7 +81,7 @@ export default function SalesManagerDashboard() {
 
   // Task Assignment states
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [taskForm, setTaskForm] = useState({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL' });
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL', leadId: '' });
   const [taskFile, setTaskFile] = useState(null);
   const [submittingTask, setSubmittingTask] = useState(false);
   const [assignedTasks, setAssignedTasks] = useState([]);
@@ -90,38 +93,88 @@ export default function SalesManagerDashboard() {
   const [shareFile, setShareFile] = useState(null);
   const [submittingFile, setSubmittingFile] = useState(false);
 
+  // Target Setting states
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [selectedEmpName, setSelectedEmpName] = useState('');
+  const [targetForm, setTargetForm] = useState({ employeeId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), targetValue: '', targetDeals: '' });
+  const [submittingTarget, setSubmittingTarget] = useState(false);
+
   // Bulk Lead Assignment states
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [assigneeExecId, setAssigneeExecId] = useState('');
   const [submittingBulkAssign, setSubmittingBulkAssign] = useState(false);
 
-  // Team Leaves management states
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [submittingLeaveReview, setSubmittingLeaveReview] = useState(null);
 
-  // Sync / Load Dashboard Data
+  const [metrics, setMetrics] = useState({
+    totalTarget: 50000000,
+    totalLeads: 0,
+    totalRevenue: 0,
+    wonLeads: 0,
+    pendingLeads: 0,
+    totalExecutives: 0
+  });
+  const [liveStatuses, setLiveStatuses] = useState({});
+
+  useEffect(() => {
+    const skt = socketService.connect(user);
+    if (skt) {
+      const handleStatusUpdate = (data) => {
+        setLiveStatuses(prev => ({
+          ...prev,
+          [data.employeeId]: data
+        }));
+      };
+      
+      skt.on('employee_status_updated', handleStatusUpdate);
+      
+      return () => {
+        skt.off('employee_status_updated', handleStatusUpdate);
+      };
+    }
+  }, [user]);
+
+  const getEmployeeLiveStatus = (emp) => {
+    return liveStatuses[emp._id] || {
+      status: emp.status || 'OFFLINE',
+      currentActivity: emp.currentActivity || 'Offline',
+      lastUpdated: emp.lastUpdated,
+      duration: emp.duration || '00:00:00'
+    };
+  };
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
       // 1. Fetch Rep Leaderboard / Performance metrics
-      const leaderboardRes = await salesApi.getLeaderboard({ period: 'monthly' });
-      if (leaderboardRes.success) {
-        setRepsData(leaderboardRes.leaderboard || []);
-      }
+      try {
+        let periodVal = 'monthly';
+        if (dateFilter === 'TODAY') periodVal = 'daily';
+        else if (dateFilter === 'THIS_WEEK') periodVal = 'weekly';
+        const leaderboardRes = await salesApi.getLeaderboard({ period: periodVal });
+        if (leaderboardRes.success) {
+          setRepsData(leaderboardRes.data?.leaderboard || []);
+        }
+      } catch (e) { console.error('Leaderboard fetch error:', e); }
 
       // 2. Fetch All Leads to compile pipeline funnel and stats
-      const leadsRes = await leadsApi.getLeads({ limit: 500 });
-      if (leadsRes.success) {
-        setAllLeads(leadsRes.data.leads || []);
-      }
+      try {
+        const leadsRes = await leadsApi.getLeads({ limit: 500 });
+        if (leadsRes.success) {
+          setAllLeads(leadsRes.data.leads || []);
+        }
+      } catch (e) { console.error('Leads fetch error:', e); }
 
       // 3. Fetch Pending Documents for approval
-      const docsRes = await documentsApi.getDocuments();
-      if (docsRes.success) {
-        // Filter documents pending approval
-        const filteredDocs = (docsRes.documents || []).filter(doc => doc.approvalStatus === 'PENDING');
-        setPendingDocs(filteredDocs);
-      }
+      try {
+        const docsRes = await documentsApi.getDocuments();
+        if (docsRes.success) {
+          // Filter documents pending approval
+          const filteredDocs = (docsRes.documents || []).filter(doc => doc.approvalStatus === 'PENDING');
+          setPendingDocs(filteredDocs);
+        }
+      } catch (e) { console.error('Documents fetch error:', e); }
 
       // 4. Fetch tasks assigned by this manager
       try {
@@ -131,13 +184,29 @@ export default function SalesManagerDashboard() {
         }
       } catch (e) { console.error('Tasks fetch error:', e); }
 
-      // 5. Fetch SALES department employees for dropdowns
+      // 5. Fetch SALES department employees with live status and pending tasks count
       try {
-        const empRes = await taskApi.getEmployeesByDepartment('SALES');
-        if (empRes.success) {
-          setTeamEmployees(empRes.data?.employees || []);
+        const empRes = await employeesApi.getEmployees({ department: 'sales' });
+        if (empRes.success && empRes.data?.employees && empRes.data.employees.length > 0) {
+          setTeamEmployees(empRes.data.employees);
+        } else {
+          // Fallback to taskApi
+          const fallbackRes = await taskApi.getEmployeesByDepartment('SALES');
+          if (fallbackRes.success && fallbackRes.data?.employees) {
+            setTeamEmployees(fallbackRes.data.employees);
+          }
         }
-      } catch (e) { console.error('Team employees fetch error:', e); }
+      } catch (e) {
+        console.error('Team employees fetch error, trying fallback:', e);
+        try {
+          const fallbackRes = await taskApi.getEmployeesByDepartment('SALES');
+          if (fallbackRes.success && fallbackRes.data?.employees) {
+            setTeamEmployees(fallbackRes.data.employees);
+          }
+        } catch (err) {
+          console.error('Fallback employees fetch error:', err);
+        }
+      }
 
       // 6. Fetch Team Leaves list
       try {
@@ -147,11 +216,47 @@ export default function SalesManagerDashboard() {
         }
       } catch (e) { console.error('Leaves fetch error:', e); }
 
+      // 7. Fetch dashboard metrics
+      try {
+        const metricsRes = await dashboardApi.getMetrics();
+        if (metricsRes.success && metricsRes.data?.metrics) {
+          setMetrics(metricsRes.data.metrics);
+        }
+      } catch (e) { console.error('Metrics fetch error:', e); }
+
     } catch (err) {
       console.error('Error loading manager dashboard details:', err);
       toast.error('Unable to fetch latest team metrics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSetTargetSubmit = async (e) => {
+    e.preventDefault();
+    if (!targetForm.employeeId || !targetForm.targetValue) {
+      return toast.error("Employee ID and Target Value are required.");
+    }
+
+    setSubmittingTarget(true);
+    try {
+      const res = await salesApi.setTarget({
+        employeeId: targetForm.employeeId,
+        month: Number(targetForm.month),
+        year: Number(targetForm.year),
+        targetValue: Number(targetForm.targetValue),
+        targetDeals: targetForm.targetDeals ? Number(targetForm.targetDeals) : null
+      });
+      if (res.success) {
+        toast.success("Sales target configured successfully! 🎯");
+        setShowTargetModal(false);
+        loadDashboardData();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to set sales target.");
+    } finally {
+      setSubmittingTarget(false);
     }
   };
 
@@ -185,8 +290,8 @@ export default function SalesManagerDashboard() {
 
       // Calculate conversion rate dynamically for sorting if selected
       if (sortField === 'conversionRate') {
-        const rateA = a.dealsWon / (a.activityCount || 1);
-        const rateB = b.dealsWon / (b.activityCount || 1);
+        const rateA = a.totalLeads > 0 ? (a.dealsWon / a.totalLeads) : 0;
+        const rateB = b.totalLeads > 0 ? (b.dealsWon / b.totalLeads) : 0;
         return sortDirection === 'asc' ? rateA - rateB : rateB - rateA;
       }
 
@@ -368,6 +473,7 @@ export default function SalesManagerDashboard() {
       formData.append('priority', taskForm.priority);
       formData.append('category', taskForm.category);
       formData.append('department', 'SALES');
+      if (taskForm.leadId) formData.append('leadId', taskForm.leadId);
       if (taskFile) formData.append('file', taskFile);
 
       const res = await taskApi.createTask(formData);
@@ -375,7 +481,7 @@ export default function SalesManagerDashboard() {
         toast.success('Task assigned successfully!');
         setAssignedTasks(prev => [res.data.task, ...prev]);
         setShowTaskModal(false);
-        setTaskForm({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL' });
+        setTaskForm({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL', leadId: '' });
         setTaskFile(null);
       }
     } catch (err) {
@@ -570,21 +676,20 @@ export default function SalesManagerDashboard() {
                 {/* Left/Middle Column */}
                 <div className="lg:col-span-8 space-y-6">
                   
-                  {/* Headline KPIs Row (5 Metrics) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                  {/* Headline KPIs Row (6 Metrics) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
                     {[
-                      { label: 'Total Pipeline', val: currency(totalPipelineVal), sub: 'Active Deals', icon: FiDollarSign, color: 'text-teal-400 bg-teal-950/20 border-teal-900/30' },
-                      { label: 'Weighted Forecast', val: currency(weightedForecastVal), sub: 'Probability Adjusted', icon: FiTrendingUp, color: 'text-indigo-400 bg-indigo-950/20 border-indigo-900/30' },
-                      { label: 'Team Win Rate', val: `${winRatePercent}%`, sub: 'Closed Deals Ratio', icon: FiPercent, color: 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30' },
-                      { label: 'Docs In Stage', val: dealsInDocStageCount, sub: 'Awaiting dispatch', icon: FiFileText, color: 'text-cyan-400 bg-cyan-950/20 border-cyan-900/30' },
-                      { label: 'Pending Approvals', val: pendingApprovalsCount, sub: 'Requires Review', icon: FiAlertCircle, color: 'text-rose-400 bg-rose-950/20 border-rose-900/30' }
+                      { label: 'TOTAL TARGET', val: currency(metrics.totalTarget), sub: 'Monthly Goal', icon: FiTrendingUp, color: 'text-indigo-400 bg-indigo-950/20 border-indigo-900/30' },
+                      { label: 'TOTAL LEADS', val: metrics.totalLeads, sub: 'All Sources', icon: FiUsers, color: 'text-teal-400 bg-teal-950/20 border-teal-900/30' },
+                      { label: 'TOTAL REVENUE', val: currency(metrics.totalRevenue), sub: 'Closed Deal Value', icon: FiDollarSign, color: 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30' },
+                      { label: 'WON LEADS', val: metrics.wonLeads, sub: 'Closed Won Stage', icon: FiCheck, color: 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30' },
+                      { label: 'PENDING LEADS', val: metrics.pendingLeads, sub: 'Active Pipeline', icon: FiAlertCircle, color: 'text-amber-400 bg-amber-950/20 border-amber-900/30' },
+                      { label: 'TOTAL EXECUTIVES', val: metrics.totalExecutives, sub: 'Sales Department', icon: FiCpu, color: 'text-cyan-400 bg-cyan-950/20 border-cyan-900/30' }
                     ].map((kpi, idx) => (
                       <motion.div 
                         key={idx}
                         whileHover={{ y: -3 }}
-                        className={`bg-[var(--crm-bg-raised)] border p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left ${
-                          idx === 4 && pendingApprovalsCount > 0 ? 'animate-pulse border-rose-800' : 'border-[var(--crm-line)]'
-                        }`}
+                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left"
                       >
                         <div className="flex justify-between items-start">
                           <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono leading-none">{kpi.label}</span>
@@ -612,10 +717,12 @@ export default function SalesManagerDashboard() {
                         <thead>
                           <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)] select-none">
                             <th onClick={() => handleSort('fullName')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Rep Name {sortField === 'fullName' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th onClick={() => handleSort('totalLeads')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Leads Received {sortField === 'totalLeads' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th onClick={() => handleSort('dealsWon')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Leads Completed {sortField === 'dealsWon' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th onClick={() => handleSort('completedTasksCount')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Completed Tasks {sortField === 'completedTasksCount' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th onClick={() => handleSort('revenue')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Revenue Generated {sortField === 'revenue' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                             <th onClick={() => handleSort('activityCount')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Activities {sortField === 'activityCount' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                            <th onClick={() => handleSort('dealsWon')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Deals Closed {sortField === 'dealsWon' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                            <th onClick={() => handleSort('revenue')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Revenue {sortField === 'revenue' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                            <th onClick={() => handleSort('conversionRate')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Conversion {sortField === 'conversionRate' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th onClick={() => handleSort('conversionRate')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Conversion Rate {sortField === 'conversionRate' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--crm-line)] text-xs">
@@ -625,14 +732,16 @@ export default function SalesManagerDashboard() {
                             if (rep.dealsWon < 2) rowBg = 'border-l-4 border-l-rose-500 bg-rose-950/10';
                             else if (rep.dealsWon < 5) rowBg = 'border-l-4 border-l-amber-500 bg-amber-950/5';
                             
-                            const convRate = rep.activityCount > 0 ? Math.round((rep.dealsWon / rep.activityCount) * 100) : 0;
+                            const convRate = rep.totalLeads > 0 ? Math.round((rep.dealsWon / rep.totalLeads) * 100) : 0;
 
                             return (
                               <tr key={rep.employeeId} className={`hover:bg-[var(--crm-bg-sunken)]/60 transition ${rowBg}`}>
                                 <td className="py-3 px-4 font-semibold text-[var(--crm-heading)]">{rep.fullName}</td>
-                                <td className="py-3 px-4 font-mono text-[var(--crm-ink-soft)]">{rep.activityCount} logs</td>
+                                <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">{rep.totalLeads} leads</td>
                                 <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">{rep.dealsWon} Won</td>
+                                <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">{rep.completedTasksCount || 0} tasks</td>
                                 <td className="py-3 px-4 font-mono font-semibold text-teal-400">{currency(rep.revenue)}</td>
+                                <td className="py-3 px-4 font-mono text-[var(--crm-ink-soft)]">{rep.activityCount} logs</td>
                                 <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">
                                   {convRate}%
                                 </td>
@@ -767,7 +876,8 @@ export default function SalesManagerDashboard() {
                               <th className="py-3 px-4">Due Date</th>
                               <th className="py-3 px-4">Priority</th>
                               <th className="py-3 px-4">Status</th>
-                              <th className="py-3 px-4">File</th>
+                              <th className="py-3 px-4">Initial File</th>
+                              <th className="py-3 px-4">Fulfillment Details</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[var(--crm-line)] text-xs">
@@ -792,9 +902,43 @@ export default function SalesManagerDashboard() {
                                 </td>
                                 <td className="py-3 px-4">
                                   {task.fileOriginalName ? (
-                                    <span className="text-teal-400 text-[9px] flex items-center gap-1"><FiPaperclip size={10} /> {task.fileOriginalName}</span>
+                                    <span className="text-[var(--crm-ink-soft)] text-[9px] flex items-center gap-1"><FiPaperclip size={10} /> {task.fileOriginalName}</span>
                                   ) : (
                                     <span className="text-[var(--crm-ink-faint)] text-[9px]">—</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 space-y-1 text-left">
+                                  {task.status === 'COMPLETED' ? (
+                                    <>
+                                      {task.completionFileOriginalName ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const baseUrl = 'http://localhost:5000/';
+                                            const absoluteUrl = task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}${task.completionFileUrl}`;
+                                            const link = document.createElement('a');
+                                            link.href = absoluteUrl;
+                                            link.setAttribute('download', task.completionFileOriginalName);
+                                            link.setAttribute('target', '_blank');
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            link.remove();
+                                          }}
+                                          className="text-teal-400 hover:text-teal-300 font-bold text-[9px] uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <FiDownload size={10} /> {task.completionFileOriginalName}
+                                        </button>
+                                      ) : (
+                                        <span className="text-[var(--crm-ink-faint)] text-[9px]">No file attached</span>
+                                      )}
+                                      {task.remarks && (
+                                        <p className="text-[9px] text-[var(--crm-ink-soft)] italic leading-tight">
+                                          "{task.remarks}"
+                                        </p>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-[var(--crm-ink-faint)] text-[9px]">Awaiting completion</span>
                                   )}
                                 </td>
                               </tr>
@@ -807,32 +951,120 @@ export default function SalesManagerDashboard() {
 
                 </div>
 
-                {/* Right Sidebar (Risk Alerts) */}
+                {/* Right Sidebar (Employee Management Card) */}
                 <div className="lg:col-span-4 space-y-6 text-left print:hidden">
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>Risk Alerts & Watchlist</span>
-                      <FiAlertCircle className="text-rose-500" size={14} />
-                    </h3>
+                    <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
+                        <FiUsers className="text-teal-500" size={14} />
+                        <span>Sales Team Members</span>
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setTaskForm({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL', leadId: '' });
+                          setShowTaskModal(true);
+                        }}
+                        className="bg-teal-700 hover:bg-teal-600 text-white font-mono font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition shadow-sm cursor-pointer"
+                      >
+                        + Assign Task
+                      </button>
+                    </div>
 
-                    <div className="mt-5 space-y-3.5">
-                      {[
-                        { title: 'Deals Stuck > 7 Days', desc: '5 deals in "Negotation" stage for over 11 days. Risk of buyer attrition.', severity: 'HIGH', color: 'bg-rose-950/40 text-rose-400 border border-rose-900/50' },
-                        { title: 'Documents Rejected Today', desc: '1 FCO rejected for formatting issues. Action taken by accounts.', severity: 'MEDIUM', color: 'bg-amber-950/40 text-amber-400 border border-amber-900/30' },
-                        { title: 'Reps with Low Activity', desc: 'Abhishek and Neha logged fewer than 10 activities this calendar week.', severity: 'MEDIUM', color: 'bg-amber-950/40 text-amber-400 border border-amber-900/30' }
-                      ].map((alert, idx) => (
-                        <div key={idx} className={`p-3.5 border rounded-lg flex flex-col justify-between ${alert.color}`}>
-                          <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-bold uppercase tracking-wide leading-none">{alert.title}</span>
-                            <span className={`text-[7px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                              alert.severity === 'HIGH' ? 'bg-rose-900 text-rose-100' : 'bg-amber-900 text-amber-100'
-                            }`}>
-                              {alert.severity}
-                            </span>
-                          </div>
-                          <p className="text-[10px] opacity-90 mt-2 font-light leading-snug">{alert.desc}</p>
+                    <div className="mt-4 space-y-3 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
+                      {teamEmployees.length === 0 ? (
+                        <div className="py-12 border border-dashed border-[var(--crm-line)] rounded flex flex-col items-center justify-center">
+                          <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase">No team members</span>
                         </div>
-                      ))}
+                      ) : (
+                        teamEmployees.map((emp) => {
+                          const liveStatus = getEmployeeLiveStatus(emp);
+                          
+                          // Map status type to aesthetic representation
+                          const statusMap = {
+                            ON_CALL: { label: 'On Call', color: 'bg-emerald-500', pulse: true, text: 'text-emerald-400' },
+                            FOLLOWING_UP: { label: 'Following Up', color: 'bg-sky-500', pulse: true, text: 'text-sky-400' },
+                            CONVERTING: { label: 'Converting', color: 'bg-violet-500', pulse: true, text: 'text-violet-400' },
+                            PAYMENT: { label: 'Payment', color: 'bg-amber-500', pulse: true, text: 'text-amber-400' },
+                            IDLE: { label: 'Idle', color: 'bg-slate-400', pulse: false, text: 'text-slate-400' },
+                            OFFLINE: { label: 'Offline', color: 'bg-rose-500', pulse: false, text: 'text-rose-400' }
+                          };
+                          
+                          const statusConfig = statusMap[liveStatus.status] || statusMap.OFFLINE;
+
+                          return (
+                            <div 
+                              key={emp._id} 
+                              className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-3"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-sans font-bold text-[var(--crm-heading)] text-sm">
+                                    {emp.name}
+                                  </h4>
+                                  <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono uppercase">
+                                    {emp.position || emp.role || 'Executive'}
+                                  </span>
+                                </div>
+                                
+                                {/* Status indicator with animation */}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="relative flex h-2 w-2">
+                                    {statusConfig.pulse && (
+                                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusConfig.color} opacity-75`}></span>
+                                    )}
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${statusConfig.color}`}></span>
+                                  </span>
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider ${statusConfig.text}`}>
+                                    {statusConfig.label}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-between items-center text-[10px] text-[var(--crm-ink-soft)] border-t border-[var(--crm-line)]/50 pt-2">
+                                <div className="truncate max-w-[150px]">
+                                  Activity: <strong className="text-[var(--crm-heading)]">{liveStatus.currentActivity || 'No active task'}</strong>
+                                </div>
+                                <div>
+                                  Pending: <strong className="text-teal-400">{emp.tasksCount || 0} Tasks</strong>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-between items-center pt-1 font-sans">
+                                <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">
+                                  {liveStatus.lastUpdated ? `Since: ${new Date(liveStatus.lastUpdated).toLocaleTimeString()}` : ''}
+                                </span>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setTaskForm(prev => ({ ...prev, assignedTo: emp._id }));
+                                      setShowTaskModal(true);
+                                    }}
+                                    className="flex-1 bg-teal-700/25 hover:bg-teal-700/40 text-teal-400 font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition cursor-pointer"
+                                  >
+                                    Assign Task
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setTargetForm({
+                                        employeeId: emp._id,
+                                        month: new Date().getMonth() + 1,
+                                        year: new Date().getFullYear(),
+                                        targetValue: '',
+                                        targetDeals: ''
+                                      });
+                                      setSelectedEmpName(emp.name);
+                                      setShowTargetModal(true);
+                                    }}
+                                    className="flex-1 bg-sky-700/25 hover:bg-sky-700/40 text-sky-400 font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition cursor-pointer"
+                                  >
+                                    Set Target
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1308,6 +1540,22 @@ export default function SalesManagerDashboard() {
               </div>
 
               <div>
+                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Link to Lead (Optional)</label>
+                <select
+                  value={taskForm.leadId}
+                  onChange={(e) => setTaskForm(prev => ({...prev, leadId: e.target.value}))}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                >
+                  <option value="">None / General Task</option>
+                  {allLeads.map(lead => (
+                    <option key={lead._id} value={lead._id}>
+                      {lead.leadCode || 'No Code'} - {lead.customerName} ({lead.productCategory})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Attach File (Optional)</label>
                 <input
                   type="file"
@@ -1404,6 +1652,95 @@ export default function SalesManagerDashboard() {
                   type="button"
                   onClick={() => setShowFileModal(false)}
                   className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+      {/* ─── SET MONTHLY TARGET MODAL ─── */}
+      {showTargetModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowTargetModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl shadow-xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-[var(--crm-line)] text-left font-sans">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--crm-heading)] flex items-center gap-2">
+                🎯 Configure Monthly Sales Target
+              </h2>
+              <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1 uppercase font-mono">For {selectedEmpName}</p>
+            </div>
+
+            <form onSubmit={handleSetTargetSubmit} className="p-6 space-y-4 text-left font-sans">
+              <div>
+                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Target Value (INR) *</label>
+                <input
+                  type="number"
+                  value={targetForm.targetValue}
+                  onChange={(e) => setTargetForm(prev => ({...prev, targetValue: e.target.value}))}
+                  placeholder="e.g. 5000000"
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Month *</label>
+                  <select
+                    value={targetForm.month}
+                    onChange={(e) => setTargetForm(prev => ({...prev, month: e.target.value}))}
+                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                    required
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                      <option key={m} value={m}>
+                        {new Date(2026, m - 1).toLocaleString('default', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Year *</label>
+                  <input
+                    type="number"
+                    value={targetForm.year}
+                    onChange={(e) => setTargetForm(prev => ({...prev, year: e.target.value}))}
+                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Deals Count Target (Optional)</label>
+                <input
+                  type="number"
+                  value={targetForm.targetDeals}
+                  onChange={(e) => setTargetForm(prev => ({...prev, targetDeals: e.target.value}))}
+                  placeholder="e.g. 10"
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingTarget}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer transition flex items-center justify-center gap-1.5 disabled:opacity-50 font-mono"
+                >
+                  {submittingTarget ? 'Saving...' : 'Set Target'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTargetModal(false)}
+                  className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition font-mono"
                 >
                   Cancel
                 </button>

@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiMenu, FiX, FiSun, FiMoon } from 'react-icons/fi';
+import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
+import { useAuth } from '../../hooks/useAuth';
+import { attendanceApi } from '../../api/attendance';
+import toast from 'react-hot-toast';
 // Removed the duplicate main-site Navbar import from here to protect CRM view real estate
 
 export default function PortalLayout({ children }) {
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
+  const [todayAttendance, setTodayAttendance] = useState(null);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -18,6 +24,52 @@ export default function PortalLayout({ children }) {
   useEffect(() => {
     localStorage.setItem('crm-theme', theme);
   }, [theme]);
+
+  const fetchTodayAttendance = async () => {
+    if (!user || user.role === 'ADMIN') return;
+    try {
+      const res = await attendanceApi.getMyToday();
+        setTodayAttendance(res.data.record || res.data.attendance);
+    } catch (err) {
+      console.error('Error fetching today attendance in PortalLayout:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTodayAttendance();
+  }, [user]);
+
+  const handleCheckIn = async () => {
+    setLoadingAttendance(true);
+    try {
+      const res = await attendanceApi.checkIn();
+      if (res.success) {
+        toast.success('Successfully checked in! Have a great day. ☀️');
+        fetchTodayAttendance();
+        window.dispatchEvent(new Event('attendance_updated'));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Check-in failed');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    setLoadingAttendance(true);
+    try {
+      const res = await attendanceApi.checkOut();
+      if (res.success) {
+        toast.success('Successfully checked out! See you tomorrow. 🌙');
+        fetchTodayAttendance();
+        window.dispatchEvent(new Event('attendance_updated'));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Check-out failed');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -72,6 +124,33 @@ export default function PortalLayout({ children }) {
             India Trade Center
           </div>
           <div className="flex items-center gap-2 justify-end">
+            {user && user.role !== 'ADMIN' && (
+              <div className="flex items-center gap-1.5 mr-1">
+                {!todayAttendance && (
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={loadingAttendance}
+                    className="bg-emerald-950/90 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                  >
+                    In
+                  </button>
+                )}
+                {todayAttendance && !todayAttendance.clockOut && (
+                  <button
+                    onClick={handleCheckOut}
+                    disabled={loadingAttendance}
+                    className="bg-rose-950/90 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                  >
+                    Out
+                  </button>
+                )}
+                {todayAttendance && todayAttendance.clockOut && (
+                  <span className="text-[8px] text-[var(--crm-positive)] font-mono font-bold">
+                    ✓ Complete
+                  </span>
+                )}
+              </div>
+            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -125,6 +204,38 @@ export default function PortalLayout({ children }) {
             className="hidden md:flex items-center justify-end gap-3 px-8 py-3 border-b"
             style={{ borderColor: 'var(--crm-line)' }}
           >
+            {user && user.role !== 'ADMIN' && (
+              <div className="flex items-center gap-2 mr-4">
+                {!todayAttendance && (
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={loadingAttendance}
+                    className="flex items-center gap-1 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-900/40 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer"
+                  >
+                    <FiLogIn size={12} /> Check In
+                  </button>
+                )}
+                {todayAttendance && !todayAttendance.clockOut && (
+                  <button
+                    onClick={handleCheckOut}
+                    disabled={loadingAttendance}
+                    className="flex items-center gap-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-900/40 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer"
+                  >
+                    <FiLogOut size={12} /> Check Out
+                  </button>
+                )}
+                {todayAttendance && todayAttendance.clockOut && (
+                  <span className="text-[10px] text-[var(--crm-positive)] font-mono font-bold">
+                    ✓ Shift Completed
+                  </span>
+                )}
+                {todayAttendance && todayAttendance.clockIn && (
+                  <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                    Clocked in: {new Date(todayAttendance.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            )}
             <button
               type="button"
               onClick={toggleTheme}

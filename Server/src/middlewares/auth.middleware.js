@@ -45,6 +45,27 @@ async function authenticate(req, res, next) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User/Employee is deactivated or invalid', [], req);
     }
 
+    if (user && foundIn === 'User') {
+      try {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { isOnline: true, lastActiveAt: new Date() } }
+        );
+      } catch (err) {
+        console.error('Error updating user active status in middleware:', err);
+      }
+
+      const Employee = require('../modules/employee/employee.model');
+      const employee = await Employee.findOne({ employeeId: user.employeeId });
+      if (employee) {
+        user = user.toObject();
+        user.role = employee.role;
+        user.position = employee.position;
+        user.department = employee.department;
+        user.permissions = employee.permissions;
+      }
+    }
+
     req.user = user;
 
     next();

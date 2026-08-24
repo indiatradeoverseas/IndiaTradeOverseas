@@ -13,5 +13,10 @@ export const dashboardApi = {
   async getHistory() {
     const response = await axiosInstance.get('/dashboard/history');
     return response.data;
+  },
+
+  async getMetrics() {
+    const response = await axiosInstance.get('/dashboard/metrics');
+    return response.data;
   }
 };

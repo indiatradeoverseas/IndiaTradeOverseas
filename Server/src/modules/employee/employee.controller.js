@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const Employee = require('./employee.model');
 const MonthlyLeaveBalance = require('../leave/monthlyLeaveBalance.model');
 const { generateAccessToken } = require('../auth/token.service');
@@ -99,6 +100,7 @@ async function login(req, res, next) {
       email: employee.email,
       role: employee.role,
       department: employee.department,
+      position: employee.position,
       joiningDate: employee.joiningDate,
       status: employee.status,
       phone: employee.phone,
@@ -338,11 +340,171 @@ async function signupEmployee(req, res, next) {
   }
 }
 
+async function listEmployees(req, res, next) {
+  try {
+    const { department } = req.query;
+    let query = { status: 'ACTIVE' };
+    if (department) {
+      query.department = department.toUpperCase();
+    }
+
+    const employees = await Employee.find(query)
+      .select('-password')
+      .sort({ name: 1 })
+      .lean();
+
+    const employeeIds = employees.map(emp => emp._id);
+
+    // Fetch statuses
+    const EmployeeStatus = require('./employeeStatus.model');
+    const statuses = await EmployeeStatus.find({ employeeId: { $in: employeeIds } }).lean();
+    const statusMap = statuses.reduce((map, s) => {
+      if (s && s.employeeId) {
+        map[s.employeeId.toString()] = s;
+      }
+      return map;
+    }, {});
+
+    // Fetch pending task counts
+    const Task = require('../task/task.model');
+    const targetIds = [];
+    employeeIds.forEach(id => {
+      targetIds.push(String(id));
+      if (mongoose.isValidObjectId(id)) {
+        targetIds.push(new mongoose.Types.ObjectId(id));
+      }
+    });
+
+    const pendingTasksAgg = await Task.aggregate([
+      { $match: { assignedTo: { $in: targetIds }, status: { $ne: 'COMPLETED' } } },
+      { $group: { _id: '$assignedTo', count: { $sum: 1 } } }
+    ]);
+    const tasksCountMap = pendingTasksAgg.reduce((map, t) => {
+      if (t && t._id) {
+        map[t._id.toString()] = t.count;
+      }
+      return map;
+    }, {});
+
+    const employeesWithStatus = employees.map(emp => {
+      const statusInfo = statusMap[emp._id.toString()] || {
+        status: 'OFFLINE',
+        currentActivity: 'Offline',
+        lastUpdated: emp.updatedAt || new Date(),
+        duration: '00:00:00'
+      };
+      return {
+        ...emp,
+        status: statusInfo.status,
+        currentActivity: statusInfo.currentActivity,
+        lastUpdated: statusInfo.lastUpdated,
+        duration: statusInfo.duration,
+        tasksCount: tasksCountMap[emp._id.toString()] || 0,
+        statusInfo
+      };
+    });
+
+    return ok(res, { employees: employeesWithStatus }, 'Employees list retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getEmployeesCount(req, res, next) {
+  try {
+    const { role, department } = req.query;
+    let filter = { status: 'ACTIVE' };
+
+    if (role) {
+      if (role.toLowerCase() === 'sales') {
+        filter.department = 'SALES';
+      } else {
+        filter.role = role.toUpperCase();
+      }
+    }
+    if (department) {
+      filter.department = department.toUpperCase();
+    }
+
+    const count = await Employee.countDocuments(filter);
+    return ok(res, { count }, 'Employees count retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getEmployeeStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const EmployeeStatus = require('./employeeStatus.model');
+    let statusObj = await EmployeeStatus.findOne({ employeeId: id }).lean();
+    if (!statusObj) {
+      statusObj = {
+        employeeId: id,
+        status: 'OFFLINE',
+        currentActivity: 'Offline',
+        lastUpdated: new Date(),
+        duration: '00:00:00'
+      };
+    }
+    return ok(res, { status: statusObj }, 'Employee status retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateEmployeeStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { status, currentActivity } = req.body;
+
+    const validStatuses = ['ON_CALL', 'FOLLOWING_UP', 'CONVERTING', 'PAYMENT', 'IDLE', 'OFFLINE'];
+    if (!validStatuses.includes(status)) {
+      return fail(res, 400, 'BAD_REQUEST', 'Invalid status type');
+    }
+
+    const EmployeeStatus = require('./employeeStatus.model');
+    const statusObj = await EmployeeStatus.findOneAndUpdate(
+      { employeeId: id },
+      {
+        status,
+        currentActivity: currentActivity || '',
+        lastUpdated: new Date(),
+        duration: '00:00:00'
+      },
+      { upsert: true, new: true }
+    );
+
+    // Broadcast update via socket
+    const socketService = require('../../services/socket.service');
+    const employee = await Employee.findById(id).select('name role department position');
+
+    const updateData = {
+      employeeId: id,
+      name: employee ? employee.name : 'Unknown',
+      status: statusObj.status,
+      currentActivity: statusObj.currentActivity,
+      lastUpdated: statusObj.lastUpdated,
+      duration: statusObj.duration
+    };
+
+    socketService.emitToAll('employee_status_updated', updateData);
+
+    return ok(res, { status: statusObj }, 'Employee status updated successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
   getProfile,
   getNextEmployeeId,
   getListManagers,
-  signupEmployee
+  signupEmployee,
+  listEmployees,
+  getEmployeesCount,
+  getEmployeeStatus,
+  updateEmployeeStatus
 };

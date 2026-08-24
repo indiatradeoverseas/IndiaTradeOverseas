@@ -10,9 +10,9 @@ const { ok, fail } = require('../../utils/response');
  */
 async function shareFile(req, res) {
   try {
-    const allowedRoles = ['ADMIN', 'MANAGER', 'HR_MANAGER'];
+    const allowedRoles = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 'HR', 'EMPLOYEE'];
     if (!allowedRoles.includes(req.user.role)) {
-      return fail(res, 403, 'FORBIDDEN', 'Only Managers and Admins can share files', [], req);
+      return fail(res, 403, 'FORBIDDEN', 'Access denied to share files', [], req);
     }
 
     const { sentTo, note, department } = req.body;
@@ -26,7 +26,11 @@ async function shareFile(req, res) {
     }
 
     // Verify recipient exists
-    const recipient = await Employee.findById(sentTo);
+    const mongoose = require('mongoose');
+    const recipientIdQuery = mongoose.isValidObjectId(sentTo)
+      ? { $or: [{ _id: sentTo }, { _id: new mongoose.Types.ObjectId(sentTo) }] }
+      : { _id: sentTo };
+    const recipient = await Employee.findOne(recipientIdQuery);
     if (!recipient) {
       return fail(res, 404, 'NOT_FOUND', 'Recipient employee not found', [], req);
     }
@@ -38,7 +42,7 @@ async function shareFile(req, res) {
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       sentBy: req.user._id,
-      sentTo,
+      sentTo: recipient._id,
       department: department || req.user.department || 'GENERAL',
       note: note || ''
     });

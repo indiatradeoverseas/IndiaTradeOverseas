@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const monthlyLeaveBalanceSchema = new mongoose.Schema(
   {
     employeeId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       refPath: 'employeeModel',
       required: true,
       index: true

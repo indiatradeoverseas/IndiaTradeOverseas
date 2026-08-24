@@ -36,7 +36,7 @@ const Login = () => {
           icon: '🎉',
           style: { borderRadius: '6px', background: '#0C1F3F', color: '#ffffff', border: '1px solid #2F5DA8' }
         });
-        navigate('/crm/dashboard');
+        navigate('/');
       }
     } catch (error) {
       console.error('Login error:', error);

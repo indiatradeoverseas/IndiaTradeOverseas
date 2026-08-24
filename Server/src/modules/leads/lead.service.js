@@ -40,19 +40,28 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
 
 function canAccessLead(user, lead) {
   if (!user) return false;
+  const role = user.role || '';
+  const isManagerOrAdmin =
+    role === 'ADMIN' ||
+    role === 'MANAGER' ||
+    role.endsWith('_MANAGER') ||
+    role.toLowerCase().includes('manager') ||
+    user.department === 'ADMIN' ||
+    (user.position && user.position.toLowerCase().includes('admin'));
+
   if (
-    user.role === 'ADMIN' ||
-    user.role === 'MANAGER' ||
-    user.role === 'HR' ||
-    user.role === 'ACCOUNTS' ||
-    user.role === 'FINANCE' ||
+    isManagerOrAdmin ||
+    role === 'HR' ||
+    role === 'ACCOUNTS' ||
+    role === 'FINANCE' ||
     user.paymentPermission === true ||
     user.dispatchPermission === true ||
     user.quotationPermission === true
   ) {
     return true;
   }
-  if (lead.assignedTo && lead.assignedTo.toString() === user._id.toString()) return true;
+  const assignedId = (typeof lead.populated === 'function' && lead.populated('assignedTo')) || lead.assignedTo?._id || lead.assignedTo;
+  if (assignedId && assignedId.toString() === user._id.toString()) return true;
   return false;
 }
 
@@ -61,7 +70,15 @@ function getLeadDisplay(lead, user) {
   const { decryptText } = require('../../utils/crypto');
 
 
-  if (user && (user.role === 'ADMIN' || user.role === 'MANAGER' || user.role === 'HR')) {
+  const role = user ? (user.role || '') : '';
+  const isManagerOrAdminUser =
+    role === 'ADMIN' ||
+    role === 'MANAGER' ||
+    role.endsWith('_MANAGER') ||
+    role.toLowerCase().includes('manager') ||
+    (user && (user.department === 'ADMIN' || (user.position && user.position.toLowerCase().includes('admin'))));
+
+  if (user && (isManagerOrAdminUser || role === 'HR')) {
 
     const decryptedPhone = decryptText(leadObj.phoneEncrypted);
     const decryptedEmail = leadObj.emailEncrypted ? decryptText(leadObj.emailEncrypted) : '';
@@ -85,12 +102,20 @@ async function listLeads(user, query = {}) {
   const filter = {};
   if (query.stage) filter.stage = query.stage;
 
+  const role = user.role || '';
+  const isManagerOrAdminUser =
+    role === 'ADMIN' ||
+    role === 'MANAGER' ||
+    role.endsWith('_MANAGER') ||
+    role.toLowerCase().includes('manager') ||
+    user.department === 'ADMIN' ||
+    (user.position && user.position.toLowerCase().includes('admin'));
+
   if (
-    user.role !== 'ADMIN' &&
-    user.role !== 'MANAGER' &&
-    user.role !== 'HR' &&
-    user.role !== 'ACCOUNTS' &&
-    user.role !== 'FINANCE' &&
+    !isManagerOrAdminUser &&
+    role !== 'HR' &&
+    role !== 'ACCOUNTS' &&
+    role !== 'FINANCE' &&
     user.paymentPermission !== true &&
     user.dispatchPermission !== true &&
     user.quotationPermission !== true
@@ -99,7 +124,29 @@ async function listLeads(user, query = {}) {
   }
 
   const leads = await Lead.find(filter).populate('assignedTo', 'fullName name email role profileImage').sort({ createdAt: -1 });
-  return leads.map(l => getLeadDisplay(l, user));
+
+  // Resolve mixed User/Employee populated assignees
+  const populatedLeads = await Promise.all(leads.map(async (l) => {
+    const populatedL = l.toObject ? l.toObject() : l;
+    const rawAssignedId = (typeof l.populated === 'function' && l.populated('assignedTo')) || l.assignedTo;
+    if (rawAssignedId && !l.assignedTo) {
+      const Employee = require('../employee/employee.model');
+      const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
+      if (employee) {
+        populatedL.assignedTo = {
+          _id: employee._id,
+          fullName: employee.fullName || employee.name,
+          name: employee.name || employee.fullName,
+          email: employee.email,
+          role: employee.role,
+          profileImage: employee.profileImage
+        };
+      }
+    }
+    return getLeadDisplay(populatedL, user);
+  }));
+
+  return populatedLeads;
 }
 
 async function getLeadById(id, user) {
@@ -110,9 +157,27 @@ async function getLeadById(id, user) {
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
+  // Resolve mixed User/Employee populated assignee
+  const leadObj = lead.toObject ? lead.toObject() : lead;
+  const rawAssignedId = (typeof lead.populated === 'function' && lead.populated('assignedTo')) || lead.assignedTo;
+  if (rawAssignedId && !lead.assignedTo) {
+    const Employee = require('../employee/employee.model');
+    const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
+    if (employee) {
+      leadObj.assignedTo = {
+        _id: employee._id,
+        fullName: employee.fullName || employee.name,
+        name: employee.name || employee.fullName,
+        email: employee.email,
+        role: employee.role,
+        profileImage: employee.profileImage
+      };
+    }
+  }
+
   const activities = await LeadActivity.find({ leadId: lead._id }).sort({ createdAt: -1 });
   return {
-    lead: getLeadDisplay(lead, user),
+    lead: getLeadDisplay(leadObj, user),
     activities
   };
 }
@@ -142,7 +207,16 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
   
   // Allow ADMIN and MANAGER roles to override pipeline rules
-  const canOverride = ['ADMIN', 'MANAGER'].includes(user.role);
+  const role = user.role || '';
+  const isManagerOrAdminUser =
+    role === 'ADMIN' ||
+    role === 'MANAGER' ||
+    role.endsWith('_MANAGER') ||
+    role.toLowerCase().includes('manager') ||
+    user.department === 'ADMIN' ||
+    (user.position && user.position.toLowerCase().includes('admin'));
+
+  const canOverride = isManagerOrAdminUser;
 
   if (!isAllowed && !canOverride) {
     throw new Error(`INVALID_STAGE_TRANSITION: Cannot transition from ${previousStage} to ${newStage}`);
@@ -331,6 +405,111 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
   return { success: true, modifiedCount: results.modifiedCount };
 }
 
+async function bulkImportLeads(leadsArray, user) {
+  const Lead = require('./lead.model');
+  const LeadActivity = require('./leadActivity.model');
+  const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
+  const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+
+  if (!Array.isArray(leadsArray) || !leadsArray.length) {
+    throw new Error('LEADS_ARRAY_REQUIRED');
+  }
+
+  const importedLeads = [];
+  const errors = [];
+
+  for (let i = 0; i < leadsArray.length; i++) {
+    const row = leadsArray[i];
+    try {
+      const {
+        customerName,
+        companyName,
+        phone,
+        email,
+        productCategory,
+        quantity,
+        destination,
+        leadValue,
+        country
+      } = row;
+
+      if (!customerName || !phone || !productCategory) {
+        errors.push(`Row ${i + 1}: Missing required fields (customerName, phone, productCategory)`);
+        continue;
+      }
+
+      const cleanPhone = String(phone).replace(/\s/g, '');
+      const phoneHash = hashText(cleanPhone);
+      const emailHash = email ? hashText(email.trim()) : '';
+      const companyNameHash = companyName ? hashCompanyName(companyName) : '';
+
+      // Check duplicates
+      const duplicateQueries = [{ phoneHash }];
+      if (emailHash) duplicateQueries.push({ emailHash });
+      const duplicate = await Lead.findOne({ $or: duplicateQueries });
+
+      // Run AI scoring
+      const qtyText = String(quantity || '');
+      const { score, priority } = scoreAndClassifyLead({
+        quantity: qtyText,
+        hasLOI: false,
+        paymentTerms: 'Pending',
+        contactPerson: customerName,
+        mobile: cleanPhone,
+        email: email || '',
+        chatSummary: 'Bulk imported lead.'
+      });
+
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 10000);
+      const leadCode = `LD-${timestamp}-${random}`;
+
+      const lead = await Lead.create({
+        leadCode,
+        source: 'IMPORT',
+        customerName,
+        companyName: companyName || '',
+        companyNameHash,
+        phoneEncrypted: encryptText(cleanPhone),
+        phoneMasked: maskPhone(cleanPhone),
+        phoneHash,
+        emailEncrypted: email ? encryptText(email.trim()) : '',
+        emailMasked: email ? maskEmail(email.trim()) : '',
+        emailHash,
+        whatsAppNumber: cleanPhone,
+        country: country || 'India',
+        productCategory,
+        quantity: qtyText,
+        destination: destination || '',
+        leadValue: Number(leadValue || 0),
+        score,
+        priority,
+        stage: 'NEW_LEAD',
+        assignedTo: null,
+        duplicateOf: duplicate ? duplicate._id : null,
+        createdBy: user._id
+      });
+
+      // Log Activity
+      await LeadActivity.create({
+        leadId: lead._id,
+        actionType: 'LEAD_CREATED',
+        note: `Lead imported by ${user.fullName}. Initial Score: ${score}.`,
+        actorId: user._id
+      });
+
+      importedLeads.push(lead._id);
+    } catch (err) {
+      errors.push(`Row ${i + 1}: ${err.message}`);
+    }
+  }
+
+  return {
+    successCount: importedLeads.length,
+    errors
+  };
+}
+
 module.exports = {
   listLeads,
   getLeadById,
@@ -339,5 +518,6 @@ module.exports = {
   getLeadDisplay,
   assignLead,
   deleteLead,
-  assignLeadsBulk
+  assignLeadsBulk,
+  bulkImportLeads
 };

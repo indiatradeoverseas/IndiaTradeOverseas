@@ -108,11 +108,25 @@ async function assignLeadsBulk(req, res, next) {
   }
 }
 
+async function bulkImportLeads(req, res, next) {
+  try {
+    const { leads } = req.body;
+    const result = await leadService.bulkImportLeads(leads, req.user);
+    return ok(res, result, 'Bulk leads processed', 200, req);
+  } catch (error) {
+    if (error.message === 'LEADS_ARRAY_REQUIRED') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'leads array is required');
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getLeadsList,
   getLeadDetails,
   changeLeadStage,
   assignLead,
   deleteLead,
-  assignLeadsBulk
+  assignLeadsBulk,
+  bulkImportLeads
 };

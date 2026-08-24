@@ -55,5 +55,16 @@ export const leadsApi = {
   async assignLeadsBulk(bulkData) {
     const response = await axiosInstance.post('/leads/assign', bulkData);
     return response.data;
+  },
+
+  async getLeadsCount(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await axiosInstance.get(`/leads/count${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  },
+
+  async bulkImportLeads(leads) {
+    const response = await axiosInstance.post('/leads/bulk-import', { leads });
+    return response.data;
   }
 };

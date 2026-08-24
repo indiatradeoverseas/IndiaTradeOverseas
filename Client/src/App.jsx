@@ -55,7 +55,6 @@ import SalesDashboard from './pages/crm/SalesDashboard';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
-import FounderDashboard from './pages/crm/FounderDashboard/FounderDashboard';
 
 
 import Navbar from './components/Layout/Navbar';
@@ -240,7 +239,7 @@ function AppLayout() {
           <Route
             path="/crm/career-leads"
             element={
-              (isAdminUser(user) || ['MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) ? (
+              (isAdminUser(user) || ['MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) ? (
                 <CareerLeads />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -250,7 +249,7 @@ function AppLayout() {
           <Route
             path="/crm/leads"
             element={
-              (isAdminUser(user) || ['MANAGER', 'HR', 'SALES', 'EMPLOYEE'].includes(user?.role) || user?.leadPermission === true) ? (
+              (isAdminUser(user) || ['MANAGER', 'HR', 'SALES', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(user?.role) || user?.leadPermission === true) ? (
                 <Leads />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -260,7 +259,7 @@ function AppLayout() {
           <Route
             path="/crm/leads/:id"
             element={
-              (isAdminUser(user) || ['MANAGER', 'HR', 'SALES', 'EMPLOYEE'].includes(user?.role) || user?.leadPermission === true || user?.taskPermission === true) ? (
+              (isAdminUser(user) || ['MANAGER', 'HR', 'SALES', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(user?.role) || user?.leadPermission === true || user?.taskPermission === true) ? (
                 <LeadDetail />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -284,22 +283,40 @@ function AppLayout() {
           <Route
             path="/crm/tasks"
             element={
-              (isAdminUser(user) || user?.taskPermission === true) ? (
+              (isAdminUser(user) || ['MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'SALES'].includes(user?.role) || user?.taskPermission === true || user?.permissions?.task === true) ? (
                 <Tasks />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
               )
             }
           />
-          <Route path="/crm/employees" element={<AdminRoute><Employees /></AdminRoute>} />
-          <Route path="/crm/employees/:id" element={<AdminRoute><EmployeeProfile /></AdminRoute>} />
+          <Route
+            path="/crm/employees"
+            element={
+              (isAdminUser(user) || ['MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role)) ? (
+                <Employees />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/crm/employees/:id"
+            element={
+              (isAdminUser(user) || ['MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) || (user && window.location.pathname.endsWith('/' + user._id))) ? (
+                <EmployeeProfile />
+              ) : (
+                <Navigate to="/crm/dashboard" replace />
+              )
+            }
+          />
           <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
           <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
           <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           <Route
             path="/crm/applications"
             element={
-              ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) ? (
+              ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) ? (
                 <Applications />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -333,14 +350,7 @@ function AppLayout() {
               </RoleProtectedRoute>
             }
           />
-          <Route
-            path="/crm/founder"
-            element={
-              <RoleProtectedRoute allowedRoles={['ADMIN']}>
-                <FounderDashboard />
-              </RoleProtectedRoute>
-            }
-          />
+
           <Route path="*" element={<Navigate to="/crm/dashboard" />} />
         </Routes>
         <ChatWidget />

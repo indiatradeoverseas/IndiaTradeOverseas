@@ -4,6 +4,7 @@ import { FiClock, FiLogIn, FiLogOut, FiFilter, FiUsers, FiCheckCircle, FiAlertCi
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
 import { useAuth } from '../../hooks/useAuth';
+import { socketService } from '../../services/socket';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -93,14 +94,31 @@ export default function Attendance() {
   const [myHistory, setMyHistory] = useState([]);
   const [myHistoryLoading, setMyHistoryLoading] = useState(false);
 
-  const isManagerTier = ['ADMIN', 'MANAGER', 'HR'].includes(user?.role);
+  const isManagerTier = ['ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(user?.role);
   const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     fetchToday();
-    if (isManagerTier) fetchReport(getCurrentMonthBounds());
-    else fetchMyHistory(getCurrentMonthBounds());
-  }, []);
+    if (isManagerTier) fetchReport(filters);
+    else fetchMyHistory(filters);
+
+    const socket = socketService.getSocket();
+    const handleUpdate = () => {
+      fetchToday();
+      if (isManagerTier) fetchReport(filters);
+      else fetchMyHistory(filters);
+    };
+
+    if (socket) {
+      socket.on('attendance_updated', handleUpdate);
+    }
+    window.addEventListener('attendance_updated', handleUpdate);
+
+    return () => {
+      if (socket) socket.off('attendance_updated', handleUpdate);
+      window.removeEventListener('attendance_updated', handleUpdate);
+    };
+  }, [filters, isManagerTier]);
 
   useEffect(() => {
     if (!today?.lunchStartAt || today?.lunchEndAt) return;
@@ -476,37 +494,29 @@ export default function Attendance() {
                   <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                     {reportLoading ? (
                       <tr><td colSpan="8" className="text-center py-12 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">Loading...</td></tr>
-                    ) : displayRows.length === 0 ? (
+                    ) : report.length === 0 ? (
                       <tr><td colSpan="8" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No attendance records found.</td></tr>
                     ) : (
-                      displayRows.map((row) =>
-                        row.isSunday ? (
-                          <tr key={row.date.toDateString()} className="bg-[var(--crm-bg-sunken)]/40">
-                            <td colSpan="8" className="text-center py-3 text-[10px] uppercase tracking-[0.3em] font-mono font-bold text-[var(--crm-ink-faint)]">
-                              Sunday &bull; {row.date.toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ) : (
-                          <tr key={row.record._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                            <td className="py-3 px-5 text-[var(--crm-heading)]">{row.record.employeeId?.fullName || 'Unknown'}</td>
-                            <td className="py-3 px-5">
-                              <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">
-                                {row.record.employeeId?.department || '—'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(row.record.date).toLocaleDateString()}</td>
-                            <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{row.record.checkInAt ? new Date(row.record.checkInAt).toLocaleTimeString() : '—'}</td>
-                            <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{row.record.checkOutAt ? new Date(row.record.checkOutAt).toLocaleTimeString() : '—'}</td>
-                            <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{row.record.workingHours || 0}h</td>
-                            <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{row.record.lunchDurationMinutes ? `${row.record.lunchDurationMinutes}m` : '—'}</td>
-                            <td className="py-3 px-5 text-center">
-                              <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(row.record.status)}`}>
-                                {row.record.status.replace('_', ' ')}
-                              </span>
-                            </td>
-                          </tr>
-                        )
-                      )
+                      report.map((record) => (
+                        <tr key={record._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                          <td className="py-3 px-5 text-[var(--crm-heading)]">{record.employeeId?.fullName || record.employeeId?.name || 'Unknown'}</td>
+                          <td className="py-3 px-5">
+                            <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">
+                              {record.employeeId?.department || '—'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(record.date).toLocaleDateString()}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{record.checkInAt ? new Date(record.checkInAt).toLocaleTimeString() : (record.checkInTime || '—')}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{record.checkOutAt ? new Date(record.checkOutAt).toLocaleTimeString() : (record.checkOutTime || '—')}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{record.workingHours || 0}h</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{record.lunchDurationMinutes ? `${record.lunchDurationMinutes}m` : '—'}</td>
+                          <td className="py-3 px-5 text-center">
+                            <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(record.status)}`}>
+                              {record.status.replace('_', ' ')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>

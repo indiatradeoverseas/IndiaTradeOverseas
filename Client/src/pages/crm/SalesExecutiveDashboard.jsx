@@ -38,6 +38,8 @@ import { salesApi } from '../../api/sales';
 import { leadsApi } from '../../api/leads';
 import { taskApi } from '../../api/task';
 import { sharedFilesApi } from '../../api/sharedFiles';
+import { employeesApi } from '../../api/employees';
+import { socketService } from '../../services/socket';
 
 // Framer motion variants
 const containerVariants = {
@@ -78,6 +80,49 @@ export default function SalesExecutiveDashboard() {
   const [managerTasks, setManagerTasks] = useState([]);
   const [sharedFiles, setSharedFiles] = useState([]);
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
+  const [completedTasksCount, setCompletedTasksCount] = useState(0);
+
+  // Task Completion states
+  const [completionTaskId, setCompletionTaskId] = useState(null);
+  const [completionFile, setCompletionFile] = useState(null);
+  const [completionRemarks, setCompletionRemarks] = useState('');
+
+  // File Upload states
+  const [employeesList, setEmployeesList] = useState([]);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [recipientId, setRecipientId] = useState('');
+  const [uploadNote, setUploadNote] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const [myStatus, setMyStatus] = useState('IDLE');
+  const [myActivity, setMyActivity] = useState('Available');
+  const [submittingStatus, setSubmittingStatus] = useState(false);
+
+  const handleStatusChange = async (newStatus, newActivity) => {
+    setSubmittingStatus(true);
+    try {
+      const skt = socketService.getSocket();
+      if (skt && skt.connected) {
+        skt.emit('change_status', { status: newStatus, currentActivity: newActivity });
+        setMyStatus(newStatus);
+        setMyActivity(newActivity);
+        toast.success(`Activity status updated to: ${newStatus.replace('_', ' ')}`);
+      } else {
+        // Fallback REST call
+        const res = await employeesApi.updateEmployeeStatus(user._id, newStatus, newActivity);
+        if (res.success) {
+          setMyStatus(newStatus);
+          setMyActivity(newActivity);
+          toast.success(`Activity status updated successfully (REST)`);
+        }
+      }
+    } catch (err) {
+      console.error('Error changing status:', err);
+      toast.error('Failed to update activity status');
+    } finally {
+      setSubmittingStatus(false);
+    }
+  };
 
   // Greeting Message based on local hour
   const [greeting, setGreeting] = useState('Good Morning');
@@ -102,10 +147,10 @@ export default function SalesExecutiveDashboard() {
       // 2. Fetch User's Deals
       const leadsRes = await leadsApi.getLeads({ limit: 100 });
       if (leadsRes.success) {
-        // Filter leads assigned to the logged-in user
+        // Filter leads assigned to the logged-in user by email
         const myLeads = (leadsRes.data.leads || []).filter(lead => {
-          const ownerId = lead.assignedTo?._id || lead.assignedTo;
-          return ownerId && String(ownerId) === String(user._id);
+          const leadOwnerEmail = lead.assignedTo?.email;
+          return leadOwnerEmail && String(leadOwnerEmail).toLowerCase() === String(user.email).toLowerCase();
         });
         setDeals(myLeads);
 
@@ -118,22 +163,45 @@ export default function SalesExecutiveDashboard() {
 
       // 5. Fetch Manager's Tasks assigned to me
       try {
-        const tasksRes = await taskApi.getTasks({ status: 'PENDING,IN_PROGRESS' });
+        const tasksRes = await taskApi.getTasks({ employeeId: user._id });
         if (tasksRes.success) {
-          setManagerTasks(tasksRes.data?.tasks || []);
+          const allTasks = tasksRes.data?.tasks || [];
+          setManagerTasks(allTasks.filter(t => t.status === 'PENDING' || t.status === 'IN_PROGRESS'));
+          setCompletedTasksCount(allTasks.filter(t => t.status === 'COMPLETED').length);
         }
       } catch (err) {
         console.error('Error fetching manager tasks:', err);
       }
 
-      // 6. Fetch Shared Files received by me
+      // 6. Fetch Shared Files
       try {
-        const filesRes = await sharedFilesApi.getSharedFiles({ direction: 'received' });
+        const filesRes = await sharedFilesApi.getSharedFiles();
         if (filesRes.success) {
           setSharedFiles(filesRes.files || []);
         }
       } catch (err) {
         console.error('Error fetching shared files:', err);
+      }
+
+      // 7. Fetch active employees list for file sharing
+      try {
+        const empRes = await taskApi.getEmployeesByDepartment();
+        if (empRes.success) {
+          setEmployeesList(empRes.employees || []);
+        }
+      } catch (err) {
+        console.error('Error fetching employees list:', err);
+      }
+
+      // 8. Fetch own real-time status
+      try {
+        const statusRes = await employeesApi.getEmployeeStatus(user._id);
+        if (statusRes.success && statusRes.data?.status) {
+          setMyStatus(statusRes.data.status.status || 'IDLE');
+          setMyActivity(statusRes.data.status.currentActivity || 'Available');
+        }
+      } catch (err) {
+        console.error('Error fetching own status:', err);
       }
 
     } catch (err) {
@@ -224,16 +292,25 @@ export default function SalesExecutiveDashboard() {
   };
 
   // Update task status from Manager's Tasks section
-  const handleTaskStatusUpdate = async (taskId, newStatus) => {
+  const handleTaskStatusUpdate = async (taskId, newStatus, remarks = '', file = null) => {
     setUpdatingTaskId(taskId);
     try {
-      const res = await taskApi.updateTaskStatus(taskId, newStatus, 'Status updated by executive');
+      let payload;
+      if (file || remarks) {
+        payload = new FormData();
+        payload.append('status', newStatus);
+        payload.append('remarks', remarks || 'Completed by executive');
+        if (file) {
+          payload.append('file', file);
+        }
+      } else {
+        payload = { status: newStatus, remarks: 'Status updated by executive' };
+      }
+
+      const res = await taskApi.updateTaskStatus(taskId, payload);
       if (res.success) {
         toast.success(`Task status updated to ${newStatus}`);
-        setManagerTasks(prev => 
-          prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t)
-              .filter(t => newStatus !== 'COMPLETED') // remove completed tasks from daily action list if you want, or keep them. Let's filter out COMPLETED to keep list actionable
-        );
+        loadDashboardData();
       }
     } catch (err) {
       toast.error('Failed to update task status');
@@ -277,15 +354,58 @@ export default function SalesExecutiveDashboard() {
     link.remove();
   };
 
+  // Handle sharing of Excel / general files
+  const handleUploadFileSubmit = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+    if (!recipientId) {
+      toast.error('Please select a recipient employee');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('sentTo', recipientId);
+      formData.append('note', uploadNote);
+      formData.append('department', user?.department || 'GENERAL');
+
+      const res = await sharedFilesApi.shareFile(formData);
+      if (res.success) {
+        toast.success('File uploaded and shared successfully!');
+        setUploadFile(null);
+        setUploadNote('');
+        setRecipientId('');
+        // Reload shared files list
+        const filesRes = await sharedFilesApi.getSharedFiles();
+        if (filesRes.success) {
+          setSharedFiles(filesRes.files || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error sharing file:', err);
+      toast.error(err.response?.data?.message || 'Failed to upload and share file');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Calculation for Targets
   const targetVal = performance?.target?.targetValue || 2500000; // default ₹25 Lakhs
-  const achievedVal = performance?.revenue || 0;
+  const wonRevenue = deals
+    .filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage))
+    .reduce((sum, d) => sum + (d.leadValue || 0), 0);
+  const achievedVal = performance?.revenue || wonRevenue || 0;
   const remainingVal = Math.max(0, targetVal - achievedVal);
   const targetProgressPercent = Math.min(100, Math.round((achievedVal / targetVal) * 100));
 
   // Lead Conversion Calculation (Leads -> Orders)
-  const totalMyLeads = performance?.totalLeads || deals.length || 0;
-  const wonMyDeals = performance?.dealsWon || deals.filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage)).length || 0;
+  const totalMyLeads = deals.length || performance?.totalLeads || 0;
+  const wonMyDeals = deals.filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage)).length;
   const conversionRate = totalMyLeads > 0 ? Math.round((wonMyDeals / totalMyLeads) * 100) : 0;
 
   // Render circular progress path definitions
@@ -323,7 +443,7 @@ export default function SalesExecutiveDashboard() {
           <span className="text-[10px] uppercase tracking-[0.25em] text-teal-500 font-bold block font-mono">Commodity Trading Portal</span>
           <h1 className="text-2xl sm:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">{greeting}, {user?.name || user?.fullName || 'Sales Executive'}</h1>
           <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
-            Role: <strong className="text-[var(--crm-heading)] font-semibold font-mono">Sales Executive ({user?.department || 'SALES'})</strong> &bull; Node Status: <span className="text-emerald-500 font-semibold font-mono">Live</span>
+            Role: <strong className="text-[var(--crm-heading)] font-semibold font-mono">{user?.position || String(user?.role || 'Sales Executive').replace('_', ' ')} ({user?.department || 'SALES'})</strong> &bull; Node Status: <span className="text-emerald-500 font-semibold font-mono">Live</span>
           </p>
         </div>
         <div className="flex gap-2 self-stretch md:self-auto font-mono">
@@ -343,9 +463,9 @@ export default function SalesExecutiveDashboard() {
       <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-6 py-1 flex overflow-x-auto scrollbar-none shadow-sm">
         <nav className="flex space-x-8 min-w-max">
           {[
-            { id: 'daily', label: 'Daily Action View ("मेरा काम")', icon: FiClock },
+            { id: 'daily', label: 'Daily Action View', icon: FiClock },
             { id: 'leaderboard', label: 'Leaderboard & Gamification', icon: FiAward },
-            { id: 'shared_files', label: 'Shared Files ("साझा फ़ाइलएं")', icon: FiFolder }
+            { id: 'shared_files', label: 'Shared Files', icon: FiFolder }
           ].map(tab => (
             <button
               key={tab.id}
@@ -454,7 +574,16 @@ export default function SalesExecutiveDashboard() {
                                 <select
                                   value={task.status}
                                   disabled={updatingTaskId === task._id}
-                                  onChange={(e) => handleTaskStatusUpdate(task._id, e.target.value)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === 'COMPLETED') {
+                                      setCompletionTaskId(task._id);
+                                      setCompletionFile(null);
+                                      setCompletionRemarks('');
+                                    } else {
+                                      handleTaskStatusUpdate(task._id, val);
+                                    }
+                                  }}
                                   className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-[9px] px-2 py-1 rounded outline-none cursor-pointer hover:border-teal-500 transition disabled:opacity-50"
                                 >
                                   <option value="PENDING">Pending</option>
@@ -470,19 +599,19 @@ export default function SalesExecutiveDashboard() {
                   )}
 
                   {/* KPI Cards Row (6 in a row) */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-fadeIn">
                     {[
-                      { label: 'Calls Today', val: performance?.callsLogged ?? 0, trend: '↑', text: 'vs yesterday', color: 'text-teal-400 bg-teal-950/20', border: 'border-[var(--crm-line)]', icon: FiPhone },
-                      { label: 'Emails Sent', val: performance?.emailsLogged ?? 0, trend: '↑', text: 'vs yesterday', color: 'text-indigo-400 bg-indigo-950/20', border: 'border-[var(--crm-line)]', icon: FiMail },
-                      { label: 'Leads Gen', val: totalMyLeads, trend: '↑', text: 'vs yesterday', color: 'text-cyan-400 bg-cyan-950/20', border: 'border-[var(--crm-line)]', icon: FiUserPlus },
-                      { label: 'Follow-ups', val: performance?.target?.targetDeals || 12, trend: '↓', text: 'vs yesterday', color: 'text-amber-400 bg-amber-950/20', border: 'border-[var(--crm-line)]', icon: FiCalendar },
-                      { label: 'Quotes Sent', val: deals.filter(d => KANBAN_STAGES[1].dbStages.includes(d.stage)).length, trend: '↑', text: 'vs yesterday', color: 'text-sky-400 bg-sky-950/20', border: 'border-[var(--crm-line)]', icon: FiFileText },
-                      { label: 'Closed Won', val: wonMyDeals, trend: '↑', text: 'vs yesterday', color: 'text-emerald-400 bg-emerald-950/20', border: 'border-[var(--crm-line)]', icon: FiCheckCircle }
+                      { label: 'Assigned Leads', val: totalMyLeads, color: 'text-indigo-400 bg-indigo-950/20', icon: FiUsers },
+                      { label: 'Won Leads', val: wonMyDeals, color: 'text-emerald-400 bg-emerald-950/20', icon: FiCheckCircle },
+                      { label: 'Pending Leads', val: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, color: 'text-amber-400 bg-amber-950/20', icon: FiClock },
+                      { label: 'Lost Leads', val: deals.filter(d => ['CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, color: 'text-rose-400 bg-rose-950/20', icon: FiAlertCircle },
+                      { label: 'Total Revenue', val: currency(achievedVal), color: 'text-cyan-400 bg-cyan-950/20', icon: FiTrendingUp },
+                      { label: 'Completed Tasks', val: completedTasksCount, color: 'text-teal-400 bg-teal-950/20', icon: FiCheckSquare }
                     ].map((kpi, idx) => (
                       <motion.div 
                         key={idx}
                         whileHover={{ y: -3 }}
-                        className={`bg-[var(--crm-bg-raised)] border ${kpi.border} p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all`}
+                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all"
                       >
                         <div className="flex justify-between items-start">
                           <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono">{kpi.label}</span>
@@ -491,12 +620,7 @@ export default function SalesExecutiveDashboard() {
                           </div>
                         </div>
                         <div className="mt-3 text-left">
-                          <p className="text-xl font-semibold text-[var(--crm-heading)] leading-tight tracking-tight">{kpi.val}</p>
-                          <span className={`text-[9px] font-mono font-medium flex items-center gap-0.5 mt-1 ${
-                            kpi.trend === '↑' ? 'text-emerald-500' : 'text-rose-500'
-                          }`}>
-                            {kpi.trend} {kpi.trend === '↑' ? '12%' : '4%'} <span className="text-[var(--crm-ink-faint)] font-light">{kpi.text}</span>
-                          </span>
+                          <p className="text-base font-semibold text-[var(--crm-heading)] leading-tight tracking-tight">{kpi.val}</p>
                         </div>
                       </motion.div>
                     ))}
@@ -581,6 +705,58 @@ export default function SalesExecutiveDashboard() {
                     </div>
                   </div>
 
+                  {/* Lead Performance & Distribution Charts */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {/* Chart 1: Lead Pipeline Distribution */}
+                    <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
+                        <span>Lead Status Distribution</span>
+                        <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Won vs Pending vs Lost</span>
+                      </h3>
+                      <div className="h-64 mt-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={[
+                            { name: 'Won', count: wonMyDeals, fill: '#10b981' },
+                            { name: 'Pending', count: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f59e0b' },
+                            { name: 'Lost', count: deals.filter(d => ['CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f43f5e' }
+                          ]} margin={{ left: -10, top: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
+                            <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                            <YAxis stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
+                            />
+                            <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Chart 2: Leads count by Product Category */}
+                    <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
+                        <span>Leads by Product Category</span>
+                        <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Materials Breakdown</span>
+                      </h3>
+                      <div className="h-64 mt-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'].map(cat => ({
+                            name: cat,
+                            leads: deals.filter(d => d.productCategory === cat).length
+                          }))} margin={{ left: -10, top: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
+                            <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                            <YAxis stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
+                            />
+                            <Bar dataKey="leads" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Deals Pipeline Kanban (Bottom) */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
@@ -651,7 +827,7 @@ export default function SalesExecutiveDashboard() {
                   {/* My Assigned Leads Section */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left mt-6">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>📋 My Assigned Leads ("मेरे सौंपे गए लीड")</span>
+                      <span>📋 My Assigned Leads</span>
                       <span className="bg-teal-950/40 text-teal-400 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold border border-teal-900/30">
                         {deals.length} Active
                       </span>
@@ -710,6 +886,58 @@ export default function SalesExecutiveDashboard() {
 
                 {/* Right Sidebar (Today's Action List) */}
                 <div className="lg:col-span-4 space-y-6 text-left">
+                  {/* Status Selector Widget */}
+                  <div className="bg-[var(--crm-bg-raised)] border border-teal-900/50 p-5 rounded-lg shadow-sm">
+                    <h3 className="text-xs uppercase tracking-widest text-teal-400 font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
+                      <span>Live Activity Status</span>
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                    </h3>
+                    
+                    <div className="mt-4 space-y-3.5 text-xs font-mono">
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">My Current Status</label>
+                        <select
+                          value={myStatus}
+                          onChange={(e) => handleStatusChange(e.target.value, myActivity)}
+                          disabled={submittingStatus}
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition cursor-pointer"
+                        >
+                          <option value="IDLE">🟢 Idle / Available</option>
+                          <option value="ON_CALL">📞 On Call</option>
+                          <option value="FOLLOWING_UP">📲 Following Up</option>
+                          <option value="CONVERTING">🟣 Converting Lead</option>
+                          <option value="PAYMENT">🟡 Handling Payment</option>
+                          <option value="OFFLINE">🔴 Offline</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">What are you working on?</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={myActivity}
+                            onChange={(e) => setMyActivity(e.target.value)}
+                            disabled={submittingStatus}
+                            placeholder="e.g. Calling SGS Iron Ore client"
+                            className="flex-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(myStatus, myActivity)}
+                            disabled={submittingStatus}
+                            className="bg-teal-700 hover:bg-teal-600 disabled:bg-teal-900 text-white px-3 py-2 text-[10px] rounded font-bold uppercase transition cursor-pointer"
+                          >
+                            Update
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span>Today's Action List</span>
@@ -955,19 +1183,84 @@ export default function SalesExecutiveDashboard() {
               <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                 <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                   <span className="flex items-center gap-1.5 text-indigo-400">
-                    <FiFolder size={14} /> Shared Files from Manager
+                    <FiFolder size={14} /> Shared Files Hub
                   </span>
                   <span className="bg-indigo-950/40 text-indigo-400 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold border border-indigo-900/30">
                     {sharedFiles.length} Shared Files
                   </span>
                 </h3>
 
+                {/* File Upload Form */}
+                <div className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] p-5 rounded-lg mb-6 mt-4">
+                  <h4 className="text-xs uppercase tracking-wider text-[var(--crm-heading)] font-mono font-bold mb-4 flex items-center gap-2">
+                    <FiPaperclip size={14} className="text-teal-400" /> Share / Upload New Excel File
+                  </h4>
+                  
+                  <form onSubmit={handleUploadFileSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end text-xs">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-mono font-bold mb-1.5">
+                        Select Recipient *
+                      </label>
+                      <select
+                        required
+                        value={recipientId}
+                        onChange={(e) => setRecipientId(e.target.value)}
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-xs px-3 py-2.5 rounded outline-none cursor-pointer focus:border-teal-500 transition"
+                      >
+                        <option value="">-- Choose Employee --</option>
+                        {employeesList
+                          .filter(emp => String(emp._id) !== String(user._id)) // don't list self
+                          .map((emp) => (
+                            <option key={emp._id} value={emp._id}>
+                              {emp.name} ({emp.role} - {emp.department})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-mono font-bold mb-1.5">
+                        Select Excel / general File *
+                      </label>
+                      <input
+                        type="file"
+                        required
+                        accept=".xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv, .pdf, .docx, .doc"
+                        onChange={(e) => setUploadFile(e.target.files[0])}
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-[10px] px-3 py-2 rounded outline-none focus:border-teal-500 transition file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-mono file:font-semibold file:bg-teal-950/40 file:text-teal-400 hover:file:bg-teal-900/60 file:cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-mono font-bold mb-1.5">
+                        Note / Instructions
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. Sales Report Q3"
+                          value={uploadNote}
+                          onChange={(e) => setUploadNote(e.target.value)}
+                          className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3 py-2.5 rounded outline-none focus:border-teal-500 transition"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isUploading}
+                          className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-850 text-white font-mono font-bold uppercase tracking-wider py-2.5 px-4 rounded transition cursor-pointer text-[10px] shrink-0"
+                        >
+                          {isUploading ? 'Uploading...' : 'Share'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+
                 <div className="overflow-x-auto mt-4">
                   {sharedFiles.length === 0 ? (
                     <div className="py-20 border border-dashed border-[var(--crm-line)] rounded flex flex-col items-center justify-center">
                       <FiFolder className="text-[var(--crm-ink-faint)]" size={32} />
-                      <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase mt-2">No files shared with you</span>
-                      <span className="text-[8px] text-[var(--crm-ink-faint)]/70 mt-1">Files uploaded by your manager will show up here.</span>
+                      <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase mt-2">No shared files found</span>
+                      <span className="text-[8px] text-[var(--crm-ink-faint)]/70 mt-1">Files uploaded by you or your manager will show up here.</span>
                     </div>
                   ) : (
                     <table className="w-full text-left border-collapse min-w-[700px]">
@@ -987,7 +1280,11 @@ export default function SalesExecutiveDashboard() {
                             <td className="py-3 px-4 font-sans font-bold text-[var(--crm-heading)] flex items-center gap-1.5">
                               <FiFileText className="text-indigo-400" size={13} /> {file.originalName}
                             </td>
-                            <td className="py-3 px-4 font-sans">{file.sentBy?.name || 'Manager'}</td>
+                            <td className="py-3 px-4 font-sans">
+                              {String(file.sentBy?._id || file.sentBy) === String(user._id)
+                                ? `You (to ${file.sentTo?.name || 'Employee'})`
+                                : file.sentBy?.name || 'Manager'}
+                            </td>
                             <td className="py-3 px-4 text-[var(--crm-ink-faint)]">
                               {new Date(file.createdAt).toLocaleDateString('en-IN', {
                                 year: 'numeric',
@@ -1006,12 +1303,39 @@ export default function SalesExecutiveDashboard() {
                                 : `${Math.round(file.fileSize / 1024)} KB`}
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <button
-                                onClick={() => handleDownloadSharedFile(file._id, file.originalName)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition cursor-pointer flex items-center gap-1 mx-auto"
-                              >
-                                <FiDownload size={10} /> Download
-                              </button>
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleDownloadSharedFile(file._id, file.originalName)}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition cursor-pointer flex items-center gap-1 mx-auto"
+                                  title="Download file"
+                                >
+                                  <FiDownload size={10} /> Download
+                                </button>
+                                {String(file.sentBy?._id || file.sentBy) === String(user._id) && (
+                                  <button
+                                    onClick={async () => {
+                                      if (window.confirm('Are you sure you want to delete this shared file?')) {
+                                        try {
+                                          const res = await sharedFilesApi.deleteSharedFile(file._id);
+                                          if (res.success) {
+                                            toast.success('File deleted successfully');
+                                            const filesRes = await sharedFilesApi.getSharedFiles();
+                                            if (filesRes.success) {
+                                              setSharedFiles(filesRes.files || []);
+                                            }
+                                          }
+                                        } catch (err) {
+                                          toast.error('Failed to delete file');
+                                        }
+                                      }
+                                    }}
+                                    className="bg-rose-900 hover:bg-rose-800 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition cursor-pointer"
+                                    title="Delete shared file"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1024,6 +1348,66 @@ export default function SalesExecutiveDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* TASK COMPLETION MODAL */}
+      {completionTaskId && (
+        <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left font-mono">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
+              <div>
+                <h2 className="font-serif text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Submit Task Completion File</h2>
+                <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono mt-0.5">Attach reports or files to verify work done.</p>
+              </div>
+              <button onClick={() => setCompletionTaskId(null)} className="text-[var(--crm-ink-faint)] hover:text-white font-mono cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              await handleTaskStatusUpdate(completionTaskId, 'COMPLETED', completionRemarks, completionFile);
+              setCompletionTaskId(null);
+            }} className="space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1.5 font-mono">Attach Verification File *</label>
+                <input
+                  type="file"
+                  required
+                  accept=".xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv, .pdf, .docx, .doc, image/*"
+                  onChange={(e) => setCompletionFile(e.target.files[0])}
+                  className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-[10px] px-3 py-2 rounded outline-none focus:border-teal-500 transition file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-mono file:font-semibold file:bg-teal-950/40 file:text-teal-400 hover:file:bg-teal-900/60 file:cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1.5 font-mono">Completion Remarks / Notes *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={completionRemarks}
+                  onChange={(e) => setCompletionRemarks(e.target.value)}
+                  placeholder="Describe what was completed..."
+                  className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-teal-500 px-2 py-1.5 rounded-sm outline-none text-[var(--crm-heading)] resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2 border-t border-[var(--crm-line)]">
+                <button
+                  type="button"
+                  onClick={() => setCompletionTaskId(null)}
+                  className="flex-1 py-2 bg-transparent border border-[var(--crm-line)] text-[var(--crm-ink-soft)] text-[8px] font-bold uppercase rounded-sm transition cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-teal-650 hover:bg-teal-600 text-white text-[8px] font-bold uppercase rounded-sm transition cursor-pointer text-center"
+                >
+                  Complete Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </motion.div>
   );
 }

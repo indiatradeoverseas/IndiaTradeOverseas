@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
+import { taskApi } from '../../api/task';
+import { sharedFilesApi } from '../../api/sharedFiles';
 import { useAuth } from '../../hooks/useAuth';
 import {
   FiCheckSquare,
@@ -15,11 +17,14 @@ import {
   FiLayers,
   FiClock,
   FiTrendingUp,
-  FiX
+  FiX,
+  FiDownload,
+  FiFileText,
+  FiUpload
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-// Staggered cinematic entrance variants
+// Staggered entrance variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.1 } }
@@ -33,18 +38,32 @@ const blockVariants = {
 export default function Tasks() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [mainTab, setMainTab] = useState('PIPELINE'); // 'PIPELINE' | 'ACTION_TASKS' | 'SHARED_FILES'
+  
+  // Pipeline Leads State
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('PENDING');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showPerformModal, setShowPerformModal] = useState(false);
-
   const [actionType, setActionType] = useState('STAGE_CHANGE');
   const [nextStage, setNextStage] = useState('');
   const [activityNote, setActivityNote] = useState('');
   const [nextFollowup, setNextFollowup] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // General Action Tasks State
+  const [actionTasks, setActionTasks] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showTaskUpdateModal, setShowTaskUpdateModal] = useState(false);
+  const [taskStatus, setTaskStatus] = useState('PENDING');
+  const [taskRemarks, setTaskRemarks] = useState('');
+  const [taskFile, setTaskFile] = useState(null);
+  const [updatingTask, setUpdatingTask] = useState(false);
+
+  // Shared Files State
+  const [sharedFiles, setSharedFiles] = useState([]);
 
   const allowedTransitions = {
     NEW_LEAD: ['ASSIGNED', 'CLOSED_LOST'],
@@ -64,23 +83,56 @@ export default function Tasks() {
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+  }, [user]);
 
   const fetchTasks = async () => {
+    if (!user?._id) return;
     setLoading(true);
     try {
-      const response = await leadsApi.getLeads();
-      if (response.success) {
-        setLeads(response.data.leads || []);
+      // 1. Fetch Pipeline Leads
+      const leadsRes = await leadsApi.getLeads();
+      if (leadsRes.success) {
+        setLeads(leadsRes.data.leads || []);
+      }
+
+      // 2. Fetch General Tasks (Assigned to Me)
+      const tasksRes = await taskApi.getTasks({ employeeId: user._id });
+      if (tasksRes.success) {
+        setActionTasks(tasksRes.data.tasks || []);
+      }
+
+      // 3. Fetch Shared Files (Received by Me)
+      const filesRes = await sharedFilesApi.getSharedFiles({ direction: 'received' });
+      if (filesRes.success) {
+        setSharedFiles(filesRes.files || []);
       }
     } catch (error) {
-      console.error('Error fetching employee tasks:', error);
+      console.error('Error fetching tasks data:', error);
       toast.error('Failed to load your tasks');
     } finally {
       setLoading(false);
     }
   };
 
+  // Download Shared File helper
+  const handleDownloadFile = async (file) => {
+    try {
+      const res = await sharedFilesApi.downloadFile(file._id);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.originalName || file.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('File download started');
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Failed to download file');
+    }
+  };
+
+  // Perform Task (Leads) handlers
   const handleOpenPerform = (lead) => {
     setSelectedLead(lead);
     setActivityNote('');
@@ -138,7 +190,40 @@ export default function Tasks() {
     }
   };
 
-  // Fixed: Converted state badge colors to high contrast deep shades
+  // Perform Action Task handlers
+  const handleOpenTaskUpdate = (task) => {
+    setSelectedTask(task);
+    setTaskStatus(task.status);
+    setTaskRemarks(task.remarks || '');
+    setTaskFile(null);
+    setShowTaskUpdateModal(true);
+  };
+
+  const handleUpdateTaskStatusSubmit = async (e) => {
+    e.preventDefault();
+    setUpdatingTask(true);
+    try {
+      const formData = new FormData();
+      formData.append('status', taskStatus);
+      formData.append('remarks', taskRemarks);
+      if (taskFile) {
+        formData.append('file', taskFile);
+      }
+      
+      const res = await taskApi.updateTaskStatus(selectedTask._id, formData);
+      if (res.success) {
+        toast.success('Task status updated successfully! 👍');
+        setShowTaskUpdateModal(false);
+        fetchTasks();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update task status');
+    } finally {
+      setUpdatingTask(false);
+    }
+  };
+
   const getStageColor = (stage) => {
     const colors = {
       NEW_LEAD: 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/20',
@@ -158,9 +243,9 @@ export default function Tasks() {
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch =
-      lead.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.leadCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.productCategory.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.leadCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.productCategory?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
     const matchesTab =
@@ -185,7 +270,7 @@ export default function Tasks() {
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40" 
           />
-          <p className="text-[10px] tracking-widest uppercase font-mono text-[var(--crm-ink-faint)]">Cataloguing Pipeline Grains...</p>
+          <p className="text-[10px] tracking-widest uppercase font-mono text-[var(--crm-ink-faint)]">Cataloguing Workspace Tasks...</p>
         </div>
       </div>
     );
@@ -199,188 +284,408 @@ export default function Tasks() {
       className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12"
     >
       
-      {/* Header Panel Option */}
-      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
+      {/* Header Panel */}
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm px-6">
         <div className="space-y-1 text-left">
           <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">Operational Workflow Grid</span>
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] tracking-tight uppercase">Task Performance Board</h1>
-          <p className="text-xs text-[var(--crm-ink-faint)] font-light max-w-2xl mt-1">Review assigned global charters, log real-time fulfillment progress, and execute lifecycle stage transitions.</p>
+          <p className="text-xs text-[var(--crm-ink-faint)] font-light max-w-2xl mt-1">Review pipeline milestones, view direct action tasks, and retrieve shared workspace documents.</p>
         </div>
       </motion.div>
 
-      <div className="w-full py-8 space-y-6 bg-[var(--crm-bg)]">
+      {/* Main Mode Tabs */}
+      <div className="flex border-b border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/20 px-6 py-1 gap-2.5">
+        {[
+          { id: 'PIPELINE', label: 'Pipeline Tasks (Leads)', icon: FiClock },
+          { id: 'ACTION_TASKS', label: 'Action Tasks', icon: FiCheckSquare },
+          { id: 'SHARED_FILES', label: 'Shared Files & Messages', icon: FiLayers }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setMainTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+              mainTab === tab.id
+                ? 'border-teal-500 text-teal-400'
+                : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+            }`}
+          >
+            <tab.icon size={14} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Metric Cards grid */}
-        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Total Tasks Allocated", val: totalTasks, icon: FiGrid, bg: "bg-[var(--crm-bg-raised)]/60", text: "text-[var(--crm-heading)]" },
-            { label: "Active Pipeline Elements", val: pendingCount, icon: FiClock, bg: "bg-[var(--crm-accent-bg)]", text: "text-[var(--crm-accent)]" },
-            { label: "Closed Contracts Won", val: completedCount, icon: FiCheckSquare, bg: "bg-[var(--crm-positive-bg)]", text: "text-[var(--crm-positive)]" },
-            { label: "Contracts Dismissed", val: lostCount, icon: FiAlertCircle, bg: "bg-[var(--crm-danger-bg)]", text: "text-[var(--crm-danger)]" }
-          ].map((card, idx) => (
-            <motion.div 
-              key={idx} 
-              variants={blockVariants}
-              whileHover={{ y: -3, borderColor: 'rgba(197,203,211,0.25)' }}
-              className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 p-5 flex items-center justify-between shadow-xl transition-all duration-300"
-            >
-              <div className="text-left">
-                <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-[var(--crm-ink-faint)]">{card.label}</p>
-                <p className="text-2xl font-serif mt-2 font-normal text-[var(--crm-heading)]">{card.val}</p>
-              </div>
-              <div className={`p-3 border border-[var(--crm-ink-soft)]/10 rounded-sm text-[var(--crm-ink-soft)] shadow-inner ${card.bg}`}>
-                <card.icon size={16} />
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+      <div className="w-full py-8 space-y-6 bg-[var(--crm-bg)] px-6">
 
-        {/* Filter Toolbar Area */}
-        <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/20 p-4 rounded-sm border border-[var(--crm-ink-soft)]/15 shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex-1 w-full relative">
-            <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={15} />
-            <input
-              type="text"
-              placeholder="Filter operations registry by corporate name, lead charter hash, or material classification..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none transition text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)]"
-            />
-          </div>
-
-          {/* Nav Categories tab */}
-          <div className="flex border border-[var(--crm-ink-soft)]/15 p-1 bg-[var(--crm-bg-sunken)]/60 rounded-sm shrink-0 w-full md:w-auto">
-            {[
-              { id: 'PENDING', label: 'Pending', count: pendingCount },
-              { id: 'COMPLETED', label: 'Closed', count: completedCount + lostCount },
-              { id: 'ALL', label: 'All Records', count: totalTasks }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 md:flex-initial px-4 py-1.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] shadow-md'
-                    : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
-                }`}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Cards matrix grid rendering */}
-        {filteredLeads.length === 0 ? (
-          <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/10 rounded-sm text-center py-20 border border-[var(--crm-ink-soft)]/15 shadow-sm">
-            <FiCheckSquare size={36} className="mx-auto text-[var(--crm-ink-faint)] opacity-50 mb-4" />
-            <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-medium">No workflow cards matched this active grid cluster parameter.</p>
-          </motion.div>
-        ) : (
-          <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredLeads.map((lead) => {
-              const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
-
-              return (
-                <motion.div
-                  key={lead._id}
+        {/* ==================================================== */}
+        {/* PIPELINE TAB */}
+        {/* ==================================================== */}
+        {mainTab === 'PIPELINE' && (
+          <div className="space-y-6">
+            {/* Metric Cards grid */}
+            <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Total Tasks Allocated", val: totalTasks, icon: FiGrid, bg: "bg-[var(--crm-bg-raised)]/60", text: "text-[var(--crm-heading)]" },
+                { label: "Active Pipeline Elements", val: pendingCount, icon: FiClock, bg: "bg-[var(--crm-accent-bg)]", text: "text-[var(--crm-accent)]" },
+                { label: "Closed Contracts Won", val: completedCount, icon: FiCheckSquare, bg: "bg-[var(--crm-positive-bg)]", text: "text-[var(--crm-positive)]" },
+                { label: "Contracts Dismissed", val: lostCount, icon: FiAlertCircle, bg: "bg-[var(--crm-danger-bg)]", text: "text-[var(--crm-danger)]" }
+              ].map((card, idx) => (
+                <motion.div 
+                  key={idx} 
                   variants={blockVariants}
-                  whileHover={{ y: -4, borderColor: 'rgba(197,203,211,0.35)' }}
-                  className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 hover:border-[var(--crm-heading)]/40 shadow-2xl transition-all duration-300 flex flex-col justify-between p-6 group"
+                  whileHover={{ y: -3, borderColor: 'rgba(197,203,211,0.25)' }}
+                  className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 p-5 flex items-center justify-between shadow-xl transition-all duration-300"
                 >
                   <div className="text-left">
-                    {/* Unique Identifier Strip */}
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] tracking-wider">
-                        {lead.leadCode}
-                      </span>
-                      <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]/90 border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm">
-                        {lead.productCategory}
-                      </span>
-                    </div>
-
-                    {/* Consignee Data */}
-                    <div className="mb-4">
-                      <h3 onClick={() => navigate(`/crm/leads/${lead._id}`)} className="text-base font-serif font-normal text-[var(--crm-heading)] cursor-pointer hover:text-white transition-colors leading-tight">
-                        {lead.customerName}
-                      </h3>
-                      {lead.companyName && (
-                        <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1.5">{lead.companyName}</p>
-                      )}
-                    </div>
-
-                    {/* Specifications Metrics list */}
-                    <div className="space-y-3 text-xs text-[var(--crm-ink-soft)]/80 py-3.5 border-t border-b border-[var(--crm-ink-soft)]/10 mb-4">
-                      {lead.quantity && (
-                        <div className="flex items-center gap-2">
-                          <FiLayers className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
-                          <span>Mass Metrics: <strong className="text-[var(--crm-heading)] font-medium">{lead.quantity}</strong></span>
-                        </div>
-                      )}
-                      {lead.destination && (
-                        <div className="flex items-center gap-2">
-                          <FiMapPin className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
-                          <span>Discharge Point: <strong className="text-[var(--crm-heading)] font-medium">{lead.destination}</strong></span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <FiClock className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
-                        <span>Stage Axis:</span>
-                        <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border ${getStageColor(lead.stage)}`}>
-                          {getStageDisplay(lead.stage)}
-                        </span>
-                      </div>
-                      {lead.nextFollowupAt && (
-                        <div className="flex items-center gap-2 text-[var(--crm-danger)] font-medium bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/20 p-2 rounded-sm font-mono text-[10px]">
-                          <FiCalendar className="shrink-0 text-[var(--crm-danger)]" size={13} />
-                          <span>Follow-up: <strong>{new Date(lead.nextFollowupAt).toLocaleString()}</strong></span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Remarks Block */}
-                    {lead.remarks && (
-                      <div className="mb-4 bg-[var(--crm-bg)] p-3 rounded-sm border border-[var(--crm-ink-soft)]/10">
-                        <p className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1">Latest Manifest Remark</p>
-                        <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic line-clamp-2">"{lead.remarks}"</p>
-                      </div>
-                    )}
+                    <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-[var(--crm-ink-faint)]">{card.label}</p>
+                    <p className="text-2xl font-serif mt-2 font-normal text-[var(--crm-heading)]">{card.val}</p>
                   </div>
-
-                  {/* Actions Hub Row */}
-                  <div className="flex gap-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10">
-                    <Link
-                      to={`/crm/leads/${lead._id}`}
-                      className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-ink-soft)]/40 rounded-sm transition-all text-center flex items-center justify-center gap-1.5"
-                    >
-                      <FiEye size={12} />
-                      <span>History</span>
-                    </Link>
-
-                    {!isClosed ? (
-                      <button
-                        onClick={() => handleOpenPerform(lead)}
-                        className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-bg)] bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] rounded-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                      >
-                        <FiEdit size={12} />
-                        <span>Perform Task</span>
-                      </button>
-                    ) : (
-                      <span className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-center border border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)] text-[var(--crm-ink-faint)]/60 rounded-sm flex items-center justify-center gap-1.5 cursor-not-allowed select-none">
-                        <FiCheckSquare size={12} />
-                        <span>Node Finalized</span>
-                      </span>
-                    )}
+                  <div className={`p-3 border border-[var(--crm-ink-soft)]/10 rounded-sm text-[var(--crm-ink-soft)] shadow-inner ${card.bg}`}>
+                    <card.icon size={16} />
                   </div>
                 </motion.div>
-              );
-            })}
-          </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Filter Toolbar Area */}
+            <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/20 p-4 rounded-sm border border-[var(--crm-ink-soft)]/15 shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="flex-1 w-full relative">
+                <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={15} />
+                <input
+                  type="text"
+                  placeholder="Filter operations registry by corporate name, lead charter hash, or material classification..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none transition text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)]"
+                />
+              </div>
+
+              {/* Nav Categories tab */}
+              <div className="flex border border-[var(--crm-ink-soft)]/15 p-1 bg-[var(--crm-bg-sunken)]/60 rounded-sm shrink-0 w-full md:w-auto">
+                {[
+                  { id: 'PENDING', label: 'Pending', count: pendingCount },
+                  { id: 'COMPLETED', label: 'Closed', count: completedCount + lostCount },
+                  { id: 'ALL', label: 'All Records', count: totalTasks }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 md:flex-initial px-4 py-1.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                      activeTab === tab.id
+                        ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] shadow-md'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+                    }`}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Cards matrix grid rendering */}
+            {filteredLeads.length === 0 ? (
+              <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/10 rounded-sm text-center py-20 border border-[var(--crm-ink-soft)]/15 shadow-sm">
+                <FiCheckSquare size={36} className="mx-auto text-[var(--crm-ink-faint)] opacity-50 mb-4" />
+                <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-medium">No workflow cards matched this active grid parameter.</p>
+              </motion.div>
+            ) : (
+              <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredLeads.map((lead) => {
+                  const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
+
+                  return (
+                    <motion.div
+                      key={lead._id}
+                      variants={blockVariants}
+                      whileHover={{ y: -4, borderColor: 'rgba(197,203,211,0.35)' }}
+                      className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 hover:border-[var(--crm-heading)]/40 shadow-2xl transition-all duration-300 flex flex-col justify-between p-6 group"
+                    >
+                      <div className="text-left">
+                        {/* Unique Identifier Strip */}
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] tracking-wider">
+                            {lead.leadCode}
+                          </span>
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]/90 border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm">
+                            {lead.productCategory}
+                          </span>
+                        </div>
+
+                        {/* Consignee Data */}
+                        <div className="mb-4">
+                          <h3 onClick={() => navigate(`/crm/leads/${lead._id}`)} className="text-base font-serif font-normal text-[var(--crm-heading)] cursor-pointer hover:text-white transition-colors leading-tight">
+                            {lead.customerName}
+                          </h3>
+                          {lead.companyName && (
+                            <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1.5">{lead.companyName}</p>
+                          )}
+                        </div>
+
+                        {/* Specifications Metrics list */}
+                        <div className="space-y-3 text-xs text-[var(--crm-ink-soft)]/80 py-3.5 border-t border-b border-[var(--crm-ink-soft)]/10 mb-4">
+                          {lead.quantity && (
+                            <div className="flex items-center gap-2">
+                              <FiLayers className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                              <span>Mass Metrics: <strong className="text-[var(--crm-heading)] font-medium">{lead.quantity}</strong></span>
+                            </div>
+                          )}
+                          {lead.destination && (
+                            <div className="flex items-center gap-2">
+                              <FiMapPin className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                              <span>Discharge Point: <strong className="text-[var(--crm-heading)] font-medium">{lead.destination}</strong></span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <FiClock className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                            <span>Stage Axis:</span>
+                            <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border ${getStageColor(lead.stage)}`}>
+                              {getStageDisplay(lead.stage)}
+                            </span>
+                          </div>
+                          {lead.nextFollowupAt && (
+                            <div className="flex items-center gap-2 text-[var(--crm-danger)] font-medium bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/20 p-2 rounded-sm font-mono text-[10px]">
+                              <FiCalendar className="shrink-0 text-[var(--crm-danger)]" size={13} />
+                              <span>Follow-up: <strong>{new Date(lead.nextFollowupAt).toLocaleString()}</strong></span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Remarks Block */}
+                        {lead.remarks && (
+                          <div className="mb-4 bg-[var(--crm-bg)] p-3 rounded-sm border border-[var(--crm-ink-soft)]/10">
+                            <p className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1">Latest Manifest Remark</p>
+                            <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic line-clamp-2">"{lead.remarks}"</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions Hub Row */}
+                      <div className="flex gap-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10">
+                        <Link
+                          to={`/crm/leads/${lead._id}`}
+                          className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-ink-soft)]/40 rounded-sm transition-all text-center flex items-center justify-center gap-1.5"
+                        >
+                          <FiEye size={12} />
+                          <span>History</span>
+                        </Link>
+
+                        {!isClosed ? (
+                          <button
+                            onClick={() => handleOpenPerform(lead)}
+                            className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-bg)] bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] rounded-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                          >
+                            <FiEdit size={12} />
+                            <span>Perform Task</span>
+                          </button>
+                        ) : (
+                          <span className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-center border border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)] text-[var(--crm-ink-faint)]/60 rounded-sm flex items-center justify-center gap-1.5 cursor-not-allowed select-none">
+                            <FiCheckSquare size={12} />
+                            <span>Node Finalized</span>
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* ACTION TASKS TAB */}
+        {/* ==================================================== */}
+        {mainTab === 'ACTION_TASKS' && (
+          <div className="space-y-6">
+            {/* Metric row */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 animate-fadeIn">
+              {[
+                { label: "Total Assigned Tasks", val: actionTasks.length, color: "text-[var(--crm-heading)]" },
+                { label: "Pending Tasks", val: actionTasks.filter(t => t.status === 'PENDING').length, color: "text-amber-500" },
+                { label: "In Progress Tasks", val: actionTasks.filter(t => t.status === 'IN_PROGRESS').length, color: "text-blue-500" },
+                { label: "Completed Tasks", val: actionTasks.filter(t => t.status === 'COMPLETED').length, color: "text-emerald-500" }
+              ].map((card, idx) => (
+                <div key={idx} className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-line)] p-4 text-left shadow-lg">
+                  <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-[var(--crm-ink-faint)]">{card.label}</p>
+                  <p className={`text-2xl font-serif mt-1 font-normal ${card.color}`}>{card.val}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Tasks list */}
+            {actionTasks.length === 0 ? (
+              <div className="bg-[var(--crm-bg-raised)]/10 rounded-sm text-center py-20 border border-[var(--crm-line)] shadow-sm animate-fadeIn">
+                <FiCheckSquare size={36} className="mx-auto text-[var(--crm-ink-faint)] opacity-50 mb-4" />
+                <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-medium">No action tasks assigned to you.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+                {actionTasks.map(task => (
+                  <div key={task._id} className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-line)] hover:border-[var(--crm-heading)]/40 p-6 shadow-2xl transition-all duration-300 flex flex-col justify-between text-left group">
+                    <div>
+                      {/* Priority and Date */}
+                      <div className="flex justify-between items-center mb-4">
+                        <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border ${
+                          task.priority === 'HIGH' ? 'bg-red-950/20 text-red-400 border-red-500/20' :
+                          task.priority === 'MEDIUM' ? 'bg-amber-950/20 text-amber-400 border-amber-500/20' :
+                          'bg-blue-950/20 text-blue-400 border-blue-500/20'
+                        }`}>
+                          {task.priority} Priority
+                        </span>
+                        <span className="text-[9px] font-mono text-[var(--crm-ink-faint)]">
+                          Due: {new Date(task.dueDate).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] leading-tight mb-2">
+                        {task.title}
+                      </h3>
+                      <p className="text-xs text-[var(--crm-ink-soft)]/75 font-light leading-relaxed mb-4 line-clamp-3">
+                        {task.description || 'No description provided.'}
+                      </p>
+
+                      {/* Meta information */}
+                      <div className="space-y-2 py-3 border-t border-b border-[var(--crm-line)] text-xs text-[var(--crm-ink-soft)] mb-4">
+                        <div className="flex justify-between">
+                          <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Assigned By:</span>
+                          <span className="text-[var(--crm-heading)] font-semibold">{task.assignedBy?.name || 'Manager'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Category:</span>
+                          <span className="text-[var(--crm-heading)] font-mono uppercase text-[10px] tracking-wider text-teal-400">{task.category || 'GENERAL'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Status:</span>
+                          <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border ${
+                            task.status === 'COMPLETED' ? 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20' :
+                            task.status === 'IN_PROGRESS' ? 'bg-blue-950/20 text-blue-400 border-blue-500/20' :
+                            'bg-amber-950/20 text-amber-400 border-amber-500/20'
+                          }`}>
+                            {task.status}
+                          </span>
+                        </div>
+                        {task.fileUrl && (
+                          <div className="flex justify-between items-center pt-1 border-t border-[var(--crm-line)]/40">
+                            <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Attachment:</span>
+                            <a
+                              href={`http://localhost:5000/${task.fileUrl}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-teal-400 hover:underline flex items-center gap-1 font-mono text-[10px]"
+                            >
+                              <FiEye size={10} /> View File
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Remarks */}
+                      {task.remarks && (
+                        <div className="bg-[var(--crm-bg)] p-3 rounded-sm border border-[var(--crm-line)] mb-4">
+                          <p className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1">Fulfillment Remark</p>
+                          <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic">"{task.remarks}"</p>
+                          {task.completionFileUrl && (
+                            <a
+                              href={`http://localhost:5000/${task.completionFileUrl}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[9px] text-teal-400 hover:underline flex items-center gap-1 font-mono mt-1.5"
+                            >
+                              <FiDownload size={8} /> Completion Proof File
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleOpenTaskUpdate(task)}
+                      className="w-full py-2 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      <FiEdit size={12} />
+                      <span>Perform Action</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* SHARED FILES TAB */}
+        {/* ==================================================== */}
+        {mainTab === 'SHARED_FILES' && (
+          <div className="space-y-6">
+            <div className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-line)] p-5 text-left shadow-lg animate-fadeIn">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] font-serif mb-1">Workspace Message Memos</h2>
+              <p className="text-xs text-[var(--crm-ink-faint)] font-light">Below is the archive of files, memos, and workspace documents shared with you directly.</p>
+            </div>
+
+            {sharedFiles.length === 0 ? (
+              <div className="bg-[var(--crm-bg-raised)]/10 rounded-sm text-center py-20 border border-[var(--crm-line)] shadow-sm animate-fadeIn">
+                <FiLayers size={36} className="mx-auto text-[var(--crm-ink-faint)] opacity-50 mb-4" />
+                <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-medium">No files or messages shared with you.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+                {sharedFiles.map(file => (
+                  <div key={file._id} className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-line)] hover:border-[var(--crm-heading)]/40 p-6 shadow-2xl transition-all duration-300 flex flex-col justify-between text-left group font-sans">
+                    <div>
+                      {/* Date and Sender */}
+                      <div className="flex justify-between items-center mb-4 border-b border-[var(--crm-line)] pb-3">
+                        <div>
+                          <span className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider block">Sent By</span>
+                          <span className="text-xs text-[var(--crm-heading)] font-semibold">{file.sentBy?.name || 'Manager'} ({file.sentBy?.position || 'Manager'})</span>
+                        </div>
+                        <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] self-start mt-0.5">
+                          {new Date(file.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {/* File Info */}
+                      <div className="mb-4 flex gap-3 items-center">
+                        <div className="p-3 bg-teal-950/20 border border-teal-500/20 rounded-sm text-teal-400">
+                          <FiFileText size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-semibold text-[var(--crm-heading)] truncate leading-snug" title={file.originalName}>
+                            {file.originalName}
+                          </h4>
+                          <p className="text-[9px] font-mono text-[var(--crm-ink-faint)] uppercase mt-0.5">
+                            Size: {(file.fileSize / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Note */}
+                      {file.note && (
+                        <div className="bg-[var(--crm-bg)] p-3.5 rounded-sm border border-[var(--crm-line)] text-xs text-[var(--crm-ink-soft)]/75 font-light leading-relaxed mb-6 italic">
+                          "{file.note}"
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleDownloadFile(file)}
+                      className="w-full py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-md font-mono"
+                    >
+                      <FiDownload size={13} />
+                      <span>Download Document</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Perform Task Modal Block */}
+      {/* ==================================================== */}
+      {/* PERFORM TASK MODAL BLOCK (LEADS) */}
+      {/* ==================================================== */}
       <AnimatePresence>
         {showPerformModal && selectedLead && (
           <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
@@ -391,7 +696,6 @@ export default function Tasks() {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="bg-[var(--crm-bg-raised)] rounded-sm w-full max-w-lg overflow-hidden border border-[var(--crm-ink-soft)]/15 shadow-2xl max-h-[90vh] flex flex-col relative"
             >
-              {/* Form header overlay */}
               <div className="p-6 border-b border-[var(--crm-ink-soft)]/10 flex justify-between items-center shrink-0 bg-[var(--crm-bg)]/80 text-left">
                 <div>
                   <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--crm-ink-faint)] font-bold block">Fulfillment Terminal</span>
@@ -409,10 +713,7 @@ export default function Tasks() {
                 </button>
               </div>
 
-              {/* Form input fields element wrapper */}
               <form onSubmit={handleSubmitPerform} className="p-6 overflow-y-auto space-y-5 flex-1 text-left">
-                
-                {/* Switch Mode Toggle buttons */}
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2.5 font-mono">
                     Fulfillment Execution Mode *
@@ -453,7 +754,6 @@ export default function Tasks() {
                   </div>
                 </div>
 
-                {/* Transition Stage selector dropdown */}
                 {actionType === 'STAGE_CHANGE' && (
                   <div className="animate-fadeIn">
                     <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">
@@ -485,7 +785,6 @@ export default function Tasks() {
                   </div>
                 )}
 
-                {/* Manifest Remarks Area */}
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">
                     Fulfillment Work Details Remarks *
@@ -500,7 +799,6 @@ export default function Tasks() {
                   />
                 </div>
 
-                {/* DateTime Picker Follow-up field */}
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">
                     Schedule Linked Pipeline Follow-up (Optional)
@@ -516,19 +814,18 @@ export default function Tasks() {
                   </p>
                 </div>
 
-                {/* Action buttons footer block */}
                 <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 cursor-pointer shadow-md"
+                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 cursor-pointer shadow-md font-mono"
                   >
                     {submitting ? 'Transmitting Work Logs...' : 'Commit Work Parameters'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowPerformModal(false)}
-                    className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer"
+                    className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer font-mono"
                   >
                     Cancel
                   </button>
@@ -538,6 +835,125 @@ export default function Tasks() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ==================================================== */}
+      {/* PERFORM ACTION TASK UPDATE MODAL */}
+      {/* ==================================================== */}
+      <AnimatePresence>
+        {showTaskUpdateModal && selectedTask && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-[var(--crm-bg-raised)] rounded-sm w-full max-w-lg overflow-hidden border border-[var(--crm-line)] shadow-2xl max-h-[90vh] flex flex-col relative text-left"
+            >
+              <div className="p-6 border-b border-[var(--crm-line)] flex justify-between items-center bg-[var(--crm-bg)]/80">
+                <div>
+                  <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--crm-ink-faint)] font-bold block">Fulfillment Terminal</span>
+                  <h3 className="text-base font-serif text-[var(--crm-heading)] uppercase tracking-wide mt-1">Perform Action: {selectedTask.title}</h3>
+                  <p className="text-xs text-[var(--crm-ink-faint)] mt-1.5 font-light">
+                    Assigned By: <strong className="text-[var(--crm-heading)] font-semibold">{selectedTask.assignedBy?.name || 'Manager'}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTaskUpdateModal(false)}
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm hover:bg-[var(--crm-bg-raised)] transition-all cursor-pointer"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateTaskStatusSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
+                {/* Status Selection */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2 font-mono">
+                    Task Status *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'PENDING', label: 'Pending', color: 'border-amber-500/30 text-amber-400' },
+                      { id: 'IN_PROGRESS', label: 'In Progress', color: 'border-blue-500/30 text-blue-400' },
+                      { id: 'COMPLETED', label: 'Completed', color: 'border-emerald-500/30 text-emerald-400' }
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setTaskStatus(st.id)}
+                        className={`py-2 px-3 border text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition-all text-center cursor-pointer ${
+                          taskStatus === st.id
+                            ? 'bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-heading)] ring-1 ring-[var(--crm-heading)]'
+                            : 'bg-[var(--crm-bg)]/40 border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:bg-[var(--crm-bg-raised)]'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Remarks field */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2 font-mono">
+                    Fulfillment Progress Notes & Remarks *
+                  </label>
+                  <textarea
+                    required
+                    rows="4"
+                    value={taskRemarks}
+                    onChange={(e) => setTaskRemarks(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-xs rounded-sm outline-none text-[var(--crm-heading)] font-light resize-none custom-scrollbar"
+                    placeholder="Enter what you accomplished, follow-up feedback, or work details..."
+                  />
+                </div>
+
+                {/* File Upload (Optional work proof) */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2 font-mono">
+                    Attach Completion Proof File (Optional)
+                  </label>
+                  <div className="relative border border-dashed border-[var(--crm-line)] hover:border-teal-500/50 p-4 rounded-sm transition-colors text-center cursor-pointer bg-[var(--crm-bg)]/20 group">
+                    <input
+                      type="file"
+                      onChange={(e) => setTaskFile(e.target.files[0])}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp"
+                    />
+                    <div className="flex flex-col items-center gap-1.5">
+                      <FiUpload className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors" size={20} />
+                      <span className="text-[10px] uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">
+                        {taskFile ? taskFile.name : 'Choose File to Upload'}
+                      </span>
+                      <span className="text-[9px] text-[var(--crm-ink-faint)]">PDF, Docs, Excel, Images, CSV, TXT up to 15MB</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit buttons */}
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)] shrink-0">
+                  <button
+                    type="submit"
+                    disabled={updatingTask}
+                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 cursor-pointer font-mono"
+                  >
+                    {updatingTask ? 'Saving Progress...' : 'Submit Fulfillment Notes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTaskUpdateModal(false)}
+                    className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer font-mono"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }

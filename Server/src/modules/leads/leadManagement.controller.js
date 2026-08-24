@@ -112,7 +112,8 @@ async function getDueReminders(req, res, next) {
     };
 
     // Filter by ownership if not Admin/Manager/HR
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
+    if (!isManagerOrAdmin) {
       filter.assignedTo = req.user._id;
     }
 
@@ -301,7 +302,8 @@ async function logEmailActivity(req, res, next) {
 async function getSalesMetrics(req, res, next) {
   try {
     const filter = {};
-    if (!['ADMIN', 'MANAGER', 'HR'].includes(req.user.role)) {
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
+    if (!isManagerOrAdmin) {
       filter.assignedTo = req.user._id;
     }
 
