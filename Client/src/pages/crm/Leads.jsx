@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { adminApi } from '../../api/admin';
+import { employeesApi } from '../../api/employees';
+import { taskApi } from '../../api/task';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
-  FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail
+  FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
+  FiUpload, FiFileText, FiAlertCircle
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -22,6 +25,18 @@ const blockVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 20 } }
 };
 
+const LEAD_FIELDS = [
+  { value: 'customerName', label: 'Consignee Name *' },
+  { value: 'phone', label: 'Phone Number *' },
+  { value: 'productCategory', label: 'Product Category *' },
+  { value: 'companyName', label: 'Company Name' },
+  { value: 'email', label: 'Email Address' },
+  { value: 'leadValue', label: 'Lead Value (INR)' },
+  { value: 'country', label: 'Country' },
+  { value: 'quantity', label: 'Quantity' },
+  { value: 'destination', label: 'Destination' }
+];
+
 export default function Leads() {
   const { user } = useAuth();
   const [leads, setLeads] = useState([]);
@@ -33,6 +48,18 @@ export default function Leads() {
 
   // Toggle between Table and Visual Kanban Board
   const [viewMode, setViewMode] = useState('TABLE'); // 'TABLE' | 'KANBAN'
+
+  // Excel / CSV Import State
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [parsedRows, setParsedRows] = useState([]);
+  const [columnMappings, setColumnMappings] = useState({});
+  const [importing, setImporting] = useState(false);
+
+  // Bulk Assignment State
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [executives, setExecutives] = useState([]);
+  const [assigneeId, setAssigneeId] = useState('');
+  const [assigningBulk, setAssigningBulk] = useState(false);
 
   const [newLead, setNewLead] = useState({
     customerName: '',
@@ -57,10 +84,20 @@ export default function Leads() {
     'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'CLOSED_LOST'
   ];
 
+  const isManagerOrAdmin = 
+    user?.role === 'ADMIN' ||
+    user?.role === 'MANAGER' ||
+    user?.role === 'SALES_MANAGER' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin'));
+
   useEffect(() => {
     fetchLeads();
     fetchReminders();
-  }, [filterStage]);
+    if (isManagerOrAdmin) {
+      fetchExecutives();
+    }
+  }, [filterStage, user, isManagerOrAdmin]);
 
   const fetchLeads = async () => {
     try {
@@ -80,6 +117,28 @@ export default function Leads() {
       if (response?.success) setReminders(response.data.reminders || []);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const fetchExecutives = async () => {
+    try {
+      let list = [];
+      const res = await employeesApi.getEmployees({ department: 'sales' });
+      if (res.success && res.data?.employees && res.data.employees.length > 0) {
+        list = res.data.employees;
+      } else {
+        const fallbackRes = await taskApi.getEmployeesByDepartment('SALES');
+        if (fallbackRes.success && fallbackRes.employees) {
+          list = fallbackRes.employees;
+        }
+      }
+      setExecutives(list.filter(e => 
+        e.role === 'SALES_EXECUTIVE' || 
+        e.role === 'SALES' || 
+        String(e.role).toUpperCase().includes('EXECUTIVE')
+      ));
+    } catch (err) {
+      console.error("Failed to load sales team:", err);
     }
   };
 
@@ -137,15 +196,210 @@ export default function Leads() {
     }
   };
 
-  const triggerWhatsApp = (number) => {
-    if (!number) return toast.error("No WhatsApp contact recorded.");
-    const cleanNum = number.replace(/[^\d+]/g, '');
-    window.open(`https://wa.me/${cleanNum}`, '_blank');
+  // CSV Parser
+  const parseCSV = (text) => {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          row[row.length - 1] += '"';
+          i++; // skip quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        row.push("");
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        lines.push(row);
+        row = [""];
+      } else {
+        row[row.length - 1] += char;
+      }
+    }
+    if (row.length > 1 || row[0] !== "") {
+      lines.push(row);
+    }
+    return lines;
   };
 
-  const triggerEmail = (email) => {
-    if (!email) return toast.error("No email address recorded.");
-    window.open(`mailto:${email}`, '_blank');
+  // Auto-detect CSV fields
+  const autoDetectMappings = (firstRow) => {
+    const mappings = {};
+    firstRow.forEach((val, colIdx) => {
+      const cleanVal = val.toLowerCase().trim();
+      if (cleanVal.includes('name') || cleanVal.includes('customer') || cleanVal.includes('consignee')) {
+        mappings[colIdx] = 'customerName';
+      } else if (cleanVal.includes('phone') || cleanVal.includes('mobile') || cleanVal.includes('contact') || cleanVal.includes('tel')) {
+        mappings[colIdx] = 'phone';
+      } else if (cleanVal.includes('category') || cleanVal.includes('product') || cleanVal.includes('material') || cleanVal.includes('commodity')) {
+        mappings[colIdx] = 'productCategory';
+      } else if (cleanVal.includes('company') || cleanVal.includes('enterprise')) {
+        mappings[colIdx] = 'companyName';
+      } else if (cleanVal.includes('email') || cleanVal.includes('mail')) {
+        mappings[colIdx] = 'email';
+      } else if (cleanVal.includes('value') || cleanVal.includes('price') || cleanVal.includes('valuation')) {
+        mappings[colIdx] = 'leadValue';
+      } else if (cleanVal.includes('country') || cleanVal.includes('region')) {
+        mappings[colIdx] = 'country';
+      } else if (cleanVal.includes('quantity') || cleanVal.includes('mass') || cleanVal.includes('qty')) {
+        mappings[colIdx] = 'quantity';
+      } else if (cleanVal.includes('destination') || cleanVal.includes('discharge') || cleanVal.includes('port')) {
+        mappings[colIdx] = 'destination';
+      }
+    });
+    return mappings;
+  };
+
+  const getColumnLetter = (colIdx) => {
+    let temp = colIdx;
+    let letter = '';
+    while (temp >= 0) {
+      letter = String.fromCharCode((temp % 26) + 65) + letter;
+      temp = Math.floor(temp / 26) - 1;
+    }
+    return letter;
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const parsed = parseCSV(text);
+      if (parsed.length > 0) {
+        setParsedRows(parsed);
+        const auto = autoDetectMappings(parsed[0]);
+        setColumnMappings(auto);
+        toast.success(`Loaded ${parsed.length - 1} rows from spreadsheet!`);
+      } else {
+        toast.error("Spreadsheet file appears empty or unreadable.");
+      }
+    };
+    reader.onerror = () => {
+      toast.error("Error reading spreadsheet file.");
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (parsedRows.length <= 1) {
+      return toast.error("No data rows to import.");
+    }
+
+    const mappedFields = Object.values(columnMappings);
+    if (!mappedFields.includes('customerName')) {
+      return toast.error("Please map a column to 'Consignee Name *'.");
+    }
+    if (!mappedFields.includes('phone')) {
+      return toast.error("Please map a column to 'Phone Number *'.");
+    }
+    if (!mappedFields.includes('productCategory')) {
+      return toast.error("Please map a column to 'Product Category *'.");
+    }
+
+    setImporting(true);
+    try {
+      const leadsArray = [];
+      for (let r = 1; r < parsedRows.length; r++) {
+        const row = parsedRows[r];
+        if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
+
+        const leadObj = {};
+        Object.entries(columnMappings).forEach(([colIdx, field]) => {
+          leadObj[field] = row[Number(colIdx)] || '';
+        });
+
+        if (!leadObj.productCategory) {
+          leadObj.productCategory = 'STONE';
+        } else {
+          leadObj.productCategory = leadObj.productCategory.toUpperCase().trim();
+          const validCategories = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'];
+          if (!validCategories.includes(leadObj.productCategory)) {
+            leadObj.productCategory = 'STONE';
+          }
+        }
+
+        leadsArray.push(leadObj);
+      }
+
+      if (leadsArray.length === 0) {
+        setImporting(false);
+        return toast.error("No valid lead records parsed.");
+      }
+
+      const res = await leadsApi.bulkImportLeads(leadsArray);
+      if (res.success) {
+        toast.success(`Successfully imported ${res.data?.successCount || leadsArray.length} leads! 🎉`);
+        if (res.data?.errors && res.data.errors.length > 0) {
+          toast.error(`Warnings: ${res.data.errors.length} rows had errors. Check console.`);
+        }
+        setShowImportModal(false);
+        setParsedRows([]);
+        setColumnMappings({});
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Bulk lead ingestion failed.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Bulk Selection Helpers
+  const handleSelectLead = (leadId) => {
+    setSelectedLeadIds(prev => 
+      prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const handleSelectAllLeads = () => {
+    const pageIds = filteredLeads.map(l => l._id);
+    const allSelectedOnPage = pageIds.every(id => selectedLeadIds.includes(id));
+    if (allSelectedOnPage) {
+      setSelectedLeadIds(prev => prev.filter(id => !pageIds.includes(id)));
+    } else {
+      setSelectedLeadIds(prev => [...new Set([...prev, ...pageIds])]);
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (selectedLeadIds.length === 0) {
+      return toast.error("Please select at least one lead to assign.");
+    }
+    if (!assigneeId) {
+      return toast.error("Please select an executive to assign leads to.");
+    }
+
+    setAssigningBulk(true);
+    try {
+      const res = await leadsApi.assignLeadsBulk({
+        leadIds: selectedLeadIds,
+        assignedTo: assigneeId
+      });
+      if (res.success) {
+        toast.success(`Successfully assigned ${selectedLeadIds.length} leads! 🎉`);
+        setSelectedLeadIds([]);
+        setAssigneeId('');
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to execute bulk assignment.");
+    } finally {
+      setAssigningBulk(false);
+    }
   };
 
   const filteredLeads = leads.filter(lead =>
@@ -198,6 +452,16 @@ export default function Leads() {
             busyLabel="Exporting..."
             doneLabel="Exported"
           />
+
+          {isManagerOrAdmin && (
+            <button 
+              onClick={() => setShowImportModal(true)} 
+              className="bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-ink-soft)]/20 text-[11px] uppercase tracking-widest font-bold h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer"
+            >
+              <FiUpload size={13} /> <span>Import</span>
+            </button>
+          )}
+
           <button onClick={() => setShowCreateModal(true)} className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center space-x-1.5 transition-all hover:bg-[var(--crm-ink-soft)]">
             <FiPlus size={14} /> <span>New Lead</span>
           </button>
@@ -275,6 +539,16 @@ export default function Leads() {
               <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-ink-soft)]/15">
+                    {isManagerOrAdmin && (
+                      <th className="py-3.5 px-4 text-center w-12 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={filteredLeads.length > 0 && filteredLeads.map(l => l._id).every(id => selectedLeadIds.includes(id))}
+                          onChange={handleSelectAllLeads}
+                          className="cursor-pointer"
+                        />
+                      </th>
+                    )}
                     <th className="py-3.5 px-5">Identifier</th>
                     <th className="py-3.5 px-5">Consignee Name</th>
                     <th className="py-3.5 px-5">Category & Region</th>
@@ -287,13 +561,23 @@ export default function Leads() {
                 <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
+                      <td colSpan={isManagerOrAdmin ? "8" : "7"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
                         No active inquiry manifests mapped.
                       </td>
                     </tr>
                   ) : (
                     filteredLeads.map((lead) => (
                       <tr key={lead._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                        {isManagerOrAdmin && (
+                          <td className="py-3.5 px-4 text-center shrink-0 w-12">
+                            <input
+                              type="checkbox"
+                              checked={selectedLeadIds.includes(lead._id)}
+                              onChange={() => handleSelectLead(lead._id)}
+                              className="cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)]">{lead.leadCode}</td>
                         <td className="py-3.5 px-5">
                           <div className="font-serif text-sm text-[var(--crm-heading)]">{lead.customerName}</div>
@@ -481,6 +765,194 @@ export default function Leads() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Excel Spreadsheet Ingestion Modal */}
+      <AnimatePresence>
+        {showImportModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ scale: 0.97, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-4xl shadow-2xl relative text-[var(--crm-ink-soft)] flex flex-col max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-4 text-left shrink-0">
+                <div>
+                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet Bulk Ingestion</h2>
+                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Upload CSV / Excel sheets to parse and ingest lead records</p>
+                </div>
+                <button type="button" onClick={() => { setShowImportModal(false); setParsedRows([]); setColumnMappings({}); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm cursor-pointer">
+                  <FiX size={16} />
+                </button>
+              </div>
+
+              {parsedRows.length === 0 ? (
+                /* STEP 1: Upload Panel */
+                <div className="flex-1 py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[300px]">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <FiUpload size={32} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-3" />
+                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV spreadsheet file</p>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your file here (Max: 15MB)</p>
+                </div>
+              ) : (
+                /* STEP 2: Spreadsheet Mapping and Grid View */
+                <div className="flex-1 flex flex-col space-y-4 overflow-hidden text-left">
+                  {/* Warning banner */}
+                  <div className="p-3 bg-amber-950/20 border border-amber-500/20 rounded-sm text-[11px] text-amber-400 flex items-start gap-2.5">
+                    <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
+                    <div>
+                      <strong className="font-bold">Verify Column Alignments:</strong> Map the spreadsheet columns to their matching database fields using the dropdown selectors below. Highlighted columns will be imported. Unmapped columns will be ignored. Required fields are marked with an asterisk (*).
+                    </div>
+                  </div>
+
+                  {/* Excel Spreadsheet View */}
+                  <div className="overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/40 text-[10px] font-mono custom-scrollbar relative flex-1">
+                    <table className="w-full border-collapse border border-[var(--crm-line)]">
+                      <thead className="sticky top-0 bg-[var(--crm-bg-sunken)] z-10">
+                        {/* Field mapping selectors */}
+                        <tr className="border-b border-[var(--crm-line)]">
+                          <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/60 font-mono font-bold text-[10px] text-center w-12 shrink-0">MAP</th>
+                          {parsedRows[0].map((_, colIdx) => (
+                            <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] min-w-[150px] bg-slate-900/40">
+                              <select
+                                value={columnMappings[colIdx] || ''}
+                                onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
+                                className="w-full p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
+                              >
+                                <option value="">[Unmapped]</option>
+                                {LEAD_FIELDS.map(f => (
+                                  <option key={f.value} value={f.value}>{f.label}</option>
+                                ))}
+                              </select>
+                            </th>
+                          ))}
+                        </tr>
+                        {/* Excel coordinate letters and original CSV header name */}
+                        <tr className="border-b border-[var(--crm-line)] text-slate-400">
+                          <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/40 text-center font-mono font-bold">#</th>
+                          {parsedRows[0].map((hdr, colIdx) => (
+                            <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/20">
+                              <span className="text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
+                              <span className="truncate block font-sans text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsedRows.slice(1, 51).map((row, rowIdx) => (
+                          <tr key={rowIdx} className="border-b border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)]/20 transition-colors">
+                            <td className="p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 text-center font-mono font-bold text-[var(--crm-ink-faint)] select-none shrink-0 w-12">
+                              {rowIdx + 1}
+                            </td>
+                            {row.map((cell, colIdx) => {
+                              const isMapped = !!columnMappings[colIdx];
+                              return (
+                                <td 
+                                  key={colIdx} 
+                                  className={`p-2 border-r border-[var(--crm-line)] text-left truncate max-w-[200px] ${
+                                    isMapped ? 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20' : 'opacity-40 text-slate-400'
+                                  }`}
+                                  title={cell}
+                                >
+                                  {cell}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Actions footer inside Step 2 */}
+                  <div className="flex items-center justify-between pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0">
+                    <p className="text-[11px] font-mono text-[var(--crm-ink-faint)]">
+                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1} records</strong>
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => { setParsedRows([]); setColumnMappings({}); }}
+                        className="px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase rounded-sm transition-colors cursor-pointer"
+                      >
+                        Reset File
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmImport}
+                        disabled={importing}
+                        className="px-6 py-2.5 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-xs font-bold uppercase rounded-sm hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-40 cursor-pointer shadow-md"
+                      >
+                        {importing ? 'Ingesting Spreadsheet...' : 'Confirm Bulk Import'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {isManagerOrAdmin && selectedLeadIds.length > 0 && (
+          <motion.div
+            initial={{ y: 80, x: '-50%', opacity: 0 }}
+            animate={{ y: 0, x: '-50%', opacity: 1 }}
+            exit={{ y: 80, x: '-50%', opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] max-w-xl bg-slate-950/90 border border-teal-500/30 backdrop-blur-md p-4 rounded-sm shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="bg-teal-950/50 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-sm font-bold">
+                {selectedLeadIds.length} Selected
+              </span>
+              <button 
+                onClick={() => setSelectedLeadIds([])}
+                className="text-[var(--crm-ink-faint)] hover:text-white transition-colors cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial">
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  className="w-full sm:w-56 px-3 py-2 bg-black border border-[var(--crm-line)] rounded-sm outline-none text-[var(--crm-heading)] appearance-none cursor-pointer"
+                >
+                  <option value="">Choose Executive...</option>
+                  {executives.map(e => (
+                    <option key={e._id} value={e._id} className="bg-black">{e.name || e.fullName} ({e.email})</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+
+              <button
+                onClick={handleBulkAssign}
+                disabled={assigningBulk}
+                className="bg-teal-600 hover:bg-teal-500 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-sm transition-all disabled:opacity-40 cursor-pointer shrink-0"
+              >
+                {assigningBulk ? 'Assigning...' : 'Assign Leads'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }

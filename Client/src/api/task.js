@@ -15,8 +15,10 @@ export const taskApi = {
     return response.data;
   },
 
-  async updateTaskStatus(taskId, status, remarks) {
-    const response = await axiosInstance.patch(`/tasks/${taskId}`, { status, remarks });
+  async updateTaskStatus(taskId, taskData) {
+    const isFormData = taskData instanceof FormData;
+    const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const response = await axiosInstance.patch(`/tasks/${taskId}`, taskData, config);
     return response.data;
   },
 

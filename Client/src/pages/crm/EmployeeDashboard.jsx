@@ -13,7 +13,8 @@ import {
   FiPlus,
   FiLayers,
   FiUserCheck,
-  FiFileText
+  FiFileText,
+  FiPaperclip
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -61,9 +62,11 @@ export default function EmployeeDashboard() {
   const [taskStatusFilter, setTaskStatusFilter] = useState('ALL');
   const [selectedTask, setSelectedTask] = useState(null);
   const [taskRemarks, setTaskRemarks] = useState('');
+  const [selectedTaskStatus, setSelectedTaskStatus] = useState('');
+  const [completionFile, setCompletionFile] = useState(null);
   const [updatingTaskStatus, setUpdatingTaskStatus] = useState(false);
 
-  // Real-time socket triggers
+  // Real-time socket triggers & global events
   useEffect(() => {
     fetchInitialDashboardData();
 
@@ -74,15 +77,29 @@ export default function EmployeeDashboard() {
     const handleTaskUpdated = () => {
       fetchTasks();
     };
+    const handleAttendanceUpdated = () => {
+      fetchTodayAttendance();
+      fetchAttendanceLogs();
+    };
 
     window.addEventListener('task_assigned_event', handleTaskAssigned);
     window.addEventListener('task_updated_event', handleTaskUpdated);
+    window.addEventListener('attendance_updated', handleAttendanceUpdated);
 
     return () => {
       window.removeEventListener('task_assigned_event', handleTaskAssigned);
       window.removeEventListener('task_updated_event', handleTaskUpdated);
+      window.removeEventListener('attendance_updated', handleAttendanceUpdated);
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedTask) {
+      setSelectedTaskStatus(selectedTask.status);
+      setCompletionFile(null);
+      setTaskRemarks(selectedTask.remarks || '');
+    }
+  }, [selectedTask]);
 
   const fetchInitialDashboardData = async () => {
     setAttendanceLoading(true);
@@ -99,9 +116,7 @@ export default function EmployeeDashboard() {
   const fetchTodayAttendance = async () => {
     try {
       const res = await attendanceApi.getMyToday();
-      if (res.success) {
-        setTodayAttendance(res.data.attendance);
-      }
+        setTodayAttendance(res.data.record || res.data.attendance);
     } catch (err) {
       console.error('Error fetching today attendance:', err);
     }
@@ -224,16 +239,31 @@ export default function EmployeeDashboard() {
     }
   };
 
-  // Task Status Update
-  const handleUpdateTaskStatus = async (status) => {
+  // Task Status Update Submit
+  const handleUpdateTaskStatusSubmit = async (e) => {
+    e.preventDefault();
     if (!selectedTask) return;
     setUpdatingTaskStatus(true);
     try {
-      const res = await taskApi.updateTaskStatus(selectedTask._id, status, taskRemarks);
+      let payload;
+      if (selectedTaskStatus === 'COMPLETED' && completionFile) {
+        payload = new FormData();
+        payload.append('status', selectedTaskStatus);
+        payload.append('remarks', taskRemarks || 'Completed by employee');
+        payload.append('file', completionFile);
+      } else {
+        payload = {
+          status: selectedTaskStatus,
+          remarks: taskRemarks || 'Status updated by employee'
+        };
+      }
+
+      const res = await taskApi.updateTaskStatus(selectedTask._id, payload);
       if (res.success) {
-        toast.success(`Task status updated to ${status}!`);
+        toast.success(`Task status updated to ${selectedTaskStatus}!`);
         setSelectedTask(null);
         setTaskRemarks('');
+        setCompletionFile(null);
         fetchTasks();
       }
     } catch (err) {
@@ -349,20 +379,30 @@ export default function EmployeeDashboard() {
                       )}
 
                       <div className="flex gap-3">
-                        <button
-                          onClick={handleCheckIn}
-                          disabled={!!todayAttendance}
-                          className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] disabled:opacity-30 disabled:cursor-not-allowed py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                        >
-                          Clock In
-                        </button>
-                        <button
-                          onClick={handleCheckOut}
-                          disabled={!todayAttendance || !!todayAttendance.clockOut}
-                          className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                        >
-                          Clock Out
-                        </button>
+                        {!todayAttendance && (
+                          <button
+                            onClick={handleCheckIn}
+                            className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
+                          >
+                            Clock In
+                          </button>
+                        )}
+                        {todayAttendance && !todayAttendance.clockOut && (
+                          <button
+                            onClick={handleCheckOut}
+                            className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
+                          >
+                            Clock Out
+                          </button>
+                        )}
+                        {todayAttendance && todayAttendance.clockOut && (
+                          <button
+                            disabled
+                            className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider cursor-not-allowed text-center"
+                          >
+                            Shift Completed
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -521,6 +561,52 @@ export default function EmployeeDashboard() {
                           <h4 className="font-serif text-sm font-semibold text-[var(--crm-heading)] leading-tight">{t.title}</h4>
                           <p className="text-[10px] text-[var(--crm-ink-soft)] font-light mt-1.5 italic">"{t.description}"</p>
                         </div>
+
+                        {t.fileOriginalName && (
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono mt-2">
+                            <span className="text-[var(--crm-ink-faint)]">Attached File:</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const baseUrl = 'http://localhost:5000/';
+                                const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}${t.fileUrl}`;
+                                const link = document.createElement('a');
+                                link.href = absoluteUrl;
+                                link.setAttribute('download', t.fileOriginalName);
+                                link.setAttribute('target', '_blank');
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                              }}
+                              className="text-teal-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                            >
+                              <FiPaperclip size={10} /> {t.fileOriginalName}
+                            </button>
+                          </div>
+                        )}
+
+                        {t.status === 'COMPLETED' && t.completionFileOriginalName && (
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono mt-1">
+                            <span className="text-[var(--crm-ink-faint)]">Completion File:</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const baseUrl = 'http://localhost:5000/';
+                                const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}${t.completionFileUrl}`;
+                                const link = document.createElement('a');
+                                link.href = absoluteUrl;
+                                link.setAttribute('download', t.completionFileOriginalName);
+                                link.setAttribute('target', '_blank');
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                              }}
+                              className="text-emerald-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                            >
+                              <FiFileText size={10} /> {t.completionFileOriginalName}
+                            </button>
+                          </div>
+                        )}
 
                         {t.remarks && (
                           <div className="p-2 border rounded-sm bg-[var(--crm-bg-sunken)]/60 text-[9px] font-mono">
@@ -734,7 +820,7 @@ export default function EmployeeDashboard() {
               <button onClick={() => setSelectedTask(null)} className="text-[var(--crm-ink-faint)] hover:text-white font-mono cursor-pointer">✕</button>
             </div>
 
-            <div className="space-y-4 font-mono text-xs">
+            <form onSubmit={handleUpdateTaskStatusSubmit} className="space-y-4 font-mono text-xs">
               <div>
                 <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-2">Set Status *</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -742,15 +828,31 @@ export default function EmployeeDashboard() {
                     <button
                       key={status}
                       type="button"
-                      onClick={() => handleUpdateTaskStatus(status)}
-                      disabled={updatingTaskStatus}
-                      className="bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:border-[var(--crm-accent)] text-[var(--crm-heading)] py-2 rounded-sm text-[8px] font-bold uppercase transition cursor-pointer text-center"
+                      onClick={() => setSelectedTaskStatus(status)}
+                      className={`py-2 rounded-sm text-[8px] font-bold uppercase transition cursor-pointer text-center border ${
+                        selectedTaskStatus === status
+                          ? 'border-[var(--crm-accent)] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] font-extrabold'
+                          : 'bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:border-[var(--crm-accent)]/50 text-[var(--crm-ink-soft)]'
+                      }`}
                     >
                       {status}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {selectedTaskStatus === 'COMPLETED' && (
+                <div className="animate-fadeIn">
+                  <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1.5 font-bold">Attach Completion File *</label>
+                  <input
+                    type="file"
+                    required
+                    accept=".xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv, .pdf, .docx, .doc, image/*"
+                    onChange={(e) => setCompletionFile(e.target.files[0])}
+                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-[10px] px-3 py-2 rounded outline-none focus:border-teal-500 transition file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-mono file:font-semibold file:bg-teal-950/40 file:text-teal-400 hover:file:bg-teal-900/60 file:cursor-pointer"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1">Execution Remarks / Logs</label>
@@ -765,13 +867,21 @@ export default function EmployeeDashboard() {
 
               <div className="flex gap-2.5 pt-2 border-t border-[var(--crm-line)]">
                 <button
+                  type="button"
                   onClick={() => setSelectedTask(null)}
                   className="flex-1 py-2 bg-transparent border border-[var(--crm-line)] text-[var(--crm-ink-soft)] text-[8px] font-bold uppercase rounded-sm transition cursor-pointer text-center"
                 >
                   Cancel
                 </button>
+                <button
+                  type="submit"
+                  disabled={updatingTaskStatus}
+                  className="flex-1 py-2 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] hover:text-white text-[8px] font-bold uppercase rounded-sm transition cursor-pointer text-center"
+                >
+                  {updatingTaskStatus ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

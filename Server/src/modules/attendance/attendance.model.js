@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const attendanceSchema = new mongoose.Schema(
   {
     employeeId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Employee',
       required: true,
       index: true
@@ -23,9 +23,33 @@ const attendanceSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    checkInAt: {
+      type: Date,
+      default: null
+    },
     checkOutTime: {
       type: String,
       default: null
+    },
+    checkOutAt: {
+      type: Date,
+      default: null
+    },
+    workingHours: {
+      type: Number,
+      default: 0
+    },
+    lunchStartAt: {
+      type: Date,
+      default: null
+    },
+    lunchEndAt: {
+      type: Date,
+      default: null
+    },
+    lunchDurationMinutes: {
+      type: Number,
+      default: 0
     },
     overtimeHours: {
       type: Number,

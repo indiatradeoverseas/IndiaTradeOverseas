@@ -42,6 +42,7 @@ import { leaveApi } from '../../api/leave';
 import { attendanceApi } from '../../api/attendance';
 import { taskApi } from '../../api/task';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
+import { socketService } from '../../services/socket';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -243,6 +244,21 @@ export default function HrManagerDashboard() {
 
   useEffect(() => {
     fetchInitialData();
+
+    const socket = socketService.getSocket();
+    const handleUpdate = () => {
+      fetchInitialData();
+    };
+
+    if (socket) {
+      socket.on('attendance_updated', handleUpdate);
+    }
+    window.addEventListener('attendance_updated', handleUpdate);
+
+    return () => {
+      if (socket) socket.off('attendance_updated', handleUpdate);
+      window.removeEventListener('attendance_updated', handleUpdate);
+    };
   }, []);
 
   const fetchAttendanceLeaveDetails = async () => {
@@ -818,7 +834,7 @@ export default function HrManagerDashboard() {
     { title: 'Active Employees', value: activeEmployeesCount, icon: FiUsers, tone: 'ink' },
     { title: 'Open Vacancies', value: activeVacanciesCount, icon: FiBriefcase, tone: 'accent' },
     { title: 'Pending Applications', value: pendingAppsCount, icon: FiFileText, tone: 'warning' },
-    { title: 'Attendance Today', value: `${Math.round((attendanceReport?.presentCount / Math.max(attendanceReport?.totalEmployees, 1)) * 100)}%`, icon: FiCheckCircle, tone: 'positive' }
+    { title: 'Attendance Today', value: attendanceReport?.stats ? `${Math.round((attendanceReport.stats.presentCount / Math.max(attendanceReport.stats.totalEmployees, 1)) * 100)}%` : '0%', icon: FiCheckCircle, tone: 'positive' }
   ];
 
   return (
@@ -977,15 +993,15 @@ export default function HrManagerDashboard() {
                         <div className="grid grid-cols-3 gap-2">
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Present Today</span>
-                            <strong className="text-lg text-[var(--crm-positive)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.presentCount || 0}</strong>
+                            <strong className="text-lg text-[var(--crm-positive)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.stats?.presentCount || 0}</strong>
                           </div>
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Late Arrivals</span>
-                            <strong className="text-lg text-[var(--crm-warning)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.lateCount || 0}</strong>
+                            <strong className="text-lg text-[var(--crm-warning)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.stats?.lateCount || 0}</strong>
                           </div>
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Absent Count</span>
-                            <strong className="text-lg text-[var(--crm-danger)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.absentCount || 0}</strong>
+                            <strong className="text-lg text-[var(--crm-danger)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.stats?.absentCount || 0}</strong>
                           </div>
                         </div>
                         <div className="space-y-1.5 pt-3 border-t border-[var(--crm-line)] text-[9px] font-mono mt-3">
@@ -1132,6 +1148,8 @@ export default function HrManagerDashboard() {
                           const displayDept = profile.departmentOverride || emp.department || 'HQ';
                           const displayStatus = profile.employmentStatus || 'Probation';
                           const photo = getEmployeePhoto(emp.employeeId, displayName, profilesData);
+                          const lastActive = emp.lastActiveAt ? new Date(emp.lastActiveAt) : null;
+                          const isOnline = emp.isOnline && lastActive && (new Date() - lastActive < 5 * 60 * 1000);
                           return (
                             <div
                               key={emp._id}
@@ -1179,6 +1197,19 @@ export default function HrManagerDashboard() {
                                   </h4>
                                   <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono truncate">{emp.email}</p>
                                   <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono truncate">Phone: {displayPhone}</p>
+                                  
+                                  {/* Login Status */}
+                                  <div className="flex items-center gap-1.5 pt-1 text-[9px] font-mono">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-[var(--crm-positive)] animate-pulse' : 'bg-rose-500/50'}`} />
+                                    <span className={isOnline ? 'text-[var(--crm-positive)] font-bold' : 'text-[var(--crm-ink-faint)]'}>
+                                      {isOnline ? 'ONLINE' : 'OFFLINE'}
+                                    </span>
+                                    {emp.lastLoginAt && (
+                                      <span className="text-[8px] text-[var(--crm-ink-faint)] ml-auto" title={`Last Active: ${emp.lastActiveAt ? new Date(emp.lastActiveAt).toLocaleString() : 'N/A'}`}>
+                                        Login: {new Date(emp.lastLoginAt).toLocaleDateString()} {new Date(emp.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    )}
+                                  </div>
                                   
                                   <div className="flex flex-wrap gap-1.5 pt-2">
                                     <span className="text-[8px] font-mono font-bold uppercase tracking-wider bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm">
@@ -1230,7 +1261,14 @@ export default function HrManagerDashboard() {
                                           className="fixed inset-0 z-45" 
                                           onClick={() => setActiveDropdownEmpId(null)}
                                         />
-                                        <div className="absolute right-0 bottom-full mb-1.5 w-40 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] shadow-2xl rounded-sm p-1 z-50 text-[9px] font-mono font-bold uppercase text-left space-y-0.5">
+                                        <div className="absolute right-0 bottom-full mb-1.5 w-44 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] shadow-2xl rounded-sm p-1 z-50 text-[9px] font-mono font-bold uppercase text-left space-y-0.5">
+                                          <Link
+                                            to={`/crm/employees/${emp._id}`}
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-white decoration-none"
+                                          >
+                                            <FiUser size={10} className="text-[var(--crm-accent)]" />
+                                            View Profile & Payslips
+                                          </Link>
                                           <button
                                             onClick={() => {
                                               setActiveDropdownEmpId(null);
@@ -1282,6 +1320,8 @@ export default function HrManagerDashboard() {
                           const displayDept = profile.departmentOverride || emp.department || 'HQ';
                           const displayStatus = profile.employmentStatus || 'Probation';
                           const photo = getEmployeePhoto(emp.employeeId, displayName, profilesData);
+                          const lastActive = emp.lastActiveAt ? new Date(emp.lastActiveAt) : null;
+                          const isOnline = emp.isOnline && lastActive && (new Date() - lastActive < 5 * 60 * 1000);
                           return (
                             <div
                               key={emp._id}
@@ -1301,6 +1341,24 @@ export default function HrManagerDashboard() {
                                       </span>
                                     </h4>
                                     <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{emp.email} • {displayPhone}</p>
+                                    
+                                    {/* Login Status */}
+                                    <div className="flex items-center gap-1.5 mt-0.5 text-[8px] font-mono uppercase">
+                                      <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-[var(--crm-positive)] animate-pulse' : 'bg-rose-500/50'}`} />
+                                      <span className={isOnline ? 'text-[var(--crm-positive)] font-bold' : 'text-[var(--crm-ink-faint)]'}>
+                                        {isOnline ? 'Online' : 'Offline'}
+                                      </span>
+                                      {emp.lastLoginAt && (
+                                        <span className="text-[8px] text-[var(--crm-ink-faint)]">
+                                          • Last Login: {new Date(emp.lastLoginAt).toLocaleString()}
+                                        </span>
+                                      )}
+                                      {emp.lastActiveAt && (
+                                        <span className="text-[8px] text-[var(--crm-ink-faint)]" title={`Last Active: ${new Date(emp.lastActiveAt).toLocaleString()}`}>
+                                          • Active: {new Date(emp.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
@@ -1311,6 +1369,12 @@ export default function HrManagerDashboard() {
                                   <span className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm uppercase">
                                     {displayDept}
                                   </span>
+                                  <Link
+                                    to={`/crm/employees/${emp._id}`}
+                                    className="bg-teal-950/60 text-teal-400 border border-teal-800/40 px-2 py-0.5 rounded-sm uppercase tracking-wider hover:bg-teal-900 transition duration-150 cursor-pointer text-[8px] flex items-center gap-1 decoration-none font-bold"
+                                  >
+                                    <FiUser size={10} /> Profile / Payslips
+                                  </Link>
                                   <button
                                     onClick={() => setExpandedEmpId(isExpanded ? null : emp._id)}
                                     className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] px-2 py-0.5 rounded-sm uppercase tracking-wider hover:bg-[var(--crm-ink-soft)] transition duration-150 cursor-pointer text-[8px]"
@@ -1418,7 +1482,15 @@ export default function HrManagerDashboard() {
                             <span className="text-[8px] font-mono font-bold tracking-widest bg-[var(--crm-accent-bg)] px-2 py-0.5 border border-[var(--crm-accent)]/20 text-[var(--crm-accent)] uppercase rounded-sm inline-block">
                               {emp.employeeId}
                             </span>
-                            <h2 className="font-serif text-lg text-[var(--crm-heading)] leading-none">{displayName}</h2>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <h2 className="font-serif text-lg text-[var(--crm-heading)] leading-none">{displayName}</h2>
+                              <Link
+                                to={`/crm/employees/${emp._id}`}
+                                className="px-2.5 py-1 bg-teal-950/60 hover:bg-teal-900 border border-teal-800/40 text-teal-400 text-[8px] font-mono font-bold uppercase rounded-sm transition flex items-center gap-1 decoration-none"
+                              >
+                                <FiUser size={10} /> Manage Profile & Payslips
+                              </Link>
+                            </div>
                             <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{emp.email}</p>
                           </div>
                           <button
@@ -1933,6 +2005,75 @@ export default function HrManagerDashboard() {
                     </div>
                   </div>
 
+                  {/* Today's Attendance Login & Logout Logs Panel */}
+                  <div className="border p-4 rounded-sm space-y-3" style={CARD}>
+                    <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                      <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] flex items-center gap-1.5">
+                        <FiClock size={12} className="text-[var(--crm-accent)]" /> Today's Login / Logout Status (All Employees)
+                      </h3>
+                      <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] bg-[var(--crm-bg-sunken)] px-2 py-0.5 rounded border border-[var(--crm-line)]">
+                        {attendanceReport?.records?.length || 0} Employees
+                      </span>
+                    </div>
+
+                    {!attendanceReport?.records || attendanceReport.records.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-[var(--crm-ink-faint)] font-mono">No attendance logs synced today</div>
+                    ) : (
+                      <div className="overflow-x-auto max-h-[300px] overflow-y-auto border rounded-sm custom-scrollbar" style={{ borderColor: 'var(--crm-line)' }}>
+                        <table className="w-full text-left border-collapse text-[10px] font-mono">
+                          <thead style={{ background: 'var(--crm-bg-sunken)' }}>
+                            <tr className="text-[var(--crm-ink-faint)] border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                              <th className="p-2">Employee</th>
+                              <th className="p-2 text-center">Check In (Login)</th>
+                              <th className="p-2 text-center">Check Out (Logout)</th>
+                              <th className="p-2 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--crm-line)]">
+                            {attendanceReport.records.map(rec => {
+                              const emp = rec.employeeId || {};
+                              const statusTone = 
+                                rec.status === 'PRESENT' ? 'text-[var(--crm-positive)]' :
+                                rec.status === 'LATE' ? 'text-[var(--crm-warning)]' :
+                                rec.status === 'ABSENT' ? 'text-[var(--crm-danger)]' :
+                                'text-[var(--crm-ink-faint)]';
+
+                              return (
+                                <tr key={rec._id} className="hover:bg-[var(--crm-bg-raised)]/30">
+                                  <td className="p-2 text-[var(--crm-heading)] font-sans font-semibold">
+                                    {emp.name || 'Unknown'}
+                                    <span className="block text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase">
+                                      {emp.department || 'HQ'} • {emp.role || 'STAFF'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-center font-mono">
+                                    {rec.checkInTime ? (
+                                      <span className="text-[var(--crm-positive)] font-bold">{rec.checkInTime}</span>
+                                    ) : (
+                                      <span className="text-[var(--crm-ink-faint)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-center font-mono">
+                                    {rec.checkOutTime ? (
+                                      <span className="text-[var(--crm-accent)] font-bold">{rec.checkOutTime}</span>
+                                    ) : (
+                                      <span className="text-[var(--crm-ink-faint)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-center font-mono font-bold">
+                                    <span className={statusTone}>
+                                      {rec.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Leave Balances Sheet */}
                   <div className="border p-4 rounded-sm space-y-3" style={CARD}>
                     <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
@@ -2428,6 +2569,62 @@ export default function HrManagerDashboard() {
                           </div>
                           <h4 className="font-serif text-xs font-normal text-[var(--crm-heading)]">{t.title}</h4>
                           <p className="text-[9px] text-[var(--crm-ink-soft)] font-sans italic">"{t.description}"</p>
+                          
+                          {t.fileOriginalName && (
+                            <div className="pt-1 flex items-center gap-1.5 text-[8px] font-mono">
+                              <span className="text-[var(--crm-ink-faint)]">Task File:</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const baseUrl = 'http://localhost:5000/';
+                                  const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}${t.fileUrl}`;
+                                  const link = document.createElement('a');
+                                  link.href = absoluteUrl;
+                                  link.setAttribute('download', t.fileOriginalName);
+                                  link.setAttribute('target', '_blank');
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  link.remove();
+                                }}
+                                className="text-teal-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                              >
+                                <FiPaperclip size={8} /> {t.fileOriginalName}
+                              </button>
+                            </div>
+                          )}
+
+                          {t.status === 'COMPLETED' && (
+                            <div className="pt-1 space-y-1">
+                              {t.completionFileOriginalName && (
+                                <div className="flex items-center gap-1.5 text-[8px] font-mono">
+                                  <span className="text-[var(--crm-ink-faint)]">Completion File:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const baseUrl = 'http://localhost:5000/';
+                                      const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}${t.completionFileUrl}`;
+                                      const link = document.createElement('a');
+                                      link.href = absoluteUrl;
+                                      link.setAttribute('download', t.completionFileOriginalName);
+                                      link.setAttribute('target', '_blank');
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      link.remove();
+                                    }}
+                                    className="text-emerald-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                                  >
+                                    <FiDownload size={8} /> {t.completionFileOriginalName}
+                                  </button>
+                                </div>
+                              )}
+                              {t.remarks && (
+                                <p className="text-[9px] text-[var(--crm-ink-soft)] font-sans italic border-l border-slate-700 pl-1.5">
+                                  "{t.remarks}"
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           <div className="flex justify-between items-center text-[9px] border-t border-[var(--crm-line)]/50 pt-1.5 mt-1.5">
                             <span className="text-[var(--crm-ink-faint)]">Assignee:</span>
                             <strong className="text-[var(--crm-heading)] font-medium font-mono text-[9px]">{t.assignedTo?.name || t.assignedToName || 'Employee'}</strong>

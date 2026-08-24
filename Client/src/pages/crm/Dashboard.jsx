@@ -197,15 +197,15 @@ export default function Dashboard() {
     );
   }
 
-  const isSalesExecutive = user?.role === 'SALES' || user?.role === 'SALES_EXECUTIVE' || (user?.department === 'SALES' && !user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
   const isSalesManager = user?.role === 'MANAGER' || user?.role === 'SALES_MANAGER' || (user?.department === 'SALES' && user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
-
-  if (isSalesExecutive) {
-    return <SalesExecutiveDashboard />;
-  }
+  const isSalesExecutive = !isSalesManager && (user?.role === 'SALES' || user?.role === 'SALES_EXECUTIVE' || (user?.department === 'SALES' && !isAdmin));
 
   if (isSalesManager) {
     return <SalesManagerDashboard />;
+  }
+
+  if (isSalesExecutive) {
+    return <SalesExecutiveDashboard />;
   }
 
   if (user?.role === 'HR_MANAGER' && !isAdmin) {

@@ -42,14 +42,22 @@ async function adminLogin(req, res, next) {
     }
 
     if (!admin.isActive) {
-      await raiseAlert({
-        actorId: admin._id,
-        alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
-        severity: 'HIGH',
-        message: `Locked admin ${admin.fullName} attempted to log in.`,
-        metadata: { ipAddress }
-      });
-      return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
+      // Check if lock has expired (15 minutes)
+      if (admin.lockUntil && admin.lockUntil < new Date()) {
+        admin.isActive = true;
+        admin.failedLoginCount = 0;
+        admin.lockUntil = null;
+        await admin.save();
+      } else {
+        await raiseAlert({
+          actorId: admin._id,
+          alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
+          severity: 'HIGH',
+          message: `Locked admin ${admin.fullName} attempted to log in.`,
+          metadata: { ipAddress }
+        });
+        return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
+      }
     }
 
     if (!admin.passwordHash) {
@@ -62,6 +70,7 @@ async function adminLogin(req, res, next) {
       admin.failedLoginCount += 1;
       if (admin.failedLoginCount >= securityConfig.accountLockThreshold) {
         admin.isActive = false;
+        admin.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
         await admin.save();
         await raiseAlert({
           actorId: admin._id,
@@ -158,14 +167,22 @@ async function adminGoogleLogin(req, res, next) {
     }
 
     if (!admin.isActive) {
-      await raiseAlert({
-        actorId: admin._id,
-        alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
-        severity: 'HIGH',
-        message: `Locked admin ${admin.fullName} attempted to log in via Google.`,
-        metadata: { ipAddress }
-      });
-      return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
+      // Check if lock has expired (15 minutes)
+      if (admin.lockUntil && admin.lockUntil < new Date()) {
+        admin.isActive = true;
+        admin.failedLoginCount = 0;
+        admin.lockUntil = null;
+        await admin.save();
+      } else {
+        await raiseAlert({
+          actorId: admin._id,
+          alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
+          severity: 'HIGH',
+          message: `Locked admin ${admin.fullName} attempted to log in via Google.`,
+          metadata: { ipAddress }
+        });
+        return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
+      }
     }
 
     admin.failedLoginCount = 0;

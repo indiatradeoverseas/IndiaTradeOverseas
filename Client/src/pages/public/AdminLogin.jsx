@@ -142,6 +142,13 @@ const AdminLogin = () => {
                   {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
                 </button>
               </div>
+
+              {/* Forgot Password Link */}
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-[11px] text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-light">
+                  Forgot Password?
+                </Link>
+              </div>
             </motion.div>
 
             {/* Submission Button */}

@@ -59,10 +59,10 @@ router.patch('/me/profile-image', profileImageUpload.single('image'), uploadMyPr
 router.post('/me/documents', upload.single('file'), uploadMyDocument);
 router.get('/me/documents', listMyDocuments);
 
-router.get('/:id/profile', rbac('ADMIN', 'MANAGER', 'HR'), getEmployeeProfile);
-router.patch('/:id/profile', rbac('ADMIN', 'MANAGER', 'HR'), updateEmployeeProfile);
+router.get('/:id/profile', rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), getEmployeeProfile);
+router.patch('/:id/profile', rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), updateEmployeeProfile);
 router.post('/:id/profile/reveal', rbac('ADMIN'), revealEmployeeField);
-router.patch('/:id/employment-status', rbac('ADMIN', 'MANAGER', 'HR'), updateEmploymentStatus);
-router.get('/:id/documents', rbac('ADMIN', 'MANAGER', 'HR'), listEmployeeDocuments);
+router.patch('/:id/employment-status', rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER'), updateEmploymentStatus);
+router.get('/:id/documents', rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), listEmployeeDocuments);
 
 module.exports = router;

@@ -47,6 +47,10 @@ const adminSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    lockUntil: {
+      type: Date,
+      default: null
+    },
     isEmailVerified: {
       type: Boolean,
       default: true

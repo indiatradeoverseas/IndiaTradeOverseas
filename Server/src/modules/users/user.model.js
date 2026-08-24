@@ -64,9 +64,21 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
+    isOnline: {
+      type: Boolean,
+      default: false
+    },
+    lastActiveAt: {
+      type: Date,
+      default: null
+    },
     failedLoginCount: {
       type: Number,
       default: 0
+    },
+    lockUntil: {
+      type: Date,
+      default: null
     },
     exportPermission: {
       type: Boolean,
