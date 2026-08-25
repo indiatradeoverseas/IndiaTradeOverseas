@@ -218,6 +218,53 @@ async function updateMyProfile(req, res, next) {
     }
 
     const profile = await userService.updateOwnProfile(req.user._id, req.body);
+
+    // Sync to Employee collection if it exists
+    try {
+      const Employee = require('../employee/employee.model');
+      const empQuery = {};
+      if (req.user.employeeId) {
+        empQuery.employeeId = req.user.employeeId;
+      } else if (req.user.email) {
+        empQuery.email = { $regex: new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+      }
+      
+      if (Object.keys(empQuery).length) {
+        const empUpdates = {};
+        const fieldMappings = {
+          address: 'currentAddress',
+          bankIFSC: 'ifscCode',
+          fatherName: 'fatherHusbandName',
+          dateOfBirth: 'dob',
+          dateOfJoining: 'joiningDate'
+        };
+        
+        const SELF_EDITABLE_FIELDS = [
+          'address', 'addressCont', 'city', 'postalCode',
+          'emergencyContactName', 'emergencyContactPhone', 'phone',
+          'levelOfEducation', 'degree', 'hardSkill', 'softSkill',
+          'taxNumber', 'fatherName', 'dateOfBirth', 'dateOfJoining',
+          'bankName', 'bankIFSC'
+        ];
+        
+        for (const field of SELF_EDITABLE_FIELDS) {
+          if (req.body[field] !== undefined) {
+            const targetField = fieldMappings[field] || field;
+            empUpdates[targetField] = req.body[field];
+            if (field === 'address') {
+              empUpdates.permanentAddress = req.body[field];
+            }
+          }
+        }
+        
+        if (Object.keys(empUpdates).length) {
+          await Employee.findOneAndUpdate(empQuery, { $set: empUpdates });
+        }
+      }
+    } catch (syncErr) {
+      console.error('Error syncing self profile update to Employee collection:', syncErr);
+    }
+
     return ok(res, { profile }, 'Profile updated successfully', 200, req);
   } catch (error) {
     if (error.message === 'NO_VALID_FIELDS') {
@@ -241,6 +288,60 @@ async function updateEmployeeProfile(req, res, next) {
   try {
     const profile = await userService.updateEmployeeProfile(req.params.id, req.body, req.user);
     if (!profile) return fail(res, 404, 'VALIDATION_FAILED', 'User not found');
+
+    // Sync to Employee collection
+    try {
+      const Employee = require('../employee/employee.model');
+      const User = require('./user.model');
+      
+      const targetUser = await User.findById(req.params.id);
+      if (targetUser) {
+        const empQuery = {};
+        if (targetUser.employeeId) {
+          empQuery.employeeId = targetUser.employeeId;
+        } else if (targetUser.email) {
+          empQuery.email = { $regex: new RegExp('^' + targetUser.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+        }
+        
+        if (Object.keys(empQuery).length) {
+          const empUpdates = {};
+          const fieldMappings = {
+            address: 'currentAddress',
+            bankIFSC: 'ifscCode',
+            fatherName: 'fatherHusbandName',
+            dateOfBirth: 'dob',
+            dateOfJoining: 'joiningDate'
+          };
+          
+          const PROFILE_FIELDS = [
+            'fatherName', 'dateOfBirth', 'address', 'emergencyContactName', 'emergencyContactPhone',
+            'dateOfJoining', 'bankIFSC', 'bankName', 'phone'
+          ];
+          
+          for (const field of PROFILE_FIELDS) {
+            if (req.body[field] !== undefined) {
+              const targetField = fieldMappings[field] || field;
+              empUpdates[targetField] = req.body[field];
+              if (field === 'address') {
+                empUpdates.permanentAddress = req.body[field];
+              }
+            }
+          }
+          
+          // Sync sensitive fields
+          if (req.body.salary !== undefined) empUpdates.salary = Number(req.body.salary) || 0;
+          if (req.body.pan !== undefined) empUpdates.panCardNumber = req.body.pan;
+          if (req.body.aadhaar !== undefined) empUpdates.aadhaarNumber = req.body.aadhaar;
+          if (req.body.bankAccount !== undefined) empUpdates.bankAccountNumber = req.body.bankAccount;
+          
+          if (Object.keys(empUpdates).length) {
+            await Employee.findOneAndUpdate(empQuery, { $set: empUpdates });
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.error('Error syncing admin profile update to Employee collection:', syncErr);
+    }
 
     await recordAudit({
       actorId: req.user._id,

@@ -470,13 +470,55 @@ async function reviewLeave(req, res, next) {
       });
     }
 
-    // Email notification trigger for approved Manager leaves
-    if (leave.employeeModel === 'User' && employee.email) {
+    // Email notification trigger for approved leaves (both regular and extra)
+    if (employee.email) {
       try {
         const userEmail = employee.email;
+        const approverName = req.user.fullName || req.user.name || 'HR Manager';
         const subject = 'Your Leave Request Accepted // India Trade Overseas';
-        const text = `Dear ${employee.fullName || employee.name},\n\nYour leave request from ${new Date(leave.fromDate).toLocaleDateString()} to ${new Date(leave.toDate).toLocaleDateString()} has been accepted by ${req.user.fullName || 'HR Manager'}.\n\nRemarks: ${hrRemarks || 'None'}\n\nBest Regards,\nHR Team`;
-        const html = `<p>Dear <strong>${employee.fullName || employee.name}</strong>,</p><p>Your leave request from <strong>${new Date(leave.fromDate).toLocaleDateString()}</strong> to <strong>${new Date(leave.toDate).toLocaleDateString()}</strong> has been accepted by <strong>${req.user.fullName || 'HR Manager'}</strong>.</p><p><strong>Remarks:</strong> ${hrRemarks || 'None'}</p><br/><p>Best Regards,</p><p>HR Team</p>`;
+        const text = `Dear ${employee.fullName || employee.name},\n\nYour leave request from ${new Date(leave.fromDate).toLocaleDateString()} to ${new Date(leave.toDate).toLocaleDateString()} has been approved by ${approverName}.\n\nRemarks: ${hrRemarks || 'None'}\n\nBest Regards,\nHR Team`;
+        const html = `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 550px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 25px;">
+              <span style="font-size: 10px; font-weight: bold; letter-spacing: 0.15em; color: #64748b; text-transform: uppercase;">India Trade Overseas // Operations</span>
+              <h2 style="margin: 5px 0 0 0; color: #0d9488; font-size: 20px; font-weight: 600;">Leave Request Approved</h2>
+            </div>
+            
+            <p style="font-size: 14px; color: #334155; margin-bottom: 20px;">
+              Dear <strong>${employee.fullName || employee.name}</strong>,
+            </p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.5; margin-bottom: 20px;">
+              Your leave request starting from <strong>${new Date(leave.fromDate).toLocaleDateString('en-IN')}</strong> to <strong>${new Date(leave.toDate).toLocaleDateString('en-IN')}</strong> has been reviewed and <strong style="color: #0d9488;">APPROVED</strong>.
+            </p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 25px; font-size: 13px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 35%;">Leave Type:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold; text-align: right; text-transform: uppercase;">${leave.leaveType}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Duration:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold; text-align: right;">${leave.numberOfDays} Day(s)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Approved By:</td>
+                  <td style="padding: 6px 0; color: #0d9488; font-weight: bold; text-align: right;">${approverName}</td>
+                </tr>
+                ${hrRemarks ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Remarks:</td>
+                  <td style="padding: 6px 0; color: #334155; text-align: right; font-style: italic;">"${hrRemarks}"</td>
+                </tr>
+                ` : ''}
+              </table>
+            </div>
+            
+            <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+              Please ensure all pending finalizations are completed before your departure.
+            </p>
+          </div>
+        `;
         await sendEmail(userEmail, subject, text, html);
       } catch (mailErr) {
         console.error('Failed to notify manager via email:', mailErr);

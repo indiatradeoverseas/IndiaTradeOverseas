@@ -57,7 +57,7 @@ const SENSITIVE_FIELDS = [
 export default function EmployeeProfile() {
   const { id } = useParams();
   const { user } = useAuth();
-  const isSelf = !id || id === user?._id;
+  const isSelf = !id || id === user?._id || id === user?.employeeId;
   const targetId = isSelf ? 'me' : id;
   const isAdminReviewer = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'].includes(user?.role);
 

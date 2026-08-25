@@ -133,9 +133,8 @@ export default function Leads() {
         }
       }
       setExecutives(list.filter(e => 
-        e.role === 'SALES_EXECUTIVE' || 
-        e.role === 'SALES' || 
-        String(e.role).toUpperCase().includes('EXECUTIVE')
+        !String(e.role || '').toUpperCase().includes('MANAGER') &&
+        !String(e.position || '').toUpperCase().includes('MANAGER')
       ));
     } catch (err) {
       console.error("Failed to load sales team:", err);

@@ -120,7 +120,17 @@ async function listLeads(user, query = {}) {
     user.dispatchPermission !== true &&
     user.quotationPermission !== true
   ) {
-    filter.assignedTo = user._id;
+    const actorIds = [user._id];
+    try {
+      const Employee = require('../employee/employee.model');
+      if (user.email) {
+        const emp = await Employee.findOne({ email: user.email });
+        if (emp) actorIds.push(emp._id);
+      }
+    } catch (err) {
+      console.error('Error resolving Employee ID in listLeads:', err);
+    }
+    filter.assignedTo = { $in: actorIds };
   }
 
   const leads = await Lead.find(filter).populate('assignedTo', 'fullName name email role profileImage').sort({ createdAt: -1 });

@@ -98,9 +98,10 @@ async function getTasks(req, res) {
       const Employee = require('../employee/employee.model');
       const User = require('../users/user.model');
       if (req.user.email) {
-        const emp = await Employee.findOne({ email: req.user.email });
+        const emailRegex = { $regex: new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+        const emp = await Employee.findOne({ email: emailRegex });
         if (emp) userIds.push(emp._id);
-        const usr = await User.findOne({ email: req.user.email });
+        const usr = await User.findOne({ email: emailRegex });
         if (usr) userIds.push(usr._id);
       }
     } catch (err) {
@@ -114,24 +115,60 @@ async function getTasks(req, res) {
         try {
           const Employee = require('../employee/employee.model');
           const User = require('../users/user.model');
-          const emp = await Employee.findById(req.query.employeeId);
+          
+          let emp = null;
+          if (mongoose.isValidObjectId(req.query.employeeId)) {
+            emp = await Employee.findById(req.query.employeeId);
+          }
+          if (!emp) {
+            emp = await Employee.findOne({ email: { $regex: new RegExp('^' + req.query.employeeId.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+          }
+          
           if (emp) {
             targetIds.push(emp._id);
-            const usr = await User.findOne({ email: emp.email });
+            const usr = await User.findOne({ email: { $regex: new RegExp('^' + emp.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
             if (usr) targetIds.push(usr._id);
           }
         } catch (err) {}
-        query.assignedTo = { $in: targetIds };
+        
+        let queryIds = [];
+        targetIds.forEach(id => {
+          if (id) {
+            queryIds.push(id.toString());
+            if (mongoose.isValidObjectId(id)) {
+              queryIds.push(new mongoose.Types.ObjectId(id));
+            }
+          }
+        });
+        query.assignedTo = { $in: queryIds };
       } else if (req.query.assignedBy) {
-        query.assignedBy = req.query.assignedBy;
+        const queryBy = [req.query.assignedBy.toString()];
+        if (mongoose.isValidObjectId(req.query.assignedBy)) {
+          queryBy.push(new mongoose.Types.ObjectId(req.query.assignedBy));
+        }
+        query.assignedBy = { $in: queryBy };
       }
+      
       // If no filter, show tasks assigned BY this manager
       if (!req.query.employeeId && !req.query.assignedBy && !req.query.all) {
-        query.assignedBy = req.user._id;
+        const mgrIds = [req.user._id.toString()];
+        if (mongoose.isValidObjectId(req.user._id)) {
+          mgrIds.push(new mongoose.Types.ObjectId(req.user._id));
+        }
+        query.assignedBy = { $in: mgrIds };
       }
     } else {
       // Regular employees/HR executives see only their own tasks
-      query.assignedTo = { $in: userIds };
+      let queryIds = [];
+      userIds.forEach(id => {
+        if (id) {
+          queryIds.push(id.toString());
+          if (mongoose.isValidObjectId(id)) {
+            queryIds.push(new mongoose.Types.ObjectId(id));
+          }
+        }
+      });
+      query.assignedTo = { $in: queryIds };
     }
 
     // Status filter

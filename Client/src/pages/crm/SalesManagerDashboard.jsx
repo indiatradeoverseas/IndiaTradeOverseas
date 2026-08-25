@@ -107,6 +107,13 @@ export default function SalesManagerDashboard() {
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [submittingLeaveReview, setSubmittingLeaveReview] = useState(null);
 
+  // Strategic Insights & Chat States
+  const [strategicInsights, setStrategicInsights] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+
   const [metrics, setMetrics] = useState({
     totalTarget: 50000000,
     totalLeads: 0,
@@ -260,9 +267,60 @@ export default function SalesManagerDashboard() {
     }
   };
 
+  const fetchStrategicInsights = async () => {
+    setLoadingInsights(true);
+    try {
+      const res = await salesApi.getStrategicInsights();
+      if (res.success) {
+        setStrategicInsights(res.data);
+      }
+    } catch (e) {
+      console.error('Error fetching strategic insights:', e);
+    } finally {
+      setLoadingInsights(false);
+    }
+  };
+
+  const fetchChatMessages = async () => {
+    try {
+      const res = await salesApi.getCoachingMessages();
+      if (res.success) {
+        setChatMessages(res.data?.messages || []);
+      }
+    } catch (e) {
+      console.error('Error fetching chat messages:', e);
+    }
+  };
+
+  const handleSendChatMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    setSendingChat(true);
+    try {
+      const res = await salesApi.sendCoachingMessage({ content: chatInput });
+      if (res.success) {
+        setChatInput('');
+        fetchChatMessages();
+      }
+    } catch (e) {
+      toast.error('Failed to send message');
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, [user, dateFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'strategic') {
+      fetchStrategicInsights();
+      fetchChatMessages();
+      const interval = setInterval(fetchChatMessages, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   // Handle Sort
   const handleSort = (field) => {
@@ -409,47 +467,53 @@ export default function SalesManagerDashboard() {
   // Dynamic coaching suggestions (AI insights generation)
   const getAISuggestions = () => {
     const suggestions = [];
-    repsData.forEach((rep) => {
+    
+    // Sort reps by revenue to identify top and bottom performers
+    const sortedReps = [...repsData].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+    
+    sortedReps.forEach((rep) => {
+      // 1. Target Achievement Suggestions
+      if (rep.targetValue > 0) {
+        if (rep.achievedTarget) {
+          suggestions.push({
+            repName: rep.fullName,
+            msg: `Excellent performance! ${rep.fullName} has achieved the monthly sales target of ${currency(rep.targetValue)}, generating a total of ${currency(rep.revenue)} in closed deals. Have them share negotiation tips with the team.`
+          });
+        } else {
+          const gap = rep.targetValue - (rep.revenue || 0);
+          suggestions.push({
+            repName: rep.fullName,
+            msg: `Performance alert: ${rep.fullName} is currently short of the monthly target of ${currency(rep.targetValue)} by ${currency(gap)}. Review active negotiations in their pipeline to close the gap.`
+          });
+        }
+      }
+
+      // 2. High Activity vs Low Conversion Suggestions
       const convRate = rep.activityCount > 0 ? Math.round((rep.dealsWon / rep.activityCount) * 100) : 0;
-      if (rep.dealsWon < 2 && rep.activityCount > 25) {
+      if (rep.dealsWon === 0 && rep.activityCount > 20) {
         suggestions.push({
           repName: rep.fullName,
-          msg: `Discuss with ${rep.fullName}: Her activity is high (${rep.activityCount} calls/emails) but conversion rate dropped to ${convRate}%. Review her ICPO and price negotiating process.`
+          msg: `Coaching opportunity for ${rep.fullName}: High activity volume (${rep.activityCount} calls/emails logged) but 0 deals closed. Review client engagement details and price quotes shared.`
         });
-      } else if (rep.activityCount < 10) {
+      } else if (rep.activityCount > 0 && rep.activityCount < 10) {
         suggestions.push({
           repName: rep.fullName,
-          msg: `Coaching alert for ${rep.fullName}: Low outreach volume this week (${rep.activityCount} activities logged). Suggest hosting a brief lead generation session.`
+          msg: `Activity warning for ${rep.fullName}: Low monthly activity level (${rep.activityCount} total outreach actions logged). Host a quick alignment session to establish daily targets.`
         });
       }
     });
 
-    // Fallbacks
+    // Final fallback ONLY if there is no data in repsData at all
     if (suggestions.length === 0) {
       suggestions.push(
-        { repName: 'Priya Sharma', msg: 'Discuss with Priya: her conversion rate dropped from 25% to 15% this month. Review her ICPO follow-up process.' },
-        { repName: 'Rahul Verma', msg: 'Audit with Rahul: 3 deals stuck in "Documentation" stage for over 10 days. Ensure BL and export logs are verified.' }
+        { repName: 'Sales Reps', msg: 'No active sales reps performance data found. Configure monthly targets to generate coaching insights.' }
       );
     }
-    return suggestions;
+    
+    return suggestions.slice(0, 5); // Limit to top 5 dynamic suggestions
   };
 
-  // Forecast accuracy comparison line chart dataset
-  const forecastHistoryData = [
-    { month: 'Mar', Forecasted: 22000000, Actual: 21500000, Variance: '-2.2%' },
-    { month: 'Apr', Forecasted: 24000000, Actual: 25200000, Variance: '+5.0%' },
-    { month: 'May', Forecasted: 26000000, Actual: 24800000, Variance: '-4.6%' },
-    { month: 'Jun', Forecasted: 28000000, Actual: 29500000, Variance: '+5.3%' },
-    { month: 'Jul', Forecasted: 31000000, Actual: 30800000, Variance: '-0.6%' },
-    { month: 'Aug', Forecasted: 35000000, Actual: 35850000, Variance: '+2.4%' }
-  ];
 
-  // Deal slippage data items
-  const dealSlippageData = [
-    { id: 1, name: 'SGS Iron Ore Shipment #12', exec: 'Priya Sharma', original: 'Aug 15, 2026', newDate: 'Sep 22, 2026', reason: 'Buyer delayed LC establishment' },
-    { id: 2, name: 'Premium Basmati Rice Export #40', exec: 'Abhishek Kumar', original: 'Aug 18, 2026', newDate: 'Oct 05, 2026', reason: 'Phytosanitary inspection clearance delay' },
-    { id: 3, name: 'Thermal Coal Bulk Deal #09', exec: 'Neha Gupta', original: 'Aug 10, 2026', newDate: 'Sep 12, 2026', reason: 'Vessel loading schedule congestion' }
-  ];
 
   // Print/Export to PDF handler
   const handlePrintPDF = () => {
@@ -1083,12 +1147,14 @@ export default function SalesManagerDashboard() {
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span>Forecast Accuracy (Past 6 Months)</span>
-                      <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">Forecasted vs Actual Revenue</span>
+                      <span className="text-[10px] font-bold text-teal-400 bg-teal-950/40 border border-teal-900/30 px-3 py-0.5 rounded-full">
+                        Total Revenue Generated: {currency(strategicInsights?.totalActualRevenue || 0)}
+                      </span>
                     </h3>
                     
                     <div className="h-64 mt-6">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={forecastHistoryData} margin={{ left: -10, top: 10 }}>
+                        <LineChart data={strategicInsights?.forecastHistory || []} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="month" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
                           <YAxis stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} tickFormatter={(v) => `₹${v/10000000}Cr`} />
@@ -1115,10 +1181,9 @@ export default function SalesManagerDashboard() {
                       {/* Metric Side by Side */}
                       <div className="space-y-4">
                         {[
-                          { metric: 'Avg Calls / Rep / Day', top: '35 Calls', bottom: '12 Calls', ratio: '65% lower' },
-                          { metric: 'Avg Emails / Rep / Day', top: '22 Emails', bottom: '15 Emails', ratio: '32% lower' },
-                          { metric: 'Avg Deal Size Closed', top: '₹42 Lakhs', bottom: '₹14 Lakhs', ratio: '66% lower' },
-                          { metric: 'Average Conversion Rate', top: '48%', bottom: '14%', ratio: '70% lower' }
+                          { metric: 'Avg Outreach Volume / Month', top: strategicInsights?.performanceGap?.activity?.top || '—', bottom: strategicInsights?.performanceGap?.activity?.bottom || '—', ratio: strategicInsights?.performanceGap?.activity?.ratio || '0%' },
+                          { metric: 'Avg Deal Size Closed', top: strategicInsights?.performanceGap?.dealSize?.top || '—', bottom: strategicInsights?.performanceGap?.dealSize?.bottom || '—', ratio: strategicInsights?.performanceGap?.dealSize?.ratio || '0%' },
+                          { metric: 'Average Conversion Rate', top: strategicInsights?.performanceGap?.conversion?.top || '—', bottom: strategicInsights?.performanceGap?.conversion?.bottom || '—', ratio: strategicInsights?.performanceGap?.conversion?.ratio || '0%' }
                         ].map((m, idx) => (
                           <div key={idx} className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-md font-mono text-[10px] space-y-1.5">
                             <span className="text-[var(--crm-ink-faint)] uppercase tracking-wide block font-sans font-bold">{m.metric}</span>
@@ -1158,39 +1223,6 @@ export default function SalesManagerDashboard() {
                     </div>
                   </div>
 
-                  {/* Deal Slippage Table */}
-                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>Deal Slippage Report</span>
-                      <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">Deals pushed to next quarter</span>
-                    </h3>
-
-                    <div className="overflow-x-auto mt-4">
-                      <table className="w-full text-left border-collapse min-w-[650px]">
-                        <thead>
-                          <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
-                            <th className="py-3 px-4">Deal Name</th>
-                            <th className="py-3 px-4">Representative</th>
-                            <th className="py-3 px-4">Original Close</th>
-                            <th className="py-3 px-4">New Target</th>
-                            <th className="py-3 px-4">Reason for Slippage</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono text-[var(--crm-ink-soft)]">
-                          {dealSlippageData.map((deal) => (
-                            <tr key={deal.id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
-                              <td className="py-3 px-4 font-sans font-bold text-[var(--crm-heading)]">{deal.name}</td>
-                              <td className="py-3 px-4 font-sans">{deal.exec}</td>
-                              <td className="py-3 px-4 text-[var(--crm-ink-faint)]">{deal.original}</td>
-                              <td className="py-3 px-4 text-[var(--crm-heading)] font-semibold">{deal.newDate}</td>
-                              <td className="py-3 px-4 text-[var(--crm-ink-soft)] font-sans italic">"{deal.reason}"</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
                   {/* Department Activity Heatmap */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
@@ -1203,13 +1235,7 @@ export default function SalesManagerDashboard() {
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                         <div key={day} className="text-center font-mono text-[9px] text-[var(--crm-ink-faint)] font-bold uppercase">{day}</div>
                       ))}
-                      {/* 28 Day Mock Heatmap block grid */}
-                      {[
-                        { day: 1, val: 52, fill: 'bg-teal-800 text-white border border-teal-700/30' }, { day: 2, val: 40, fill: 'bg-teal-700 text-white border border-teal-600/30' }, { day: 3, val: 33, fill: 'bg-teal-600 text-white border border-teal-500/30' }, { day: 4, val: 12, fill: 'bg-teal-950/60 text-teal-400 border border-teal-900/20' }, { day: 5, val: 25, fill: 'bg-teal-900 text-teal-200 border border-teal-800/30' }, { day: 6, val: 4, fill: 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]' }, { day: 7, val: 0, fill: 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]' },
-                        { day: 8, val: 68, fill: 'bg-teal-900 text-white border border-teal-800/30' }, { day: 9, val: 48, fill: 'bg-teal-700 text-white border border-teal-600/30' }, { day: 10, val: 50, fill: 'bg-teal-800 text-white border border-teal-700/30' }, { day: 11, val: 59, fill: 'bg-teal-800 text-white border border-teal-700/30' }, { day: 12, val: 32, fill: 'bg-teal-600 text-white border border-teal-500/30' }, { day: 13, val: 8, fill: 'bg-teal-950/30 text-teal-400 border border-teal-900/10' }, { day: 14, val: 0, fill: 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]' },
-                        { day: 15, val: 72, fill: 'bg-teal-950 text-white border border-teal-900/40' }, { day: 16, val: 60, fill: 'bg-teal-800 text-white border border-teal-700/30' }, { day: 17, val: 42, fill: 'bg-teal-700 text-white border border-teal-600/30' }, { day: 18, val: 39, fill: 'bg-teal-600 text-white border border-teal-500/30' }, { day: 19, val: 15, fill: 'bg-teal-950/60 text-teal-400 border border-teal-900/20' }, { day: 20, val: 5, fill: 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]' }, { day: 21, val: 0, fill: 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]' },
-                        { day: 22, val: 61, fill: 'bg-teal-800 text-white border border-teal-700/30' }, { day: 23, val: 49, fill: 'bg-teal-700 text-white border border-teal-600/30' }, { day: 24, val: 55, fill: 'bg-teal-800 text-white border border-teal-700/30' }, { day: 25, val: 66, fill: 'bg-teal-800 text-white border border-teal-750/30' }, { day: 26, val: 30, fill: 'bg-teal-600 text-white border border-teal-500/30' }, { day: 27, val: 12, fill: 'bg-teal-950/60 text-teal-400 border border-teal-900/20' }, { day: 28, val: 0, fill: 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]' }
-                      ].map((cell, idx) => (
+                      {(strategicInsights?.heatmapData || []).map((cell, idx) => (
                         <div 
                           key={idx} 
                           title={`${cell.val} Activities`}
@@ -1224,18 +1250,40 @@ export default function SalesManagerDashboard() {
 
                 </div>
 
-                {/* Right Sidebar (1-on-1 Meeting suggestions) */}
+                {/* Right Sidebar (1-on-1 Meeting suggestions & Chat Box) */}
                 <div className="lg:col-span-4 space-y-6 text-left">
+                  
+                  {/* 1-on-1 Coaching Talking Points */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span>1-on-1 Coaching Talking Points</span>
                       <FiCpu className="text-teal-600" size={14} />
                     </h3>
                     <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1.5 font-light leading-relaxed">
-                      AI-generated contextual discussion guidelines based on employee conversion variances.
+                      Founder directive and AI-generated discussion guidelines based on representative conversion variance.
                     </p>
 
                     <div className="mt-5 space-y-4">
+                      {/* Founder/Manager/HR Broadcast Message */}
+                      {strategicInsights?.founderMessage && (
+                        <div className="p-3 border border-blue-900/30 bg-blue-950/40 rounded-lg space-y-2 text-[10px] mb-2 font-mono">
+                          <div className="flex justify-between items-center font-sans">
+                            <span className="font-bold text-blue-400">
+                              {strategicInsights.founderMessage.senderRole === 'ADMIN' ? "Founder's Broadcast" :
+                               strategicInsights.founderMessage.senderRole === 'HR' ? "HR Announcement" :
+                               "Manager's Directive"}
+                            </span>
+                            <span className="text-[8px] text-[var(--crm-ink-faint)]">{new Date(strategicInsights.founderMessage.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-[var(--crm-ink-soft)] leading-relaxed italic font-sans">
+                            "{strategicInsights.founderMessage.content}"
+                          </p>
+                          <div className="text-right text-[8px] text-[var(--crm-ink-faint)] font-sans">
+                            — Posted by {strategicInsights.founderMessage.senderName} ({strategicInsights.founderMessage.senderRole})
+                          </div>
+                        </div>
+                      )}
+
                       {getAISuggestions().map((sug, idx) => (
                         <div key={idx} className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/50 hover:bg-[var(--crm-bg-sunken)] rounded-lg transition duration-150 font-mono text-[10px] space-y-2">
                           <span className="text-[8px] uppercase tracking-wide font-sans font-bold bg-teal-950/40 text-teal-400 border border-teal-900/30 px-2 py-0.5 rounded inline-block">
@@ -1248,6 +1296,66 @@ export default function SalesManagerDashboard() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Sales Team Chat Hub */}
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm flex flex-col h-[350px]">
+                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center shrink-0">
+                      <span>Sales Team Chat Hub</span>
+                      <span className="text-[8px] font-mono text-emerald-400 animate-pulse">Live Connection</span>
+                    </h3>
+                    
+                    {/* Chat Message List */}
+                    <div className="flex-1 overflow-y-auto my-3 pr-1 space-y-2 custom-scrollbar text-[11px] font-sans">
+                      {chatMessages.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[9px] text-center">
+                          No messages yet. Start the conversation!
+                        </div>
+                      ) : (
+                        chatMessages.map((msg) => {
+                          const isMe = msg.senderId === user._id;
+                          const isFounder = msg.senderRole === 'ADMIN';
+                          return (
+                            <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                              <div className={`max-w-[85%] rounded-lg p-2.5 ${
+                                isMe 
+                                  ? 'bg-teal-600 text-white' 
+                                  : isFounder 
+                                    ? 'bg-blue-950/60 border border-blue-900/40 text-[var(--crm-ink-soft)]' 
+                                    : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)]'
+                              }`}>
+                                <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
+                                  <span>{msg.senderName} ({msg.senderRole})</span>
+                                </div>
+                                <p className="leading-relaxed break-words">{msg.content}</p>
+                              </div>
+                              <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5 px-1">
+                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Chat Input Form */}
+                    <form onSubmit={handleSendChatMessage} className="flex gap-2 shrink-0 border-t border-[var(--crm-line)] pt-3">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Type a message to Sales team..."
+                        className="flex-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3 py-2 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={sendingChat || !chatInput.trim()}
+                        className="bg-teal-600 hover:bg-teal-700 text-white p-2 rounded transition disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                      >
+                        <FiSend size={14} />
+                      </button>
+                    </form>
+                  </div>
+
                 </div>
 
               </div>

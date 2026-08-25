@@ -126,8 +126,18 @@ async function getDashboardMetrics(req, res, next) {
     const revenueAgg = await Lead.aggregate([
       { $match: { stage: { $in: WON_STAGES } } },
       { $lookup: { from: 'payments', localField: '_id', foreignField: 'leadId', as: 'payments' } },
-      { $unwind: '$payments' },
-      { $group: { _id: null, revenue: { $sum: '$payments.totalAmount' } } }
+      {
+        $addFields: {
+          dealRevenue: {
+            $cond: {
+              if: { $gt: [{ $size: '$payments' }, 0] },
+              then: { $sum: '$payments.totalAmount' },
+              else: { $ifNull: ['$leadValue', 0] }
+            }
+          }
+        }
+      },
+      { $group: { _id: null, revenue: { $sum: '$dealRevenue' } } }
     ]);
     const totalRevenue = revenueAgg[0]?.revenue || 0;
 

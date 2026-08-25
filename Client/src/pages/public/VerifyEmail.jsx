@@ -99,7 +99,7 @@ const VerifyEmail = () => {
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
               placeholder="Enter 6-Digit OTP"
-              className="block w-full pl-10 pr-3 py-3 rounded-2xl border border-sky-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-center font-mono text-xl tracking-[0.5em]"
+              className="block w-full pl-10 pr-10 py-3 rounded-2xl border border-sky-200 bg-white text-slate-900 placeholder-slate-400 placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-center font-mono text-xl tracking-[0.5em]"
             />
           </div>
 

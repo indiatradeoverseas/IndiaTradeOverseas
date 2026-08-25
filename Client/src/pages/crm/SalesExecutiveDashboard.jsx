@@ -20,7 +20,8 @@ import {
   FiPaperclip,
   FiDownload,
   FiFolder,
-  FiCheckSquare
+  FiCheckSquare,
+  FiSend
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -71,9 +72,15 @@ export default function SalesExecutiveDashboard() {
   const [deals, setDeals] = useState([]);
   const [todos, setTodos] = useState([]);
   
+  // Chat States
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  
   // Gamification View States
   const [leaderboardTab, setLeaderboardTab] = useState('monthly');
   const [leaderboardData, setLeaderboardData] = useState([]);
+  const [departmentRankings, setDepartmentRankings] = useState([]);
   const [lbLoading, setLbLoading] = useState(false);
 
   // Manager Tasks & Shared Files States
@@ -212,9 +219,43 @@ export default function SalesExecutiveDashboard() {
     }
   };
 
+  const fetchChatMessages = async () => {
+    try {
+      const res = await salesApi.getCoachingMessages();
+      if (res.success) {
+        setChatMessages(res.data?.messages || []);
+      }
+    } catch (e) {
+      console.error('Error fetching chat messages:', e);
+    }
+  };
+
+  const handleSendChatMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    setSendingChat(true);
+    try {
+      const res = await salesApi.sendCoachingMessage({ content: chatInput });
+      if (res.success) {
+        setChatInput('');
+        fetchChatMessages();
+      }
+    } catch (e) {
+      toast.error('Failed to send message');
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, [user]);
+
+  useEffect(() => {
+    fetchChatMessages();
+    const interval = setInterval(fetchChatMessages, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle Leaderboard Tab Switching
   const fetchLeaderboard = async (period) => {
@@ -222,7 +263,8 @@ export default function SalesExecutiveDashboard() {
     try {
       const lbRes = await salesApi.getLeaderboard({ period });
       if (lbRes.success) {
-        setLeaderboardData(lbRes.leaderboard || []);
+        setLeaderboardData(lbRes.data?.leaderboard || []);
+        setDepartmentRankings(lbRes.data?.departmentRankings || []);
       }
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
@@ -404,8 +446,8 @@ export default function SalesExecutiveDashboard() {
   const targetProgressPercent = Math.min(100, Math.round((achievedVal / targetVal) * 100));
 
   // Lead Conversion Calculation (Leads -> Orders)
-  const totalMyLeads = deals.length || performance?.totalLeads || 0;
-  const wonMyDeals = deals.filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage)).length;
+  const totalMyLeads = performance?.totalLeads !== undefined ? performance.totalLeads : (deals.length || 0);
+  const wonMyDeals = performance?.dealsWon !== undefined ? performance.dealsWon : deals.filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage)).length;
   const conversionRate = totalMyLeads > 0 ? Math.round((wonMyDeals / totalMyLeads) * 100) : 0;
 
   // Render circular progress path definitions
@@ -418,16 +460,11 @@ export default function SalesExecutiveDashboard() {
   // Format monetary value
   const currency = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
-  // Department ranking dataset (Metals, Agri, Energy - mapped from commodity categories)
-  const departmentRankData = [
-    { name: 'Metals Division', avgRevenue: 1850000, color: '#0f766e' },
-    { name: 'Agri Commodities', avgRevenue: 1420000, color: '#0284c7' },
-    { name: 'Energy Sectors', avgRevenue: 2240000, color: '#f59e0b' }
-  ];
+
 
   // Map user rank status
-  const myRankIndex = leaderboardData.findIndex(r => r.employeeId === user._id);
-  const myRankNum = myRankIndex !== -1 ? myRankIndex + 1 : 3; // Mock #3 if not in top list yet
+  const myRankIndex = leaderboardData.findIndex(r => r.email?.toLowerCase() === user.email?.toLowerCase());
+  const myRankNum = myRankIndex !== -1 ? myRankIndex + 1 : leaderboardData.length + 1;
   const rankBadge = myRankNum === 1 ? '🥇 Gold' : myRankNum === 2 ? '🥈 Silver' : myRankNum === 3 ? '🥉 Bronze' : '⭐ Rep';
 
   return (
@@ -714,7 +751,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Won vs Pending vs Lost</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                           <BarChart data={[
                             { name: 'Won', count: wonMyDeals, fill: '#10b981' },
                             { name: 'Pending', count: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f59e0b' },
@@ -739,7 +776,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Materials Breakdown</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                           <BarChart data={['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'].map(cat => ({
                             name: cat,
                             leads: deals.filter(d => d.productCategory === cat).length
@@ -981,6 +1018,66 @@ export default function SalesExecutiveDashboard() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Sales Team Chat Hub */}
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm flex flex-col h-[350px]">
+                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center shrink-0">
+                      <span>Sales Team Chat Hub</span>
+                      <span className="text-[8px] font-mono text-emerald-400 animate-pulse">Live Connection</span>
+                    </h3>
+                    
+                    {/* Chat Message List */}
+                    <div className="flex-1 overflow-y-auto my-3 pr-1 space-y-2 custom-scrollbar text-[11px] font-sans">
+                      {chatMessages.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[9px] text-center">
+                          No messages yet. Start the conversation!
+                        </div>
+                      ) : (
+                        chatMessages.map((msg) => {
+                          const isMe = msg.senderId === user._id;
+                          const isFounder = msg.senderRole === 'ADMIN';
+                          return (
+                            <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                              <div className={`max-w-[85%] rounded-lg p-2.5 ${
+                                isMe 
+                                  ? 'bg-teal-600 text-white' 
+                                  : isFounder 
+                                    ? 'bg-blue-950/60 border border-blue-900/40 text-[var(--crm-ink-soft)]' 
+                                    : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)]'
+                              }`}>
+                                <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
+                                  <span>{msg.senderName} ({msg.senderRole})</span>
+                                </div>
+                                <p className="leading-relaxed break-words">{msg.content}</p>
+                              </div>
+                              <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5 px-1">
+                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Chat Input Form */}
+                    <form onSubmit={handleSendChatMessage} className="flex gap-2 shrink-0 border-t border-[var(--crm-line)] pt-3">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Type a message to Sales team..."
+                        className="flex-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3 py-2 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={sendingChat || !chatInput.trim()}
+                        className="bg-teal-600 hover:bg-teal-700 text-white p-2 rounded transition disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                      >
+                        <FiSend size={14} />
+                      </button>
+                    </form>
+                  </div>
+
                 </div>
 
               </div>
@@ -1049,26 +1146,27 @@ export default function SalesExecutiveDashboard() {
 
                     {/* Leaderboard Table */}
                     <div className="overflow-x-auto mt-4">
-                      <table className="w-full text-left border-collapse min-w-[600px]">
+                      <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                           <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
                             <th className="py-3 px-4">Rank</th>
                             <th className="py-3 px-4">Executive Name</th>
                             <th className="py-3 px-4">Deals Closed</th>
                             <th className="py-3 px-4">Revenue</th>
+                            <th className="py-3 px-4">Target Achievement</th>
                             <th className="py-3 px-4">Activities</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--crm-line)] text-xs">
                           {lbLoading ? (
                             <tr>
-                              <td colSpan="5" className="text-center py-12 font-mono text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                              <td colSpan="6" className="text-center py-12 font-mono text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
                                 Loading Leaderboard Listings...
                               </td>
                             </tr>
                           ) : leaderboardData.length === 0 ? (
                             <tr>
-                              <td colSpan="5" className="text-center py-12 font-mono text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px] opacity-40">
+                              <td colSpan="6" className="text-center py-12 font-mono text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px] opacity-40">
                                 No sales closed for this period.
                               </td>
                             </tr>
@@ -1095,6 +1193,19 @@ export default function SalesExecutiveDashboard() {
                                   </td>
                                   <td className="py-3 px-4 font-mono text-emerald-500">{row.dealsWon} Won</td>
                                   <td className="py-3 px-4 font-mono text-amber-500 font-medium">{currency(row.revenue)}</td>
+                                  <td className="py-3 px-4 font-mono">
+                                    {row.targetValue > 0 ? (
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold font-sans ${
+                                        row.isTargetAchieved 
+                                          ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' 
+                                          : 'bg-rose-950/40 text-rose-400 border border-rose-900/30'
+                                      }`}>
+                                        {row.isTargetAchieved ? 'Target Achieved 🎉' : `Short (Target: ${currency(row.targetValue)})`}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[var(--crm-ink-faint)] italic text-[10px]">No Target Set</span>
+                                    )}
+                                  </td>
                                   <td className="py-3 px-4 font-mono text-[var(--crm-ink-soft)]">{row.activityCount} acts</td>
                                 </tr>
                               );
@@ -1114,8 +1225,8 @@ export default function SalesExecutiveDashboard() {
 
                     {/* Department Chart */}
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={departmentRankData} margin={{ left: -10, top: 10 }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <BarChart data={departmentRankings} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
                           <YAxis stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} tickFormatter={(v) => `₹${v/100000}L`} />

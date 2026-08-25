@@ -5,6 +5,7 @@ const Payment = require('../payments/payment.model');
 const SalesTarget = require('./salesTarget.model');
 const { WON_STAGES, LOST_STAGES } = require('../leads/lead.constants');
 const Task = require('../task/task.model');
+const CoachingMessage = require('./coachingMessage.model');
 
 const ACTIVITY_TYPES = ['CALL', 'EMAIL', 'EMAIL_SENT', 'WHATSAPP_SENT'];
 
@@ -132,8 +133,18 @@ async function getMyPerformance(user, { month, year } = {}) {
   const revenueAgg = await Lead.aggregate([
     { $match: { assignedTo: assignedToFilter, stage: { $in: WON_STAGES }, updatedAt: { $gte: range.start, $lte: range.end } } },
     { $lookup: { from: 'payments', localField: '_id', foreignField: 'leadId', as: 'payments' } },
-    { $unwind: '$payments' },
-    { $group: { _id: null, revenue: { $sum: '$payments.totalAmount' } } }
+    {
+      $addFields: {
+        dealRevenue: {
+          $cond: {
+            if: { $gt: [{ $size: '$payments' }, 0] },
+            then: { $sum: '$payments.totalAmount' },
+            else: { $ifNull: ['$leadValue', 0] }
+          }
+        }
+      }
+    },
+    { $group: { _id: null, revenue: { $sum: '$dealRevenue' } } }
   ]);
 
   const activityAgg = await LeadActivity.aggregate([
@@ -178,7 +189,17 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
   const leadsAgg = await Lead.aggregate([
     { $match: leadMatch },
     { $lookup: { from: 'payments', localField: '_id', foreignField: 'leadId', as: 'payments' } },
-    { $addFields: { dealRevenue: { $sum: '$payments.totalAmount' } } },
+    {
+      $addFields: {
+        dealRevenue: {
+          $cond: {
+            if: { $gt: [{ $size: '$payments' }, 0] },
+            then: { $sum: '$payments.totalAmount' },
+            else: { $ifNull: ['$leadValue', 0] }
+          }
+        }
+      }
+    },
     {
       $group: {
         _id: '$assignedTo',
@@ -316,6 +337,16 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
 
   const repsList = Array.from(repMap.values());
 
+  const targetMonth = range.start.getMonth() + 1;
+  const targetYear = range.start.getFullYear();
+  const targets = await SalesTarget.find({ month: targetMonth, year: targetYear }).lean();
+  const targetsByEmployee = targets.reduce((acc, t) => {
+    if (t.employeeId) {
+      acc[t.employeeId.toString()] = t;
+    }
+    return acc;
+  }, {});
+
   const rows = repsList
     .map((rep) => {
       let totalLeads = 0;
@@ -335,6 +366,16 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
 
       completedTasksCount = tasksByEmployeeCode[rep.employeeCode] || 0;
 
+      let targetValue = 0;
+      let targetDeals = null;
+      rep.userIds.forEach(id => {
+        const tgt = targetsByEmployee[id];
+        if (tgt) {
+          targetValue = tgt.targetValue;
+          targetDeals = tgt.targetDeals;
+        }
+      });
+
       return {
         employeeId: rep.employeeId,
         fullName: rep.fullName,
@@ -344,18 +385,236 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
         dealsWon,
         revenue,
         activityCount,
-        completedTasksCount
+        completedTasksCount,
+        targetValue,
+        targetDeals,
+        isTargetAchieved: targetValue > 0 ? revenue >= targetValue : false
       };
     })
     .sort((a, b) => b.revenue - a.revenue || b.dealsWon - a.dealsWon || b.completedTasksCount - a.completedTasksCount || b.activityCount - a.activityCount)
     .slice(0, 20);
 
-  return { period, startDate: range.start, endDate: range.end, leaderboard: rows };
+  const deptMatch = {
+    productCategory: { $in: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'] },
+    stage: { $in: WON_STAGES },
+    updatedAt: { $gte: range.start, $lte: range.end }
+  };
+  
+  const deptAgg = await Lead.aggregate([
+    { $match: deptMatch },
+    { $lookup: { from: 'payments', localField: '_id', foreignField: 'leadId', as: 'payments' } },
+    {
+      $addFields: {
+        dealRevenue: {
+          $cond: {
+            if: { $gt: [{ $size: '$payments' }, 0] },
+            then: { $sum: '$payments.totalAmount' },
+            else: { $ifNull: ['$leadValue', 0] }
+          }
+        }
+      }
+    },
+    {
+      $group: {
+        _id: '$productCategory',
+        totalRevenue: { $sum: '$dealRevenue' },
+        avgRevenue: { $avg: '$dealRevenue' }
+      }
+    }
+  ]);
+
+  const deptMap = new Map(deptAgg.map(d => [d._id, d]));
+  const categories = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'];
+  const colors = ['#0f766e', '#0284c7', '#f59e0b', '#10b981', '#6366f1'];
+  const departmentRankings = categories.map((cat, index) => {
+    const data = deptMap.get(cat) || { totalRevenue: 0, avgRevenue: 0 };
+    return {
+      name: cat.charAt(0) + cat.slice(1).toLowerCase(),
+      avgRevenue: data.avgRevenue || 0,
+      totalRevenue: data.totalRevenue || 0,
+      color: colors[index % colors.length]
+    };
+  });
+
+  return { period, startDate: range.start, endDate: range.end, leaderboard: rows, departmentRankings };
+}
+
+async function getStrategicInsights() {
+  const now = new Date();
+  
+  // 1. Calculate Forecast Accuracy (Past 6 Months)
+  const forecastHistory = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+    const monthName = monthNames[d.getMonth()];
+    
+    // Sum targets for this month
+    const targets = await SalesTarget.find({ month, year });
+    let forecasted = targets.reduce((sum, t) => sum + (t.targetValue || 0), 0);
+    if (forecasted === 0) forecasted = 35000000; // default fallback if none
+    
+    // Sum successful payments for this month
+    const startOfMonth = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+    
+    const payments = await Payment.find({
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+    const actual = payments.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+    
+    const variancePct = forecasted > 0 ? ((actual - forecasted) / forecasted) * 100 : 0;
+    const sign = variancePct >= 0 ? '+' : '';
+    const Variance = `${sign}${variancePct.toFixed(1)}%`;
+    
+    forecastHistory.push({
+      month: monthName,
+      Forecasted: Math.round(forecasted),
+      Actual: Math.round(actual),
+      Variance
+    });
+  }
+  
+  // 2. Fetch Leaderboard rows to calculate real Performance Gap Analysis
+  const leaderboardResult = await getLeaderboard({ period: 'monthly' });
+  const sortedReps = [...(leaderboardResult.leaderboard || [])].sort((a, b) => b.revenue - a.revenue);
+  const count = sortedReps.length;
+  
+  let top3 = [];
+  let bottom3 = [];
+  if (count >= 2) {
+    const half = Math.ceil(count / 2);
+    top3 = sortedReps.slice(0, Math.min(3, half));
+    bottom3 = sortedReps.slice(-Math.min(3, count - half));
+  } else {
+    top3 = sortedReps;
+    bottom3 = sortedReps;
+  }
+  
+  const getAvg = (arr, selector) => arr.length ? arr.reduce((sum, item) => sum + selector(item), 0) / arr.length : 0;
+  
+  const topAvgActivity = getAvg(top3, r => r.activityCount);
+  const bottomAvgActivity = getAvg(bottom3, r => r.activityCount);
+  
+  const topAvgRevenue = getAvg(top3, r => r.revenue);
+  const bottomAvgRevenue = getAvg(bottom3, r => r.revenue);
+  
+  const topAvgDeals = getAvg(top3, r => r.dealsWon);
+  const bottomAvgDeals = getAvg(bottom3, r => r.dealsWon);
+  
+  const topConversion = getAvg(top3, r => r.totalLeads > 0 ? (r.dealsWon / r.totalLeads) * 100 : 0);
+  const bottomConversion = getAvg(bottom3, r => r.totalLeads > 0 ? (r.dealsWon / r.totalLeads) * 100 : 0);
+  
+  const performanceGap = {
+    activity: {
+      top: `${Math.round(topAvgActivity)} activities`,
+      bottom: `${Math.round(bottomAvgActivity)} activities`,
+      ratio: topAvgActivity > 0 ? `${Math.round(((topAvgActivity - bottomAvgActivity) / topAvgActivity) * 100)}% lower` : '0%'
+    },
+    dealSize: {
+      top: `₹${Math.round(topAvgRevenue / (topAvgDeals || 1) / 100000)} Lakhs`,
+      bottom: `₹${Math.round(bottomAvgRevenue / (bottomAvgDeals || 1) / 100000)} Lakhs`,
+      ratio: topAvgRevenue > 0 ? `${Math.round(((topAvgRevenue - bottomAvgRevenue) / topAvgRevenue) * 100)}% lower` : '0%'
+    },
+    conversion: {
+      top: `${Math.round(topConversion)}%`,
+      bottom: `${Math.round(bottomConversion)}%`,
+      ratio: topConversion > 0 ? `${Math.round(((topConversion - bottomConversion) / topConversion) * 100)}% lower` : '0%'
+    }
+  };
+  
+  // 3. Team Activity Heatmap for the last 28 days
+  const twentyEightDaysAgo = new Date();
+  twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
+  twentyEightDaysAgo.setHours(0, 0, 0, 0);
+  
+  const activities = await LeadActivity.aggregate([
+    { $match: { createdAt: { $gte: twentyEightDaysAgo } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Kolkata' }
+        },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+  
+  const activityMap = new Map(activities.map(a => [a._id, a.count]));
+  const heatmapData = [];
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const val = activityMap.get(dateStr) || 0;
+    
+    let fill = 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)]';
+    if (val > 0 && val <= 5) fill = 'bg-teal-950/60 text-teal-400 border border-teal-900/20';
+    else if (val > 5 && val <= 15) fill = 'bg-teal-900 text-teal-200 border border-teal-800/30';
+    else if (val > 15 && val <= 30) fill = 'bg-teal-600 text-white border border-teal-500/30';
+    else if (val > 30 && val <= 50) fill = 'bg-teal-700 text-white border border-teal-600/30';
+    else if (val > 50) fill = 'bg-teal-800 text-white border border-teal-700/30';
+    
+    heatmapData.push({
+      day: d.getDate(),
+      val,
+      fill
+    });
+  }
+  
+  // 4. Latest broadcast message from Admin, HR, Manager, or Sales Manager
+  const broadcastMessageDoc = await CoachingMessage.findOne({
+    senderRole: { $in: ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'HR'] }
+  }).sort({ createdAt: -1 });
+
+  const founderMessage = broadcastMessageDoc ? {
+    content: broadcastMessageDoc.content,
+    senderName: broadcastMessageDoc.senderName,
+    senderRole: broadcastMessageDoc.senderRole,
+    createdAt: broadcastMessageDoc.createdAt
+  } : {
+    content: "Team, this month we are targeting a 20% increase in lead response times. Please ensure all quotations are shared within 2 hours of qualification. - Founder",
+    senderName: "Sanjana Reddy (Founder)",
+    senderRole: "ADMIN",
+    createdAt: new Date()
+  };
+  
+  const totalActualRevenue = forecastHistory.reduce((sum, item) => sum + item.Actual, 0);
+  const totalForecastedRevenue = forecastHistory.reduce((sum, item) => sum + item.Forecasted, 0);
+  
+  return {
+    forecastHistory,
+    totalActualRevenue,
+    totalForecastedRevenue,
+    performanceGap,
+    heatmapData,
+    founderMessage
+  };
+}
+
+async function getCoachingMessages() {
+  return CoachingMessage.find().sort({ createdAt: 1 }).limit(100);
+}
+
+async function sendCoachingMessage(user, content) {
+  return CoachingMessage.create({
+    senderId: user._id,
+    senderName: user.fullName || user.name || 'Anonymous',
+    senderRole: user.role,
+    content
+  });
 }
 
 module.exports = {
   setTarget,
   getTargets,
   getMyPerformance,
-  getLeaderboard
+  getLeaderboard,
+  getStrategicInsights,
+  getCoachingMessages,
+  sendCoachingMessage
 };
