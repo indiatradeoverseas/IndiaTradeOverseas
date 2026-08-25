@@ -327,27 +327,7 @@ export default function Dashboard() {
 
       {/* Grid Stats Block View */}
       <div className="w-full py-8 space-y-8">
-        {isAdmin && (
-          <div className="flex border border-slate-200 p-1 bg-slate-50 rounded font-mono text-[9px] max-w-md">
-            {[
-              { id: 'COMPANY', label: 'Company Overview' },
-              { id: 'MANAGER', label: 'Sales Manager View' },
-              { id: 'EXECUTIVE', label: 'Sales Executive View' }
-            ].map(view => (
-              <button
-                key={view.id}
-                onClick={() => setAdminViewMode(view.id)}
-                className={`flex-1 px-3 py-1.5 uppercase rounded font-bold tracking-wider transition cursor-pointer ${
-                  adminViewMode === view.id
-                    ? 'bg-white text-slate-800 shadow-sm border border-slate-200/50'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {view.label}
-              </button>
-            ))}
-          </div>
-        )}
+
         <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
             <motion.div
