@@ -98,7 +98,7 @@ const employeeSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR'],
+      enum: ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'],
       default: 'EMPLOYEE',
       required: true
     },

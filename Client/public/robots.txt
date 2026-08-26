@@ -13,4 +13,16 @@ Disallow: /device-pending
 Disallow: /verify-email
 Disallow: /forgot-password
 
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
 Sitemap: https://www.indiatradeoverseas.com/sitemap.xml

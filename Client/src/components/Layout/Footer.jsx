@@ -76,6 +76,7 @@ export default function Footer() {
   }
 
   const officialEmail = "info@indiatradeoverseas.com";
+  const officialPhone = "01169262028";
   const registeredOfficeText = "Deramari, Kishanganj, Bihar - 855107, India";
 
   return (
@@ -185,6 +186,12 @@ export default function Footer() {
                 <div className="flex items-center justify-between group">
                   <a href={`mailto:${officialEmail}`} className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]">
                     Email: <span className="font-medium underline">{officialEmail}</span>
+                  </a>
+                </div>
+
+                <div className="flex items-center justify-between group">
+                  <a href={`tel:${officialPhone}`} className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]">
+                    Phone: <span className="font-medium underline">{officialPhone}</span>
                   </a>
                 </div>
               </div>
