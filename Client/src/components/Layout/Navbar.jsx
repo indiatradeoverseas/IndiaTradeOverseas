@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-import CompanyLogo from '../../../public/images/web_icon.jpeg';
+const CompanyLogo = '/images/web_icon.jpeg';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiMenu,
@@ -126,14 +126,19 @@ export default function Navbar() {
         {/* MOBILE NAVIGATION BAR HEADER */}
         <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
           <div className="flex items-center space-x-3 text-right">
-            <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
-              <img
-                src={CompanyLogo}
-                alt="India Trade Overseas Logo"
-                className="h-full w-full object-cover"
-                loading="eager"
-              />
-            </div>
+<div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
+                />
+              </div>
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="flex flex-col justify-center text-right leading-none">
                 <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap drop-shadow">
@@ -183,11 +188,16 @@ export default function Navbar() {
           <div className="flex items-center shrink-0">
             <Link to="/" className="flex items-center space-x-3.5 group">
               <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/30 bg-black/40 shrink-0 shadow-lg">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-cover"
-                  loading="eager"
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
 
@@ -356,11 +366,16 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
             <div className="flex items-center space-x-3">
               <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-cover"
-                  loading="eager"
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
               <div className="flex flex-col justify-center text-left leading-none">
