@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 // Removed the duplicate main-site Navbar import from here to protect CRM view real estate
 
 export default function PortalLayout({ children }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
@@ -60,9 +60,12 @@ export default function PortalLayout({ children }) {
     try {
       const res = await attendanceApi.checkOut();
       if (res.success) {
-        toast.success('Successfully checked out! See you tomorrow. 🌙');
+        toast.success('Successfully checked out! Logging out... 🌙');
         fetchTodayAttendance();
         window.dispatchEvent(new Event('attendance_updated'));
+        setTimeout(() => {
+          logout();
+        }, 1500);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Check-out failed');

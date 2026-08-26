@@ -5,7 +5,6 @@ const { ok, fail } = require('../../utils/response');
 const { recordAudit } = require('../security-audit/auditLog.service');
 const documentService = require('../documents/document.service');
 const Document = require('../documents/document.model');
-
 const resolveIdQuery = (id) => {
   const idStr = String(id);
   if (mongoose.isValidObjectId(idStr)) {
@@ -13,6 +12,20 @@ const resolveIdQuery = (id) => {
   }
   return { _id: idStr };
 };
+
+function calculateAge(dob) {
+  if (!dob) return 28;
+  const birthDate = new Date(dob);
+  if (isNaN(birthDate.getTime())) return 28;
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 async function createEmployee(req, res, next) {
   try {
@@ -217,7 +230,47 @@ async function updateMyProfile(req, res, next) {
     const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
     if (isEmployee) {
       const Employee = require('../employee/employee.model');
-      const updated = await Employee.findOneAndUpdate(resolveIdQuery(req.user._id), req.body, { new: true });
+      const User = require('./user.model');
+      
+      const payload = { ...req.body };
+      if (payload.dateOfBirth) {
+        payload.dob = payload.dateOfBirth;
+        payload.age = calculateAge(payload.dateOfBirth);
+      }
+      if (payload.address) {
+        payload.currentAddress = payload.address;
+        payload.permanentAddress = payload.address;
+      }
+      if (payload.bankIFSC) {
+        payload.ifscCode = payload.bankIFSC;
+      }
+      if (payload.fatherName) {
+        payload.fatherHusbandName = payload.fatherName;
+      }
+      if (payload.dateOfJoining) {
+        payload.joiningDate = payload.dateOfJoining;
+      }
+
+      const empIds = [req.user._id.toString()];
+      if (mongoose.isValidObjectId(req.user._id)) {
+        empIds.push(new mongoose.Types.ObjectId(req.user._id));
+      }
+      const empQuery = {
+        $or: [
+          { _id: { $in: empIds } },
+          { email: { $regex: new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } }
+        ]
+      };
+
+      const updated = await Employee.findOneAndUpdate(empQuery, payload, { new: true });
+
+      // Sync to User collection too
+      const userPayload = { ...req.body };
+      if (userPayload.dateOfBirth) {
+        userPayload.age = calculateAge(userPayload.dateOfBirth);
+      }
+      await User.findOneAndUpdate({ email: req.user.email }, userPayload);
+
       return ok(res, { profile: updated }, 'Employee profile updated successfully', 200, req);
     }
     if (isAdmin) {
@@ -264,6 +317,10 @@ async function updateMyProfile(req, res, next) {
               empUpdates.permanentAddress = req.body[field];
             }
           }
+        }
+        
+        if (req.body.dateOfBirth !== undefined) {
+          empUpdates.age = calculateAge(req.body.dateOfBirth);
         }
         
         if (Object.keys(empUpdates).length) {
@@ -335,6 +392,10 @@ async function updateEmployeeProfile(req, res, next) {
                 empUpdates.permanentAddress = req.body[field];
               }
             }
+          }
+          
+          if (req.body.dateOfBirth !== undefined) {
+            empUpdates.age = calculateAge(req.body.dateOfBirth);
           }
           
           // Sync sensitive fields
@@ -471,19 +532,25 @@ async function uploadMyProfileImage(req, res, next) {
 
     const fileUrl = `uploads/profile-images/${req.file.filename}`;
 
-    const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    const User = require('./user.model');
+    const Employee = require('../employee/employee.model');
+
+    // 1. Update User document (using req.user._id)
+    const updatedUser = await User.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
+
+    // 2. Update Employee document (using email match since req.user._id is user ID)
+    const updatedEmployee = await Employee.findOneAndUpdate(
+      { email: { $regex: new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },
+      { profileImage: fileUrl },
+      { new: true }
+    );
+
     const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
 
-    let updated;
-    if (isEmployee) {
-      const Employee = require('../employee/employee.model');
-      updated = await Employee.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
-    } else if (isAdmin) {
+    let updated = updatedUser || updatedEmployee;
+    if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');
       updated = await Admin.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
-    } else {
-      const User = require('./user.model');
-      updated = await User.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
     }
 
     return ok(res, { profile: updated }, 'Profile image uploaded successfully', 200, req);

@@ -11,6 +11,20 @@ const resolveIdQuery = (id) => {
   return { _id: idStr };
 };
 
+function calculateAge(dob) {
+  if (!dob) return 28;
+  const birthDate = new Date(dob);
+  if (isNaN(birthDate.getTime())) return 28;
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 const SENSITIVE_FIELDS = ['salary', 'pan', 'aadhaar', 'bankAccount'];
 const SELF_EDITABLE_FIELDS = [
   'address', 'addressCont', 'city', 'postalCode',
@@ -180,6 +194,9 @@ async function updateOwnProfile(userId, data) {
   for (const field of SELF_EDITABLE_FIELDS) {
     if (data[field] !== undefined) updates[field] = data[field];
   }
+  if (updates.dateOfBirth !== undefined) {
+    updates.age = calculateAge(updates.dateOfBirth);
+  }
   if (!Object.keys(updates).length) {
     const error = new Error('NO_VALID_FIELDS');
     throw error;
@@ -214,6 +231,9 @@ async function updateEmployeeProfile(targetId, data, actor) {
     if (data.pan !== undefined) employee.panCardNumber = data.pan;
     if (data.aadhaar !== undefined) employee.aadhaarNumber = data.aadhaar;
     if (data.bankAccount !== undefined) employee.bankAccountNumber = data.bankAccount;
+    if (data.dateOfBirth !== undefined) {
+      employee.age = calculateAge(data.dateOfBirth);
+    }
 
     await employee.save();
     return getProfile(targetId, actor);
@@ -223,6 +243,9 @@ async function updateEmployeeProfile(targetId, data, actor) {
     if (data[field] !== undefined) user[field] = data[field];
   }
   if (data.phone !== undefined) user.phone = data.phone;
+  if (data.dateOfBirth !== undefined) {
+    user.age = calculateAge(data.dateOfBirth);
+  }
 
   if (data.salary !== undefined) user.salaryEncrypted = data.salary ? encryptText(String(data.salary)) : '';
   if (data.pan !== undefined) {

@@ -20,7 +20,8 @@ import {
   FiPaperclip,
   FiCheckSquare,
   FiDownload,
-  FiUpload
+  FiUpload,
+  FiClock
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -1049,7 +1050,7 @@ export default function SalesManagerDashboard() {
                             FOLLOWING_UP: { label: 'Following Up', color: 'bg-sky-500', pulse: true, text: 'text-sky-400' },
                             CONVERTING: { label: 'Converting', color: 'bg-violet-500', pulse: true, text: 'text-violet-400' },
                             PAYMENT: { label: 'Payment', color: 'bg-amber-500', pulse: true, text: 'text-amber-400' },
-                            IDLE: { label: 'Idle', color: 'bg-slate-400', pulse: false, text: 'text-slate-400' },
+                            IDLE: { label: 'Online / Available', color: 'bg-emerald-500', pulse: false, text: 'text-emerald-400' },
                             OFFLINE: { label: 'Offline', color: 'bg-rose-500', pulse: false, text: 'text-rose-400' }
                           };
                           
@@ -1219,6 +1220,89 @@ export default function SalesManagerDashboard() {
                         <div className="border-t border-teal-900/20 pt-3 mt-4 text-right">
                           <span className="text-[8px] font-mono text-teal-500/70 font-semibold uppercase">Engine: Llama-3-Crm-Coacher // OK</span>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Live Team Activity Tracker */}
+                    <div className="border-t border-[var(--crm-line)] pt-5 mt-6">
+                      <h4 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold mb-4 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span>Live Employee Activity Status</span>
+                        </span>
+                        <span className="text-[8px] font-mono text-emerald-400 uppercase tracking-widest animate-pulse">Live Status updates</span>
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fadeIn">
+                        {teamEmployees.length === 0 ? (
+                          <div className="col-span-full py-6 border border-dashed border-[var(--crm-line)] rounded flex flex-col items-center justify-center">
+                            <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] uppercase">No team members active</span>
+                          </div>
+                        ) : (
+                          teamEmployees.map((emp) => {
+                            const liveStatus = getEmployeeLiveStatus(emp);
+                            
+                            // Map status type to aesthetic representation
+                            const statusMap = {
+                              ON_CALL: { label: 'On Call', color: 'bg-emerald-500', pulse: true, text: 'text-emerald-400', border: 'border-emerald-900/20 bg-emerald-950/20' },
+                              FOLLOWING_UP: { label: 'Following Up', color: 'bg-sky-500', pulse: true, text: 'text-sky-400', border: 'border-sky-900/20 bg-sky-950/20' },
+                              CONVERTING: { label: 'Converting', color: 'bg-violet-500', pulse: true, text: 'text-violet-400', border: 'border-violet-900/20 bg-violet-950/20' },
+                              PAYMENT: { label: 'Payment', color: 'bg-amber-500', pulse: true, text: 'text-amber-400', border: 'border-amber-900/20 bg-amber-950/20' },
+                              IDLE: { label: 'Online / Available', color: 'bg-emerald-500', pulse: false, text: 'text-emerald-400', border: 'border-emerald-900/20 bg-emerald-950/20' },
+                              OFFLINE: { label: 'Offline', color: 'bg-rose-500', pulse: false, text: 'text-rose-400', border: 'border-rose-900/20 bg-rose-950/20' }
+                            };
+                            
+                            const statusConfig = statusMap[liveStatus.status] || statusMap.OFFLINE;
+
+                            return (
+                              <div 
+                                key={emp._id} 
+                                className={`p-3.5 border rounded-lg transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between ${statusConfig.border}`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h5 className="font-sans font-bold text-[var(--crm-heading)] text-xs">
+                                      {emp.name}
+                                    </h5>
+                                    <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono uppercase tracking-wider block mt-0.5">
+                                      {emp.position || emp.role || 'Executive'}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="relative flex h-2 w-2">
+                                      {statusConfig.pulse && (
+                                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusConfig.color} opacity-75`}></span>
+                                      )}
+                                      <span className={`relative inline-flex rounded-full h-2 w-2 ${statusConfig.color}`}></span>
+                                    </span>
+                                    <span className={`text-[8px] font-mono font-bold uppercase tracking-wider ${statusConfig.text}`}>
+                                      {statusConfig.label}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-3 pt-2.5 border-t border-[var(--crm-line)]/30 flex flex-col gap-1.5">
+                                  <div className="text-[10px] text-[var(--crm-ink-soft)] font-mono leading-relaxed">
+                                    Activity: <strong className="text-[var(--crm-heading)] font-sans font-medium">{liveStatus.currentActivity || 'No active task'}</strong>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[8px] text-[var(--crm-ink-faint)] font-mono pt-1">
+                                    <span className="flex items-center gap-1">
+                                      <FiClock size={10} />
+                                      {liveStatus.lastUpdated ? new Date(liveStatus.lastUpdated).toLocaleTimeString() : 'N/A'}
+                                    </span>
+                                    <span>
+                                      {emp.tasksCount || 0} Pending Tasks
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   </div>

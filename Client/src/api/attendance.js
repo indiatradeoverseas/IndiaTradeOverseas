@@ -52,5 +52,10 @@ export const attendanceApi = {
   async getBiometricStatus() {
     const response = await axiosInstance.get('/attendance/biometric/status');
     return response.data;
+  },
+
+  async markAttendanceManually(payload) {
+    const response = await axiosInstance.post('/attendance/manual', payload);
+    return response.data;
   }
 };

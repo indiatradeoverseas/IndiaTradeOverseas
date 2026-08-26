@@ -919,6 +919,15 @@ export default function EmployeeProfile() {
                       />
                     </div>
                     <div>
+                      <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Mobile Number</label>
+                      <input
+                        type="text"
+                        value={jobForm.phone}
+                        onChange={(e) => setJobForm({ ...jobForm, phone: e.target.value })}
+                        className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3.5 py-2.5 rounded outline-none focus:border-teal-500 transition"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Emergency Contact Name</label>
                       <input
                         type="text"

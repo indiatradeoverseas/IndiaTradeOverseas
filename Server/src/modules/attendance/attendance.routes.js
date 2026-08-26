@@ -10,7 +10,8 @@ const {
   getMyHistory,
   getReport,
   triggerBiometricSync,
-  getBiometricStatus
+  getBiometricStatus,
+  markAttendanceManually
 } = require('./attendance.controller');
 
 router.use(authenticate);
@@ -25,6 +26,7 @@ router.get('/me/history', getMyHistory);
 
 // HR/Manager endpoints
 router.get('/report', rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), getReport);
+router.post('/manual', rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), markAttendanceManually);
 router.post('/biometric/sync', rbac('ADMIN', 'HR', 'HR_MANAGER'), triggerBiometricSync);
 router.get('/biometric/status', getBiometricStatus);
 
