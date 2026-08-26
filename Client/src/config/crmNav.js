@@ -17,7 +17,8 @@ import {
   FiUser,
   FiTrendingUp,
   FiUserPlus,
-  FiAward
+  FiAward,
+  FiCommand
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────

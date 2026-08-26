@@ -108,7 +108,7 @@ const TEASER_LISTINGS = [
   { id: "ST-PUG-04", region: "Pugli Loading Point", type: "Bhutan Black 60MM", baseGrade: "Mass Fill Grade", package: "Bulk Tipper Fleets", use: "Railway Ballast & Mass Civil" }
 ];
 
-// Official ITO Pakur Stone Rate List â€” location -> [20MM(5/8), 30MM, 40MM, 10MM] per payment term
+// Official ITO Pakur Stone Rate List — location -> [20MM(5/8), 30MM, 40MM, 10MM] per payment term
 // Source: "ITO Pakur Stone Rate List.pdf". `null` = not available at that location/size (e.g. Malda 40MM).
 const PAKUR_RAW = [
   ['Kolkata',      [2020, 2020, 1920, 1410], [2090, 2090, 1990, 1480], [2140, 2140, 2040, 1530]],
@@ -154,7 +154,7 @@ const PAYMENT_TERMS = [
   { key: 'COD', label: 'Cash on Delivery', priceField: 'cod' }
 ];
 
-// Official Bhutan Stone Material Rate Card â€” location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
+// Official Bhutan Stone Material Rate Card — location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
 // Source: "Bhutan Stone Rate List.pdf". Note on the card: up to Rs 100 may be negotiated off the listed rate.
 const BHUTAN_RAW = [
   ['Jalpaiguri',      'West Bengal', [1130, 1230, 1600, 1510, 1530, 1430, 1610, 1835, 1795, 1730]],
@@ -370,7 +370,7 @@ export default function Stone() {
   }, [userAccessLayer, distributorId]);
 
   // Entry-gate verification (name/email/phone/location + OTP already handled
-  // inside BuyerEntryGate) â€” just adopt the resulting session.
+  // inside BuyerEntryGate) — just adopt the resulting session.
   const handleGateVerified = (activeId, activeToken) => {
     if (activeId) {
       setDistributorId(activeId);
@@ -480,7 +480,7 @@ export default function Stone() {
             <h2 className="text-3xl font-serif text-[#37424B] uppercase tracking-wide">Buyer Account Under Review</h2>
             <div className="w-16 h-[2px] bg-[#C5A059] mx-auto" />
             <p className="text-[#6D6760] text-sm leading-relaxed max-w-lg mx-auto font-sans font-light">
-              â€œYour India Trade Overseas stone buyer account is under review. Our team is verifying your GST/Udyam business documents. You will receive confirmation within 24 hours once approved.â€
+              "Your India Trade Overseas stone buyer account is under review. Our team is verifying your GST/Udyam business documents. You will receive confirmation within 24 hours once approved."
             </p>
             <div className="bg-[#F4F2EE] border border-[#DCCCB4] rounded-xl p-4 text-left text-xs font-sans text-[#6D6760] space-y-1.5 max-w-md mx-auto">
               <div className="font-bold text-[#37424B] uppercase tracking-wider text-[10px] font-mono">VERIFICATION CHECKLIST PIPELINE:</div>
@@ -827,7 +827,7 @@ export default function Stone() {
             {/* Official Rate Card Selector */}
             <div className="space-y-3 sm:space-y-4 text-left">
               <h3 className="font-serif text-base sm:text-lg text-[#37424B] uppercase tracking-wider font-bold px-1">
-                Official Rate Card â€” Select Origin, Delivery Location & Grade
+                Official Rate Card — Select Origin, Delivery Location & Grade
               </h3>
 
               <div className="bg-white border border-[#DCCCB4] rounded-xl p-4 sm:p-6 shadow-sm space-y-4">
@@ -957,7 +957,7 @@ export default function Stone() {
                 <div className="inline-flex items-center gap-2 border px-4 py-1.5 rounded-full bg-[#37424B]/90 border-[#C5A059]/40">
                   <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-pulse" />
                   <span className="text-[10px] tracking-[0.25em] font-mono font-bold uppercase text-[#C5A059]">
-                    01 â€¢ GEOLOGICAL EXTRACTION
+                    01 • GEOLOGICAL EXTRACTION
                   </span>
                 </div>
 
@@ -994,10 +994,10 @@ export default function Stone() {
 
               <div className="lg:col-span-5 space-y-3">
                 {[
-                  { label: "01 â€¢ SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
-                  { label: "02 â€¢ NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
-                  { label: "03 â€¢ LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
-                  { label: "04 â€¢ TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
+                  { label: "01 • SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
+                  { label: "02 • NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
+                  { label: "03 • LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
+                  { label: "04 • TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
                 ].map((card, idx) => (
                   <div
                     key={idx}
