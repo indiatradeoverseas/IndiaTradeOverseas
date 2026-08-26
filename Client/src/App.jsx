@@ -56,6 +56,8 @@ import SalesDashboard from './pages/crm/SalesDashboard';
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
 import FounderDashboard from './pages/crm/FounderDashboard';
+import FinanceManagerDashboard from './pages/crm/FinanceManagerDashboard';
+import FinanceDashboard from './pages/crm/FinanceDashboard';
 
 
 import Navbar from './components/Layout/Navbar';
@@ -148,6 +150,32 @@ function HRRedirectGate() {
     return <Navigate to="/crm/hr/executive" replace />;
   } else {
     return <Navigate to="/crm/dashboard" replace />;
+  }
+}
+
+function FinanceRedirectGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const isFinanceManager = user?.role === 'FINANCE_MANAGER' || 
+                           user?.role === 'ACCOUNTS_MANAGER' || 
+                           (user?.department === 'FINANCE' && user?.position?.toLowerCase()?.includes('manager'));
+
+  if (['ADMIN', 'MANAGER'].includes(user.role) || isFinanceManager) {
+    return <Navigate to="/crm/finance/manager" replace />;
+  } else {
+    return <Navigate to="/crm/finance/executive" replace />;
   }
 }
 
@@ -350,6 +378,23 @@ function AppLayout() {
               <RoleProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR']}>
                 <HrExecutiveDashboard />
               </RoleProtectedRoute>
+            }
+          />
+          <Route path="/crm/finance" element={<FinanceRedirectGate />} />
+          <Route
+            path="/crm/finance/manager"
+            element={
+              <ProtectedRoute>
+                <FinanceManagerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/finance/executive"
+            element={
+              <ProtectedRoute>
+                <FinanceDashboard />
+              </ProtectedRoute>
             }
           />
 

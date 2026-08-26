@@ -15,6 +15,8 @@ import SalesExecutiveDashboard from './SalesExecutiveDashboard';
 import SalesManagerDashboard from './SalesManagerDashboard';
 import HrManagerDashboard from './HrManagerDashboard';
 import HrExecutiveDashboard from './HrExecutiveDashboard';
+import FinanceManagerDashboard from './FinanceManagerDashboard';
+import FinanceDashboard from './FinanceDashboard';
 
 // Staggered layout entry configurations
 const containerVariants = {
@@ -200,6 +202,9 @@ export default function Dashboard() {
   const isSalesManager = user?.role === 'MANAGER' || user?.role === 'SALES_MANAGER' || (user?.department === 'SALES' && user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
   const isSalesExecutive = !isSalesManager && (user?.role === 'SALES' || user?.role === 'SALES_EXECUTIVE' || (user?.department === 'SALES' && !isAdmin));
 
+  const isFinanceManager = user?.role === 'FINANCE_MANAGER' || (user?.department === 'FINANCE' && user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
+  const isFinanceExecutive = !isFinanceManager && (user?.role === 'ACCOUNTS' || user?.role === 'FINANCE_EXECUTIVE' || (user?.department === 'FINANCE' && !isAdmin));
+
   if (isSalesManager) {
     return <SalesManagerDashboard />;
   }
@@ -214,6 +219,14 @@ export default function Dashboard() {
 
   if ((user?.role === 'HR_EXECUTIVE' || user?.role === 'HR') && !isAdmin) {
     return <HrExecutiveDashboard />;
+  }
+
+  if (isFinanceManager) {
+    return <FinanceManagerDashboard />;
+  }
+
+  if (isFinanceExecutive) {
+    return <FinanceDashboard />;
   }
 
   if (user?.role === 'EMPLOYEE' && !isAdmin) {
@@ -250,6 +263,40 @@ export default function Dashboard() {
           </button>
         </div>
         <SalesExecutiveDashboard />
+      </div>
+    );
+  }
+
+  if (isAdmin && adminViewMode === 'FINANCE_MANAGER') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-[var(--crm-ink-soft)]">
+          <span>Viewing as: <strong className="text-teal-400">FINANCE MANAGER</strong> (Admin bypass mode)</span>
+          <button 
+            onClick={() => setAdminViewMode('COMPANY')}
+            className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
+          >
+            Back to Company Summary
+          </button>
+        </div>
+        <FinanceManagerDashboard />
+      </div>
+    );
+  }
+
+  if (isAdmin && adminViewMode === 'FINANCE_EXECUTIVE') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-[var(--crm-ink-soft)]">
+          <span>Viewing as: <strong className="text-teal-400">FINANCE ACCOUNTANT</strong> (Admin bypass mode)</span>
+          <button 
+            onClick={() => setAdminViewMode('COMPANY')}
+            className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
+          >
+            Back to Company Summary
+          </button>
+        </div>
+        <FinanceDashboard />
       </div>
     );
   }
@@ -303,6 +350,22 @@ export default function Dashboard() {
           <h1 className="text-2xl sm:text-3xl font-normal tracking-tight uppercase" style={HEADING}>Global Ledger Base</h1>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
+          {isAdmin && (
+            <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 text-[9px] uppercase font-bold tracking-wider rounded font-mono">
+              <span className="text-[var(--crm-ink-faint)]">View Role:</span>
+              <select
+                value={adminViewMode}
+                onChange={(e) => setAdminViewMode(e.target.value)}
+                className="bg-transparent border-none outline-none font-bold text-teal-400 cursor-pointer"
+              >
+                <option value="COMPANY" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Admin (Company)</option>
+                <option value="MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Sales Manager</option>
+                <option value="EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Sales Executive</option>
+                <option value="FINANCE_MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Manager</option>
+                <option value="FINANCE_EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Accountant</option>
+              </select>
+            </div>
+          )}
           {isAdmin && (
             <DownloadButton
               action={handleExportReport}

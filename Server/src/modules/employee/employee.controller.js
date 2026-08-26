@@ -386,19 +386,57 @@ async function listEmployees(req, res, next) {
       return map;
     }, {});
 
+    // Fetch today's check-ins
+    const Attendance = require('../attendance/attendance.model');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const targetIdsForAttendance = [];
+    employeeIds.forEach(id => {
+      targetIdsForAttendance.push(String(id));
+      if (mongoose.isValidObjectId(id)) {
+        targetIdsForAttendance.push(new mongoose.Types.ObjectId(id));
+      }
+    });
+
+    const attendances = await Attendance.find({
+      employeeId: { $in: targetIdsForAttendance },
+      date: today,
+      checkInAt: { $ne: null }
+    }).lean();
+
+    const attendanceMap = attendances.reduce((map, att) => {
+      if (att && att.employeeId) {
+        map[att.employeeId.toString()] = att;
+      }
+      return map;
+    }, {});
+
     const employeesWithStatus = employees.map(emp => {
+      const attendanceRec = attendanceMap[emp._id.toString()];
+      const isCheckedIn = !!attendanceRec;
+
       const statusInfo = statusMap[emp._id.toString()] || {
-        status: 'OFFLINE',
-        currentActivity: 'Offline',
-        lastUpdated: emp.updatedAt || new Date(),
+        status: isCheckedIn ? 'IDLE' : 'OFFLINE',
+        currentActivity: isCheckedIn ? 'Available' : 'Offline',
+        lastUpdated: isCheckedIn ? (attendanceRec.checkInAt || new Date()) : (emp.updatedAt || new Date()),
         duration: '00:00:00'
       };
+
+      // If status in db is OFFLINE but employee checked in today, default to IDLE
+      if (statusInfo.status === 'OFFLINE' && isCheckedIn) {
+        statusInfo.status = 'IDLE';
+        statusInfo.currentActivity = 'Available';
+        statusInfo.lastUpdated = attendanceRec.checkInAt || new Date();
+      }
+
       return {
         ...emp,
         status: statusInfo.status,
         currentActivity: statusInfo.currentActivity,
         lastUpdated: statusInfo.lastUpdated,
         duration: statusInfo.duration,
+        isCheckedIn,
         tasksCount: tasksCountMap[emp._id.toString()] || 0,
         statusInfo
       };

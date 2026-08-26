@@ -76,6 +76,13 @@ export function getCrmMainNavItems(user) {
     // Sales Dashboard — ADMIN + Sales Manager + Sales Executive
     (admin || salesMgr || salesExec) && { to: '/crm/sales-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
 
+    // Finance & Accounts — ADMIN + Finance department + Accounts role
+    (admin || user?.department === 'FINANCE' || user?.role === 'ACCOUNTS' || user?.role === 'FINANCE_MANAGER') && { 
+      to: '/crm/finance', 
+      label: 'Finance & Accounts', 
+      icon: FiDollarSign 
+    },
+
     // Notifications — ADMIN only
     admin && { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
 
