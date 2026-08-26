@@ -72,6 +72,7 @@ async function authenticate(req, res, next) {
       user.employeeDbId = user._id;
     }
 
+    user.modelName = foundIn;
     req.user = user;
 
     next();

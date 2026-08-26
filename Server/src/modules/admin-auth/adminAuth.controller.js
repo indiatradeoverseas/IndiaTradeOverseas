@@ -42,7 +42,7 @@ async function adminLogin(req, res, next) {
     }
 
     if (!admin.isActive) {
-      // Check if lock has expired (15 minutes)
+      // Check if lock has expired (5 minutes)
       if (admin.lockUntil && admin.lockUntil < new Date()) {
         admin.isActive = true;
         admin.failedLoginCount = 0;
@@ -70,7 +70,7 @@ async function adminLogin(req, res, next) {
       admin.failedLoginCount += 1;
       if (admin.failedLoginCount >= securityConfig.accountLockThreshold) {
         admin.isActive = false;
-        admin.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
+        admin.lockUntil = new Date(Date.now() + 5 * 60 * 1000); // Lock for 5 minutes
         await admin.save();
         await raiseAlert({
           actorId: admin._id,
@@ -167,7 +167,7 @@ async function adminGoogleLogin(req, res, next) {
     }
 
     if (!admin.isActive) {
-      // Check if lock has expired (15 minutes)
+      // Check if lock has expired (5 minutes)
       if (admin.lockUntil && admin.lockUntil < new Date()) {
         admin.isActive = true;
         admin.failedLoginCount = 0;
