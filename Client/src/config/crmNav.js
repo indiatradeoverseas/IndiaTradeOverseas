@@ -18,7 +18,8 @@ import {
   FiTrendingUp,
   FiUserPlus,
   FiAward,
-  FiCommand
+  FiCommand,
+  FiHome
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -161,6 +162,9 @@ export function getCrmAdminNavItems(user) {
   const hrExec = isHRExecutive(user);
 
   return [
+    // Founder Dashboard — ADMIN only (shown first for prominence)
+    admin && { to: '/crm/founder', label: 'Founder Dashboard', icon: FiHome },
+
     // Admin Panel — ADMIN only
     admin && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
 
