@@ -1,6 +1,15 @@
+const mongoose = require('mongoose');
 const User = require('./user.model');
 const bcrypt = require('bcryptjs');
 const { encryptText, decryptText } = require('../../utils/crypto');
+
+const resolveIdQuery = (id) => {
+  const idStr = String(id);
+  if (mongoose.isValidObjectId(idStr)) {
+    return { $or: [{ _id: idStr }, { _id: new mongoose.Types.ObjectId(idStr) }] };
+  }
+  return { _id: idStr };
+};
 
 const SENSITIVE_FIELDS = ['salary', 'pan', 'aadhaar', 'bankAccount'];
 const SELF_EDITABLE_FIELDS = [
@@ -54,15 +63,15 @@ async function listAllUsers() {
 }
 
 async function getUserById(id) {
-  return User.findById(id).select('-passwordHash');
+  return User.findOne(resolveIdQuery(id)).select('-passwordHash');
 }
 
 async function activateUser(id) {
-  return User.findByIdAndUpdate(id, { isActive: true }, { new: true }).select('-passwordHash');
+  return User.findOneAndUpdate(resolveIdQuery(id), { isActive: true }, { new: true }).select('-passwordHash');
 }
 
 async function updateUserRole(id, role, actorId = null) {
-  const existing = await User.findById(id);
+  const existing = await User.findOne(resolveIdQuery(id));
   if (!existing) return null;
   const fromValue = existing.role;
   existing.role = role;
@@ -70,11 +79,11 @@ async function updateUserRole(id, role, actorId = null) {
     existing.employmentHistory.push({ event: 'ROLE_CHANGED', fromValue, toValue: role, changedBy: actorId });
   }
   await existing.save();
-  return User.findById(id).select('-passwordHash');
+  return User.findOne(resolveIdQuery(id)).select('-passwordHash');
 }
 
 async function updateUserDepartment(id, department, actorId = null) {
-  const existing = await User.findById(id);
+  const existing = await User.findOne(resolveIdQuery(id));
   if (!existing) return null;
   const fromValue = existing.department;
   existing.department = department;
@@ -82,23 +91,23 @@ async function updateUserDepartment(id, department, actorId = null) {
     existing.employmentHistory.push({ event: 'DEPARTMENT_CHANGED', fromValue, toValue: department, changedBy: actorId });
   }
   await existing.save();
-  return User.findById(id).select('-passwordHash');
+  return User.findOne(resolveIdQuery(id)).select('-passwordHash');
 }
 
 async function updateUserPermissions(id, permissions) {
-  return User.findByIdAndUpdate(
-    id,
+  return User.findOneAndUpdate(
+    resolveIdQuery(id),
     permissions,
     { new: true, runValidators: true }
   ).select('-passwordHash');
 }
 
 async function deleteUser(id) {
-  return User.findByIdAndDelete(id).select('-passwordHash');
+  return User.findOneAndDelete(resolveIdQuery(id)).select('-passwordHash');
 }
 
 async function deactivateUser(id) {
-  return User.findByIdAndUpdate(id, { isActive: false }, { new: true }).select('-passwordHash');
+  return User.findOneAndUpdate(resolveIdQuery(id), { isActive: false }, { new: true }).select('-passwordHash');
 }
 
 function serializeProfile(user, { includePlaintext = false } = {}) {
@@ -122,10 +131,10 @@ function serializeProfile(user, { includePlaintext = false } = {}) {
 }
 
 async function getProfile(targetId, requester) {
-  let user = await User.findById(targetId);
+  let user = await User.findOne(resolveIdQuery(targetId));
   if (!user) {
     const Employee = require('../employee/employee.model');
-    user = await Employee.findById(targetId);
+    user = await Employee.findOne(resolveIdQuery(targetId));
     if (!user) return null;
 
     const obj = user.toObject ? user.toObject() : { ...user };
@@ -175,15 +184,15 @@ async function updateOwnProfile(userId, data) {
     const error = new Error('NO_VALID_FIELDS');
     throw error;
   }
-  const user = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+  const user = await User.findOneAndUpdate(resolveIdQuery(userId), updates, { new: true, runValidators: true });
   return serializeProfile(user, { includePlaintext: true });
 }
 
 async function updateEmployeeProfile(targetId, data, actor) {
-  let user = await User.findById(targetId);
+  let user = await User.findOne(resolveIdQuery(targetId));
   if (!user) {
     const Employee = require('../employee/employee.model');
-    const employee = await Employee.findById(targetId);
+    const employee = await Employee.findOne(resolveIdQuery(targetId));
     if (!employee) return null;
 
     const fieldMappings = {
@@ -243,10 +252,10 @@ async function revealProfileField(targetId, field, actor) {
   if (!SENSITIVE_FIELDS.includes(field)) {
     throw new Error('INVALID_FIELD');
   }
-  let user = await User.findById(targetId);
+  let user = await User.findOne(resolveIdQuery(targetId));
   if (!user) {
     const Employee = require('../employee/employee.model');
-    const employee = await Employee.findById(targetId);
+    const employee = await Employee.findOne(resolveIdQuery(targetId));
     if (!employee) return null;
 
     const fieldMappings = {
@@ -266,7 +275,7 @@ async function revealProfileField(targetId, field, actor) {
 }
 
 async function updateEmploymentStatus(targetId, { employmentStatus, note, effectiveDate }, actor) {
-  const user = await User.findById(targetId);
+  const user = await User.findOne(resolveIdQuery(targetId));
   if (!user) return null;
 
   const validStatuses = ['PROBATION', 'CONFIRMED', 'ON_NOTICE', 'RESIGNED', 'TERMINATED'];
