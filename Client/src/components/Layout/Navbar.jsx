@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-const CompanyLogo = '/images/web_icon.jpeg';
+const CompanyLogo = '/images/web_icon_1.jpeg';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiMenu,
