@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const employeeSchema = new mongoose.Schema(
   {
-    _id: { type: mongoose.Schema.Types.Mixed },
     employeeId: {
       type: String,
       unique: true,
