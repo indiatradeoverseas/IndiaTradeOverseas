@@ -340,6 +340,210 @@ async function signupEmployee(req, res, next) {
   }
 }
 
+// Self-registration endpoint for employees to request account creation
+// Creates employee with PENDING_VERIFICATION status for HR review
+async function signupEmployeeSelfRegistration(req, res, next) {
+  try {
+    const {
+      name,
+      email,
+      password,
+      department,
+      position,
+      phone
+    } = req.body;
+
+    // 1. Mandatory Validations
+    if (!name || !email || !password || !department || !position) {
+      return fail(res, 400, 'BAD_REQUEST', 'Missing required fields: name, email, password, department, position', [], req);
+    }
+
+    // 2. Format Validations
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return fail(res, 400, 'INVALID_EMAIL', 'Email address format is invalid', [], req);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : '';
+    if (phone && !phoneRegex.test(cleanPhone)) {
+      return fail(res, 400, 'INVALID_PHONE', 'Phone number must be exactly 10 digits starting with 6-9', [], req);
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return fail(res, 400, 'WEAK_PASSWORD', 'Password must be minimum 8 characters with at least 1 uppercase, 1 lowercase, 1 number, and 1 special character', [], req);
+    }
+
+    // 3. Database uniqueness constraints
+    const duplicateEmail = await Employee.findOne({ email });
+    if (duplicateEmail) {
+      return fail(res, 409, 'DUPLICATE_EMAIL', 'Email address is already registered', [], req);
+    }
+
+    if (phone) {
+      const duplicatePhone = await Employee.findOne({ phone: cleanPhone });
+      if (duplicatePhone) {
+        return fail(res, 409, 'DUPLICATE_PHONE', 'Phone number is already registered', [], req);
+      }
+    }
+
+    // Hash password
+    const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 10;
+    const passwordHash = await bcrypt.hash(password, bcryptRounds);
+
+    // Generate employeeId
+    const employees = await Employee.find({}, { employeeId: 1 });
+    let maxNum = 0;
+    employees.forEach(emp => {
+      if (emp.employeeId && emp.employeeId.startsWith('EMP')) {
+        const numPart = emp.employeeId.replace('EMP', '');
+        const parsed = parseInt(numPart, 10);
+        if (!isNaN(parsed) && parsed > maxNum) {
+          maxNum = parsed;
+        }
+      }
+    });
+    const nextNum = maxNum + 1;
+    const formattedId = `EMP${String(nextNum).padStart(3, '0')}`;
+
+    // Save Employee with PENDING_VERIFICATION status
+    const employee = await Employee.create({
+      employeeId: formattedId,
+      name,
+      email,
+      password: passwordHash,
+      phone: cleanPhone || '',
+      department,
+      position,
+      joiningDate: new Date(),
+      employmentType: 'Permanent',
+      role: 'EMPLOYEE',
+      status: 'PENDING_VERIFICATION',
+      salary: 0,
+      permissions: {
+        productUpload: false,
+        lead: false,
+        export: false,
+        document: false,
+        task: false,
+        dispatch: false,
+        payment: false,
+        quotation: false,
+        job: false
+      }
+    });
+
+    // Initialize MonthlyLeaveBalance for current month
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    await MonthlyLeaveBalance.create({
+      employeeId: employee._id,
+      month: currentMonth,
+      totalLeaves: 4,
+      usedLeaves: 0,
+      remainingLeaves: 4,
+      extraLeavesUsed: 0,
+      totalLeavesUsed: 0,
+      isReset: false
+    });
+
+    const employeeResponse = {
+      _id: employee._id,
+      employeeId: employee.employeeId,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      position: employee.position,
+      status: employee.status
+    };
+
+    return ok(res, { employee: employeeResponse }, 'Registration submitted successfully. Awaiting HR verification.', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Get all pending verification employees (for HR/Admin)
+async function getPendingEmployees(req, res, next) {
+  try {
+    const employees = await Employee.find(
+      { status: 'PENDING_VERIFICATION' },
+      { _id: 1, employeeId: 1, name: 1, email: 1, department: 1, position: 1, phone: 1, createdAt: 1 }
+    ).sort({ createdAt: -1 });
+    return ok(res, { employees }, 'Pending employees retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Approve pending employee
+async function approveEmployee(req, res, next) {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findByIdAndUpdate(
+      id,
+      { status: 'ACTIVE' },
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!employee) {
+      return fail(res, 404, 'NOT_FOUND', 'Employee not found', [], req);
+    }
+
+    const employeeResponse = {
+      _id: employee._id,
+      employeeId: employee.employeeId,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      position: employee.position,
+      status: employee.status
+    };
+
+    return ok(res, { employee: employeeResponse }, 'Employee approved and activated successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Reject pending employee
+async function rejectEmployee(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const employee = await Employee.findByIdAndUpdate(
+      id,
+      { status: 'INACTIVE' },
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!employee) {
+      return fail(res, 404, 'NOT_FOUND', 'Employee not found', [], req);
+    }
+
+    // Optionally delete the MonthlyLeaveBalance if rejected
+    await MonthlyLeaveBalance.deleteMany({ employeeId: id });
+
+    const employeeResponse = {
+      _id: employee._id,
+      employeeId: employee.employeeId,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      position: employee.position,
+      status: employee.status
+    };
+
+    return ok(res, { employee: employeeResponse }, reason ? `Employee rejected: ${reason}` : 'Employee rejected and marked inactive', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function listEmployees(req, res, next) {
   try {
     const { department } = req.query;
@@ -625,6 +829,7 @@ module.exports = {
   getNextEmployeeId,
   getListManagers,
   signupEmployee,
+  signupEmployeeSelfRegistration,
   listEmployees,
   getEmployeesCount,
   getEmployeeStatus,
@@ -632,5 +837,8 @@ module.exports = {
   getAllEmployees,
   createEmployee,
   updateEmployee,
-  deleteEmployee
+  deleteEmployee,
+  getPendingEmployees,
+  approveEmployee,
+  rejectEmployee
 };

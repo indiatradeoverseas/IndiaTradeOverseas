@@ -1,15 +1,49 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { motion } from 'framer-motion';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield, FiUser, FiBriefcase, FiX, FiAlertCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import { employeeSignupApi } from '../../api/employee-signup';
+
+const DEPARTMENTS = [
+  { value: 'SALES', label: 'Sales' },
+  { value: 'HR', label: 'Human Resources' },
+  { value: 'IT', label: 'Information Technology' },
+  { value: 'ADMIN', label: 'Administration' },
+  { value: 'FINANCE', label: 'Finance' },
+  { value: 'OPERATIONS', label: 'Operations' },
+  { value: 'MARKETING', label: 'Marketing' }
+];
+
+const POSITIONS_BY_DEPT = {
+  SALES: ['Sales Executive', 'Sales Manager', 'Business Development Executive', 'Account Manager'],
+  HR: ['HR Executive', 'HR Manager', 'Recruiter', 'HR Business Partner'],
+  IT: ['Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'DevOps Engineer', 'QA Engineer', 'IT Support'],
+  ADMIN: ['Admin Executive', 'Office Manager', 'Executive Assistant', 'Administrative Assistant'],
+  FINANCE: ['Accountant', 'Finance Analyst', 'Finance Manager', 'Accounts Payable/Receivable'],
+  OPERATIONS: ['Operations Executive', 'Operations Manager', 'Logistics Coordinator', 'Supply Chain Analyst'],
+  MARKETING: ['Marketing Executive', 'Marketing Manager', 'Content Writer', 'SEO Specialist', 'Social Media Manager']
+};
 
 const EmployeeLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
+  
+  // Signup modal state
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupFormData, setSignupFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    department: 'IT',
+    position: 'Frontend Developer',
+    phone: ''
+  });
+  const [signupErrors, setSignupErrors] = useState({});
 
   const { employeeLogin } = useAuth();
   const navigate = useNavigate();
@@ -58,6 +92,105 @@ const EmployeeLogin = () => {
     } finally {
       setLoading && setLoading(false);
     }
+  };
+
+  // Signup form handlers
+  const validateSignupField = (name, value) => {
+    let error = '';
+    if (name === 'name' && !value.trim()) error = 'Full name is required';
+    if (name === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (value && !emailRegex.test(value)) error = 'Invalid email format';
+    }
+    if (name === 'password') {
+      if (value && value.length < 8) error = 'Password must be at least 8 characters';
+      if (value && !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(value)) {
+        error = 'Password must contain uppercase, lowercase, number, and special character';
+      }
+    }
+    if (name === 'phone' && value) {
+      const phoneRegex = /^[6-9]\d{9}$/;
+      const cleanPhone = value.replace(/[^0-9]/g, '').slice(-10);
+      if (!phoneRegex.test(cleanPhone)) error = 'Phone must be 10 digits starting with 6-9';
+    }
+    setSignupErrors(prev => ({ ...prev, [name]: error }));
+    return !error;
+  };
+
+  const handleSignupChange = (e) => {
+    const { name, value } = e.target;
+    setSignupFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'department') {
+      // Reset position when department changes
+      setSignupFormData(prev => ({ 
+        ...prev, 
+        [name]: value,
+        position: POSITIONS_BY_DEPT[value]?.[0] || ''
+      }));
+    }
+    validateSignupField(name, value);
+  };
+
+  const handleSignupBlur = (e) => {
+    const { name, value } = e.target;
+    validateSignupField(name, value);
+  };
+
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate all fields
+    let isValid = true;
+    Object.keys(signupFormData).forEach(key => {
+      if (!validateSignupField(key, signupFormData[key])) {
+        isValid = false;
+      }
+    });
+    
+    if (!isValid) {
+      toast.error('Please fix the errors above');
+      return;
+    }
+
+    setSignupLoading(true);
+    try {
+      const response = await employeeSignupApi.requestSignup(signupFormData);
+      if (response.success) {
+        toast.success('Registration submitted! HR will review and approve your account.', {
+          icon: '✅',
+          style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #56A587' },
+          duration: 5000
+        });
+        setShowSignupModal(false);
+        // Reset form
+        setSignupFormData({
+          name: '',
+          email: '',
+          password: '',
+          department: 'IT',
+          position: 'Frontend Developer',
+          phone: ''
+        });
+        setSignupErrors({});
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Registration failed. Please try again.';
+      toast.error(errorMsg, { 
+        style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444' } 
+      });
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  const openSignupModal = () => {
+    setShowSignupModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeSignupModal = () => {
+    setShowSignupModal(false);
+    document.body.style.overflow = 'unset';
   };
 
   return (
@@ -203,12 +336,16 @@ const EmployeeLogin = () => {
                 Admin login
               </Link>
             </p>
-             {/* <p className="font-light">
-              Employee Sign Up?{' '}
-              <Link to="/employee-signup" className="font-medium text-[#C5CBD3] hover:text-[#F2F4F7] hover:underline">
-                Employee Sign Up
-              </Link>
-            </p> */}
+            <p className="font-light">
+              Don't have an account?{' '}
+              <button 
+                onClick={openSignupModal}
+                className="font-medium text-[var(--crm-accent)] hover:underline inline-flex items-center gap-0.5 group"
+              >
+                Sign Up
+                <FiArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </p>
           </motion.div>
         </div>
 
@@ -243,7 +380,7 @@ const EmployeeLogin = () => {
             Core Infrastructure
           </p>
           <h3 className="text-lg font-serif text-[#F2F4F7] font-medium leading-snug mb-2">
-            "Industrial Scale &amp; Operational Excellence."
+            "Industrial Scale & Operational Excellence."
           </h3>
           <p className="text-xs text-[#6D7886] font-light leading-relaxed">
             Secure administrative console linked with our global freight logistics, bulk supply terminals, and regional distribution assets[cite: 1].
@@ -251,6 +388,179 @@ const EmployeeLogin = () => {
         </motion.div>
       </div>
 
+      {/* Signup Modal */}
+      <AnimatePresence>
+        {showSignupModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={closeSignupModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signup-modal-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="w-full max-w-md bg-[#0E1116] border border-[#C5CBD3]/20 rounded-sm shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 border-b border-[#C5CBD3]/10 bg-[#040A12]/50">
+                <h3 id="signup-modal-title" className="text-sm font-serif text-[#F2F4F7] font-medium tracking-tight">
+                  Employee Registration Request
+                </h3>
+                <button
+                  onClick={closeSignupModal}
+                  className="p-1 text-[#6D7886] hover:text-[#F2F4F7] transition-colors"
+                  aria-label="Close signup modal"
+                >
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <form onSubmit={handleSignupSubmit} className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                <p className="text-xs text-[#6D7886] font-light">
+                  Fill in your details to request an employee account. Your request will be reviewed by HR.
+                </p>
+
+                {/* Name */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Full Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={signupFormData.name}
+                    onChange={handleSignupChange}
+                    onBlur={handleSignupBlur}
+                    placeholder="Enter your full name"
+                    className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
+                      signupErrors.name ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                    }`}
+                  />
+                  {signupErrors.name && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.name}</span>}
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Email Address *</label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={signupFormData.email}
+                    onChange={handleSignupChange}
+                    onBlur={handleSignupBlur}
+                    placeholder="your@company.com"
+                    className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
+                      signupErrors.email ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                    }`}
+                  />
+                  {signupErrors.email && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.email}</span>}
+                </div>
+
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      required
+                      value={signupFormData.password}
+                      onChange={handleSignupChange}
+                      onBlur={handleSignupBlur}
+                      placeholder="Min 8 chars, upper, lower, number, special"
+                      className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm pr-10 ${
+                        signupErrors.password ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6D7886] hover:text-[#F2F4F7]"
+                    >
+                      {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {signupErrors.password && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.password}</span>}
+                  <p className="text-[8px] text-[#6D7886]/70">Min 8 characters with uppercase, lowercase, number & special character</p>
+                </div>
+
+                {/* Department */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Department *</label>
+                  <select
+                    name="department"
+                    required
+                    value={signupFormData.department}
+                    onChange={handleSignupChange}
+                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-[var(--crm-accent)] px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
+                  >
+                    {DEPARTMENTS.map(dept => (
+                      <option key={dept.value} value={dept.value}>{dept.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Position */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Position / Role *</label>
+                  <select
+                    name="position"
+                    required
+                    value={signupFormData.position}
+                    onChange={handleSignupChange}
+                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-[var(--crm-accent)] px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
+                  >
+                    {POSITIONS_BY_DEPT[signupFormData.department]?.map(pos => (
+                      <option key={pos} value={pos}>{pos}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Phone (Optional) */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Phone Number (Optional)</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={signupFormData.phone}
+                    onChange={handleSignupChange}
+                    onBlur={handleSignupBlur}
+                    placeholder="10-digit number (e.g. 9876543210)"
+                    className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
+                      signupErrors.phone ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                    }`}
+                  />
+                  {signupErrors.phone && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.phone}</span>}
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={signupLoading}
+                  className="w-full mt-2 bg-[var(--crm-accent)] hover:bg-[var(--crm-accent)]/90 text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {signupLoading ? 'Submitting...' : 'Submit Registration Request'}
+                  {!signupLoading && <FiArrowRight className="h-3.5 w-3.5" />}
+                </button>
+
+                <p className="text-center text-[9px] text-[#6D7886]/70 font-light">
+                  By submitting, you agree to our terms. HR will verify your details and activate your account.
+                </p>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

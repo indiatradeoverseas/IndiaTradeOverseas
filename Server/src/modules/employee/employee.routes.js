@@ -6,6 +6,7 @@ const {
   getNextEmployeeId,
   getListManagers,
   signupEmployee,
+  signupEmployeeSelfRegistration,
   listEmployees,
   getEmployeesCount,
   getEmployeeStatus,
@@ -13,17 +14,29 @@ const {
   getAllEmployees,
   createEmployee,
   updateEmployee,
-  deleteEmployee
+  deleteEmployee,
+  getPendingEmployees,
+  approveEmployee,
+  rejectEmployee
 } = require('./employee.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 
 const adminOnly = [authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER')];
+const hrOnly = [authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR')];
 
 router.get('/next-id', getNextEmployeeId);
 router.get('/list-managers', getListManagers);
 router.get('/all', ...adminOnly, getAllEmployees);
-router.post('/signup', signupEmployee);
+
+// Self-registration endpoint (public - no auth required)
+router.post('/signup/request', signupEmployeeSelfRegistration);
+
+// Pending employees management (HR/Admin only)
+router.get('/pending', ...hrOnly, getPendingEmployees);
+router.post('/pending/:id/approve', ...hrOnly, approveEmployee);
+router.post('/pending/:id/reject', ...hrOnly, rejectEmployee);
+
 router.post('/', ...adminOnly, createEmployee);
 router.patch('/:id', ...adminOnly, updateEmployee);
 router.delete('/:id', ...adminOnly, deleteEmployee);
