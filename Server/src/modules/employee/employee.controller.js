@@ -562,7 +562,7 @@ async function sendSignupOtp(req, res, next) {
   }
 }
 
-// Verify OTP and create pending employee using existing OTP infrastructure
+// Verify OTP and create employee with ACTIVE status, return token for auto-login
 async function verifySignupOtp(req, res, next) {
   try {
     const {
@@ -626,7 +626,7 @@ async function verifySignupOtp(req, res, next) {
     const nextNum = maxNum + 1;
     const formattedId = `EMP${String(nextNum).padStart(3, '0')}`;
 
-    // Create employee with PENDING_VERIFICATION status
+    // Create employee with ACTIVE status (OTP verified = email verified)
     const employee = await Employee.create({
       employeeId: formattedId,
       name,
@@ -638,7 +638,7 @@ async function verifySignupOtp(req, res, next) {
       joiningDate: new Date(),
       employmentType: 'Permanent',
       role: 'EMPLOYEE',
-      status: 'PENDING_VERIFICATION',
+      status: 'ACTIVE',
       salary: 0,
       permissions: {
         productUpload: false,
@@ -666,6 +666,9 @@ async function verifySignupOtp(req, res, next) {
       isReset: false
     });
 
+    // Generate access token for auto-login
+    const token = generateAccessToken(employee);
+
     // Clean up
     await otpModel.deleteMany({ email });
     global.signupFormStore.delete(email);
@@ -678,10 +681,13 @@ async function verifySignupOtp(req, res, next) {
       role: employee.role,
       department: employee.department,
       position: employee.position,
-      status: employee.status
+      status: employee.status,
+      phone: employee.phone,
+      address: employee.address,
+      profileImage: employee.profileImage
     };
 
-    return ok(res, { employee: employeeResponse }, 'Registration submitted successfully. Awaiting HR verification.', 201, req);
+    return ok(res, { token, employee: employeeResponse }, 'Registration successful. Welcome!', 201, req);
   } catch (error) {
     next(error);
   }

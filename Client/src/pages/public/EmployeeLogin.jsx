@@ -273,17 +273,25 @@ const EmployeeLogin = () => {
     setSignupLoading(true);
     setOtpError('');
     try {
-      // Step 2: Verify OTP and create pending employee
+      // Step 2: Verify OTP and create employee with ACTIVE status
       const response = await employeeSignupApi.verifySignupOtp({
         ...pendingSignupData,
         otp: code
       });
       if (response.success) {
-        toast.success('Registration submitted! HR will review and approve your account.', {
+        // Store token and user data for auto-login
+        if (response.data?.token) {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.employee));
+          localStorage.setItem('isEmployeeAuth', 'true');
+        }
+        
+        toast.success('Registration successful! Welcome to India Trade Overseas.', {
           icon: '✅',
           style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #56A587' },
-          duration: 5000
+          duration: 3000
         });
+        
         setShowSignupModal(false);
         setSignupStep('form');
         // Reset form
@@ -299,6 +307,16 @@ const EmployeeLogin = () => {
         setPendingSignupData(null);
         setOtpCode(['', '', '', '', '', '']);
         setOtpSentTo('');
+
+        // Redirect based on role
+        const role = response.data?.employee?.role;
+        if (role === 'HR_MANAGER') {
+          navigate('/crm/hr/manager');
+        } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
+          navigate('/crm/hr/executive');
+        } else {
+          navigate('/crm/dashboard');
+        }
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Invalid or expired OTP';
