@@ -8,7 +8,12 @@ const otpSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "users",
-        required: [true, "User is required"]
+        required: false
+    },
+    employee: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee",
+        required: false
     },
     otpHash: {
         type: String,
