@@ -579,128 +579,12 @@ const EmployeeLogin = () => {
                 </button>
               </div>
 
-              {/* Modal Body */}
+              {/* Modal Body Wrapper */}
               <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-                <p className="text-xs text-[#6D7886] font-light">
-                  Fill in your details to request an employee account. Your request will be reviewed by HR.
-                </p>
-
-                {/* Name */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Full Name *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    required
-                    value={signupFormData.name}
-                    onChange={handleSignupChange}
-                    onBlur={handleSignupBlur}
-                    placeholder="Enter your full name"
-                    className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
-                      signupErrors.name ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
-                    }`}
-                  />
-                  {signupErrors.name && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.name}</span>}
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Email Address *</label>
-                  <input
-                    type="email"
-                    name="email"
-                    required
-                    value={signupFormData.email}
-                    onChange={handleSignupChange}
-                    onBlur={handleSignupBlur}
-                    placeholder="your@company.com"
-                    className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
-                      signupErrors.email ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
-                    }`}
-                  />
-                  {signupErrors.email && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.email}</span>}
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Password *</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      required
-                      value={signupFormData.password}
-                      onChange={handleSignupChange}
-                      onBlur={handleSignupBlur}
-                      placeholder="Min 8 chars, upper, lower, number, special"
-                      className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm pr-10 ${
-                        signupErrors.password ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6D7886] hover:text-[#F2F4F7]"
-                    >
-                      {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  {signupErrors.password && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.password}</span>}
-                  <p className="text-[8px] text-[#6D7886]/70">Min 8 characters with uppercase, lowercase, number & special character</p>
-                </div>
-
-                {/* Department */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Department *</label>
-                  <select
-                    name="department"
-                    required
-                    value={signupFormData.department}
-                    onChange={handleSignupChange}
-                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
-                  >
-                    {DEPARTMENTS.map(dept => (
-                      <option key={dept.value} value={dept.value}>{dept.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Position */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Position / Role *</label>
-                  <select
-                    name="position"
-                    required
-                    value={signupFormData.position}
-                    onChange={handleSignupChange}
-                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
-                  >
-                    {POSITIONS_BY_DEPT[signupFormData.department]?.map(pos => (
-                      <option key={pos} value={pos}>{pos}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Phone (Optional) */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Phone Number (Optional)</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={signupFormData.phone}
-                    onChange={handleSignupChange}
-                    onBlur={handleSignupBlur}
-                    placeholder="10-digit number (e.g. 9876543210)"
-                    className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
-                      signupErrors.phone ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
-                    }`}
-                  />
-                  {signupErrors.phone && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.phone}</span>}
-                </div>
 
                 {/* STEP 1: Registration Form */}
-              {signupStep === 'form' && (
-                <form onSubmit={handleSignupSubmit} className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                {signupStep === 'form' && (
+                  <form onSubmit={handleSignupSubmit} className="space-y-4">
                   <p className="text-xs text-[#6D7886] font-light">
                     Fill in your details to request an employee account. Your request will be reviewed by HR.
                   </p>
@@ -896,12 +780,14 @@ const EmployeeLogin = () => {
                     )}
                   </div>
 
-                  <p className="text-center text-[9px] text-[#6D7886]/70 font-light">
+<p className="text-center text-[9px] text-[#6D7886]/70 font-light">
                     Didn't receive the code? Check your spam folder.
                   </p>
                 </div>
               )}
+
             </div>
+
             </motion.div>
           </motion.div>
         )}
