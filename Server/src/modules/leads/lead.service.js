@@ -49,6 +49,7 @@ function canAccessLead(user, lead) {
     user.department === 'ADMIN' ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
+  let result = false;
   if (
     isManagerOrAdmin ||
     role === 'HR' ||
@@ -58,11 +59,30 @@ function canAccessLead(user, lead) {
     user.dispatchPermission === true ||
     user.quotationPermission === true
   ) {
-    return true;
+    result = true;
+  } else {
+    const assigned = lead.assignedTo;
+    if (assigned) {
+      if (assigned.email && user.email && assigned.email.toLowerCase() === user.email.toLowerCase()) {
+        result = true;
+      } else {
+        const assignedIdStr = (assigned._id || assigned).toString();
+        if (assignedIdStr === user._id.toString()) result = true;
+        else if (user.employeeDbId && assignedIdStr === user.employeeDbId.toString()) result = true;
+      }
+    } else {
+      // Lead is not assigned to a specific person
+      if (lead.assignedDepartment) {
+        if (user.department && lead.assignedDepartment.toUpperCase() === user.department.toUpperCase()) {
+          result = true;
+        }
+      } else {
+        // Completely unassigned lead
+        result = true;
+      }
+    }
   }
-  const assignedId = (typeof lead.populated === 'function' && lead.populated('assignedTo')) || lead.assignedTo?._id || lead.assignedTo;
-  if (assignedId && assignedId.toString() === user._id.toString()) return true;
-  return false;
+  return result;
 }
 
 function getLeadDisplay(lead, user) {
@@ -121,11 +141,17 @@ async function listLeads(user, query = {}) {
     user.quotationPermission !== true
   ) {
     const actorIds = [user._id];
+    if (user.employeeDbId) {
+      actorIds.push(user.employeeDbId);
+    }
     try {
       const Employee = require('../employee/employee.model');
       if (user.email) {
-        const emp = await Employee.findOne({ email: user.email });
-        if (emp) actorIds.push(emp._id);
+        const emailRegex = { $regex: new RegExp('^' + user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+        const emp = await Employee.findOne({ email: emailRegex });
+        if (emp && !actorIds.map(String).includes(emp._id.toString())) {
+          actorIds.push(emp._id);
+        }
       }
     } catch (err) {
       console.error('Error resolving Employee ID in listLeads:', err);

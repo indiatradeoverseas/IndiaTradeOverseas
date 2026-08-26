@@ -59,11 +59,17 @@ async function authenticate(req, res, next) {
       const employee = await Employee.findOne({ employeeId: user.employeeId });
       if (employee) {
         user = user.toObject();
+        user.employeeDbId = employee._id;
         user.role = employee.role;
         user.position = employee.position;
         user.department = employee.department;
         user.permissions = employee.permissions;
       }
+    } else if (user) {
+      if (typeof user.toObject === 'function') {
+        user = user.toObject();
+      }
+      user.employeeDbId = user._id;
     }
 
     req.user = user;

@@ -118,7 +118,6 @@ function checkPermission(...permissionNames) {
 
       return false;
     });
-
     if (hasAnyPermission) {
       return next();
     }

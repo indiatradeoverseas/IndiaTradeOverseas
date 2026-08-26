@@ -2,6 +2,8 @@ const Task = require('./task.model');
 const Employee = require('../employee/employee.model');
 const socketService = require('../../services/socket.service');
 const { ok, fail } = require('../../utils/response');
+const mongoose = require('mongoose');
+
 
 function isManagerUser(user) {
   if (!user) return false;
@@ -38,7 +40,6 @@ async function createTask(req, res) {
     }
 
     // Verify target employee exists
-    const mongoose = require('mongoose');
     const employeeIdQuery = mongoose.isValidObjectId(assignedTo)
       ? { $or: [{ _id: assignedTo }, { _id: new mongoose.Types.ObjectId(assignedTo) }] }
       : { _id: assignedTo };
