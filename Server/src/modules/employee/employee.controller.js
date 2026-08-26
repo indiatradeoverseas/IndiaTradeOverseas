@@ -464,6 +464,212 @@ async function signupEmployeeSelfRegistration(req, res, next) {
   }
 }
 
+// In-memory OTP store (in production, use Redis with TTL)
+const signupOtpStore = new Map();
+
+// Send OTP for employee self-registration
+async function sendSignupOtp(req, res, next) {
+  try {
+    const {
+      name,
+      email,
+      password,
+      department,
+      position,
+      phone
+    } = req.body;
+
+    // 1. Validations
+    if (!name || !email || !password || !department || !position) {
+      return fail(res, 400, 'BAD_REQUEST', 'Missing required fields: name, email, password, department, position', [], req);
+    }
+
+    // Check email domain
+    if (!email.endsWith('@indiatradeoverseas.com')) {
+      return fail(res, 400, 'INVALID_DOMAIN', 'Email must be @indiatradeoverseas.com domain', [], req);
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return fail(res, 400, 'INVALID_EMAIL', 'Email address format is invalid', [], req);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : '';
+    if (phone && !phoneRegex.test(cleanPhone)) {
+      return fail(res, 400, 'INVALID_PHONE', 'Phone number must be exactly 10 digits starting with 6-9', [], req);
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return fail(res, 400, 'WEAK_PASSWORD', 'Password must be minimum 8 characters with at least 1 uppercase, 1 lowercase, 1 number, and 1 special character', [], req);
+    }
+
+    // Check if already exists
+    const duplicateEmail = await Employee.findOne({ email });
+    if (duplicateEmail) {
+      return fail(res, 409, 'DUPLICATE_EMAIL', 'Email address is already registered', [], req);
+    }
+
+    if (phone) {
+      const duplicatePhone = await Employee.findOne({ phone: cleanPhone });
+      if (duplicatePhone) {
+        return fail(res, 409, 'DUPLICATE_PHONE', 'Phone number is already registered', [], req);
+      }
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Store OTP with form data
+    signupOtpStore.set(email, {
+      otp,
+      otpExpires,
+      formData: {
+        name,
+        email,
+        password,
+        department,
+        position,
+        phone: cleanPhone || ''
+      }
+    });
+
+    // TODO: Send actual email with OTP
+    // For now, log OTP to console (in production, use email service)
+    console.log(`[OTP] Employee signup OTP for ${email}: ${otp}`);
+
+    // In development, return OTP in response for testing
+    const isDev = process.env.NODE_ENV !== 'production';
+    
+    return ok(res, { 
+      email,
+      ...(isDev && { otp }) // Only include OTP in dev mode
+    }, 'OTP sent to email. Please verify.', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Verify OTP and create pending employee
+async function verifySignupOtp(req, res, next) {
+  try {
+    const {
+      name,
+      email,
+      password,
+      department,
+      position,
+      phone,
+      otp
+    } = req.body;
+
+    if (!otp || otp.length !== 6) {
+      return fail(res, 400, 'INVALID_OTP', 'Invalid OTP format', [], req);
+    }
+
+    const stored = signupOtpStore.get(email);
+    if (!stored) {
+      return fail(res, 400, 'OTP_EXPIRED', 'OTP expired or not found. Please request a new one.', [], req);
+    }
+
+    if (Date.now() > stored.otpExpires) {
+      signupOtpStore.delete(email);
+      return fail(res, 400, 'OTP_EXPIRED', 'OTP has expired. Please request a new one.', [], req);
+    }
+
+    if (stored.otp !== otp) {
+      return fail(res, 400, 'INVALID_OTP', 'Invalid OTP. Please try again.', [], req);
+    }
+
+    // Verify form data matches
+    if (stored.formData.name !== name || 
+        stored.formData.email !== email || 
+        stored.formData.department !== department ||
+        stored.formData.position !== position) {
+      return fail(res, 400, 'DATA_MISMATCH', 'Form data does not match. Please try again.', [], req);
+    }
+
+    // Hash password
+    const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 10;
+    const passwordHash = await bcrypt.hash(password, bcryptRounds);
+
+    // Generate employeeId
+    const employees = await Employee.find({}, { employeeId: 1 });
+    let maxNum = 0;
+    employees.forEach(emp => {
+      if (emp.employeeId && emp.employeeId.startsWith('EMP')) {
+        const numPart = emp.employeeId.replace('EMP', '');
+        const parsed = parseInt(numPart, 10);
+        if (!isNaN(parsed) && parsed > maxNum) {
+          maxNum = parsed;
+        }
+      }
+    });
+    const nextNum = maxNum + 1;
+    const formattedId = `EMP${String(nextNum).padStart(3, '0')}`;
+
+    // Create employee with PENDING_VERIFICATION status
+    const employee = await Employee.create({
+      employeeId: formattedId,
+      name,
+      email,
+      password: passwordHash,
+      phone: stored.formData.phone,
+      department,
+      position,
+      joiningDate: new Date(),
+      employmentType: 'Permanent',
+      role: 'EMPLOYEE',
+      status: 'PENDING_VERIFICATION',
+      salary: 0,
+      permissions: {
+        productUpload: false,
+        lead: false,
+        export: false,
+        document: false,
+        task: false,
+        dispatch: false,
+        payment: false,
+        quotation: false,
+        job: false
+      }
+    });
+
+    // Initialize MonthlyLeaveBalance
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    await MonthlyLeaveBalance.create({
+      employeeId: employee._id,
+      month: currentMonth,
+      totalLeaves: 4,
+      usedLeaves: 0,
+      remainingLeaves: 4,
+      extraLeavesUsed: 0,
+      totalLeavesUsed: 0,
+      isReset: false
+    });
+
+    // Clean up OTP store
+    signupOtpStore.delete(email);
+
+    const employeeResponse = {
+      _id: employee._id,
+      employeeId: employee.employeeId,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      position: employee.position,
+      status: employee.status
+    };
+
+    return ok(res, { employee: employeeResponse }, 'Registration submitted successfully. Awaiting HR verification.', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 // Get all pending verification employees (for HR/Admin)
 async function getPendingEmployees(req, res, next) {
   try {
@@ -830,6 +1036,8 @@ module.exports = {
   getListManagers,
   signupEmployee,
   signupEmployeeSelfRegistration,
+  sendSignupOtp,
+  verifySignupOtp,
   listEmployees,
   getEmployeesCount,
   getEmployeeStatus,

@@ -34,6 +34,7 @@ const EmployeeLogin = () => {
   
   // Signup modal state
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [signupStep, setSignupStep] = useState('form'); // 'form' | 'otp'
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupFormData, setSignupFormData] = useState({
     name: '',
@@ -44,9 +45,16 @@ const EmployeeLogin = () => {
     phone: ''
   });
   const [signupErrors, setSignupErrors] = useState({});
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [otpSentTo, setOtpSentTo] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [pendingSignupData, setPendingSignupData] = useState(null);
 
   const { employeeLogin } = useAuth();
   const navigate = useNavigate();
+
+  // ... rest of the code
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,6 +109,10 @@ const EmployeeLogin = () => {
     if (name === 'email') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (value && !emailRegex.test(value)) error = 'Invalid email format';
+      // Check domain
+      if (value && !value.endsWith('@indiatradeoverseas.com')) {
+        error = 'Email must be @indiatradeoverseas.com domain';
+      }
     }
     if (name === 'password') {
       if (value && value.length < 8) error = 'Password must be at least 8 characters';
@@ -154,7 +166,118 @@ const EmployeeLogin = () => {
 
     setSignupLoading(true);
     try {
-      const response = await employeeSignupApi.requestSignup(signupFormData);
+      // Step 1: Send OTP to email
+      const response = await employeeSignupApi.sendSignupOtp(signupFormData);
+      if (response.success) {
+        // Store the form data for later use after OTP verification
+        setPendingSignupData(signupFormData);
+        setOtpSentTo(signupFormData.email);
+        setSignupStep('otp');
+        setOtpCode(['', '', '', '', '', '']);
+        setOtpError('');
+        startResendCooldown();
+        toast.success('OTP sent to your email. Please verify.', {
+          icon: '📧',
+          style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C89A54' }
+        });
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to send OTP. Please try again.';
+      toast.error(errorMsg, { 
+        style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444' } 
+      });
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  const startResendCooldown = () => {
+    setResendCooldown(30);
+    const interval = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || !pendingSignupData) return;
+    setSignupLoading(true);
+    try {
+      const response = await employeeSignupApi.sendSignupOtp(pendingSignupData);
+      if (response.success) {
+        setOtpCode(['', '', '', '', '', '']);
+        setOtpError('');
+        startResendCooldown();
+        toast.success('OTP resent successfully');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to resend OTP');
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) value = value[0];
+    const newOtp = [...otpCode];
+    newOtp[index] = value;
+    setOtpCode(newOtp);
+    setOtpError('');
+    
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+    // Auto-submit when all 6 digits filled
+    if (newOtp.every(d => d !== '')) {
+      handleOtpVerify();
+    }
+  };
+
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === 'Backspace' && !e.target.value && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').slice(0, 6);
+    if (/^\d{6}$/.test(pasted)) {
+      const digits = pasted.split('');
+      setOtpCode(digits);
+      setOtpError('');
+      // Trigger verification after a brief moment
+      setTimeout(() => handleOtpVerify(), 100);
+    }
+  };
+
+  const handleOtpVerify = async () => {
+    const code = otpCode.join('');
+    if (code.length !== 6) {
+      setOtpError('Please enter the 6-digit code');
+      return;
+    }
+    if (!pendingSignupData) {
+      setOtpError('Session expired. Please try again.');
+      return;
+    }
+
+    setSignupLoading(true);
+    setOtpError('');
+    try {
+      // Step 2: Verify OTP and create pending employee
+      const response = await employeeSignupApi.verifySignupOtp({
+        ...pendingSignupData,
+        otp: code
+      });
       if (response.success) {
         toast.success('Registration submitted! HR will review and approve your account.', {
           icon: '✅',
@@ -162,6 +285,7 @@ const EmployeeLogin = () => {
           duration: 5000
         });
         setShowSignupModal(false);
+        setSignupStep('form');
         // Reset form
         setSignupFormData({
           name: '',
@@ -172,12 +296,13 @@ const EmployeeLogin = () => {
           phone: ''
         });
         setSignupErrors({});
+        setPendingSignupData(null);
+        setOtpCode(['', '', '', '', '', '']);
+        setOtpSentTo('');
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Registration failed. Please try again.';
-      toast.error(errorMsg, { 
-        style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444' } 
-      });
+      const errorMsg = error.response?.data?.message || 'Invalid or expired OTP';
+      setOtpError(errorMsg);
     } finally {
       setSignupLoading(false);
     }
@@ -185,11 +310,23 @@ const EmployeeLogin = () => {
 
   const openSignupModal = () => {
     setShowSignupModal(true);
+    setSignupStep('form');
+    setPendingSignupData(null);
+    setOtpCode(['', '', '', '', '', '']);
+    setOtpError('');
+    setOtpSentTo('');
+    setResendCooldown(0);
     document.body.style.overflow = 'hidden';
   };
 
   const closeSignupModal = () => {
     setShowSignupModal(false);
+    setSignupStep('form');
+    setPendingSignupData(null);
+    setOtpCode(['', '', '', '', '', '']);
+    setOtpError('');
+    setOtpSentTo('');
+    setResendCooldown(0);
     document.body.style.overflow = 'unset';
   };
 
@@ -340,7 +477,7 @@ const EmployeeLogin = () => {
               Don't have an account?{' '}
               <button 
                 onClick={openSignupModal}
-                className="font-medium text-[var(--crm-accent)] hover:underline inline-flex items-center gap-0.5 group"
+                className="font-medium text-#C89A54 hover:underline inline-flex items-center gap-0.5 group"
               >
                 Sign Up
                 <FiArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
@@ -425,7 +562,7 @@ const EmployeeLogin = () => {
               </div>
 
               {/* Modal Body */}
-              <form onSubmit={handleSignupSubmit} className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
                 <p className="text-xs text-[#6D7886] font-light">
                   Fill in your details to request an employee account. Your request will be reviewed by HR.
                 </p>
@@ -442,7 +579,7 @@ const EmployeeLogin = () => {
                     onBlur={handleSignupBlur}
                     placeholder="Enter your full name"
                     className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
-                      signupErrors.name ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                      signupErrors.name ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
                     }`}
                   />
                   {signupErrors.name && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.name}</span>}
@@ -460,7 +597,7 @@ const EmployeeLogin = () => {
                     onBlur={handleSignupBlur}
                     placeholder="your@company.com"
                     className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
-                      signupErrors.email ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                      signupErrors.email ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
                     }`}
                   />
                   {signupErrors.email && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.email}</span>}
@@ -479,7 +616,7 @@ const EmployeeLogin = () => {
                       onBlur={handleSignupBlur}
                       placeholder="Min 8 chars, upper, lower, number, special"
                       className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm pr-10 ${
-                        signupErrors.password ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                        signupErrors.password ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
                       }`}
                     />
                     <button
@@ -502,7 +639,7 @@ const EmployeeLogin = () => {
                     required
                     value={signupFormData.department}
                     onChange={handleSignupChange}
-                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-[var(--crm-accent)] px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
+                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
                   >
                     {DEPARTMENTS.map(dept => (
                       <option key={dept.value} value={dept.value}>{dept.label}</option>
@@ -518,7 +655,7 @@ const EmployeeLogin = () => {
                     required
                     value={signupFormData.position}
                     onChange={handleSignupChange}
-                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-[var(--crm-accent)] px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
+                    className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
                   >
                     {POSITIONS_BY_DEPT[signupFormData.department]?.map(pos => (
                       <option key={pos} value={pos}>{pos}</option>
@@ -537,26 +674,216 @@ const EmployeeLogin = () => {
                     onBlur={handleSignupBlur}
                     placeholder="10-digit number (e.g. 9876543210)"
                     className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
-                      signupErrors.phone ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-[var(--crm-accent)]'
+                      signupErrors.phone ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
                     }`}
                   />
                   {signupErrors.phone && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.phone}</span>}
                 </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={signupLoading}
-                  className="w-full mt-2 bg-[var(--crm-accent)] hover:bg-[var(--crm-accent)]/90 text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {signupLoading ? 'Submitting...' : 'Submit Registration Request'}
-                  {!signupLoading && <FiArrowRight className="h-3.5 w-3.5" />}
-                </button>
+                {/* STEP 1: Registration Form */}
+              {signupStep === 'form' && (
+                <form onSubmit={handleSignupSubmit} className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  <p className="text-xs text-[#6D7886] font-light">
+                    Fill in your details to request an employee account. Your request will be reviewed by HR.
+                  </p>
 
-                <p className="text-center text-[9px] text-[#6D7886]/70 font-light">
-                  By submitting, you agree to our terms. HR will verify your details and activate your account.
-                </p>
-              </form>
+                  {/* Name */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Full Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      value={signupFormData.name}
+                      onChange={handleSignupChange}
+                      onBlur={handleSignupBlur}
+                      placeholder="Enter your full name"
+                      className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
+                        signupErrors.name ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
+                      }`}
+                    />
+                    {signupErrors.name && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.name}</span>}
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Email Address *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      value={signupFormData.email}
+                      onChange={handleSignupChange}
+                      onBlur={handleSignupBlur}
+                      placeholder="your@indiatradeoverseas.com"
+                      className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
+                        signupErrors.email ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
+                      }`}
+                    />
+                    {signupErrors.email && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.email}</span>}
+                    <p className="text-[8px] text-[#6D7886]/70">Must be @indiatradeoverseas.com domain</p>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        required
+                        value={signupFormData.password}
+                        onChange={handleSignupChange}
+                        onBlur={handleSignupBlur}
+                        placeholder="Min 8 chars, upper, lower, number, special"
+                        className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm pr-10 ${
+                          signupErrors.password ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6D7886] hover:text-[#F2F4F7]"
+                      >
+                        {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {signupErrors.password && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.password}</span>}
+                    <p className="text-[8px] text-[#6D7886]/70">Min 8 characters with uppercase, lowercase, number & special character</p>
+                  </div>
+
+                  {/* Department */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Department *</label>
+                    <select
+                      name="department"
+                      required
+                      value={signupFormData.department}
+                      onChange={handleSignupChange}
+                      className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
+                    >
+                      {DEPARTMENTS.map(dept => (
+                        <option key={dept.value} value={dept.value}>{dept.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Position */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Position / Role *</label>
+                    <select
+                      name="position"
+                      required
+                      value={signupFormData.position}
+                      onChange={handleSignupChange}
+                      className="w-full bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 px-3 py-2 text-white outline-none rounded-sm text-sm cursor-pointer"
+                    >
+                      {POSITIONS_BY_DEPT[signupFormData.department]?.map(pos => (
+                        <option key={pos} value={pos}>{pos}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Phone (Optional) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-[#6D7886] font-bold">Phone Number (Optional)</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={signupFormData.phone}
+                      onChange={handleSignupChange}
+                      onBlur={handleSignupBlur}
+                      placeholder="10-digit number (e.g. 9876543210)"
+                      className={`w-full bg-[#040A12] border px-3 py-2 text-white outline-none rounded-sm text-sm ${
+                        signupErrors.phone ? 'border-[var(--crm-danger)]' : 'border-[#C5CBD3]/20 focus:border-#C89A54'
+                      }`}
+                    />
+                    {signupErrors.phone && <span className="text-[9px] text-[var(--crm-danger)] block">{signupErrors.phone}</span>}
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={signupLoading}
+                    className="w-full mt-2 bg-#C89A54 hover:bg-#9A7639 text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {signupLoading ? 'Sending OTP...' : 'Send OTP to Email'}
+                    {!signupLoading && <FiArrowRight className="h-3.5 w-3.5" />}
+                  </button>
+
+                  <p className="text-center text-[9px] text-[#6D7886]/70 font-light">
+                    By submitting, you agree to our terms. HR will verify your details and activate your account.
+                  </p>
+                </form>
+              )}
+
+              {/* STEP 2: OTP Verification */}
+              {signupStep === 'otp' && (
+                <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  <p className="text-xs text-[#6D7886] font-light text-center">
+                    We've sent a 6-digit code to <span className="text-[#F2F4F7] font-medium">{otpSentTo}</span>
+                  </p>
+
+                  {otpError && (
+                    <div className="p-2 rounded-sm bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)] text-[9px] text-[var(--crm-danger)] text-center">
+                      {otpError}
+                    </div>
+                  )}
+
+                  {/* OTP Input Fields */}
+                  <div className="flex justify-center gap-1.5">
+                    {[0,1,2,3,4,5].map((idx) => (
+                      <input
+                        key={idx}
+                        id={`otp-${idx}`}
+                        type="text"
+                        maxLength={1}
+                        value={otpCode[idx]}
+                        onChange={(e) => handleOtpChange(idx, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                        onPaste={handleOtpPaste}
+                        autoComplete="one-time-code"
+                        className="w-10 h-12 bg-[#040A12] border border-[#C5CBD3]/20 focus:border-#C89A54 text-white text-center text-lg font-mono outline-none rounded-sm"
+                        autoFocus={idx === 0}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Verify Button */}
+                  <button
+                    type="button"
+                    onClick={handleOtpVerify}
+                    disabled={signupLoading}
+                    className="w-full mt-2 bg-#C89A54 hover:bg-#9A7639 text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {signupLoading ? 'Verifying...' : 'Verify & Submit'}
+                    {!signupLoading && <FiArrowRight className="h-3.5 w-3.5" />}
+                  </button>
+
+                  {/* Resend OTP */}
+                  <div className="text-center">
+                    {resendCooldown > 0 ? (
+                      <p className="text-[9px] text-[#6D7886]/70">
+                        Resend code in {resendCooldown}s
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={signupLoading}
+                        className="text-[9px] text-#C89A54 hover:underline font-medium"
+                      >
+                        Resend OTP
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-center text-[9px] text-[#6D7886]/70 font-light">
+                    Didn't receive the code? Check your spam folder.
+                  </p>
+                </div>
+              )}
+            </div>
             </motion.div>
           </motion.div>
         )}

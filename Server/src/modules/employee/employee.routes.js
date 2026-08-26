@@ -7,6 +7,8 @@ const {
   getListManagers,
   signupEmployee,
   signupEmployeeSelfRegistration,
+  sendSignupOtp,
+  verifySignupOtp,
   listEmployees,
   getEmployeesCount,
   getEmployeeStatus,
@@ -31,6 +33,10 @@ router.get('/all', ...adminOnly, getAllEmployees);
 
 // Self-registration endpoint (public - no auth required)
 router.post('/signup/request', signupEmployeeSelfRegistration);
+
+// OTP-based signup flow (public - no auth required)
+router.post('/signup/send-otp', sendSignupOtp);
+router.post('/signup/verify-otp', verifySignupOtp);
 
 // Pending employees management (HR/Admin only)
 router.get('/pending', ...hrOnly, getPendingEmployees);

@@ -42,6 +42,18 @@ export const employeeSignupApi = {
     return response.data;
   },
 
+  // New: Send OTP for signup
+  async sendSignupOtp(employeeData) {
+    const response = await axiosInstance.post('/employee/signup/send-otp', employeeData);
+    return response.data;
+  },
+
+  // New: Verify OTP and create pending employee
+  async verifySignupOtp(employeeData) {
+    const response = await axiosInstance.post('/employee/signup/verify-otp', employeeData);
+    return response.data;
+  },
+
   // New: HR/Admin - Get pending employees
   async getPendingEmployees() {
     const response = await axiosInstance.get('/employee/pending');
