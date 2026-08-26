@@ -495,7 +495,7 @@ const EmployeeLogin = () => {
               Don't have an account?{' '}
               <button 
                 onClick={openSignupModal}
-                className="font-medium text-#C89A54 hover:underline inline-flex items-center gap-0.5 group"
+                className="font-medium text-[#C89A54] hover:underline inline-flex items-center gap-0.5 group"
               >
                 Sign Up
                 <FiArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
