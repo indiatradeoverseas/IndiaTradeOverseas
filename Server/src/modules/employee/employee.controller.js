@@ -496,6 +496,128 @@ async function updateEmployeeStatus(req, res, next) {
   }
 }
 
+async function getAllEmployees(req, res, next) {
+  try {
+    const employees = await Employee.find(
+      { status: { $ne: 'TERMINATED' } },
+      { _id: 1, name: 1, email: 1, employeeId: 1, role: 1, department: 1, position: 1, status: 1, joiningDate: 1, salary: 1 }
+    ).sort({ employeeId: 1 });
+    return ok(res, { employees }, 'Employees retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createEmployee(req, res, next) {
+  try {
+    const { name, email, phone, department, position, role, status, salary, joiningDate, password } = req.body;
+
+    if (!name || !email || !phone || !department || !position) {
+      return fail(res, 400, 'BAD_REQUEST', 'Missing required fields: name, email, phone, department, position', [], req);
+    }
+
+    const existingEmployee = await Employee.findOne({ email });
+    if (existingEmployee) {
+      return fail(res, 409, 'EMPLOYEE_EXISTS', 'Employee email already registered', [], req);
+    }
+
+    const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 10;
+    const passwordHash = await bcrypt.hash(password || 'ItoPass123!', bcryptRounds);
+
+    const employee = await Employee.create({
+      name,
+      email,
+      password: passwordHash,
+      phone,
+      department,
+      position,
+      role: role || 'EMPLOYEE',
+      status: status || 'ACTIVE',
+      salary: salary || 0,
+      joiningDate: joiningDate || new Date(),
+    });
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    await MonthlyLeaveBalance.create({
+      employeeId: employee._id,
+      month: currentMonth,
+      totalLeaves: 4,
+      usedLeaves: 0,
+      remainingLeaves: 4,
+      extraLeavesUsed: 0,
+      totalLeavesUsed: 0,
+      isReset: false
+    });
+
+    const employeeResponse = {
+      _id: employee._id,
+      employeeId: employee.employeeId,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      position: employee.position,
+      status: employee.status,
+      salary: employee.salary,
+      joiningDate: employee.joiningDate
+    };
+
+    return ok(res, { employee: employeeResponse }, 'Employee created successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateEmployee(req, res, next) {
+  try {
+    const { id } = req.params;
+    const updates = { ...req.body };
+
+    if (updates.password) {
+      const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 10;
+      updates.password = await bcrypt.hash(updates.password, bcryptRounds);
+    } else {
+      delete updates.password;
+    }
+
+    const employee = await Employee.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
+    if (!employee) {
+      return fail(res, 404, 'NOT_FOUND', 'Employee not found', [], req);
+    }
+
+    const employeeResponse = {
+      _id: employee._id,
+      employeeId: employee.employeeId,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      position: employee.position,
+      status: employee.status,
+      salary: employee.salary,
+      joiningDate: employee.joiningDate
+    };
+
+    return ok(res, { employee: employeeResponse }, 'Employee updated successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteEmployee(req, res, next) {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findByIdAndDelete(id);
+    if (!employee) {
+      return fail(res, 404, 'NOT_FOUND', 'Employee not found', [], req);
+    }
+    await MonthlyLeaveBalance.deleteMany({ employeeId: id });
+    return ok(res, {}, 'Employee deleted successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -506,5 +628,9 @@ module.exports = {
   listEmployees,
   getEmployeesCount,
   getEmployeeStatus,
-  updateEmployeeStatus
+  updateEmployeeStatus,
+  getAllEmployees,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee
 };

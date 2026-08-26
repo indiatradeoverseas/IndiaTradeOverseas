@@ -9,7 +9,11 @@ const {
   listEmployees,
   getEmployeesCount,
   getEmployeeStatus,
-  updateEmployeeStatus
+  updateEmployeeStatus,
+  getAllEmployees,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee
 } = require('./employee.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
