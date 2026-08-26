@@ -122,8 +122,46 @@ function serializeProfile(user, { includePlaintext = false } = {}) {
 }
 
 async function getProfile(targetId, requester) {
-  const user = await User.findById(targetId);
-  if (!user) return null;
+  let user = await User.findById(targetId);
+  if (!user) {
+    const Employee = require('../employee/employee.model');
+    user = await Employee.findById(targetId);
+    if (!user) return null;
+
+    const obj = user.toObject ? user.toObject() : { ...user };
+    delete obj.password;
+
+    obj.pan = obj.panCardNumber || '';
+    obj.aadhaar = obj.aadhaarNumber || '';
+    obj.bankAccount = obj.bankAccountNumber || '';
+    obj.bankIFSC = obj.ifscCode || '';
+    obj.address = obj.currentAddress || obj.permanentAddress || '';
+    obj.fatherName = obj.fatherHusbandName || '';
+    obj.dateOfBirth = obj.dob || '';
+    obj.dateOfJoining = obj.joiningDate || '';
+
+    const isSelf = requester && requester._id && requester._id.toString() === targetId.toString();
+    const requesterRole = requester ? (requester.role || '') : '';
+    const isManagerOrAdminUser =
+      requesterRole === 'ADMIN' ||
+      requesterRole === 'MANAGER' ||
+      requesterRole.endsWith('_MANAGER') ||
+      requesterRole.toLowerCase().includes('manager') ||
+      (requester && (requester.department === 'ADMIN' || (requester.position && requester.position.toLowerCase().includes('admin'))));
+    const hasAccess = isSelf || isManagerOrAdminUser || requesterRole === 'HR';
+
+    if (!hasAccess) {
+      obj.pan = maskValue(obj.pan);
+      obj.aadhaar = maskValue(obj.aadhaar);
+      obj.bankAccount = maskValue(obj.bankAccount);
+      delete obj.salary;
+      obj.hasSalary = Boolean(obj.salary);
+    } else {
+      obj.hasSalary = true;
+    }
+
+    return obj;
+  }
   const isSelf = requester._id.toString() === targetId.toString();
   return serializeProfile(user, { includePlaintext: isSelf });
 }
@@ -142,8 +180,35 @@ async function updateOwnProfile(userId, data) {
 }
 
 async function updateEmployeeProfile(targetId, data, actor) {
-  const user = await User.findById(targetId);
-  if (!user) return null;
+  let user = await User.findById(targetId);
+  if (!user) {
+    const Employee = require('../employee/employee.model');
+    const employee = await Employee.findById(targetId);
+    if (!employee) return null;
+
+    const fieldMappings = {
+      address: 'currentAddress',
+      bankIFSC: 'ifscCode',
+      fatherName: 'fatherHusbandName',
+      dateOfBirth: 'dob',
+      dateOfJoining: 'joiningDate'
+    };
+
+    for (const field of PROFILE_FIELDS) {
+      if (data[field] !== undefined) {
+        const targetField = fieldMappings[field] || field;
+        employee[targetField] = data[field];
+      }
+    }
+    if (data.phone !== undefined) employee.phone = data.phone;
+    if (data.salary !== undefined) employee.salary = Number(data.salary) || 0;
+    if (data.pan !== undefined) employee.panCardNumber = data.pan;
+    if (data.aadhaar !== undefined) employee.aadhaarNumber = data.aadhaar;
+    if (data.bankAccount !== undefined) employee.bankAccountNumber = data.bankAccount;
+
+    await employee.save();
+    return getProfile(targetId, actor);
+  }
 
   for (const field of PROFILE_FIELDS) {
     if (data[field] !== undefined) user[field] = data[field];
@@ -178,8 +243,22 @@ async function revealProfileField(targetId, field, actor) {
   if (!SENSITIVE_FIELDS.includes(field)) {
     throw new Error('INVALID_FIELD');
   }
-  const user = await User.findById(targetId);
-  if (!user) return null;
+  let user = await User.findById(targetId);
+  if (!user) {
+    const Employee = require('../employee/employee.model');
+    const employee = await Employee.findById(targetId);
+    if (!employee) return null;
+
+    const fieldMappings = {
+      salary: 'salary',
+      pan: 'panCardNumber',
+      aadhaar: 'aadhaarNumber',
+      bankAccount: 'bankAccountNumber'
+    };
+    const targetField = fieldMappings[field];
+    const value = employee[targetField] || '';
+    return { field, value };
+  }
 
   const encryptedKey = `${field}Encrypted`;
   const value = user[encryptedKey] ? decryptText(user[encryptedKey]) : '';

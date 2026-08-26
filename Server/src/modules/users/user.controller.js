@@ -188,8 +188,8 @@ async function deleteUser(req, res, next) {
 
 async function getMyProfile(req, res, next) {
   try {
-    const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
-    const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
+    const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
     if (isEmployee || isAdmin) {
       return ok(res, { profile: req.user }, 'Profile retrieved', 200, req);
     }
@@ -204,8 +204,8 @@ async function getMyProfile(req, res, next) {
 
 async function updateMyProfile(req, res, next) {
   try {
-    const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
-    const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
+    const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
     if (isEmployee) {
       const Employee = require('../employee/employee.model');
       const updated = await Employee.findByIdAndUpdate(req.user._id, req.body, { new: true });
@@ -462,8 +462,8 @@ async function uploadMyProfileImage(req, res, next) {
 
     const fileUrl = `uploads/profile-images/${req.file.filename}`;
 
-    const isEmployee = req.user && (req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
-    const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
+    const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
+    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
 
     let updated;
     if (isEmployee) {
