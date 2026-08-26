@@ -6,7 +6,6 @@ const { generateAccessToken } = require('../auth/token.service');
 const { ok, fail } = require('../../utils/response');
 const { sendEmail } = require('../../utils/mailer');
 const { generateOtp, getOtpHtml } = require('../../utils/otp');
-const otpModel = require('../auth/Model.otp');
 
 async function register(req, res, next) {
   try {
@@ -520,19 +519,17 @@ async function sendSignupOtp(req, res, next) {
 
     // Generate 6-digit OTP using existing utility
     const otp = generateOtp();
-    const otpHash = await bcrypt.hash(otp, 10);
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    // Store OTP in existing otpModel collection (same as auth module)
-    await otpModel.deleteMany({ email });
-    await otpModel.create({
-      email,
-      otpHash,
-      // Store form data in metadata for later use
-      user: null, // No user yet, will be created after verification
-    });
-
-    // Also store form data in a temporary collection or use global for dev
+    // Store OTP and form data in memory (following distributor pattern - no separate OTP collection)
+    global.signupOtpStore = global.signupOtpStore || new Map();
     global.signupFormStore = global.signupFormStore || new Map();
+    
+    global.signupOtpStore.set(email, {
+      otp,
+      otpExpires
+    });
+    
     global.signupFormStore.set(email, {
       name,
       email,
@@ -579,15 +576,23 @@ async function verifySignupOtp(req, res, next) {
       return fail(res, 400, 'INVALID_OTP', 'Invalid OTP format', [], req);
     }
 
-    // Find OTP record in otpModel
-    const otpRecord = await otpModel.findOne({ email }).sort({ createdAt: -1 });
-    if (!otpRecord) {
+    // Find OTP in memory store (following distributor pattern)
+    global.signupOtpStore = global.signupOtpStore || new Map();
+    const storedOtpData = global.signupOtpStore.get(email);
+    
+    if (!storedOtpData) {
       return fail(res, 400, 'OTP_EXPIRED', 'OTP expired or not found. Please request a new one.', [], req);
     }
 
-    // Verify OTP
-    const matched = await bcrypt.compare(otp, otpRecord.otpHash);
-    if (!matched) {
+    // Check OTP expiry
+    if (Date.now() > storedOtpData.otpExpires) {
+      global.signupOtpStore.delete(email);
+      global.signupFormStore.delete(email);
+      return fail(res, 400, 'OTP_EXPIRED', 'OTP has expired. Please request a new one.', [], req);
+    }
+
+    // Verify OTP (plain text comparison since we're not hashing in memory store)
+    if (storedOtpData.otp !== otp) {
       return fail(res, 400, 'INVALID_OTP', 'Invalid OTP. Please try again.', [], req);
     }
 
@@ -670,7 +675,7 @@ async function verifySignupOtp(req, res, next) {
     const token = generateAccessToken(employee);
 
     // Clean up
-    await otpModel.deleteMany({ email });
+    global.signupOtpStore.delete(email);
     global.signupFormStore.delete(email);
 
     const employeeResponse = {
