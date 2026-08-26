@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const adminSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.Mixed },
     fullName: {
       type: String,
       required: true
@@ -45,6 +46,10 @@ const adminSchema = new mongoose.Schema(
     failedLoginCount: {
       type: Number,
       default: 0
+    },
+    lockUntil: {
+      type: Date,
+      default: null
     },
     isEmailVerified: {
       type: Boolean,

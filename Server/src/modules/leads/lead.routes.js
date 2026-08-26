@@ -5,7 +5,7 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage} = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage, assignLead, assignLeadsBulk, bulkImportLeads } = require('./lead.controller');
 const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
@@ -69,6 +69,8 @@ router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadP
 // Reminders & Creation Routes
 router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
 router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
+router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
+router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
 
 // Voice Notes & Integration logs
 router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
@@ -78,8 +80,25 @@ router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermissi
 router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
 router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
 
+router.get('/count', checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
+  try {
+    const Lead = require('./lead.model');
+    const { status } = req.query;
+    let filter = {};
+    if (status === 'won') {
+      filter.stage = { $in: ['CLOSED_WON', 'DEAL_WON'] };
+    } else if (status === 'pending') {
+      filter.stage = { $nin: ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'] };
+    }
+    const count = await Lead.countDocuments(filter);
+    return require('../../utils/response').ok(res, { count }, 'Leads count retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
-router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage); 
+router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);  
 
 module.exports = router;

@@ -73,10 +73,44 @@ async function getLeaderboard(req, res, next) {
   }
 }
 
+async function getStrategicInsights(req, res, next) {
+  try {
+    const result = await salesService.getStrategicInsights();
+    return ok(res, result, 'Strategic insights retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getCoachingMessages(req, res, next) {
+  try {
+    const messages = await salesService.getCoachingMessages();
+    return ok(res, { messages }, 'Coaching messages retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function sendCoachingMessage(req, res, next) {
+  try {
+    const { content } = req.body;
+    if (!content) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Message content is required');
+    }
+    const message = await salesService.sendCoachingMessage(req.user, content);
+    return ok(res, { message }, 'Coaching message sent successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getMyPerformance,
   getMyTarget,
   setTarget,
   listTargets,
-  getLeaderboard
+  getLeaderboard,
+  getStrategicInsights,
+  getCoachingMessages,
+  sendCoachingMessage
 };

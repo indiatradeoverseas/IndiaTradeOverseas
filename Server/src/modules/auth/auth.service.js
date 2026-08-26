@@ -25,14 +25,22 @@ async function login({ email, password, ipAddress = '', deviceHash = '' }) {
 
   
   if (!user.isActive) {
-    await raiseAlert({
-      actorId: user._id,
-      alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
-      severity: 'HIGH',
-      message: `Locked user ${user.fullName} (${user.employeeId}) attempted to log in.`,
-      metadata: { ipAddress, deviceHash }
-    });
-    throw new Error('ACCOUNT_LOCKED');
+    // Check if lock has expired (15 minutes)
+    if (user.lockUntil && user.lockUntil < new Date()) {
+      user.isActive = true;
+      user.failedLoginCount = 0;
+      user.lockUntil = null;
+      await user.save();
+    } else {
+      await raiseAlert({
+        actorId: user._id,
+        alertType: 'ACCOUNT_LOCKED_ACCESS_ATTEMPT',
+        severity: 'HIGH',
+        message: `Locked user ${user.fullName} (${user.employeeId}) attempted to log in.`,
+        metadata: { ipAddress, deviceHash }
+      });
+      throw new Error('ACCOUNT_LOCKED');
+    }
   }
 
   if (!user.passwordHash) {
@@ -46,6 +54,7 @@ async function login({ email, password, ipAddress = '', deviceHash = '' }) {
 
     if (user.failedLoginCount >= securityConfig.accountLockThreshold) {
       user.isActive = false; 
+      user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
       await user.save();
 
       await raiseAlert({
@@ -89,7 +98,12 @@ async function login({ email, password, ipAddress = '', deviceHash = '' }) {
   
   user.failedLoginCount = 0;
   user.lastLoginAt = new Date();
-  await user.save();
+  user.lastActiveAt = new Date();
+  user.isOnline = true;
+  await User.updateOne(
+    { _id: user._id },
+    { $set: { failedLoginCount: 0, lastLoginAt: user.lastLoginAt, lastActiveAt: user.lastActiveAt, isOnline: true } }
+  );
 
   await recordAudit({
     actorId: user._id,

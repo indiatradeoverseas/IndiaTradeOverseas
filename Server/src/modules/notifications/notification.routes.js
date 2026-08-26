@@ -5,7 +5,8 @@ const {
   markNotificationRead, 
   markAllNotificationsRead,
   getDashboardSummary, 
-  getDashboardHistory 
+  getDashboardHistory,
+  getDashboardMetrics
 } = require('./notification.controller');
 
 router.use(authenticate);
@@ -14,5 +15,6 @@ router.patch('/notifications/read-all', markAllNotificationsRead);
 router.patch('/notifications/:notificationId/read', markNotificationRead);
 router.get('/summary', getDashboardSummary);
 router.get('/history', getDashboardHistory);
+router.get('/metrics', getDashboardMetrics);
 
 module.exports = router;

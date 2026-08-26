@@ -3,7 +3,9 @@ const MonthlyLeaveBalance = require('./monthlyLeaveBalance.model');
 const LeaveAuditLog = require('./leaveAuditLog.model');
 const HRSetting = require('./hrSetting.model');
 const Employee = require('../employee/employee.model');
+const { sendEmail } = require('../../utils/mailer');
 const { ok, fail } = require('../../utils/response');
+const mongoose = require('mongoose');
 
 // Helper to count days between dates (inclusive)
 function getDaysCount(fromDate, toDate) {
@@ -32,6 +34,81 @@ async function getSettingsDoc() {
   return settings;
 }
 
+// Helper to find all DB IDs (User and Employee) associated with a given ID's email
+async function getAllIdsForId(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) return [id];
+  
+  const User = require('../users/user.model');
+  const user = await User.findById(id);
+  let email = user ? user.email : null;
+  
+  if (!email) {
+    const emp = await Employee.findById(id);
+    email = emp ? emp.email : null;
+  }
+  
+  if (!email) return [id];
+  
+  const users = await User.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
+  const emps = await Employee.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
+  
+  const ids = [
+    ...users.map(u => u._id.toString()),
+    ...emps.map(e => e._id.toString())
+  ];
+  
+  return [...new Set(ids)];
+}
+
+// Helper to find or create balance by email/IDs
+async function getBalanceForUser(employeeOrUser, month) {
+  const email = employeeOrUser.email;
+  if (!email) {
+    let balance = await MonthlyLeaveBalance.findOne({ employeeId: employeeOrUser._id, month });
+    if (!balance) {
+      const modelName = employeeOrUser.constructor.modelName || (employeeOrUser.passwordHash ? 'User' : 'Employee');
+      balance = await MonthlyLeaveBalance.create({
+        employeeId: employeeOrUser._id,
+        employeeModel: modelName,
+        month,
+        totalLeaves: 4,
+        usedLeaves: 0,
+        remainingLeaves: 4,
+        extraLeavesUsed: 0,
+        totalLeavesUsed: 0
+      });
+    }
+    return balance;
+  }
+
+  const User = require('../users/user.model');
+  const users = await User.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
+  const emps = await Employee.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
+  
+  const allIds = [
+    ...users.map(u => u._id),
+    ...emps.map(e => e._id)
+  ];
+
+  let balance = await MonthlyLeaveBalance.findOne({ employeeId: { $in: allIds }, month });
+  if (!balance) {
+    const preferredEmployee = emps[0] || users[0];
+    const preferredModel = emps[0] ? 'Employee' : 'User';
+    
+    balance = await MonthlyLeaveBalance.create({
+      employeeId: preferredEmployee._id,
+      employeeModel: preferredModel,
+      month,
+      totalLeaves: 4,
+      usedLeaves: 0,
+      remainingLeaves: 4,
+      extraLeavesUsed: 0,
+      totalLeavesUsed: 0
+    });
+  }
+  return balance;
+}
+
 // 1. Fetch HR settings
 async function getSettings(req, res, next) {
   try {
@@ -45,7 +122,7 @@ async function getSettings(req, res, next) {
 // 2. Update HR settings
 async function updateSettings(req, res, next) {
   try {
-    if (!['ADMIN', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'HR_MANAGER'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin required', [], req);
     }
     const { maxExtraLeavesPerYear, extraLeaveApprovalRequired, autoApproveExtraLeaves, notifyHROnExtraRequest, extraLeaveReasonRequired } = req.body;
@@ -92,28 +169,29 @@ async function createLeave(req, res, next) {
 
     // Determine target employee: HR/Admin can apply on behalf of someone, otherwise it's req.user
     let targetEmployeeId = req.user._id;
+    let targetModel = req.user.constructor.modelName || (req.user.passwordHash ? 'User' : 'Employee');
+
     if (req.body.employeeId && ['ADMIN', 'HR', 'MANAGER'].includes(req.user.role)) {
       targetEmployeeId = req.body.employeeId;
+      // Determine model by database lookup
+      const existsInEmployee = await Employee.findById(targetEmployeeId);
+      targetModel = existsInEmployee ? 'Employee' : 'User';
     }
 
-    const employee = await Employee.findById(targetEmployeeId);
+    let employee;
+    if (targetModel === 'Employee') {
+      employee = await Employee.findById(targetEmployeeId);
+    } else {
+      const User = require('../users/user.model');
+      employee = await User.findById(targetEmployeeId);
+    }
+
     if (!employee) {
-      return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee not found', [], req);
+      return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee/User not found', [], req);
     }
 
     // Load or create MonthlyLeaveBalance for this employee & month
-    let balance = await MonthlyLeaveBalance.findOne({ employeeId: targetEmployeeId, month });
-    if (!balance) {
-      balance = await MonthlyLeaveBalance.create({
-        employeeId: targetEmployeeId,
-        month,
-        totalLeaves: 4,
-        usedLeaves: 0,
-        remainingLeaves: 4,
-        extraLeavesUsed: 0,
-        totalLeavesUsed: 0
-      });
-    }
+    const balance = await getBalanceForUser(employee, month);
 
     const settings = await getSettingsDoc();
 
@@ -146,6 +224,7 @@ async function createLeave(req, res, next) {
     // Create LeaveRequest
     const leaveRequest = await LeaveRequest.create({
       employeeId: targetEmployeeId,
+      employeeModel: targetModel,
       fromDate: start,
       toDate: end,
       numberOfDays,
@@ -193,18 +272,49 @@ async function createLeave(req, res, next) {
   }
 }
 
+// Helper to find all employee and user IDs within a department
+async function getDeptEmployeeIds(department) {
+  const Employee = require('../employee/employee.model');
+  const User = require('../users/user.model');
+  
+  const employees = await Employee.find({ department }, '_id');
+  const users = await User.find({ department }, '_id');
+  
+  return [...employees.map(e => e._id), ...users.map(u => u._id)];
+}
+
 // 4. List Leave Requests
 async function listLeaves(req, res, next) {
   try {
     const filter = {};
     
-    // Role based filtering: Employees only see their own requests
-    // Admins/HR/Managers can see all or filter by employeeId
-    const isHRorAdmin = ['ADMIN', 'HR', 'MANAGER'].includes(req.user.role);
+    // Role based filtering: 
+    // HR/Admin see all requests.
+    // Managers see their own leaves OR leaves of employees in their department.
+    // Executives / Employees see only their own.
+    const isHRorAdmin = ['ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
     if (!isHRorAdmin) {
-      filter.employeeId = req.user._id;
+      if (req.user.role === 'MANAGER') {
+        const deptIds = await getDeptEmployeeIds(req.user.department);
+        const managerIds = await getAllIdsForId(req.user._id);
+        const allDeptIds = [];
+        for (const dId of deptIds) {
+          const ids = await getAllIdsForId(dId);
+          allDeptIds.push(...ids);
+        }
+        const uniqueDeptIds = [...new Set(allDeptIds)];
+
+        filter.$or = [
+          { employeeId: { $in: managerIds } },
+          { employeeId: { $in: uniqueDeptIds } }
+        ];
+      } else {
+        const myIds = await getAllIdsForId(req.user._id);
+        filter.employeeId = { $in: myIds };
+      }
     } else if (req.query.employeeId) {
-      filter.employeeId = req.query.employeeId;
+      const allIds = await getAllIdsForId(req.query.employeeId);
+      filter.employeeId = { $in: allIds };
     }
 
     if (req.query.status) {
@@ -218,7 +328,7 @@ async function listLeaves(req, res, next) {
     }
 
     const leaves = await LeaveRequest.find(filter)
-      .populate('employeeId', 'name email department role phone')
+      .populate('employeeId', 'name fullName email department role phone')
       .populate('approvedBy', 'fullName email')
       .populate('extraApprovedBy', 'fullName email')
       .sort({ createdAt: -1 });
@@ -232,7 +342,7 @@ async function listLeaves(req, res, next) {
 // 5. Review Leave Request (Approve/Reject)
 async function reviewLeave(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin/Manager required to review leaves', [], req);
     }
 
@@ -248,6 +358,33 @@ async function reviewLeave(req, res, next) {
 
     if (['APPROVED', 'REJECTED', 'HR_APPROVED_EXTRA'].includes(leave.status)) {
       return fail(res, 400, 'ALREADY_REVIEWED', 'This leave request has already been processed', [], req);
+    }
+
+    let employee;
+    if (leave.employeeModel === 'Employee') {
+      employee = await Employee.findById(leave.employeeId);
+    } else {
+      const User = require('../users/user.model');
+      employee = await User.findById(leave.employeeId);
+    }
+
+    if (!employee) {
+      return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee/User for this leave request not found');
+    }
+
+    // Role-based Approval Checks:
+    // - Managers can only be reviewed by HR/Admin
+    // - Executives can be reviewed by their department manager OR HR/Admin
+    if (employee.role === 'MANAGER') {
+      if (!['HR', 'ADMIN', 'HR_MANAGER'].includes(req.user.role)) {
+        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only HR Managers or Admins can review Manager leave requests', [], req);
+      }
+    } else {
+      const isHRorAdmin = ['HR', 'ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
+      const isMyDeptManager = req.user.role === 'MANAGER' && req.user.department === employee.department;
+      if (!isHRorAdmin && !isMyDeptManager) {
+        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only your department manager or HR/Admin can review this leave request', [], req);
+      }
     }
 
     const balance = await MonthlyLeaveBalance.findOne({ employeeId: leave.employeeId, month: leave.month });
@@ -273,7 +410,7 @@ async function reviewLeave(req, res, next) {
         extraLeavesAdded: 0,
         reason: leave.reason,
         performedBy: req.user.fullName || req.user.name || 'HR Manager',
-        remarks: hrRemarks || 'Rejected by HR'
+        remarks: hrRemarks || 'Rejected by reviewer'
       });
 
       return ok(res, { leave, balance }, 'Leave request rejected successfully', 200, req);
@@ -333,6 +470,61 @@ async function reviewLeave(req, res, next) {
       });
     }
 
+    // Email notification trigger for approved leaves (both regular and extra)
+    if (employee.email) {
+      try {
+        const userEmail = employee.email;
+        const approverName = req.user.fullName || req.user.name || 'HR Manager';
+        const subject = 'Your Leave Request Accepted // India Trade Overseas';
+        const text = `Dear ${employee.fullName || employee.name},\n\nYour leave request from ${new Date(leave.fromDate).toLocaleDateString()} to ${new Date(leave.toDate).toLocaleDateString()} has been approved by ${approverName}.\n\nRemarks: ${hrRemarks || 'None'}\n\nBest Regards,\nHR Team`;
+        const html = `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 550px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 25px;">
+              <span style="font-size: 10px; font-weight: bold; letter-spacing: 0.15em; color: #64748b; text-transform: uppercase;">India Trade Overseas // Operations</span>
+              <h2 style="margin: 5px 0 0 0; color: #0d9488; font-size: 20px; font-weight: 600;">Leave Request Approved</h2>
+            </div>
+            
+            <p style="font-size: 14px; color: #334155; margin-bottom: 20px;">
+              Dear <strong>${employee.fullName || employee.name}</strong>,
+            </p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.5; margin-bottom: 20px;">
+              Your leave request starting from <strong>${new Date(leave.fromDate).toLocaleDateString('en-IN')}</strong> to <strong>${new Date(leave.toDate).toLocaleDateString('en-IN')}</strong> has been reviewed and <strong style="color: #0d9488;">APPROVED</strong>.
+            </p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 25px; font-size: 13px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 35%;">Leave Type:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold; text-align: right; text-transform: uppercase;">${leave.leaveType}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Duration:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold; text-align: right;">${leave.numberOfDays} Day(s)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Approved By:</td>
+                  <td style="padding: 6px 0; color: #0d9488; font-weight: bold; text-align: right;">${approverName}</td>
+                </tr>
+                ${hrRemarks ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-weight: 500; vertical-align: top;">Remarks:</td>
+                  <td style="padding: 6px 0; color: #334155; text-align: right; font-style: italic;">"${hrRemarks}"</td>
+                </tr>
+                ` : ''}
+              </table>
+            </div>
+            
+            <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+              Please ensure all pending finalizations are completed before your departure.
+            </p>
+          </div>
+        `;
+        await sendEmail(userEmail, subject, text, html);
+      } catch (mailErr) {
+        console.error('Failed to notify manager via email:', mailErr);
+      }
+    }
+
     return ok(res, { leave, balance }, 'Leave request approved successfully', 200, req);
   } catch (error) {
     next(error);
@@ -342,7 +534,7 @@ async function reviewLeave(req, res, next) {
 // 6. Manual Reset of Monthly Balances
 async function resetMonthlyBalances(req, res, next) {
   try {
-    if (!['ADMIN', 'HR'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'HR_MANAGER'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin privilege required', [], req);
     }
 
@@ -404,7 +596,7 @@ async function resetMonthlyBalances(req, res, next) {
 // 7. Get All Employee Balances (for HR Dashboard display)
 async function getAllBalances(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
     }
 
@@ -420,7 +612,7 @@ async function getAllBalances(req, res, next) {
 // 8. Get Leave Audit Logs
 async function getAuditLogs(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
     }
 
@@ -439,18 +631,7 @@ async function getAuditLogs(req, res, next) {
 async function getMyBalance(req, res, next) {
   try {
     const month = new Date().toISOString().slice(0, 7);
-    let balance = await MonthlyLeaveBalance.findOne({ employeeId: req.user._id, month });
-    if (!balance) {
-      balance = await MonthlyLeaveBalance.create({
-        employeeId: req.user._id,
-        month,
-        totalLeaves: 4,
-        usedLeaves: 0,
-        remainingLeaves: 4,
-        extraLeavesUsed: 0,
-        totalLeavesUsed: 0
-      });
-    }
+    const balance = await getBalanceForUser(req.user, month);
     return ok(
       res,
       {

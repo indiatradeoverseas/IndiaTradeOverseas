@@ -3,7 +3,13 @@ const bcrypt = require('bcryptjs');
 const { encryptText, decryptText } = require('../../utils/crypto');
 
 const SENSITIVE_FIELDS = ['salary', 'pan', 'aadhaar', 'bankAccount'];
-const SELF_EDITABLE_FIELDS = ['address', 'emergencyContactName', 'emergencyContactPhone', 'phone'];
+const SELF_EDITABLE_FIELDS = [
+  'address', 'addressCont', 'city', 'postalCode',
+  'emergencyContactName', 'emergencyContactPhone', 'phone',
+  'levelOfEducation', 'degree', 'hardSkill', 'softSkill',
+  'taxNumber', 'fatherName', 'dateOfBirth', 'dateOfJoining',
+  'bankName', 'bankIFSC'
+];
 const PROFILE_FIELDS = [
   'fatherName', 'dateOfBirth', 'address', 'emergencyContactName', 'emergencyContactPhone',
   'dateOfJoining', 'bankIFSC', 'bankName'

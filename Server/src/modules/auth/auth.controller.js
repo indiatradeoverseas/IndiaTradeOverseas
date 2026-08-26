@@ -13,12 +13,27 @@ const { verifyGoogleIdToken } = require('../../utils/googleAuth');
 
 const COMPANY_EMAIL_DOMAIN = 'indiatradeoverseas.com';
 
-function sanitizeUser(user) {
+async function sanitizeUser(user) {
   const plain = user.toObject ? user.toObject() : user;
   delete plain.passwordHash;
   delete plain.otp;
   delete plain.otpExpires;
   delete plain.failedLoginCount;
+  
+  if (plain.employeeId) {
+    try {
+      const Employee = require('../employee/employee.model');
+      const employee = await Employee.findOne({ employeeId: plain.employeeId });
+      if (employee) {
+        plain.role = employee.role;
+        plain.position = employee.position;
+        plain.department = employee.department;
+        plain.permissions = employee.permissions;
+      }
+    } catch (err) {
+      console.error('Error merging employee details in sanitizeUser:', err);
+    }
+  }
   return plain;
 }
 
@@ -115,7 +130,7 @@ async function register(req, res, next) {
     });
 
     return ok(res, {
-      user: sanitizeUser(user),
+      user: await sanitizeUser(user),
       token: accessToken,
       refreshToken,
       isEmailVerified: false
@@ -182,7 +197,7 @@ async function login(req, res, next) {
 
 
     return ok(res, {
-      user: sanitizeUser(user),
+      user: await sanitizeUser(user),
       token: accessToken,
       refreshToken,
       requiresDeviceApproval: false
@@ -227,10 +242,10 @@ async function googleLogin(req, res, next) {
         return fail(res, 403, 'ACCOUNT_LOCKED', 'Your account has been locked due to consecutive login failures.');
       }
 
-      if (!user.isEmailVerified) user.isEmailVerified = true;
-      user.failedLoginCount = 0;
-      user.lastLoginAt = new Date();
-      await user.save();
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { isEmailVerified: user.isEmailVerified, failedLoginCount: 0, lastLoginAt: user.lastLoginAt, lastActiveAt: user.lastActiveAt, isOnline: true } }
+      );
     } else {
       if (portal === 'employee') {
         if (!email.endsWith('@' + COMPANY_EMAIL_DOMAIN)) {
@@ -250,6 +265,9 @@ async function googleLogin(req, res, next) {
           department: 'SALES'
         });
         user.isEmailVerified = true;
+        user.lastLoginAt = new Date();
+        user.lastActiveAt = new Date();
+        user.isOnline = true;
         await user.save();
       } else {
         const userService = require('../users/user.service');
@@ -283,6 +301,9 @@ async function googleLogin(req, res, next) {
         }
 
         user.isEmailVerified = true;
+        user.lastLoginAt = new Date();
+        user.lastActiveAt = new Date();
+        user.isOnline = true;
         await user.save();
       }
     }
@@ -319,7 +340,7 @@ async function googleLogin(req, res, next) {
     });
 
     return ok(res, {
-      user: sanitizeUser(user),
+      user: await sanitizeUser(user),
       token: accessToken,
       refreshToken,
       requiresDeviceApproval: false
@@ -400,9 +421,10 @@ async function verifyOtp(req, res, next) {
     }
 
 
-    user.otp = null;
-    user.otpExpires = null;
-    await user.save();
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { otp: null, otpExpires: null, lastLoginAt: user.lastLoginAt, lastActiveAt: user.lastActiveAt, isOnline: true } }
+    );
 
 
     const accessToken = tokenService.generateAccessToken(user);
@@ -428,7 +450,7 @@ async function verifyOtp(req, res, next) {
     );
 
     return ok(res, {
-      user: sanitizeUser(user),
+      user: await sanitizeUser(user),
       token: accessToken,
       refreshToken,
       requiresDeviceApproval: false
@@ -467,8 +489,10 @@ async function verifyEmail(req, res, next) {
       return fail(res, 404, 'USER_NOT_FOUND', 'User not found');
     }
 
-    user.isEmailVerified = true;
-    await user.save();
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { isEmailVerified: true, lastLoginAt: user.lastLoginAt, lastActiveAt: user.lastActiveAt, isOnline: true } }
+    );
 
 
     await otpModel.deleteOne({ _id: otpRecord._id });
@@ -507,7 +531,7 @@ async function verifyEmail(req, res, next) {
     });
 
     return ok(res, {
-      user: sanitizeUser(user),
+      user: await sanitizeUser(user),
       token: accessToken,
       refreshToken
     }, 'Email verified successfully', 200, req);
@@ -606,6 +630,7 @@ async function logout(req, res, next) {
         const env = require('../../config/env');
         const decoded = jwt.verify(token, env.JWT_SECRET);
         await sessionModel.findOneAndUpdate({ _id: decoded.sid }, { revoked: true });
+        await User.findByIdAndUpdate(decoded.sub, { isOnline: false });
       } catch (e) {
         await tokenService.revokeRefreshToken(token);
       }
@@ -624,6 +649,8 @@ async function logoutAll(req, res, next) {
     const RefreshToken = require('./refreshToken.model');
     await RefreshToken.updateMany({ userId: req.user._id }, { isRevoked: true });
 
+    await User.findByIdAndUpdate(req.user._id, { isOnline: false });
+
     return ok(res, {}, 'Logged out from all sessions successfully', 200, req);
   } catch (error) {
     next(error);
@@ -632,7 +659,7 @@ async function logoutAll(req, res, next) {
 
 async function me(req, res, next) {
   try {
-    return ok(res, { user: sanitizeUser(req.user) }, 'Current user retrieved', 200, req);
+    return ok(res, { user: await sanitizeUser(req.user) }, 'Current user retrieved', 200, req);
   } catch (error) {
     next(error);
   }

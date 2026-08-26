@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const employeeSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.Mixed },
     employeeId: {
       type: String,
       unique: true,
@@ -43,6 +44,16 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    addressCont: { type: String, default: '' },
+    city: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
+    levelOfEducation: { type: String, default: 'Higher Education' },
+    degree: { type: String, default: 'Electrical Engineering' },
+    hardSkill: { type: String, default: 'Technical Support' },
+    softSkill: { type: String, default: 'Communication' },
+    taxNumber: { type: String, default: '' },
+    nationality: { type: String, default: 'India' },
+    age: { type: Number, default: 28 },
     permanentAddress: {
       type: String,
       trim: true

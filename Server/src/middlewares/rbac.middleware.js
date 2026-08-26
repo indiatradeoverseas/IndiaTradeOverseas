@@ -11,7 +11,12 @@ function rbac(...allowedRoles) {
       req.user.department === 'ADMIN' ||
       (req.user.position && req.user.position.toLowerCase().includes('admin'));
 
-    if (isAdminUser || allowedRoles.includes('*') || allowedRoles.includes(req.user.role)) {
+    const userRole = req.user.role || '';
+    const isMatched = allowedRoles.includes('*') || 
+                      allowedRoles.includes(userRole) ||
+                      (allowedRoles.includes('MANAGER') && (userRole === 'MANAGER' || userRole.endsWith('_MANAGER') || userRole.toLowerCase().includes('manager')));
+
+    if (isAdminUser || isMatched) {
       return next();
     }
 

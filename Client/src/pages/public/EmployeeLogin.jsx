@@ -32,7 +32,14 @@ const EmployeeLogin = () => {
             style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' }
           });
           pushDataLayerEvent('login', { method: 'employee' });
-          navigate('/crm/dashboard');
+          const role = response.data?.employee?.role;
+          if (role === 'HR_MANAGER') {
+            navigate('/crm/hr/manager');
+          } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
+            navigate('/crm/hr/executive');
+          } else {
+            navigate('/crm/dashboard');
+          }
         }
       }
     } catch (error) {
@@ -143,6 +150,15 @@ const EmployeeLogin = () => {
                 >
                   {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
                 </button>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Link
+                  to="/forgot-password"
+                  className="text-[11px] text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-light transition-colors"
+                >
+                  Forgot Password?
+                </Link>
               </div>
             </motion.div>
 

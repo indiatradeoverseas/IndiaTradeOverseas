@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const leaveAuditLogSchema = new mongoose.Schema(
   {
     employeeId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Employee',
       required: true,
       index: true

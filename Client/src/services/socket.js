@@ -12,10 +12,15 @@ export const socketService = {
     const role = user.role;
     const name = user.fullName || user.name;
 
-    // Hardcoded to the deployed Server, matching axiosInstance.js's convention -
-    // there's no local Server running by default, so a hostname-based switch
-    // would just break the WebSocket for anyone without one.
-    socket = io('https://indiatradeoverseas-ito.onrender.com', {
+    const SOCKET_URL =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.'))
+        ? 'http://localhost:5000'
+        : 'https://indiatradeoverseas-1.onrender.com';
+
+    socket = io(SOCKET_URL, {
       query: { employeeId, role, name },
       autoConnect: true,
       transports: ['websocket', 'polling']

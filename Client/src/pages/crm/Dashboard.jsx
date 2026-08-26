@@ -11,6 +11,10 @@ import { SkeletonStatGrid, SkeletonChartCard, SkeletonListCard } from '../../com
 import EmptyState from '../../components/ui/EmptyState';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import EmployeeDashboard from './EmployeeDashboard';
+import SalesExecutiveDashboard from './SalesExecutiveDashboard';
+import SalesManagerDashboard from './SalesManagerDashboard';
+import HrManagerDashboard from './HrManagerDashboard';
+import HrExecutiveDashboard from './HrExecutiveDashboard';
 
 // Staggered layout entry configurations
 const containerVariants = {
@@ -38,6 +42,7 @@ const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-headi
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [adminViewMode, setAdminViewMode] = useState('COMPANY'); // 'COMPANY', 'MANAGER', 'EXECUTIVE'
   const [summary, setSummary] = useState(null);
   const [pipeline, setPipeline] = useState([]);
   const [performance, setPerformance] = useState([]);
@@ -192,8 +197,61 @@ export default function Dashboard() {
     );
   }
 
+  const isSalesManager = user?.role === 'MANAGER' || user?.role === 'SALES_MANAGER' || (user?.department === 'SALES' && user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
+  const isSalesExecutive = !isSalesManager && (user?.role === 'SALES' || user?.role === 'SALES_EXECUTIVE' || (user?.department === 'SALES' && !isAdmin));
+
+  if (isSalesManager) {
+    return <SalesManagerDashboard />;
+  }
+
+  if (isSalesExecutive) {
+    return <SalesExecutiveDashboard />;
+  }
+
+  if (user?.role === 'HR_MANAGER' && !isAdmin) {
+    return <HrManagerDashboard />;
+  }
+
+  if ((user?.role === 'HR_EXECUTIVE' || user?.role === 'HR') && !isAdmin) {
+    return <HrExecutiveDashboard />;
+  }
+
   if (user?.role === 'EMPLOYEE' && !isAdmin) {
     return <EmployeeDashboard />;
+  }
+
+  if (isAdmin && adminViewMode === 'MANAGER') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-white border border-slate-200 px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-slate-500">
+          <span>Viewing as: <strong className="text-teal-700">SALES MANAGER</strong> (Admin bypass mode)</span>
+          <button 
+            onClick={() => setAdminViewMode('COMPANY')}
+            className="text-slate-600 hover:text-slate-800 font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
+          >
+            Back to Company Summary
+          </button>
+        </div>
+        <SalesManagerDashboard />
+      </div>
+    );
+  }
+
+  if (isAdmin && adminViewMode === 'EXECUTIVE') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-white border border-slate-200 px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-slate-500">
+          <span>Viewing as: <strong className="text-teal-700">SALES EXECUTIVE</strong> (Admin bypass mode)</span>
+          <button 
+            onClick={() => setAdminViewMode('COMPANY')}
+            className="text-slate-600 hover:text-slate-800 font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
+          >
+            Back to Company Summary
+          </button>
+        </div>
+        <SalesExecutiveDashboard />
+      </div>
+    );
   }
 
   const stats = isAdmin ? [
@@ -269,6 +327,7 @@ export default function Dashboard() {
 
       {/* Grid Stats Block View */}
       <div className="w-full py-8 space-y-8">
+
         <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
             <motion.div

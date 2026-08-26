@@ -8,7 +8,7 @@ const documentSchema = new mongoose.Schema(
       required: true,
     },
     ownerId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       required: function () {
         return this.ownerType !== "PUBLIC";
       },
@@ -31,7 +31,7 @@ const documentSchema = new mongoose.Schema(
       select: false,
     },
     uploadedBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       default: null,
     },
@@ -86,11 +86,11 @@ const documentSchema = new mongoose.Schema(
       default: 'OTHER'
     },
     approvalStatus: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
-    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    approvedBy: { type: mongoose.Schema.Types.Mixed, ref: 'User', default: null },
     approvedAt: { type: Date, default: null },
     approvalNote: { type: String, default: '' },
     version: { type: Number, default: 1 },
-    previousVersionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document', default: null }
+    previousVersionId: { type: mongoose.Schema.Types.Mixed, ref: 'Document', default: null }
   },
   {
     timestamps: true,

@@ -6,10 +6,10 @@ const {
   getNextEmployeeId,
   getListManagers,
   signupEmployee,
-  getAllEmployees,
-  createEmployee,
-  updateEmployee,
-  deleteEmployee
+  listEmployees,
+  getEmployeesCount,
+  getEmployeeStatus,
+  updateEmployeeStatus
 } = require('./employee.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
@@ -27,5 +27,11 @@ router.delete('/:id', ...adminOnly, deleteEmployee);
 router.post('/auth/register', register);
 router.post('/auth/login', login);
 router.get('/me', authenticate, getProfile);
+
+// Dashboard / Management endpoints
+router.get('/', authenticate, listEmployees);
+router.get('/count', authenticate, getEmployeesCount);
+router.get('/:id/status', authenticate, getEmployeeStatus);
+router.post('/:id/status', authenticate, updateEmployeeStatus);
 
 module.exports = router;

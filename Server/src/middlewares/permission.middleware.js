@@ -26,6 +26,22 @@ const rolePermissions = {
     taskPermission: true,
     documentPermission: true
   },
+  SALES_MANAGER: {
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    quotationPermission: true,
+    paymentPermission: true,
+    dispatchPermission: true
+  },
+  SALES_EXECUTIVE: {
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    quotationPermission: true,
+    paymentPermission: true,
+    dispatchPermission: true
+  },
   ACCOUNTS: {
     paymentPermission: true,
     leadPermission: true,
@@ -94,8 +110,10 @@ function checkPermission(...permissionNames) {
       // 2. Check root properties on User model
       if (req.user[perm] === true) return true;
 
-      // 3. Check role-based defaults
-      const rolePerms = rolePermissions[req.user.role] || rolePermissions[req.user.department];
+      // 3. Check role-based defaults (case-insensitive keys)
+      const roleKey = String(req.user.role || '').toUpperCase();
+      const deptKey = String(req.user.department || '').toUpperCase();
+      const rolePerms = rolePermissions[roleKey] || rolePermissions[deptKey];
       if (rolePerms && rolePerms[perm] === true) return true;
 
       return false;

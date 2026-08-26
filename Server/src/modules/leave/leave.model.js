@@ -3,10 +3,16 @@ const mongoose = require('mongoose');
 const leaveRequestSchema = new mongoose.Schema(
   {
     employeeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      type: mongoose.Schema.Types.Mixed,
+      refPath: 'employeeModel',
       required: true,
       index: true
+    },
+    employeeModel: {
+      type: String,
+      required: true,
+      enum: ['Employee', 'User'],
+      default: 'Employee'
     },
     fromDate: {
       type: Date,
@@ -41,7 +47,7 @@ const leaveRequestSchema = new mongoose.Schema(
       default: Date.now
     },
     approvedBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'User',
       default: null
     },
@@ -64,7 +70,7 @@ const leaveRequestSchema = new mongoose.Schema(
       default: ''
     },
     extraApprovedBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'User',
       default: null
     },

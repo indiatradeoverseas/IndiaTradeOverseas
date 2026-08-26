@@ -24,6 +24,9 @@ import { taskApi } from '../../api/task';
 import { attendanceApi } from '../../api/attendance';
 import { leaveApi } from '../../api/leave';
 
+const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
+const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
+
 // Motion variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -90,7 +93,7 @@ export default function HrExecutiveDashboard() {
         taskApi.getTasks().catch(() => null)
       ]);
 
-      if (attToday && attToday.success) setTodayAttendance(attToday.data.attendance);
+      if (attToday && attToday.success) setTodayAttendance(attToday.data.record || attToday.data.attendance);
       if (attLogs && attLogs.success) setAttendanceHistory(attLogs.data.logs || []);
       if (lvBal && lvBal.success) setLeaveBalance(lvBal.data.balance || { remainingLeaves: 4, extraLeavesUsed: 0 });
       if (lvLogs && lvLogs.success) {
@@ -923,20 +926,30 @@ export default function HrExecutiveDashboard() {
                   )}
 
                   <div className="flex gap-3">
-                    <button
-                      onClick={handleCheckIn}
-                      disabled={!!todayAttendance}
-                      className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] disabled:opacity-30 disabled:cursor-not-allowed py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                    >
-                      Clock In
-                    </button>
-                    <button
-                      onClick={handleCheckOut}
-                      disabled={!todayAttendance || !!todayAttendance.clockOut}
-                      className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                    >
-                      Clock Out
-                    </button>
+                    {!todayAttendance && (
+                      <button
+                        onClick={handleCheckIn}
+                        className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
+                      >
+                        Clock In
+                      </button>
+                    )}
+                    {todayAttendance && !todayAttendance.clockOut && (
+                      <button
+                        onClick={handleCheckOut}
+                        className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
+                      >
+                        Clock Out
+                      </button>
+                    )}
+                    {todayAttendance && todayAttendance.clockOut && (
+                      <button
+                        disabled
+                        className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider cursor-not-allowed text-center"
+                      >
+                        Shift Completed
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
