@@ -4,6 +4,9 @@ const Employee = require('./employee.model');
 const MonthlyLeaveBalance = require('../leave/monthlyLeaveBalance.model');
 const { generateAccessToken } = require('../auth/token.service');
 const { ok, fail } = require('../../utils/response');
+const { sendEmail } = require('../../utils/mailer');
+const { generateOtp, getOtpHtml } = require('../../utils/otp');
+const otpModel = require('../auth/Model.otp');
 
 async function register(req, res, next) {
   try {
@@ -464,10 +467,7 @@ async function signupEmployeeSelfRegistration(req, res, next) {
   }
 }
 
-// In-memory OTP store (in production, use Redis with TTL)
-const signupOtpStore = new Map();
-
-// Send OTP for employee self-registration
+// Send OTP for employee self-registration using existing OTP infrastructure
 async function sendSignupOtp(req, res, next) {
   try {
     const {
@@ -518,27 +518,37 @@ async function sendSignupOtp(req, res, next) {
       }
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    // Generate 6-digit OTP using existing utility
+    const otp = generateOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
 
-    // Store OTP with form data
-    signupOtpStore.set(email, {
-      otp,
-      otpExpires,
-      formData: {
-        name,
-        email,
-        password,
-        department,
-        position,
-        phone: cleanPhone || ''
-      }
+    // Store OTP in existing otpModel collection (same as auth module)
+    await otpModel.deleteMany({ email });
+    await otpModel.create({
+      email,
+      otpHash,
+      // Store form data in metadata for later use
+      user: null, // No user yet, will be created after verification
     });
 
-    // TODO: Send actual email with OTP
-    // For now, log OTP to console (in production, use email service)
-    console.log(`[OTP] Employee signup OTP for ${email}: ${otp}`);
+    // Also store form data in a temporary collection or use global for dev
+    global.signupFormStore = global.signupFormStore || new Map();
+    global.signupFormStore.set(email, {
+      name,
+      email,
+      password,
+      department,
+      position,
+      phone: cleanPhone || ''
+    });
+
+    // Send email using existing mailer
+    try {
+      await sendEmail(email, 'Employee Registration OTP', null, getOtpHtml(otp, email));
+    } catch (emailError) {
+      console.error('Failed to send OTP email:', emailError);
+      return fail(res, 500, 'EMAIL_FAILED', 'Failed to send OTP email. Please try again.', [], req);
+    }
 
     // In development, return OTP in response for testing
     const isDev = process.env.NODE_ENV !== 'production';
@@ -552,7 +562,7 @@ async function sendSignupOtp(req, res, next) {
   }
 }
 
-// Verify OTP and create pending employee
+// Verify OTP and create pending employee using existing OTP infrastructure
 async function verifySignupOtp(req, res, next) {
   try {
     const {
@@ -569,25 +579,31 @@ async function verifySignupOtp(req, res, next) {
       return fail(res, 400, 'INVALID_OTP', 'Invalid OTP format', [], req);
     }
 
-    const stored = signupOtpStore.get(email);
-    if (!stored) {
+    // Find OTP record in otpModel
+    const otpRecord = await otpModel.findOne({ email }).sort({ createdAt: -1 });
+    if (!otpRecord) {
       return fail(res, 400, 'OTP_EXPIRED', 'OTP expired or not found. Please request a new one.', [], req);
     }
 
-    if (Date.now() > stored.otpExpires) {
-      signupOtpStore.delete(email);
-      return fail(res, 400, 'OTP_EXPIRED', 'OTP has expired. Please request a new one.', [], req);
-    }
-
-    if (stored.otp !== otp) {
+    // Verify OTP
+    const matched = await bcrypt.compare(otp, otpRecord.otpHash);
+    if (!matched) {
       return fail(res, 400, 'INVALID_OTP', 'Invalid OTP. Please try again.', [], req);
     }
 
+    // Retrieve form data
+    global.signupFormStore = global.signupFormStore || new Map();
+    const storedFormData = global.signupFormStore.get(email);
+    
+    if (!storedFormData) {
+      return fail(res, 400, 'DATA_MISMATCH', 'Registration session expired. Please try again.', [], req);
+    }
+
     // Verify form data matches
-    if (stored.formData.name !== name || 
-        stored.formData.email !== email || 
-        stored.formData.department !== department ||
-        stored.formData.position !== position) {
+    if (storedFormData.name !== name || 
+        storedFormData.email !== email || 
+        storedFormData.department !== department ||
+        storedFormData.position !== position) {
       return fail(res, 400, 'DATA_MISMATCH', 'Form data does not match. Please try again.', [], req);
     }
 
@@ -616,7 +632,7 @@ async function verifySignupOtp(req, res, next) {
       name,
       email,
       password: passwordHash,
-      phone: stored.formData.phone,
+      phone: storedFormData.phone,
       department,
       position,
       joiningDate: new Date(),
@@ -650,8 +666,9 @@ async function verifySignupOtp(req, res, next) {
       isReset: false
     });
 
-    // Clean up OTP store
-    signupOtpStore.delete(email);
+    // Clean up
+    await otpModel.deleteMany({ email });
+    global.signupFormStore.delete(email);
 
     const employeeResponse = {
       _id: employee._id,

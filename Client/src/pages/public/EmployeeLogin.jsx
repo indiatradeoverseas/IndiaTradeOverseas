@@ -805,7 +805,7 @@ const EmployeeLogin = () => {
                   <button
                     type="submit"
                     disabled={signupLoading}
-                    className="w-full mt-2 bg-#C89A54 hover:bg-#9A7639 text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="w-full mt-2 bg-[#C89A54] hover:bg-[#9A7639] text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {signupLoading ? 'Sending OTP...' : 'Send OTP to Email'}
                     {!signupLoading && <FiArrowRight className="h-3.5 w-3.5" />}
@@ -854,7 +854,7 @@ const EmployeeLogin = () => {
                     type="button"
                     onClick={handleOtpVerify}
                     disabled={signupLoading}
-                    className="w-full mt-2 bg-#C89A54 hover:bg-#9A7639 text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="w-full mt-2 bg-[#C89A54] hover:bg-[#9A7639] text-[#0E1116] text-xs font-semibold tracking-widest py-3 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {signupLoading ? 'Verifying...' : 'Verify & Submit'}
                     {!signupLoading && <FiArrowRight className="h-3.5 w-3.5" />}
