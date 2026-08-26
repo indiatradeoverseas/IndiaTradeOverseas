@@ -1,9 +1,18 @@
+const mongoose = require('mongoose');
 const fs = require('fs');
 const userService = require('./user.service');
 const { ok, fail } = require('../../utils/response');
 const { recordAudit } = require('../security-audit/auditLog.service');
 const documentService = require('../documents/document.service');
 const Document = require('../documents/document.model');
+
+const resolveIdQuery = (id) => {
+  const idStr = String(id);
+  if (mongoose.isValidObjectId(idStr)) {
+    return { $or: [{ _id: idStr }, { _id: new mongoose.Types.ObjectId(idStr) }] };
+  }
+  return { _id: idStr };
+};
 
 async function createEmployee(req, res, next) {
   try {
@@ -208,12 +217,12 @@ async function updateMyProfile(req, res, next) {
     const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
     if (isEmployee) {
       const Employee = require('../employee/employee.model');
-      const updated = await Employee.findByIdAndUpdate(req.user._id, req.body, { new: true });
+      const updated = await Employee.findOneAndUpdate(resolveIdQuery(req.user._id), req.body, { new: true });
       return ok(res, { profile: updated }, 'Employee profile updated successfully', 200, req);
     }
     if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');
-      const updated = await Admin.findByIdAndUpdate(req.user._id, req.body, { new: true });
+      const updated = await Admin.findOneAndUpdate(resolveIdQuery(req.user._id), req.body, { new: true });
       return ok(res, { profile: updated }, 'Admin profile updated successfully', 200, req);
     }
 
@@ -468,13 +477,13 @@ async function uploadMyProfileImage(req, res, next) {
     let updated;
     if (isEmployee) {
       const Employee = require('../employee/employee.model');
-      updated = await Employee.findByIdAndUpdate(req.user._id, { profileImage: fileUrl }, { new: true });
+      updated = await Employee.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
     } else if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');
-      updated = await Admin.findByIdAndUpdate(req.user._id, { profileImage: fileUrl }, { new: true });
+      updated = await Admin.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
     } else {
       const User = require('./user.model');
-      updated = await User.findByIdAndUpdate(req.user._id, { profileImage: fileUrl }, { new: true });
+      updated = await User.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
     }
 
     return ok(res, { profile: updated }, 'Profile image uploaded successfully', 200, req);
