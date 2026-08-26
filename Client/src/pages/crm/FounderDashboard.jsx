@@ -11,7 +11,7 @@ import {
   FiUsers, FiTrendingUp, FiCalendar, FiBriefcase, FiDollarSign, FiSearch,
   FiCheckCircle, FiXCircle, FiArrowRight, FiAlertCircle, FiTarget,
   FiUserPlus, FiExternalLink, FiAward, FiShield, FiBarChart2,
-  FiPieChart, FiCreditCard, FiCheckSquare,
+  FiPieChart, FiCreditCard, FiCheckSquare,FiX,
   FiFileText, FiTruck, FiSettings, FiGrid,
   FiRefreshCw, FiPlus, FiEdit, FiTrash2, FiEye,
   FiActivity, FiDatabase, FiGlobe, FiLock, FiBell,
@@ -73,6 +73,138 @@ const STATUS_STYLES = {
 
 const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
 const fmtNumber = (val) => (val || 0).toLocaleString('en-IN');
+const formatDate = (d) => d.toISOString().slice(0, 10);
+
+const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs) => {
+  if (!summary) {
+    toast.error('No data to export. Please refresh the dashboard.');
+    return;
+  }
+  const rows = [
+    ['ITO Founder Command Center — Executive Report', `Generated: ${new Date().toLocaleString('en-IN')}`],
+    [''],
+    ['ORGANIZATIONAL HEALTH'],
+    ['Metric', 'Value'],
+    ['Total Employees (All)', summary.totalEmployees || employees.length],
+    ['Active Employees', summary.activeEmployees || employees.filter(e => e.status === 'ACTIVE').length],
+    ['Present Today', summary.presentToday || 0],
+    ['Open Tickets', summary.openTickets || 0],
+    ['Pending Leave Requests', leaves.length],
+    ['Department Coverage', `${Object.keys(deptCounts).length} / ${EMPLOYEE_DEPARTMENTS.length}`],
+    [''],
+    ['LEADS & PIPELINE'],
+    ['Metric', 'Value'],
+    ['Total Leads', summary.totalLeads || 0],
+    ['Active Leads', summary.activeLeads || 0],
+    ['Pending Leads (NEW_LEAD)', summary.pendingLeads || 0],
+    ['Today\'s New Leads', summary.todayLeads || 0],
+    ['AI-Generated Leads', summary.aiGeneratedLeads || 0],
+    ['Hot Leads', summary.hotLeads || 0],
+    ['Follow-ups Due Today', summary.followUpsDueToday || 0],
+    ['Missed Follow-ups', summary.missedFollowUps || 0],
+    [''],
+    ['QUOTATIONS & ORDERS'],
+    ['Metric', 'Value'],
+    ['Total Quotations', summary.quotations?.total || 0],
+    ['Pending Quotations', summary.quotations?.pending || 0],
+    ['Pending Quotes Value', fmtCurrency(summary.quotations?.pendingValue || 0)],
+    ['Quotations Sent', summary.quotations?.sent || 0],
+    ['Quotations Approved', summary.quotations?.approved || 0],
+    ['Orders Confirmed', summary.ordersConfirmed || 0],
+    ['Pending Orders (Pipeline)', summary.pendingOrders || 0],
+    [''],
+    ['REVENUE & PAYMENTS'],
+    ['Metric', 'Value'],
+    ['Total Revenue Collected (All Time)', fmtCurrency(summary.revenue?.totalCollected || 0)],
+    ['Pending Payments Count', summary.payments?.pendingCount || 0],
+    ['Pending Payments Value', fmtCurrency(summary.payments?.pendingValue || 0)],
+    [''],
+    ['MONTHLY REVENUE TREND'],
+    ['Month', 'Collected (₹)'],
+    ...(summary.revenue?.monthlyTrend || []).map(m => [m.month, fmtCurrency(m.collected)]),
+    [''],
+    ['TRANSPORT & LOGISTICS'],
+    ['Metric', 'Value'],
+    ['Total Dispatches', summary.transport?.total || 0],
+    ['In Transit', summary.transport?.inTransit || 0],
+    ['Delivered', summary.transport?.delivered || 0],
+    ['Pending (Assigned/Loading)', summary.transport?.pending || 0],
+    ['Issues Raised', summary.transport?.issueRaised || 0],
+    [''],
+    ['DEPARTMENT PERFORMANCE'],
+    ['Department', 'Total Leads', 'Won', 'Win Rate (%)'],
+    ...(summary.departmentPerformance || []).map(d => [
+      d.department,
+      d.totalLeads,
+      d.won,
+      d.totalLeads > 0 ? ((d.won / d.totalLeads) * 100).toFixed(1) : '0.0'
+    ]),
+    [''],
+    ['TOP PERFORMING EMPLOYEES'],
+    ['Name', 'Employee ID', 'Total Leads', 'Conversions', 'Conversion Rate (%)'],
+    ...(summary.topEmployees || []).map(e => [
+      e.fullName,
+      e.employeeId,
+      e.totalLeads,
+      e.conversions,
+      e.totalLeads > 0 ? ((e.conversions / e.totalLeads) * 100).toFixed(1) : '0.0'
+    ]),
+    [''],
+    ['WORKFORCE DISTRIBUTION — BY DEPARTMENT'],
+    ['Department', 'Count'],
+    ...Object.entries(deptCounts).map(([name, value]) => [name, value]),
+    [''],
+    ['WORKFORCE DISTRIBUTION — BY ROLE'],
+    ['Role', 'Count'],
+    ...Object.entries(roleCounts).map(([name, value]) => [name, value]),
+    [''],
+    ['LEAVE REQUESTS PENDING'],
+    ['Employee', 'Department', 'Type', 'From', 'To', 'Days', 'Reason'],
+    ...leaves.map(lv => [
+      lv.employeeId?.name || 'Unknown',
+      lv.employeeId?.department || '—',
+      lv.leaveType?.replace('_', ' ') || '—',
+      new Date(lv.fromDate).toLocaleDateString(),
+      new Date(lv.toDate).toLocaleDateString(),
+      lv.numberOfDays,
+      lv.reason || '—'
+    ]),
+    [''],
+    ['HIRING PIPELINE — OPEN REQUISITIONS'],
+    ['Title', 'Department', 'Location'],
+    ...openJobs.map(job => [job.title, job.department, job.location]),
+    [''],
+    ['SALES LEADERBOARD (THIS MONTH)'],
+    ['Rank', 'Name', 'Deals Won', 'Revenue (₹)'],
+    ...leaderboard.map((row, idx) => [
+      idx + 1,
+      row.fullName,
+      row.dealsWon,
+      fmtCurrency(row.revenue)
+    ]),
+    [''],
+    ['SECURITY'],
+    ['Metric', 'Value'],
+    ['Active Security Alerts', summary.securityAlerts || 0],
+    [''],
+    ['Export generated by ITO CRM Founder Dashboard', `Timestamp: ${new Date().toISOString()}`]
+  ];
+
+  const csvContent = rows
+    .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `founder-command-center-report-${formatDate(new Date())}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  toast.success('Founder report exported successfully');
+};
 
 function StatusBadge({ status }) {
   const s = STATUS_STYLES[status] || STATUS_STYLES.INACTIVE;
@@ -385,6 +517,12 @@ export default function FounderDashboard() {
           </button>
           <button onClick={fetchAll} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all" style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)', border: '1px solid', borderColor: 'var(--crm-line)' }}>
             <FiRefreshCw size={12} /> <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <button
+            onClick={() => handleExportReport(summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs)}
+            className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all" style={{ background: 'var(--crm-positive)', color: 'var(--crm-bg)' }}
+          >
+            <FiDownload size={12} /> <span className="hidden sm:inline">Export Report</span>
           </button>
         </div>
       </motion.div>

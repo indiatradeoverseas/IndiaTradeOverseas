@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-import CompanyLogo from '../../../public/images/ITO Logo.jpeg';
+import CompanyLogo from '../../../public/images/web_icon.jpeg';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiMenu,

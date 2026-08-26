@@ -17,7 +17,8 @@ import {
   FiUser,
   FiTrendingUp,
   FiUserPlus,
-  FiAward
+  FiAward,
+  FiCommand
 } from 'react-icons/fi';
 
 // Local helper to identify admin accounts, ADMIN department, and admin position titles
@@ -83,6 +84,7 @@ export function getCrmDepartmentLinks() {
 export function getCrmAdminNavItems(user) {
   const adminBypass = isAdminUser(user);
   return [
+    adminBypass && { to: '/crm/founder', label: 'Founder Command Center', icon: FiCommand },
     (adminBypass || user?.role === 'MANAGER') && { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
     (adminBypass || user?.role === 'MANAGER') && { to: '/crm/employees', label: 'Employees', icon: FiUsers },
     { to: '/crm/applications', label: 'Job Applications', icon: FiFileText },

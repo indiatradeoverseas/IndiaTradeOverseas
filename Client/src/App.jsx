@@ -54,6 +54,7 @@ import SalesPerformance from './pages/crm/SalesPerformance';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
+import FounderDashboard from './pages/crm/FounderDashboard';
 
 
 import Navbar from './components/Layout/Navbar';
@@ -293,6 +294,7 @@ function AppLayout() {
           <Route path="/crm/security" element={<AdminRoute><Security /></AdminRoute>} />
           <Route path="/crm/reports" element={<AdminRoute><Reports /></AdminRoute>} />
           <Route path="/crm/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route path="/crm/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
           <Route
             path="/crm/applications"
             element={
