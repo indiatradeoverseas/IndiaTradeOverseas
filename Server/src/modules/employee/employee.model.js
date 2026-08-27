@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const employeeSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.Mixed },
     employeeId: {
       type: String,
       unique: true,
@@ -43,16 +44,36 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
-    addressCont: { type: String, default: '' },
-    city: { type: String, default: '' },
-    postalCode: { type: String, default: '' },
-    levelOfEducation: { type: String, default: 'Higher Education' },
-    degree: { type: String, default: 'Electrical Engineering' },
-    hardSkill: { type: String, default: 'Technical Support' },
-    softSkill: { type: String, default: 'Communication' },
-    taxNumber: { type: String, default: '' },
-    nationality: { type: String, default: 'India' },
-    age: { type: Number, default: 28 },
+    addressCont: {
+      type: String,
+    },
+    city: { 
+      type: String 
+    },
+    postalCode: { 
+      type: String 
+    },
+    levelOfEducation: { 
+      type: String 
+    },
+    degree: { 
+      type: String 
+    },
+    hardSkill: { 
+      type: String 
+    },
+    softSkill: { 
+      type: String 
+    },
+    taxNumber: { 
+      type: String 
+    },
+    nationality: { 
+      type: String 
+    },
+    age: { 
+      type: Number 
+    },
     permanentAddress: {
       type: String,
       trim: true
@@ -97,14 +118,14 @@ const employeeSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'],
+      enum: ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR'],
       default: 'EMPLOYEE',
       required: true
     },
     status: {
       type: String,
-      enum: ['ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION'],
-      default: 'PENDING_VERIFICATION',
+      enum: ['ACTIVE', 'INACTIVE'],
+      default: 'ACTIVE',
       required: true
     },
     // Banking & Compensation
@@ -182,13 +203,34 @@ const employeeSchema = new mongoose.Schema(
     ],
     // Permissions & Access
     permissions: {
-      productUpload: { type: Boolean, default: false },
-      lead: { type: Boolean, default: false },
-      export: { type: Boolean, default: false },
-      document: { type: Boolean, default: false },
-      task: { type: Boolean, default: false },
-      dispatch: { type: Boolean, default: false },
-      payment: { type: Boolean, default: false },
+      productUpload: { 
+        type: Boolean, 
+        default: false 
+      },
+      lead: { 
+        type: Boolean, 
+        default: false 
+      },
+      export: {
+         type: Boolean, 
+         default: false 
+        },
+      document: { 
+        type: Boolean, 
+        default: false 
+      },
+      task: { 
+        type: Boolean, 
+        default: false 
+      },
+      dispatch: { 
+        type: Boolean, 
+        default: false 
+      },
+      payment: {
+         type: Boolean, 
+         default: false 
+        },
       quotation: { type: Boolean, default: false },
       job: { type: Boolean, default: false }
     }

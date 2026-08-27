@@ -793,7 +793,7 @@ async function rejectEmployee(req, res, next) {
 async function listEmployees(req, res, next) {
   try {
     const { department } = req.query;
-    let query = { status: 'ACTIVE' };
+    let query = { status: { $ne: 'INACTIVE' } };
     if (department) {
       query.department = department.toUpperCase();
     }

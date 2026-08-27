@@ -59,13 +59,34 @@ function formatAttendance(record) {
   };
 }
 
+// Helper: Robustly resolve Employee for req.user
+async function findEmployeeForReqUser(reqUser) {
+  if (!reqUser) return null;
+  const mongoose = require('mongoose');
+  const userEmail = reqUser.email ? reqUser.email.trim() : '';
+  if (userEmail) {
+    const emp = await Employee.findOne({ email: { $regex: new RegExp(`^${userEmail}$`, 'i') } });
+    if (emp) return emp;
+  }
+  if (reqUser._id) {
+    const emp = await Employee.findOne({
+      $or: [
+        { _id: reqUser._id },
+        ...(mongoose.isValidObjectId(reqUser._id) ? [{ _id: new mongoose.Types.ObjectId(reqUser._id) }] : [])
+      ]
+    });
+    if (emp) return emp;
+  }
+  return null;
+}
+
 // 1. Employee Check-In
 async function checkIn(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    // Find Employee matching user email
-    const employee = await Employee.findOne({ email: req.user.email });
+    // Find Employee matching user email or ID
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     // Check if record exists
@@ -142,7 +163,7 @@ async function checkOut(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
@@ -224,7 +245,7 @@ async function startLunch(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
@@ -265,7 +286,7 @@ async function endLunch(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
@@ -302,7 +323,7 @@ async function getMyTodayStatus(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
@@ -321,7 +342,7 @@ async function getMyTodayStatus(req, res, next) {
 // 4. Get Employee's Attendance History
 async function getMyHistory(req, res, next) {
   try {
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const filter = {
@@ -362,7 +383,7 @@ async function getReport(req, res, next) {
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    const employees = await Employee.find({ status: 'ACTIVE' });
+    const employees = await Employee.find({ status: { $ne: 'INACTIVE' } });
     const records = await Attendance.find({ 
       date: { $gte: start, $lte: end } 
     }).populate('employeeId', 'name email department role');
@@ -613,22 +634,42 @@ async function markAttendanceManually(req, res, next) {
     let employee = await Employee.findOne({
       $or: [
         { _id: employeeId },
+        { employeeId: employeeId },
+        { email: employeeId },
         ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
       ]
     });
+    let userDoc = null;
     if (!employee) {
-      const userDoc = await User.findOne({
+      userDoc = await User.findOne({
         $or: [
           { _id: employeeId },
+          { employeeId: employeeId },
+          { email: employeeId },
           ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
         ]
       });
       if (userDoc) {
-        employee = await Employee.findOne({ email: userDoc.email });
+        employee = await Employee.findOne({
+          $or: [
+            { email: userDoc.email },
+            { employeeId: userDoc.employeeId }
+          ]
+        });
+        if (!employee) {
+          // Virtual employee object for Admin/User accounts without Employee doc
+          employee = {
+            _id: userDoc._id,
+            name: userDoc.fullName || userDoc.name || 'User Account',
+            email: userDoc.email,
+            department: userDoc.department || 'ADMIN',
+            role: userDoc.role || 'ADMIN'
+          };
+        }
       }
     }
     if (!employee) {
-      return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee not found', [], req);
+      return fail(res, 400, 'EMPLOYEE_NOT_FOUND', 'Selected employee or user account not found in database', [], req);
     }
 
     const targetDate = getStartOfDay(date);
