@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationsApi } from '../../api/notifications';
-const CompanyLogo = '/images/web_icon_1.jpeg';
+const CompanyLogo = '/images/web_trans_icon.jpeg';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiMenu,
@@ -123,29 +123,28 @@ export default function Navbar() {
     <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 via-black/30 to-transparent transition-all duration-300">
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* MOBILE NAVIGATION BAR HEADER */}
-        <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
-          <div className="flex items-center space-x-3 text-right">
-<div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
-                <div
-                  className="h-full w-full"
-                  style={{
-                    backgroundImage: `url(${CompanyLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'center 55%',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                  role="img"
-                  aria-label="India Trade Overseas Logo"
+{/* MOBILE NAVIGATION BAR HEADER */}
+        <div className="flex lg:hidden justify-between items-center h-[80px] w-full">
+          <div className="flex items-center space-x-3">
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="h-[40px] w-[40px] flex items-center justify-center shrink-0">
+                <img
+                  src={CompanyLogo}
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-full object-contain"
+                  loading="eager"
                 />
               </div>
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="flex flex-col justify-center text-right leading-none">
-                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap drop-shadow">
+
+              <div className="flex flex-col justify-center text-left leading-none">
+                <span className="font-serif font-semibold text-[18px] tracking-[0.05em] text-white whitespace-nowrap">
                   INDIA
                 </span>
-                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap drop-shadow">
+                <span className="font-sans font-light text-[10px] tracking-[0.18em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
                   TRADE OVERSEAS
+                </span>
+                <span className="font-sans font-medium text-[7px] tracking-[0.1em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                  WHERE QUALITY MEETS GLOBAL DEMAND
                 </span>
               </div>
             </Link>
@@ -184,29 +183,27 @@ export default function Navbar() {
         </div>
 
         {/* DESKTOP NAVIGATION BAR HEADER */}
-        <div className="hidden lg:flex justify-between items-center h-[104px]">
+        <div className="hidden lg:flex justify-between items-center h-[80px]">
           <div className="flex items-center shrink-0">
-            <Link to="/" className="flex items-center space-x-3.5 group">
-              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/30 bg-black/40 shrink-0 shadow-lg">
-                <div
-                  className="h-full w-full"
-                  style={{
-                    backgroundImage: `url(${CompanyLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'center 55%',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                  role="img"
-                  aria-label="India Trade Overseas Logo"
+            <Link to="/" className="flex items-center space-x-4 group">
+              <div className="h-[56px] w-[56px] flex items-center justify-center shrink-0">
+                <img
+                  src={CompanyLogo}
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-full object-contain"
+                  loading="eager"
                 />
               </div>
 
               <div className="flex flex-col justify-center text-left">
-                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap drop-shadow-md">
-                  India Trade Overseas
+                <span className="font-serif font-semibold text-[20px] tracking-[0.07em] text-white leading-tight uppercase whitespace-nowrap">
+                  INDIA
                 </span>
-                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap drop-shadow-sm">
-                  Trade. Supply. Logistics. Growth.
+                <span className="font-sans font-light text-[16px] tracking-[0.18em] text-[#C5CBD3] uppercase mt-1 whitespace-nowrap">
+                  TRADE OVERSEAS
+                </span>
+                <span className="font-sans font-medium text-[10px] tracking-[0.1em] text-[#C5CBD3] uppercase  whitespace-nowrap">
+                  WHERE QUALITY MEETS GLOBAL DEMAND
                 </span>
               </div>
             </Link>
@@ -363,27 +360,25 @@ export default function Navbar() {
           transition={{ duration: 0.25, ease: 'easeInOut' }}
           className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
         >
-          <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
+          <div className="flex justify-between items-center h-[80px] px-4 sm:px-6">
             <div className="flex items-center space-x-3">
-              <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
-                <div
-                  className="h-full w-full"
-                  style={{
-                    backgroundImage: `url(${CompanyLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'center 55%',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                  role="img"
-                  aria-label="India Trade Overseas Logo"
+              <div className="h-[40px] w-[40px] flex items-center justify-center shrink-0">
+                <img
+                  src={CompanyLogo}
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-full object-contain"
+                  loading="eager"
                 />
               </div>
               <div className="flex flex-col justify-center text-left leading-none">
-                <span className="font-serif font-normal text-lg tracking-wide uppercase text-[#F2F4F7] whitespace-nowrap">
+                <span className="font-serif font-semibold text-[18px] tracking-[0.05em] text-white whitespace-nowrap">
                   INDIA
                 </span>
-                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                <span className="font-sans font-light text-[10px] tracking-[0.18em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
                   TRADE OVERSEAS
+                </span>
+                <span className="font-sans font-medium text-[7px] tracking-[0.1em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                  WHERE QUALITY MEETS GLOBAL DEMAND
                 </span>
               </div>
             </div>
