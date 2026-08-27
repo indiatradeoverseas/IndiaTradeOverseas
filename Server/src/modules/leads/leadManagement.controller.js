@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
+const CallRecording = require('./callRecording.model');
 const { getRelativePath, resolveUploadPath, proxyFromProduction } = require('../../utils/file');
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
@@ -333,7 +334,6 @@ async function getSalesMetrics(req, res, next) {
     next(error);
   }
 }
-const CallRecording = require('./callRecording.model');
 
 // 7. Upload Call Recording by Sales Executive
 async function uploadCallRecording(req, res, next) {
