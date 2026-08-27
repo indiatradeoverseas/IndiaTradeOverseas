@@ -49,33 +49,6 @@ router.get('/call-recordings/:recordingId/stream', streamCallRecording);
 
 router.use(authenticate);
 
-router.post('/score', async (req, res, next) => {
-  try {
-    const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
-    return require('../../utils/response').ok(res, { score, priority }, 'Lead scored successfully', 200, req);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadsList);
-router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
-  try {
-    const Lead = require('./lead.model');
-    const { getLeadDisplay } = require('./lead.service');
-    const leads = await Lead.find({ assignedTo: null }).sort({ createdAt: -1 });
-    return require('../../utils/response').ok(res, { leads: leads.map(l => getLeadDisplay(l, req.user)) }, 'Unassigned leads list', 200, req);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Reminders & Creation Routes
-router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
-router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
-router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
-router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
-
 // Multer setup for Call Recordings
 const callRecordingStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -96,17 +69,31 @@ const uploadCallAudio = multer({
   limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit
 });
 
-// Call Recordings Routes
-router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
-router.get('/call-recordings', getCallRecordings);
-router.get('/call-recordings/:recordingId/stream', streamCallRecording);
+// 1. Static Sub-Routes (MUST stay above dynamic /:id routes to avoid CastError)
+router.post('/score', async (req, res, next) => {
+  try {
+    const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
+    return require('../../utils/response').ok(res, { score, priority }, 'Lead scored successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+});
 
-// Voice Notes & Integration logs
-router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
-router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
-router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
-router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
-router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
+router.get('/call-recordings', getCallRecordings);
+router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
+
+router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
+  try {
+    const Lead = require('./lead.model');
+    const { getLeadDisplay } = require('./lead.service');
+    const leads = await Lead.find({ assignedTo: null }).sort({ createdAt: -1 });
+    return require('../../utils/response').ok(res, { leads: leads.map(l => getLeadDisplay(l, req.user)) }, 'Unassigned leads list', 200, req);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
 router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
 
 router.get('/count', checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
@@ -125,6 +112,18 @@ router.get('/count', checkPermission('leadPermission', 'taskPermission'), async 
     next(error);
   }
 });
+
+router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
+router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
+router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadsList);
+router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
+
+// 2. Dynamic /:id Sub-Routes
+router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
+router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
+router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
+router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
+router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
 
 router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
