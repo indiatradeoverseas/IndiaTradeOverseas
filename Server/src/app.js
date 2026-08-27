@@ -201,8 +201,11 @@ adminFallbackRouter.patch('/devices/:deviceId/revoke', async (req, res, next) =>
 
 app.use('/api/admin', adminFallbackRouter);
 app.use('/api/v1/admin', adminFallbackRouter);
+app.use('/api/v1/dispatch', dispatchRoutes);
 
 
 app.use(errorHandler);
+
+
 
 module.exports = app;

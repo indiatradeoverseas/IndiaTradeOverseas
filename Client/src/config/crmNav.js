@@ -57,6 +57,27 @@ function isHRExecutive(user) {
   return user?.role === 'HR_EXECUTIVE' || user?.role === 'HR';
 }
 
+// Helper check for Transport / Founder access
+function isTransportAllowed(user) {
+  const role = user?.role?.toUpperCase() || '';
+  const dept = user?.department?.toUpperCase() || '';
+  const pos = user?.position?.toLowerCase() || '';
+
+  return (
+    isAdminUser(user) ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'TRANSPORT' ||
+    role === 'LOGISTICS' ||
+    dept === 'TRANSPORT' ||
+    dept === 'LOGISTICS' ||
+    pos.includes('founder') ||
+    pos.includes('transport') ||
+    user?.permissions?.dispatch === true ||
+    user?.dispatchPermission === true
+  );
+}
+
 // ─────────────────────────────────────────────
 // Main sidebar navigation items
 // ─────────────────────────────────────────────
@@ -104,8 +125,8 @@ export function getCrmMainNavItems(user) {
     // Quotations — ADMIN or permission-based
     (admin || user?.permissions?.quotation === true || user?.quotationPermission === true) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
 
-    // Dispatches — ADMIN or permission-based
-    (admin || user?.permissions?.dispatch === true || user?.dispatchPermission === true) && { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
+    // Dispatches / Transport — ADMIN, FOUNDER, TRANSPORT department employees
+    isTransportAllowed(user) && { to: '/crm/dispatches', label: 'Transport', icon: FiTruck },
 
     // Payments — ADMIN or permission-based
     (admin || user?.permissions?.payment === true || user?.paymentPermission === true) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
