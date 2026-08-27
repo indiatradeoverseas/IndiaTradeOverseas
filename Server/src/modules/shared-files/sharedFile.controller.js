@@ -168,24 +168,33 @@ async function downloadFile(req, res) {
 async function deleteSharedFile(req, res) {
   try {
     const { id } = req.params;
-    const userId = String(req.user._id);
-
     const sharedFile = await SharedFile.findById(id);
     if (!sharedFile) {
       return fail(res, 404, 'NOT_FOUND', 'Shared file not found', [], req);
     }
 
-    const isSender = String(sharedFile.sentBy) === userId;
-    const isAdmin = req.user.role === 'ADMIN';
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+      (req.user.role && req.user.role.endsWith('_MANAGER')) || 
+      (req.user.role && req.user.role.toLowerCase().includes('manager'));
 
-    if (!isSender && !isAdmin) {
-      return fail(res, 403, 'FORBIDDEN', 'Only the sender or admin can delete shared files', [], req);
+    const emp = await Employee.findOne({ email: req.user.email });
+    const myIds = [String(req.user._id)];
+    if (emp) myIds.push(String(emp._id));
+
+    const isSender = myIds.includes(String(sharedFile.sentBy));
+
+    if (!isSender && !isManagerOrAdmin) {
+      return fail(res, 403, 'FORBIDDEN', 'Only the sender or manager/admin can delete shared files', [], req);
     }
 
     // Remove file from disk
-    const filePath = path.resolve(sharedFile.fileUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      const filePath = path.resolve(sharedFile.fileUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (e) {
+      console.warn('Could not remove file from disk:', e.message);
     }
 
     await SharedFile.findByIdAndDelete(id);

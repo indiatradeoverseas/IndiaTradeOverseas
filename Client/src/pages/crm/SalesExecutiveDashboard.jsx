@@ -189,7 +189,7 @@ export default function SalesExecutiveDashboard() {
       try {
         const filesRes = await sharedFilesApi.getSharedFiles();
         if (filesRes.success) {
-          setSharedFiles(filesRes.files || []);
+          setSharedFiles(filesRes.data?.files || filesRes.files || []);
         }
       } catch (err) {
         console.error('Error fetching shared files:', err);
@@ -440,7 +440,7 @@ export default function SalesExecutiveDashboard() {
         // Reload shared files list
         const filesRes = await sharedFilesApi.getSharedFiles();
         if (filesRes.success) {
-          setSharedFiles(filesRes.files || []);
+          setSharedFiles(filesRes.data?.files || filesRes.files || []);
         }
       }
     } catch (err) {
@@ -1523,9 +1523,14 @@ export default function SalesExecutiveDashboard() {
                               <FiFileText className="text-indigo-400" size={13} /> {file.originalName}
                             </td>
                             <td className="py-3 px-4 font-sans">
-                              {String(file.sentBy?._id || file.sentBy) === String(user._id)
-                                ? `You (to ${file.sentTo?.name || 'Employee'})`
-                                : file.sentBy?.name || 'Manager'}
+                              <div className="flex flex-col">
+                                <span className="font-bold text-[var(--crm-heading)]">
+                                  {file.sentBy?.fullName || file.sentBy?.name || 'Manager / Executive'}
+                                </span>
+                                <span className="text-[9px] text-teal-400 font-mono uppercase font-semibold">
+                                  {file.sentBy?.role ? file.sentBy.role.replace('_', ' ') : 'MANAGEMENT'}
+                                </span>
+                              </div>
                             </td>
                             <td className="py-3 px-4 text-[var(--crm-ink-faint)]">
                               {new Date(file.createdAt).toLocaleDateString('en-IN', {
@@ -1548,35 +1553,33 @@ export default function SalesExecutiveDashboard() {
                               <div className="flex items-center justify-center gap-2">
                                 <button
                                   onClick={() => handleDownloadSharedFile(file._id, file.originalName)}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition cursor-pointer flex items-center gap-1 mx-auto"
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition cursor-pointer flex items-center gap-1"
                                   title="Download file"
                                 >
                                   <FiDownload size={10} /> Download
                                 </button>
-                                {String(file.sentBy?._id || file.sentBy) === String(user._id) && (
-                                  <button
-                                    onClick={async () => {
-                                      if (window.confirm('Are you sure you want to delete this shared file?')) {
-                                        try {
-                                          const res = await sharedFilesApi.deleteSharedFile(file._id);
-                                          if (res.success) {
-                                            toast.success('File deleted successfully');
-                                            const filesRes = await sharedFilesApi.getSharedFiles();
-                                            if (filesRes.success) {
-                                              setSharedFiles(filesRes.files || []);
-                                            }
+                                <button
+                                  onClick={async () => {
+                                    if (window.confirm('Are you sure you want to delete this shared file?')) {
+                                      try {
+                                        const res = await sharedFilesApi.deleteSharedFile(file._id);
+                                        if (res.success) {
+                                          toast.success('File deleted successfully');
+                                          const filesRes = await sharedFilesApi.getSharedFiles();
+                                          if (filesRes.success) {
+                                            setSharedFiles(filesRes.data?.files || filesRes.files || []);
                                           }
-                                        } catch (err) {
-                                          toast.error('Failed to delete file');
                                         }
+                                      } catch (err) {
+                                        toast.error('Failed to delete file');
                                       }
-                                    }}
-                                    className="bg-rose-900 hover:bg-rose-800 text-white font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition cursor-pointer"
-                                    title="Delete shared file"
-                                  >
-                                    Delete
-                                  </button>
-                                )}
+                                    }
+                                  }}
+                                  className="bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 p-1.5 rounded transition cursor-pointer"
+                                  title="Delete File"
+                                >
+                                  <FiTrash2 size={12} />
+                                </button>
                               </div>
                             </td>
                           </tr>
