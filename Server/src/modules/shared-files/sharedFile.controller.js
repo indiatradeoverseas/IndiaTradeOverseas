@@ -25,14 +25,19 @@ async function shareFile(req, res) {
       return fail(res, 400, 'BAD_REQUEST', 'A file attachment is required', [], req);
     }
 
-    // Verify recipient exists
+    // Verify recipient exists across Employee and User collections
     const mongoose = require('mongoose');
-    const recipientIdQuery = mongoose.isValidObjectId(sentTo)
-      ? { $or: [{ _id: sentTo }, { _id: new mongoose.Types.ObjectId(sentTo) }] }
-      : { _id: sentTo };
-    const recipient = await Employee.findOne(recipientIdQuery);
-    if (!recipient) {
-      return fail(res, 404, 'NOT_FOUND', 'Recipient employee not found', [], req);
+    const User = require('../users/user.model');
+    
+    let recipientId = sentTo;
+    if (mongoose.isValidObjectId(sentTo)) {
+      const recipientIdQuery = { $or: [{ _id: sentTo }, { _id: new mongoose.Types.ObjectId(sentTo) }] };
+      const empRecipient = await Employee.findOne(recipientIdQuery);
+      const userRecipient = await User.findOne(recipientIdQuery);
+      const matchedRecipient = empRecipient || userRecipient;
+      if (matchedRecipient) {
+        recipientId = matchedRecipient._id;
+      }
     }
 
     const sharedFile = await SharedFile.create({
@@ -42,7 +47,7 @@ async function shareFile(req, res) {
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       sentBy: req.user._id,
-      sentTo: recipient._id,
+      sentTo: recipientId,
       department: department || req.user.department || 'GENERAL',
       note: note || ''
     });
@@ -106,12 +111,65 @@ async function getSharedFiles(req, res) {
       ];
     }
 
-    const files = await SharedFile.find(query)
-      .populate('sentBy', 'name fullName email department position role')
-      .populate('sentTo', 'name fullName email department position role')
-      .sort({ createdAt: -1 });
+    const rawFiles = await SharedFile.find(query).lean().sort({ createdAt: -1 });
 
-    return ok(res, { files }, 'Shared files retrieved successfully', 200, req);
+    const populatedFiles = await Promise.all(
+      rawFiles.map(async (fileObj) => {
+        // 1. Resolve sentBy
+        const sentById = fileObj.sentBy?._id || fileObj.sentBy;
+        if (sentById) {
+          const userSender = await User.findById(sentById).select('fullName name email department position role');
+          const empSender = await Employee.findById(sentById).select('name fullName email department position role');
+          const sender = userSender || empSender;
+          if (sender) {
+            fileObj.sentBy = {
+              _id: sender._id,
+              name: sender.fullName || sender.name,
+              fullName: sender.fullName || sender.name,
+              role: sender.role || 'SALES_EXECUTIVE',
+              department: sender.department || 'SALES'
+            };
+          } else {
+            fileObj.sentBy = {
+              _id: sentById,
+              name: 'Executive',
+              fullName: 'Executive',
+              role: 'SALES_EXECUTIVE',
+              department: 'SALES'
+            };
+          }
+        }
+
+        // 2. Resolve sentTo
+        const sentToId = fileObj.sentTo?._id || fileObj.sentTo;
+        if (sentToId) {
+          const userRecipient = await User.findById(sentToId).select('fullName name email department position role');
+          const empRecipient = await Employee.findById(sentToId).select('name fullName email department position role');
+          const recipient = userRecipient || empRecipient;
+          if (recipient) {
+            fileObj.sentTo = {
+              _id: recipient._id,
+              name: recipient.fullName || recipient.name,
+              fullName: recipient.fullName || recipient.name,
+              role: recipient.role || 'EXECUTIVE',
+              department: recipient.department || 'SALES'
+            };
+          } else {
+            fileObj.sentTo = {
+              _id: sentToId,
+              name: 'Recipient',
+              fullName: 'Recipient',
+              role: 'EXECUTIVE',
+              department: 'SALES'
+            };
+          }
+        }
+
+        return fileObj;
+      })
+    );
+
+    return ok(res, { files: populatedFiles }, 'Shared files retrieved successfully', 200, req);
   } catch (error) {
     console.error('Error getting shared files:', error);
     return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
@@ -182,9 +240,10 @@ async function deleteSharedFile(req, res) {
     if (emp) myIds.push(String(emp._id));
 
     const isSender = myIds.includes(String(sharedFile.sentBy));
+    const isRecipient = myIds.includes(String(sharedFile.sentTo));
 
-    if (!isSender && !isManagerOrAdmin) {
-      return fail(res, 403, 'FORBIDDEN', 'Only the sender or manager/admin can delete shared files', [], req);
+    if (!isSender && !isRecipient && !isManagerOrAdmin) {
+      return fail(res, 403, 'FORBIDDEN', 'Only the sender, recipient, or manager/admin can delete shared files', [], req);
     }
 
     // Remove file from disk

@@ -66,6 +66,18 @@ const callRecordingSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    driveFileId: {
+      type: String,
+      default: '',
+    },
+    driveWebViewLink: {
+      type: String,
+      default: '',
+    },
+    driveWebContentLink: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

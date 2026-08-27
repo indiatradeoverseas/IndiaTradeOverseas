@@ -22,7 +22,8 @@ import {
   FiFolder,
   FiCheckSquare,
   FiSend,
-  FiMic
+  FiMic,
+  FiTrash2
 } from 'react-icons/fi';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
 import { 
@@ -106,6 +107,31 @@ export default function SalesExecutiveDashboard() {
   const [myStatus, setMyStatus] = useState('IDLE');
   const [myActivity, setMyActivity] = useState('Available');
   const [submittingStatus, setSubmittingStatus] = useState(false);
+
+  // Daily Work Log states (Calls, Conversions, Sales)
+  const [dailyLogForm, setDailyLogForm] = useState({
+    numberOfCalls: '',
+    numberOfConversions: '',
+    numberOfSales: '',
+    note: ''
+  });
+  const [submittingDailyLog, setSubmittingDailyLog] = useState(false);
+
+  const handleDailyWorkLogSubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingDailyLog(true);
+    try {
+      const res = await salesApi.submitDailyWorkLog(dailyLogForm);
+      if (res.success) {
+        toast.success("Daily work log submitted to Sales Manager!");
+        setDailyLogForm({ numberOfCalls: '', numberOfConversions: '', numberOfSales: '', note: '' });
+      }
+    } catch (err) {
+      toast.error("Failed to submit daily work log");
+    } finally {
+      setSubmittingDailyLog(false);
+    }
+  };
 
   const [showCallModal, setShowCallModal] = useState(false);
   const [myCallRecordings, setMyCallRecordings] = useState([]);
@@ -480,46 +506,44 @@ export default function SalesExecutiveDashboard() {
   // Map user rank status
   const myRankIndex = leaderboardData.findIndex(r => r.email?.toLowerCase() === user.email?.toLowerCase());
   const myRankNum = myRankIndex !== -1 ? myRankIndex + 1 : leaderboardData.length + 1;
-  const rankBadge = myRankNum === 1 ? '🥇 Gold' : myRankNum === 2 ? '🥈 Silver' : myRankNum === 3 ? '🥉 Bronze' : '⭐ Rep';
-
   return (
     <motion.div 
       initial="hidden" 
       animate="visible" 
       variants={containerVariants} 
-      className="space-y-6 block pb-12 w-full max-w-full font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)]"
+      className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0"
     >
-      {/* Header Bar */}
-      <motion.div variants={itemVariants} className="w-full bg-[var(--crm-bg-raised)] border-b border-[var(--crm-line)] px-6 py-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 shadow-sm rounded-b-md">
+      {/* Executive Portal Header */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm">
         <div className="space-y-1 text-left flex-1 min-w-0">
           <span className="text-[10px] uppercase tracking-[0.25em] text-teal-500 font-bold block font-mono">Commodity Trading Portal</span>
-          <h1 className="text-2xl sm:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">{greeting}, {user?.name || user?.fullName || 'Sales Executive'}</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">{greeting}, {user?.name || user?.fullName || 'Sales Executive'}</h1>
           <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
             Role: <strong className="text-[var(--crm-heading)] font-semibold font-mono">{user?.position || String(user?.role || 'Sales Executive').replace('_', ' ')} ({user?.department || 'SALES'})</strong> &bull; Node Status: <span className="text-emerald-500 font-semibold font-mono">Live</span>
           </p>
         </div>
-        <div className="flex gap-2 self-stretch md:self-auto font-mono">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto self-stretch md:self-auto font-mono">
           <button 
             onClick={() => setShowCallModal(true)}
-            className="flex items-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
           >
             <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
           </button>
           <button 
             onClick={loadDashboardData}
-            className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
           >
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Sync Data
           </button>
-          <div className="bg-[var(--crm-bg-sunken)] text-teal-400 border border-[var(--crm-line)] px-4 py-2 text-[10px] font-bold tracking-widest uppercase rounded flex items-center justify-center select-none shadow-sm">
+          <div className="bg-[var(--crm-bg-sunken)] text-teal-400 border border-[var(--crm-line)] px-3 py-2 text-[10px] font-bold tracking-widest uppercase rounded flex items-center justify-center select-none shadow-sm">
             DESK MODE // ACTIVE
           </div>
         </div>
       </motion.div>
 
       {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-6 py-1 flex overflow-x-auto scrollbar-none shadow-sm">
-        <nav className="flex space-x-8 min-w-max">
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-4 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm">
+        <nav className="flex space-x-6 sm:space-x-8 min-w-max">
           {[
             { id: 'daily', label: 'Daily Action View', icon: FiClock },
             { id: 'leaderboard', label: 'Leaderboard & Gamification', icon: FiAward },
@@ -555,7 +579,7 @@ export default function SalesExecutiveDashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="px-6 space-y-6"
+            className="px-0 sm:px-2 space-y-6 w-full min-w-0"
           >
             {/* TAB 1: DAILY ACTION VIEW */}
             {activeTab === 'daily' && (
@@ -1105,48 +1129,87 @@ export default function SalesExecutiveDashboard() {
                     </div>
                   </div>
 
+                  {/* Daily Work Activity Form (Calls, Conversions, Sales) */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>Today's Action List</span>
-                      <FiZap className="text-amber-500" size={14} />
+                      <span className="flex items-center gap-2 text-teal-400">
+                        <FiCheckSquare size={14} /> Log Today's Work Activity
+                      </span>
+                      <span className="text-[9px] font-mono text-[var(--crm-ink-faint)]">Daily Manager Reporting</span>
                     </h3>
                     <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1.5 font-light leading-relaxed">
-                      Prioritized tasks compiled dynamically based on lead pipelines and follow-ups.
+                      Enter your daily calls count, conversions, and closed sales for Manager dashboard tracking.
                     </p>
 
-                    <div className="mt-5 space-y-3">
-                      {todos.map((todo) => (
-                        <div 
-                          key={todo.id} 
-                          className={`flex items-start gap-3 p-3 border rounded-md transition duration-150 ${
-                            todo.done ? 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] opacity-60' : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] hover:border-teal-500/20'
-                          }`}
-                        >
-                          <input 
-                            type="checkbox"
-                            checked={todo.done}
-                            onChange={() => toggleTodo(todo.id)}
-                            className="mt-0.5 h-3.5 w-3.5 rounded border-[var(--crm-line)] bg-[var(--crm-bg)] text-teal-600 focus:ring-teal-500 cursor-pointer"
+                    <form onSubmit={handleDailyWorkLogSubmit} className="mt-4 space-y-3 font-mono text-xs">
+                      <div>
+                        <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
+                          📞 Number of Calls *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          required
+                          value={dailyLogForm.numberOfCalls}
+                          onChange={(e) => setDailyLogForm({ ...dailyLogForm, numberOfCalls: e.target.value })}
+                          placeholder="e.g. 45"
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
+                            🎯 Number of Conversions *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={dailyLogForm.numberOfConversions}
+                            onChange={(e) => setDailyLogForm({ ...dailyLogForm, numberOfConversions: e.target.value })}
+                            placeholder="e.g. 5"
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
                           />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-xs leading-tight font-medium ${
-                              todo.done ? 'line-through text-[var(--crm-ink-faint)]' : 'text-[var(--crm-ink-soft)]'
-                            }`}>
-                              {todo.text}
-                            </p>
-                            <div className="flex gap-2 items-center mt-1.5">
-                              <span className={`text-[7px] font-mono font-bold px-1 rounded uppercase ${
-                                todo.category === 'CALL' ? 'bg-teal-950/40 text-teal-400 border border-teal-900/30' :
-                                todo.category === 'DOCUMENT' ? 'bg-sky-950/40 text-sky-400 border border-sky-900/30' :
-                                'bg-amber-950/40 text-amber-400 border border-amber-900/30'
-                              }`}>
-                                {todo.category}
-                              </span>
-                            </div>
-                          </div>
                         </div>
-                      ))}
-                    </div>
+
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
+                            💰 Number of Sales *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={dailyLogForm.numberOfSales}
+                            onChange={(e) => setDailyLogForm({ ...dailyLogForm, numberOfSales: e.target.value })}
+                            placeholder="e.g. 2"
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
+                          📝 Notes / Remarks
+                        </label>
+                        <input
+                          type="text"
+                          value={dailyLogForm.note}
+                          onChange={(e) => setDailyLogForm({ ...dailyLogForm, note: e.target.value })}
+                          placeholder="e.g. Closed 2 deals with SGS Iron Ore client"
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition text-[11px]"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submittingDailyLog}
+                        className="w-full bg-teal-700 hover:bg-teal-600 disabled:bg-teal-900 text-white font-bold uppercase tracking-wider py-2.5 rounded transition cursor-pointer text-[10px]"
+                      >
+                        {submittingDailyLog ? 'Submitting...' : 'Submit Work Log to Manager'}
+                      </button>
+                    </form>
                   </div>
 
                   {/* Sales Team Chat Hub */}
@@ -1220,30 +1283,7 @@ export default function SalesExecutiveDashboard() {
                 {/* Left/Middle Column (Rank Card, Leaderboard Table, Department Chart) */}
                 <div className="lg:col-span-8 space-y-6">
                   
-                  {/* Top Rank Badge Row */}
-                  <div className="bg-gradient-to-r from-teal-900 to-slate-950 border border-[var(--crm-line)] p-6 rounded-lg text-left text-white shadow-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                    <div className="absolute top-0 right-0 w-44 h-44 bg-teal-500/10 rounded-full blur-2xl transform translate-x-12 -translate-y-12"></div>
-                    
-                    <div className="space-y-2 z-10">
-                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-teal-400 font-mono">Executive Standing</span>
-                      <h3 className="text-2xl font-normal">Your Performance Rank: <strong className="text-teal-300 font-serif font-semibold">{myRankNum} of {leaderboardData.length || 15}</strong></h3>
-                      <div className="flex items-center gap-3 mt-3">
-                        <span className="px-3 py-1 bg-teal-800/60 border border-teal-700/30 rounded text-xs font-semibold">{rankBadge} Medal Badge</span>
-                        <span className="text-xs text-teal-200/80 font-light">Rank updates daily based on closed revenue</span>
-                      </div>
-                    </div>
 
-                    <div className="flex gap-4 z-10 font-mono text-left bg-slate-950/30 border border-teal-500/20 p-4 rounded-lg min-w-[250px]">
-                      <div className="flex-1">
-                        <span className="text-[8px] uppercase tracking-wider text-teal-400 block font-mono">Deals Won</span>
-                        <strong className="text-xl block mt-0.5 text-white">{wonMyDeals}</strong>
-                      </div>
-                      <div className="border-l border-teal-500/20 pl-4 flex-1">
-                        <span className="text-[8px] uppercase tracking-wider text-teal-400 block font-mono">Revenue Generated</span>
-                        <strong className="text-xl block mt-0.5 text-emerald-400">{currency(achievedVal)}</strong>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Leaderboard Tabs & Table */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
@@ -1525,10 +1565,10 @@ export default function SalesExecutiveDashboard() {
                             <td className="py-3 px-4 font-sans">
                               <div className="flex flex-col">
                                 <span className="font-bold text-[var(--crm-heading)]">
-                                  {file.sentBy?.fullName || file.sentBy?.name || 'Manager / Executive'}
+                                  {file.sentBy?.fullName || file.sentBy?.name || 'Executive'}
                                 </span>
                                 <span className="text-[9px] text-teal-400 font-mono uppercase font-semibold">
-                                  {file.sentBy?.role ? file.sentBy.role.replace('_', ' ') : 'MANAGEMENT'}
+                                  {file.sentBy?.role ? file.sentBy.role.replace('_', ' ') : 'SALES EXECUTIVE'}
                                 </span>
                               </div>
                             </td>

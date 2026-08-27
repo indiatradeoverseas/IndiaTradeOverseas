@@ -3,6 +3,7 @@ const path = require('path');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
 const CallRecording = require('./callRecording.model');
+const Employee = require('../employee/employee.model');
 const { getRelativePath, resolveUploadPath, proxyFromProduction } = require('../../utils/file');
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
@@ -387,7 +388,22 @@ async function uploadCallRecording(req, res, next) {
       leadPriority: ['HOT', 'WARM', 'COLD'].includes(leadPriority) ? leadPriority : (lead ? lead.priority : 'WARM')
     });
 
-    return ok(res, { callRecording }, 'Call recording uploaded and saved successfully', 201, req);
+    // Upload to Google Drive directly in background/inline
+    try {
+      const { uploadToGoogleDrive } = require('../../services/googleDrive.service');
+      const driveResult = await uploadToGoogleDrive(req.file.path, req.file.originalname, req.file.mimetype);
+      if (driveResult && driveResult.fileId) {
+        callRecording.driveFileId = driveResult.fileId;
+        callRecording.driveWebViewLink = driveResult.webViewLink || '';
+        callRecording.driveWebContentLink = driveResult.webContentLink || '';
+        await callRecording.save();
+        console.log(`[CallRecording] Recording attached to Google Drive File ID: ${driveResult.fileId}`);
+      }
+    } catch (driveErr) {
+      console.warn('[CallRecording] Google Drive upload notice:', driveErr.message);
+    }
+
+    return ok(res, { callRecording }, 'Call recording uploaded and saved to Google Drive & Server successfully', 201, req);
   } catch (error) {
     next(error);
   }
@@ -399,15 +415,31 @@ async function getCallRecordings(req, res, next) {
     const filter = {};
     const { executiveId, leadId, priority } = req.query;
 
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
+    const role = req.user?.role || '';
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(role) || role.endsWith('_MANAGER') || role.toLowerCase().includes('manager');
 
     if (!isManagerOrAdmin) {
-      const emp = await Employee.findOne({ email: req.user.email });
-      const execIds = [req.user._id];
-      if (emp && String(emp._id) !== String(req.user._id)) {
-        execIds.push(emp._id);
+      const mongoose = require('mongoose');
+      const User = require('../users/user.model');
+
+      const idSet = new Set();
+      if (req.user._id) idSet.add(String(req.user._id));
+      if (req.user.email) {
+        const emp = await Employee.findOne({ email: req.user.email });
+        if (emp && emp._id) idSet.add(String(emp._id));
+        const uDoc = await User.findOne({ email: req.user.email });
+        if (uDoc && uDoc._id) idSet.add(String(uDoc._id));
       }
-      filter.executiveId = { $in: execIds };
+
+      const matchIds = [];
+      idSet.forEach((idStr) => {
+        matchIds.push(idStr);
+        if (mongoose.isValidObjectId(idStr)) {
+          matchIds.push(new mongoose.Types.ObjectId(idStr));
+        }
+      });
+
+      filter.executiveId = { $in: matchIds };
     } else if (executiveId) {
       filter.executiveId = executiveId;
     }
@@ -436,6 +468,19 @@ async function streamCallRecording(req, res, next) {
 
     const filePath = resolveUploadPath(recording.audioPath, 'call_recordings');
     if (!filePath || !fs.existsSync(filePath)) {
+      if (recording.driveFileId) {
+        try {
+          const { getDriveFileStream } = require('../../services/googleDrive.service');
+          const driveStream = await getDriveFileStream(recording.driveFileId);
+          if (driveStream) {
+            res.setHeader('Content-Type', recording.mimeType || 'audio/mpeg');
+            return driveStream.pipe(res);
+          }
+        } catch (driveStreamErr) {
+          console.warn('[CallRecording] Drive stream error:', driveStreamErr.message);
+        }
+      }
+
       try {
         const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
@@ -443,7 +488,7 @@ async function streamCallRecording(req, res, next) {
       } catch (proxyError) {
         console.warn(`Local call recording missing: ${proxyError.message}`);
       }
-      return fail(res, 404, 'FILE_NOT_FOUND', 'Audio file not found on disk.');
+      return fail(res, 404, 'FILE_NOT_FOUND', 'Audio file not found on disk or Drive.');
     }
 
     const absPath = path.resolve(filePath);

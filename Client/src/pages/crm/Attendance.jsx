@@ -373,7 +373,7 @@ export default function Attendance() {
         </div>
       </motion.div>
 
-      <div className="w-full px-4 md:px-8 py-6 space-y-6">
+      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-6 min-w-0 overflow-x-hidden">
 
         {/* Check-in / Check-out card */}
         <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/20 rounded-sm p-6 shadow-xl">
@@ -412,7 +412,7 @@ export default function Attendance() {
               )}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {!today?.checkInAt && (
                 <button
                   onClick={handleCheckIn}

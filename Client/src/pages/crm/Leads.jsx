@@ -484,7 +484,7 @@ export default function Leads() {
       </motion.div>
 
       {/* Main Container Content */}
-      <div className="w-full px-4 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)]">
+      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)] min-w-0 overflow-x-hidden">
 
         {/* Module 4: Sales Performance Metrics Sub-Header */}
         <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 rounded-sm font-mono text-xs">

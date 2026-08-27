@@ -22,7 +22,9 @@ import {
   FiDownload,
   FiUpload,
   FiClock,
-  FiMic
+  FiMic,
+  FiFolder,
+  FiTrash2
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -95,6 +97,7 @@ export default function SalesManagerDashboard() {
   const [shareFile, setShareFile] = useState(null);
   const [submittingFile, setSubmittingFile] = useState(false);
   const [sharedFiles, setSharedFiles] = useState([]);
+  const [dailyWorkLogs, setDailyWorkLogs] = useState([]);
 
   // Target Setting states
   const [showTargetModal, setShowTargetModal] = useState(false);
@@ -272,6 +275,14 @@ export default function SalesManagerDashboard() {
           setSharedFiles(sfRes.data?.files || []);
         }
       } catch (e) { console.error('Shared files fetch error:', e); }
+
+      // 10. Fetch Executive Daily Work Logs
+      try {
+        const logsRes = await salesApi.getDailyWorkLogs();
+        if (logsRes.success) {
+          setDailyWorkLogs(logsRes.data?.logs || logsRes.logs || []);
+        }
+      } catch (e) { console.error('Daily work logs fetch error:', e); }
 
     } catch (err) {
       console.error('Error loading manager dashboard details:', err);
@@ -679,20 +690,20 @@ export default function SalesManagerDashboard() {
       initial="hidden" 
       animate="visible" 
       variants={containerVariants} 
-      className="space-y-6 block pb-12 w-full max-w-full font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] print:bg-white print:p-0"
+      className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] overflow-x-hidden print:bg-white print:p-0"
     >
       {/* Header Bar */}
-      <motion.div variants={itemVariants} className="w-full bg-[var(--crm-bg-raised)] border-b border-[var(--crm-line)] px-6 py-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 shadow-sm rounded-b-md print:shadow-none print:border-none print:pb-2">
+      <motion.div variants={itemVariants} className="w-full bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm print:shadow-none print:border-none print:pb-2">
         <div className="space-y-1 text-left flex-1 min-w-0">
           <span className="text-[10px] uppercase tracking-[0.25em] text-teal-500 font-bold block font-mono">Operations Management Console</span>
-          <h1 className="text-2xl sm:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">Sales Team Command Center</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">Sales Team Command Center</h1>
           <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
             Manager: <strong className="text-[var(--crm-heading)] font-semibold font-mono">{user?.name || user?.fullName || 'Sales Manager'}</strong> &bull; Region: <span className="text-[var(--crm-heading)] font-semibold font-mono">Global Operations</span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 self-stretch md:self-auto font-mono print:hidden">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto self-stretch md:self-auto font-mono print:hidden">
           {/* Date Filter */}
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded shadow-sm">
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded shadow-sm">
             <FiFilter className="text-[var(--crm-ink-faint)]" size={12} />
             <select
               value={dateFilter}
@@ -707,28 +718,28 @@ export default function SalesManagerDashboard() {
 
           <button 
             onClick={loadDashboardData}
-            className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
           >
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Refresh
           </button>
 
           <button 
             onClick={handlePrintPDF}
-            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
           >
-            <FiPrinter size={12} /> Export to PDF
+            <FiPrinter size={12} /> Export PDF
           </button>
 
           <button 
             onClick={() => setShowTaskModal(true)}
-            className="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
           >
             <FiCheckSquare size={12} /> Assign Task
           </button>
 
           <button 
             onClick={() => setShowFileModal(true)}
-            className="flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-800 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
           >
             <FiUpload size={12} /> Send File
           </button>
@@ -736,8 +747,8 @@ export default function SalesManagerDashboard() {
       </motion.div>
 
       {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-6 py-1 flex overflow-x-auto scrollbar-none shadow-sm print:hidden">
-        <nav className="flex space-x-8 min-w-max">
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-4 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm print:hidden">
+        <nav className="flex space-x-6 sm:space-x-8 min-w-max">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
@@ -764,9 +775,9 @@ export default function SalesManagerDashboard() {
       {/* Main Tab Screen Render */}
       <AnimatePresence mode="wait">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-3 print:hidden">
+          <div className="flex flex-col items-center justify-center py-32 space-y-3">
             <div className="w-10 h-10 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-xs font-mono tracking-widest uppercase text-[var(--crm-ink-faint)]">Compiling Team Analytics...</p>
+            <p className="text-xs font-mono tracking-widest uppercase text-[var(--crm-ink-faint)]">Syncing Team Command Center Data...</p>
           </div>
         ) : (
           <motion.div
@@ -775,7 +786,7 @@ export default function SalesManagerDashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="px-6 space-y-6"
+            className="px-0 sm:px-2 space-y-6 w-full min-w-0"
           >
             {/* TAB 1: TEAM COMMAND CENTER */}
             {activeTab === 'command' && (
@@ -784,8 +795,8 @@ export default function SalesManagerDashboard() {
                 {/* Left/Middle Column */}
                 <div className="lg:col-span-8 space-y-6">
                   
-                  {/* Headline KPIs Row (6 Metrics) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
+                  {/* KPI Cards Row (Responsive Grid) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 animate-fadeIn">
                     {[
                       { label: 'TOTAL TARGET', val: currency(metrics.totalTarget), sub: 'Monthly Goal', icon: FiTrendingUp, color: 'text-indigo-400 bg-indigo-950/20 border-indigo-900/30' },
                       { label: 'TOTAL LEADS', val: metrics.totalLeads, sub: 'All Sources', icon: FiUsers, color: 'text-teal-400 bg-teal-950/20 border-teal-900/30' },
@@ -797,16 +808,16 @@ export default function SalesManagerDashboard() {
                       <motion.div 
                         key={idx}
                         whileHover={{ y: -3 }}
-                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left"
+                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3.5 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left min-w-0"
                       >
-                        <div className="flex justify-between items-start">
-                          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono leading-none">{kpi.label}</span>
-                          <div className={`p-1.5 rounded-md ${kpi.color}`}>
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono leading-tight">{kpi.label}</span>
+                          <div className={`p-1.5 rounded-md shrink-0 ${kpi.color}`}>
                             <kpi.icon size={12} />
                           </div>
                         </div>
-                        <div className="mt-3">
-                          <p className="text-base font-bold text-[var(--crm-heading)] leading-tight truncate tracking-tight">{kpi.val}</p>
+                        <div className="mt-2.5">
+                          <p className="text-sm sm:text-base font-bold text-[var(--crm-heading)] leading-tight tracking-tight break-words">{kpi.val}</p>
                           <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mt-0.5">{kpi.sub}</span>
                         </div>
                       </motion.div>
@@ -1294,7 +1305,7 @@ export default function SalesManagerDashboard() {
                               FOLLOWING_UP: { label: 'Following Up', color: 'bg-sky-500', pulse: true, text: 'text-sky-400', border: 'border-sky-900/20 bg-sky-950/20' },
                               CONVERTING: { label: 'Converting', color: 'bg-violet-500', pulse: true, text: 'text-violet-400', border: 'border-violet-900/20 bg-violet-950/20' },
                               PAYMENT: { label: 'Payment', color: 'bg-amber-500', pulse: true, text: 'text-amber-400', border: 'border-amber-900/20 bg-amber-950/20' },
-                              IDLE: { label: 'Online / Available', color: 'bg-emerald-500', pulse: false, text: 'text-emerald-400', border: 'border-emerald-900/20 bg-emerald-950/20' },
+                              IDLE: { label: 'Online', color: 'bg-emerald-500', pulse: false, text: 'text-emerald-400', border: 'border-emerald-900/20 bg-emerald-950/20' },
                               OFFLINE: { label: 'Offline', color: 'bg-rose-500', pulse: false, text: 'text-rose-400', border: 'border-rose-900/20 bg-rose-950/20' }
                             };
                             
@@ -1372,6 +1383,76 @@ export default function SalesManagerDashboard() {
                           <span className="text-[9px] font-mono font-bold block text-right">{cell.val}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Executive Daily Work Logs Table */}
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-line)] pb-3 mb-4 gap-2">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
+                          <FiCheckSquare size={14} className="text-teal-400" /> Executive Daily Activity & Sales Logs
+                        </h3>
+                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                          Real-time daily work entries submitted by Sales Executives (Calls, Conversions & Closed Sales).
+                        </p>
+                      </div>
+                      <span className="bg-teal-950/60 border border-teal-800 text-teal-300 font-mono text-[9px] px-2.5 py-0.5 rounded font-bold uppercase">
+                        {dailyWorkLogs.length} Entries Logged
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                          <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                            <th className="py-3 px-3">Employee Name</th>
+                            <th className="py-3 px-3">Dept</th>
+                            <th className="py-3 px-3 text-teal-400">📞 Calls Made</th>
+                            <th className="py-3 px-3 text-amber-400">🎯 Conversions</th>
+                            <th className="py-3 px-3 text-emerald-400">💰 Sales Count</th>
+                            <th className="py-3 px-3">Date & Time</th>
+                            <th className="py-3 px-3">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                          {dailyWorkLogs.length === 0 ? (
+                            <tr>
+                              <td colSpan="7" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                                No daily work logs submitted by executives yet today.
+                              </td>
+                            </tr>
+                          ) : (
+                            dailyWorkLogs.map((log) => (
+                              <tr key={log._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                                <td className="py-3 px-3 font-bold text-[var(--crm-heading)] font-sans">
+                                  {log.employeeName || 'Sales Executive'}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className="bg-slate-900 border border-slate-800 text-teal-400 px-2 py-0.5 rounded text-[8px] uppercase">
+                                    {log.department || 'SALES'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-teal-300 font-bold">
+                                  {log.numberOfCalls} Calls
+                                </td>
+                                <td className="py-3 px-3 text-amber-300 font-bold">
+                                  {log.numberOfConversions} Conversions
+                                </td>
+                                <td className="py-3 px-3 text-emerald-400 font-bold">
+                                  {log.numberOfSales} Sales
+                                </td>
+                                <td className="py-3 px-3 text-[var(--crm-ink-faint)] text-[10px]">
+                                  {new Date(log.createdAt || log.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                </td>
+                                <td className="py-3 px-3 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[150px]">
+                                  {log.note ? `"${log.note}"` : '—'}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
@@ -1809,31 +1890,43 @@ export default function SalesManagerDashboard() {
                                 </td>
                                 <td className="py-3.5 px-4 text-right">
                                   <div className="flex justify-end gap-2">
-                                    <a
-                                      href={sharedFilesApi.getDownloadUrl(file._id)}
-                                      download
-                                      className="bg-teal-950/60 hover:bg-teal-900 border border-teal-800 text-teal-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1"
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const response = await sharedFilesApi.downloadFile(file._id);
+                                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                                          const link = document.createElement('a');
+                                          link.href = url;
+                                          link.setAttribute('download', file.originalName || 'shared-file');
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          link.remove();
+                                          toast.success('Download completed');
+                                        } catch (err) {
+                                          toast.error('Could not download file');
+                                        }
+                                      }}
+                                      className="bg-teal-950/60 hover:bg-teal-900 border border-teal-800 text-teal-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1 cursor-pointer"
                                     >
                                       <FiDownload size={11} /> Download
-                                    </a>
-                                    {isSender && (
-                                      <button
-                                        onClick={async () => {
-                                          if (window.confirm('Delete this shared file?')) {
-                                            try {
-                                              await sharedFilesApi.deleteSharedFile(file._id);
-                                              toast.success('File deleted');
-                                              setSharedFiles(prev => prev.filter(f => f._id !== file._id));
-                                            } catch (err) {
-                                              toast.error('Failed to delete file');
-                                            }
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (window.confirm('Delete this shared file?')) {
+                                          try {
+                                            await sharedFilesApi.deleteSharedFile(file._id);
+                                            toast.success('File deleted successfully');
+                                            setSharedFiles(prev => prev.filter(f => f._id !== file._id));
+                                          } catch (err) {
+                                            toast.error('Failed to delete file');
                                           }
-                                        }}
-                                        className="bg-rose-950/40 hover:bg-rose-900 border border-rose-800/40 text-rose-300 px-2 py-1 rounded text-[10px] transition cursor-pointer"
-                                      >
-                                        <FiTrash2 size={11} />
-                                      </button>
-                                    )}
+                                        }
+                                      }}
+                                      className="bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 p-1.5 rounded transition cursor-pointer"
+                                      title="Delete Shared File"
+                                    >
+                                      <FiTrash2 size={12} />
+                                    </button>
                                   </div>
                                 </td>
                               </tr>

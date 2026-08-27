@@ -294,7 +294,7 @@ export default function Tasks() {
       </motion.div>
 
       {/* Main Mode Tabs */}
-      <div className="flex border-b border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/20 px-6 py-1 gap-2.5">
+      <div className="flex overflow-x-auto custom-scrollbar border-b border-[var(--crm-line)] bg-[var(--crm-bg-raised)]/20 px-3 sm:px-6 py-1 gap-2.5">
         {[
           { id: 'PIPELINE', label: 'Pipeline Tasks (Leads)', icon: FiClock },
           { id: 'ACTION_TASKS', label: 'Action Tasks', icon: FiCheckSquare },
@@ -303,7 +303,7 @@ export default function Tasks() {
           <button
             key={tab.id}
             onClick={() => setMainTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
               mainTab === tab.id
                 ? 'border-teal-500 text-teal-400'
                 : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
@@ -315,7 +315,7 @@ export default function Tasks() {
         ))}
       </div>
 
-      <div className="w-full py-8 space-y-6 bg-[var(--crm-bg)] px-6">
+      <div className="w-full py-8 space-y-6 bg-[var(--crm-bg)] px-3 sm:px-6 min-w-0 overflow-x-hidden">
 
         {/* ==================================================== */}
         {/* PIPELINE TAB */}
