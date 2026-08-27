@@ -79,5 +79,10 @@ export const leadsApi = {
     const queryString = new URLSearchParams(params).toString();
     const response = await axiosInstance.get(`/leads/call-recordings${queryString ? `?${queryString}` : ''}`);
     return response.data;
+  },
+
+  async updateCallRecordingRemark(recordingId, managerRemark) {
+    const response = await axiosInstance.patch(`/leads/call-recordings/${recordingId}/remark`, { managerRemark });
+    return response.data;
   }
 };

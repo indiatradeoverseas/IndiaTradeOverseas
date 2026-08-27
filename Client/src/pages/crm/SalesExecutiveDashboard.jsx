@@ -763,6 +763,43 @@ export default function SalesExecutiveDashboard() {
                     </div>
                   </div>
 
+                  {/* Executive Activity KPI Cards (Call Recordings & Shared Files count) */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[var(--crm-bg-raised)] border border-rose-900/40 p-4 rounded-lg flex items-center justify-between shadow-sm">
+                      <div>
+                        <span className="text-[9px] uppercase font-mono tracking-widest text-rose-400 font-bold block">
+                          🎙️ Call Recordings Sent
+                        </span>
+                        <strong className="text-2xl font-serif text-[var(--crm-heading)] mt-1 block">
+                          {myCallRecordings.length}
+                        </strong>
+                      </div>
+                      <button
+                        onClick={() => setShowCallModal(true)}
+                        className="text-[9px] uppercase font-mono font-bold bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 px-2.5 py-1.5 rounded transition cursor-pointer"
+                      >
+                        + Upload Call
+                      </button>
+                    </div>
+
+                    <div className="bg-[var(--crm-bg-raised)] border border-teal-900/40 p-4 rounded-lg flex items-center justify-between shadow-sm">
+                      <div>
+                        <span className="text-[9px] uppercase font-mono tracking-widest text-teal-400 font-bold block">
+                          📁 Shared Files Sent
+                        </span>
+                        <strong className="text-2xl font-serif text-[var(--crm-heading)] mt-1 block">
+                          {sharedFiles.length}
+                        </strong>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('shared_files')}
+                        className="text-[9px] uppercase font-mono font-bold bg-teal-950/60 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-2.5 py-1.5 rounded transition cursor-pointer"
+                      >
+                        View Files
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Lead Performance & Distribution Charts */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     {/* Chart 1: Lead Pipeline Distribution */}
@@ -871,6 +908,15 @@ export default function SalesExecutiveDashboard() {
                                 <span>📅 {new Date(rec.createdAt).toLocaleDateString()}</span>
                                 {rec.duration && <span>⏱️ {rec.duration}</span>}
                               </div>
+
+                              {rec.managerRemark && (
+                                <div className="bg-teal-950/50 border border-teal-800/50 p-2 rounded text-[10px] text-teal-300">
+                                  <span className="font-bold font-mono text-[8px] uppercase tracking-widest block text-teal-400 mb-0.5">
+                                    💬 Manager Remark ({rec.managerRemarkBy || 'Manager'}):
+                                  </span>
+                                  <span className="font-sans italic">"{rec.managerRemark}"</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))

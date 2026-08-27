@@ -19,7 +19,8 @@ const {
   logEmailActivity,
   uploadCallRecording,
   getCallRecordings,
-  streamCallRecording
+  streamCallRecording,
+  updateCallRecordingRemark
 } = require('./leadManagement.controller');
 
 // Multer setup for lead voice notes
@@ -81,6 +82,7 @@ router.post('/score', async (req, res, next) => {
 
 router.get('/call-recordings', getCallRecordings);
 router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
+router.patch('/call-recordings/:recordingId/remark', updateCallRecordingRemark);
 
 router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
   try {

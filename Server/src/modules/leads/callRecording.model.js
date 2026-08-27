@@ -54,6 +54,18 @@ const callRecordingSchema = new mongoose.Schema(
       enum: ['HOT', 'WARM', 'COLD'],
       default: 'WARM',
     },
+    managerRemark: {
+      type: String,
+      default: '',
+    },
+    managerRemarkBy: {
+      type: String,
+      default: '',
+    },
+    managerRemarkAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

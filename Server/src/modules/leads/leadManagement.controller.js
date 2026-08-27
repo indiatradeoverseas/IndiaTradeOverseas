@@ -485,6 +485,32 @@ async function streamCallRecording(req, res, next) {
   }
 }
 
+// 10. Update Manager Remark on Call Recording
+async function updateCallRecordingRemark(req, res, next) {
+  try {
+    const { recordingId } = req.params;
+    const { managerRemark } = req.body;
+
+    const recording = await CallRecording.findByIdAndUpdate(
+      recordingId,
+      {
+        managerRemark: managerRemark || '',
+        managerRemarkBy: req.user.fullName || req.user.name || 'Sales Manager',
+        managerRemarkAt: new Date()
+      },
+      { new: true }
+    );
+
+    if (!recording) {
+      return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
+    }
+
+    return ok(res, { recording }, 'Manager remark updated successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -496,5 +522,6 @@ module.exports = {
   getSalesMetrics,
   uploadCallRecording,
   getCallRecordings,
-  streamCallRecording
+  streamCallRecording,
+  updateCallRecordingRemark
 };

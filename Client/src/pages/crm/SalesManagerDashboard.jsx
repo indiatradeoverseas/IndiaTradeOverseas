@@ -94,6 +94,7 @@ export default function SalesManagerDashboard() {
   const [fileForm, setFileForm] = useState({ sentTo: '', note: '' });
   const [shareFile, setShareFile] = useState(null);
   const [submittingFile, setSubmittingFile] = useState(false);
+  const [sharedFiles, setSharedFiles] = useState([]);
 
   // Target Setting states
   const [showTargetModal, setShowTargetModal] = useState(false);
@@ -112,6 +113,25 @@ export default function SalesManagerDashboard() {
   // Call Recordings State
   const [callRecordings, setCallRecordings] = useState([]);
   const [recordingPriorityFilter, setRecordingPriorityFilter] = useState('ALL');
+  const [remarkInputs, setRemarkInputs] = useState({});
+  const [savingRemarkId, setSavingRemarkId] = useState(null);
+
+  const handleSaveRemark = async (recordingId) => {
+    const remarkText = remarkInputs[recordingId];
+    if (remarkText === undefined) return;
+    setSavingRemarkId(recordingId);
+    try {
+      const res = await leadsApi.updateCallRecordingRemark(recordingId, remarkText);
+      if (res.success) {
+        toast.success('Manager remark saved!');
+        setCallRecordings(prev => prev.map(r => r._id === recordingId ? { ...r, managerRemark: remarkText, managerRemarkBy: user?.fullName || user?.name } : r));
+      }
+    } catch (err) {
+      toast.error('Failed to save remark');
+    } finally {
+      setSavingRemarkId(null);
+    }
+  };
 
   // Strategic Insights & Chat States
   const [strategicInsights, setStrategicInsights] = useState(null);
@@ -244,6 +264,14 @@ export default function SalesManagerDashboard() {
           setCallRecordings(recRes.data?.recordings || []);
         }
       } catch (e) { console.error('Call recordings fetch error:', e); }
+
+      // 9. Fetch Shared Files
+      try {
+        const sfRes = await sharedFilesApi.getSharedFiles();
+        if (sfRes.success) {
+          setSharedFiles(sfRes.data?.files || []);
+        }
+      } catch (e) { console.error('Shared files fetch error:', e); }
 
     } catch (err) {
       console.error('Error loading manager dashboard details:', err);
@@ -713,6 +741,7 @@ export default function SalesManagerDashboard() {
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
+            { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
           ].map(tab => (
@@ -1676,11 +1705,143 @@ export default function SalesManagerDashboard() {
                                   <span>📅 {new Date(rec.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                                   {rec.duration && <span>⏱️ {rec.duration}</span>}
                                 </div>
+
+                                {/* Manager Remark section */}
+                                <div className="pt-2 border-t border-[var(--crm-line)]/60">
+                                  <label className="block text-[8px] uppercase tracking-widest text-teal-400 font-bold mb-1">
+                                    💬 Manager Feedback / Remark
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Add manager feedback..."
+                                      value={remarkInputs[rec._id] !== undefined ? remarkInputs[rec._id] : (rec.managerRemark || '')}
+                                      onChange={(e) => setRemarkInputs({ ...remarkInputs, [rec._id]: e.target.value })}
+                                      className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded text-[10px] text-[var(--crm-heading)] outline-none focus:border-teal-500 font-sans"
+                                    />
+                                    <button
+                                      onClick={() => handleSaveRemark(rec._id)}
+                                      disabled={savingRemarkId === rec._id}
+                                      className="bg-teal-950 hover:bg-teal-900 border border-teal-800 text-teal-300 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition cursor-pointer disabled:opacity-50"
+                                    >
+                                      {savingRemarkId === rec._id ? 'Saving...' : 'Save'}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           );
                         })
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: SHARED FILES HUB */}
+            {activeTab === 'shared_files_hub' && (
+              <div className="space-y-6">
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-6 rounded-lg shadow-sm text-left">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[var(--crm-line)] pb-4 mb-4 gap-3">
+                    <div>
+                      <h3 className="text-sm font-serif font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-2">
+                        <FiFolder className="text-teal-400" /> Team Shared Files Repository
+                      </h3>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                        Inspect, download, and manage client Excel files and documents shared by Sales Executives and Managers.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowFileModal(true)}
+                      className="bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-4 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition cursor-pointer flex items-center gap-2 font-mono"
+                    >
+                      <FiUpload size={12} /> + Share File
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[900px]">
+                      <thead>
+                        <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                          <th className="py-3.5 px-4">File Name</th>
+                          <th className="py-3.5 px-4">Sent By (Executive)</th>
+                          <th className="py-3.5 px-4">Sent To (Recipient)</th>
+                          <th className="py-3.5 px-4">Department</th>
+                          <th className="py-3.5 px-4">Date Shared</th>
+                          <th className="py-3.5 px-4">Note / Context</th>
+                          <th className="py-3.5 px-4 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                        {sharedFiles.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                              No files shared by executives yet. Click "+ Share File" to send a document.
+                            </td>
+                          </tr>
+                        ) : (
+                          sharedFiles.map((file) => {
+                            const isSender = String(file.sentBy?._id || file.sentBy) === String(user?._id);
+                            return (
+                              <tr key={file._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                                <td className="py-3.5 px-4 font-bold text-[var(--crm-heading)]">
+                                  <div className="flex items-center gap-2">
+                                    <FiFileText className="text-teal-400 shrink-0" size={14} />
+                                    <span className="truncate max-w-[200px]" title={file.originalName}>{file.originalName}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  {file.sentBy?.name || file.sentBy?.fullName || 'Executive'}
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  {file.sentTo?.name || file.sentTo?.fullName || 'Recipient'}
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <span className="bg-slate-900 border border-slate-800 text-teal-300 px-2 py-0.5 rounded text-[9px] uppercase">
+                                    {file.department || 'SALES'}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4 text-[var(--crm-ink-faint)]">
+                                  {new Date(file.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                </td>
+                                <td className="py-3.5 px-4 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[180px]">
+                                  {file.note ? `"${file.note}"` : '—'}
+                                </td>
+                                <td className="py-3.5 px-4 text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <a
+                                      href={sharedFilesApi.getDownloadUrl(file._id)}
+                                      download
+                                      className="bg-teal-950/60 hover:bg-teal-900 border border-teal-800 text-teal-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1"
+                                    >
+                                      <FiDownload size={11} /> Download
+                                    </a>
+                                    {isSender && (
+                                      <button
+                                        onClick={async () => {
+                                          if (window.confirm('Delete this shared file?')) {
+                                            try {
+                                              await sharedFilesApi.deleteSharedFile(file._id);
+                                              toast.success('File deleted');
+                                              setSharedFiles(prev => prev.filter(f => f._id !== file._id));
+                                            } catch (err) {
+                                              toast.error('Failed to delete file');
+                                            }
+                                          }
+                                        }}
+                                        className="bg-rose-950/40 hover:bg-rose-900 border border-rose-800/40 text-rose-300 px-2 py-1 rounded text-[10px] transition cursor-pointer"
+                                      >
+                                        <FiTrash2 size={11} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
