@@ -446,10 +446,36 @@ async function streamCallRecording(req, res, next) {
       return fail(res, 404, 'FILE_NOT_FOUND', 'Audio file not found on disk.');
     }
 
-    if (recording.mimeType) {
-      res.setHeader('Content-Type', recording.mimeType);
+    const absPath = path.resolve(filePath);
+    const stat = fs.statSync(absPath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    const mimeType = recording.mimeType || 'audio/mpeg';
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(absPath, { start, end });
+      const head = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': mimeType,
+      };
+      res.writeHead(206, head);
+      file.pipe(res);
+    } else {
+      const head = {
+        'Content-Length': fileSize,
+        'Content-Type': mimeType,
+        'Accept-Ranges': 'bytes',
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(absPath).pipe(res);
     }
-    res.sendFile(filePath);
   } catch (error) {
     next(error);
   }
