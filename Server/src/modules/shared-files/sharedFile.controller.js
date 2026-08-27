@@ -68,18 +68,26 @@ async function shareFile(req, res) {
  */
 async function getSharedFiles(req, res) {
   try {
-    const userId = req.user._id;
+    const userIds = [req.user._id];
+    const emp = await Employee.findOne({ email: req.user.email });
+    if (emp && String(emp._id) !== String(req.user._id)) {
+      userIds.push(emp._id);
+    }
+
     const { direction } = req.query; // 'received' | 'sent' | undefined (both)
 
     let query = {};
 
     if (direction === 'sent') {
-      query.sentBy = userId;
+      query.sentBy = { $in: userIds };
     } else if (direction === 'received') {
-      query.sentTo = userId;
+      query.sentTo = { $in: userIds };
     } else {
       // Default: show files relevant to this user (sent or received)
-      query.$or = [{ sentBy: userId }, { sentTo: userId }];
+      query.$or = [
+        { sentBy: { $in: userIds } },
+        { sentTo: { $in: userIds } }
+      ];
     }
 
     const files = await SharedFile.find(query)

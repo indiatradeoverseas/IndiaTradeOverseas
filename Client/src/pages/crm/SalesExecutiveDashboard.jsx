@@ -108,6 +108,7 @@ export default function SalesExecutiveDashboard() {
   const [submittingStatus, setSubmittingStatus] = useState(false);
 
   const [showCallModal, setShowCallModal] = useState(false);
+  const [myCallRecordings, setMyCallRecordings] = useState([]);
 
   const handleStatusChange = async (newStatus, newActivity) => {
     setSubmittingStatus(true);
@@ -213,6 +214,16 @@ export default function SalesExecutiveDashboard() {
         }
       } catch (err) {
         console.error('Error fetching own status:', err);
+      }
+
+      // 9. Fetch own call recordings
+      try {
+        const recRes = await leadsApi.getCallRecordings();
+        if (recRes.success) {
+          setMyCallRecordings(recRes.data?.recordings || []);
+        }
+      } catch (err) {
+        console.error('Error fetching call recordings:', err);
       }
 
     } catch (err) {
@@ -801,6 +812,65 @@ export default function SalesExecutiveDashboard() {
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Executive Call Recordings Hub Card */}
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
+                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
+                      <span className="flex items-center gap-2 text-rose-400">
+                        <FiMic className="animate-pulse" size={14} /> My Call Recordings ({myCallRecordings.length})
+                      </span>
+                      <button
+                        onClick={() => setShowCallModal(true)}
+                        className="text-[9px] uppercase font-mono font-bold bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 px-2.5 py-1 rounded transition cursor-pointer"
+                      >
+                        + Upload Call
+                      </button>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 font-mono">
+                      {myCallRecordings.length === 0 ? (
+                        <div className="col-span-full py-8 text-center text-[10px] text-[var(--crm-ink-faint)] uppercase tracking-wider">
+                          No call recordings uploaded yet. Click "+ Upload Call" above to save client call audio.
+                        </div>
+                      ) : (
+                        myCallRecordings.map((rec) => (
+                          <div key={rec._id} className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-md space-y-2 text-xs">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-serif font-bold text-[var(--crm-heading)] truncate text-xs">
+                                {rec.customerName || 'Client Call'}
+                              </h4>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${
+                                rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' :
+                                rec.leadPriority === 'WARM' ? 'bg-amber-950/60 text-amber-400 border-amber-800/60' :
+                                'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
+                              }`}>
+                                {rec.leadPriority || 'WARM'}
+                              </span>
+                            </div>
+
+                            {rec.notes && (
+                              <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] italic line-clamp-2 bg-[var(--crm-bg-raised)] p-2 rounded">
+                                "{rec.notes}"
+                              </p>
+                            )}
+
+                            <div className="space-y-1 pt-1 border-t border-[var(--crm-line)]/50">
+                              <audio
+                                controls
+                                controlsList="nodownload"
+                                className="w-full h-7 rounded accent-teal-500"
+                                src={`http://localhost:5000/api/leads/call-recordings/${rec._id}/stream`}
+                              />
+                              <div className="flex justify-between text-[8px] text-[var(--crm-ink-faint)] pt-1">
+                                <span>📅 {new Date(rec.createdAt).toLocaleDateString()}</span>
+                                {rec.duration && <span>⏱️ {rec.duration}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 

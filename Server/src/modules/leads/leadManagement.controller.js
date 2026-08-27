@@ -402,7 +402,12 @@ async function getCallRecordings(req, res, next) {
     const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
 
     if (!isManagerOrAdmin) {
-      filter.executiveId = req.user._id;
+      const emp = await Employee.findOne({ email: req.user.email });
+      const execIds = [req.user._id];
+      if (emp && String(emp._id) !== String(req.user._id)) {
+        execIds.push(emp._id);
+      }
+      filter.executiveId = { $in: execIds };
     } else if (executiveId) {
       filter.executiveId = executiveId;
     }
