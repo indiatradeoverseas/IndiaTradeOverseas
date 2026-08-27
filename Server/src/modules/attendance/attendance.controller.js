@@ -588,8 +588,14 @@ async function getBiometricStatus(req, res, next) {
 // 8. Manual Attendance Mark/Update (HR/Admin)
 async function markAttendanceManually(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
+    const isHrOrAdminOrManager = 
+      ['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'SUPER_ADMIN'].includes(req.user.role) ||
+      req.user.department === 'HR' ||
+      (req.user.position && req.user.position.toLowerCase().includes('hr')) ||
+      (req.user.role && req.user.role.toLowerCase().includes('hr'));
+
+    if (!isHrOrAdminOrManager) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin privilege required', [], req);
     }
 
     const { employeeId, date, status, checkInTime, checkOutTime } = req.body;
@@ -604,12 +610,23 @@ async function markAttendanceManually(req, res, next) {
     }
 
     const mongoose = require('mongoose');
-    const employee = await Employee.findOne({
+    let employee = await Employee.findOne({
       $or: [
         { _id: employeeId },
         ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
       ]
     });
+    if (!employee) {
+      const userDoc = await User.findOne({
+        $or: [
+          { _id: employeeId },
+          ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
+        ]
+      });
+      if (userDoc) {
+        employee = await Employee.findOne({ email: userDoc.email });
+      }
+    }
     if (!employee) {
       return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee not found', [], req);
     }

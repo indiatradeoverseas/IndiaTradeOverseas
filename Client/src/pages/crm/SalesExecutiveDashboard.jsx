@@ -196,9 +196,9 @@ export default function SalesExecutiveDashboard() {
 
       // 7. Fetch active employees list for file sharing
       try {
-        const empRes = await taskApi.getEmployeesByDepartment();
+        const empRes = await employeesApi.getEmployees();
         if (empRes.success) {
-          setEmployeesList(empRes.employees || []);
+          setEmployeesList(empRes.data?.employees || empRes.employees || []);
         }
       } catch (err) {
         console.error('Error fetching employees list:', err);
