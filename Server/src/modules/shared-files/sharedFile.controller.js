@@ -68,11 +68,25 @@ async function shareFile(req, res) {
  */
 async function getSharedFiles(req, res) {
   try {
-    const userIds = [req.user._id];
-    const emp = await Employee.findOne({ email: req.user.email });
-    if (emp && String(emp._id) !== String(req.user._id)) {
-      userIds.push(emp._id);
+    const mongoose = require('mongoose');
+    const User = require('../users/user.model');
+
+    const idStrings = new Set();
+    if (req.user._id) idStrings.add(String(req.user._id));
+    if (req.user.email) {
+      const emp = await Employee.findOne({ email: req.user.email });
+      if (emp && emp._id) idStrings.add(String(emp._id));
+      const userDoc = await User.findOne({ email: req.user.email });
+      if (userDoc && userDoc._id) idStrings.add(String(userDoc._id));
     }
+
+    const matchConditions = [];
+    idStrings.forEach((idStr) => {
+      matchConditions.push(idStr);
+      if (mongoose.isValidObjectId(idStr)) {
+        matchConditions.push(new mongoose.Types.ObjectId(idStr));
+      }
+    });
 
     const { direction } = req.query; // 'received' | 'sent' | undefined (both)
     const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
@@ -82,13 +96,13 @@ async function getSharedFiles(req, res) {
     let query = {};
 
     if (direction === 'sent') {
-      query.sentBy = { $in: userIds };
+      query.sentBy = { $in: matchConditions };
     } else if (direction === 'received') {
-      query.sentTo = { $in: userIds };
+      query.sentTo = { $in: matchConditions };
     } else if (!isManagerOrAdmin) {
       query.$or = [
-        { sentBy: { $in: userIds } },
-        { sentTo: { $in: userIds } }
+        { sentBy: { $in: matchConditions } },
+        { sentTo: { $in: matchConditions } }
       ];
     }
 
