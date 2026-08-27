@@ -464,6 +464,8 @@ async function streamCallRecording(req, res, next) {
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
         'Content-Type': mimeType,
+        'Access-Control-Allow-Origin': '*',
+        'Cross-Origin-Resource-Policy': 'cross-origin'
       };
       res.writeHead(206, head);
       file.pipe(res);
@@ -472,6 +474,8 @@ async function streamCallRecording(req, res, next) {
         'Content-Length': fileSize,
         'Content-Type': mimeType,
         'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*',
+        'Cross-Origin-Resource-Policy': 'cross-origin'
       };
       res.writeHead(200, head);
       fs.createReadStream(absPath).pipe(res);
