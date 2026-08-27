@@ -861,7 +861,11 @@ export default function SalesExecutiveDashboard() {
                                 controls
                                 controlsList="nodownload"
                                 className="w-full h-7 rounded accent-teal-500"
-                                src={`http://localhost:5000/api/leads/call-recordings/${rec._id}/stream`}
+                                src={(() => {
+                                  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                  return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
+                                })()}
                               />
                               <div className="flex justify-between text-[8px] text-[var(--crm-ink-faint)] pt-1">
                                 <span>📅 {new Date(rec.createdAt).toLocaleDateString()}</span>

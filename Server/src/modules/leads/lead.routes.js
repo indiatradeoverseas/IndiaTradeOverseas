@@ -45,6 +45,7 @@ const upload = multer({
 // Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
 // and the public chat widget. Must stay above router.use(authenticate) below.
 router.post('/from-chat', createFromChat);
+router.get('/call-recordings/:recordingId/stream', streamCallRecording);
 
 router.use(authenticate);
 

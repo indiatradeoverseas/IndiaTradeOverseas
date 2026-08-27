@@ -437,7 +437,7 @@ async function streamCallRecording(req, res, next) {
     const filePath = resolveUploadPath(recording.audioPath, 'call_recordings');
     if (!filePath || !fs.existsSync(filePath)) {
       try {
-        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
+        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -446,6 +446,9 @@ async function streamCallRecording(req, res, next) {
       return fail(res, 404, 'FILE_NOT_FOUND', 'Audio file not found on disk.');
     }
 
+    if (recording.mimeType) {
+      res.setHeader('Content-Type', recording.mimeType);
+    }
     res.sendFile(filePath);
   } catch (error) {
     next(error);
