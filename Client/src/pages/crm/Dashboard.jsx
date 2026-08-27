@@ -301,6 +301,40 @@ export default function Dashboard() {
     );
   }
 
+  if (isAdmin && adminViewMode === 'HR_MANAGER') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-[var(--crm-ink-soft)]">
+          <span>Viewing as: <strong className="text-teal-400">HR MANAGER</strong> (Admin bypass mode)</span>
+          <button 
+            onClick={() => setAdminViewMode('COMPANY')}
+            className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
+          >
+            Back to Company Summary
+          </button>
+        </div>
+        <HrManagerDashboard />
+      </div>
+    );
+  }
+
+  if (isAdmin && adminViewMode === 'HR_EXECUTIVE') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-[var(--crm-ink-soft)]">
+          <span>Viewing as: <strong className="text-teal-400">HR EXECUTIVE</strong> (Admin bypass mode)</span>
+          <button 
+            onClick={() => setAdminViewMode('COMPANY')}
+            className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
+          >
+            Back to Company Summary
+          </button>
+        </div>
+        <HrExecutiveDashboard />
+      </div>
+    );
+  }
+
   const stats = isAdmin ? [
     { title: 'Total Employees', value: summary?.totalEmployees || 0, icon: FiUsers, tone: 'ink' },
     { title: 'Active Leads', value: summary?.activeLeads || 0, icon: FiActivity, tone: 'info' },
@@ -361,6 +395,8 @@ export default function Dashboard() {
                 <option value="COMPANY" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Admin (Company)</option>
                 <option value="MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Sales Manager</option>
                 <option value="EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Sales Executive</option>
+                <option value="HR_MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">HR Manager</option>
+                <option value="HR_EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">HR Executive</option>
                 <option value="FINANCE_MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Manager</option>
                 <option value="FINANCE_EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Accountant</option>
               </select>

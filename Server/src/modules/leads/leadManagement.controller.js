@@ -333,6 +333,121 @@ async function getSalesMetrics(req, res, next) {
     next(error);
   }
 }
+const CallRecording = require('./callRecording.model');
+
+// 7. Upload Call Recording by Sales Executive
+async function uploadCallRecording(req, res, next) {
+  try {
+    if (!req.file) {
+      return fail(res, 400, 'FILE_REQUIRED', 'Please select a call recording audio file.');
+    }
+
+    const { leadId, notes, duration, leadPriority, customerName: inputCustomerName } = req.body;
+
+    let lead = null;
+    let customerName = inputCustomerName || '';
+    let leadCode = '';
+
+    if (leadId) {
+      lead = await Lead.findById(leadId);
+      if (lead) {
+        customerName = lead.customerName || customerName;
+        leadCode = lead.leadCode || '';
+
+        // Attach to lead voiceNotes if lead exists
+        lead.voiceNotes.push({
+          path: getRelativePath(req.file.path),
+          originalName: req.file.originalname,
+          uploadedBy: req.user._id,
+          createdAt: new Date()
+        });
+        await lead.save();
+
+        await LeadActivity.create({
+          leadId: lead._id,
+          actionType: 'VOICE_NOTE_ADDED',
+          note: `Call recording uploaded by ${req.user.fullName || req.user.name}: "${req.file.originalname}"`,
+          actorId: req.user._id
+        });
+      }
+    }
+
+    const callRecording = await CallRecording.create({
+      executiveId: req.user._id,
+      executiveName: req.user.fullName || req.user.name || 'Sales Executive',
+      leadId: lead ? lead._id : null,
+      leadCode: leadCode,
+      customerName: customerName || 'Direct Customer',
+      audioPath: getRelativePath(req.file.path),
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype || 'audio/mpeg',
+      size: req.file.size || 0,
+      duration: duration || '',
+      notes: notes || '',
+      leadPriority: ['HOT', 'WARM', 'COLD'].includes(leadPriority) ? leadPriority : (lead ? lead.priority : 'WARM')
+    });
+
+    return ok(res, { callRecording }, 'Call recording uploaded and saved successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 8. Get list of all Call Recordings for Manager / Executive Dashboard
+async function getCallRecordings(req, res, next) {
+  try {
+    const filter = {};
+    const { executiveId, leadId, priority } = req.query;
+
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
+
+    if (!isManagerOrAdmin) {
+      filter.executiveId = req.user._id;
+    } else if (executiveId) {
+      filter.executiveId = executiveId;
+    }
+
+    if (leadId) filter.leadId = leadId;
+    if (priority) filter.leadPriority = priority;
+
+    const recordings = await CallRecording.find(filter)
+      .populate('executiveId', 'fullName name email role profileImage')
+      .populate('leadId', 'customerName leadCode companyName priority stage')
+      .sort({ createdAt: -1 });
+
+    return ok(res, { recordings }, 'Call recordings retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 9. Stream Audio for Call Recording
+async function streamCallRecording(req, res, next) {
+  try {
+    const { recordingId } = req.params;
+    const recording = await CallRecording.findById(recordingId);
+    if (!recording || !recording.audioPath) {
+      return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
+    }
+
+    const filePath = resolveUploadPath(recording.audioPath, 'call_recordings');
+    if (!filePath || !fs.existsSync(filePath)) {
+      try {
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
+        await proxyFromProduction(prodUrl, req.headers.authorization, res);
+        return;
+      } catch (proxyError) {
+        console.warn(`Local call recording missing: ${proxyError.message}`);
+      }
+      return fail(res, 404, 'FILE_NOT_FOUND', 'Audio file not found on disk.');
+    }
+
+    res.sendFile(filePath);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -341,5 +456,8 @@ module.exports = {
   addActivity,
   logWhatsAppActivity,
   logEmailActivity,
-  getSalesMetrics
+  getSalesMetrics,
+  uploadCallRecording,
+  getCallRecordings,
+  streamCallRecording
 };

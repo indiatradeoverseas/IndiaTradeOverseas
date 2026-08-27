@@ -21,8 +21,10 @@ import {
   FiDownload,
   FiFolder,
   FiCheckSquare,
-  FiSend
+  FiSend,
+  FiMic
 } from 'react-icons/fi';
+import CallRecordingModal from '../../components/crm/CallRecordingModal';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -104,6 +106,8 @@ export default function SalesExecutiveDashboard() {
   const [myStatus, setMyStatus] = useState('IDLE');
   const [myActivity, setMyActivity] = useState('Available');
   const [submittingStatus, setSubmittingStatus] = useState(false);
+
+  const [showCallModal, setShowCallModal] = useState(false);
 
   const handleStatusChange = async (newStatus, newActivity) => {
     setSubmittingStatus(true);
@@ -484,6 +488,12 @@ export default function SalesExecutiveDashboard() {
           </p>
         </div>
         <div className="flex gap-2 self-stretch md:self-auto font-mono">
+          <button 
+            onClick={() => setShowCallModal(true)}
+            className="flex items-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+          >
+            <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
+          </button>
           <button 
             onClick={loadDashboardData}
             className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
@@ -1519,6 +1529,13 @@ export default function SalesExecutiveDashboard() {
         </div>
       )}
 
+      {/* Call Recording Modal */}
+      <CallRecordingModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        leads={deals}
+        onSuccess={() => loadDashboardData()}
+      />
     </motion.div>
   );
 }

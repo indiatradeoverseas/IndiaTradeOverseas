@@ -210,9 +210,8 @@ async function deleteUser(req, res, next) {
 
 async function getMyProfile(req, res, next) {
   try {
-    const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
-    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
-    if (isEmployee || isAdmin) {
+    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin');
+    if (isAdmin) {
       return ok(res, { profile: req.user }, 'Profile retrieved', 200, req);
     }
 
@@ -227,7 +226,7 @@ async function getMyProfile(req, res, next) {
 async function updateMyProfile(req, res, next) {
   try {
     const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
-    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
+    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin');
     if (isEmployee) {
       const Employee = require('../employee/employee.model');
       const User = require('./user.model');
@@ -262,7 +261,7 @@ async function updateMyProfile(req, res, next) {
         ]
       };
 
-      const updated = await Employee.findOneAndUpdate(empQuery, payload, { new: true });
+      await Employee.findOneAndUpdate(empQuery, payload, { new: true });
 
       // Sync to User collection too
       const userPayload = { ...req.body };
@@ -271,11 +270,16 @@ async function updateMyProfile(req, res, next) {
       }
       await User.findOneAndUpdate({ email: req.user.email }, userPayload);
 
-      return ok(res, { profile: updated }, 'Employee profile updated successfully', 200, req);
+      const profile = await userService.getProfile(req.user._id, req.user);
+      return ok(res, { profile }, 'Employee profile updated successfully', 200, req);
     }
     if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');
-      const updated = await Admin.findOneAndUpdate(resolveIdQuery(req.user._id), req.body, { new: true });
+      const payload = { ...req.body };
+      if (payload.dateOfBirth) {
+        payload.age = calculateAge(payload.dateOfBirth);
+      }
+      const updated = await Admin.findOneAndUpdate(resolveIdQuery(req.user._id), payload, { new: true });
       return ok(res, { profile: updated }, 'Admin profile updated successfully', 200, req);
     }
 
@@ -545,8 +549,8 @@ async function uploadMyProfileImage(req, res, next) {
       { new: true }
     );
 
-    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin' || req.user.role === 'ADMIN');
-
+    const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin');
+ 
     let updated = updatedUser || updatedEmployee;
     if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');

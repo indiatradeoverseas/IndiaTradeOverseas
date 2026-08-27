@@ -8,11 +8,12 @@ import { taskApi } from '../../api/task';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
-  FiUpload, FiFileText, FiAlertCircle
+  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
+import CallRecordingModal from '../../components/crm/CallRecordingModal';
 
 // Staggered animation configurations
 const containerVariants = {
@@ -53,7 +54,11 @@ export default function Leads() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [parsedRows, setParsedRows] = useState([]);
   const [columnMappings, setColumnMappings] = useState({});
+  const [importDefaultPriority, setImportDefaultPriority] = useState('WARM');
   const [importing, setImporting] = useState(false);
+
+  // Call Recording Modal State
+  const [showCallModal, setShowCallModal] = useState(false);
 
   // Bulk Assignment State
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
@@ -329,6 +334,10 @@ export default function Leads() {
           }
         }
 
+        if (!leadObj.priority && !leadObj.temperature) {
+          leadObj.priority = importDefaultPriority;
+        }
+
         leadsArray.push(leadObj);
       }
 
@@ -461,7 +470,14 @@ export default function Leads() {
             </button>
           )}
 
-          <button onClick={() => setShowCreateModal(true)} className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center space-x-1.5 transition-all hover:bg-[var(--crm-ink-soft)]">
+          <button
+            onClick={() => setShowCallModal(true)}
+            className="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-[11px] uppercase tracking-widest font-bold h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm"
+          >
+            <FiMic size={14} className="animate-pulse text-rose-400" /> <span>Upload Recording</span>
+          </button>
+
+          <button onClick={() => setShowCreateModal(true)} className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[11px] uppercase tracking-widest font-bold h-[42px] px-5 rounded-sm flex items-center space-x-1.5 transition-all hover:bg-[var(--crm-ink-soft)] cursor-pointer">
             <FiPlus size={14} /> <span>New Lead</span>
           </button>
         </div>
@@ -579,7 +595,18 @@ export default function Leads() {
                         )}
                         <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)]">{lead.leadCode}</td>
                         <td className="py-3.5 px-5">
-                          <div className="font-serif text-sm text-[var(--crm-heading)]">{lead.customerName}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-serif text-sm text-[var(--crm-heading)]">{lead.customerName}</span>
+                            {lead.priority === 'HOT' && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
+                            )}
+                            {lead.priority === 'WARM' && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-amber-950/80 text-amber-400 border border-amber-800/50">WARM ⚡</span>
+                            )}
+                            {lead.priority === 'COLD' && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">COLD ❄️</span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
                         </td>
                         <td className="py-3.5 px-5">
@@ -810,6 +837,33 @@ export default function Leads() {
                     </div>
                   </div>
 
+                  {/* Default Lead Quality / Priority Option */}
+                  <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+                    <span className="font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                      Set Lead Temperature / Quality Tag for Import:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {[
+                        { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-950/60 text-rose-400 border-rose-800/60' },
+                        { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-950/60 text-amber-400 border-amber-800/60' },
+                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60' }
+                      ].map(t => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => setImportDefaultPriority(t.value)}
+                          className={`px-3 py-1.5 rounded border text-[10px] font-bold uppercase transition cursor-pointer ${
+                            importDefaultPriority === t.value
+                              ? `${t.style} ring-1 ring-current font-black`
+                              : 'border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Excel Spreadsheet View */}
                   <div className="overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/40 text-[10px] font-mono custom-scrollbar relative flex-1">
                     <table className="w-full border-collapse border border-[var(--crm-line)]">
@@ -952,6 +1006,13 @@ export default function Leads() {
         )}
       </AnimatePresence>
 
+      {/* Call Recording Modal */}
+      <CallRecordingModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        leads={leads}
+        onSuccess={() => fetchLeads()}
+      />
     </motion.div>
   );
 }

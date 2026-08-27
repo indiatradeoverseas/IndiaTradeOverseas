@@ -21,7 +21,8 @@ import {
   FiCheckSquare,
   FiDownload,
   FiUpload,
-  FiClock
+  FiClock,
+  FiMic
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -107,6 +108,10 @@ export default function SalesManagerDashboard() {
 
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [submittingLeaveReview, setSubmittingLeaveReview] = useState(null);
+
+  // Call Recordings State
+  const [callRecordings, setCallRecordings] = useState([]);
+  const [recordingPriorityFilter, setRecordingPriorityFilter] = useState('ALL');
 
   // Strategic Insights & Chat States
   const [strategicInsights, setStrategicInsights] = useState(null);
@@ -231,6 +236,14 @@ export default function SalesManagerDashboard() {
           setMetrics(metricsRes.data.metrics);
         }
       } catch (e) { console.error('Metrics fetch error:', e); }
+
+      // 8. Fetch Call Recordings
+      try {
+        const recRes = await leadsApi.getCallRecordings();
+        if (recRes.success) {
+          setCallRecordings(recRes.data?.recordings || []);
+        }
+      } catch (e) { console.error('Call recordings fetch error:', e); }
 
     } catch (err) {
       console.error('Error loading manager dashboard details:', err);
@@ -699,6 +712,7 @@ export default function SalesManagerDashboard() {
         <nav className="flex space-x-8 min-w-max">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
+            { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
           ].map(tab => (
@@ -1563,6 +1577,106 @@ export default function SalesManagerDashboard() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: EXECUTIVE CALL RECORDINGS HUB */}
+            {activeTab === 'call_recordings' && (
+              <div className="space-y-6 text-left font-mono">
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[var(--crm-line)] pb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                        <FiMic className="text-rose-500 animate-pulse" size={16} /> Sales Executive Call Recordings Hub
+                      </h3>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1 font-sans">
+                        Listen to call recordings uploaded by Sales Executives, inspect client discussion notes, and audit lead quality ratings.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[var(--crm-ink-faint)]">Filter Quality:</span>
+                      {['ALL', 'HOT', 'WARM', 'COLD'].map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setRecordingPriorityFilter(p)}
+                          className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase transition cursor-pointer ${
+                            recordingPriorityFilter === p
+                              ? 'bg-teal-700 text-white font-black'
+                              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                    {callRecordings.filter(rec => recordingPriorityFilter === 'ALL' || rec.leadPriority === recordingPriorityFilter).length === 0 ? (
+                      <div className="col-span-full text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
+                        No call recordings uploaded by Sales Executives yet.
+                      </div>
+                    ) : (
+                      callRecordings
+                        .filter(rec => recordingPriorityFilter === 'ALL' || rec.leadPriority === recordingPriorityFilter)
+                        .map((rec) => {
+                          const priorityColors = {
+                            HOT: 'bg-rose-950/60 text-rose-400 border-rose-800/60',
+                            WARM: 'bg-amber-950/60 text-amber-400 border-amber-800/60',
+                            COLD: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
+                          };
+                          const pColor = priorityColors[rec.leadPriority] || 'bg-slate-900 text-slate-300 border-slate-700';
+
+                          return (
+                            <div key={rec._id} className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between space-y-3 shadow-sm hover:border-teal-500/40 transition">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <span className="text-[10px] font-bold text-teal-400 truncate max-w-[180px]">
+                                    👤 {rec.executiveName || rec.executiveId?.fullName || rec.executiveId?.name || 'Sales Executive'}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase border ${pColor}`}>
+                                    {rec.leadPriority || 'WARM'}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-xs font-bold font-serif text-[var(--crm-heading)] truncate">
+                                    {rec.customerName || rec.leadId?.customerName || 'Direct Call'}
+                                  </h4>
+                                  {rec.leadCode && (
+                                    <span className="text-[9px] text-[var(--crm-ink-faint)] block">
+                                      Lead: {rec.leadCode}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {rec.notes && (
+                                  <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] bg-[var(--crm-bg-raised)] p-2.5 rounded border border-[var(--crm-line)] italic line-clamp-3">
+                                    "{rec.notes}"
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="space-y-2 pt-2 border-t border-[var(--crm-line)]">
+                                {/* HTML5 Audio Player */}
+                                <audio
+                                  controls
+                                  controlsList="nodownload"
+                                  className="w-full h-8 rounded accent-teal-500"
+                                  src={`http://localhost:5000/api/leads/call-recordings/${rec._id}/stream`}
+                                />
+
+                                <div className="flex justify-between items-center text-[8px] text-[var(--crm-ink-faint)]">
+                                  <span>📅 {new Date(rec.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                  {rec.duration && <span>⏱️ {rec.duration}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
               </div>

@@ -26,7 +26,7 @@ export default function PortalLayout({ children }) {
   }, [theme]);
 
   const fetchTodayAttendance = async () => {
-    if (!user || user.role === 'ADMIN') return;
+    if (!user || ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(user.role)) return;
     try {
       const res = await attendanceApi.getMyToday();
         setTodayAttendance(res.data.record || res.data.attendance);
@@ -127,7 +127,7 @@ export default function PortalLayout({ children }) {
             India Trade Center
           </div>
           <div className="flex items-center gap-2 justify-end">
-            {user && user.role !== 'ADMIN' && (
+            {user && !['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(user.role) && (
               <div className="flex items-center gap-1.5 mr-1">
                 {!todayAttendance && (
                   <button
@@ -207,7 +207,7 @@ export default function PortalLayout({ children }) {
             className="hidden md:flex items-center justify-end gap-3 px-8 py-3 border-b"
             style={{ borderColor: 'var(--crm-line)' }}
           >
-            {user && user.role !== 'ADMIN' && (
+            {user && !['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(user.role) && (
               <div className="flex items-center gap-2 mr-4">
                 {!todayAttendance && (
                   <button

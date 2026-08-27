@@ -18,24 +18,39 @@ import {
   FiTrendingUp,
   FiUserPlus,
   FiAward,
-  FiCommand
+  FiCommand,
+  FiHome,
+  FiLayers
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
 // RBAC helpers
 // ─────────────────────────────────────────────
 function isAdminUser(user) {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const department = (user.department || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+
   return (
-    user?.role === 'ADMIN' ||
-    user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'))
+    role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'SUPER_ADMIN' ||
+    department === 'ADMIN' ||
+    department === 'MANAGEMENT' ||
+    position.includes('admin') ||
+    position.includes('founder') ||
+    position.includes('ceo') ||
+    position.includes('director') ||
+    position.includes('owner')
   );
 }
 
 function isSalesManager(user) {
   return (
-    user?.role === 'MANAGER' ||
     user?.role === 'SALES_MANAGER' ||
+    (user?.role === 'MANAGER' && user?.department === 'SALES') ||
     (user?.department === 'SALES' && user?.position?.toLowerCase()?.includes('manager'))
   );
 }
@@ -67,14 +82,20 @@ export function getCrmMainNavItems(user) {
   const hrExec = isHRExecutive(user);
 
   return [
-    // Dashboard — ADMIN only
+    // My Profile — Common to all
+    { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+
+    // Dashboard — ADMIN & FOUNDER
     admin && { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
 
-    // HR Dashboard — ADMIN + HR_MANAGER
-    (admin || hrMgr) && { to: '/crm/hr', label: 'HR Dashboard', icon: FiAward },
+    // Founder Dashboard — ADMIN & FOUNDER
+    admin && { to: '/crm/founder', label: 'Founder Dashboard', icon: FiCommand },
 
     // Sales Dashboard — ADMIN + Sales Manager + Sales Executive
     (admin || salesMgr || salesExec) && { to: '/crm/sales-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
+
+    // HR Dashboard — ADMIN + HR Manager + HR Executive
+    (admin || hrMgr || hrExec) && { to: '/crm/hr', label: 'HR Dashboard', icon: FiAward },
 
     // Finance & Accounts — ADMIN + Finance department + Accounts role
     (admin || user?.department === 'FINANCE' || user?.role === 'ACCOUNTS' || user?.role === 'FINANCE_MANAGER') && { 
@@ -83,7 +104,7 @@ export function getCrmMainNavItems(user) {
       icon: FiDollarSign 
     },
 
-    // Notifications — ADMIN only
+    // Notifications — ADMIN & FOUNDER
     admin && { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
 
     // Attendance — ADMIN + HR_MANAGER
@@ -92,14 +113,14 @@ export function getCrmMainNavItems(user) {
     // Leave — ADMIN + HR_MANAGER
     (admin || hrMgr) && { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
 
-    // My Profile — everyone
-    { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+    // Sales Performance — ADMIN only
+    admin && { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
 
     // Support Tickets — ADMIN only
     admin && { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
 
-    // Sales Performance — ADMIN only
-    admin && { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
+    // Product Upload / Products — ADMIN, Manager or permitted
+    (admin || ['MANAGER', 'IT', 'SOFTWARE_ENGINEER'].includes(user?.role) || user?.productUploadPermission) && { to: '/crm/products', label: 'Products Upload', icon: FiLayers },
 
     // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },

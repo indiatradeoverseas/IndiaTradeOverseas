@@ -486,7 +486,7 @@ async function bulkImportLeads(leadsArray, user) {
 
       // Run AI scoring
       const qtyText = String(quantity || '');
-      const { score, priority } = scoreAndClassifyLead({
+      const { score, priority: aiPriority } = scoreAndClassifyLead({
         quantity: qtyText,
         hasLOI: false,
         paymentTerms: 'Pending',
@@ -495,6 +495,12 @@ async function bulkImportLeads(leadsArray, user) {
         email: email || '',
         chatSummary: 'Bulk imported lead.'
       });
+
+      // Priority resolution: Explicit choice from row/import > AI priority
+      const rowPriority = String(row.priority || row.temperature || row.quality || '').trim().toUpperCase();
+      const finalPriority = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'].includes(rowPriority)
+        ? rowPriority
+        : aiPriority;
 
       const timestamp = Date.now();
       const random = Math.floor(Math.random() * 10000);
@@ -519,7 +525,7 @@ async function bulkImportLeads(leadsArray, user) {
         destination: destination || '',
         leadValue: Number(leadValue || 0),
         score,
-        priority,
+        priority: finalPriority,
         stage: 'NEW_LEAD',
         assignedTo: null,
         duplicateOf: duplicate ? duplicate._id : null,

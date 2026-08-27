@@ -86,10 +86,23 @@ function ProtectedRoute({ children }) {
 }
 
 function isAdminUser(user) {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const department = (user.department || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+
   return (
-    user?.role === 'ADMIN' ||
-    user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'))
+    role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'SUPER_ADMIN' ||
+    department === 'ADMIN' ||
+    department === 'MANAGEMENT' ||
+    position.includes('admin') ||
+    position.includes('founder') ||
+    position.includes('ceo') ||
+    position.includes('director') ||
+    position.includes('owner')
   );
 }
 

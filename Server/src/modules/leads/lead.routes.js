@@ -16,7 +16,10 @@ const {
   streamVoiceNote,
   addActivity,
   logWhatsAppActivity,
-  logEmailActivity
+  logEmailActivity,
+  uploadCallRecording,
+  getCallRecordings,
+  streamCallRecording
 } = require('./leadManagement.controller');
 
 // Multer setup for lead voice notes
@@ -71,6 +74,31 @@ router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission')
 router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
 router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
 router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
+
+// Multer setup for Call Recordings
+const callRecordingStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const destDir = path.join(process.cwd(), 'uploads', 'call_recordings');
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    cb(null, destDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = `call-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, safeName);
+  }
+});
+
+const uploadCallAudio = multer({
+  storage: callRecordingStorage,
+  limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit
+});
+
+// Call Recordings Routes
+router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
+router.get('/call-recordings', getCallRecordings);
+router.get('/call-recordings/:recordingId/stream', streamCallRecording);
 
 // Voice Notes & Integration logs
 router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);

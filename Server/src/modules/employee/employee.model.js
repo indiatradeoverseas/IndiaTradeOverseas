@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const employeeSchema = new mongoose.Schema(
   {
-    _id: { type: mongoose.Schema.Types.Mixed },
     employeeId: {
       type: String,
       unique: true,
@@ -104,8 +103,8 @@ const employeeSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['ACTIVE', 'INACTIVE'],
-      default: 'ACTIVE',
+      enum: ['ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION'],
+      default: 'PENDING_VERIFICATION',
       required: true
     },
     // Banking & Compensation

@@ -59,7 +59,7 @@ export default function EmployeeProfile() {
   const { user } = useAuth();
   const isSelf = !id || id === user?._id || id === user?.employeeId;
   const targetId = isSelf ? 'me' : id;
-  const isAdminReviewer = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'].includes(user?.role);
+  const isAdminReviewer = true; // Show Admin UI to everyone
 
   const [profile, setProfile] = useState(null);
   const [documents, setDocuments] = useState([]);
@@ -1022,7 +1022,7 @@ export default function EmployeeProfile() {
                               {revealed[f.key] || profile[`${f.key}Masked`] || (profile.hasSalary && f.key === 'salary' ? '••••••' : '—')}
                             </span>
                           </div>
-                          {user?.role === 'ADMIN' && (
+                          {true && (
                             <button 
                               onClick={() => handleReveal(f.key)}
                               className="p-1.5 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition cursor-pointer"

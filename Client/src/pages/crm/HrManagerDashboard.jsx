@@ -32,7 +32,8 @@ import {
   FiEye,
   FiGrid,
   FiMessageSquare,
-  FiMoreHorizontal
+  FiMoreHorizontal,
+  FiUserPlus
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,6 +42,7 @@ import { adminApi } from '../../api/admin';
 import { leaveApi } from '../../api/leave';
 import { attendanceApi } from '../../api/attendance';
 import { taskApi } from '../../api/task';
+import { employeeSignupApi } from '../../api/employee-signup';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
 
@@ -111,6 +113,10 @@ export default function HrManagerDashboard() {
   const [leaves, setLeaves] = useState([]);
   const [attendanceReport, setAttendanceReport] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Pending employee registrations state
+  const [pendingEmployees, setPendingEmployees] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
 
   // New Attendance & Leave dashboard state variables
   const [hrSettings, setHrSettings] = useState({
@@ -289,13 +295,15 @@ export default function HrManagerDashboard() {
 
   const fetchInitialData = async () => {
     setLoading(true);
+    setPendingLoading(true);
     try {
-      const [usersRes, jobsRes, appsRes, leavesRes, attendanceRes] = await Promise.all([
+      const [usersRes, jobsRes, appsRes, leavesRes, attendanceRes, pendingRes] = await Promise.all([
         adminApi.getUsers().catch(() => ({ success: false, data: { users: [] } })),
         careersApi.getAllJobs().catch(() => ({ success: false, data: { jobs: [] } })),
         careersApi.getApplications().catch(() => ({ success: false, data: { applications: [] } })),
         leaveApi.getLeaves().catch(() => ({ success: false, data: [] })),
-        attendanceApi.getReport().catch(() => ({ success: false }))
+        attendanceApi.getReport().catch(() => ({ success: false })),
+        employeeSignupApi.getPendingEmployees().catch(() => ({ success: false, data: { employees: [] } }))
       ]);
 
       if (usersRes.success) setEmployees(usersRes.data.users || []);
@@ -316,12 +324,17 @@ export default function HrManagerDashboard() {
         setAttendanceReport({ presentCount: 0, absentCount: 0, lateCount: 0, totalEmployees: 0 });
       }
 
+      if (pendingRes.success) {
+        setPendingEmployees(pendingRes.data.employees || []);
+      }
+
       await fetchAttendanceLeaveDetails();
     } catch (error) {
       console.error('Error loading HR data:', error);
       toast.error('Failed to sync corporate catalog records');
     } finally {
       setLoading(false);
+      setPendingLoading(false);
     }
   };
 
@@ -770,7 +783,7 @@ export default function HrManagerDashboard() {
     }
   };
 
-  const handleTriggerReset = async () => {
+const handleTriggerReset = async () => {
     if (!window.confirm(`Are you sure you want to reset all employee balances for ${resetMonthInput} to 4 paid leaves?`)) return;
     const toastId = toast.loading('Deducting unused leaves & resetting balance...');
     try {
@@ -785,6 +798,33 @@ export default function HrManagerDashboard() {
     }
   };
 
+  // Pending employee registration handlers
+  const handleApprovePending = async (empId) => {
+    try {
+      const res = await employeeSignupApi.approvePendingEmployee(empId);
+      if (res.success) {
+        toast.success('Employee approved and activated successfully!');
+        fetchInitialData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to approve employee');
+    }
+  };
+
+  const handleRejectPending = async (empId) => {
+    const reason = window.prompt('Enter rejection reason (optional):');
+    if (reason === null) return; // User cancelled
+    
+    try {
+      const res = await employeeSignupApi.rejectPendingEmployee(empId, reason || 'Not approved by HR');
+      if (res.success) {
+        toast.success('Employee registration rejected');
+        fetchInitialData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reject employee');
+    }
+  };
 
 
   // Filters calculations
@@ -865,6 +905,7 @@ export default function HrManagerDashboard() {
           {[
             { id: 'overview', label: 'Overview', icon: FiList },
             { id: 'directory', label: 'Employees', icon: FiUsers },
+            { id: 'pending_registrations', label: 'Pending Registrations', icon: FiUserPlus },
             { id: 'attendance_leave', label: 'Attendance & Leave', icon: FiCalendar },
             { id: 'recruitment', label: 'Recruitment', icon: FiBriefcase },
             { id: 'payroll_assets', label: 'Payroll & Assets', icon: FiDollarSign },
@@ -1003,6 +1044,99 @@ export default function HrManagerDashboard() {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB 2: PENDING REGISTRATIONS */}
+            {activeTab === 'pending_registrations' && (
+              <div className="space-y-4 pb-4">
+                <div className="border p-3 rounded-sm flex flex-col sm:flex-row gap-3 items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-sm bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]">
+                      <FiAlertCircle size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Pending Employee Registrations</h3>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-light">
+                        {pendingEmployees.length} request{pendingEmployees.length !== 1 ? 's' : ''} awaiting verification
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchInitialData}
+                    disabled={pendingLoading}
+                    className="text-[9px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer"
+                    style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+                  >
+                    {pendingLoading ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+
+                {pendingEmployees.length === 0 ? (
+                  <div className="border p-8 rounded-sm text-center" style={CARD}>
+                    <div className="p-3 rounded-full w-fit mx-auto mb-3 bg-[var(--crm-bg-sunken)]">
+                      <FiCheckCircle className="text-[var(--crm-positive)]" size={32} />
+                    </div>
+                    <h4 className="text-lg font-medium text-[var(--crm-heading)] mb-1">No Pending Registrations</h4>
+                    <p className="text-xs text-[var(--crm-ink-faint)] font-light">
+                      All employee registration requests have been reviewed.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border rounded-sm overflow-hidden" style={CARD}>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
+                            <th className="p-3">Employee ID</th>
+                            <th className="p-3">Name</th>
+                            <th className="p-3">Email</th>
+                            <th className="p-3">Department</th>
+                            <th className="p-3">Position</th>
+                            <th className="p-3">Phone</th>
+                            <th className="p-3">Requested On</th>
+                            <th className="p-3 text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingEmployees.map((emp) => (
+                            <tr key={emp._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
+                              <td className="p-3 font-mono text-[9px] font-bold text-[var(--crm-accent)]">{emp.employeeId}</td>
+                              <td className="p-3 text-[var(--crm-heading)] font-medium">{emp.name}</td>
+                              <td className="p-3 text-[var(--crm-ink-soft)]">{emp.email}</td>
+                              <td className="p-3">
+                                <span className="px-2 py-0.5 text-[8px] font-mono rounded-sm bg-[var(--crm-bg)] border border-[var(--crm-line)]">{emp.department}</span>
+                              </td>
+                              <td className="p-3 text-[var(--crm-ink-soft)]">{emp.position}</td>
+                              <td className="p-3 font-mono text-[9px]">{emp.phone || '—'}</td>
+                              <td className="p-3 text-[var(--crm-ink-faint)] font-mono text-[9px]">
+                                {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => handleApprovePending(emp._id)}
+                                    className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-white transition-all"
+                                    title="Approve & Activate"
+                                  >
+                                    <FiCheckCircle size={11} className="inline-block mr-1" /> Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectPending(emp._id)}
+                                    className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)] hover:bg-[var(--crm-danger)] hover:text-white transition-all"
+                                    title="Reject"
+                                  >
+                                    <FiXCircle size={11} className="inline-block mr-1" /> Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

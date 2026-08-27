@@ -66,5 +66,18 @@ export const leadsApi = {
   async bulkImportLeads(leads) {
     const response = await axiosInstance.post('/leads/bulk-import', { leads });
     return response.data;
+  },
+
+  async uploadCallRecording(formData) {
+    const response = await axiosInstance.post('/leads/call-recordings', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  async getCallRecordings(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await axiosInstance.get(`/leads/call-recordings${queryString ? `?${queryString}` : ''}`);
+    return response.data;
   }
 };
