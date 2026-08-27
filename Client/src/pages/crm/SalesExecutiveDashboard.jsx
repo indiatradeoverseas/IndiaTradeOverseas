@@ -1331,6 +1331,7 @@ export default function SalesExecutiveDashboard() {
                         <option value="">-- Choose Employee --</option>
                         {employeesList
                           .filter(emp => String(emp._id) !== String(user._id)) // don't list self
+                          .filter(emp => emp.department && emp.department.toUpperCase() === 'SALES')
                           .map((emp) => (
                             <option key={emp._id} value={emp._id}>
                               {emp.name} ({emp.role} - {emp.department})
