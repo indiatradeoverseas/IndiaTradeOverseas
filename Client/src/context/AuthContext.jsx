@@ -30,10 +30,18 @@ export const AuthProvider = ({ children }) => {
       try {
         const storedUser = JSON.parse(localStorage.getItem('user'));
         const isEmployeeAuth = localStorage.getItem('isEmployeeAuth');
-        const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR', 'MANAGER', 'SALES', 'SALES_EXECUTIVE', 'SALES_MANAGER'];
+        const EMPLOYEE_ROLES = [
+          'EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 
+          'SALES_EXECUTIVE', 'SALES_MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 
+          'IT', 'TRANSPORT', 'FINANCE', 'FINANCE_MANAGER', 'FINANCE_EXECUTIVE', 
+          'ACCOUNTS_MANAGER'
+        ];
         const isEmployee = isEmployeeAuth !== null
           ? isEmployeeAuth === 'true'
-          : (storedUser && EMPLOYEE_ROLES.includes(storedUser.role));
+          : (storedUser && (
+              EMPLOYEE_ROLES.includes(storedUser.role) ||
+              (storedUser.employeeId && !storedUser.employeeId.startsWith('CL_'))
+            ));
 
         let response;
         if (isEmployee) {
@@ -41,6 +49,7 @@ export const AuthProvider = ({ children }) => {
           if (response.success) {
             setUser(response.data.employee);
           } else {
+            // getMe returned but was not successful — token may be invalid
             logout();
           }
         } else {
@@ -52,7 +61,21 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        logout();
+        const status = error?.response?.status;
+        if (status === 401) {
+          // Definitive auth failure — the axios interceptor already handles redirect
+          // for auth endpoints, so just clear local state without calling logout() again
+          setUser(null);
+        } else {
+          // Network error, 500, or other transient issue — use stored user as fallback
+          const storedUser = JSON.parse(localStorage.getItem('user'));
+          if (storedUser) {
+            console.warn('[AuthContext] getMe failed with non-auth error, using cached user:', error?.message);
+            setUser(storedUser);
+          } else {
+            logout();
+          }
+        }
       }
     }
     setLoading(false);

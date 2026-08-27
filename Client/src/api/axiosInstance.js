@@ -88,10 +88,16 @@ axiosInstance.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const requestUrl = error.config?.url || '';
 
       // 🛡️ Suppress auto-redirect when on Prakriti Customer Portal
       if (currentPath.includes('/prakriti')) {
         console.warn('401 Unauthorized suppressed on Prakriti Customer Portal (Session missing/expired).');
+        return Promise.reject(error);
+      }
+
+      // 🛡️ If the caller explicitly suppressed auto-logout (e.g. dashboard batch calls)
+      if (error.config?._suppressAutoLogout) {
         return Promise.reject(error);
       }
 
@@ -111,10 +117,22 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('isEmployeeAuth');
-      window.location.href = '/login';
+      // 🛡️ Only auto-logout for auth verification endpoints (getMe / checkAuth).
+      // For all other API calls (dashboard data, reports, etc.), let the caller handle 401.
+      const authVerifyEndpoints = ['/auth/me', '/employee/me', '/admin-auth/me'];
+      const isAuthVerifyCall = authVerifyEndpoints.some(ep => requestUrl.includes(ep));
+
+      if (isAuthVerifyCall) {
+        // Token is genuinely invalid/expired — clear session
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('isEmployeeAuth');
+        window.location.href = '/login';
+      } else {
+        // Non-auth API returned 401 (e.g. RBAC issue on a dashboard call).
+        // Log it but do NOT nuke the session — let the component .catch() handle it.
+        console.warn(`[Axios] 401 on non-auth endpoint "${requestUrl}" — suppressing auto-logout.`);
+      }
     }
     return Promise.reject(error);
   }

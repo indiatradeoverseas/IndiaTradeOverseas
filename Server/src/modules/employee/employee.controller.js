@@ -71,6 +71,7 @@ async function register(req, res, next) {
 
     const employeeResponse = {
       _id: employee._id,
+      employeeId: employee.employeeId,
       name: employee.name,
       email: employee.email,
       role: employee.role,
@@ -114,6 +115,7 @@ async function login(req, res, next) {
 
     const employeeResponse = {
       _id: employee._id,
+      employeeId: employee.employeeId,
       name: employee.name,
       email: employee.email,
       role: employee.role,

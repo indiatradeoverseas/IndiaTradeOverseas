@@ -24,7 +24,12 @@ import {
   FiClock,
   FiMic,
   FiFolder,
-  FiTrash2
+  FiTrash2,
+  FiGrid,
+  FiSearch,
+  FiUserCheck,
+  FiMail,
+  FiPhone
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -109,6 +114,32 @@ export default function SalesManagerDashboard() {
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [assigneeExecId, setAssigneeExecId] = useState('');
   const [submittingBulkAssign, setSubmittingBulkAssign] = useState(false);
+
+  // Incoming Division Leads & Single Assignment State
+  const [leadDivisionFilter, setLeadDivisionFilter] = useState('ALL');
+  const [leadSearchTerm, setLeadSearchTerm] = useState('');
+  const [selectedExecPerLead, setSelectedExecPerLead] = useState({});
+  const [assigningSingleLeadId, setAssigningSingleLeadId] = useState(null);
+
+  const handleAssignSingleLead = async (leadId) => {
+    const execId = selectedExecPerLead[leadId];
+    if (!execId) {
+      toast.error('Please select a Sales Executive to assign');
+      return;
+    }
+    setAssigningSingleLeadId(leadId);
+    try {
+      const res = await leadsApi.assignLead(leadId, { assignedTo: execId });
+      if (res.success) {
+        toast.success('Lead assigned to Sales Executive successfully! 🚀');
+        loadDashboardData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lead assignment failed');
+    } finally {
+      setAssigningSingleLeadId(null);
+    }
+  };
 
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [submittingLeaveReview, setSubmittingLeaveReview] = useState(null);
@@ -751,6 +782,7 @@ export default function SalesManagerDashboard() {
         <nav className="flex space-x-6 sm:space-x-8 min-w-max">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
+            { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
             { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
@@ -1188,6 +1220,183 @@ export default function SalesManagerDashboard() {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* TAB: INCOMING DIVISION LEADS & ASSIGNMENT HUB */}
+            {activeTab === 'incoming_leads' && (
+              <div className="space-y-6 text-left">
+                {/* Header & Filter Controls Card */}
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--crm-line)] pb-4">
+                    <div>
+                      <h2 className="text-base font-bold text-[var(--crm-heading)] tracking-tight uppercase flex items-center gap-2">
+                        <FiGrid className="text-teal-400" size={18} />
+                        Division Leads & Executive Assignment Hub
+                      </h2>
+                      <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1">
+                        Review incoming leads from Prakriti Tea Division, Prakriti Rice Division, and Stone & Infrastructure, then assign them directly to Sales Executives.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                      <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Filter Division:</span>
+                      <div className="flex flex-wrap gap-1 bg-[var(--crm-bg-sunken)] p-1 rounded border border-[var(--crm-line)]">
+                        {[
+                          { id: 'ALL', label: 'All Divisions' },
+                          { id: 'TEA', label: '🍃 Tea Division' },
+                          { id: 'RICE', label: '🌾 Rice Division' },
+                          { id: 'STONE', label: '🪨 Stone & Infra' }
+                        ].map(divFilter => (
+                          <button
+                            key={divFilter.id}
+                            onClick={() => setLeadDivisionFilter(divFilter.id)}
+                            className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition cursor-pointer ${
+                              leadDivisionFilter === divFilter.id
+                                ? 'bg-teal-600 text-white shadow-sm'
+                                : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                            }`}
+                          >
+                            {divFilter.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Search Bar */}
+                  <div className="relative w-full">
+                    <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search leads by customer name, code, email, phone, or company..."
+                      value={leadSearchTerm}
+                      onChange={(e) => setLeadSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] rounded outline-none focus:border-teal-500 transition font-mono placeholder-[var(--crm-ink-faint)]"
+                    />
+                  </div>
+                </div>
+
+                {/* Leads Table Container */}
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse min-w-[950px] text-xs">
+                      <thead>
+                        <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                          <th className="py-3 px-4">Date & Time</th>
+                          <th className="py-3 px-4">Lead Identifier</th>
+                          <th className="py-3 px-4">Customer & Entity</th>
+                          <th className="py-3 px-4">Contact Details</th>
+                          <th className="py-3 px-4">Division / Category</th>
+                          <th className="py-3 px-4">Assigned Executive</th>
+                          <th className="py-3 px-4 text-right">Assign Lead</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)]">
+                        {allLeads
+                          .filter(lead => {
+                            const cat = (lead.productCategory || '').toUpperCase();
+                            const matchesDiv = leadDivisionFilter === 'ALL' ||
+                              (leadDivisionFilter === 'TEA' && cat.includes('TEA')) ||
+                              (leadDivisionFilter === 'RICE' && cat.includes('RICE')) ||
+                              (leadDivisionFilter === 'STONE' && (cat.includes('STONE') || cat.includes('WHITE_STONE')));
+                            
+                            const searchLower = leadSearchTerm.toLowerCase();
+                            const matchesSearch = !leadSearchTerm ||
+                              (lead.customerName || '').toLowerCase().includes(searchLower) ||
+                              (lead.leadCode || '').toLowerCase().includes(searchLower) ||
+                              (lead.companyName || '').toLowerCase().includes(searchLower) ||
+                              (lead.emailEncrypted || lead.emailMasked || '').toLowerCase().includes(searchLower) ||
+                              (lead.phoneEncrypted || lead.phoneMasked || '').toLowerCase().includes(searchLower);
+
+                            return matchesDiv && matchesSearch;
+                          })
+                          .map((lead) => {
+                            const catUpper = (lead.productCategory || '').toUpperCase();
+                            let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-900 text-slate-300 border-slate-700' };
+                            if (catUpper.includes('TEA')) {
+                              divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40' };
+                            } else if (catUpper.includes('RICE')) {
+                              divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-950/60 text-amber-400 border-amber-800/40' };
+                            } else if (catUpper.includes('STONE')) {
+                              divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-950/60 text-sky-400 border-sky-800/40' };
+                            }
+
+                            const assignedEmp = teamEmployees.find(e => 
+                              e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
+                            );
+
+                            return (
+                              <tr key={lead._id} className="hover:bg-[var(--crm-bg-sunken)]/60 transition">
+                                <td className="py-3 px-4 font-mono text-[10px] text-[var(--crm-ink-faint)] whitespace-nowrap">
+                                  {new Date(lead.createdAt || Date.now()).toLocaleString('en-IN', {
+                                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                                  })}
+                                </td>
+                                <td className="py-3 px-4 font-mono font-bold text-teal-400 text-xs">
+                                  {lead.leadCode}
+                                </td>
+                                <td className="py-3 px-4 space-y-0.5">
+                                  <div className="font-bold text-[var(--crm-heading)] text-sm">{lead.customerName}</div>
+                                  <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
+                                </td>
+                                <td className="py-3 px-4 space-y-1 font-mono text-[11px]">
+                                  <div className="text-[var(--crm-ink-soft)] flex items-center gap-1.5">
+                                    <FiPhone size={10} className="text-teal-400 shrink-0" />
+                                    <span>{lead.phoneMasked || lead.phoneEncrypted || 'N/A'}</span>
+                                  </div>
+                                  <div className="text-[var(--crm-ink-faint)] text-[10px] flex items-center gap-1.5 truncate max-w-[180px]">
+                                    <FiMail size={10} className="text-sky-400 shrink-0" />
+                                    <span>{lead.emailMasked || lead.emailEncrypted || 'N/A'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`inline-block px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider rounded border ${divisionBadge.color}`}>
+                                    {divisionBadge.label}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 font-mono text-xs">
+                                  {assignedEmp ? (
+                                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                      <FiUserCheck size={12} /> {assignedEmp.fullName || assignedEmp.name}
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                      Unassigned
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <select
+                                      value={selectedExecPerLead[lead._id] || (assignedEmp ? assignedEmp._id : '')}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedExecPerLead(prev => ({ ...prev, [lead._id]: val }));
+                                      }}
+                                      className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-[10px] font-mono px-2 py-1.5 rounded outline-none cursor-pointer focus:border-teal-500"
+                                    >
+                                      <option value="">Select Executive</option>
+                                      {teamEmployees.map(emp => (
+                                        <option key={emp._id} value={emp._id}>{emp.fullName || emp.name} ({emp.position || emp.role})</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleAssignSingleLead(lead._id)}
+                                      disabled={assigningSingleLeadId === lead._id}
+                                      className="bg-teal-600 hover:bg-teal-700 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded transition cursor-pointer font-mono shadow-sm flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                      <FiSend size={10} /> Assign
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 

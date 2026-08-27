@@ -636,6 +636,11 @@ async function getMyBalance(req, res, next) {
       res,
       {
         balance: {
+          remainingLeaves: balance.remainingLeaves,
+          usedLeaves: balance.usedLeaves,
+          totalLeaves: balance.totalLeaves,
+          extraLeavesUsed: balance.extraLeavesUsed,
+          totalLeavesUsed: balance.totalLeavesUsed,
           paidLeave: {
             total: balance.totalLeaves,
             used: balance.usedLeaves,

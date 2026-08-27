@@ -121,6 +121,7 @@ router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPerm
 router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
 
 // 2. Dynamic /:id Sub-Routes
+router.post('/:id/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLead);
 router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
 router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
 router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);

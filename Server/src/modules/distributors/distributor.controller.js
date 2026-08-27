@@ -143,6 +143,24 @@ const registerDistributor = async (req, res, next) => {
       await distributor.save();
     }
 
+    // Automatically create a CRM Lead for Sales Manager
+    try {
+      const { processAiLead } = require('../leads/ai-agent/aiLead.service');
+      await processAiLead({
+        customerName: name,
+        email,
+        phone: mobile,
+        city,
+        state,
+        companyName: company || `Buyer (${division || 'TEA'})`,
+        productCategory: division || 'TEA',
+        source: 'WEBSITE',
+        chatSummary: `Inquiry registered via ${division || 'TEA'} division website form.`
+      });
+    } catch (leadErr) {
+      console.error('Auto lead creation note:', leadErr.message);
+    }
+
     const subject = `Distributor Verification OTP - India Trade Overseas ${DIVISION_LABELS[division] || 'Prakriti Tea'} Division`;
     const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
     const html = getOtpHtml(otpCode, email);

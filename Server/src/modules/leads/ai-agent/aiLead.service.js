@@ -6,22 +6,25 @@ const { autoRouteLead } = require('../leadAssignment.service');
 const { recordAudit } = require('../../security-audit/auditLog.service');
 
 async function processAiLead(payload, actorId = null) {
-  const contactPerson = payload.contactPerson || payload.customerName || '';
-  const mobile = payload.mobile || payload.phone || payload.whatsapp || '';
+  const contactPerson = payload.contactPerson || payload.customerName || payload.name || '';
+  const mobile = payload.mobile || payload.phone || payload.whatsapp || '9999999999';
   const email = payload.email || '';
-  const productCategory = payload.productCategory || payload.productRequired || '';
-  const quantity = String(payload.quantity || '');
-  const destination = payload.destination || '';
-  const companyName = payload.companyName || '';
-  const chatSummary = payload.chatSummary || '';
-  const paymentTerms = payload.paymentTerms || '';
+  let productCategory = payload.productCategory || payload.productRequired || payload.division || payload.category || 'TEA';
+  if (productCategory.toLowerCase().includes('tea')) productCategory = 'TEA';
+  else if (productCategory.toLowerCase().includes('rice')) productCategory = 'RICE';
+  else if (productCategory.toLowerCase().includes('stone')) productCategory = 'STONE';
 
-  
-  if (!contactPerson || !mobile || !productCategory) {
-    throw new Error('VALIDATION_FAILED: customerName, mobile/phone, and productCategory are required');
+  const quantity = String(payload.quantity || '');
+  const destination = payload.destination || payload.city || '';
+  const companyName = payload.companyName || payload.company || '';
+  const chatSummary = payload.chatSummary || payload.message || payload.subject || '';
+  const paymentTerms = payload.paymentTerms || '';
+  const leadSource = payload.source || 'WEBSITE';
+
+  if (!contactPerson) {
+    throw new Error('VALIDATION_FAILED: customerName is required');
   }
 
-  
   const phoneHash = hashText(mobile);
   const emailHash = email ? hashText(email) : '';
   const companyNameHash = companyName ? hashCompanyName(companyName) : '';
@@ -34,7 +37,6 @@ async function processAiLead(payload, actorId = null) {
 
   const duplicate = await Lead.findOne({ $or: duplicateQueries });
 
-  
   const { priority } = scoreAndClassifyLead({
     quantity,
     hasLOI: payload.hasLOI,
@@ -45,14 +47,13 @@ async function processAiLead(payload, actorId = null) {
     chatSummary
   });
 
-  
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 10000);
   const leadCode = `LD-${timestamp}-${random}`;
 
   const lead = await Lead.create({
     leadCode,
-    source: 'AI_AGENT',
+    source: leadSource,
     customerName: contactPerson,
     companyName,
     companyNameHash,

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
+import { leadsApi } from '../../api/leads';
 
 export default function Contact() {
   useDocumentMeta({
@@ -31,12 +32,33 @@ export default function Contact() {
     }
 
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      // Determine product category from subject keywords or default to GENERAL
+      let productCategory = 'GENERAL';
+      const subj = formData.subject.toLowerCase();
+      if (subj.includes('tea') || subj.includes('prakriti')) productCategory = 'TEA';
+      else if (subj.includes('rice')) productCategory = 'RICE';
+      else if (subj.includes('stone')) productCategory = 'STONE';
+
+      await leadsApi.createLead({
+        customerName: formData.name,
+        email: formData.email,
+        phone: formData.phone || '9999999999',
+        companyName: formData.subject,
+        productCategory,
+        message: formData.message,
+        source: 'WEBSITE'
+      });
+
       toast.success('Commercial dossier successfully generated inside trade intake system.');
       pushDataLayerEvent('generate_lead', { lead_type: 'contact_form' });
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    } catch (err) {
+      console.error('Error submitting contact lead:', err);
+      toast.error(err.response?.data?.message || 'Failed to submit inquiry. Please try again.');
+    } finally {
       setSubmitting(false);
-    }, 1000);
+    }
   };
 
   const contactInfo = [

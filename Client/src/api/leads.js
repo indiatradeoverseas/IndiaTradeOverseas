@@ -28,7 +28,7 @@ export const leadsApi = {
   },
 
   async assignLead(leadId, assignData) {
-    const response = await axiosInstance.patch(`/admin/leads/${leadId}/assign`, assignData);
+    const response = await axiosInstance.post(`/leads/${leadId}/assign`, assignData);
     return response.data;
   },
 
