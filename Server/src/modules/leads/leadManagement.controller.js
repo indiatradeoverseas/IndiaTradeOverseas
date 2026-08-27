@@ -416,7 +416,6 @@ async function getCallRecordings(req, res, next) {
     if (priority) filter.leadPriority = priority;
 
     const recordings = await CallRecording.find(filter)
-      .populate('executiveId', 'fullName name email role profileImage')
       .populate('leadId', 'customerName leadCode companyName priority stage')
       .sort({ createdAt: -1 });
 

@@ -75,6 +75,9 @@ async function getSharedFiles(req, res) {
     }
 
     const { direction } = req.query; // 'received' | 'sent' | undefined (both)
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+      (req.user.role && req.user.role.endsWith('_MANAGER')) || 
+      (req.user.role && req.user.role.toLowerCase().includes('manager'));
 
     let query = {};
 
@@ -82,8 +85,7 @@ async function getSharedFiles(req, res) {
       query.sentBy = { $in: userIds };
     } else if (direction === 'received') {
       query.sentTo = { $in: userIds };
-    } else {
-      // Default: show files relevant to this user (sent or received)
+    } else if (!isManagerOrAdmin) {
       query.$or = [
         { sentBy: { $in: userIds } },
         { sentTo: { $in: userIds } }
@@ -91,8 +93,8 @@ async function getSharedFiles(req, res) {
     }
 
     const files = await SharedFile.find(query)
-      .populate('sentBy', 'name email department position role')
-      .populate('sentTo', 'name email department position role')
+      .populate('sentBy', 'name fullName email department position role')
+      .populate('sentTo', 'name fullName email department position role')
       .sort({ createdAt: -1 });
 
     return ok(res, { files }, 'Shared files retrieved successfully', 200, req);
