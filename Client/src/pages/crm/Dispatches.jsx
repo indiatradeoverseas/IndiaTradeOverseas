@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
-  FiTruck,
-  FiCheckCircle,
-  FiXCircle,
   FiEye,
   FiUpload,
-  FiDownload,
   FiFileText,
   FiShield,
-  FiCalendar,
   FiAlertTriangle,
   FiX
 } from 'react-icons/fi';
@@ -33,20 +28,16 @@ const blockVariants = {
 
 export default function Dispatches() {
   const { user } = useAuth();
-  const [dispatches, setLeads] = useState([]); // Kept variable mapping matching project scope array
-  const [dispatchesList, setDispatches] = useState([]); // Internal alias state mapping
+  const [dispatchesList, setDispatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRevealModal, setShowRevealModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-
   const [selectedDispatchId, setSelectedDispatchId] = useState(null);
   const [revealedPhones, setRevealedPhones] = useState({});
   const [revealReason, setRevealReason] = useState('');
-
   const [proofFile, setProofFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-
   const [formData, setFormData] = useState({
     leadId: '',
     loadingPoint: '',
@@ -134,7 +125,6 @@ export default function Dispatches() {
   const handleRevealSubmit = async (e) => {
     e.preventDefault();
     if (!revealReason.trim()) return;
-
     try {
       const deviceHash = localStorage.getItem('deviceHash');
       const response = await axiosInstance.post('/security/reveal', {
@@ -144,7 +134,6 @@ export default function Dispatches() {
         reason: revealReason,
         deviceHash
       });
-
       if (response.data.success) {
         setRevealedPhones(prev => ({
           ...prev,
@@ -169,29 +158,23 @@ export default function Dispatches() {
     e.preventDefault();
     if (!proofFile) return;
     setIsUploading(true);
-
     try {
       const fd = new FormData();
       fd.append('file', proofFile);
       fd.append('ownerType', 'DISPATCH');
       fd.append('ownerId', selectedDispatchId);
       fd.append('accessLevel', 'RESTRICTED');
-
       const uploadResponse = await axiosInstance.post('/documents/upload', fd);
-
       if (!uploadResponse.data.success) {
         throw new Error(uploadResponse.data.message || 'Document upload failed');
       }
-
       const documentId = uploadResponse.data.data?.document?._id || uploadResponse.data?.data?.documentId;
       if (!documentId) {
         throw new Error('Uploaded document ID missing');
       }
-
       const response = await axiosInstance.post(`/dispatch/${selectedDispatchId}/proof`, {
         proofDocumentId: documentId
       });
-
       if (response.data.success) {
         toast.success('Dispatch proof document uploaded successfully!');
         setShowUploadModal(false);
@@ -256,7 +239,6 @@ export default function Dispatches() {
       variants={containerVariants} 
       className="min-h-screen bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12"
     >
-      
       {/* Top Deck Banner */}
       <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="space-y-1 text-left">
@@ -264,7 +246,6 @@ export default function Dispatches() {
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Dispatch & Transport</h1>
           <p className="text-xs text-[var(--crm-ink-faint)] font-light max-w-2xl mt-1">Track vehicle load distributions, secure driver parameters, and manage electronic bills of lading.</p>
         </div>
-
         {isProcurementAuthorized && (
           <button
             onClick={() => setShowCreateModal(true)}
@@ -301,13 +282,11 @@ export default function Dispatches() {
                 ) : (
                   dispatchesList.map((dispatch) => (
                     <tr key={dispatch._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                      
                       {/* Truck & Secure Driver Metadata */}
                       <td className="py-4 px-6 text-left">
                         <div className="space-y-1">
                           <div className="font-mono text-xs font-bold uppercase text-[var(--crm-heading)] tracking-wider">{dispatch.truckNo}</div>
                           <div className="text-[11px] text-[var(--crm-ink-soft)]/80 font-light">Operator: {dispatch.driverName || 'N/A'}</div>
-
                           {dispatch.driverPhoneMasked ? (
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className="font-mono text-[var(--crm-ink-faint)] font-medium">{revealedPhones[dispatch._id] || dispatch.driverPhoneMasked}</span>
@@ -326,7 +305,6 @@ export default function Dispatches() {
                           )}
                         </div>
                       </td>
-
                       {/* Commodity Details */}
                       <td className="py-4 px-6 text-left">
                         <div className="space-y-1">
@@ -334,7 +312,6 @@ export default function Dispatches() {
                           <div className="text-[11px] font-mono text-[var(--crm-ink-faint)]">Net Vol: <strong className="text-[var(--crm-ink-soft)] font-medium">{dispatch.quantity}</strong></div>
                         </div>
                       </td>
-
                       {/* Geographical Routes */}
                       <td className="py-4 px-6 text-left">
                         <div className="space-y-1 text-[11px] text-[var(--crm-ink-soft)]/90">
@@ -348,7 +325,6 @@ export default function Dispatches() {
                           </div>
                         </div>
                       </td>
-
                       {/* Tracking Status Pill */}
                       <td className="py-4 px-6 text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-wider uppercase border ${getStatusColor(dispatch.dispatchStatus)}`}>
@@ -356,7 +332,6 @@ export default function Dispatches() {
                           {dispatch.dispatchStatus}
                         </span>
                       </td>
-
                       {/* Document Verification Proof */}
                       <td className="py-4 px-6 text-left">
                         {dispatch.proofDocumentId ? (
@@ -389,7 +364,6 @@ export default function Dispatches() {
                           </div>
                         )}
                       </td>
-
                       {/* Actions dropdown selector */}
                       <td className="py-4 px-6 text-center">
                         <div className="relative inline-block w-36">
@@ -409,7 +383,6 @@ export default function Dispatches() {
                           </div>
                         </div>
                       </td>
-
                     </tr>
                   ))
                 )}
@@ -441,7 +414,6 @@ export default function Dispatches() {
                   <FiX size={16} />
                 </button>
               </div>
-
               <form onSubmit={handleCreateDispatch} className="space-y-4 text-left font-sans text-xs">
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Lead Node Linkage *</label>
@@ -454,7 +426,6 @@ export default function Dispatches() {
                     placeholder="e.g. ITO-LD-101"
                   />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Loading Origin *</label>
@@ -479,7 +450,6 @@ export default function Dispatches() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Vehicle License Registration *</label>
                   <input
@@ -491,7 +461,6 @@ export default function Dispatches() {
                     placeholder="e.g. WB-14-AX-5520"
                   />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Operator Name *</label>
@@ -513,7 +482,6 @@ export default function Dispatches() {
                     />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Material Specification *</label>
@@ -538,7 +506,6 @@ export default function Dispatches() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Loading Date Signature</label>
                   <input
@@ -548,7 +515,6 @@ export default function Dispatches() {
                     className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 cursor-pointer text-left"
                   />
                 </div>
-
                 <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10">
                   <button type="submit" className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md">Commit Manifest</button>
                   <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cancel</button>
@@ -576,7 +542,6 @@ export default function Dispatches() {
               <p className="text-xs text-[var(--crm-ink-faint)] mb-5 leading-relaxed font-light text-left">
                 CRITICAL WARNING: Access to raw telephony coordinates is fully tracked inside the global security ledger node. Provide a formal operational clearance reason to initiate unmasking.
               </p>
-
               <form onSubmit={handleRevealSubmit} className="space-y-4 text-left font-sans text-xs">
                 <div>
                   <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-2 font-mono">Audit Registry Justification</label>
@@ -589,7 +554,6 @@ export default function Dispatches() {
                     placeholder="Provide exact commercial urgency requirement parameters..."
                   />
                 </div>
-
                 <div className="flex space-x-3 pt-2">
                   <button type="submit" className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 shadow-md cursor-pointer">Authorize Unmasking</button>
                   <button type="button" onClick={() => setShowRevealModal(false)} className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer">Abort</button>
@@ -611,7 +575,10 @@ export default function Dispatches() {
               className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-ink-soft)]/15 shadow-2xl"
             >
               <div className="flex justify-between items-center mb-6 border-b border-[var(--crm-ink-soft)]/10 pb-3 text-left">
-                <h2 className="text-base font-serif font-normal text-[var(--crm-heading)] tracking-wide uppercase">Transmit Waybill Proof Node</h2>
+                <div>
+                  <h2 className="text-base font-serif font-normal text-[var(--crm-heading)] tracking-wide uppercase">Attach Proof Document</h2>
+                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Proof of Delivery Verification</p>
+                </div>
                 <button 
                   onClick={() => setShowUploadModal(false)} 
                   className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm hover:bg-[var(--crm-bg)] transition-all cursor-pointer"
@@ -619,36 +586,37 @@ export default function Dispatches() {
                   <FiX size={16} />
                 </button>
               </div>
-
-              <form onSubmit={handleUploadProof} className="space-y-5 text-left font-sans text-xs">
-                <div className="p-5 bg-[var(--crm-bg)] rounded-sm border border-dashed border-[var(--crm-ink-soft)]/20 text-center shadow-inner">
-                  <label className="block text-[11px] font-bold text-[var(--crm-ink-soft)] mb-3 uppercase tracking-wider font-mono">
-                    Select Digital Clearance Asset (Receipt/Slip PDF)
-                  </label>
+              <form onSubmit={handleUploadProof} className="space-y-4 text-left font-sans text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Select Document File *</label>
                   <input
                     type="file"
                     required
                     onChange={(e) => setProofFile(e.target.files[0])}
-                    className="w-full text-xs text-[var(--crm-ink-faint)] file:mr-3 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-[var(--crm-bg-raised)] file:border file:border-[var(--crm-ink-soft)]/20 file:text-[var(--crm-ink-soft)] hover:file:bg-[var(--crm-bg)] hover:file:text-[var(--crm-heading)] cursor-pointer file:transition shadow-md"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 cursor-pointer file:mr-4 file:py-1 file:px-2 file:rounded-sm file:border-0 file:text-[10px] file:font-mono file:bg-[var(--crm-bg-raised)] file:text-[var(--crm-heading)]"
                   />
                 </div>
-
-                <div className="flex space-x-3 pt-2">
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10">
                   <button 
                     type="submit" 
-                    disabled={isUploading || !proofFile} 
-                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 disabled:opacity-40 shadow-md cursor-pointer"
+                    disabled={isUploading}
+                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    {isUploading ? 'Transmitting Node...' : 'Commit Upload'}
+                    {isUploading ? 'Uploading...' : 'Upload & Verify'}
                   </button>
-                  <button type="button" onClick={() => setShowUploadModal(false)} className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider rounded-sm transition duration-300 cursor-pointer">Cancel</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowUploadModal(false)} 
+                    className="flex-1 py-3 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
     </motion.div>
   );
 }
