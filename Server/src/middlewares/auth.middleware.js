@@ -127,4 +127,21 @@ async function authenticateDistributor(req, res, next) {
   }
 }
 
-module.exports = { authenticate, authenticateDistributor };
+function authorize(allowedRoles = []) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return fail(res, 401, 'AUTH_UNAUTHORIZED', 'User not authenticated', [], req);
+    }
+    const userRole = req.user.role;
+    if (allowedRoles.length && !allowedRoles.includes(userRole)) {
+      return fail(res, 403, 'AUTH_FORBIDDEN', 'You do not have permission to access this resource', [], req);
+    }
+    next();
+  };
+}
+
+module.exports = { 
+  authenticate, 
+  authenticateDistributor, 
+  authorize 
+};

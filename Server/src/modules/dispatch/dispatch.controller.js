@@ -1,115 +1,81 @@
 const dispatchService = require('./dispatch.service');
+// ✅ Safely handle standard response utility exports (ok, fail)
 const { ok, fail } = require('../../utils/response');
 
-async function createTruck(req, res, next) {
+exports.createDispatch = async (req, res) => {
   try {
-    const { truckNo } = req.body;
-    if (!truckNo) return fail(res, 400, 'VALIDATION_FAILED', 'truckNo is required');
-
-    const truck = await dispatchService.createTruck(req.body);
-    return ok(res, { truck }, 'Truck registered successfully', 201, req);
+    const result = await dispatchService.createDispatch(req.body);
+    return ok(res, result, 'Dispatch created successfully', 201, req);
   } catch (error) {
-    if (error.code === 11000) return fail(res, 400, 'VALIDATION_FAILED', 'Truck number already exists');
-    next(error);
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function getTrucks(req, res, next) {
+exports.getAllDispatches = async (req, res) => {
   try {
-    const trucks = await dispatchService.listTrucks();
-    return ok(res, { trucks }, 'Trucks list retrieved', 200, req);
+    const dispatches = await dispatchService.getAllDispatches(req.query);
+    return ok(res, { dispatches }, 'Dispatches fetched successfully', 200, req);
   } catch (error) {
-    next(error);
+    return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function createDriver(req, res, next) {
+exports.getDispatchById = async (req, res) => {
   try {
-    const { fullName, phone } = req.body;
-    if (!fullName || !phone) return fail(res, 400, 'VALIDATION_FAILED', 'fullName and phone are required');
-
-    const driver = await dispatchService.createDriver(req.body);
-    return ok(res, { driver }, 'Driver registered successfully', 201, req);
+    const dispatch = await dispatchService.getDispatchById(req.params.id);
+    if (!dispatch) {
+      return fail(res, 404, 'NOT_FOUND', 'Dispatch record not found', [], req);
+    }
+    return ok(res, dispatch, 'Dispatch record fetched', 200, req);
   } catch (error) {
-    next(error);
+    return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function getDrivers(req, res, next) {
+exports.updateStatus = async (req, res) => {
   try {
-    const drivers = await dispatchService.listDrivers();
-    return ok(res, { drivers }, 'Drivers list retrieved', 200, req);
+    const { status } = req.body;
+    const result = await dispatchService.updateStatus(req.params.id, status);
+    return ok(res, result, 'Dispatch status updated successfully', 200, req);
   } catch (error) {
-    next(error);
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function createDispatch(req, res, next) {
+exports.updateDispatch = async (req, res) => {
   try {
-    const { leadId, truckNo } = req.body;
-    if (!leadId) return fail(res, 400, 'VALIDATION_FAILED', 'leadId is required');
-
-    const dispatch = await dispatchService.createDispatch({
-      ...req.body,
-      actorId: req.user._id
-    });
-    return ok(res, { dispatch }, 'Dispatch created successfully', 201, req);
+    const dispatch = await dispatchService.updateDispatch(req.params.id, req.body);
+    return ok(res, dispatch, 'Dispatch updated successfully', 200, req);
   } catch (error) {
-    if (error.message === 'LEAD_NOT_FOUND') return fail(res, 404, 'VALIDATION_FAILED', 'Lead not found');
-    next(error);
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function getDispatches(req, res, next) {
+exports.uploadPOD = async (req, res) => {
   try {
-    const dispatches = await dispatchService.listDispatches(req.user);
-    return ok(res, { dispatches }, 'Dispatches list retrieved', 200, req);
+    const podFileUrl = req.body.proofDocumentId || req.body.podFileUrl;
+    const userId = req.user?._id || req.user?.id;
+    const result = await dispatchService.updatePOD(req.params.id, podFileUrl, userId);
+    return ok(res, result, 'POD updated successfully', 200, req);
   } catch (error) {
-    next(error);
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function updateStatus(req, res, next) {
+exports.completeTrip = async (req, res) => {
   try {
-    const status = req.body.status || req.body.dispatchStatus;
-    const { remarks } = req.body;
-    if (!status) return fail(res, 400, 'VALIDATION_FAILED', 'status is required');
-
-    const dispatch = await dispatchService.updateDispatchStatus({
-      id: req.params.id,
-      status,
-      remarks,
-      actorId: req.user._id
-    });
-    return ok(res, { dispatch }, 'Dispatch status updated successfully', 200, req);
+    const result = await dispatchService.completeDispatch(req.params.id);
+    return ok(res, result, 'Trip marked as completed', 200, req);
   } catch (error) {
-    if (error.message === 'DISPATCH_NOT_FOUND') return fail(res, 404, 'VALIDATION_FAILED', 'Dispatch not found');
-    next(error);
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
+};
 
-async function uploadProof(req, res, next) {
+exports.getAdminSummary = async (req, res) => {
   try {
-    if (!req.body.proofDocumentId) return fail(res, 400, 'VALIDATION_FAILED', 'proofDocumentId is required');
-    const dispatch = await dispatchService.uploadDispatchProof({
-      id: req.params.id,
-      proofDocumentId: req.body.proofDocumentId,
-      actorId: req.user._id
-    });
-    return ok(res, { dispatch }, 'Dispatch proof saved successfully', 200, req);
+    const summary = await dispatchService.getDashboardTransportSummary();
+    return ok(res, summary, 'Transport dashboard summary fetched', 200, req);
   } catch (error) {
-    if (error.message === 'DISPATCH_NOT_FOUND') return fail(res, 404, 'VALIDATION_FAILED', 'Dispatch not found');
-    next(error);
+    return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
   }
-}
-
-module.exports = {
-  createTruck,
-  getTrucks,
-  createDriver,
-  getDrivers,
-  createDispatch,
-  getDispatches,
-  updateStatus,
-  uploadProof
 };
