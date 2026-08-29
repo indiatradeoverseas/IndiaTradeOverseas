@@ -79,3 +79,21 @@ exports.getAdminSummary = async (req, res) => {
     return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
   }
 };
+
+exports.sendEmergencySOS = async (req, res) => {
+  try {
+    const result = await dispatchService.processEmergencySOS(req.body, req.user);
+    return ok(res, result, 'Emergency SOS alert dispatched to Transport Manager', 200, req);
+  } catch (error) {
+    return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.logExpense = async (req, res) => {
+  try {
+    const result = await dispatchService.logExpense(req.params.id, req.body);
+    return ok(res, result, 'Trip expense logged successfully', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};

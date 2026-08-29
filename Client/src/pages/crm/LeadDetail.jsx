@@ -52,6 +52,7 @@ export default function LeadDetail() {
   const [assignee, setAssignee] = useState('');
   const [deptAssignee, setDeptAssignee] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [updatingPriority, setUpdatingPriority] = useState(false);
 
   const departments = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES'];
 
@@ -160,6 +161,21 @@ export default function LeadDetail() {
         fetchLeadDetails();
       }
     } catch (err) { toast.error('Failed to update assignment'); } finally { setIsAssigning(false); }
+  };
+
+  const handlePriorityChange = async (newPriority) => {
+    setUpdatingPriority(true);
+    try {
+      const response = await leadsApi.updatePriority(id, newPriority);
+      if (response.success) {
+        toast.success(`Lead Temperature updated to ${newPriority}!`);
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update lead priority.');
+    } finally {
+      setUpdatingPriority(false);
+    }
   };
 
   const handleStageChange = async (newStage) => {
@@ -275,6 +291,31 @@ export default function LeadDetail() {
   const currentStepIndex = activeStages.includes(currentStage) ? activeStages.indexOf(currentStage) : (isClosedWon || isClosedLost ? activeStages.length : 0);
   const progressPercent = Math.min(100, Math.max(0, (currentStepIndex / activeStages.length) * 100));
 
+  const calculatePriorityScore = (l) => {
+    if (!l) return 0;
+    if (typeof l.score === 'number' && l.score > 0) return l.score;
+
+    let score = 20;
+    const st = String(l.stage || '').toUpperCase();
+    const wonStages = ['CLOSED_WON', 'DEAL_WON'];
+    const hotStages = ['ORDER_CONFIRMED', 'QUOTATION_APPROVED', 'NEGOTIATION', 'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'PO_RECEIVED', 'LOI_PO_PENDING', 'DISPATCH_PENDING', 'PAYMENT_PENDING'];
+    const warmStages = ['REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_SENT', 'QUOTATION_REQUIRED', 'SAMPLE_SENT', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'];
+
+    if (wonStages.includes(st)) score = 100;
+    else if (hotStages.includes(st)) score += 45;
+    else if (warmStages.includes(st)) score += 25;
+
+    if (l.priority === 'HOT') score = Math.max(score, 85);
+    else if (l.priority === 'WARM') score = Math.max(score, 55);
+
+    if (Array.isArray(l.loiDocuments) && l.loiDocuments.length > 0) score += 20;
+    if (l.quantity || l.value) score += 10;
+
+    return Math.min(100, Math.max(0, score));
+  };
+
+  const calculatedScore = calculatePriorityScore(lead);
+
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12">
       
@@ -338,6 +379,64 @@ export default function LeadDetail() {
               <p className={`text-xs font-bold tracking-wide break-all mt-2 truncate ${item.accent || 'text-[var(--crm-heading)]'}`}>{item.val}</p>
             </div>
           ))}
+        </motion.div>
+
+        {/* Lead Classification & Temperature Control Panel */}
+        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--crm-ink-soft)]/10 pb-4 mb-4">
+            <div>
+              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5">CLASSIFICATION MATRIX</span>
+              <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
+                Lead Temperature Status: 
+                <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${
+                  lead.priority === 'HOT' ? 'bg-rose-950/80 text-rose-400 border-rose-800/60' :
+                  lead.priority === 'WARM' ? 'bg-amber-950/80 text-amber-400 border-amber-800/60' :
+                  'bg-cyan-950/80 text-cyan-400 border-cyan-800/60'
+                }`}>
+                  {lead.priority === 'HOT' ? 'HOT 🔥' : lead.priority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
+                </span>
+              </h3>
+            </div>
+            
+            {/* Manual Temperature Override Dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold">Manual Override:</span>
+              <select
+                value={lead.priority || 'WARM'}
+                disabled={updatingPriority}
+                onChange={(e) => handlePriorityChange(e.target.value)}
+                className="px-3 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs font-bold rounded-sm text-[var(--crm-heading)] outline-none cursor-pointer"
+              >
+                <option value="HOT" className="bg-[var(--crm-bg)] text-rose-400">HOT 🔥 (High Priority)</option>
+                <option value="WARM" className="bg-[var(--crm-bg)] text-amber-400">WARM ⚡ (Medium Priority)</option>
+                <option value="COLD" className="bg-[var(--crm-bg)] text-cyan-400">COLD ❄️ (Low Priority)</option>
+                <option value="FAKE" className="bg-[var(--crm-bg)] text-gray-400">FAKE (Invalid Lead)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div>
+              <span className="text-[10px] text-[var(--crm-ink-faint)] block uppercase mb-1 font-bold">Priority Score Metric</span>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold text-[var(--crm-positive)]">{calculatedScore} / 100</span>
+                <div className="flex-1 bg-[var(--crm-bg)] h-2 border border-[var(--crm-ink-soft)]/15 rounded-xs overflow-hidden">
+                  <div className={`h-full transition-all ${
+                    calculatedScore >= 80 ? 'bg-rose-500' : calculatedScore >= 40 ? 'bg-amber-400' : 'bg-cyan-400'
+                  }`} style={{ width: `${Math.min(100, calculatedScore)}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 rounded-sm text-xs space-y-1">
+              <span className="text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold block">Evaluation Rule Breakdown</span>
+              <p className="text-[11px] text-[var(--crm-ink-soft)]">
+                {lead.priority === 'HOT' ? '• Order Volume/LOI/Advance Payment agreed. High chance of conversion.' :
+                 lead.priority === 'WARM' ? '• Active requirement captured. Quotation/Sample pending discussion.' :
+                 '• Inbound inquiry requiring nurturing or preliminary qualification call.'}
+              </p>
+            </div>
+          </div>
         </motion.div>
 
         {/* Task Management Router Pane */}

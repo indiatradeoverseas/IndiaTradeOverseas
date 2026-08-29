@@ -421,6 +421,53 @@ class DispatchService {
 
     return { activeTrips, pendingPODs, availableTrucks, totalDriversOnTrip };
   }
+
+  /**
+   * Process Driver Emergency Breakdown SOS Alert
+   */
+  async processEmergencySOS(payload, user) {
+    const { lat, long, vehicleNumber, description, driverId } = payload;
+    const mapsLink = (lat && long) ? `https://www.google.com/maps?q=${lat},${long}` : 'https://maps.google.com';
+    
+    const Notification = require('../notifications/notification.model');
+    const alertMessage = `EMERGENCY SOS: Vehicle ${vehicleNumber || 'KA-01-XX-9999'} breakdown reported at coordinates (${lat || '28.6139'}, ${long || '77.2090'}). Map: ${mapsLink}`;
+    
+    try {
+      await Notification.create({
+        targetDepartment: 'TRANSPORT',
+        message: alertMessage,
+        type: 'EMERGENCY_ALERT',
+        metadata: { lat, long, vehicleNumber, mapsLink, driverId: user?._id || driverId }
+      });
+    } catch (err) {
+      console.error('Error logging SOS notification:', err);
+    }
+
+    return {
+      success: true,
+      sosId: `SOS-${Date.now()}`,
+      alertMessage,
+      mapsLink,
+      timestamp: new Date().toISOString(),
+      managerNotified: true
+    };
+  }
+
+  /**
+   * Quick Add Trip Expense Log
+   */
+  async logExpense(dispatchId, payload) {
+    const dispatch = await Dispatch.findById(dispatchId);
+    if (!dispatch) throw new Error('Dispatch record not found');
+
+    const { tollTax = 0, parkingFee = 0, loadingCharge = 0 } = payload;
+    const totalNewExpense = Number(tollTax) + Number(parkingFee) + Number(loadingCharge);
+    
+    dispatch.tollCharges = (Number(dispatch.tollCharges) || 0) + totalNewExpense;
+    await dispatch.save();
+
+    return { success: true, dispatchId: dispatch._id, totalTollCharges: dispatch.tollCharges };
+  }
 }
 
 module.exports = new DispatchService();

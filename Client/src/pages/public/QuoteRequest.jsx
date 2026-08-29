@@ -60,7 +60,10 @@ export default function QuoteRequest() {
     setSubmitting(true);
 
     try {
-      const response = await leadsApi.createLead(formData);
+      const response = await leadsApi.createLead({
+        ...formData,
+        source: 'WEBSITE'
+      });
       if (response.success) {
         setSubmitted(true);
         toast.success('Quote request submitted successfully! Our team will contact you soon.', {

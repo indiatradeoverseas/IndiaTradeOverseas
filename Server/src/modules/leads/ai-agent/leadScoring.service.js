@@ -1,57 +1,135 @@
-function scoreAndClassifyLead({ quantity, hasLOI, paymentTerms = '', contactPerson, mobile, email, chatSummary = '' }) {
-  
-  const hasContact = !!contactPerson;
-  const hasPhone = !!mobile && String(mobile).replace(/\s/g, '').length >= 8;
+/**
+ * AI Lead Scoring & Classification Engine
+ * Classifies leads into HOT (>=80), WARM (40-79), COLD (<40), FAKE, and INCOMPLETE
+ */
+
+function scoreAndClassifyLead(leadData = {}) {
+  const {
+    quantity = '',
+    leadValue = 0,
+    hasLOI = false,
+    paymentTerms = '',
+    contactPerson = '',
+    mobile = '',
+    phone = '',
+    email = '',
+    chatSummary = '',
+    source = '',
+    stage = '',
+    activitiesCount = 0,
+    hasVoiceNotes = false
+  } = leadData;
+
+  const phoneNum = mobile || phone || leadData.phoneMasked || leadData.phoneEncrypted || '';
+  const hasContact = !!contactPerson || !!leadData.customerName;
+  const hasPhone = !!phoneNum && String(phoneNum).replace(/\s/g, '').length >= 5;
   const hasEmail = !!email && String(email).includes('@');
-  
-  if (!hasPhone && !hasEmail) {
-    return { score: 0, priority: 'INCOMPLETE' };
+  const isExistingLead = Boolean(leadData._id || leadData.leadCode || leadData.customerName);
+
+  // 1. Validation checks
+  if (!hasPhone && !hasEmail && !isExistingLead) {
+    return { score: 0, priority: 'INCOMPLETE', breakdown: [{ factor: 'Missing Contact Details', points: 0 }] };
   }
 
-  
-  const isFakeNumber = mobile && /^(.)\1{7,}$/.test(String(mobile).replace(/\D/g, '')); 
+  const isFakeNumber = phoneNum && /^(.)\1{7,}$/.test(String(phoneNum).replace(/\D/g, ''));
   if (isFakeNumber) {
-    return { score: 0, priority: 'FAKE' };
+    return { score: 0, priority: 'FAKE', breakdown: [{ factor: 'Suspicious / Fake Phone Number', points: 0 }] };
   }
 
   let score = 0;
+  const breakdown = [];
 
-  
-  const qtyNumber = parseFloat(String(quantity).replace(/[^0-9.]/g, '')) || 0;
-  if (qtyNumber >= 1000) {
-    score += 40;
-  } else if (qtyNumber >= 100) {
-    score += 20;
+  // Base score for verified lead manifest
+  if (isExistingLead) {
+    score += 15;
+    breakdown.push({ factor: 'Verified Customer Manifest Record', points: 15 });
   }
 
-  
-  const containsLOI = Boolean(hasLOI) || 
-    chatSummary.toLowerCase().includes('loi') || 
-    chatSummary.toLowerCase().includes('po ') ||
-    chatSummary.toLowerCase().includes('letter of intent');
-  
+  // 2. Quantity & Value Scoring
+  const qtyNumber = parseFloat(String(quantity).replace(/[^0-9.]/g, '')) || 0;
+  const valNumber = Number(leadValue || 0);
+
+  if (qtyNumber >= 1000 || valNumber >= 500000) {
+    score += 40;
+    breakdown.push({ factor: 'High Order Volume / Valuation', points: 40 });
+  } else if (qtyNumber >= 100 || valNumber >= 100000) {
+    score += 25;
+    breakdown.push({ factor: 'Moderate Quantity / Valuation', points: 25 });
+  } else if (qtyNumber > 0 || valNumber > 0) {
+    score += 10;
+    breakdown.push({ factor: 'Initial Requirement Captured', points: 10 });
+  }
+
+  // 3. Document Intent (LOI / Purchase Order / Agreement)
+  const summaryLower = String(chatSummary).toLowerCase();
+  const hasLOIDocs = Array.isArray(leadData.loiDocuments) && leadData.loiDocuments.length > 0;
+  const containsLOI = Boolean(hasLOI) || hasLOIDocs ||
+    summaryLower.includes('loi') || 
+    summaryLower.includes('po ') ||
+    summaryLower.includes('purchase order') ||
+    summaryLower.includes('letter of intent');
+
   if (containsLOI) {
     score += 40;
+    breakdown.push({ factor: 'Letter of Intent (LOI) / PO Expressed', points: 40 });
   }
 
-  
-  const isAdvance = paymentTerms.toLowerCase().includes('advance') || 
-    paymentTerms.includes('+') || 
-    paymentTerms.toLowerCase().includes('upfront');
+  // 4. Payment Terms (Advance / Upfront commitment)
+  const termsLower = String(paymentTerms).toLowerCase();
+  const isAdvance = termsLower.includes('advance') || 
+    termsLower.includes('+') || 
+    termsLower.includes('upfront') ||
+    termsLower.includes('immediate');
 
   if (isAdvance) {
     score += 20;
+    breakdown.push({ factor: 'Advance Payment Terms Agreed', points: 20 });
   }
 
-  
+  // 5. Lead Source Points
+  const srcUpper = String(source).toUpperCase();
+  if (['WEBSITE', 'WHATSAPP', 'INDIAMART', 'AI_AGENT', 'MANUAL', 'IMPORT'].includes(srcUpper)) {
+    score += 15;
+    breakdown.push({ factor: 'Valid Lead Entry Source', points: 15 });
+  }
+
+  // 6. Pipeline Stage Advancement Points
+  const wonStages = ['CLOSED_WON', 'DEAL_WON'];
+  const hotStages = ['ORDER_CONFIRMED', 'QUOTATION_APPROVED', 'NEGOTIATION', 'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'PO_RECEIVED', 'LOI_PO_PENDING', 'DISPATCH_PENDING', 'PAYMENT_PENDING'];
+  const warmStages = ['REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_SENT', 'QUOTATION_REQUIRED', 'SAMPLE_SENT', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'];
+
+  const stageUpper = String(stage || '').toUpperCase();
+
+  if (wonStages.includes(stageUpper)) {
+    score = 100;
+    breakdown.push({ factor: 'Deal Successfully Won / Closed', points: 100 });
+  } else if (hotStages.includes(stageUpper)) {
+    score += 45;
+    breakdown.push({ factor: 'Advanced Negotiation / Deal Stage', points: 45 });
+  } else if (warmStages.includes(stageUpper)) {
+    score += 25;
+    breakdown.push({ factor: 'Active Requirement / Quote Stage', points: 25 });
+  }
+
+  // 7. Activity & Engagement
+  if (activitiesCount > 2 || hasVoiceNotes) {
+    score += 10;
+    breakdown.push({ factor: 'Active Follow-up & Voice Notes Recorded', points: 10 });
+  }
+
+  // Cap score at 100
+  score = Math.min(100, score);
+
+  // 8. Priority Classification
   let priority = 'COLD';
-  if (score >= 80) {
+  if (wonStages.includes(stageUpper) || score >= 80) {
     priority = 'HOT';
-  } else if (score >= 40) {
+  } else if (score >= 35) {
     priority = 'WARM';
   }
 
-  return { score, priority };
+  return { score, priority, breakdown };
 }
 
 module.exports = { scoreAndClassifyLead };
+

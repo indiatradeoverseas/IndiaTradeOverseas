@@ -41,12 +41,17 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
 function canAccessLead(user, lead) {
   if (!user) return false;
   const role = user.role || '';
+  const dept = user.department || '';
   const isManagerOrAdmin =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.toLowerCase().includes('manager') ||
-    user.department === 'ADMIN' ||
+    role === 'TRANSPORT' ||
+    role === 'LOGISTICS' ||
+    dept === 'ADMIN' ||
+    dept === 'TRANSPORT' ||
+    dept === 'LOGISTICS' ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
   let result = false;
@@ -121,25 +126,30 @@ function getLeadDisplay(lead, user) {
 async function listLeads(user, query = {}) {
   const filter = {};
   if (query.stage) filter.stage = query.stage;
+  if (query.priority) filter.priority = String(query.priority).toUpperCase();
 
   const role = user.role || '';
+  const dept = user.department || '';
   const isManagerOrAdminUser =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.toLowerCase().includes('manager') ||
-    user.department === 'ADMIN' ||
+    role === 'TRANSPORT' ||
+    role === 'LOGISTICS' ||
+    dept === 'ADMIN' ||
+    dept === 'TRANSPORT' ||
+    dept === 'LOGISTICS' ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
-  if (
+  const shouldFilterMyLeadsOnly = query.myLeadsOnly === 'true' || (
     !isManagerOrAdminUser &&
     role !== 'HR' &&
     role !== 'ACCOUNTS' &&
-    role !== 'FINANCE' &&
-    user.paymentPermission !== true &&
-    user.dispatchPermission !== true &&
-    user.quotationPermission !== true
-  ) {
+    role !== 'FINANCE'
+  );
+
+  if (shouldFilterMyLeadsOnly) {
     const actorIds = [user._id];
     if (user.employeeDbId) {
       actorIds.push(user.employeeDbId);
@@ -262,6 +272,27 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+
+  // Auto-recalculate lead score & priority on stage progression
+  try {
+    const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+    const { score, priority: calculatedPriority } = scoreAndClassifyLead({
+      quantity: lead.quantity,
+      leadValue: lead.leadValue,
+      stage: newStage,
+      source: lead.source,
+      contactPerson: lead.customerName,
+      mobile: lead.phoneMasked,
+      chatSummary: lead.remarks || ''
+    });
+    lead.score = score;
+    if (calculatedPriority === 'HOT' || (calculatedPriority === 'WARM' && lead.priority === 'COLD')) {
+      lead.priority = calculatedPriority;
+    }
+  } catch (calcErr) {
+    console.warn('Lead score recalculation notice:', calcErr.message);
+  }
+
   await lead.save();
 
   // 5. Record activity log
@@ -552,6 +583,34 @@ async function bulkImportLeads(leadsArray, user) {
   };
 }
 
+async function updatePriority({ leadId, priority, user }) {
+  const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
+  const upperPriority = String(priority || '').toUpperCase();
+  if (!validPriorities.includes(upperPriority)) {
+    throw new Error('INVALID_PRIORITY');
+  }
+
+  const lead = await Lead.findById(leadId);
+  if (!lead) throw new Error('LEAD_NOT_FOUND');
+
+  if (!canAccessLead(user, lead)) {
+    throw new Error('OWNERSHIP_FORBIDDEN');
+  }
+
+  const oldPriority = lead.priority;
+  lead.priority = upperPriority;
+  await lead.save();
+
+  await LeadActivity.create({
+    leadId: lead._id,
+    actionType: 'PRIORITY_UPDATED',
+    note: `Lead priority manually updated from ${oldPriority} to ${upperPriority} by ${user.fullName || user.name}`,
+    actorId: user._id
+  });
+
+  return getLeadDisplay(lead, user);
+}
+
 module.exports = {
   listLeads,
   getLeadById,
@@ -561,5 +620,6 @@ module.exports = {
   assignLead,
   deleteLead,
   assignLeadsBulk,
-  bulkImportLeads
+  bulkImportLeads,
+  updatePriority
 };

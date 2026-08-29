@@ -4,9 +4,9 @@ const { google } = require('googleapis');
 
 // Initialize Google OAuth2 Client
 function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const clientId = (process.env.GOOGLE_DRIVER_API_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.GOOGLE_DRIVER_API_SECRET || process.env.GOOGLE_CLIENT_SECRET || '').trim();
+  const refreshToken = (process.env.GOOGLE_DRIVER_API_REFRESH || process.env.GOOGLE_REFRESH_TOKEN || '').trim();
 
   if (!clientId || !clientSecret || !refreshToken) {
     console.warn('[GoogleDrive] Google OAuth credentials missing in .env');

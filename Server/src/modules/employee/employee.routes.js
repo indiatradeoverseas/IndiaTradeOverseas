@@ -29,7 +29,7 @@ const hrOnly = [authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTI
 
 router.get('/next-id', getNextEmployeeId);
 router.get('/list-managers', getListManagers);
-router.get('/all', ...adminOnly, getAllEmployees);
+router.get('/all', authenticate, getAllEmployees);
 
 // Self-registration endpoint (public - no auth required)
 router.post('/signup/request', signupEmployeeSelfRegistration);

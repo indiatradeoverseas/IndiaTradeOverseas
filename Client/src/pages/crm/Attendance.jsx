@@ -26,6 +26,11 @@ const formatLocalDate = (d) => {
   return `${year}-${month}-${day}`;
 };
 
+const getTodayBounds = () => {
+  const todayStr = formatLocalDate(new Date());
+  return { startDate: todayStr, endDate: todayStr, department: '' };
+};
+
 const getCurrentMonthBounds = () => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -88,7 +93,7 @@ export default function Attendance() {
   const [actionLoading, setActionLoading] = useState(false);
   const [report, setReport] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
-  const [filters, setFilters] = useState(getCurrentMonthBounds);
+  const [filters, setFilters] = useState(getTodayBounds);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [lunchLoading, setLunchLoading] = useState(false);
   const [lunchElapsed, setLunchElapsed] = useState(0);
@@ -240,20 +245,17 @@ export default function Attendance() {
   };
 
   const handleCheckOut = async () => {
-    if (!window.confirm('Check out now? This ends your work day and cannot be undone.')) {
+    if (!window.confirm('Check out now? This ends your work shift.')) {
       return;
     }
     setActionLoading(true);
     try {
       const response = await attendanceApi.checkOut();
       if (response.success) {
-        toast.success('Checked out successfully. Logging out... 🌙');
+        toast.success('Checked out successfully! Shift completed. 🌙');
         setToday(response.data.attendance);
         if (isManagerTier) fetchReport(filters);
         else fetchMyHistory(getCurrentMonthBounds());
-        setTimeout(() => {
-          logout();
-        }, 1500);
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to check out');
@@ -488,59 +490,79 @@ export default function Attendance() {
               ))}
             </motion.div>
 
-            <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm flex flex-col md:flex-row gap-4 items-center">
-              <div className="w-full md:w-52 flex items-center gap-2">
-                <FiUsers className="text-[var(--crm-ink-faint)] shrink-0" size={14} />
+            <motion.div variants={blockVariants} className="p-2.5 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-md flex flex-wrap items-center justify-between gap-2 shadow-sm text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Department Dropdown */}
                 <select
                   value={filters.department}
                   onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs cursor-pointer text-[var(--crm-heading)]"
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] cursor-pointer text-[var(--crm-heading)] font-mono"
                 >
-                  <option value="">All Departments</option>
+                  <option value="">All Depts</option>
                   {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
-              </div>
-              <div className="flex-1 w-full flex items-center gap-2">
-                <FiFilter className="text-[var(--crm-ink-faint)] shrink-0" size={14} />
+
+                {/* Compact Date Range Pickers */}
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs text-[var(--crm-heading)]"
+                  className="px-2 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono"
                 />
-              </div>
-              <div className="flex-1 w-full">
+                <span className="text-slate-500 text-[10px]">&ndash;</span>
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs text-[var(--crm-heading)]"
+                  className="px-2 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono"
                 />
+
+                {/* Apply Filter Button */}
+                <button
+                  onClick={handleApplyFilter}
+                  className="px-3 py-1.5 bg-[var(--crm-bg-raised)] hover:bg-[#1e3b61]/40 border border-[var(--crm-ink-soft)]/25 text-[var(--crm-heading)] text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                >
+                  Filter
+                </button>
+
+                {/* Today Only Button */}
+                <button
+                  onClick={() => {
+                    const todayStr = formatLocalDate(new Date());
+                    const todayF = { startDate: todayStr, endDate: todayStr, department: '' };
+                    setFilters(todayF);
+                    if (isManagerTier) fetchReport(todayF);
+                    else fetchMyHistory(todayF);
+                  }}
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[#c9a84c]/40 hover:bg-[#c9a84c]/10 text-[#c9a84c] text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  title="Reset to today's date"
+                >
+                  Today
+                </button>
               </div>
-              <button
-                onClick={handleApplyFilter}
-                className="bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm transition-all whitespace-nowrap cursor-pointer"
-              >
-                Apply Filter
-              </button>
-              {isManagerTier && (
-                <button
-                  onClick={() => setShowManualModal(true)}
-                  className="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-900/40 text-emerald-400 text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm transition-all whitespace-nowrap cursor-pointer"
-                >
-                  <FiLogIn size={12} /> Manual Logger
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  onClick={handleCleanupOrphaned}
-                  disabled={cleanupLoading}
-                  title="Permanently delete attendance records with no check-in time (invalid/test data)"
-                  className="flex items-center gap-1.5 bg-transparent border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm transition-all whitespace-nowrap disabled:opacity-50"
-                >
-                  <FiTrash2 size={12} /> {cleanupLoading ? 'Cleaning...' : 'Clean Up Invalid Records'}
-                </button>
-              )}
+
+              {/* Right Side Action Buttons */}
+              <div className="flex items-center gap-2">
+                {isManagerTier && (
+                  <button
+                    onClick={() => setShowManualModal(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  >
+                    <FiLogIn size={11} /> Manual Mark
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    onClick={handleCleanupOrphaned}
+                    disabled={cleanupLoading}
+                    title="Clean invalid records"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-transparent border border-rose-900/40 hover:bg-rose-950/50 text-rose-400 text-[10px] uppercase tracking-wider font-bold rounded transition disabled:opacity-50"
+                  >
+                    <FiTrash2 size={11} /> {cleanupLoading ? '...' : 'Clean'}
+                  </button>
+                )}
+              </div>
             </motion.div>
 
             <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/10 rounded-sm overflow-hidden shadow-xl">

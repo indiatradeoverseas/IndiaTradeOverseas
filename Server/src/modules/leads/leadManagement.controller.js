@@ -556,6 +556,127 @@ async function updateCallRecordingRemark(req, res, next) {
   }
 }
 
+// 11. Upload LOI Document for a Lead
+async function uploadLOIDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    if (!req.file) {
+      return fail(res, 400, 'FILE_REQUIRED', 'Please select an LOI document file to upload.');
+    }
+
+    const lead = await Lead.findById(id);
+    if (!lead) {
+      return fail(res, 404, 'NOT_FOUND', 'Lead not found.');
+    }
+
+    const loiObj = {
+      path: getRelativePath(req.file.path),
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype || 'application/pdf',
+      size: req.file.size || 0,
+      notes: notes || '',
+      uploadedBy: req.user._id,
+      uploadedByName: req.user.fullName || req.user.name || 'Sales Executive',
+      createdAt: new Date(),
+      driveFileId: '',
+      driveWebViewLink: ''
+    };
+
+    // Upload to Google Drive directly in background/inline
+    try {
+      const { uploadToGoogleDrive } = require('../../services/googleDrive.service');
+      const driveResult = await uploadToGoogleDrive(req.file.path, `LOI_${lead.leadCode}_${req.file.originalname}`, req.file.mimetype);
+      if (driveResult && driveResult.fileId) {
+        loiObj.driveFileId = driveResult.fileId;
+        loiObj.driveWebViewLink = driveResult.webViewLink || '';
+      }
+    } catch (driveErr) {
+      console.warn('[LOI Upload] Google Drive upload notice:', driveErr.message);
+    }
+
+    if (!lead.loiDocuments) lead.loiDocuments = [];
+    lead.loiDocuments.push(loiObj);
+
+    // Auto update stage to LOI_PO_PENDING if currently in earlier stage
+    if (['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'NEGOTIATION'].includes(lead.stage)) {
+      lead.stage = 'LOI_PO_PENDING';
+    }
+
+    await lead.save();
+
+    // Log Activity
+    await LeadActivity.create({
+      leadId: lead._id,
+      actionType: 'LOI_UPLOADED',
+      note: `LOI Document uploaded by ${req.user.fullName || req.user.name}: "${req.file.originalname}"${notes ? ` (Notes: ${notes})` : ''}`,
+      actorId: req.user._id
+    });
+
+    return ok(res, { loiDocuments: lead.loiDocuments, lead }, 'LOI document uploaded and attached successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 12. Stream/Download LOI Document
+async function streamLOIDocument(req, res, next) {
+  try {
+    const { id, index } = req.params;
+    const lead = await Lead.findById(id);
+    if (!lead) {
+      return fail(res, 404, 'NOT_FOUND', 'Lead not found.');
+    }
+
+    const loiDoc = lead.loiDocuments?.[Number(index)];
+    if (!loiDoc || !loiDoc.path) {
+      return fail(res, 404, 'NOT_FOUND', 'LOI document not found at this index.');
+    }
+
+    const filePath = resolveUploadPath(loiDoc.path, 'loi_documents');
+    if (filePath && fs.existsSync(filePath)) {
+      const absPath = path.resolve(filePath);
+      const ext = path.extname(absPath).toLowerCase();
+      let mimeType = loiDoc.mimeType;
+      if (!mimeType || mimeType === 'application/octet-stream') {
+        if (ext === '.pdf') mimeType = 'application/pdf';
+        else if (ext === '.png') mimeType = 'image/png';
+        else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+        else if (ext === '.docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        else if (ext === '.doc') mimeType = 'application/msword';
+        else mimeType = 'application/pdf';
+      }
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(loiDoc.originalName || 'loi-document')}"`);
+      return res.sendFile(absPath);
+    }
+
+    if (loiDoc.driveFileId) {
+      try {
+        const { getDriveFileStream } = require('../../services/googleDrive.service');
+        const driveStream = await getDriveFileStream(loiDoc.driveFileId);
+        if (driveStream) {
+          res.setHeader('Content-Type', loiDoc.mimeType || 'application/pdf');
+          res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(loiDoc.originalName || 'loi-document')}"`);
+          return driveStream.pipe(res);
+        }
+      } catch (driveStreamErr) {
+        console.warn('[LOIDoc] Drive stream error:', driveStreamErr.message);
+      }
+    }
+
+    if (loiDoc.driveWebViewLink) {
+      return res.redirect(loiDoc.driveWebViewLink);
+    }
+
+    return fail(res, 404, 'FILE_NOT_FOUND', 'LOI document file not found on disk or Drive.');
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -568,5 +689,7 @@ module.exports = {
   uploadCallRecording,
   getCallRecordings,
   streamCallRecording,
-  updateCallRecordingRemark
+  updateCallRecordingRemark,
+  uploadLOIDocument,
+  streamLOIDocument
 };

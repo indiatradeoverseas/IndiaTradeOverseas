@@ -57,6 +57,9 @@ import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
 import FounderDashboard from './pages/crm/FounderDashboard';
 import FinanceManagerDashboard from './pages/crm/FinanceManagerDashboard';
+import TransportManager from './pages/crm/transport/TransportManager';
+import TransportExecutive from './pages/crm/transport/TransportExecutive';
+import DriverMobileView from './pages/crm/transport/DriverMobileView';
 import FinanceDashboard from './pages/crm/FinanceDashboard';
 
 
@@ -192,6 +195,25 @@ function FinanceRedirectGate() {
   }
 }
 
+function TransportRouteGuard({ children, requiredLevel }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const role = (user.role || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+  const isAdmin = isAdminUser(user);
+  const isManager = isAdmin || role === 'MANAGER' || role.includes('MANAGER') || pos.includes('manager');
+  const isDriver = role === 'DRIVER' || pos.includes('driver');
+
+  if (requiredLevel === 'MANAGER' && !isManager) {
+    if (isDriver) return <Navigate to="/crm/transport/driver" replace />;
+    return <Navigate to="/crm/transport/executive" replace />;
+  }
+
+  return children;
+}
+
 function AppLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -325,7 +347,7 @@ function AppLayout() {
           <Route
             path="/crm/tasks"
             element={
-              (isAdminUser(user) || ['MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'SALES'].includes(user?.role) || user?.taskPermission === true || user?.permissions?.task === true) ? (
+              (isAdminUser(user) || ['MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'SALES', 'EMPLOYEE'].includes(user?.role) || user?.department === 'SALES' || user?.taskPermission === true || user?.permissions?.task === true) ? (
                 <Tasks />
               ) : (
                 <Navigate to="/crm/dashboard" replace />
@@ -410,6 +432,15 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
+          {/* Phase 4: Transport Module Routes */}
+          <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
+          <Route path="/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
+          <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+          <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+          <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+          <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+          <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
 
           <Route path="*" element={<Navigate to="/crm/dashboard" />} />
         </Routes>

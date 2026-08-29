@@ -5,7 +5,7 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage, assignLead, assignLeadsBulk, bulkImportLeads } = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage, changeLeadPriority, assignLead, assignLeadsBulk, bulkImportLeads } = require('./lead.controller');
 const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
@@ -20,8 +20,30 @@ const {
   uploadCallRecording,
   getCallRecordings,
   streamCallRecording,
-  updateCallRecordingRemark
+  updateCallRecordingRemark,
+  uploadLOIDocument,
+  streamLOIDocument
 } = require('./leadManagement.controller');
+
+// Multer setup for LOI documents
+const loiStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const destDir = path.join(process.cwd(), 'uploads', 'loi_documents');
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    cb(null, destDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = `loi-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, safeName);
+  }
+});
+
+const uploadLOIFile = multer({
+  storage: loiStorage,
+  limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for LOI files
+});
 
 // Multer setup for lead voice notes
 const storage = multer.diskStorage({
@@ -127,9 +149,12 @@ router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission
 router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
 router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
 router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
+router.post('/:id/loi', checkPermission('leadPermission', 'taskPermission'), uploadLOIFile.single('file'), uploadLOIDocument);
+router.get('/:id/loi/:index', checkPermission('leadPermission', 'taskPermission'), streamLOIDocument);
 
 router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
+router.patch('/:id/priority', checkPermission('leadPermission', 'taskPermission'), changeLeadPriority);
 router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);  
 
 module.exports = router;

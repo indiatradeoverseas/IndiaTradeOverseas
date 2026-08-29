@@ -174,6 +174,48 @@ const leadSchema = new mongoose.Schema(
         },
       },
     ],
+    loiDocuments: [
+      {
+        path: {
+          type: String,
+        },
+        originalName: {
+          type: String,
+        },
+        mimeType: {
+          type: String,
+          default: "application/pdf",
+        },
+        size: {
+          type: Number,
+          default: 0,
+        },
+        notes: {
+          type: String,
+          default: "",
+        },
+        uploadedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        uploadedByName: {
+          type: String,
+          default: "",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        driveFileId: {
+          type: String,
+          default: "",
+        },
+        driveWebViewLink: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
     duplicateOf: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lead",

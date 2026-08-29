@@ -92,10 +92,7 @@ async function checkIn(req, res, next) {
     // Check if record exists
     let record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
     if (record && record.checkInTime) {
       return fail(res, 400, 'ALREADY_CHECKED_IN', 'You have already checked in today', [], req);
@@ -114,13 +111,25 @@ async function checkIn(req, res, next) {
       record.status = status;
       await record.save();
     } else {
-      record = await Attendance.create({
-        employeeId: empId,
-        date: today,
-        checkInTime: timeStr,
-        checkInAt: now,
-        status
-      });
+      try {
+        record = await Attendance.create({
+          employeeId: empId,
+          date: today,
+          checkInTime: timeStr,
+          checkInAt: now,
+          status
+        });
+      } catch (createErr) {
+        if (createErr.code === 11000) {
+          record = await Attendance.findOneAndUpdate(
+            { date: today, ...getAttendanceIdFilter(empId, req.user._id) },
+            { checkInTime: timeStr, checkInAt: now, status },
+            { new: true }
+          );
+        } else {
+          throw createErr;
+        }
+      }
     }
 
     const formatted = formatAttendance(record);
@@ -142,7 +151,7 @@ async function checkIn(req, res, next) {
 
       socketService.emitToAll('employee_status_updated', {
         employeeId: empId.toString(),
-        name: employee ? employee.name : 'Unknown',
+        name: employee ? employee.name : (req.user.name || req.user.fullName || 'Employee'),
         status: 'IDLE',
         currentActivity: 'Available',
         lastUpdated: now,
@@ -152,7 +161,7 @@ async function checkIn(req, res, next) {
       console.error('Error updating employee status during check-in:', statusErr);
     }
 
-    return ok(res, { record, attendance: formatted }, 'Checked in successfully', 200, req);
+    return ok(res, { record: formatted, attendance: formatted }, 'Checked in successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -168,10 +177,7 @@ async function checkOut(req, res, next) {
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
 
     if (!record || !record.checkInTime) {
@@ -224,7 +230,7 @@ async function checkOut(req, res, next) {
 
       socketService.emitToAll('employee_status_updated', {
         employeeId: empId.toString(),
-        name: employee ? employee.name : 'Unknown',
+        name: employee ? employee.name : (req.user.name || req.user.fullName || 'Employee'),
         status: 'OFFLINE',
         currentActivity: 'Offline',
         lastUpdated: now,
@@ -234,7 +240,7 @@ async function checkOut(req, res, next) {
       console.error('Error updating employee status during check-out:', statusErr);
     }
 
-    return ok(res, { record, attendance: formatted }, 'Checked out successfully', 200, req);
+    return ok(res, { record: formatted, attendance: formatted }, 'Checked out successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -250,10 +256,7 @@ async function startLunch(req, res, next) {
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
 
     if (!record || !record.checkInTime) {
@@ -275,7 +278,7 @@ async function startLunch(req, res, next) {
     const formatted = formatAttendance(record);
     socketService.emitToAll('attendance_updated', { employeeId: empId, type: 'lunch-start', record: formatted });
 
-    return ok(res, { record, attendance: formatted }, 'Lunch break started', 200, req);
+    return ok(res, { record: formatted, attendance: formatted }, 'Lunch break started', 200, req);
   } catch (error) {
     next(error);
   }
@@ -291,10 +294,7 @@ async function endLunch(req, res, next) {
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
 
     if (!record || !record.lunchStartAt) {
@@ -312,7 +312,7 @@ async function endLunch(req, res, next) {
     const formatted = formatAttendance(record);
     socketService.emitToAll('attendance_updated', { employeeId: empId, type: 'lunch-end', record: formatted });
 
-    return ok(res, { record, attendance: formatted }, 'Lunch break completed', 200, req);
+    return ok(res, { record: formatted, attendance: formatted }, 'Lunch break completed', 200, req);
   } catch (error) {
     next(error);
   }
@@ -328,12 +328,10 @@ async function getMyTodayStatus(req, res, next) {
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
-    return ok(res, { record, attendance: record ? formatAttendance(record) : null }, 'Today\'s status retrieved', 200, req);
+    const formatted = record ? formatAttendance(record) : null;
+    return ok(res, { record: formatted, attendance: formatted }, 'Today\'s status retrieved', 200, req);
   } catch (error) {
     next(error);
   }

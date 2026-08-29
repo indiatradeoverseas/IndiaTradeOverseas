@@ -19,14 +19,14 @@ router.get(
 // Fetch all dispatch records
 router.get(
   '/', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager', 'SalesManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 'LOGISTICS', 'EMPLOYEE', 'Admin', 'LogisticsManager', 'SalesManager', 'Driver']), 
   dispatchController.getAllDispatches
 );
 
 // Fetch single dispatch record by ID
 router.get(
   '/:id', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'Admin', 'LogisticsManager', 'SalesManager', 'Driver']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 'LOGISTICS', 'EMPLOYEE', 'Admin', 'LogisticsManager', 'SalesManager', 'Driver']), 
   dispatchController.getDispatchById
 );
 
@@ -35,21 +35,21 @@ router.get(
 // Create a new DPR-compliant dispatch record
 router.post(
   '/', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'TRANSPORT', 'Admin', 'LogisticsManager']), 
   dispatchController.createDispatch
 );
 
 // Update dispatch fields (e.g., DPR compliance fields, freight details, etc.)
 router.patch(
   '/:id', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'TRANSPORT', 'Admin', 'LogisticsManager']), 
   dispatchController.updateDispatch
 );
 
 // Update status (e.g., Pending -> Truck Assigned -> In Transit -> Delivered)
 router.patch(
   '/:id/status', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 'LOGISTICS', 'EMPLOYEE', 'Admin', 'LogisticsManager', 'Driver']), 
   dispatchController.updateStatus
 );
 
@@ -71,6 +71,20 @@ router.patch(
   '/:id/complete', 
   authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']), 
   dispatchController.completeTrip
+);
+
+// Emergency Breakdown SOS System
+router.post(
+  '/emergency/sos',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.sendEmergencySOS
+);
+
+// Log Trip Expense
+router.post(
+  '/:id/expense',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.logExpense
 );
 
 module.exports = router;

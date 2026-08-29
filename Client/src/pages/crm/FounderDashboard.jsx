@@ -21,6 +21,7 @@ import {
 } from 'react-icons/fi';
 import { SkeletonStatGrid, SkeletonListCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
+import FounderTransportWidget from './transport/FounderTransportWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
 
 const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING'];
@@ -535,6 +536,11 @@ export default function FounderDashboard() {
           ))}
         </motion.div>
 
+        {/* Phase 4: Founder Transport & Logistics Overview Widget */}
+        <motion.div variants={blockVariants}>
+          <FounderTransportWidget summary={summary} />
+        </motion.div>
+
         {/* Charts Row - Stack on mobile, side-by-side on desktop */}
         <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden lg:col-span-1" style={CARD}>
@@ -588,7 +594,7 @@ export default function FounderDashboard() {
                   <div key={lv._id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={CARD_SUNKEN}>
                     <div className="space-y-1.5 text-xs sm:text-sm min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate" style={{ color: 'var(--crm-heading)' }}>{lv.employeeId?.name || 'Unknown Employee'}</span>
+                        <span className="font-medium truncate" style={{ color: 'var(--crm-heading)' }}>{lv.employeeId?.fullName || lv.employeeId?.name || 'Employee'}</span>
                         <span className="text-[9px] sm:text-[10px] whitespace-nowrap" style={LABEL_MONO}>({lv.employeeId?.department || '—'})</span>
                       </div>
                       <p className="text-[10px] sm:text-[11px]" style={LABEL_MONO}>

@@ -136,6 +136,77 @@ export default function SalesExecutiveDashboard() {
   const [showCallModal, setShowCallModal] = useState(false);
   const [myCallRecordings, setMyCallRecordings] = useState([]);
 
+  // Date Filter & LOI Modal State
+  const [dateFilterMode, setDateFilterMode] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'PICK_DATE'
+  const [selectedDate, setSelectedDate] = useState('');
+
+  const [showLOIModal, setShowLOIModal] = useState(false);
+  const [loiTargetLeadId, setLoiTargetLeadId] = useState('');
+  const [loiFile, setLoiFile] = useState(null);
+  const [loiNotes, setLoiNotes] = useState('');
+  const [uploadingLOI, setUploadingLOI] = useState(false);
+
+  const getFilteredByDate = (items = []) => {
+    if (dateFilterMode === 'ALL') return items;
+    return items.filter(item => {
+      const rawDate = item.createdAt || item.date || item.uploadedAt;
+      if (!rawDate) return true;
+      const itemDate = new Date(rawDate);
+      const dStr = itemDate.toISOString().split('T')[0];
+
+      if (dateFilterMode === 'TODAY') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        return dStr === todayStr;
+      }
+      if (dateFilterMode === 'YESTERDAY') {
+        const yest = new Date();
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        return dStr === yestStr;
+      }
+      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
+        return dStr === selectedDate;
+      }
+      return true;
+    });
+  };
+
+  const handleLOISubmit = async (e) => {
+    e.preventDefault();
+    if (!loiTargetLeadId) {
+      toast.error('Please select a lead for the LOI document');
+      return;
+    }
+    if (!loiFile) {
+      toast.error('Please select an LOI document file');
+      return;
+    }
+
+    setUploadingLOI(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', loiFile);
+      if (loiNotes) formData.append('notes', loiNotes);
+
+      const res = await leadsApi.uploadLOIDocument(loiTargetLeadId, formData);
+      if (res.success) {
+        toast.success('LOI Document uploaded & saved to Google Drive!');
+        setShowLOIModal(false);
+        setLoiFile(null);
+        setLoiNotes('');
+        setLoiTargetLeadId('');
+        loadDashboardData();
+      } else {
+        toast.error(res.message || 'LOI upload failed');
+      }
+    } catch (err) {
+      console.error('LOI upload error:', err);
+      toast.error(err.response?.data?.message || 'Failed to upload LOI document');
+    } finally {
+      setUploadingLOI(false);
+    }
+  };
+
   const handleStatusChange = async (newStatus, newActivity) => {
     setSubmittingStatus(true);
     try {
@@ -183,12 +254,26 @@ export default function SalesExecutiveDashboard() {
       }
 
       // 2. Fetch User's Deals
-      const leadsRes = await leadsApi.getLeads({ limit: 100 });
+      const leadsRes = await leadsApi.getLeads({ limit: 100, myLeadsOnly: 'true' });
       if (leadsRes.success) {
-        // Filter leads assigned to the logged-in user by email
+        // Filter leads assigned to the logged-in user by email or ID
         const myLeads = (leadsRes.data.leads || []).filter(lead => {
-          const leadOwnerEmail = lead.assignedTo?.email;
-          return leadOwnerEmail && String(leadOwnerEmail).toLowerCase() === String(user.email).toLowerCase();
+          if (!user || !lead || !lead.assignedTo) return false;
+          const assigned = lead.assignedTo;
+          const myUserId = String(user._id || user.id || '');
+          const myEmpId = user.employeeDbId ? String(user.employeeDbId) : '';
+          const myEmail = user.email ? String(user.email).toLowerCase().trim() : '';
+
+          if (typeof assigned === 'object' && assigned !== null) {
+            const assignedId = String(assigned._id || assigned.id || '');
+            const assignedEmail = assigned.email ? String(assigned.email).toLowerCase().trim() : '';
+            if (myEmail && assignedEmail && assignedEmail === myEmail) return true;
+            if (assignedId && (assignedId === myUserId || (myEmpId && assignedId === myEmpId))) return true;
+          } else {
+            const assignedId = String(assigned);
+            if (assignedId && (assignedId === myUserId || (myEmpId && assignedId === myEmpId))) return true;
+          }
+          return false;
         });
         setDeals(myLeads);
 
@@ -514,36 +599,110 @@ export default function SalesExecutiveDashboard() {
       className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0"
     >
       {/* Executive Portal Header */}
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm">
-        <div className="space-y-1 text-left flex-1 min-w-0">
+      <motion.div variants={itemVariants} className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm">
+        <div className="space-y-1 text-left flex-1 min-w-0 pr-2">
           <span className="text-[10px] uppercase tracking-[0.25em] text-teal-500 font-bold block font-mono">Commodity Trading Portal</span>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">{greeting}, {user?.name || user?.fullName || 'Sales Executive'}</h1>
           <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
             Role: <strong className="text-[var(--crm-heading)] font-semibold font-mono">{user?.position || String(user?.role || 'Sales Executive').replace('_', ' ')} ({user?.department || 'SALES'})</strong> &bull; Node Status: <span className="text-emerald-500 font-semibold font-mono">Live</span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto self-stretch md:self-auto font-mono">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-mono shrink-0">
+          <button 
+            onClick={() => setShowLOIModal(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
+          >
+            <FiFileText className="text-teal-400" size={12} /> Upload LOI Document
+          </button>
           <button 
             onClick={() => setShowCallModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
           </button>
           <button 
             onClick={loadDashboardData}
-            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Sync Data
           </button>
-          <div className="bg-[var(--crm-bg-sunken)] text-teal-400 border border-[var(--crm-line)] px-3 py-2 text-[10px] font-bold tracking-widest uppercase rounded flex items-center justify-center select-none shadow-sm">
+          <div className="bg-[var(--crm-bg-sunken)] text-teal-400 border border-[var(--crm-line)] px-3 py-2 text-[10px] font-bold tracking-widest uppercase rounded flex items-center justify-center select-none shadow-sm shrink-0 whitespace-nowrap">
             DESK MODE // ACTIVE
           </div>
         </div>
       </motion.div>
 
+      {/* Calendar Date Filter Bar */}
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
+        <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
+          <FiCalendar className="text-teal-400 animate-pulse" size={16} />
+          <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+              dateFilterMode === 'ALL'
+                ? 'bg-teal-600 text-white font-black shadow'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            }`}
+          >
+            All Dates
+          </button>
+          <button
+            onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+              dateFilterMode === 'TODAY'
+                ? 'bg-teal-600 text-white font-black shadow'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+              dateFilterMode === 'YESTERDAY'
+                ? 'bg-teal-600 text-white font-black shadow'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            }`}
+          >
+            Yesterday
+          </button>
+
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
+            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
+              }}
+              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+            />
+          </div>
+
+          {dateFilterMode !== 'ALL' && (
+            <button
+              onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
+              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+            >
+              Clear Filter
+            </button>
+          )}
+        </div>
+
+        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          &bull; ({getFilteredByDate(deals).length} Leads, {getFilteredByDate(myCallRecordings).length} Recordings)
+        </div>
+      </motion.div>
+
       {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-4 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm">
-        <nav className="flex space-x-6 sm:space-x-8 min-w-max">
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full">
+        <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
           {[
             { id: 'daily', label: 'Daily Action View', icon: FiClock },
             { id: 'leaderboard', label: 'Leaderboard & Gamification', icon: FiAward },
@@ -880,7 +1039,7 @@ export default function SalesExecutiveDashboard() {
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span className="flex items-center gap-2 text-rose-400">
-                        <FiMic className="animate-pulse" size={14} /> My Call Recordings ({myCallRecordings.length})
+                        <FiMic className="animate-pulse" size={14} /> My Call Recordings ({getFilteredByDate(myCallRecordings).length})
                       </span>
                       <button
                         onClick={() => setShowCallModal(true)}
@@ -891,12 +1050,12 @@ export default function SalesExecutiveDashboard() {
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 font-mono">
-                      {myCallRecordings.length === 0 ? (
+                      {getFilteredByDate(myCallRecordings).length === 0 ? (
                         <div className="col-span-full py-8 text-center text-[10px] text-[var(--crm-ink-faint)] uppercase tracking-wider">
-                          No call recordings uploaded yet. Click "+ Upload Call" above to save client call audio.
+                          No call recordings found for the selected date filter.
                         </div>
                       ) : (
-                        myCallRecordings.map((rec) => (
+                        getFilteredByDate(myCallRecordings).map((rec) => (
                           <div key={rec._id} className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-md space-y-2 text-xs">
                             <div className="flex justify-between items-start">
                               <h4 className="font-serif font-bold text-[var(--crm-heading)] truncate text-xs">
@@ -960,7 +1119,7 @@ export default function SalesExecutiveDashboard() {
                     {/* Kanban Columns */}
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-5 overflow-x-auto min-w-[700px] pb-2 custom-scrollbar">
                       {KANBAN_STAGES.map((stage) => {
-                        const stageDeals = deals.filter(lead => stage.dbStages.includes(lead.stage));
+                        const stageDeals = getFilteredByDate(deals).filter(lead => stage.dbStages.includes(lead.stage));
                         const totalStageAmount = stageDeals.reduce((sum, d) => sum + (d.leadValue || 0), 0);
 
                         return (
@@ -1005,6 +1164,13 @@ export default function SalesExecutiveDashboard() {
                                       <span className="text-[7px] font-mono text-[var(--crm-ink-faint)] uppercase">{deal.productCategory}</span>
                                       <span className="text-[9px] font-mono font-bold text-teal-400">{currency(deal.leadValue)}</span>
                                     </div>
+                                    {deal.loiDocuments && deal.loiDocuments.length > 0 && (
+                                      <div className="pt-1">
+                                        <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-800 text-[7px] px-1.5 py-0.5 rounded font-bold uppercase inline-block">
+                                          📄 LOI Attached ({deal.loiDocuments.length})
+                                        </span>
+                                      </div>
+                                    )}
                                   </motion.div>
                                 ))
                               )}
@@ -1020,7 +1186,7 @@ export default function SalesExecutiveDashboard() {
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span>📋 My Assigned Leads</span>
                       <span className="bg-teal-950/40 text-teal-400 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold border border-teal-900/30">
-                        {deals.length} Active
+                        {getFilteredByDate(deals).length} Active
                       </span>
                     </h3>
 
@@ -1035,18 +1201,19 @@ export default function SalesExecutiveDashboard() {
                             <th className="py-3 px-4">Commodity</th>
                             <th className="py-3 px-4">Value</th>
                             <th className="py-3 px-4">Stage</th>
-                            <th className="py-3 px-4">Follow-up At</th>
+                            <th className="py-3 px-4">LOI Status</th>
+                            <th className="py-3 px-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono text-[var(--crm-ink-soft)]">
-                          {deals.length === 0 ? (
+                          {getFilteredByDate(deals).length === 0 ? (
                             <tr>
-                              <td colSpan={8} className="py-8 text-center font-sans text-[10px] text-[var(--crm-ink-faint)] uppercase tracking-wider">
-                                No assigned leads mapped.
+                              <td colSpan={9} className="py-8 text-center font-sans text-[10px] text-[var(--crm-ink-faint)] uppercase tracking-wider">
+                                No assigned leads found for the selected date filter.
                               </td>
                             </tr>
                           ) : (
-                            deals.map((deal) => (
+                            getFilteredByDate(deals).map((deal) => (
                               <tr key={deal._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
                                 <td className="py-3 px-4 font-bold text-[var(--crm-heading)]">{deal.leadCode || 'N/A'}</td>
                                 <td className="py-3 px-4 font-sans font-medium text-[var(--crm-heading)]">{deal.customerName || '—'}</td>
@@ -1062,8 +1229,44 @@ export default function SalesExecutiveDashboard() {
                                     {String(deal.stage || 'NEW_LEAD').replace('_', ' ')}
                                   </span>
                                 </td>
-                                <td className="py-3 px-4 text-[var(--crm-ink-faint)]">
-                                  {deal.nextFollowupAt ? new Date(deal.nextFollowupAt).toLocaleDateString('en-IN') : '—'}
+                                <td className="py-3 px-4">
+                                  {deal.loiDocuments && deal.loiDocuments.length > 0 ? (
+                                    <div className="space-y-1">
+                                      <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                        ✓ LOI Uploaded ({deal.loiDocuments.length})
+                                      </span>
+                                      {deal.loiDocuments.map((loi, i) => (
+                                        <a
+                                          key={i}
+                                          href={(() => {
+                                            const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                            const token = localStorage.getItem('token') || '';
+                                            return `${baseUrl}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(token)}`;
+                                          })()}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="block text-[9px] text-teal-400 hover:underline truncate max-w-[130px]"
+                                          title={loi.originalName}
+                                        >
+                                          📄 {loi.originalName}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-[9px] text-[var(--crm-ink-faint)]">Pending LOI</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setLoiTargetLeadId(deal._id);
+                                      setShowLOIModal(true);
+                                    }}
+                                    className="bg-teal-950/80 hover:bg-teal-900 border border-teal-800 text-teal-300 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition cursor-pointer whitespace-nowrap"
+                                  >
+                                    + Upload LOI
+                                  </button>
                                 </td>
                               </tr>
                             ))
@@ -1700,6 +1903,88 @@ export default function SalesExecutiveDashboard() {
         leads={deals}
         onSuccess={() => loadDashboardData()}
       />
+
+      {/* LOI UPLOAD MODAL */}
+      {showLOIModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowLOIModal(false)}>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl p-6 w-full max-w-lg shadow-2xl text-left font-mono space-y-4"
+          >
+            <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                <FiFileText className="text-teal-400" size={16} /> Upload LOI (Letter of Intent)
+              </h3>
+              <button onClick={() => setShowLOIModal(false)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleLOISubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1.5">Select Lead *</label>
+                <select
+                  required
+                  value={loiTargetLeadId}
+                  onChange={(e) => setLoiTargetLeadId(e.target.value)}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2.5 rounded outline-none focus:border-teal-500 transition cursor-pointer"
+                >
+                  <option value="">-- Choose Assigned Lead --</option>
+                  {deals.map((d) => (
+                    <option key={d._id} value={d._id}>
+                      {d.customerName} ({d.leadCode || 'N/A'}) - {d.productCategory}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1.5">Select LOI Document File * (PDF, DOCX, Image)</label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  onChange={(e) => setLoiFile(e.target.files[0])}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none cursor-pointer file:bg-teal-950 file:text-teal-300 file:border file:border-teal-800 file:rounded file:px-2 file:py-1 file:mr-2 file:text-[9px] file:uppercase file:font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1.5">Optional Notes / Buyer Terms</label>
+                <textarea
+                  rows={3}
+                  value={loiNotes}
+                  onChange={(e) => setLoiNotes(e.target.value)}
+                  placeholder="e.g. Buyer sent signed LOI for 500 Tons Tea at $1,200/Ton..."
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none focus:border-teal-500 transition resize-none font-sans"
+                />
+              </div>
+
+              <div className="bg-teal-950/30 border border-teal-900/40 p-3 rounded text-[9px] text-teal-300">
+                ☁️ LOI will be saved on server & automatically backed up to <strong>Google Drive</strong> for Sales Manager verification.
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={uploadingLOI}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white py-2.5 font-bold uppercase text-[9px] tracking-widest rounded transition cursor-pointer"
+                >
+                  {uploadingLOI ? 'Uploading to Drive & Server...' : 'Confirm Upload LOI'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLOIModal(false)}
+                  className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 font-bold uppercase text-[9px] tracking-widest rounded transition cursor-pointer hover:bg-[var(--crm-bg-raised)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -83,13 +83,94 @@ function isTransportAllowed(user) {
     role === 'CO_FOUNDER' ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS' ||
+    role === 'DRIVER' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
     pos.includes('founder') ||
     pos.includes('transport') ||
+    pos.includes('driver') ||
     user?.permissions?.dispatch === true ||
     user?.dispatchPermission === true
   );
+}
+
+function getTransportDefaultPath(user) {
+  if (!user) return '/crm/transport/manager';
+  const role = (user.role || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+  
+  if (role === 'DRIVER' || pos.includes('driver')) {
+    return '/crm/transport/driver';
+  }
+  if (!isAdminUser(user) && role !== 'MANAGER' && !role.includes('MANAGER') && !pos.includes('manager')) {
+    return '/crm/transport/executive';
+  }
+  return '/crm/transport/manager';
+}
+
+function getTransportChildren(user) {
+  const admin = isAdminUser(user);
+  const role = (user.role || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+  const isManager = admin || role === 'MANAGER' || role.includes('MANAGER') || pos.includes('manager');
+
+  if (role === 'DRIVER' || pos.includes('driver')) {
+    return [
+      { to: '/crm/transport/driver', label: 'Driver Mobile PWA', dotColor: '#22c55e' }
+    ];
+  }
+
+  if (!isManager) {
+    return [
+      { to: '/crm/transport/executive', label: 'Executive Console', dotColor: '#38bdf8' }
+    ];
+  }
+
+  return [
+    { to: '/crm/transport/manager', label: 'Manager Terminal', dotColor: '#c9a84c' },
+    { to: '/crm/transport/executive', label: 'Executive Console', dotColor: '#38bdf8' },
+    { to: '/crm/transport/driver', label: 'Driver Mobile PWA', dotColor: '#22c55e' }
+  ];
+}
+
+function isTransportManagerUser(user) {
+  if (!user || isAdminUser(user)) return false;
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+
+  return (
+    (dept === 'TRANSPORT' || dept === 'LOGISTICS' || role === 'TRANSPORT' || role === 'LOGISTICS' || role === 'TRANSPORT_MANAGER') &&
+    (role === 'MANAGER' || role === 'TRANSPORT_MANAGER' || role.includes('MANAGER') || pos.includes('manager') || pos.includes('head') || pos.includes('lead'))
+  );
+}
+
+function isTransportExecutiveUser(user) {
+  if (!user || isAdminUser(user)) return false;
+  if (isDriverRole(user) || isTransportManagerUser(user)) return false;
+
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+
+  return (
+    dept === 'TRANSPORT' ||
+    dept === 'LOGISTICS' ||
+    role === 'TRANSPORT' ||
+    role === 'LOGISTICS' ||
+    role === 'TRANSPORT_EXECUTIVE' ||
+    role === 'EXECUTIVE' ||
+    pos.includes('executive') ||
+    pos.includes('transport')
+  );
+}
+
+function isDriverRole(user) {
+  if (!user || isAdminUser(user)) return false;
+  const role = (user.role || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+
+  return role === 'DRIVER' || pos.includes('driver');
 }
 
 // ─────────────────────────────────────────────
@@ -97,6 +178,31 @@ function isTransportAllowed(user) {
 // ─────────────────────────────────────────────
 export function getCrmMainNavItems(user) {
   const admin = isAdminUser(user);
+
+  // 1. DRIVER: Driver Dashboard & My Profile
+  if (!admin && isDriverRole(user)) {
+    return [
+      { to: '/crm/transport/driver', label: 'Driver Dashboard', icon: FiTruck },
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser }
+    ];
+  }
+
+  // 2. TRANSPORT EXECUTIVE: Transport Executive Dashboard & My Profile
+  if (!admin && isTransportExecutiveUser(user)) {
+    return [
+      { to: '/crm/transport/executive', label: 'Transport Executive Dashboard', icon: FiTruck },
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser }
+    ];
+  }
+
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard & My Profile
+  if (!admin && isTransportManagerUser(user)) {
+    return [
+      { to: '/crm/transport/manager', label: 'Transport Manager Dashboard', icon: FiTruck },
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser }
+    ];
+  }
+
   const salesMgr = isSalesManager(user);
   const salesExec = isSalesExecutive(user);
   const hrMgr = isHRManager(user);
@@ -125,8 +231,8 @@ export function getCrmMainNavItems(user) {
       icon: FiDollarSign 
     },
 
-    // Notifications — ADMIN & FOUNDER
-    admin && { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
+    // Notifications — Common to all employees
+    { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
 
     // Attendance — ADMIN + HR_MANAGER
     (admin || hrMgr) && { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
@@ -149,11 +255,19 @@ export function getCrmMainNavItems(user) {
     // Leads — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
 
+    // Dispatches & Transport — Transport Dept or Permitted or Admin
+    (admin || isTransportAllowed(user)) && { 
+      to: getTransportDefaultPath(user), 
+      label: 'Transport Operations', 
+      icon: FiTruck,
+      children: getTransportChildren(user)
+    },
+
+    // Dispatches — ADMIN or permission-based
+    (admin || user?.permissions?.dispatch === true || user?.dispatchPermission === true) && { to: '/crm/dispatches', label: 'Dispatches Manifest', icon: FiFileText },
+
     // Quotations — ADMIN or permission-based
     (admin || user?.permissions?.quotation === true || user?.quotationPermission === true) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
-
-    // Dispatches / Transport — ADMIN, FOUNDER, TRANSPORT department employees
-    isTransportAllowed(user) && { to: '/crm/dispatches', label: 'Transport', icon: FiTruck },
 
     // Payments — ADMIN or permission-based
     (admin || user?.permissions?.payment === true || user?.paymentPermission === true) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },

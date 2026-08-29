@@ -1,12 +1,52 @@
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const Employee = require('./employee.model');
+const User = require('../users/user.model');
 const MonthlyLeaveBalance = require('../leave/monthlyLeaveBalance.model');
 const { generateAccessToken } = require('../auth/token.service');
 const { ok, fail } = require('../../utils/response');
 const { sendEmail } = require('../../utils/mailer');
 const { generateOtp, getOtpHtml } = require('../../utils/otp');
 const otpModel = require('../auth/Model.otp');
+
+async function syncEmployeeToUser(employee, passwordHash) {
+  try {
+    const userObj = {
+      employeeId: employee.employeeId,
+      fullName: employee.name || employee.fullName,
+      email: employee.email.toLowerCase(),
+      phone: employee.phone || '',
+      passwordHash: passwordHash || employee.password,
+      role: employee.role || 'EMPLOYEE',
+      department: employee.department || 'SALES',
+      isActive: employee.status === 'ACTIVE' || employee.status !== 'INACTIVE',
+      isEmailVerified: true
+    };
+
+    if (employee.permissions) {
+      userObj.exportPermission = !!employee.permissions.export;
+      userObj.productUploadPermission = !!employee.permissions.productUpload;
+      userObj.leadPermission = !!employee.permissions.lead;
+      userObj.documentPermission = !!employee.permissions.document;
+      userObj.taskPermission = !!employee.permissions.task;
+      userObj.dispatchPermission = !!employee.permissions.dispatch;
+      userObj.paymentPermission = !!employee.permissions.payment;
+      userObj.quotationPermission = !!employee.permissions.quotation;
+      userObj.jobPermission = !!employee.permissions.job;
+    }
+
+    let user = await User.findOne({ email: employee.email.toLowerCase() });
+    if (user) {
+      Object.assign(user, userObj);
+      await user.save();
+    } else {
+      userObj._id = new mongoose.Types.ObjectId();
+      await User.create(userObj);
+    }
+  } catch (err) {
+    console.error('Error syncing Employee to User collection:', err.message);
+  }
+}
 
 function calculateAge(dob) {
   if (!dob) return 28;
@@ -42,6 +82,7 @@ async function register(req, res, next) {
 
     // Create employee
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       name,
       email,
       password: passwordHash,
@@ -53,6 +94,9 @@ async function register(req, res, next) {
       address: address || '',
       profileImage: profileImage || ''
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -282,6 +326,7 @@ async function signupEmployee(req, res, next) {
 
     // Save Employee
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       employeeId,
       name,
       email,
@@ -328,6 +373,9 @@ async function signupEmployee(req, res, next) {
         job: false
       }
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -430,6 +478,7 @@ async function signupEmployeeSelfRegistration(req, res, next) {
 
     // Save Employee with PENDING_VERIFICATION status
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       employeeId: formattedId,
       name,
       email,
@@ -454,6 +503,9 @@ async function signupEmployeeSelfRegistration(req, res, next) {
         job: false
       }
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -645,6 +697,7 @@ async function verifySignupOtp(req, res, next) {
 
     // Create employee with ACTIVE status (OTP verified = email verified)
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       employeeId: formattedId,
       name,
       email,
@@ -669,6 +722,9 @@ async function verifySignupOtp(req, res, next) {
         job: false
       }
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance
     const currentMonth = new Date().toISOString().slice(0, 7);

@@ -121,10 +121,37 @@ async function bulkImportLeads(req, res, next) {
   }
 }
 
+async function changeLeadPriority(req, res, next) {
+  try {
+    const { priority } = req.body;
+    if (!priority) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Priority parameter is required');
+    }
+    const lead = await leadService.updatePriority({
+      leadId: req.params.id,
+      priority,
+      user: req.user
+    });
+    return ok(res, { lead }, 'Lead priority updated successfully', 200, req);
+  } catch (error) {
+    if (error.message === 'LEAD_NOT_FOUND') {
+      return fail(res, 404, 'VALIDATION_FAILED', 'Lead not found');
+    }
+    if (error.message === 'OWNERSHIP_FORBIDDEN') {
+      return fail(res, 403, 'OWNERSHIP_FORBIDDEN', 'Access denied');
+    }
+    if (error.message === 'INVALID_PRIORITY') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Invalid priority value');
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getLeadsList,
   getLeadDetails,
   changeLeadStage,
+  changeLeadPriority,
   assignLead,
   deleteLead,
   assignLeadsBulk,

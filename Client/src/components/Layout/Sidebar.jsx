@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -9,6 +9,8 @@ import {
   FiChevronRight
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { notificationsApi } from '../../api/notifications';
+import { processNotifications } from '../../utils/notificationStorage';
 import {
   getCrmMainNavItems,
   getCrmAdminNavItems,
@@ -20,6 +22,25 @@ export default function Sidebar({ onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [manualToggle, setManualToggle] = useState({});
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    async function checkNotifications() {
+      try {
+        const res = await notificationsApi.getNotifications();
+        if (res?.success && res.data?.notifications) {
+          const processed = processNotifications(res.data.notifications);
+          const unread = processed.filter(n => !n.isRead).length;
+          setUnreadCount(unread);
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    }
+    checkNotifications();
+    const interval = setInterval(checkNotifications, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const menuItems = getCrmMainNavItems(user);
   const adminMenuItems = getCrmAdminNavItems(user);
@@ -223,6 +244,11 @@ export default function Sidebar({ onClose }) {
                         className="transition-colors group-hover:opacity-100"
                       />
                       <span>{item.label}</span>
+                      {item.to === '/crm/notifications' && unreadCount > 0 && (
+                        <span className="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono bg-rose-500 text-white animate-pulse">
+                          {unreadCount}
+                        </span>
+                      )}
                       {isActive && (
                         <motion.span
                           layoutId="activeIndicator"

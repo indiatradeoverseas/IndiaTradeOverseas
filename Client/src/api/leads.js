@@ -27,6 +27,11 @@ export const leadsApi = {
     return response.data;
   },
 
+  async updatePriority(leadId, priority) {
+    const response = await axiosInstance.patch(`/leads/${leadId}/priority`, { priority });
+    return response.data;
+  },
+
   async assignLead(leadId, assignData) {
     const response = await axiosInstance.post(`/leads/${leadId}/assign`, assignData);
     return response.data;
@@ -83,6 +88,13 @@ export const leadsApi = {
 
   async updateCallRecordingRemark(recordingId, managerRemark) {
     const response = await axiosInstance.patch(`/leads/call-recordings/${recordingId}/remark`, { managerRemark });
+    return response.data;
+  },
+
+  async uploadLOIDocument(leadId, formData) {
+    const response = await axiosInstance.post(`/leads/${leadId}/loi`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   }
 };

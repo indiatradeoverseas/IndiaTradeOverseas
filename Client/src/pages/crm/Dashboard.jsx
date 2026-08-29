@@ -17,6 +17,9 @@ import HrManagerDashboard from './HrManagerDashboard';
 import HrExecutiveDashboard from './HrExecutiveDashboard';
 import FinanceManagerDashboard from './FinanceManagerDashboard';
 import FinanceDashboard from './FinanceDashboard';
+import TransportManager from './transport/TransportManager';
+import TransportExecutive from './transport/TransportExecutive';
+import DriverMobileView from './transport/DriverMobileView';
 
 // Staggered layout entry configurations
 const containerVariants = {
@@ -199,11 +202,32 @@ export default function Dashboard() {
     );
   }
 
-  const isSalesManager = user?.role === 'MANAGER' || user?.role === 'SALES_MANAGER' || (user?.department === 'SALES' && user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
-  const isSalesExecutive = !isSalesManager && (user?.role === 'SALES' || user?.role === 'SALES_EXECUTIVE' || (user?.department === 'SALES' && !isAdmin));
+  const dept = user?.department || '';
+  const role = user?.role || '';
+  const pos = user?.position?.toLowerCase() || '';
 
-  const isFinanceManager = user?.role === 'FINANCE_MANAGER' || (user?.department === 'FINANCE' && user?.position?.toLowerCase()?.includes('manager') && !isAdmin);
-  const isFinanceExecutive = !isFinanceManager && (user?.role === 'ACCOUNTS' || user?.role === 'FINANCE_EXECUTIVE' || (user?.department === 'FINANCE' && !isAdmin));
+  // 1. Transport Department Routing
+  const isTransportDept = (dept === 'TRANSPORT' || dept === 'LOGISTICS' || role === 'TRANSPORT' || role === 'LOGISTICS' || role === 'DRIVER') && !isAdmin;
+  const isTransportManager = isTransportDept && (role === 'MANAGER' || role === 'TRANSPORT_MANAGER' || role === 'LOGISTICS_MANAGER' || pos.includes('manager'));
+  const isDriver = isTransportDept && (role === 'DRIVER' || pos.includes('driver'));
+  const isTransportExecutive = isTransportDept && !isTransportManager && !isDriver;
+
+  if (isTransportManager) {
+    return <TransportManager />;
+  }
+
+  if (isDriver) {
+    return <DriverMobileView />;
+  }
+
+  if (isTransportExecutive) {
+    return <TransportExecutive />;
+  }
+
+  // 2. Sales Department Routing
+  const isSalesDept = (dept === 'SALES' || role === 'SALES' || role === 'SALES_MANAGER' || role === 'SALES_EXECUTIVE') && !isAdmin;
+  const isSalesManager = isSalesDept && (role === 'MANAGER' || role === 'SALES_MANAGER' || pos.includes('manager'));
+  const isSalesExecutive = isSalesDept && !isSalesManager;
 
   if (isSalesManager) {
     return <SalesManagerDashboard />;
@@ -213,13 +237,23 @@ export default function Dashboard() {
     return <SalesExecutiveDashboard />;
   }
 
-  if (user?.role === 'HR_MANAGER' && !isAdmin) {
+  // 3. HR Department Routing
+  const isHrDept = (dept === 'HR' || role === 'HR' || role === 'HR_MANAGER' || role === 'HR_EXECUTIVE') && !isAdmin;
+  const isHrManager = isHrDept && (role === 'MANAGER' || role === 'HR_MANAGER' || pos.includes('manager'));
+  const isHrExecutive = isHrDept && !isHrManager;
+
+  if (isHrManager) {
     return <HrManagerDashboard />;
   }
 
-  if ((user?.role === 'HR_EXECUTIVE' || user?.role === 'HR') && !isAdmin) {
+  if (isHrExecutive) {
     return <HrExecutiveDashboard />;
   }
+
+  // 4. Finance Department Routing
+  const isFinanceDept = (dept === 'FINANCE' || dept === 'ACCOUNTS' || role === 'FINANCE' || role === 'ACCOUNTS' || role === 'FINANCE_MANAGER' || role === 'FINANCE_EXECUTIVE') && !isAdmin;
+  const isFinanceManager = isFinanceDept && (role === 'MANAGER' || role === 'FINANCE_MANAGER' || pos.includes('manager'));
+  const isFinanceExecutive = isFinanceDept && !isFinanceManager;
 
   if (isFinanceManager) {
     return <FinanceManagerDashboard />;
@@ -229,7 +263,7 @@ export default function Dashboard() {
     return <FinanceDashboard />;
   }
 
-  if (user?.role === 'EMPLOYEE' && !isAdmin) {
+  if (role === 'EMPLOYEE' && !isAdmin) {
     return <EmployeeDashboard />;
   }
 
