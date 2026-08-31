@@ -26,6 +26,24 @@ function parseTimeToDate(dateVal, timeStr) {
   return baseDate;
 }
 
+function getAttendanceIdFilter(empId, userId) {
+  const ids = [];
+  const mongoose = require('mongoose');
+  if (empId) {
+    ids.push(empId.toString());
+    if (mongoose.isValidObjectId(empId)) {
+      ids.push(new mongoose.Types.ObjectId(empId));
+    }
+  }
+  if (userId) {
+    ids.push(userId.toString());
+    if (mongoose.isValidObjectId(userId)) {
+      ids.push(new mongoose.Types.ObjectId(userId));
+    }
+  }
+  return { employeeId: { $in: ids } };
+}
+
 // Helper: Format a single attendance record for frontend consumption (clockIn, clockOut mapping)
 function formatAttendance(record) {
   if (!record) return null;
@@ -41,22 +59,40 @@ function formatAttendance(record) {
   };
 }
 
+// Helper: Robustly resolve Employee for req.user
+async function findEmployeeForReqUser(reqUser) {
+  if (!reqUser) return null;
+  const mongoose = require('mongoose');
+  const userEmail = reqUser.email ? reqUser.email.trim() : '';
+  if (userEmail) {
+    const emp = await Employee.findOne({ email: { $regex: new RegExp(`^${userEmail}$`, 'i') } });
+    if (emp) return emp;
+  }
+  if (reqUser._id) {
+    const emp = await Employee.findOne({
+      $or: [
+        { _id: reqUser._id },
+        ...(mongoose.isValidObjectId(reqUser._id) ? [{ _id: new mongoose.Types.ObjectId(reqUser._id) }] : [])
+      ]
+    });
+    if (emp) return emp;
+  }
+  return null;
+}
+
 // 1. Employee Check-In
 async function checkIn(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    // Find Employee matching user email
-    const employee = await Employee.findOne({ email: req.user.email });
+    // Find Employee matching user email or ID
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     // Check if record exists
     let record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
     if (record && record.checkInTime) {
       return fail(res, 400, 'ALREADY_CHECKED_IN', 'You have already checked in today', [], req);
@@ -65,8 +101,8 @@ async function checkIn(req, res, next) {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
-    // Late if check in after 09:15 AM
-    const isLate = now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 15);
+    // Late if check in after 10:00 AM
+    const isLate = now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() > 0);
     const status = isLate ? 'LATE' : 'PRESENT';
 
     if (record) {
@@ -75,19 +111,57 @@ async function checkIn(req, res, next) {
       record.status = status;
       await record.save();
     } else {
-      record = await Attendance.create({
-        employeeId: empId,
-        date: today,
-        checkInTime: timeStr,
-        checkInAt: now,
-        status
-      });
+      try {
+        record = await Attendance.create({
+          employeeId: empId,
+          date: today,
+          checkInTime: timeStr,
+          checkInAt: now,
+          status
+        });
+      } catch (createErr) {
+        if (createErr.code === 11000) {
+          record = await Attendance.findOneAndUpdate(
+            { date: today, ...getAttendanceIdFilter(empId, req.user._id) },
+            { checkInTime: timeStr, checkInAt: now, status },
+            { new: true }
+          );
+        } else {
+          throw createErr;
+        }
+      }
     }
 
     const formatted = formatAttendance(record);
     socketService.emitToAll('attendance_updated', { employeeId: empId, type: 'check-in', record: formatted });
 
-    return ok(res, { record, attendance: formatted }, 'Checked in successfully', 200, req);
+    // Update EmployeeStatus database and emit status update to websocket
+    try {
+      const EmployeeStatus = require('../employee/employeeStatus.model');
+      await EmployeeStatus.findOneAndUpdate(
+        { employeeId: empId },
+        {
+          status: 'IDLE',
+          currentActivity: 'Available',
+          lastUpdated: now,
+          duration: '00:00:00'
+        },
+        { upsert: true }
+      );
+
+      socketService.emitToAll('employee_status_updated', {
+        employeeId: empId.toString(),
+        name: employee ? employee.name : (req.user.name || req.user.fullName || 'Employee'),
+        status: 'IDLE',
+        currentActivity: 'Available',
+        lastUpdated: now,
+        duration: '00:00:00'
+      });
+    } catch (statusErr) {
+      console.error('Error updating employee status during check-in:', statusErr);
+    }
+
+    return ok(res, { record: formatted, attendance: formatted }, 'Checked in successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -98,15 +172,12 @@ async function checkOut(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
 
     if (!record || !record.checkInTime) {
@@ -143,7 +214,33 @@ async function checkOut(req, res, next) {
     const formatted = formatAttendance(record);
     socketService.emitToAll('attendance_updated', { employeeId: empId, type: 'check-out', record: formatted });
 
-    return ok(res, { record, attendance: formatted }, 'Checked out successfully', 200, req);
+    // Update EmployeeStatus database and emit status update to websocket
+    try {
+      const EmployeeStatus = require('../employee/employeeStatus.model');
+      await EmployeeStatus.findOneAndUpdate(
+        { employeeId: empId },
+        {
+          status: 'OFFLINE',
+          currentActivity: 'Offline',
+          lastUpdated: now,
+          duration: '00:00:00'
+        },
+        { upsert: true }
+      );
+
+      socketService.emitToAll('employee_status_updated', {
+        employeeId: empId.toString(),
+        name: employee ? employee.name : (req.user.name || req.user.fullName || 'Employee'),
+        status: 'OFFLINE',
+        currentActivity: 'Offline',
+        lastUpdated: now,
+        duration: '00:00:00'
+      });
+    } catch (statusErr) {
+      console.error('Error updating employee status during check-out:', statusErr);
+    }
+
+    return ok(res, { record: formatted, attendance: formatted }, 'Checked out successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -154,15 +251,12 @@ async function startLunch(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
 
     if (!record || !record.checkInTime) {
@@ -184,7 +278,7 @@ async function startLunch(req, res, next) {
     const formatted = formatAttendance(record);
     socketService.emitToAll('attendance_updated', { employeeId: empId, type: 'lunch-start', record: formatted });
 
-    return ok(res, { record, attendance: formatted }, 'Lunch break started', 200, req);
+    return ok(res, { record: formatted, attendance: formatted }, 'Lunch break started', 200, req);
   } catch (error) {
     next(error);
   }
@@ -195,15 +289,12 @@ async function endLunch(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
 
     if (!record || !record.lunchStartAt) {
@@ -221,7 +312,7 @@ async function endLunch(req, res, next) {
     const formatted = formatAttendance(record);
     socketService.emitToAll('attendance_updated', { employeeId: empId, type: 'lunch-end', record: formatted });
 
-    return ok(res, { record, attendance: formatted }, 'Lunch break completed', 200, req);
+    return ok(res, { record: formatted, attendance: formatted }, 'Lunch break completed', 200, req);
   } catch (error) {
     next(error);
   }
@@ -232,17 +323,15 @@ async function getMyTodayStatus(req, res, next) {
   try {
     const today = getStartOfDay();
     
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const record = await Attendance.findOne({ 
       date: today,
-      $or: [
-        { employeeId: empId },
-        { employeeId: req.user._id }
-      ]
+      ...getAttendanceIdFilter(empId, req.user._id)
     });
-    return ok(res, { record, attendance: record ? formatAttendance(record) : null }, 'Today\'s status retrieved', 200, req);
+    const formatted = record ? formatAttendance(record) : null;
+    return ok(res, { record: formatted, attendance: formatted }, 'Today\'s status retrieved', 200, req);
   } catch (error) {
     next(error);
   }
@@ -251,7 +340,7 @@ async function getMyTodayStatus(req, res, next) {
 // 4. Get Employee's Attendance History
 async function getMyHistory(req, res, next) {
   try {
-    const employee = await Employee.findOne({ email: req.user.email });
+    const employee = await findEmployeeForReqUser(req.user);
     const empId = employee ? employee._id : req.user._id;
 
     const filter = {
@@ -292,30 +381,46 @@ async function getReport(req, res, next) {
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    const employees = await Employee.find({ status: 'ACTIVE' });
+    const employees = await Employee.find({ status: { $ne: 'INACTIVE' } });
     const records = await Attendance.find({ 
       date: { $gte: start, $lte: end } 
     }).populate('employeeId', 'name email department role');
 
-    // Retroactive resolution for manual check-ins logged under User ID
+    // Retroactive resolution for manual check-ins logged under User ID or String/ObjectId mismatch
     const resolvedRecords = [];
     for (const r of records) {
       const obj = r.toObject();
       if (!obj.employeeId) {
         const rawId = r.populated('employeeId') || r._doc.employeeId;
         if (rawId) {
-          const userDoc = await User.findById(rawId);
-          if (userDoc) {
-            const empDoc = await Employee.findOne({ email: userDoc.email });
-            if (empDoc) {
-              obj.employeeId = {
-                _id: empDoc._id,
-                name: empDoc.name,
-                email: empDoc.email,
-                department: empDoc.department,
-                role: empDoc.role
-              };
+          const mongoose = require('mongoose');
+          let empDoc = await Employee.findOne({
+            $or: [
+              { _id: rawId },
+              ...(mongoose.isValidObjectId(rawId) ? [{ _id: new mongoose.Types.ObjectId(rawId) }] : [])
+            ]
+          });
+          
+          if (!empDoc) {
+            const userDoc = await User.findOne({
+              $or: [
+                { _id: rawId },
+                ...(mongoose.isValidObjectId(rawId) ? [{ _id: new mongoose.Types.ObjectId(rawId) }] : [])
+              ]
+            });
+            if (userDoc) {
+              empDoc = await Employee.findOne({ email: userDoc.email });
             }
+          }
+
+          if (empDoc) {
+            obj.employeeId = {
+              _id: empDoc._id,
+              name: empDoc.name,
+              email: empDoc.email,
+              department: empDoc.department,
+              role: empDoc.role
+            };
           }
         }
       }
@@ -499,6 +604,171 @@ async function getBiometricStatus(req, res, next) {
   }
 }
 
+// 8. Manual Attendance Mark/Update (HR/Admin)
+async function markAttendanceManually(req, res, next) {
+  try {
+    const isHrOrAdminOrManager = 
+      ['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'SUPER_ADMIN'].includes(req.user.role) ||
+      req.user.department === 'HR' ||
+      (req.user.position && req.user.position.toLowerCase().includes('hr')) ||
+      (req.user.role && req.user.role.toLowerCase().includes('hr'));
+
+    if (!isHrOrAdminOrManager) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin privilege required', [], req);
+    }
+
+    const { employeeId, date, status, checkInTime, checkOutTime } = req.body;
+
+    if (!employeeId || !date || !status) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'employeeId, date, and status are required');
+    }
+
+    const validStatuses = ['PRESENT', 'ABSENT', 'HALF_DAY', 'LATE', 'HOLIDAY', 'WEEKEND'];
+    if (!validStatuses.includes(status)) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Invalid status classification');
+    }
+
+    const mongoose = require('mongoose');
+    let employee = await Employee.findOne({
+      $or: [
+        { _id: employeeId },
+        { employeeId: employeeId },
+        { email: employeeId },
+        ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
+      ]
+    });
+    let userDoc = null;
+    if (!employee) {
+      userDoc = await User.findOne({
+        $or: [
+          { _id: employeeId },
+          { employeeId: employeeId },
+          { email: employeeId },
+          ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
+        ]
+      });
+      if (userDoc) {
+        employee = await Employee.findOne({
+          $or: [
+            { email: userDoc.email },
+            { employeeId: userDoc.employeeId }
+          ]
+        });
+        if (!employee) {
+          // Virtual employee object for Admin/User accounts without Employee doc
+          employee = {
+            _id: userDoc._id,
+            name: userDoc.fullName || userDoc.name || 'User Account',
+            email: userDoc.email,
+            department: userDoc.department || 'ADMIN',
+            role: userDoc.role || 'ADMIN'
+          };
+        }
+      }
+    }
+    if (!employee) {
+      return fail(res, 400, 'EMPLOYEE_NOT_FOUND', 'Selected employee or user account not found in database', [], req);
+    }
+
+    const targetDate = getStartOfDay(date);
+    
+    // Find if record exists (either string or ObjectId representation)
+    let record = await Attendance.findOne({ 
+      date: targetDate,
+      ...getAttendanceIdFilter(employee._id)
+    });
+
+    let checkInAt = null;
+    if (checkInTime) {
+      checkInAt = parseTimeToDate(targetDate, checkInTime);
+    } else if (status !== 'ABSENT' && status !== 'HOLIDAY' && status !== 'WEEKEND') {
+      checkInAt = parseTimeToDate(targetDate, '09:00 AM');
+    }
+
+    let checkOutAt = null;
+    if (checkOutTime) {
+      checkOutAt = parseTimeToDate(targetDate, checkOutTime);
+    } else if (status === 'PRESENT' || status === 'LATE') {
+      checkOutAt = parseTimeToDate(targetDate, '06:00 PM');
+    } else if (status === 'HALF_DAY') {
+      checkOutAt = parseTimeToDate(targetDate, '01:30 PM');
+    }
+
+    let workingHours = 0;
+    if (checkInAt && checkOutAt) {
+      workingHours = Math.round(((checkOutAt - checkInAt) / (1000 * 60 * 60)) * 100) / 100;
+    }
+
+    let overtimeHours = 0;
+    if (checkOutAt && checkOutAt.getHours() >= 18) {
+      overtimeHours = (checkOutAt.getHours() - 18) + (checkOutAt.getMinutes() / 60);
+      overtimeHours = Math.round(overtimeHours * 100) / 100;
+    }
+
+    if (record) {
+      record.status = status;
+      record.checkInTime = checkInTime || (checkInAt ? '09:00 AM' : null);
+      record.checkInAt = checkInAt;
+      record.checkOutTime = checkOutTime || (checkOutAt ? (status === 'HALF_DAY' ? '01:30 PM' : '06:00 PM') : null);
+      record.checkOutAt = checkOutAt;
+      record.workingHours = workingHours;
+      record.overtimeHours = overtimeHours;
+      record.createdBy = req.user._id;
+      await record.save();
+    } else {
+      record = await Attendance.create({
+        employeeId: employee._id,
+        date: targetDate,
+        status,
+        checkInTime: checkInTime || (checkInAt ? '09:00 AM' : null),
+        checkInAt,
+        checkOutTime: checkOutTime || (checkOutAt ? (status === 'HALF_DAY' ? '01:30 PM' : '06:00 PM') : null),
+        checkOutAt,
+        workingHours,
+        overtimeHours,
+        createdBy: req.user._id
+      });
+    }
+
+    // Update EmployeeStatus database and emit status update to websocket
+    try {
+      const EmployeeStatus = require('../employee/employeeStatus.model');
+      
+      const newLiveStatus = (status === 'PRESENT' || status === 'LATE' || status === 'HALF_DAY') ? 'IDLE' : 'OFFLINE';
+      const newLiveActivity = (status === 'PRESENT' || status === 'LATE' || status === 'HALF_DAY') ? 'Available' : 'Offline';
+
+      await EmployeeStatus.findOneAndUpdate(
+        { employeeId: employee._id },
+        {
+          status: newLiveStatus,
+          currentActivity: newLiveActivity,
+          lastUpdated: new Date(),
+          duration: '00:00:00'
+        },
+        { upsert: true }
+      );
+
+      socketService.emitToAll('employee_status_updated', {
+        employeeId: employee._id.toString(),
+        name: employee ? employee.name : 'Unknown',
+        status: newLiveStatus,
+        currentActivity: newLiveActivity,
+        lastUpdated: new Date(),
+        duration: '00:00:00'
+      });
+    } catch (statusErr) {
+      console.error('Error updating employee status during manual mark:', statusErr);
+    }
+
+    const formatted = formatAttendance(record);
+    socketService.emitToAll('attendance_updated', { employeeId: employee._id, type: 'manual-update', record: formatted });
+
+    return ok(res, { record, attendance: formatted }, 'Attendance marked manually successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   checkIn,
   checkOut,
@@ -508,5 +778,6 @@ module.exports = {
   getMyHistory,
   getReport,
   triggerBiometricSync,
-  getBiometricStatus
+  getBiometricStatus,
+  markAttendanceManually
 };

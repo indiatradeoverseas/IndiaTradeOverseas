@@ -39,7 +39,7 @@ const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-f
 const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
 export default function EmployeeDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   // Attendance states
@@ -186,9 +186,12 @@ export default function EmployeeDashboard() {
     try {
       const res = await attendanceApi.checkOut();
       if (res.success) {
-        toast.success('Successfully checked out! See you tomorrow. 🌙');
+        toast.success('Successfully checked out! Logging out... 🌙');
         fetchTodayAttendance();
         fetchAttendanceLogs();
+        setTimeout(() => {
+          logout();
+        }, 1500);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Check-out failed');

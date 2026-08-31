@@ -1,12 +1,67 @@
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const Employee = require('./employee.model');
+const User = require('../users/user.model');
 const MonthlyLeaveBalance = require('../leave/monthlyLeaveBalance.model');
 const { generateAccessToken } = require('../auth/token.service');
 const { ok, fail } = require('../../utils/response');
 const { sendEmail } = require('../../utils/mailer');
 const { generateOtp, getOtpHtml } = require('../../utils/otp');
 const otpModel = require('../auth/Model.otp');
+
+async function syncEmployeeToUser(employee, passwordHash) {
+  try {
+    const userObj = {
+      employeeId: employee.employeeId,
+      fullName: employee.name || employee.fullName,
+      email: employee.email.toLowerCase(),
+      phone: employee.phone || '',
+      passwordHash: passwordHash || employee.password,
+      role: employee.role || 'EMPLOYEE',
+      department: employee.department || 'SALES',
+      isActive: employee.status === 'ACTIVE' || employee.status !== 'INACTIVE',
+      isEmailVerified: true
+    };
+
+    if (employee.permissions) {
+      userObj.exportPermission = !!employee.permissions.export;
+      userObj.productUploadPermission = !!employee.permissions.productUpload;
+      userObj.leadPermission = !!employee.permissions.lead;
+      userObj.documentPermission = !!employee.permissions.document;
+      userObj.taskPermission = !!employee.permissions.task;
+      userObj.dispatchPermission = !!employee.permissions.dispatch;
+      userObj.paymentPermission = !!employee.permissions.payment;
+      userObj.quotationPermission = !!employee.permissions.quotation;
+      userObj.jobPermission = !!employee.permissions.job;
+    }
+
+    let user = await User.findOne({ email: employee.email.toLowerCase() });
+    if (user) {
+      Object.assign(user, userObj);
+      await user.save();
+    } else {
+      userObj._id = new mongoose.Types.ObjectId();
+      await User.create(userObj);
+    }
+  } catch (err) {
+    console.error('Error syncing Employee to User collection:', err.message);
+  }
+}
+
+function calculateAge(dob) {
+  if (!dob) return 28;
+  const birthDate = new Date(dob);
+  if (isNaN(birthDate.getTime())) return 28;
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 
 async function register(req, res, next) {
   try {
@@ -27,6 +82,7 @@ async function register(req, res, next) {
 
     // Create employee
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       name,
       email,
       password: passwordHash,
@@ -38,6 +94,9 @@ async function register(req, res, next) {
       address: address || '',
       profileImage: profileImage || ''
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -56,6 +115,7 @@ async function register(req, res, next) {
 
     const employeeResponse = {
       _id: employee._id,
+      employeeId: employee.employeeId,
       name: employee.name,
       email: employee.email,
       role: employee.role,
@@ -99,6 +159,7 @@ async function login(req, res, next) {
 
     const employeeResponse = {
       _id: employee._id,
+      employeeId: employee.employeeId,
       name: employee.name,
       email: employee.email,
       role: employee.role,
@@ -265,12 +326,14 @@ async function signupEmployee(req, res, next) {
 
     // Save Employee
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       employeeId,
       name,
       email,
       password: passwordHash,
       phone,
       dob,
+      age: calculateAge(dob),
       gender,
       fatherHusbandName,
       permanentAddress,
@@ -310,6 +373,9 @@ async function signupEmployee(req, res, next) {
         job: false
       }
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -412,6 +478,7 @@ async function signupEmployeeSelfRegistration(req, res, next) {
 
     // Save Employee with PENDING_VERIFICATION status
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       employeeId: formattedId,
       name,
       email,
@@ -436,6 +503,9 @@ async function signupEmployeeSelfRegistration(req, res, next) {
         job: false
       }
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance for current month
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -627,6 +697,7 @@ async function verifySignupOtp(req, res, next) {
 
     // Create employee with ACTIVE status (OTP verified = email verified)
     const employee = await Employee.create({
+      _id: new mongoose.Types.ObjectId(),
       employeeId: formattedId,
       name,
       email,
@@ -651,6 +722,9 @@ async function verifySignupOtp(req, res, next) {
         job: false
       }
     });
+
+    // Dual-write sync to User collection
+    await syncEmployeeToUser(employee, passwordHash);
 
     // Initialize MonthlyLeaveBalance
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -775,7 +849,7 @@ async function rejectEmployee(req, res, next) {
 async function listEmployees(req, res, next) {
   try {
     const { department } = req.query;
-    let query = { status: 'ACTIVE' };
+    let query = { status: { $ne: 'INACTIVE' } };
     if (department) {
       query.department = department.toUpperCase();
     }
@@ -818,19 +892,57 @@ async function listEmployees(req, res, next) {
       return map;
     }, {});
 
+    // Fetch today's check-ins
+    const Attendance = require('../attendance/attendance.model');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const targetIdsForAttendance = [];
+    employeeIds.forEach(id => {
+      targetIdsForAttendance.push(String(id));
+      if (mongoose.isValidObjectId(id)) {
+        targetIdsForAttendance.push(new mongoose.Types.ObjectId(id));
+      }
+    });
+
+    const attendances = await Attendance.find({
+      employeeId: { $in: targetIdsForAttendance },
+      date: today,
+      checkInAt: { $ne: null }
+    }).lean();
+
+    const attendanceMap = attendances.reduce((map, att) => {
+      if (att && att.employeeId) {
+        map[att.employeeId.toString()] = att;
+      }
+      return map;
+    }, {});
+
     const employeesWithStatus = employees.map(emp => {
+      const attendanceRec = attendanceMap[emp._id.toString()];
+      const isCheckedIn = !!attendanceRec;
+
       const statusInfo = statusMap[emp._id.toString()] || {
-        status: 'OFFLINE',
-        currentActivity: 'Offline',
-        lastUpdated: emp.updatedAt || new Date(),
+        status: isCheckedIn ? 'IDLE' : 'OFFLINE',
+        currentActivity: isCheckedIn ? 'Available' : 'Offline',
+        lastUpdated: isCheckedIn ? (attendanceRec.checkInAt || new Date()) : (emp.updatedAt || new Date()),
         duration: '00:00:00'
       };
+
+      // If status in db is OFFLINE but employee checked in today, default to IDLE
+      if (statusInfo.status === 'OFFLINE' && isCheckedIn) {
+        statusInfo.status = 'IDLE';
+        statusInfo.currentActivity = 'Available';
+        statusInfo.lastUpdated = attendanceRec.checkInAt || new Date();
+      }
+
       return {
         ...emp,
         status: statusInfo.status,
         currentActivity: statusInfo.currentActivity,
         lastUpdated: statusInfo.lastUpdated,
         duration: statusInfo.duration,
+        isCheckedIn,
         tasksCount: tasksCountMap[emp._id.toString()] || 0,
         statusInfo
       };
@@ -1010,6 +1122,10 @@ async function updateEmployee(req, res, next) {
       updates.password = await bcrypt.hash(updates.password, bcryptRounds);
     } else {
       delete updates.password;
+    }
+
+    if (updates.dob !== undefined) {
+      updates.age = calculateAge(updates.dob);
     }
 
     const employee = await Employee.findByIdAndUpdate(id, updates, { new: true, runValidators: true });

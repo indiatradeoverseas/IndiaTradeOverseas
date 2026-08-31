@@ -3,8 +3,8 @@ const Attendance = require('./attendance.model');
 // Official shift: 09:00 AM - 06:00 PM (9 working hours), with a 15-minute grace period.
 const SHIFT_START_HOUR = 9;
 const SHIFT_END_HOUR = 18;
-const LATE_THRESHOLD_HOUR = 9;
-const LATE_THRESHOLD_MINUTE = 15;
+const LATE_THRESHOLD_HOUR = 10;
+const LATE_THRESHOLD_MINUTE = 0;
 const STANDARD_WORK_HOURS = 9;
 
 function getDayStart(date = new Date()) {

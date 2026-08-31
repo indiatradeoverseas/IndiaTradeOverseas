@@ -79,3 +79,96 @@ exports.getAdminSummary = async (req, res) => {
     return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
   }
 };
+
+exports.sendEmergencySOS = async (req, res) => {
+  try {
+    const result = await dispatchService.processEmergencySOS(req.body, req.user);
+    return ok(res, result, 'Emergency SOS alert dispatched to Transport Manager', 200, req);
+  } catch (error) {
+    return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.logExpense = async (req, res) => {
+  try {
+    const result = await dispatchService.logExpense(req.params.id, req.body);
+    return ok(res, result, 'Trip expense logged successfully', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+// ─── PHASE 4.1 ENHANCEMENT CONTROLLERS ──────────────────────────────────────
+
+exports.acknowledgeEmergencySOS = async (req, res) => {
+  try {
+    const sosId = req.params.sosId || req.body.sosId;
+    const result = await dispatchService.acknowledgeBreakdownAlert(sosId, req.user);
+    return ok(res, result, 'Breakdown SOS acknowledged by Transport Manager', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.submitPaymentProof = async (req, res) => {
+  try {
+    const result = await dispatchService.submitPaymentProof(req.params.id, req.body, req.user);
+    return ok(res, result, 'Payment proof submitted successfully', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.verifyPaymentProof = async (req, res) => {
+  try {
+    const result = await dispatchService.verifyPaymentProof(req.params.id, req.user);
+    return ok(res, result, 'Payment proof verified by Finance/Manager', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.recordStartOdometer = async (req, res) => {
+  try {
+    const result = await dispatchService.recordStartOdometer(req.params.id, req.body, req.user);
+    return ok(res, result, 'Start odometer reading recorded', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.recordEndOdometer = async (req, res) => {
+  try {
+    const result = await dispatchService.recordEndOdometer(req.params.id, req.body, req.user);
+    return ok(res, result, 'End odometer reading recorded and distance computed', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.addFuelLog = async (req, res) => {
+  try {
+    const result = await dispatchService.addFuelLog(req.params.id, req.body, req.user);
+    return ok(res, result, 'Fuel stop logged and profitability recalculated', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.submitDepartureImages = async (req, res) => {
+  try {
+    const result = await dispatchService.submitDepartureImages(req.params.id, req.body, req.user);
+    return ok(res, result, 'Departure verification photos submitted', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.submitDeliveryImages = async (req, res) => {
+  try {
+    const result = await dispatchService.submitDeliveryImages(req.params.id, req.body, req.user);
+    return ok(res, result, 'Delivery verification photos submitted', 200, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};

@@ -25,14 +25,19 @@ async function shareFile(req, res) {
       return fail(res, 400, 'BAD_REQUEST', 'A file attachment is required', [], req);
     }
 
-    // Verify recipient exists
+    // Verify recipient exists across Employee and User collections
     const mongoose = require('mongoose');
-    const recipientIdQuery = mongoose.isValidObjectId(sentTo)
-      ? { $or: [{ _id: sentTo }, { _id: new mongoose.Types.ObjectId(sentTo) }] }
-      : { _id: sentTo };
-    const recipient = await Employee.findOne(recipientIdQuery);
-    if (!recipient) {
-      return fail(res, 404, 'NOT_FOUND', 'Recipient employee not found', [], req);
+    const User = require('../users/user.model');
+    
+    let recipientId = sentTo;
+    if (mongoose.isValidObjectId(sentTo)) {
+      const recipientIdQuery = { $or: [{ _id: sentTo }, { _id: new mongoose.Types.ObjectId(sentTo) }] };
+      const empRecipient = await Employee.findOne(recipientIdQuery);
+      const userRecipient = await User.findOne(recipientIdQuery);
+      const matchedRecipient = empRecipient || userRecipient;
+      if (matchedRecipient) {
+        recipientId = matchedRecipient._id;
+      }
     }
 
     const sharedFile = await SharedFile.create({
@@ -42,7 +47,7 @@ async function shareFile(req, res) {
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       sentBy: req.user._id,
-      sentTo: recipient._id,
+      sentTo: recipientId,
       department: department || req.user.department || 'GENERAL',
       note: note || ''
     });
@@ -68,26 +73,103 @@ async function shareFile(req, res) {
  */
 async function getSharedFiles(req, res) {
   try {
-    const userId = req.user._id;
+    const mongoose = require('mongoose');
+    const User = require('../users/user.model');
+
+    const idStrings = new Set();
+    if (req.user._id) idStrings.add(String(req.user._id));
+    if (req.user.email) {
+      const emp = await Employee.findOne({ email: req.user.email });
+      if (emp && emp._id) idStrings.add(String(emp._id));
+      const userDoc = await User.findOne({ email: req.user.email });
+      if (userDoc && userDoc._id) idStrings.add(String(userDoc._id));
+    }
+
+    const matchConditions = [];
+    idStrings.forEach((idStr) => {
+      matchConditions.push(idStr);
+      if (mongoose.isValidObjectId(idStr)) {
+        matchConditions.push(new mongoose.Types.ObjectId(idStr));
+      }
+    });
+
     const { direction } = req.query; // 'received' | 'sent' | undefined (both)
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+      (req.user.role && req.user.role.endsWith('_MANAGER')) || 
+      (req.user.role && req.user.role.toLowerCase().includes('manager'));
 
     let query = {};
 
     if (direction === 'sent') {
-      query.sentBy = userId;
+      query.sentBy = { $in: matchConditions };
     } else if (direction === 'received') {
-      query.sentTo = userId;
-    } else {
-      // Default: show files relevant to this user (sent or received)
-      query.$or = [{ sentBy: userId }, { sentTo: userId }];
+      query.sentTo = { $in: matchConditions };
+    } else if (!isManagerOrAdmin) {
+      query.$or = [
+        { sentBy: { $in: matchConditions } },
+        { sentTo: { $in: matchConditions } }
+      ];
     }
 
-    const files = await SharedFile.find(query)
-      .populate('sentBy', 'name email department position role')
-      .populate('sentTo', 'name email department position role')
-      .sort({ createdAt: -1 });
+    const rawFiles = await SharedFile.find(query).lean().sort({ createdAt: -1 });
 
-    return ok(res, { files }, 'Shared files retrieved successfully', 200, req);
+    const populatedFiles = await Promise.all(
+      rawFiles.map(async (fileObj) => {
+        // 1. Resolve sentBy
+        const sentById = fileObj.sentBy?._id || fileObj.sentBy;
+        if (sentById) {
+          const userSender = await User.findById(sentById).select('fullName name email department position role');
+          const empSender = await Employee.findById(sentById).select('name fullName email department position role');
+          const sender = userSender || empSender;
+          if (sender) {
+            fileObj.sentBy = {
+              _id: sender._id,
+              name: sender.fullName || sender.name,
+              fullName: sender.fullName || sender.name,
+              role: sender.role || 'SALES_EXECUTIVE',
+              department: sender.department || 'SALES'
+            };
+          } else {
+            fileObj.sentBy = {
+              _id: sentById,
+              name: 'Executive',
+              fullName: 'Executive',
+              role: 'SALES_EXECUTIVE',
+              department: 'SALES'
+            };
+          }
+        }
+
+        // 2. Resolve sentTo
+        const sentToId = fileObj.sentTo?._id || fileObj.sentTo;
+        if (sentToId) {
+          const userRecipient = await User.findById(sentToId).select('fullName name email department position role');
+          const empRecipient = await Employee.findById(sentToId).select('name fullName email department position role');
+          const recipient = userRecipient || empRecipient;
+          if (recipient) {
+            fileObj.sentTo = {
+              _id: recipient._id,
+              name: recipient.fullName || recipient.name,
+              fullName: recipient.fullName || recipient.name,
+              role: recipient.role || 'EXECUTIVE',
+              department: recipient.department || 'SALES'
+            };
+          } else {
+            fileObj.sentTo = {
+              _id: sentToId,
+              name: 'Recipient',
+              fullName: 'Recipient',
+              role: 'EXECUTIVE',
+              department: 'SALES'
+            };
+          }
+        }
+
+        return fileObj;
+      })
+    );
+
+    return ok(res, { files: populatedFiles }, 'Shared files retrieved successfully', 200, req);
   } catch (error) {
     console.error('Error getting shared files:', error);
     return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
@@ -144,24 +226,34 @@ async function downloadFile(req, res) {
 async function deleteSharedFile(req, res) {
   try {
     const { id } = req.params;
-    const userId = String(req.user._id);
-
     const sharedFile = await SharedFile.findById(id);
     if (!sharedFile) {
       return fail(res, 404, 'NOT_FOUND', 'Shared file not found', [], req);
     }
 
-    const isSender = String(sharedFile.sentBy) === userId;
-    const isAdmin = req.user.role === 'ADMIN';
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+      (req.user.role && req.user.role.endsWith('_MANAGER')) || 
+      (req.user.role && req.user.role.toLowerCase().includes('manager'));
 
-    if (!isSender && !isAdmin) {
-      return fail(res, 403, 'FORBIDDEN', 'Only the sender or admin can delete shared files', [], req);
+    const emp = await Employee.findOne({ email: req.user.email });
+    const myIds = [String(req.user._id)];
+    if (emp) myIds.push(String(emp._id));
+
+    const isSender = myIds.includes(String(sharedFile.sentBy));
+    const isRecipient = myIds.includes(String(sharedFile.sentTo));
+
+    if (!isSender && !isRecipient && !isManagerOrAdmin) {
+      return fail(res, 403, 'FORBIDDEN', 'Only the sender, recipient, or manager/admin can delete shared files', [], req);
     }
 
     // Remove file from disk
-    const filePath = path.resolve(sharedFile.fileUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      const filePath = path.resolve(sharedFile.fileUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (e) {
+      console.warn('Could not remove file from disk:', e.message);
     }
 
     await SharedFile.findByIdAndDelete(id);

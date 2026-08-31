@@ -24,5 +24,10 @@ export const sharedFilesApi = {
   async deleteSharedFile(id) {
     const response = await axiosInstance.delete(`/shared-files/${id}`);
     return response.data;
+  },
+
+  getDownloadUrl(id) {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    return `${baseUrl}/shared-files/${id}/download`;
   }
 };

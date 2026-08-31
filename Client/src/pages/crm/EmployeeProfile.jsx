@@ -547,7 +547,7 @@ export default function EmployeeProfile() {
       </div>
 
       {/* Main Grid Workspace Layout */}
-      <div className="max-w-[1400px] mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full min-w-0 overflow-x-hidden">
         
         {/* LEFT COLUMN: Profile Summary Card */}
         <div className="lg:col-span-4 w-full bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl overflow-hidden shadow-lg relative flex flex-col text-left">
@@ -916,6 +916,15 @@ export default function EmployeeProfile() {
                         value={jobForm.dateOfBirth}
                         onChange={(e) => setJobForm({ ...jobForm, dateOfBirth: e.target.value })}
                         className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3.5 py-2.5 rounded outline-none focus:border-teal-500 transition cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Mobile Number</label>
+                      <input
+                        type="text"
+                        value={jobForm.phone}
+                        onChange={(e) => setJobForm({ ...jobForm, phone: e.target.value })}
+                        className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3.5 py-2.5 rounded outline-none focus:border-teal-500 transition"
                       />
                     </div>
                     <div>

@@ -24,9 +24,11 @@ console.error = ignoreGSI(console.error);
 // expects to hydrate onto, so hydrateRoot reliably mismatches and falls
 // back to a full client render anyway. createRoot gets the same end
 // result without the console errors along the way.
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '118804696306-5sa5n9j6qud4mk4f036qr6epmr049th7.apps.googleusercontent.com';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <App />
     </GoogleOAuthProvider>
   </StrictMode>,

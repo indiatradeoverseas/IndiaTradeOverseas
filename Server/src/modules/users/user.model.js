@@ -41,13 +41,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['ADMIN', 'MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'IT', 'FINANCE', 'SOFTWARE_ENGINEER', 'SYSTEM', 'AI'],
+      enum: ['ADMIN', 'MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'IT', 'FINANCE', 'SOFTWARE_ENGINEER', 'SYSTEM', 'AI', 'TRANSPORT', 'LOGISTICS', 'DRIVER'],
       required: true,
       default: ''
     },
     department: {
       type: String,
-      enum: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES', 'CRM', 'FINANCE'],
+      enum: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'LOGISTICS', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES', 'CRM', 'FINANCE'],
       required: true,
       default: ''
     },

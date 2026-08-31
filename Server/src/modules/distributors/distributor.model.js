@@ -134,6 +134,26 @@ const DistributorSchema = new mongoose.Schema(
       default: "pending",
       enum: ["pending", "approved", "rejected"],
     },
+
+    // Telemetry: Visit Tracking & History
+    lastVisitedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    visitCount: {
+      type: Number,
+      default: 1,
+    },
+    visitHistory: [
+      {
+        visitedAt: { type: Date, default: Date.now },
+        city: String,
+        state: String,
+        mobile: String,
+        name: String,
+        registrationSource: String,
+      },
+    ],
   },
   {
     timestamps: true,

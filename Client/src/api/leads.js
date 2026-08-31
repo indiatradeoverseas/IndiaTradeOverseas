@@ -27,8 +27,13 @@ export const leadsApi = {
     return response.data;
   },
 
+  async updatePriority(leadId, priority) {
+    const response = await axiosInstance.patch(`/leads/${leadId}/priority`, { priority });
+    return response.data;
+  },
+
   async assignLead(leadId, assignData) {
-    const response = await axiosInstance.patch(`/admin/leads/${leadId}/assign`, assignData);
+    const response = await axiosInstance.post(`/leads/${leadId}/assign`, assignData);
     return response.data;
   },
 
@@ -65,6 +70,31 @@ export const leadsApi = {
 
   async bulkImportLeads(leads) {
     const response = await axiosInstance.post('/leads/bulk-import', { leads });
+    return response.data;
+  },
+
+  async uploadCallRecording(formData) {
+    const response = await axiosInstance.post('/leads/call-recordings', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  async getCallRecordings(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await axiosInstance.get(`/leads/call-recordings${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  },
+
+  async updateCallRecordingRemark(recordingId, managerRemark) {
+    const response = await axiosInstance.patch(`/leads/call-recordings/${recordingId}/remark`, { managerRemark });
+    return response.data;
+  },
+
+  async uploadLOIDocument(leadId, formData) {
+    const response = await axiosInstance.post(`/leads/${leadId}/loi`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   }
 };
