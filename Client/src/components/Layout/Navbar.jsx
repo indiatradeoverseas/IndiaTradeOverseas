@@ -119,10 +119,17 @@ export default function Navbar() {
           label: 'STONE DIVISION'
         }
       ]
+    },
+    {
+      groupLabel: 'ADVERTISING & LEAD GEN',
+      links: [
+        { to: '/ito-ads', label: 'ITO ADS' },
+      ]
     }
   ];
 
   const isActive = (path) => location.pathname === path;
+  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
 
   const isServicesActive =
     location.pathname === '/our-services' ||

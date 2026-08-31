@@ -17,6 +17,9 @@ import {
   FiTruck,
   FiFileText,
   FiSearch
+  FiShield,
+  FiClipboard,
+  FiSpeaker
 } from 'react-icons/fi';
 
 import {
@@ -186,6 +189,18 @@ export default function Home() {
         '10 / 20 / 40 / 60mm & dust',
         'Bulk construction supply',
         'Sourcing and logistics support'
+      ]
+    },
+    {
+      to: '/ito-ads',
+      icon: FiSpeaker,
+      label: 'ITO Ads',
+      image: '/images/ito_images/ito_1.jpeg',
+      points: [
+        'Paid inbound lead generation campaigns',
+        'Performance marketing & customer acquisition',
+        'CRM-ready lead delivery & automation',
+        'Pan-India targeting with transparent reporting'
       ]
     }
   ];
@@ -674,6 +689,7 @@ export default function Home() {
                           rotateY(${i * 120}deg)
                           translateZ(${isMobileCarousel ? 110 : 160}px)
                         `,
+                        transform: `rotateY(${i * 90}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
                         transformStyle: 'preserve-3d'
                       }}
                     >

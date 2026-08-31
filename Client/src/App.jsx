@@ -32,6 +32,7 @@ import EmployeeSignup from './pages/public/EmployeeSignup';
 import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
+import ITOAds from './pages/public/ITOAds';
 
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
@@ -731,6 +732,32 @@ function AppLayout() {
 
       <Footer />
 
+  if (isCRM && !user) {
+    return <Navigate to="/login" />;
+  }
+
+  const isITOAds = location.pathname === '/ito-ads';
+
+  return (
+    <div>
+      <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
+      <Navbar />
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/prakriti" element={<Prakriti />} />
+          <Route path='/prakriti/rice' element={<Rice/>}/>
+          <Route path="/stone" element={<Stone />} />
+          <Route path="/ito-ads" element={<ITOAds />} />
+        </Routes>
+      </main>
+      {!isITOAds && <Footer />}
       <ChatWidget />
 
     </div>
