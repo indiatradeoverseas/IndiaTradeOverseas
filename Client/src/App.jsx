@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,6 +6,7 @@ import {
   Navigate,
   useLocation
 } from 'react-router-dom';
+
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
@@ -168,8 +169,6 @@ function AppLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // SPA route changes don't trigger a new document load,
-  // so push a virtual pageview on every route change.
   useEffect(() => {
     pushDataLayerEvent('virtual_page_view', {
       page_path: location.pathname + location.search,
@@ -179,7 +178,6 @@ function AppLayout() {
   }, [location.pathname, location.search]);
 
 
-  // Site-wide click + form-submit tracking
   useEffect(() => {
     initActivityTracking();
   }, []);
@@ -220,19 +218,57 @@ function AppLayout() {
         <ScrollToTop />
 
         <Routes>
-          <Route path="/login" element={<ClientLogin />} />
+
+          <Route
+            path="/login"
+            element={<ClientLogin />}
+          />
+
           <Route
             path="/client-login"
             element={<Navigate to="/login" replace />}
           />
-          <Route path="/employee-login" element={<EmployeeLogin />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/client-signup" element={<ClientSignup />} />
-          <Route path="/employee-signup" element={<EmployeeSignup />} />
-          <Route path="/device-pending" element={<DevicePending />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          <Route
+            path="/employee-login"
+            element={<EmployeeLogin />}
+          />
+
+          <Route
+            path="/admin-login"
+            element={<AdminLogin />}
+          />
+
+          <Route
+            path="/signup"
+            element={<Signup />}
+          />
+
+          <Route
+            path="/client-signup"
+            element={<ClientSignup />}
+          />
+
+          <Route
+            path="/employee-signup"
+            element={<EmployeeSignup />}
+          />
+
+          <Route
+            path="/device-pending"
+            element={<DevicePending />}
+          />
+
+          <Route
+            path="/verify-email"
+            element={<VerifyEmail />}
+          />
+
+          <Route
+            path="/forgot-password"
+            element={<ForgotPassword />}
+          />
+
         </Routes>
       </>
     );
@@ -244,8 +280,10 @@ function AppLayout() {
   ========================= */
 
   if (isCRM && user) {
+
     const isClient =
-      user.employeeId && user.employeeId.startsWith('CL_');
+      user.employeeId &&
+      user.employeeId.startsWith('CL_');
 
     if (isClient) {
       return <Navigate to="/" replace />;
@@ -253,6 +291,7 @@ function AppLayout() {
 
     return (
       <VoiceAssistantProvider>
+
         <PortalLayout>
 
           <ScrollToTop />
@@ -348,7 +387,10 @@ function AppLayout() {
                 ) ? (
                   <CareerLeads />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -370,7 +412,10 @@ function AppLayout() {
                 ) ? (
                   <Leads />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -393,7 +438,10 @@ function AppLayout() {
                 ) ? (
                   <LeadDetail />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -422,7 +470,10 @@ function AppLayout() {
                 ) ? (
                   <Documents />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -448,7 +499,10 @@ function AppLayout() {
                 ) ? (
                   <Tasks />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -468,7 +522,10 @@ function AppLayout() {
                 ) ? (
                   <Employees />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -494,7 +551,10 @@ function AppLayout() {
                 ) ? (
                   <EmployeeProfile />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -548,7 +608,10 @@ function AppLayout() {
                 ].includes(user?.role) ? (
                   <Applications />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -568,7 +631,10 @@ function AppLayout() {
                 ) ? (
                   <Jobs />
                 ) : (
-                  <Navigate to="/crm/dashboard" replace />
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
                 )
               }
             />
@@ -624,6 +690,7 @@ function AppLayout() {
           <ChatWidget />
 
         </PortalLayout>
+
       </VoiceAssistantProvider>
     );
   }
@@ -634,7 +701,7 @@ function AppLayout() {
   ========================= */
 
   if (isCRM && !user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
 
@@ -654,12 +721,15 @@ function AppLayout() {
         <Routes>
 
           {/* Home */}
+
           <Route
             path="/"
             element={<Home />}
           />
 
+
           {/* Products */}
+
           <Route
             path="/products"
             element={<Products />}
@@ -670,57 +740,75 @@ function AppLayout() {
             element={<ProductDetail />}
           />
 
+
           {/* About */}
+
           <Route
             path="/about"
             element={<About />}
           />
 
+
           {/* Contact */}
+
           <Route
             path="/contact"
             element={<Contact />}
           />
 
+
           {/* Careers */}
+
           <Route
             path="/careers"
             element={<Careers />}
           />
 
+
           {/* Quote Request */}
+
           <Route
             path="/quote-request"
             element={<QuoteRequest />}
           />
 
-          {/* =========================
-              OUR SERVICES
-          ========================= */}
+
+          {/* Our Services */}
 
           <Route
             path="/our-services"
             element={<OurServices />}
           />
 
-          {/* Prakriti */}
-          <Route
-  path="/prakriti"
-  element={<Navigate to="/prakriti/tea" replace />}
-/>
 
-<Route
-  path="/prakriti/tea"
-  element={<Prakriti />}
-/>
+          {/* Prakriti */}
+
+          <Route
+            path="/prakriti"
+            element={
+              <Navigate
+                to="/prakriti/tea"
+                replace
+              />
+            }
+          />
+
+          <Route
+            path="/prakriti/tea"
+            element={<Prakriti />}
+          />
+
 
           {/* Prakriti → Rice */}
+
           <Route
             path="/prakriti/rice"
             element={<Rice />}
           />
 
+
           {/* Building & Construction → Stone */}
+
           <Route
             path="/stone"
             element={<Stone />}
