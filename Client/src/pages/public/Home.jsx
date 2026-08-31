@@ -16,9 +16,7 @@ import {
   FiPackage,
   FiTruck,
   FiFileText,
-  FiSearch
-  FiShield,
-  FiClipboard,
+  FiSearch,
   FiSpeaker
 } from 'react-icons/fi';
 
@@ -27,7 +25,6 @@ import {
   GiWheat,
   GiStonePile
 } from 'react-icons/gi';
-
 
 // ============================================================
 // HERO BACKGROUND IMAGES
@@ -54,7 +51,6 @@ const CINEMATIC_CAROUSEL_BACKDROPS = [
   './images/ito_images/ito_18.jpeg'
 ];
 
-
 // ============================================================
 // MAIN COMPONENT
 // ============================================================
@@ -75,7 +71,6 @@ export default function Home() {
     canonicalPath: '/'
   });
 
-
   // ----------------------------------------------------------
   // STATE
   // ----------------------------------------------------------
@@ -85,7 +80,6 @@ export default function Home() {
   const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
   const [isMobileCarousel, setIsMobileCarousel] = useState(false);
-
 
   // ----------------------------------------------------------
   // HERO IMAGE CAROUSEL
@@ -101,7 +95,6 @@ export default function Home() {
 
     return () => clearInterval(backdropTimer);
   }, []);
-
 
   // ----------------------------------------------------------
   // ESCAPE KEY FOR SOLUTIONS MODAL
@@ -123,7 +116,6 @@ export default function Home() {
     };
   }, [isSolutionsOpen]);
 
-
   // ----------------------------------------------------------
   // MOBILE DETECTION
   // ----------------------------------------------------------
@@ -142,11 +134,9 @@ export default function Home() {
     };
   }, []);
 
-
   // ==========================================================
   // DATA
   // ==========================================================
-
 
   // ----------------------------------------------------------
   // PRODUCT DIVISIONS
@@ -191,6 +181,7 @@ export default function Home() {
         'Sourcing and logistics support'
       ]
     },
+
     {
       to: '/ito-ads',
       icon: FiSpeaker,
@@ -204,7 +195,6 @@ export default function Home() {
       ]
     }
   ];
-
 
   // ----------------------------------------------------------
   // TRUST BADGES
@@ -220,7 +210,6 @@ export default function Home() {
     { label: 'MSME / UDYAM', img: 'cer_7.jpeg' }
   ];
 
-
   // ----------------------------------------------------------
   // BUSINESS LOCATIONS
   // ----------------------------------------------------------
@@ -234,7 +223,6 @@ export default function Home() {
     'Bhutan',
     'Nepal'
   ];
-
 
   // ----------------------------------------------------------
   // WHAT WE SUPPLY
@@ -281,7 +269,6 @@ export default function Home() {
         'Kulhad • Clay Bottles • Ceramics • Crockery • Tea Cups'
     }
   ];
-
 
   // ----------------------------------------------------------
   // COMMERCIAL VERTICALS
@@ -337,7 +324,6 @@ export default function Home() {
     }
   ];
 
-
   // ----------------------------------------------------------
   // PROCUREMENT WORKFLOW
   // ----------------------------------------------------------
@@ -371,7 +357,6 @@ export default function Home() {
         'Transport, loading, dispatch and delivery coordination are managed according to the agreed order.'
     }
   ];
-
 
   // ----------------------------------------------------------
   // HERO PILLARS
@@ -407,7 +392,6 @@ export default function Home() {
     }
   ];
 
-
   // ----------------------------------------------------------
   // ANIMATION
   // ----------------------------------------------------------
@@ -424,7 +408,6 @@ export default function Home() {
       }
     }
   };
-
 
   // ==========================================================
   // RETURN
@@ -443,7 +426,6 @@ export default function Home() {
         overflow-x-hidden
       "
     >
-
 
       {/* ======================================================
           SOLUTIONS OVERLAY
@@ -601,7 +583,6 @@ export default function Home() {
 
                         </div>
 
-
                         <div className="space-y-1.5 sm:space-y-2">
 
                           <span
@@ -678,17 +659,12 @@ export default function Home() {
                     </>
                   );
 
-
                   return (
 
                     <div
                       key={item.to}
                       className="absolute inset-0"
                       style={{
-                        transform: `
-                          rotateY(${i * 120}deg)
-                          translateZ(${isMobileCarousel ? 110 : 160}px)
-                        `,
                         transform: `rotateY(${i * 90}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
                         transformStyle: 'preserve-3d'
                       }}
@@ -709,7 +685,6 @@ export default function Home() {
                       >
                         {cardContent}
                       </div>
-
 
                       <Link
                         to={item.to}
@@ -752,7 +727,6 @@ export default function Home() {
 
             </motion.div>
 
-
             <style>
               {`
                 @keyframes solutions-carousel-spin {
@@ -773,7 +747,6 @@ export default function Home() {
 
       </AnimatePresence>
 
-
       {/* ======================================================
           TOP BORDER
       ====================================================== */}
@@ -790,7 +763,6 @@ export default function Home() {
           z-50
         "
       />
-
 
       {/* ======================================================
           HERO
@@ -860,7 +832,6 @@ export default function Home() {
 
           </AnimatePresence>
 
-
           <div
             className="
               absolute
@@ -898,7 +869,6 @@ export default function Home() {
           />
 
         </div>
-
 
         {/* HERO CONTENT */}
 
@@ -983,7 +953,6 @@ export default function Home() {
                 INDIA TRADE OVERSEAS
               </motion.p>
 
-
               {/* H1 */}
 
               <motion.h1
@@ -1027,7 +996,6 @@ export default function Home() {
 
             </div>
 
-
             {/* SUPPORTING CONTENT */}
 
             <div className="w-full">
@@ -1050,7 +1018,6 @@ export default function Home() {
                 "
                 aria-hidden="true"
               />
-
 
               {/* CATEGORY LINE */}
 
@@ -1084,7 +1051,6 @@ export default function Home() {
                 Agriculture • Stone • Coal • Industrial Materials
                 • Consumer Products • Logistics
               </motion.p>
-
 
               {/* BODY */}
 
@@ -1122,7 +1088,6 @@ export default function Home() {
               </motion.p>
 
             </div>
-
 
             {/* CTA BUTTONS */}
 
@@ -1173,7 +1138,6 @@ export default function Home() {
                 <FiArrowRight className="ml-2" size={15} />
               </Link>
 
-
               {/* SECONDARY */}
 
               <button
@@ -1215,7 +1179,6 @@ export default function Home() {
             </div>
 
           </div>
-
 
           {/* ==================================================
               DESKTOP HERO TRUST ROW
@@ -1305,7 +1268,6 @@ export default function Home() {
         </motion.div>
 
       </section>
-
 
       {/* ======================================================
           MOBILE TRUST ROW
@@ -1400,7 +1362,6 @@ export default function Home() {
         </div>
 
       </section>
-
 
       {/* ======================================================
           TRUST / CREDENTIALS
@@ -1517,7 +1478,6 @@ export default function Home() {
 
       </section>
 
-
       {/* ======================================================
           WHAT WE SUPPLY
       ====================================================== */}
@@ -1581,7 +1541,6 @@ export default function Home() {
           </p>
 
         </div>
-
 
         <motion.div
           initial="hidden"
@@ -1677,7 +1636,6 @@ export default function Home() {
 
                 </div>
 
-
                 <h3
                   className="
                     text-xl
@@ -1688,7 +1646,6 @@ export default function Home() {
                 >
                   {category.title}
                 </h3>
-
 
                 <p
                   className="
@@ -1701,7 +1658,6 @@ export default function Home() {
                 >
                   {category.description}
                 </p>
-
 
                 <div
                   className="
@@ -1733,7 +1689,6 @@ export default function Home() {
           })}
 
         </motion.div>
-
 
         {/* PRODUCT CTA */}
 
@@ -1779,7 +1734,6 @@ export default function Home() {
         </div>
 
       </section>
-
 
       {/* ======================================================
           BUSINESS VERTICALS
@@ -1835,7 +1789,6 @@ export default function Home() {
 
         </div>
 
-
         <div
           className="
             max-w-[1480px]
@@ -1875,7 +1828,6 @@ export default function Home() {
             </h2>
 
           </div>
-
 
           <motion.div
             initial="hidden"
@@ -1965,7 +1917,6 @@ export default function Home() {
 
                   </div>
 
-
                   <h3
                     className="
                       text-lg
@@ -1977,7 +1928,6 @@ export default function Home() {
                   >
                     {v.title}
                   </h3>
-
 
                   <p
                     className="
@@ -1993,7 +1943,6 @@ export default function Home() {
                   </p>
 
                 </div>
-
 
                 <button
                   type="button"
@@ -2040,7 +1989,6 @@ export default function Home() {
         </div>
 
       </section>
-
 
       {/* ======================================================
           HOW IT WORKS
@@ -2103,7 +2051,6 @@ export default function Home() {
           </p>
 
         </div>
-
 
         <div
           className="
@@ -2169,7 +2116,6 @@ export default function Home() {
                     <StepIcon size={15} />
                   </span>
 
-
                   <span
                     className="
                       font-serif
@@ -2188,7 +2134,6 @@ export default function Home() {
             })}
 
           </div>
-
 
           {/* STEP DETAIL */}
 
@@ -2257,7 +2202,6 @@ export default function Home() {
 
                 </div>
 
-
                 <h3
                   className="
                     text-xl
@@ -2269,7 +2213,6 @@ export default function Home() {
                 >
                   {steps[activeStep].title}
                 </h3>
-
 
                 <p
                   className="
@@ -2287,7 +2230,6 @@ export default function Home() {
               </motion.div>
 
             </AnimatePresence>
-
 
             <div
               className="
@@ -2325,7 +2267,6 @@ export default function Home() {
         </div>
 
       </section>
-
 
       {/* ======================================================
           CONTACT / COMMERCIAL INFORMATION
@@ -2413,7 +2354,6 @@ export default function Home() {
                 the next commercial steps.
               </p>
 
-
               <div
                 className="
                   space-y-4
@@ -2466,7 +2406,6 @@ export default function Home() {
 
                   </div>
 
-
                   <a
                     href="mailto:info@indiatradeoverseas.com"
                     className="
@@ -2496,7 +2435,6 @@ export default function Home() {
                   </a>
 
                 </div>
-
 
                 {/* WHATSAPP */}
 
@@ -2547,7 +2485,6 @@ export default function Home() {
 
                   </div>
 
-
                   <span
                     className="
                       bg-[#2B3440]
@@ -2577,7 +2514,6 @@ export default function Home() {
             </div>
 
           </div>
-
 
           {/* LOCATIONS */}
 
@@ -2635,7 +2571,6 @@ export default function Home() {
               important regional markets and trade corridors.
             </p>
 
-
             <div
               className="
                 flex
@@ -2677,7 +2612,6 @@ export default function Home() {
         </div>
 
       </section>
-
 
       {/* ======================================================
           FINAL CTA
@@ -2734,7 +2668,6 @@ export default function Home() {
 
         </div>
 
-
         <div
           className="
             relative
@@ -2789,7 +2722,6 @@ export default function Home() {
 
           </div>
 
-
           <h2
             className="
               text-3xl
@@ -2805,7 +2737,6 @@ export default function Home() {
             <br className="hidden sm:block" />
             B2B Supply Partner?
           </h2>
-
 
           <p
             className="
@@ -2823,7 +2754,6 @@ export default function Home() {
             delivery requirement. Our team will review your
             enquiry and coordinate the next steps.
           </p>
-
 
           <div
             className="
@@ -2868,7 +2798,6 @@ export default function Home() {
               />
             </Link>
 
-
             <Link
               to="/contact"
               className="
@@ -2906,7 +2835,6 @@ export default function Home() {
         </div>
 
       </section>
-
 
       {/* ======================================================
           FOOTER
@@ -2969,7 +2897,6 @@ export default function Home() {
 
         </div>
 
-
         <div
           className="
             max-w-3xl
@@ -3011,7 +2938,6 @@ export default function Home() {
 
           </p>
 
-
           <p
             className="
               text-xs
@@ -3023,7 +2949,6 @@ export default function Home() {
           >
             Where Quality Meets Global Demand
           </p>
-
 
           <div
             className="
@@ -3043,7 +2968,6 @@ export default function Home() {
             freight, GST, dispatch timelines and delivery
             commitments are subject to final commercial
             confirmation.
-
           </div>
 
         </div>

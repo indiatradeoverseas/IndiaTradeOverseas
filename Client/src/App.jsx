@@ -709,6 +709,8 @@ function AppLayout() {
      PUBLIC WEBSITE ROUTES
   ========================= */
 
+  const isITOAds = location.pathname === '/ito-ads';
+
   return (
     <div>
 
@@ -721,15 +723,12 @@ function AppLayout() {
         <Routes>
 
           {/* Home */}
-
           <Route
             path="/"
             element={<Home />}
           />
 
-
           {/* Products */}
-
           <Route
             path="/products"
             element={<Products />}
@@ -740,49 +739,37 @@ function AppLayout() {
             element={<ProductDetail />}
           />
 
-
           {/* About */}
-
           <Route
             path="/about"
             element={<About />}
           />
 
-
           {/* Contact */}
-
           <Route
             path="/contact"
             element={<Contact />}
           />
 
-
           {/* Careers */}
-
           <Route
             path="/careers"
             element={<Careers />}
           />
 
-
           {/* Quote Request */}
-
           <Route
             path="/quote-request"
             element={<QuoteRequest />}
           />
 
-
           {/* Our Services */}
-
           <Route
             path="/our-services"
             element={<OurServices />}
           />
 
-
           {/* Prakriti */}
-
           <Route
             path="/prakriti"
             element={
@@ -793,59 +780,36 @@ function AppLayout() {
             }
           />
 
+          {/* Prakriti → Tea */}
           <Route
             path="/prakriti/tea"
             element={<Prakriti />}
           />
 
-
           {/* Prakriti → Rice */}
-
           <Route
             path="/prakriti/rice"
             element={<Rice />}
           />
 
-
           {/* Building & Construction → Stone */}
-
           <Route
             path="/stone"
             element={<Stone />}
+          />
+
+          {/* ITO Ads */}
+          <Route
+            path="/ito-ads"
+            element={<ITOAds />}
           />
 
         </Routes>
 
       </main>
 
-      <Footer />
-
-  if (isCRM && !user) {
-    return <Navigate to="/login" />;
-  }
-
-  const isITOAds = location.pathname === '/ito-ads';
-
-  return (
-    <div>
-      <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
-      <Navbar />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/careers" element={<Careers />} />
-          <Route path="/quote-request" element={<QuoteRequest />} />
-          <Route path="/prakriti" element={<Prakriti />} />
-          <Route path='/prakriti/rice' element={<Rice/>}/>
-          <Route path="/stone" element={<Stone />} />
-          <Route path="/ito-ads" element={<ITOAds />} />
-        </Routes>
-      </main>
       {!isITOAds && <Footer />}
+
       <ChatWidget />
 
     </div>

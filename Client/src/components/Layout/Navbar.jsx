@@ -128,14 +128,13 @@ export default function Navbar() {
     }
   ];
 
-  const isActive = (path) => location.pathname === path;
-  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
+const isActive = (path) => location.pathname === path;
 
-  const isServicesActive =
-    location.pathname === '/our-services' ||
-    location.pathname.startsWith('/prakriti') ||
-    location.pathname === '/stone';
-
+const isServicesActive =
+  location.pathname === '/our-services' ||
+  location.pathname.startsWith('/prakriti') ||
+  location.pathname === '/stone' ||
+  location.pathname === '/ito-ads';
   // Staggered cascade animation for mobile menu
   const mobileMenuContainer = {
     hidden: {},
