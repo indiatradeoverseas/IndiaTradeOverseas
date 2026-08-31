@@ -12,7 +12,7 @@ router.use(authenticate);
 // Fetch transport dashboard summary metrics (Admin / Managers / Procurement)
 router.get(
   '/dashboard-summary', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'SalesManager', 'HRManager', 'LogisticsManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 'LOGISTICS', 'Admin', 'SalesManager', 'HRManager', 'LogisticsManager', 'Driver']), 
   dispatchController.getAdminSummary
 );
 
@@ -69,7 +69,7 @@ router.patch(
 // Complete trip and release Truck/Driver resources
 router.patch(
   '/:id/complete', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'LogisticsManager', 'Driver']), 
   dispatchController.completeTrip
 );
 
@@ -80,11 +80,74 @@ router.post(
   dispatchController.sendEmergencySOS
 );
 
+// Acknowledge Emergency Breakdown SOS (Manager/Admin)
+router.post(
+  '/emergency/acknowledge',
+  authorize(['ADMIN', 'MANAGER', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']),
+  dispatchController.acknowledgeEmergencySOS
+);
+router.post(
+  '/emergency/:sosId/acknowledge',
+  authorize(['ADMIN', 'MANAGER', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']),
+  dispatchController.acknowledgeEmergencySOS
+);
+
 // Log Trip Expense
 router.post(
   '/:id/expense',
   authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
   dispatchController.logExpense
+);
+
+// ─── PHASE 4.1 ENHANCEMENT ROUTES ──────────────────────────────────────────
+
+// Feature 1: Real-Time Payment Proof Upload (UPI/QR)
+router.post(
+  '/:id/payment-proof',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.submitPaymentProof
+);
+
+// Feature 1: Verify Payment Proof (Finance/Manager)
+router.post(
+  '/:id/verify-payment',
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'Admin', 'LogisticsManager']),
+  dispatchController.verifyPaymentProof
+);
+
+// Feature 2: Odometer Start Reading
+router.post(
+  '/:id/odometer/start',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.recordStartOdometer
+);
+
+// Feature 2: Odometer End Reading
+router.post(
+  '/:id/odometer/end',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.recordEndOdometer
+);
+
+// Feature 2: Fuel Log Entry
+router.post(
+  '/:id/fuel-log',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.addFuelLog
+);
+
+// Feature 3: Departure Verification Photos (At Loading)
+router.post(
+  '/:id/departure-images',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.submitDepartureImages
+);
+
+// Feature 3: Delivery Verification Photos (At Unloading)
+router.post(
+  '/:id/delivery-images',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'Driver']),
+  dispatchController.submitDeliveryImages
 );
 
 module.exports = router;

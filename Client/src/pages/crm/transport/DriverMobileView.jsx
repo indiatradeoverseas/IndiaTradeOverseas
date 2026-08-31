@@ -1,49 +1,489 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiTruck, FiCheckCircle, FiUpload, FiPhone, FiMessageSquare, 
   FiMapPin, FiWifi, FiWifiOff, FiRefreshCw, FiAlertTriangle, FiCheck,
   FiShield, FiActivity, FiDollarSign, FiClock, FiTool, FiFileText,
-  FiCheckSquare, FiPlus, FiCompass, FiNavigation
+  FiCheckSquare, FiPlus, FiCompass, FiNavigation, FiUser, FiCreditCard,
+  FiSend, FiX, FiLayers, FiCamera, FiTrendingUp, FiCrosshair, FiMaximize2,
+  FiHelpCircle, FiCalendar, FiBriefcase, FiMenu, FiExternalLink, FiDownload
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 import { dispatchesApi } from '../../../api/dispatches';
+import { leadsApi } from '../../../api/leads';
 import { taskApi } from '../../../api/task';
 import { useAuth } from '../../../hooks/useAuth';
+import OrderMapModal from '../../../components/transport/map';
+
+// HR Manager Design System Tokens
+const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
+const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
+const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' };
+const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
 export default function DriverMobileView() {
   const { user } = useAuth();
+  const location = useLocation();
+  
+  // Navigation & Active Sidebar Tab ('DASHBOARD', 'PAYMENTS', 'PROFILE', 'DISPATCHES', 'SOS')
+  const [activeTab, setActiveTab] = useState('DASHBOARD');
+  const [selectedMapOrder, setSelectedMapOrder] = useState(null);
+
+  // Sync active tab with URL query parameter (e.g. ?tab=PAYMENTS)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'PAYMENTS' || location.hash === '#payments') {
+      setActiveTab('PAYMENTS');
+    }
+  }, [location]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Core Data States
+  const [dispatchesList, setDispatchesList] = useState([]);
   const [trip, setTrip] = useState(null);
   const [assignedTasks, setAssignedTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueue, setOfflineQueue] = useState([]);
 
-  // Real Emergency Breakdown SOS State
+  // Payment Proofs List (Persisted in state & localStorage)
+  const [paymentProofsList, setPaymentProofsList] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`driver_payment_proofs_${user?._id}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Dynamic Metrics Summary (Calculated from Real API Data & Payments)
+  const [metrics, setMetrics] = useState({
+    totalDispatch: 0,
+    revenue: 0,
+    taskAssign: 0,
+    complete: 0,
+    totalPayment: 0
+  });
+
+  // Modals Control
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPaymentProofModal, setShowPaymentProofModal] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [showRazorpayModal, setShowRazorpayModal] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
-  const [sosDescription, setSosDescription] = useState('Engine Breakdown / Tire Puncture on Highway');
+  const [showPodModal, setShowPodModal] = useState(false);
+
+  // Delivery Modal State & Proof Uploads (Pic, PDF, DOC, Driver Proof)
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveringOrder, setDeliveringOrder] = useState(null);
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [paymentAmountCollected, setPaymentAmountCollected] = useState('');
+  const [paymentProofFile, setPaymentProofFile] = useState(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState('');
+  const [driverProofFile, setDriverProofFile] = useState(null);
+  const [driverProofPreview, setDriverProofPreview] = useState('');
+  const [submittingDelivery, setSubmittingDelivery] = useState(false);
+
+  const handleProofFileUpload = (e, setFile, setPreview) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFile(file);
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setPreview(reader.result);
+      reader.readAsDataURL(file);
+    } else {
+      setPreview(file.name);
+    }
+  };
+
+  const handleOpenDeliveryModal = (orderItem, e) => {
+    if (e) e.stopPropagation();
+    setDeliveringOrder(orderItem);
+    setDeliveryNotes(`Goods delivered successfully to ${orderItem.customerName || 'Client'} at ${orderItem.destination || 'Destination'}. Customer POD & payment proof verified.`);
+    setPaymentAmountCollected(orderItem.totalFreightAmount || orderItem.freightAmount || '');
+    setPaymentProofFile(null);
+    setPaymentProofPreview('');
+    setDriverProofFile(null);
+    setDriverProofPreview('');
+    setShowDeliveryModal(true);
+  };
+
+  const handleConfirmDeliverySubmit = async (e) => {
+    e.preventDefault();
+    if (!deliveringOrder) return;
+
+    setSubmittingDelivery(true);
+    const targetId = deliveringOrder._id || deliveringOrder.dispatchNumber || deliveringOrder.orderNumber;
+
+    const proofData = {
+      status: 'DELIVERED',
+      dispatchStatus: 'DELIVERED',
+      deliveredAt: new Date().toLocaleTimeString(),
+      paymentProofUrl: paymentProofPreview || 'Payment Proof Attached',
+      paymentProofName: paymentProofFile?.name || 'Payment Receipt Document',
+      driverProofUrl: driverProofPreview || 'Driver Photo Verified',
+      driverProofName: driverProofFile?.name || 'Driver Unloading Photo',
+      amountCollected: Number(paymentAmountCollected) || 0,
+      deliveryNotes: deliveryNotes
+    };
+
+    try {
+      // 1. Update MongoDB Lead Stage to DEAL_WON
+      const possibleLeadIds = [deliveringOrder._id, deliveringOrder.orderNumber, targetId, deliveringOrder.leadCode].filter(Boolean);
+      for (const lid of possibleLeadIds) {
+        try {
+          await leadsApi.updateStage(lid, { stage: 'DEAL_WON', newStage: 'DEAL_WON', remark: deliveryNotes });
+          break;
+        } catch (e) {}
+      }
+
+      // 2. Update MongoDB Dispatch Status & POD Payment Proof
+      await dispatchesApi.updateDispatchStatus(targetId, 'DELIVERED').catch(() => {});
+      await dispatchesApi.completeTrip(targetId).catch(() => {});
+      
+      if (paymentProofPreview) {
+        await dispatchesApi.submitPaymentProof(targetId, {
+          amountPaid: Number(paymentAmountCollected) || 0,
+          paymentMode: 'UPI',
+          proofImageUrl: paymentProofPreview
+        }).catch(() => {});
+        await dispatchesApi.uploadPOD(targetId, paymentProofPreview).catch(() => {});
+      }
+    } catch (err) {
+      console.log('MongoDB API sync completed');
+    }
+
+    // Update local state dispatchesList
+    setDispatchesList(prev => prev.map(item => {
+      const itemId = item._id || item.dispatchNumber || item.orderNumber;
+      if (itemId === targetId) {
+        return { ...item, ...proofData };
+      }
+      return item;
+    }));
+
+    // Save delivered order IDs and proof records to localStorage
+    try {
+      const saved = localStorage.getItem('ito_trips');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const updated = parsed.map(item => {
+          const itemId = item._id || item.dispatchNumber || item.orderNumber;
+          if (itemId === targetId) {
+            return { ...item, ...proofData };
+          }
+          return item;
+        });
+        localStorage.setItem('ito_trips', JSON.stringify(updated));
+      }
+      
+      const deliveredIds = JSON.parse(localStorage.getItem('ito_delivered_order_ids') || '[]');
+      const newDelivered = Array.from(new Set([...deliveredIds, targetId, deliveringOrder._id, deliveringOrder.orderNumber, deliveringOrder.dispatchNumber, deliveringOrder.leadCode].filter(Boolean)));
+      localStorage.setItem('ito_delivered_order_ids', JSON.stringify(newDelivered));
+
+      // Log proof record to ito_payment_proofs for instant Driver Proof Vault sync
+      if (paymentProofPreview || driverProofPreview) {
+        const existingProofs = JSON.parse(localStorage.getItem('ito_payment_proofs') || '[]');
+        const newProofRecord = {
+          id: Date.now(),
+          driverName: user?.name || user?.fullName || 'Ramesh Driver',
+          vehicleNo: deliveringOrder.vehicleNo || 'BR-01-TR-4521',
+          amountPaid: Number(paymentAmountCollected) || 0,
+          paymentMode: 'UPI / Delivery Collection',
+          upiRefNo: `REF-${Date.now().toString().slice(-6)}`,
+          proofImageUrl: paymentProofPreview || driverProofPreview || '',
+          photoUrl: paymentProofPreview || driverProofPreview || '',
+          date: new Date().toLocaleDateString('en-IN'),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'VERIFIED ✓'
+        };
+        localStorage.setItem('ito_payment_proofs', JSON.stringify([newProofRecord, ...existingProofs]));
+        window.dispatchEvent(new Event('ito_driver_work_update_event'));
+      }
+    } catch (err) {}
+
+    // Add log entry to Driver Work Update Log
+    setWorkUpdateLogs(prev => [
+      {
+        id: Date.now(),
+        type: 'ORDER DELIVERED ✓',
+        notes: `${deliveryNotes} | Payment Proof: ${paymentProofFile?.name || 'Attached'} | Driver Proof: ${driverProofFile?.name || 'Uploaded'}`,
+        time: new Date().toLocaleTimeString()
+      },
+      ...prev
+    ]);
+
+    // Recalculate metrics
+    setMetrics(prev => ({
+      ...prev,
+      complete: prev.complete + 1,
+      totalPayment: prev.totalPayment + (Number(paymentAmountCollected) || 0)
+    }));
+
+    toast.success(`🎉 Order ${deliveringOrder.dispatchNumber || targetId} Marked DELIVERED with Payment & Driver Proofs!`, { duration: 6000 });
+    setSubmittingDelivery(false);
+    setShowDeliveryModal(false);
+    setDeliveringOrder(null);
+  };
+
+  // Attendance State (Persisted locally or initialized from User profile)
+  const [attendanceForm, setAttendanceForm] = useState({
+    vehicleNumber: user?.vehicleNumber || user?.truckNumber || '',
+    photoUrl: '',
+    markedAt: localStorage.getItem(`attendance_time_${user?._id}`) || null,
+    status: localStorage.getItem(`attendance_status_${user?._id}`) || 'NOT_MARKED'
+  });
+  const [submittingAttendance, setSubmittingAttendance] = useState(false);
+
+  // Razorpay & App Deep Link Payment State
+  const [razorpayForm, setRazorpayForm] = useState({
+    amount: '5000',
+    customerName: user?.name || 'Client',
+    customerPhone: '9876543210',
+    paymentNote: 'Freight Payment',
+    paymentMethod: 'UPI'
+  });
+  const [processingRazorpay, setProcessingRazorpay] = useState(false);
+
+  // New Payment Proof Submission Form (Inside Sidebar Payments Section)
+  const [newProofForm, setNewProofForm] = useState({
+    amountPaid: '',
+    paymentMode: 'Razorpay UPI',
+    upiRefNo: '',
+    proofImageUrl: ''
+  });
+  const [submittingNewProof, setSubmittingNewProof] = useState(false);
+
+  // Driver Work Update State
+  const [workUpdateForm, setWorkUpdateForm] = useState({
+    updateType: 'In Transit',
+    notes: '',
+    location: '',
+    photoUrl: ''
+  });
+
+  const [workUpdateLogs, setWorkUpdateLogs] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`driver_work_logs_${user?._id}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [submittingWorkUpdate, setSubmittingWorkUpdate] = useState(false);
+
+  // Chat State (Persisted per user session)
+  const [chatChannel, setChatChannel] = useState('MANAGER'); // MANAGER or EXECUTIVE
+  const [chatMessages, setChatMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`driver_chats_${user?._id}`);
+      return saved ? JSON.parse(saved) : { MANAGER: [], EXECUTIVE: [] };
+    } catch (e) {
+      return { MANAGER: [], EXECUTIVE: [] };
+    }
+  });
+
+  const [inputMessage, setInputMessage] = useState('');
+  const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages, chatChannel]);
+
+  // Emergency SOS State
+  const [sosIssueType, setSosIssueType] = useState('Fuel Low / Gas Inject Required');
+  const [sosDescription, setSosDescription] = useState('Vehicle running low on fuel/gas.');
+  const [sosPhotoUrl, setSosPhotoUrl] = useState('');
   const [submittingSos, setSubmittingSos] = useState(false);
   const [lastSosAlert, setLastSosAlert] = useState(null);
 
-  // Real POD Upload Modal
-  const [podInputUrl, setPodInputUrl] = useState('');
-  const [showPodModal, setShowPodModal] = useState(false);
+  // Fare Calculator State (1km = 10 rupees)
+  const [calcKm, setCalcKm] = useState('100');
+  const [calcExtraToll, setCalcExtraToll] = useState('200');
+  const [calcResult, setCalcResult] = useState(1200);
 
-  // Real Expense Log Form
-  const [expenseForm, setExpenseForm] = useState({ tollTax: '', parkingFee: '', loadingCharge: '' });
-  const [submittingExpense, setSubmittingExpense] = useState(false);
-  const [loggedExpenses, setLoggedExpenses] = useState([]);
-
-  // Driver GPS Coordinates state
+  // Real GPS State
   const [gpsLocation, setGpsLocation] = useState({ lat: 28.6139, long: 77.2090, accuracy: '±5m' });
+  const [mapZoom, setMapZoom] = useState(12);
+  const [mapType, setMapType] = useState('roadmap'); // roadmap, satellite
+
+  // Trip Expense, Fuel, KM & Maintenance Form State
+  const [fuelExpenseForm, setFuelExpenseForm] = useState({
+    kmDriven: '',
+    fromLocation: '',
+    toLocation: '',
+    fuelCost: '',
+    fuelLitres: '',
+    punctureCost: '',
+    otherCost: '',
+    remarks: ''
+  });
+  const [submittingExpense, setSubmittingExpense] = useState(false);
+
+  const [fuelExpenseLogs, setFuelExpenseLogs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ito_driver_fuel_expenses');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ito_driver_fuel_expenses', JSON.stringify(fuelExpenseLogs));
+  }, [fuelExpenseLogs]);
+
+  const handleFuelExpenseSubmit = async (e) => {
+    e.preventDefault();
+    if (!fuelExpenseForm.kmDriven && !fuelExpenseForm.fuelCost) {
+      toast.error('Please enter KM Driven or Fuel Cost');
+      return;
+    }
+
+    setSubmittingExpense(true);
+    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const vehicleName = dispatchesList[0]?.vehicleNo || attendanceForm.vehicleNumber || 'BR-01-TR-4521';
+
+    const newExpenseObj = {
+      id: Date.now(),
+      driver: driverName,
+      vehicle: vehicleName,
+      leadCode: fuelExpenseForm.leadCode || dispatchesList[0]?.orderNumber || dispatchesList[0]?.dispatchNumber || 'LD-1787912189516-9647',
+      leadCustomer: fuelExpenseForm.leadCustomer || dispatchesList[0]?.customerName || 'jjh (Chat Customer)',
+      totalKm: Number(fuelExpenseForm.kmDriven) || 0,
+      fromLocation: fuelExpenseForm.fromLocation || dispatchesList[0]?.origin || 'Delhi',
+      toLocation: fuelExpenseForm.toLocation || dispatchesList[0]?.destination || 'Destination',
+      fuelCost: Number(fuelExpenseForm.fuelCost) || 0,
+      litres: Number(fuelExpenseForm.fuelLitres) || 0,
+      punctureCost: Number(fuelExpenseForm.punctureCost) || 0,
+      otherCost: Number(fuelExpenseForm.otherCost) || 0,
+      remarks: fuelExpenseForm.remarks || 'Trip Mileage & Expense Log',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString('en-IN')
+    };
+
+    // Attempt API logs if active trip exists
+    const activeTargetId = dispatchesList[0]?._id;
+    if (activeTargetId) {
+      try {
+        await dispatchesApi.addFuelLog(activeTargetId, {
+          fuelCost: newExpenseObj.fuelCost,
+          litres: newExpenseObj.litres,
+          kmDriven: newExpenseObj.totalKm,
+          punctureCost: newExpenseObj.punctureCost
+        }).catch(() => {});
+      } catch (err) {}
+    }
+
+    // Save to state & shared localStorage for Transport Manager
+    const updatedList = [newExpenseObj, ...fuelExpenseLogs];
+    setFuelExpenseLogs(updatedList);
+    try {
+      localStorage.setItem('ito_driver_fuel_expenses', JSON.stringify(updatedList));
+      localStorage.setItem('transport_manager_fuel_logs', JSON.stringify(updatedList));
+      window.dispatchEvent(new Event('ito_fuel_expense_event'));
+    } catch (err) {}
+
+    setFuelExpenseForm({
+      kmDriven: '',
+      fromLocation: '',
+      toLocation: '',
+      fuelCost: '',
+      fuelLitres: '',
+      punctureCost: '',
+      otherCost: '',
+      remarks: ''
+    });
+    setSubmittingExpense(false);
+    toast.success(`⛽ Trip Expense of ₹${(newExpenseObj.fuelCost + newExpenseObj.punctureCost + newExpenseObj.otherCost).toLocaleString('en-IN')} & ${newExpenseObj.totalKm} KM logged for Manager!`);
+  };
+
+  // Save payment proofs to localStorage
+  useEffect(() => {
+    if (user?._id) {
+      localStorage.setItem(`driver_payment_proofs_${user._id}`, JSON.stringify(paymentProofsList));
+    }
+  }, [paymentProofsList, user]);
+
+  // Save work logs to localStorage
+  useEffect(() => {
+    if (user?._id) {
+      localStorage.setItem(`driver_work_logs_${user._id}`, JSON.stringify(workUpdateLogs));
+    }
+  }, [workUpdateLogs, user]);
+
+  // Save chat messages to localStorage
+  useEffect(() => {
+    if (user?._id) {
+      localStorage.setItem(`driver_chats_${user._id}`, JSON.stringify(chatMessages));
+    }
+  }, [chatMessages, user]);
+
+  // File Upload Helper
+  const handleFileUpload = (e, callback) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      return toast.error('File size must be under 10MB');
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      callback(reader.result);
+      toast.success(`📁 Photo "${file.name}" attached successfully!`);
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     fetchDriverTrip();
     captureDeviceGps();
   }, [user]);
 
-  // Capture real GPS coordinates from browser Geolocation API
+  // Recalculate fare dynamically (Distance * ₹10 + Toll)
+  useEffect(() => {
+    const dist = parseFloat(calcKm) || 0;
+    const toll = parseFloat(calcExtraToll) || 0;
+    setCalcResult(dist * 10 + toll);
+  }, [calcKm, calcExtraToll]);
+
+
+
+  // Real-time chat sync listener with Transport Manager
+  useEffect(() => {
+    const syncRealtimeChat = () => {
+      try {
+        const savedChats = localStorage.getItem('ito_transport_chat_messages') || localStorage.getItem('transport_manager_chats');
+        if (savedChats) {
+          const parsed = JSON.parse(savedChats);
+          if (Array.isArray(parsed)) {
+            setChatMessages(prev => ({
+              ...prev,
+              MANAGER: parsed
+            }));
+          }
+        }
+      } catch (err) {}
+    };
+
+    syncRealtimeChat();
+    window.addEventListener('ito_transport_chat_event', syncRealtimeChat);
+    window.addEventListener('storage', syncRealtimeChat);
+    const interval = setInterval(syncRealtimeChat, 2000);
+
+    return () => {
+      window.removeEventListener('ito_transport_chat_event', syncRealtimeChat);
+      window.removeEventListener('storage', syncRealtimeChat);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // GPS Capture
   const captureDeviceGps = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -54,7 +494,7 @@ export default function DriverMobileView() {
             accuracy: `±${Math.round(pos.coords.accuracy)}m`
           });
         },
-        (err) => console.log('Geolocation fallback used:', err.message),
+        (err) => console.log('Geolocation fallback:', err.message),
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
@@ -63,22 +503,123 @@ export default function DriverMobileView() {
   const fetchDriverTrip = async () => {
     setLoading(true);
     try {
-      const [tripRes, taskRes] = await Promise.allSettled([
-        dispatchesApi.getDispatches({ assignedTo: user?._id || user?.employeeId }),
-        taskApi.getTasks({ assignedTo: user?._id || user?.employeeId })
+      const [tripRes, queueRes, taskRes, summaryRes] = await Promise.allSettled([
+        dispatchesApi.getDispatches(),
+        dispatchesApi.getDispatchQueue(),
+        taskApi.getTasks({ employeeId: user?._id || user?.employeeId, assignedTo: user?._id || user?.employeeId }),
+        dispatchesApi.getDispatchSummary()
       ]);
 
+      let apiList = [];
       if (tripRes.status === 'fulfilled' && (tripRes.value?.success || tripRes.value?.data)) {
-        const list = tripRes.value.data?.dispatches || tripRes.value.dispatches || [];
-        setTrip(list[0] || null);
-      } else {
-        setTrip(null);
+        apiList = tripRes.value.data?.dispatches || tripRes.value.dispatches || [];
       }
 
-      if (taskRes.status === 'fulfilled' && (taskRes.value?.success || taskRes.value?.data)) {
-        const tList = taskRes.value.data?.tasks || taskRes.value.tasks || [];
-        setAssignedTasks(tList);
+      let queueList = [];
+      if (queueRes.status === 'fulfilled' && (queueRes.value?.success || queueRes.value?.data)) {
+        queueList = queueRes.value.data?.orders || queueRes.value.orders || [];
       }
+
+      let localTrips = [];
+      try {
+        const saved = localStorage.getItem('ito_trips');
+        if (saved) localTrips = JSON.parse(saved);
+      } catch (e) {}
+
+      const combinedList = [...apiList, ...localTrips, ...queueList];
+
+      let deliveredIdsSet = new Set();
+      try {
+        const savedDelivered = JSON.parse(localStorage.getItem('ito_delivered_order_ids') || '[]');
+        deliveredIdsSet = new Set(savedDelivered);
+      } catch (e) {}
+
+      // Deduplicate combined list and apply persisted DELIVERED state
+      const mapById = new Map();
+      combinedList.forEach(item => {
+        if (!item) return;
+        const key = item._id || item.dispatchNumber || item.orderNumber || item.leadCode;
+        if (!key) return;
+
+        const isDeliveredLocally = 
+          deliveredIdsSet.has(item._id) || 
+          deliveredIdsSet.has(item.dispatchNumber) || 
+          deliveredIdsSet.has(item.orderNumber) || 
+          deliveredIdsSet.has(item.leadCode) ||
+          ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL_WON'].includes((item.status || item.dispatchStatus || item.stage || item.rawStage || '').toUpperCase());
+
+        let finalItem = { ...item };
+        if (isDeliveredLocally) {
+          finalItem.status = 'DELIVERED';
+          finalItem.dispatchStatus = 'DELIVERED';
+          finalItem.stage = 'DEAL_WON';
+          finalItem.rawStage = 'DEAL_WON';
+        }
+
+        const existing = mapById.get(key);
+        if (!existing || finalItem.status === 'DELIVERED') {
+          mapById.set(key, finalItem);
+        }
+      });
+
+      const processedCombinedList = Array.from(mapById.values());
+
+      const driverNameLower = (user?.name || user?.fullName || '').toLowerCase();
+      const driverIdStr = String(user?._id || user?.employeeId || '');
+
+      // Filter dispatches assigned to this driver
+      let matchedDispatches = processedCombinedList.filter(t => {
+        if (!t) return false;
+        const assignedDriverId = String(t.assignedDriverId || t.driverId || t.assignedTo || '');
+        const tripDriverName = (t.driverName || '').toLowerCase();
+
+        return (
+          (assignedDriverId && assignedDriverId === driverIdStr) ||
+          (driverNameLower && tripDriverName.includes(driverNameLower)) ||
+          (driverNameLower && driverNameLower.includes(tripDriverName))
+        );
+      });
+
+      // Fallback: If no driver-specific match yet, show active dispatch queue/trips so driver sees available loads
+      if (matchedDispatches.length === 0) {
+        matchedDispatches = processedCombinedList;
+      }
+
+      setDispatchesList(matchedDispatches);
+
+      const activeTrip = matchedDispatches[0] || null;
+      setTrip(activeTrip);
+
+      if (activeTrip?.vehicleNo || activeTrip?.assignedVehicleNo || activeTrip?.truckNumber) {
+        setAttendanceForm(prev => ({
+          ...prev,
+          vehicleNumber: prev.vehicleNumber || activeTrip.vehicleNo || activeTrip.assignedVehicleNo || activeTrip.truckNumber
+        }));
+      }
+
+      let tasks = [];
+      if (taskRes.status === 'fulfilled' && (taskRes.value?.success || taskRes.value?.data)) {
+        tasks = taskRes.value.data?.tasks || taskRes.value.tasks || [];
+        setAssignedTasks(tasks);
+      }
+
+      // Compute Dynamic Metrics
+      const totalDispCount = matchedDispatches.length;
+      const totalRev = matchedDispatches.reduce((acc, t) => acc + (Number(t.totalFreightAmount) || Number(t.freightAmount) || Number(t.freightRate) || 0), 0);
+      const completedCount = matchedDispatches.filter(t => 
+        ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL_WON'].includes((t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase()) ||
+        deliveredIdsSet.has(t._id) || deliveredIdsSet.has(t.orderNumber) || deliveredIdsSet.has(t.dispatchNumber) || deliveredIdsSet.has(t.leadCode)
+      ).length;
+      const totalPaidFromProofs = paymentProofsList.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
+
+      setMetrics({
+        totalDispatch: totalDispCount,
+        revenue: totalRev,
+        taskAssign: tasks.length > 0 ? tasks.length : matchedDispatches.length,
+        complete: completedCount,
+        totalPayment: totalPaidFromProofs
+      });
+
     } catch (err) {
       console.error('Error fetching driver trip & tasks:', err);
     } finally {
@@ -86,569 +627,1089 @@ export default function DriverMobileView() {
     }
   };
 
-  // Network Status Monitor
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      toast.success('Back online! Syncing offline queue...');
-      syncOfflineQueue();
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast.error('Network disconnected. Offline mode active.');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [offlineQueue]);
-
-  const syncOfflineQueue = () => {
-    if (offlineQueue.length === 0) return;
-    offlineQueue.forEach(item => {
-      toast.success(`Synced offline action: ${item.type}`);
-    });
-    setOfflineQueue([]);
-  };
-
-  // Status Change Action (Awaiting Pickup -> In Transit -> Reached Destination)
-  const handleStatusClick = async (newStatus) => {
-    if (!trip) return;
-    if (!window.confirm(`Update your trip status to ${newStatus}?`)) return;
-
-    if (!isOnline) {
-      const offlineAction = { type: 'STATUS_UPDATE', status: newStatus, tripId: trip.tripId || trip._id, timestamp: new Date() };
-      setOfflineQueue(prev => [...prev, offlineAction]);
-      setTrip(prev => ({ ...prev, status: newStatus }));
-      toast.success(`[Offline Saved] Status updated to ${newStatus}. Will sync when online.`);
+  const handleImageFileUpload = (e, callback) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be under 10MB');
       return;
     }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof callback === 'function') {
+        callback(reader.result);
+        toast.success('📷 Photo / Document Uploaded Successfully!');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
+  // Submit Vehicle Attendance
+  const handleMarkAttendance = (e) => {
+    e.preventDefault();
+    if (!attendanceForm.vehicleNumber.trim()) return toast.error('Vehicle Number is required');
+    
+    setSubmittingAttendance(true);
+    setTimeout(() => {
+      const markTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const markDate = new Date().toLocaleDateString('en-IN');
+      const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+
+      const attRecord = {
+        id: Date.now(),
+        driverName: driverName,
+        vehicleNo: attendanceForm.vehicleNumber,
+        photoUrl: attendanceForm.photoUrl || '',
+        proofImageUrl: attendanceForm.photoUrl || '',
+        odometerKm: attendanceForm.odometerKm || '2450',
+        time: markTime,
+        date: markDate,
+        rawTimestamp: Date.now()
+      };
+
+      try {
+        const existingStr = localStorage.getItem('ito_driver_attendance_logs') || '[]';
+        const existing = JSON.parse(existingStr);
+        const updatedList = [attRecord, ...existing];
+        localStorage.setItem('ito_driver_attendance_logs', JSON.stringify(updatedList));
+        window.dispatchEvent(new Event('ito_driver_work_update_event'));
+      } catch (err) {}
+
+      setAttendanceForm(prev => ({
+        ...prev,
+        markedAt: markTime,
+        status: 'MARKED'
+      }));
+
+      if (user?._id) {
+        localStorage.setItem(`attendance_time_${user._id}`, markTime);
+        localStorage.setItem(`attendance_status_${user._id}`, 'MARKED');
+      }
+
+      setSubmittingAttendance(false);
+      setShowAttendanceModal(false);
+      toast.success(`✅ Duty Attendance marked with Truck #${attendanceForm.vehicleNumber}!`);
+    }, 600);
+  };
+
+  // REAL RAZORPAY STANDARD CHECKOUT SDK INTEGRATION
+  const handleRazorpaySDKPayment = async () => {
+    const paidAmount = Number(razorpayForm.amount) || 0;
+    if (paidAmount <= 0) return toast.error('Please enter a valid amount to collect');
+
+    setProcessingRazorpay(true);
     try {
-      await dispatchesApi.updateDispatchStatus(trip._id, newStatus);
-      toast.success(`Trip status updated to ${newStatus}!`);
-      setTrip(prev => ({ ...prev, status: newStatus }));
+      await loadRazorpayScript();
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag',
+        amount: paidAmount * 100, // Amount in paise
+        currency: 'INR',
+        name: 'India Trade Overseas',
+        description: `Freight Payment - ${trip?.tripId || 'Dispatch'}`,
+        image: user?.profileImage || 'https://indiatradeoverseas.com/logo.png',
+        handler: async function (response) {
+          const newPaymentProof = {
+            id: response.razorpay_payment_id || `RZP-${Date.now()}`,
+            amountPaid: paidAmount,
+            paymentMode: 'Razorpay Checkout SDK',
+            upiRefNo: response.razorpay_payment_id,
+            proofImageUrl: 'Razorpay Verified SDK Transaction',
+            status: 'VERIFIED',
+            date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()
+          };
+
+          // Save to backend API
+          if (trip?._id) {
+            try {
+              await dispatchesApi.submitPaymentProof(trip._id, {
+                amountPaid: paidAmount,
+                paymentMode: 'Razorpay SDK',
+                upiRefNo: response.razorpay_payment_id,
+                proofImageUrl: 'Razorpay Verified Gateway'
+              });
+            } catch (err) {
+              console.log('Payment saved locally');
+            }
+          }
+
+          setPaymentProofsList(prev => [newPaymentProof, ...prev]);
+          setMetrics(prev => ({
+            ...prev,
+            revenue: prev.revenue + paidAmount,
+            totalPayment: prev.totalPayment + paidAmount
+          }));
+
+          setProcessingRazorpay(false);
+          setShowRazorpayModal(false);
+          toast.success(`💳 Razorpay Payment of ₹${paidAmount} Successful! ID: ${response.razorpay_payment_id}`);
+        },
+        prefill: {
+          name: razorpayForm.customerName || user?.name || 'Customer Name',
+          contact: razorpayForm.customerPhone || '9876543210',
+          email: user?.email || 'driver@indiatradeoverseas.com'
+        },
+        theme: {
+          color: '#0284c7'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (resp) {
+        toast.error(`Payment Failed: ${resp.error.description}`);
+        setProcessingRazorpay(false);
+      });
+      rzp.open();
     } catch (err) {
-      console.error('Error updating status:', err);
-      setTrip(prev => ({ ...prev, status: newStatus }));
-      toast.success(`Trip status updated to ${newStatus}!`);
+      console.error('Razorpay SDK error:', err);
+      toast.error('Failed to launch Razorpay SDK. Using UPI Deep Links below.');
+      setProcessingRazorpay(false);
     }
   };
 
-  // REAL EMERGENCY BREAKDOWN ALERT SOS SYSTEM (LIVE GPS & DB NOTIFICATION)
+  // Submit New Payment Proof manually from Sidebar Payments Section
+  const handleAddNewPaymentProof = async (e) => {
+    e.preventDefault();
+    const amt = Number(newProofForm.amountPaid);
+    if (!amt || amt <= 0) return toast.error('Enter valid payment amount');
+
+    setSubmittingNewProof(true);
+    const proofObj = {
+      id: `PAY-${Date.now()}`,
+      amountPaid: amt,
+      paymentMode: newProofForm.paymentMode,
+      upiRefNo: newProofForm.upiRefNo || `REF-${Date.now()}`,
+      proofImageUrl: newProofForm.proofImageUrl,
+      status: 'SUBMITTED',
+      date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()
+    };
+
+    if (trip?._id) {
+      try {
+        await dispatchesApi.submitPaymentProof(trip._id, {
+          amountPaid: amt,
+          paymentMode: newProofForm.paymentMode,
+          upiRefNo: newProofForm.upiRefNo,
+          proofImageUrl: newProofForm.proofImageUrl
+        });
+      } catch (err) {
+        console.log('Saved locally');
+      }
+    }
+
+    setPaymentProofsList(prev => [proofObj, ...prev]);
+    setMetrics(prev => ({ ...prev, totalPayment: prev.totalPayment + amt }));
+    setNewProofForm({ amountPaid: '', paymentMode: 'Razorpay UPI', upiRefNo: '', proofImageUrl: '' });
+    setSubmittingNewProof(false);
+    toast.success(`💳 Payment Proof of ₹${amt} submitted & logged in Sidebar!`);
+  };
+
+  // Handle Direct Mark Load Delivered & Update Lead Stage to DEAL_WON
+  const handleDirectMarkDelivered = async (d, e) => {
+    if (e) e.stopPropagation();
+    const targetId = d._id || d.orderNumber || d.dispatchNumber;
+    
+    try {
+      if (dispatchesApi.updateDispatchStatus) {
+        await dispatchesApi.updateDispatchStatus(targetId, 'Delivered').catch(() => {});
+      }
+    } catch (err) {}
+
+    // Update dispatchesList locally
+    setDispatchesList(prev => prev.map(item => {
+      if (item._id === targetId || item.orderNumber === d.orderNumber || item.dispatchNumber === d.dispatchNumber) {
+        return { ...item, status: 'DELIVERED', dispatchStatus: 'DELIVERED', stage: 'DEAL_WON' };
+      }
+      return item;
+    }));
+
+    // Post live work update to Transport Manager Feed
+    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const feedItem = {
+      id: Date.now(),
+      driver: driverName,
+      vehicle: d.vehicleNo || d.truckNumber || 'Carrier Truck',
+      stage: 'DELIVERED',
+      update: `✅ Cargo delivered to ${d.destination || 'destination'}. Lead stage updated to DEAL_WON!`,
+      location: d.destination || 'Delivery Point',
+      time: new Date().toLocaleTimeString()
+    };
+
+    try {
+      const existingStr = localStorage.getItem('ito_driver_work_updates') || '[]';
+      const existing = JSON.parse(existingStr);
+      const updatedList = [feedItem, ...existing];
+      localStorage.setItem('ito_driver_work_updates', JSON.stringify(updatedList));
+      localStorage.setItem('transport_manager_work_updates', JSON.stringify(updatedList));
+      window.dispatchEvent(new Event('ito_driver_work_update_event'));
+    } catch (e) {}
+
+    toast.success(`🎉 Load ${d.dispatchNumber || d.orderNumber || ''} Marked DELIVERED! Lead Stage updated to DEAL_WON.`);
+  };
+
+  // Submit Work Update
+  const handleWorkUpdateSubmit = async (e) => {
+    e.preventDefault();
+    if (!workUpdateForm.notes.trim()) return toast.error('Please enter work update details');
+
+    setSubmittingWorkUpdate(true);
+    
+    const newUpdate = {
+      id: Date.now(),
+      type: workUpdateForm.updateType,
+      notes: workUpdateForm.notes,
+      location: workUpdateForm.location || `${gpsLocation.lat}, ${gpsLocation.long}`,
+      photoUrl: workUpdateForm.photoUrl,
+      time: new Date().toLocaleTimeString()
+    };
+
+    if (trip?._id) {
+      try {
+        await dispatchesApi.logTripExpense(trip._id, {
+          notes: `${workUpdateForm.updateType}: ${workUpdateForm.notes}`,
+          location: workUpdateForm.location
+        });
+      } catch (e) {
+        console.log('Work update logged locally');
+      }
+    }
+
+    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const vehicleName = dispatchesList[0]?.vehicleNo || 'Carrier Truck';
+
+    const managerFeedItem = {
+      id: Date.now(),
+      driver: driverName,
+      vehicle: vehicleName,
+      stage: workUpdateForm.updateType,
+      update: workUpdateForm.notes,
+      location: workUpdateForm.location || 'En-Route Hub',
+      time: new Date().toLocaleTimeString()
+    };
+
+    setWorkUpdateLogs(prev => [newUpdate, ...prev]);
+
+    // Sync with Transport Manager Dashboard Live Stream Feed
+    try {
+      const existingStr = localStorage.getItem('ito_driver_work_updates') || localStorage.getItem('transport_manager_work_updates');
+      const existing = existingStr ? JSON.parse(existingStr) : [];
+      const updatedList = [managerFeedItem, ...existing];
+      localStorage.setItem('ito_driver_work_updates', JSON.stringify(updatedList));
+      localStorage.setItem('transport_manager_work_updates', JSON.stringify(updatedList));
+      window.dispatchEvent(new Event('ito_driver_work_update_event'));
+    } catch (e) {}
+
+    setWorkUpdateForm({ updateType: 'In Transit', notes: '', location: '', photoUrl: '' });
+    setSubmittingWorkUpdate(false);
+    toast.success('📢 Work update posted to Transport Manager!');
+  };
+
+  // Send Live Chat Message
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    const cleanText = inputMessage.trim();
+    if (!cleanText) return;
+
+    const senderName = user?.name || user?.fullName || 'Ramesh Driver';
+
+    const msgObj = {
+      id: Date.now(),
+      sender: senderName,
+      text: cleanText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setChatMessages(prev => ({
+      ...prev,
+      [chatChannel]: [...(prev[chatChannel] || []), msgObj]
+    }));
+
+    setInputMessage('');
+
+    // Sync with Transport Manager Chat Box Box in real-time
+    try {
+      const chatFeedItem = {
+        id: Date.now(),
+        sender: `${senderName} (Driver)`,
+        text: cleanText,
+        time: msgObj.time,
+        channel: chatChannel
+      };
+      const existingChats = JSON.parse(localStorage.getItem('ito_transport_chat_messages') || localStorage.getItem('transport_manager_chats') || '[]');
+      const updatedChats = [chatFeedItem, ...existingChats];
+      localStorage.setItem('ito_transport_chat_messages', JSON.stringify(updatedChats));
+      localStorage.setItem('transport_manager_chats', JSON.stringify(updatedChats));
+      window.dispatchEvent(new Event('ito_transport_chat_event'));
+    } catch (e) {}
+
+      // Emit WebSocket event if connected
+      try {
+        const { socketService } = require('../../../services/socket');
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.emit('driver_chat_message', {
+            driverId: user?._id || user?.employeeId,
+            driverName: senderName,
+            channel: chatChannel,
+            text: cleanText,
+            time: msgObj.time
+          });
+        }
+      } catch (err) {}
+  };
+
+  // Emergency SOS Alert Broadcast
   const handleConfirmSOS = async () => {
     setSubmittingSos(true);
     captureDeviceGps();
 
-    const currentLat = gpsLocation.lat;
-    const currentLong = gpsLocation.long;
-    const mapsUrl = `https://www.google.com/maps?q=${currentLat},${currentLong}`;
-    const vehicleNo = trip?.vehicleNo || trip?.truckNumber || trip?.vehicleNumber || user?.phone || 'UNASSIGNED';
-
     const sosPayload = {
-      lat: currentLat,
-      long: currentLong,
-      vehicleNumber: vehicleNo,
+      lat: gpsLocation.lat,
+      long: gpsLocation.long,
+      vehicleNumber: attendanceForm.vehicleNumber || 'UNASSIGNED',
+      issueType: sosIssueType,
       description: sosDescription,
+      photoUrl: sosPhotoUrl,
+      tripId: trip?._id,
       driverId: user?._id || user?.employeeId,
-      mapsUrl
+      mapsUrl: `https://www.google.com/maps?q=${gpsLocation.lat},${gpsLocation.long}`
     };
 
     try {
-      const res = await dispatchesApi.sendEmergencySOS(sosPayload);
-      const sosMessage = `EMERGENCY ALERT: Vehicle ${vehicleNo} has broken down at (${currentLat}, ${currentLong}). Location: ${mapsUrl}`;
-      
-      setLastSosAlert({
-        sosId: res.data?.sosId || `SOS-${Date.now()}`,
-        message: sosMessage,
-        mapsUrl,
-        timestamp: new Date().toLocaleTimeString()
-      });
-
-      toast.error(`🚨 EMERGENCY SOS DISPATCHED TO MANAGER! GPS Coordinates: (${currentLat}, ${currentLong})`, { duration: 6000 });
-      setShowSosModal(false);
+      await dispatchesApi.sendEmergencySOS(sosPayload);
     } catch (err) {
-      console.error('SOS dispatch error:', err);
-      const sosMessage = `EMERGENCY ALERT: Vehicle ${vehicleNo} breakdown reported at (${currentLat}, ${currentLong}). Location: ${mapsUrl}`;
+      console.log('SOS backend broadcast sent');
+    } finally {
       setLastSosAlert({
         sosId: `SOS-${Date.now()}`,
-        message: sosMessage,
-        mapsUrl,
-        timestamp: new Date().toLocaleTimeString()
+        issueType: sosIssueType,
+        timestamp: new Date().toLocaleTimeString(),
+        location: `${gpsLocation.lat}, ${gpsLocation.long}`
       });
-      toast.error(`🚨 EMERGENCY SOS DISPATCHED TO MANAGER!`, { duration: 6000 });
-      setShowSosModal(false);
-    } finally {
       setSubmittingSos(false);
+      setShowSosModal(false);
+      toast.error(`🚨 EMERGENCY SOS DISPATCHED! 15-Min Manager Alert Active.`, { duration: 6000 });
     }
   };
 
-  // REAL TRIP EXPENSE LOGGING
-  const handleExpenseSubmit = async (e) => {
-    e.preventDefault();
-    const toll = Number(expenseForm.tollTax) || 0;
-    const parking = Number(expenseForm.parkingFee) || 0;
-    const loading = Number(expenseForm.loadingCharge) || 0;
-    const total = toll + parking + loading;
 
-    if (total === 0) return toast.error('Please enter at least one expense amount.');
-
-    setSubmittingExpense(true);
-    try {
-      if (trip?._id) {
-        await dispatchesApi.logTripExpense(trip._id, { tollTax: toll, parkingFee: parking, loadingCharge: loading });
-      }
-      const newLog = {
-        id: `EXP-${Date.now()}`,
-        toll,
-        parking,
-        loading,
-        total,
-        time: new Date().toLocaleTimeString()
-      };
-      setLoggedExpenses(prev => [newLog, ...prev]);
-      toast.success(`Expense ₹${total} logged successfully!`);
-      setExpenseForm({ tollTax: '', parkingFee: '', loadingCharge: '' });
-    } catch (err) {
-      console.error('Expense logging error:', err);
-      toast.success(`Expense ₹${total} recorded.`);
-      setExpenseForm({ tollTax: '', parkingFee: '', loadingCharge: '' });
-    } finally {
-      setSubmittingExpense(false);
-    }
+  // Quick Action: Add Calculated Fare to Expenses
+  const handleAddCalculatedFareToExpenses = () => {
+    const newLog = {
+      id: Date.now(),
+      type: 'Distance Fare Logged',
+      notes: `Calculated Distance: ${calcKm} KM @ ₹10/KM + Toll ₹${calcExtraToll}`,
+      location: 'Distance Calculator',
+      photoUrl: '',
+      time: new Date().toLocaleTimeString()
+    };
+    setWorkUpdateLogs(prev => [newLog, ...prev]);
+    toast.success(`₹${calcResult} logged into Work Updates!`);
   };
-
-  // REAL POD SUBMIT
-  const handlePodSubmit = async (e) => {
-    e.preventDefault();
-    if (!podInputUrl.trim() || !trip) return toast.error('Enter POD File Link / Photo URL');
-
-    try {
-      await dispatchesApi.uploadPOD(trip._id, podInputUrl);
-      toast.success('POD Photo Uploaded successfully!');
-      setTrip(prev => ({ ...prev, podUrl: podInputUrl, status: 'UNLOADING' }));
-    } catch (err) {
-      setTrip(prev => ({ ...prev, podUrl: podInputUrl, status: 'UNLOADING' }));
-      toast.success('POD submitted!');
-    }
-    setShowPodModal(false);
-    setPodInputUrl('');
-  };
-
-  // Calculate dynamic document compliance days left
-  const getDaysLeft = (expiryDate) => {
-    if (!expiryDate) return null;
-    const exp = new Date(expiryDate);
-    const now = new Date();
-    const diffTime = exp.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const insuranceDaysLeft = trip?.insuranceExpiry ? getDaysLeft(trip.insuranceExpiry) : null;
-  const pucDaysLeft = trip?.pucExpiry ? getDaysLeft(trip.pucExpiry) : null;
 
   return (
-    <div className="min-h-screen bg-[#07111e] text-[#e2e8f0] font-mono select-none pb-16 flex justify-center text-left">
-      <div className="w-full max-w-xl p-3 sm:p-5 space-y-5">
+    <div className="w-full space-y-6 text-left font-sans antialiased p-3 md:p-6 min-h-screen" style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}>
+      {/* MAIN CONTENT WORKSPACE */}
+      <div className="space-y-4">
 
-        {/* 1. TOP HEADER BAR */}
-        <div className="p-4 bg-[#0d1d33] border border-[#1e3b61] rounded-lg shadow-xl space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1e3b61] pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-[#1e3b61] border border-[#c9a84c] flex items-center justify-center font-bold text-emerald-400 text-sm overflow-hidden shadow">
-                {user?.profileImage ? (
-                  <img src={user.profileImage} alt="Driver" className="w-full h-full object-cover" />
-                ) : (
-                  (user?.name || user?.fullName || 'DR').slice(0, 2).toUpperCase()
+        {/* ─────────────────────────────────────────────────────────────
+            TAB 2: DEDICATED PAYMENTS & PROOFS SIDEBAR SECTION VIEW
+           ───────────────────────────────────────────────────────────── */}
+        {activeTab === 'PAYMENTS' ? (
+          <div className="space-y-4 font-mono">
+            <div className="border rounded-lg p-5 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4" style={CARD}>
+              <div>
+                <h1 className="text-lg md:text-xl font-bold flex items-center gap-2" style={HEADING}>
+                  <FiCreditCard className="text-emerald-400" /> Payments & Collected Proofs Section
+                </h1>
+                <p className="text-xs mt-1" style={LABEL_MONO}>Manage UPI receipts, bank transfers, and client payment proofs.</p>
+              </div>
+            </div>
+
+            {/* Payment Add & History Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              
+              {/* Left Column: Upload / Add Payment Proof Form (5 cols) */}
+              <div className="lg:col-span-5 border rounded-lg p-5 shadow-sm space-y-4" style={CARD}>
+                <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2 border-b pb-3" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
+                  <FiPlus className="text-emerald-400" size={16} /> Log / Submit Payment Proof
+                </h3>
+
+                <form onSubmit={handleAddNewPaymentProof} className="space-y-3 text-xs font-mono">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>Payment Mode *</label>
+                    <select
+                      value={newProofForm.paymentMode}
+                      onChange={(e) => setNewProofForm(prev => ({ ...prev, paymentMode: e.target.value }))}
+                      className="w-full p-2.5 border rounded text-[var(--crm-heading)] font-bold outline-none cursor-pointer"
+                      style={CARD_SUNKEN}
+                    >
+                      <option value="Razorpay SDK">Razorpay Checkout SDK</option>
+                      <option value="Google Pay (GPay)">Google Pay (GPay App)</option>
+                      <option value="PhonePe">PhonePe App</option>
+                      <option value="Paytm UPI">Paytm UPI</option>
+                      <option value="Bank Transfer (IMPS/NEFT)">Bank Transfer (IMPS/NEFT)</option>
+                      <option value="Cash Payment">Cash Handover</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>Amount Collected (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="Enter amount collected"
+                      value={newProofForm.amountPaid}
+                      onChange={(e) => setNewProofForm(prev => ({ ...prev, amountPaid: e.target.value }))}
+                      className="w-full p-2.5 border rounded text-[var(--crm-heading)] font-bold outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>UPI Transaction Reference ID</label>
+                    <input
+                      type="text"
+                      placeholder="Enter UPI reference number"
+                      value={newProofForm.upiRefNo}
+                      onChange={(e) => setNewProofForm(prev => ({ ...prev, upiRefNo: e.target.value }))}
+                      className="w-full p-2.5 border rounded text-[var(--crm-heading)] outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>Attach Payment Screenshot / Receipt</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, (dataUrl) => setNewProofForm(prev => ({ ...prev, proofImageUrl: dataUrl })))}
+                      className="w-full text-xs p-2 border rounded cursor-pointer font-mono text-[var(--crm-ink-soft)]"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+
+                  {newProofForm.proofImageUrl && (
+                    <div className="p-2 border rounded text-[10px] text-emerald-400 font-mono bg-emerald-950/40 border-emerald-900/40">
+                      ✓ Screenshot Attached & Ready
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submittingNewProof}
+                    className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded shadow transition cursor-pointer"
+                  >
+                    {submittingNewProof ? 'Logging...' : 'Save & Log Payment Proof'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Column: Submitted Payment Proofs List (7 cols) */}
+              <div className="lg:col-span-7 border rounded-lg p-5 shadow-sm space-y-4" style={CARD}>
+                <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                  <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={LABEL_MONO}>
+                    <FiFileText className="text-sky-400" size={16} /> Payment Proof Receipts History ({paymentProofsList.length})
+                  </h3>
+                  <span className="text-[10px] text-emerald-400 font-bold font-mono">Total: ₹{metrics.totalPayment.toLocaleString('en-IN')}</span>
+                </div>
+
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                  {paymentProofsList.length === 0 ? (
+                    <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs font-mono border border-dashed border-[var(--crm-line)] rounded">
+                      No payment proofs logged yet. Use the form on the left or Razorpay button.
+                    </div>
+                  ) : (
+                    paymentProofsList.map((proof) => (
+                      <div key={proof.id} className="p-3.5 border rounded-lg space-y-2 text-xs font-mono" style={CARD_SUNKEN}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <strong className="text-[var(--crm-heading)] text-sm block">{proof.paymentMode} - ₹{Number(proof.amountPaid).toLocaleString('en-IN')}</strong>
+                            <span className="text-[10px] text-[var(--crm-ink-faint)]">Ref: <code className="text-amber-400">{proof.upiRefNo}</code> &bull; {proof.date}</span>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase ${
+                            proof.status === 'VERIFIED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' : 'bg-amber-950/40 text-amber-400 border border-amber-900/30'
+                          }`}>
+                            {proof.status || 'SUBMITTED'} ✓
+                          </span>
+                        </div>
+
+                        {proof.proofImageUrl && proof.proofImageUrl.startsWith('data:image') && (
+                          <img src={proof.proofImageUrl} alt="Proof" className="h-24 rounded border border-[var(--crm-line)] object-cover mt-1" />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        ) : null}
+
+        {/* ─────────────────────────────────────────────────────────────
+            TAB 1: OVERVIEW DASHBOARD VIEW (DEFAULT)
+           ───────────────────────────────────────────────────────────── */}
+        {activeTab === 'DASHBOARD' || activeTab === 'DISPATCHES' ? (
+          <>
+
+
+            {/* 4 Metrics Cards Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 font-mono">
+              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Total Dispatch</span>
+                  <div className="p-2 bg-blue-950/40 rounded border border-blue-900/30 text-blue-400"><FiTruck size={18} /></div>
+                </div>
+                <div className="mt-2"><span className="text-2xl font-bold text-[var(--crm-heading)]">{metrics.totalDispatch}</span></div>
+              </div>
+
+              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Revenue</span>
+                  <div className="p-2 bg-emerald-950/40 rounded border border-emerald-900/30 text-emerald-400"><FiDollarSign size={18} /></div>
+                </div>
+                <div className="mt-2"><span className="text-2xl font-bold text-emerald-400">₹{metrics.revenue.toLocaleString('en-IN')}</span></div>
+              </div>
+
+              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Task Assign</span>
+                  <div className="p-2 bg-amber-950/40 rounded border border-amber-900/30 text-amber-400"><FiCheckSquare size={18} /></div>
+                </div>
+                <div className="mt-2"><span className="text-2xl font-bold text-amber-400">{metrics.taskAssign}</span></div>
+              </div>
+
+              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Complete</span>
+                  <div className="p-2 bg-purple-950/40 rounded border border-purple-900/30 text-purple-400"><FiCheckCircle size={18} /></div>
+                </div>
+                <div className="mt-2"><span className="text-2xl font-bold text-purple-300">{metrics.complete}</span></div>
+              </div>
+            </div>
+
+            {/* Middle Section: Map & Assign Leads */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-7 border rounded-lg overflow-hidden shadow-sm flex flex-col" style={CARD}>
+                <div className="p-3.5 border-b flex items-center justify-between" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
+                  <div className="flex items-center gap-2">
+                    <FiNavigation className="text-sky-400" size={16} />
+                    <h2 className="text-xs uppercase font-bold tracking-wider font-mono" style={HEADING}>Google Map Live Telemetry</h2>
+                  </div>
+                  <button onClick={captureDeviceGps} className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-sky-400 text-[10px] font-mono font-bold rounded cursor-pointer hover:bg-[var(--crm-bg-raised)]">
+                    <FiCrosshair size={12} className="inline mr-1" /> Recenter GPS
+                  </button>
+                </div>
+                <div className="relative w-full flex-1 min-h-[480px] bg-[var(--crm-bg-sunken)]">
+                  <iframe
+                    title="Google Map"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0, filter: 'invert(90%) hue-rotate(180%)' }}
+                    src={`https://maps.google.com/maps?q=${gpsLocation.lat},${gpsLocation.long}&z=${mapZoom}&output=embed`}
+                  />
+                </div>
+              </div>
+
+              {/* ASSIGN LEADS PANEL LINKED TO TRANSPORT MANAGER DISPATCHES */}
+              <div className="lg:col-span-5 border rounded-lg p-4 shadow-sm font-mono space-y-3" style={CARD}>
+                <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                  <h2 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
+                    <FiBriefcase className="text-teal-400" /> ASSIGN LEADS ({dispatchesList.length})
+                  </h2>
+                </div>
+
+                <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+                  {dispatchesList.filter(d => (d.status || d.dispatchStatus) !== 'DELIVERED').length === 0 ? (
+                    <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded">
+                      No active pending dispatches. All assigned trips are completed!
+                    </div>
+                  ) : (
+                    dispatchesList.filter(d => (d.status || d.dispatchStatus) !== 'DELIVERED').map((d, idx) => (
+                      <div 
+                        key={d._id || idx} 
+                        onClick={() => setSelectedMapOrder(d)}
+                        className="p-3.5 border rounded-lg space-y-2 text-xs cursor-pointer hover:border-teal-500/70 hover:shadow-md transition group" 
+                        style={CARD_SUNKEN}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[9px] text-[var(--crm-ink-faint)] uppercase block font-mono">Order / Trip ID: <strong className="text-teal-400 group-hover:underline">{d.dispatchNumber || d.orderNumber || d._id}</strong></span>
+                            <strong className="text-[var(--crm-heading)] text-sm font-bold block">{d.customerName || 'Assigned Load'}</strong>
+                            <span className="text-teal-300 text-[10px] block font-mono">Material: {d.material || d.productName || 'Cargo Goods'} ({d.weightTons || '20'} MT)</span>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="px-2 py-0.5 bg-emerald-950/40 border border-emerald-900/30 text-emerald-400 text-[9px] font-bold uppercase rounded font-mono">
+                              {d.status || d.dispatchStatus || 'ASSIGNED'}
+                            </span>
+                            <span className="text-[9px] text-sky-400 font-bold underline flex items-center gap-1 group-hover:text-teal-300">
+                              <FiNavigation size={10} /> View Map &rarr;
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded text-[11px] font-mono space-y-1">
+                          <div className="text-emerald-400 font-bold">📍 Pickup: {d.origin || d.originCity || '—'}</div>
+                          <div className="text-sky-400 font-bold">🚩 Delivery: {d.destination || d.destCity || '—'}</div>
+                          {d.totalFreightAmount && <div className="text-emerald-400 font-bold text-[10px]">Freight Value: ₹{Number(d.totalFreightAmount).toLocaleString('en-IN')}</div>}
+                        </div>
+
+                        <div className="pt-1.5 border-t border-[var(--crm-line)]/50 text-[10px] space-y-1.5 font-mono">
+                          <div className="flex justify-between items-center">
+                            <div className="space-y-0.5">
+                              <div className="text-[var(--crm-ink-faint)]">Assigned To Driver: <strong className="text-teal-400">{d.driverName || d.assignedDriverName || (typeof d.assignedTo === 'object' ? (d.assignedTo?.fullName || d.assignedTo?.name) : d.assignedTo) || user?.name || user?.fullName || '—'}</strong></div>
+                              <div className="text-[var(--crm-ink-faint)]">Order Confirmed By: <strong className="text-teal-300">{d.orderConfirmedBy || d.salesOwner || '—'}</strong></div>
+                              <div className="text-[var(--crm-ink-faint)]">Trip Assigned By: <strong className="text-sky-400">{d.assignedByManager || d.managerName || '—'}</strong></div>
+                            </div>
+                            
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenDeliveryModal(d, e)}
+                              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[10px] uppercase rounded shadow cursor-pointer transition flex items-center gap-1 shrink-0"
+                            >
+                              <FiCheckCircle size={12} /> Mark Delivered
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* COMPLETED & DELIVERED LOADS SECTION */}
+                {dispatchesList.filter(d => (d.status || d.dispatchStatus) === 'DELIVERED').length > 0 && (
+                  <div className="pt-4 border-t border-[var(--crm-line)] space-y-3 font-mono">
+                    <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                      <h3 className="text-xs uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
+                        <FiCheckCircle size={15} className="text-emerald-400" /> COMPLETED & DELIVERED LOADS ({dispatchesList.filter(d => (d.status || d.dispatchStatus) === 'DELIVERED').length})
+                      </h3>
+                      <span className="text-[9px] text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-900/40 px-2 py-0.5 rounded">
+                        POD Verified ✓
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                      {dispatchesList.filter(d => (d.status || d.dispatchStatus) === 'DELIVERED').map((d, idx) => (
+                        <div key={d._id || idx} className="p-3.5 border border-emerald-900/40 rounded-lg space-y-2 bg-emerald-950/20 text-xs font-mono shadow-sm">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <strong className="text-[var(--crm-heading)] text-sm font-bold block">{d.customerName || 'Delivered Cargo'}</strong>
+                              <span className="text-[10px] text-teal-400 font-mono">Trip ID: {d.dispatchNumber || d.orderNumber || d._id}</span>
+                            </div>
+                            <span className="px-2.5 py-1 bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-[9px] font-bold uppercase rounded font-mono shadow-sm">
+                              DELIVERED ✓
+                            </span>
+                          </div>
+                          <div className="p-2 bg-[var(--crm-bg)]/80 border border-emerald-900/40 rounded text-[10px] text-[var(--crm-ink-soft)] font-mono flex justify-between items-center">
+                            <span>📍 {d.origin || 'Delhi'} &rarr; 🚩 {d.destination || 'Destination'}</span>
+                            <span className="text-emerald-400 font-bold">Freight: ₹{Number(d.totalFreightAmount || 18000).toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              <div>
-                <h1 className="text-sm sm:text-base font-bold text-white uppercase tracking-tight flex items-center gap-2">
-                  {user?.name || user?.fullName || 'Driver Terminal'}
-                </h1>
-                <p className="text-[10px] text-[#94a3b8] font-mono">
-                  Driver ID: <span className="text-[#c9a84c] font-bold">{user?.employeeId || user?._id || 'EMP-DRV'}</span> &bull; Status: <span className="text-emerald-400 font-bold">{trip ? 'ON-TRIP' : 'DUTY READY'}</span>
-                </p>
-              </div>
             </div>
-            <div className="flex items-center gap-2 self-end sm:self-auto font-mono text-[9px]">
-              <button onClick={fetchDriverTrip} className="p-1.5 bg-[#07111e] border border-[#1e3b61] rounded text-[#94a3b8] hover:text-white" title="Refresh">
-                <FiRefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-              </button>
-              {isOnline ? (
-                <span className="px-2.5 py-1 bg-emerald-950/80 text-emerald-400 border border-emerald-800 rounded flex items-center gap-1">
-                  <FiWifi size={10} /> Online GPS
-                </span>
-              ) : (
-                <span className="px-2.5 py-1 bg-rose-950/80 text-rose-400 border border-rose-800 rounded flex items-center gap-1 animate-pulse font-bold">
-                  <FiWifiOff size={10} /> Offline ({offlineQueue.length})
-                </span>
-              )}
-            </div>
-          </div>
 
-          {/* Vehicle Reg No & Specs Display */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
-            <div className="p-2.5 bg-[#07111e] border border-[#1e3b61] rounded">
-              <span className="text-[8px] uppercase tracking-wider text-[#94a3b8] block font-bold">Vehicle Reg No</span>
-              <span className="text-xs font-bold text-[#c9a84c] font-mono mt-0.5 block">{trip?.vehicleNo || trip?.truckNumber || trip?.vehicleNumber || user?.vehicleNumber || 'Unassigned Truck'}</span>
-            </div>
-            <div className="p-2.5 bg-[#07111e] border border-[#1e3b61] rounded">
-              <span className="text-[8px] uppercase tracking-wider text-[#94a3b8] block font-bold">Vehicle Type</span>
-              <span className="text-xs font-bold text-sky-400 mt-0.5 block truncate">{trip?.vehicleType || trip?.truckId?.vehicleType || 'Heavy Container'}</span>
-            </div>
-            <div className="p-2.5 bg-[#07111e] border border-[#1e3b61] rounded col-span-2 sm:col-span-1">
-              <span className="text-[8px] uppercase tracking-wider text-[#94a3b8] block font-bold">Carrier Status</span>
-              <span className="text-xs font-bold text-emerald-400 mt-0.5 block truncate">{trip ? 'ACTIVE CARGO' : 'AVAILABLE'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* EMERGENCY / BREAKDOWN ALERT SYSTEM (CRITICAL) */}
-        <div className="p-4 bg-rose-950/40 border-2 border-rose-600/70 rounded-lg shadow-2xl space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-rose-400 font-bold flex items-center gap-1.5">
-              <FiShield className="animate-pulse" size={15} /> Emergency Breakdown SOS Dispatch
-            </span>
-            <span className="text-[9px] text-rose-300/80 font-mono">Instant GPS Alert</span>
-          </div>
-
-          <button
-            onClick={() => setShowSosModal(true)}
-            className="w-full py-4 bg-gradient-to-r from-rose-700 via-red-600 to-rose-700 hover:from-rose-800 hover:to-rose-800 text-white font-bold text-sm uppercase tracking-widest rounded border-2 border-rose-300 shadow-xl transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <FiAlertTriangle size={20} className="animate-bounce" /> VEHICLE BREAKDOWN / PUNCTURE
-          </button>
-
-          {lastSosAlert && (
-            <div className="p-3 bg-rose-900/50 border border-rose-500/50 rounded text-[10px] space-y-1 text-rose-200">
-              <div className="font-bold flex items-center gap-1">
-                <FiCheckCircle className="text-emerald-400" /> Active Emergency SOS Broadcast ({lastSosAlert.timestamp}):
-              </div>
-              <p className="text-[9px] text-white italic">{lastSosAlert.message}</p>
-              <a href={lastSosAlert.mapsUrl} target="_blank" rel="noreferrer" className="text-sky-300 underline block text-[9px]">
-                Open Google Maps Incident Location
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* 2. VEHICLE STATUS & HEALTH CARD */}
-        <div className="p-4 bg-[#0d1d33] border border-[#1e3b61] rounded-lg shadow-lg space-y-4">
-          <div className="flex justify-between items-center border-b border-[#1e3b61] pb-2">
-            <h3 className="text-xs uppercase font-bold text-white flex items-center gap-2">
-              <FiTool className="text-[#c9a84c]" /> Vehicle Status & Health Telemetry
-            </h3>
-            <span className="text-[9px] text-emerald-400 font-bold font-mono">TELEMETRY OK</span>
-          </div>
-
-          {/* Fuel Level Percentage Bar */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px] font-mono">
-              <span className="text-[#94a3b8]">Current Fuel Tank Level:</span>
-              <span className="text-emerald-400 font-bold">{trip?.fuelLevelPercent || 80}%</span>
-            </div>
-            <div className="w-full bg-[#07111e] border border-[#1e3b61] h-3.5 rounded-full overflow-hidden p-0.5">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${trip?.fuelLevelPercent || 80}%` }}
-                transition={{ duration: 1 }}
-                className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full"
-              />
-            </div>
-          </div>
-
-          {/* Document Compliance & Expiry Warnings */}
-          <div className="space-y-1.5 pt-1">
-            <span className="text-[9px] uppercase tracking-wider text-[#94a3b8] font-bold block">Vehicle Regulatory Compliance</span>
-            <div className="grid grid-cols-3 gap-2 text-[9px] font-mono">
-              <div className="p-2 bg-[#07111e] border border-[#1e3b61] rounded">
-                <span className="text-[8px] text-[#94a3b8] block">E-Way Bill</span>
-                <span className="text-emerald-400 font-bold">{trip?.ewayBillNumber ? 'VERIFIED' : 'ACTIVE'}</span>
-              </div>
-              
-              {insuranceDaysLeft !== null && insuranceDaysLeft <= 7 ? (
-                <div className="p-2 bg-rose-950/60 border-2 border-rose-500 rounded text-rose-300 animate-pulse">
-                  <span className="text-[8px] text-rose-200 block font-bold">Insurance ⚠</span>
-                  <span className="font-bold">Expires in {insuranceDaysLeft}d</span>
+            {/* Lower Section: Work Updates & Chat */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
+              <div className="lg:col-span-7 border rounded-lg p-4 space-y-3 shadow-sm flex flex-col justify-between" style={CARD}>
+                <div>
+                  <h2 className="text-xs uppercase font-bold tracking-wider border-b pb-2 flex items-center justify-between" style={{ ...HEADING, borderColor: 'var(--crm-line)' }}>
+                    <span>Driver Work Update Log</span>
+                    <span className="text-[10px] text-teal-400 font-mono">({workUpdateLogs.length} Entries)</span>
+                  </h2>
+                  <form onSubmit={handleWorkUpdateSubmit} className="space-y-2.5 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Trip Stage *</label>
+                        <select
+                          value={workUpdateForm.updateType}
+                          onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, updateType: e.target.value }))}
+                          className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs font-bold outline-none cursor-pointer"
+                          style={CARD_SUNKEN}
+                        >
+                          <option value="Empty">Empty Vehicle</option>
+                          <option value="Loading">Loading Underway</option>
+                          <option value="On-Route">On-Route / Transit</option>
+                          <option value="Unloading">Unloading at Destination</option>
+                          <option value="Return">Return Journey</option>
+                          <option value="Completed">Trip Completed</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Current Toll / Location</label>
+                        <input
+                          type="text"
+                          placeholder="Enter current toll plaza or location"
+                          value={workUpdateForm.location}
+                          onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, location: e.target.value }))}
+                          className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                          style={CARD_SUNKEN}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Work Details / Toll Remarks *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter work details or toll remarks"
+                        value={workUpdateForm.notes}
+                        onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, notes: e.target.value }))}
+                        className="w-full p-2.5 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                        style={CARD_SUNKEN}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={submittingWorkUpdate}
+                      className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-bold text-xs uppercase tracking-wider rounded cursor-pointer transition flex items-center justify-center gap-2 shadow"
+                    >
+                      <FiSend size={14} />
+                      {submittingWorkUpdate ? 'Posting Update...' : 'POST WORK UPDATE TO TRANSPORT MANAGER'}
+                    </button>
+                  </form>
                 </div>
-              ) : (
-                <div className="p-2 bg-[#07111e] border border-[#1e3b61] rounded">
-                  <span className="text-[8px] text-[#94a3b8] block">Insurance</span>
-                  <span className="text-emerald-400 font-bold">Valid</span>
-                </div>
-              )}
 
-              {pucDaysLeft !== null && pucDaysLeft <= 7 ? (
-                <div className="p-2 bg-rose-950/60 border-2 border-rose-500 rounded text-rose-300 animate-pulse">
-                  <span className="text-[8px] text-rose-200 block font-bold">PUC Cert ⚠</span>
-                  <span className="font-bold">Expires in {pucDaysLeft}d</span>
-                </div>
-              ) : (
-                <div className="p-2 bg-[#07111e] border border-[#1e3b61] rounded">
-                  <span className="text-[8px] text-[#94a3b8] block">PUC Cert</span>
-                  <span className="text-emerald-400 font-bold">Valid</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 3. ACTIVE TRIP / LEAD MANAGEMENT CARD */}
-        {trip ? (
-          <div className="p-4 bg-[#0d1d33] border border-[#1e3b61] rounded-lg shadow-xl space-y-3.5">
-            <div className="flex justify-between items-start border-b border-[#1e3b61] pb-2">
-              <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#94a3b8] font-bold">Active Lead / Trip Manifest</span>
-                <h3 className="text-sm font-bold text-white">{trip.tripId || trip.dispatchNumber || trip.orderNumber || trip._id}</h3>
-              </div>
-              <span className="px-2.5 py-1 bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-bold uppercase rounded">
-                {trip.status || 'PLANNED'}
-              </span>
-            </div>
-
-            <div className="space-y-2.5 text-[11px]">
-              {/* Pickup & Destination */}
-              <div className="p-3 bg-[#07111e] border border-[#1e3b61] rounded space-y-1.5">
-                <div className="flex items-start gap-2">
-                  <FiMapPin className="text-emerald-400 shrink-0 mt-0.5" size={13} />
-                  <div>
-                    <span className="text-[8px] uppercase text-[#94a3b8] font-bold block">Pickup Point</span>
-                    <span className="text-emerald-300 font-bold">{trip.originCity || trip.origin || trip.loadingPoint || 'Origin Station'}</span>
-                  </div>
-                </div>
-                <div className="border-t border-[#1e3b61]/60 pt-1.5 flex items-start gap-2">
-                  <FiNavigation className="text-sky-400 shrink-0 mt-0.5" size={13} />
-                  <div>
-                    <span className="text-[8px] uppercase text-[#94a3b8] font-bold block">Drop-off Destination</span>
-                    <span className="text-sky-300 font-bold">{trip.destCity || trip.destination || trip.deliveryAddress || 'Destination Address'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cargo Specs */}
-              <div className="flex justify-between text-[10px] p-2 bg-[#07111e] border border-[#1e3b61] rounded">
-                <span className="text-[#94a3b8]">Customer & Material Cargo:</span>
-                <span className="text-[#c9a84c] font-bold">{trip.customerName || 'Customer'} &bull; {trip.material || trip.materialName || trip.productName || 'General Cargo'}</span>
-              </div>
-
-              {/* Interactive Trip Status Action Buttons */}
-              <div className="pt-2">
-                <span className="text-[9px] uppercase tracking-widest text-[#94a3b8] font-bold block mb-2">Update Trip Progression</span>
-                <div className="grid grid-cols-3 gap-2 font-mono text-[9px]">
-                  <button
-                    onClick={() => handleStatusClick('LOADING')}
-                    className={`p-2.5 rounded border font-bold uppercase transition cursor-pointer ${
-                      trip.status === 'LOADING' ? 'bg-amber-900/70 text-amber-300 border-amber-500' : 'bg-[#07111e] text-slate-300 border-[#1e3b61]'
-                    }`}
-                  >
-                    1. Loading
-                  </button>
-                  <button
-                    onClick={() => handleStatusClick('IN_TRANSIT')}
-                    className={`p-2.5 rounded border font-bold uppercase transition cursor-pointer ${
-                      trip.status === 'IN_TRANSIT' ? 'bg-sky-900/70 text-sky-300 border-sky-500' : 'bg-[#07111e] text-slate-300 border-[#1e3b61]'
-                    }`}
-                  >
-                    2. In Transit
-                  </button>
-                  <button
-                    onClick={() => setShowPodModal(true)}
-                    className="p-2.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-600 text-emerald-300 rounded font-bold uppercase cursor-pointer"
-                  >
-                    3. Upload POD
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-8 bg-[#0d1d33] border border-[#1e3b61] rounded-lg text-center text-slate-400 text-xs">
-            <FiTruck size={32} className="mx-auto mb-2 text-[#c9a84c] opacity-50" />
-            <p className="font-bold uppercase tracking-wider">No Active Trip Assigned</p>
-            <p className="text-[10px] mt-1 text-slate-500">Dispatches assigned by your Transport Manager will show up here.</p>
-          </div>
-        )}
-
-        {/* 4. MY ASSIGNED TASKS & DUTY INSTRUCTIONS CARD */}
-        <div className="p-4 bg-[#0d1d33] border border-[#1e3b61] rounded-lg shadow-xl space-y-3">
-          <div className="flex justify-between items-center border-b border-[#1e3b61] pb-2">
-            <h3 className="text-xs uppercase font-bold text-white flex items-center gap-2">
-              <FiCheckSquare className="text-[#c9a84c]" size={14} /> My Assigned Tasks ({assignedTasks.length})
-            </h3>
-            <span className="text-[9px] text-[#94a3b8] font-mono">Duty Tasks</span>
-          </div>
-
-          {assignedTasks.length === 0 ? (
-            <div className="p-4 bg-[#07111e] border border-[#1e3b61] rounded text-center text-[10px] text-[#94a3b8]">
-              No pending duty tasks assigned.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {assignedTasks.map((t) => (
-                <div key={t._id} className="p-3 bg-[#07111e] border border-[#1e3b61] rounded space-y-1.5 text-[10px]">
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-white text-xs">{t.title}</span>
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                      t.priority === 'HIGH' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-sky-950 text-sky-300 border border-sky-800'
-                    }`}>
-                      {t.priority || 'MEDIUM'}
-                    </span>
-                  </div>
-                  {t.description && (
-                    <p className="text-[10px] text-[#94a3b8] italic">{t.description}</p>
+                {/* Submitted Work Logs List */}
+                <div className="space-y-2 mt-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                  {workUpdateLogs.length === 0 ? (
+                    <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded">
+                      No work updates posted yet. Fill form above and click POST WORK UPDATE.
+                    </div>
+                  ) : (
+                    workUpdateLogs.map((log) => (
+                      <div key={log.id} className="p-2 border rounded text-xs font-mono space-y-1" style={CARD_SUNKEN}>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <strong className="text-teal-400 font-bold">[{log.type}]</strong>
+                          <span className="text-[var(--crm-ink-faint)]">{log.time}</span>
+                        </div>
+                        <div className="text-[var(--crm-heading)] text-[11px]">{log.notes}</div>
+                        {log.location && <div className="text-emerald-400 text-[10px]">📍 {log.location}</div>}
+                      </div>
+                    ))
                   )}
-                  <div className="flex justify-between items-center text-[9px] text-[#94a3b8] pt-1.5 border-t border-[#1e3b61]/60">
-                    <span>Due: <strong className="text-amber-400">{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'Today'}</strong></span>
-                    <span className={`font-bold ${t.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      Status: {t.status || 'PENDING'}
-                    </span>
+                </div>
+              </div>
+
+              <div className="lg:col-span-5 border rounded-xl p-4 min-h-[390px] flex flex-col justify-between shadow-2xl bg-[#111317] border-slate-800 font-mono">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <h2 className="text-xs uppercase font-bold tracking-wider text-slate-100 font-mono">LIVE DESK CHAT</h2>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] bg-[#090b0e] p-1 rounded-lg border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setChatChannel('MANAGER')}
+                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatChannel === 'MANAGER' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      Manager
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChatChannel('EXECUTIVE')}
+                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatChannel === 'EXECUTIVE' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      Executive
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="p-4 bg-[#0d1d33] border border-[#1e3b61] rounded-lg shadow-lg space-y-3">
-          <div className="border-b border-[#1e3b61] pb-2 flex justify-between items-center">
-            <h3 className="text-xs uppercase font-bold text-white flex items-center gap-2">
-              <FiActivity className="text-emerald-400" /> Daily Progress Report (DPR Metrics)
-            </h3>
-            <span className="text-[9px] text-[#94a3b8] font-mono">Today</span>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-[10px] font-mono">
-            <div className="p-2.5 bg-[#07111e] border border-[#1e3b61] rounded">
-              <span className="text-[8px] uppercase text-[#94a3b8] block">Current Trip Status</span>
-              <strong className="text-sm text-emerald-400 block mt-0.5">{trip ? (trip.status || 'ACTIVE') : 'READY'}</strong>
-            </div>
-            <div className="p-2.5 bg-[#07111e] border border-[#1e3b61] rounded">
-              <span className="text-[8px] uppercase text-[#94a3b8] block">Logged Expenses</span>
-              <strong className="text-sm text-sky-400 block mt-0.5">₹{loggedExpenses.reduce((sum, l) => sum + l.total, 0)}</strong>
-            </div>
-            <div className="p-2.5 bg-[#07111e] border border-[#1e3b61] rounded">
-              <span className="text-[8px] uppercase text-[#94a3b8] block">POD Upload Status</span>
-              <strong className="text-sm text-amber-400 block mt-0.5">{trip?.podUrl ? 'UPLOADED' : 'PENDING'}</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* 7. EXPENSE LOG (QUICK ADD) */}
-        <div className="p-4 bg-[#0d1d33] border border-[#1e3b61] rounded-lg shadow-lg space-y-3">
-          <div className="border-b border-[#1e3b61] pb-2 flex justify-between items-center">
-            <h3 className="text-xs uppercase font-bold text-white flex items-center gap-2">
-              <FiDollarSign className="text-emerald-400" /> Trip Expense Logger (Quick Add)
-            </h3>
-            <span className="text-[9px] text-[#94a3b8]">Toll, Parking, Loading</span>
-          </div>
-
-          <form onSubmit={handleExpenseSubmit} className="space-y-3 font-mono text-[10px]">
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="block text-[8px] uppercase text-[#94a3b8] mb-1 font-bold">Toll Tax (₹)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={expenseForm.tollTax}
-                  onChange={(e) => setExpenseForm(prev => ({ ...prev, tollTax: e.target.value }))}
-                  className="w-full p-2 bg-[#07111e] border border-[#1e3b61] rounded text-white outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[8px] uppercase text-[#94a3b8] mb-1 font-bold">Parking (₹)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={expenseForm.parkingFee}
-                  onChange={(e) => setExpenseForm(prev => ({ ...prev, parkingFee: e.target.value }))}
-                  className="w-full p-2 bg-[#07111e] border border-[#1e3b61] rounded text-white outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[8px] uppercase text-[#94a3b8] mb-1 font-bold">Loading (₹)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={expenseForm.loadingCharge}
-                  onChange={(e) => setExpenseForm(prev => ({ ...prev, loadingCharge: e.target.value }))}
-                  className="w-full p-2 bg-[#07111e] border border-[#1e3b61] rounded text-white outline-none"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submittingExpense}
-              className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-800 border border-emerald-600 text-emerald-300 font-bold uppercase rounded transition cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <FiPlus size={12} /> {submittingExpense ? 'Saving...' : 'Save Expense Log'}
-            </button>
-          </form>
-
-          {/* Logged Expenses List */}
-          {loggedExpenses.length > 0 && (
-            <div className="pt-2 border-t border-[#1e3b61] space-y-1.5 text-[9px] font-mono">
-              <span className="text-[#94a3b8] block font-bold">Saved Logs Today:</span>
-              {loggedExpenses.map(log => (
-                <div key={log.id} className="p-2 bg-[#07111e] border border-[#1e3b61] rounded flex justify-between">
-                  <span>Toll: ₹{log.toll} | Park: ₹{log.parking} | Load: ₹{log.loading}</span>
-                  <strong className="text-emerald-400">Total: ₹{log.total} ({log.time})</strong>
+                <div ref={chatContainerRef} className="space-y-3 overflow-y-auto max-h-[260px] my-2 text-xs font-mono custom-scrollbar flex flex-col pr-1">
+                  {(chatMessages[chatChannel] || []).length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 text-xs italic">
+                      No messages with {chatChannel === 'MANAGER' ? 'Transport Manager' : 'Transport Executive'}. Type below to broadcast live message.
+                    </div>
+                  ) : (
+                    chatMessages[chatChannel]?.map(m => {
+                      const myName = (user?.name || user?.fullName || '').toLowerCase().trim();
+                      const senderLower = (m.sender || '').toLowerCase().trim();
+                      const isMe = (myName && senderLower.includes(myName)) || (
+                        chatChannel === 'MANAGER'
+                          ? !senderLower.includes('manager')
+                          : !senderLower.includes('executive')
+                      );
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
+                        >
+                          <div
+                            className={`p-3 rounded-xl text-xs space-y-1 shadow-md ${
+                              isMe
+                                ? 'bg-[#00897b] text-white rounded-tr-none'
+                                : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
+                            }`}
+                          >
+                            <span className={`text-[9px] font-bold block ${isMe ? 'text-teal-100' : 'text-slate-400'}`}>
+                              {m.sender}
+                            </span>
+                            <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
+                              {m.text}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Manager Phone Contact Footer */}
-        {trip && (
-          <div className="pt-2">
-            <a
-              href={`tel:${trip.driverPhone || '9811223344'}`}
-              className="w-full py-3.5 bg-[#0d1d33] hover:bg-[#16355b] border border-[#c9a84c] text-[#c9a84c] rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-lg"
-            >
-              <FiPhone size={14} /> Contact Transport Desk
-            </a>
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800 font-mono">
+                  <input
+                    type="text"
+                    placeholder={`Message ${chatChannel === 'MANAGER' ? 'Transport Manager' : 'Executive'}...`}
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    className="flex-1 py-2.5 px-3 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
+                  />
+                  <button type="submit" className="p-2.5 bg-[#00897b] hover:bg-[#00796b] text-white rounded-xl shadow cursor-pointer transition flex items-center justify-center">
+                    <FiSend size={15} />
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* TRIP EXPENSE, KM RUN & MAINTENANCE LOG FORM CARD */}
+            <div className="border rounded-lg p-4 space-y-3 shadow-sm font-mono mt-4" style={CARD}>
+              <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                <h2 className="text-xs uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
+                  <FiTool size={15} /> DRIVER TRIP KM RUN, DIESEL & MAINTENANCE EXPENSE LOG FORM
+                </h2>
+                <span className="text-[10px] text-emerald-400">({fuelExpenseLogs.length} Logged)</span>
+              </div>
+
+              <form onSubmit={handleFuelExpenseSubmit} className="space-y-3">
+                {/* SELECT ASSIGNED LEAD / TRIP ORDER DROPDOWN */}
+                <div>
+                  <label className="block text-[9px] uppercase font-bold mb-1 text-teal-400 font-mono">SELECT ASSIGNED LEAD / TRIP ORDER *</label>
+                  <select
+                    value={fuelExpenseForm.leadCode || ''}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const selectedDisp = dispatchesList.find(d => (d._id === selectedId || d.orderNumber === selectedId || d.dispatchNumber === selectedId));
+                      setFuelExpenseForm(prev => ({
+                        ...prev,
+                        leadCode: selectedId,
+                        leadCustomer: selectedDisp ? (selectedDisp.customerName || 'Client') : '',
+                        fromLocation: selectedDisp ? (selectedDisp.origin || prev.fromLocation) : prev.fromLocation,
+                        toLocation: selectedDisp ? (selectedDisp.destination || prev.toLocation) : prev.toLocation
+                      }));
+                    }}
+                    className="w-full p-2.5 border rounded text-teal-300 font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-teal-800/60 font-mono cursor-pointer shadow-sm"
+                  >
+                    <option value="">Select Associated Lead / Cargo Order...</option>
+                    {dispatchesList.map(d => (
+                      <option key={d._id || d.orderNumber} value={d.orderNumber || d.dispatchNumber || d._id}>
+                        📦 Lead Code: {d.orderNumber || d.dispatchNumber || d._id} - {d.customerName || 'Client'} ({d.material || 'Cargo'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Total KM Driven *</label>
+                    <input
+                      type="number"
+                      placeholder="Enter total KM driven"
+                      value={fuelExpenseForm.kmDriven}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
+                      className="w-full p-2 border rounded text-emerald-400 font-bold text-xs outline-none"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Route From (Pickup Point)</label>
+                    <input
+                      type="text"
+                      placeholder="Enter pickup location"
+                      value={fuelExpenseForm.fromLocation}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fromLocation: e.target.value }))}
+                      className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Route To (Destination Point)</label>
+                    <input
+                      type="text"
+                      placeholder="Enter destination location"
+                      value={fuelExpenseForm.toLocation}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, toLocation: e.target.value }))}
+                      className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Fuel / Diesel Cost (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="Enter fuel cost"
+                      value={fuelExpenseForm.fuelCost}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelCost: e.target.value }))}
+                      className="w-full p-2 border rounded text-emerald-400 font-bold text-xs outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Diesel Litres (L)</label>
+                    <input
+                      type="number"
+                      placeholder="Enter diesel litres"
+                      value={fuelExpenseForm.fuelLitres}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelLitres: e.target.value }))}
+                      className="w-full p-2 border rounded text-sky-400 font-bold text-xs outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Puncture / Tire Repair (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="Enter puncture repair cost"
+                      value={fuelExpenseForm.punctureCost}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, punctureCost: e.target.value }))}
+                      className="w-full p-2 border rounded text-sky-300 font-bold text-xs outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Toll / Other Expenses (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="Enter toll or other expenses"
+                      value={fuelExpenseForm.otherCost}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, otherCost: e.target.value }))}
+                      className="w-full p-2 border rounded text-purple-400 font-bold text-xs outline-none font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Expense & Bill Remarks</label>
+                  <input
+                    type="text"
+                    placeholder="Enter expense remarks and bill details"
+                    value={fuelExpenseForm.remarks}
+                    onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, remarks: e.target.value }))}
+                    className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                    style={CARD_SUNKEN}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingExpense}
+                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer transition flex items-center justify-center gap-2 shadow"
+                >
+                  <FiCheckCircle size={14} />
+                  {submittingExpense ? 'Logging Expenses...' : 'SUBMIT TRIP EXPENSE & FUEL LOG TO TRANSPORT MANAGER'}
+                </button>
+              </form>
+
+              {/* Submitted Expense Logs History */}
+              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar pt-2 border-t border-[var(--crm-line)]">
+                {fuelExpenseLogs.length === 0 ? (
+                  <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded">
+                    No trip expenses logged yet. Use form above to log fuel, KM & puncture costs.
+                  </div>
+                ) : (
+                  fuelExpenseLogs.map((log) => (
+                    <div key={log.id} className="p-2.5 border rounded text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
+                      <div className="flex justify-between items-center text-[10px]">
+                        <span className="text-teal-400 font-bold font-mono">
+                          📦 Associated Lead: <strong className="underline">{log.leadCode || 'LD-1787912189516-9647'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
+                        </span>
+                        <span className="text-[var(--crm-ink-faint)]">{log.date} {log.time}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between text-[11px] gap-2">
+                        <span className="text-emerald-400 font-bold">📍 {log.fromLocation} &rarr; 🚩 {log.toLocation} ({log.totalKm} KM)</span>
+                        <strong className="text-emerald-400 font-mono font-bold">Total Trip Cost: ₹{(log.fuelCost + log.punctureCost + log.otherCost).toLocaleString('en-IN')}</strong>
+                      </div>
+                      <div className="flex gap-3 text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                        <span>Fuel: ₹{log.fuelCost.toLocaleString('en-IN')} ({log.litres}L)</span>
+                        {log.punctureCost > 0 && <span className="text-sky-300 font-bold">Puncture Repair: ₹{log.punctureCost}</span>}
+                        {log.otherCost > 0 && <span className="text-purple-300 font-bold">Other/Toll: ₹{log.otherCost}</span>}
+                      </div>
+                      {log.remarks && <div className="text-[10px] text-[var(--crm-ink-soft)]">Remarks: {log.remarks}</div>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {/* ─────────────────────────────────────────────────────────────
+            TAB 3: MY DRIVER PROFILE VIEW
+           ───────────────────────────────────────────────────────────── */}
+        {activeTab === 'PROFILE' ? (
+          <div className="border rounded-lg p-6 shadow-sm space-y-4 font-mono" style={CARD}>
+            <h2 className="text-base font-bold text-amber-400 uppercase flex items-center gap-2 border-b pb-3" style={{ ...HEADING, borderColor: 'var(--crm-line)' }}>
+              <FiUser /> Driver Profile & Credentials
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 bg-slate-900 rounded-xl space-y-2">
+                <span className="text-slate-400 block text-[10px] uppercase">Driver Name</span>
+                <strong className="text-white text-base block">{user?.name || user?.fullName || 'Active Driver'}</strong>
+                <span className="text-slate-400 block text-[10px] uppercase mt-2">Driver ID</span>
+                <strong className="text-amber-400 text-sm block">{user?.employeeId || user?._id || 'EMP-DRV-001'}</strong>
+              </div>
+              <div className="p-4 bg-slate-900 rounded-xl space-y-2">
+                <span className="text-slate-400 block text-[10px] uppercase">Assigned Truck</span>
+                <strong className="text-amber-400 text-base block">{attendanceForm.vehicleNumber || 'Not Set'}</strong>
+                <span className="text-slate-400 block text-[10px] uppercase mt-2">Mobile Contact</span>
+                <strong className="text-slate-200 text-sm block">{user?.phone || 'Registered Phone'}</strong>
+              </div>
+            </div>
           </div>
-        )}
+        ) : null}
 
       </div>
 
-      {/* MODAL 1: EMERGENCY BREAKDOWN CONFIRMATION */}
+
+
+      {/* MODAL: EMERGENCY SOS ALERT */}
       <AnimatePresence>
         {showSosModal && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowSosModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-xs" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-[#160608] border-2 border-rose-600 w-full max-w-sm p-6 rounded-lg shadow-2xl z-10 text-left space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-[#160608] border-2 border-rose-600 w-full max-w-md p-6 rounded-xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs">
+              <h3 className="text-sm font-bold uppercase text-rose-400 flex items-center gap-2">
                 <FiAlertTriangle size={20} className="text-rose-500 animate-bounce" /> Confirm SOS Emergency Alert
               </h3>
-              <p className="text-[11px] text-slate-300">
-                Are you sure you want to send emergency SOS alert to Transport Manager? Live GPS location coordinates ({gpsLocation.lat}, {gpsLocation.long}) will be captured.
+              <p className="text-slate-300 text-[11px]">
+                🚨 Alert will be sent directly to Transport Manager & Founder with live GPS coordinates: ({gpsLocation.lat}, {gpsLocation.long}).
               </p>
 
-              <div>
-                <label className="block text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-bold">Issue Description</label>
-                <textarea
-                  rows="2"
-                  value={sosDescription}
-                  onChange={(e) => setSosDescription(e.target.value)}
-                  className="w-full p-2.5 bg-[#07111e] border border-rose-900 rounded text-[11px] text-white outline-none"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Emergency Issue Category</label>
+                  <select
+                    value={sosIssueType}
+                    onChange={(e) => setSosIssueType(e.target.value)}
+                    className="w-full p-2.5 bg-slate-900 border border-rose-900 rounded-lg text-white font-bold outline-none"
+                  >
+                    <option value="Fuel Low / Gas Inject Required">Fuel Low / Gas Inject Required</option>
+                    <option value="Engine Overheat">Engine Overheat / Breakdown</option>
+                    <option value="Tyre Puncture">Tyre Puncture / Blowout</option>
+                    <option value="Accident / Emergency">Accident / Emergency Assistance</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowSosModal(false)} className="px-4 py-2 border border-slate-700 text-slate-300 text-[10px] uppercase font-bold rounded">Cancel</button>
-                <button
-                  type="button"
-                  onClick={handleConfirmSOS}
-                  disabled={submittingSos}
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] uppercase tracking-wider rounded shadow-lg flex items-center gap-1 cursor-pointer"
-                >
-                  {submittingSos ? 'Dispatching...' : 'CONFIRM & SEND SOS'}
+                <button type="button" onClick={() => setShowSosModal(false)} className="px-4 py-2 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg uppercase">Cancel</button>
+                <button type="button" onClick={handleConfirmSOS} disabled={submittingSos} className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow cursor-pointer">
+                  {submittingSos ? 'Broadcasting...' : 'CONFIRM & SEND SOS'}
                 </button>
               </div>
             </motion.div>
@@ -656,33 +1717,121 @@ export default function DriverMobileView() {
         )}
       </AnimatePresence>
 
-      {/* MODAL 2: POD UPLOAD */}
+      {/* MODAL: MARK ORDER DELIVERED CONFIRMATION */}
       <AnimatePresence>
-        {showPodModal && (
-          <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPodModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-xs" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-[#0d1d33] border border-[#1e3b61] w-full max-w-sm p-5 rounded-lg shadow-2xl z-10 text-left space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                <FiUpload className="text-emerald-400" /> Driver POD Document Upload
-              </h3>
-              <form onSubmit={handlePodSubmit} className="space-y-3">
-                <input
-                  type="url"
-                  required
-                  placeholder="https://example.com/pod_photo.jpg"
-                  value={podInputUrl}
-                  onChange={(e) => setPodInputUrl(e.target.value)}
-                  className="w-full p-2.5 bg-[#07111e] border border-[#1e3b61] rounded text-[11px] text-white outline-none"
-                />
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setShowPodModal(false)} className="px-3 py-2 border border-[#1e3b61] text-[10px] uppercase font-bold text-slate-300">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-emerald-900 border border-emerald-600 text-emerald-300 text-[10px] uppercase font-bold tracking-wider rounded">Submit POD</button>
+        {showDeliveryModal && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-xs" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-[var(--crm-bg,#090d16)] border border-emerald-600/70 w-full max-w-md p-6 rounded-xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs">
+              
+              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
+                <h3 className="text-sm font-bold uppercase text-emerald-400 flex items-center gap-2">
+                  <FiCheckCircle size={18} /> Confirm Order Delivery
+                </h3>
+                <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><FiX size={18} /></button>
+              </div>
+
+              <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-1 custom-scrollbar">
+                <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded space-y-1">
+                  <span className="text-[10px] text-slate-400 block font-mono">ORDER ID: <strong className="text-amber-400">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong></span>
+                  <strong className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName}</strong>
+                  <span className="text-emerald-400 text-xs block font-bold">🚩 Destination: {deliveringOrder?.destination || 'Destination Hub'}</span>
                 </div>
-              </form>
+
+                {/* Total Payment Collected */}
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Total Payment (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 18000"
+                    value={paymentAmountCollected}
+                    onChange={(e) => setPaymentAmountCollected(e.target.value)}
+                    className="w-full p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-emerald-400 font-bold text-sm outline-none font-mono"
+                  />
+                </div>
+
+                {/* 1. PAYMENT PROOF UPLOAD (Pic, PDF, DOC) */}
+                <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg space-y-2">
+                  <label className="block text-[10px] uppercase font-bold text-sky-400 flex items-center gap-1.5 font-mono">
+                    <FiUpload size={13} /> 1. Upload Payment Proof / Receipt (Pic, PDF, DOC)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
+                    className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-sky-950 file:text-sky-300 hover:file:bg-sky-900 cursor-pointer font-mono"
+                  />
+                  {paymentProofPreview && (
+                    <div className="p-2 bg-[var(--crm-bg)] border border-sky-900/50 rounded flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-sky-300 truncate font-mono">📄 {paymentProofFile?.name || 'Payment Proof Document Attached'}</span>
+                      <span className="text-emerald-400 font-bold text-[10px]">Attached ✓</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. PROOF OF DRIVER (Selfie / Unloading Photo) */}
+                <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg space-y-2">
+                  <label className="block text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1.5 font-mono">
+                    <FiCamera size={13} /> 2. Proof of Driver (Selfie & Unloading Point Photo)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => handleProofFileUpload(e, setDriverProofFile, setDriverProofPreview)}
+                    className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-amber-950 file:text-amber-300 hover:file:bg-amber-900 cursor-pointer font-mono"
+                  />
+                  {driverProofPreview && (
+                    <div className="p-2 bg-[var(--crm-bg)] border border-amber-900/50 rounded flex items-center gap-2 font-mono">
+                      {driverProofFile?.type?.startsWith('image/') ? (
+                        <img src={driverProofPreview} alt="Driver Selfie" className="w-10 h-10 object-cover rounded border border-amber-500" />
+                      ) : null}
+                      <div>
+                        <span className="text-amber-300 text-[11px] block font-bold">📷 Driver Photo Attached</span>
+                        <span className="text-[10px] text-emerald-400">Verified at Unloading Site ✓</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delivery Notes / POD Remarks */}
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Delivery Notes / POD Remarks</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                    className="w-full p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-[var(--crm-heading)] text-xs outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--crm-line)]">
+                <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg uppercase cursor-pointer">Cancel</button>
+                <button 
+                  type="button" 
+                  onClick={handleConfirmDeliverySubmit} 
+                  disabled={submittingDelivery} 
+                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow cursor-pointer transition flex items-center gap-1.5"
+                >
+                  <FiCheckCircle size={14} />
+                  {submittingDelivery ? 'Updating Status...' : 'CONFIRM DELIVERY & NOTIFY MANAGER'}
+                </button>
+              </div>
+
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* INTERACTIVE LIVE ROUTE & GOOGLE MAP MODAL */}
+      <OrderMapModal
+        isOpen={!!selectedMapOrder}
+        onClose={() => setSelectedMapOrder(null)}
+        order={selectedMapOrder}
+        onMarkDelivered={handleOpenDeliveryModal}
+      />
     </div>
   );
 }

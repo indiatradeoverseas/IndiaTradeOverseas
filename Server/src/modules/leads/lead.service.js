@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
 const Quotation = require('../quotations/quotation.model');
@@ -19,11 +20,13 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
   QUOTATION_SHARED: ['DISPATCH_PLANNED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
   NEGOTIATION: ['LOI_PO_PENDING', 'CLOSED_LOST', 'SAMPLE_SENT', 'DEAL_WON', 'DEAL_LOST'],
   LOI_PO_PENDING: ['ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  ORDER_CONFIRMED: ['DISPATCH_PENDING', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DISPATCH_PENDING: ['PAYMENT_PENDING', 'CLOSED_LOST', 'DEAL_LOST'],
-  DISPATCH_PLANNED: ['PAYMENT_PENDING', 'CLOSED_LOST', 'DEAL_LOST'],
-  PAYMENT_PENDING: ['DOCUMENT_PENDING', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DOCUMENT_PENDING: ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  ORDER_CONFIRMED: ['DISPATCH_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DISPATCH_PENDING: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
+  DISPATCH_PLANNED: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
+  PAYMENT_PENDING: ['DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DOCUMENT_PENDING: ['CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DELIVERED: ['CLOSED_WON', 'COMPLETED'],
+  COMPLETED: [],
   CLOSED_WON: [],
   CLOSED_LOST: [],
   
@@ -49,6 +52,8 @@ function canAccessLead(user, lead) {
     role.toLowerCase().includes('manager') ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS' ||
+    role === 'DRIVER' ||
+    role.toLowerCase().includes('driver') ||
     dept === 'ADMIN' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
@@ -137,16 +142,21 @@ async function listLeads(user, query = {}) {
     role.toLowerCase().includes('manager') ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS' ||
+    role === 'TRANSPORT_MANAGER' ||
+    role === 'LOGISTICS_MANAGER' ||
     dept === 'ADMIN' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
+    user.dispatchPermission === true ||
+    user.permissions?.dispatch === true ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
   const shouldFilterMyLeadsOnly = query.myLeadsOnly === 'true' || (
     !isManagerOrAdminUser &&
     role !== 'HR' &&
     role !== 'ACCOUNTS' &&
-    role !== 'FINANCE'
+    role !== 'FINANCE' &&
+    query.dispatchQueue !== 'true'
   );
 
   if (shouldFilterMyLeadsOnly) {
@@ -169,7 +179,10 @@ async function listLeads(user, query = {}) {
     filter.assignedTo = { $in: actorIds };
   }
 
-  const leads = await Lead.find(filter).populate('assignedTo', 'fullName name email role profileImage').sort({ createdAt: -1 });
+  const leads = await Lead.find(filter)
+    .populate('assignedTo', 'fullName name email role profileImage')
+    .populate('createdBy', 'fullName name email role profileImage')
+    .sort({ createdAt: -1 });
 
   // Resolve mixed User/Employee populated assignees
   const populatedLeads = await Promise.all(leads.map(async (l) => {
@@ -230,7 +243,13 @@ async function getLeadById(id, user) {
 
 async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, user, ipAddress, deviceHash }) {
   // 1. Fetch the lead record first so `lead` exists in memory
-  const lead = await Lead.findById(leadId);
+  let lead = null;
+  if (mongoose.isValidObjectId(leadId)) {
+    lead = await Lead.findById(leadId);
+  }
+  if (!lead) {
+    lead = await Lead.findOne({ $or: [{ leadCode: leadId }, { leadId: leadId }, { orderNumber: leadId }] });
+  }
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
   // 2. Access control check
@@ -239,7 +258,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
       actorId: user._id,
       actionType: 'UNAUTHORIZED_VIEW',
       entityType: 'LEAD',
-      entityId: leadId,
+      entityId: lead._id,
       severity: 'HIGH',
       ipAddress,
       deviceHash,
@@ -252,14 +271,18 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   const previousStage = lead.stage;
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
   
-  // Allow ADMIN and MANAGER roles to override pipeline rules
+  // Allow ADMIN, MANAGER, and DRIVER roles to override pipeline rules
   const role = user.role || '';
   const isManagerOrAdminUser =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.toLowerCase().includes('manager') ||
+    role === 'DRIVER' ||
+    role.toLowerCase().includes('driver') ||
+    role === 'TRANSPORT' ||
     user.department === 'ADMIN' ||
+    user.department === 'TRANSPORT' ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
   const canOverride = isManagerOrAdminUser;

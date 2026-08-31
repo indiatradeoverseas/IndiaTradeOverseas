@@ -11,26 +11,66 @@ export const getDispatches = async (params = {}) => {
   return res.data;
 };
 
-// Fetch Leads in DISPATCH_PENDING / ORDER_CONFIRMED stage for Transport Manager Dispatch Queue
+// Fetch Confirmed Leads & Dispatch Queue for Transport Manager
 export const getDispatchQueue = async () => {
   try {
-    const res = await axios.get('/leads');
-    if (res.data?.success && Array.isArray(res.data?.data?.leads)) {
-      const allLeads = res.data.data.leads;
-      // Filter leads in DISPATCH_PENDING, ORDER_CONFIRMED, DISPATCH_PLANNED, or stage containing DISPATCH/ORDER
-      const dispatchLeads = allLeads.filter(l => 
-        ['DISPATCH_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PLANNED', 'READY'].includes(l.stage) ||
-        (l.stage && (l.stage.includes('DISPATCH') || l.stage.includes('ORDER_CONFIRMED')))
-      ).map(l => ({
-        _id: l._id,
-        orderNumber: l.leadCode || l._id,
-        customerName: l.customerName || l.companyName || 'Customer',
-        material: l.productCategory || 'General Cargo',
-        quantity: l.quantity || '1 Load',
-        destination: l.destination || l.country || 'Destination Address',
-        priority: (l.priority === 'HOT' || l.priority === 'HIGH') ? 'HIGH' : (l.priority || 'MEDIUM'),
-        stage: l.stage
-      }));
+    const res = await axios.get('/leads?dispatchQueue=true');
+    const allLeads = res.data?.data?.leads || res.data?.leads || (Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []));
+    
+    if (Array.isArray(allLeads)) {
+      const confirmedStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'READY', 'CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'];
+      
+      const filteredLeads = allLeads.filter(l => {
+        const st = (l.stage || '').toUpperCase();
+        return confirmedStages.includes(st) || st.includes('CONFIRM') || st.includes('DISPATCH') || st.includes('DELIVER');
+      });
+
+      const dispatchLeads = filteredLeads.map(l => {
+        let execName = 'Sales Executive';
+
+        if (typeof l.assignedTo === 'object' && l.assignedTo && (l.assignedTo.fullName || l.assignedTo.name)) {
+          execName = l.assignedTo.fullName || l.assignedTo.name;
+        } else if (typeof l.createdBy === 'object' && l.createdBy && (l.createdBy.fullName || l.createdBy.name)) {
+          execName = l.createdBy.fullName || l.createdBy.name;
+        } else if (l.salesOwner || l.orderOwner || l.confirmedBy) {
+          execName = l.salesOwner || l.orderOwner || l.confirmedBy;
+        } else if (typeof l.assignedTo === 'string' && l.assignedTo.length > 5) {
+          execName = l.assignedTo;
+        }
+
+        let mgrName = 'Transport Manager';
+        if (typeof l.assignedBy === 'object' && l.assignedBy && (l.assignedBy.fullName || l.assignedBy.name)) {
+          mgrName = l.assignedBy.fullName || l.assignedBy.name;
+        } else if (l.assignedByManager || l.managerName) {
+          mgrName = l.assignedByManager || l.managerName;
+        }
+
+        const calcValue = Number(l.leadValue || l.estimatedValue || l.freightAmount || l.totalFreightAmount || l.freightRate) || 
+          (parseFloat(l.quantity) ? Math.round(parseFloat(l.quantity) * 750) : 0);
+
+        const currentStageUpper = (l.stage || '').toUpperCase();
+        const computedStatus = ['DELIVERED', 'COMPLETED'].includes(currentStageUpper) ? 'DELIVERED' : (l.status || 'ORDER_CONFIRMED');
+
+        return {
+          _id: l._id,
+          orderNumber: l.leadCode || l.leadId || `ORD-${l._id?.slice(-4)}`,
+          customerName: l.customerName || l.companyName || l.contactPerson || 'Confirmed Client',
+          companyName: l.companyName || l.customerName || '',
+          material: l.productCategory || l.product || 'Cargo Goods',
+          weightTons: l.quantity || '—',
+          origin: l.origin || l.originCity || l.pickupAddress || '—',
+          destination: l.destination || l.destCity || l.deliveryAddress || l.city || l.country || '—',
+          priority: l.priority || 'NORMAL',
+          freightAmount: calcValue,
+          stage: (l.stage || 'ORDER_CONFIRMED').replace(/_/g, ' '),
+          rawStage: l.stage || 'ORDER_CONFIRMED',
+          status: computedStatus,
+          salesOwner: execName,
+          orderConfirmedBy: execName,
+          assignedByManager: mgrName,
+          phone: l.phone || l.phoneMasked || '—'
+        };
+      });
       return { success: true, data: { orders: dispatchLeads } };
     }
   } catch (err) {
@@ -90,6 +130,48 @@ export const logTripExpense = async (id, expenseData) => {
   return res.data;
 };
 
+// ─── PHASE 4.1 API ENDPOINTS ──────────────────────────────────────────────
+
+export const acknowledgeSOS = async (sosId) => {
+  const res = await axios.post(`/v1/dispatch/emergency/${sosId}/acknowledge`);
+  return res.data;
+};
+
+export const submitPaymentProof = async (id, data) => {
+  const res = await axios.post(`/v1/dispatch/${id}/payment-proof`, data);
+  return res.data;
+};
+
+export const verifyPaymentProof = async (id) => {
+  const res = await axios.post(`/v1/dispatch/${id}/verify-payment`);
+  return res.data;
+};
+
+export const recordStartOdometer = async (id, data) => {
+  const res = await axios.post(`/v1/dispatch/${id}/odometer/start`, data);
+  return res.data;
+};
+
+export const recordEndOdometer = async (id, data) => {
+  const res = await axios.post(`/v1/dispatch/${id}/odometer/end`, data);
+  return res.data;
+};
+
+export const addFuelLog = async (id, data) => {
+  const res = await axios.post(`/v1/dispatch/${id}/fuel-log`, data);
+  return res.data;
+};
+
+export const submitDepartureImages = async (id, data) => {
+  const res = await axios.post(`/v1/dispatch/${id}/departure-images`, data);
+  return res.data;
+};
+
+export const submitDeliveryImages = async (id, data) => {
+  const res = await axios.post(`/v1/dispatch/${id}/delivery-images`, data);
+  return res.data;
+};
+
 export const dispatchesApi = {
   getDispatchSummary,
   getDispatches,
@@ -102,5 +184,13 @@ export const dispatchesApi = {
   completeTrip,
   updateDispatch,
   sendEmergencySOS,
-  logTripExpense
+  acknowledgeSOS,
+  logTripExpense,
+  submitPaymentProof,
+  verifyPaymentProof,
+  recordStartOdometer,
+  recordEndOdometer,
+  addFuelLog,
+  submitDepartureImages,
+  submitDeliveryImages
 };

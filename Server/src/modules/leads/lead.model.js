@@ -100,6 +100,8 @@ const leadSchema = new mongoose.Schema(
         "DOCUMENT_PENDING",
         "CLOSED_WON",
         "CLOSED_LOST",
+        "DELIVERED",
+        "COMPLETED",
         // New stages
         "REQUIREMENT_RECEIVED",
         "QUOTATION_SENT",

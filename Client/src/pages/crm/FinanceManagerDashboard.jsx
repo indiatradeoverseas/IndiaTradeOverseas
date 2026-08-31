@@ -472,7 +472,7 @@ export default function FinanceManagerDashboard() {
                       <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">Amounts in INR</span>
                     </h3>
                     <div className="mt-4 h-72">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={200}>
                         <LineChart data={plTrendData} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.3} />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={10} />
@@ -493,7 +493,7 @@ export default function FinanceManagerDashboard() {
                       Department Expenses Budget Allocation
                     </h3>
                     <div className="mt-4 h-72">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={200}>
                         <BarChart data={budgetAllocation} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.3} />
                           <XAxis dataKey="dept" stroke="var(--crm-ink-faint)" fontSize={10} />
@@ -516,7 +516,7 @@ export default function FinanceManagerDashboard() {
                       Receivables Aging Analysis
                     </h3>
                     <div className="mt-4 h-56 flex flex-col justify-center">
-                      <ResponsiveContainer width="100%" height="70%">
+                      <ResponsiveContainer width="100%" height={180} minWidth={0} minHeight={150}>
                         <PieChart>
                           <Pie
                             data={agingData}

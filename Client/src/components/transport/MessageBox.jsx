@@ -89,60 +89,58 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
           initial={{ scale: 0.95, opacity: 0, y: 15 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 15 }}
-          className="relative bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-full max-w-lg rounded shadow-2xl font-mono text-xs z-10 overflow-hidden text-left"
+          className="relative bg-[#111317] border border-slate-800 w-full max-w-lg rounded-xl shadow-2xl font-mono text-xs z-10 overflow-hidden text-left p-5 space-y-4"
         >
           {/* Header */}
-          <div className="p-4 bg-[#0a192f] border-b border-[var(--crm-line)] flex items-center justify-between text-white">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
-              <FiMessageSquare className="text-[#c9a84c]" size={16} />
-              <div>
-                <h3 className="text-xs uppercase font-bold tracking-widest text-[#f8fafc]">
-                  Dispatch Communications Panel
-                </h3>
-                <p className="text-[9px] text-[#94a3b8]">
-                  Trip ID: {trip?.tripId || trip?.dispatchNumber || trip?._id || 'N/A'}
-                </p>
-              </div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
+                LIVE DESK CHAT
+              </h3>
             </div>
-            <button 
-              onClick={onClose}
-              className="text-[#94a3b8] hover:text-white p-1 transition cursor-pointer"
-            >
-              <FiX size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase">LIVE CONNECTION</span>
+              <button 
+                onClick={onClose}
+                className="text-slate-400 hover:text-white p-1 transition cursor-pointer ml-2"
+              >
+                <FiX size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex border-b border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]">
+          <div className="flex border-b border-slate-800 bg-[#090b0e] p-1 rounded-lg">
             <button
               onClick={() => setActiveTab('COMPOSE')}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition ${
+              className={`flex-1 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition ${
                 activeTab === 'COMPOSE'
-                  ? 'border-b-2 border-[#c9a84c] text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]'
-                  : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                  ? 'bg-[#00897b] text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Compose Message
             </button>
             <button
               onClick={() => setActiveTab('HISTORY')}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 ${
+              className={`flex-1 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 ${
                 activeTab === 'HISTORY'
-                  ? 'border-b-2 border-[#c9a84c] text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]'
-                  : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                  ? 'bg-[#00897b] text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <FiList size={11} /> Message History ({historyList.length})
+              <FiList size={11} /> Chat Thread ({historyList.length})
             </button>
           </div>
 
           {/* Body Content */}
           {activeTab === 'COMPOSE' ? (
-            <form onSubmit={handleSend} className="p-4 space-y-3">
+            <form onSubmit={handleSend} className="space-y-3">
               {/* Recipient Details */}
-              <div className="grid grid-cols-2 gap-3 p-2.5 rounded bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)]">
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#1a1d24] border border-slate-800">
                 <div>
-                  <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold flex items-center gap-1">
+                  <label className="block text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold flex items-center gap-1">
                     <FiUser size={9} /> Recipient Name
                   </label>
                   <input 
@@ -150,11 +148,11 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
                     required
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
-                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded text-[10px] text-[var(--crm-heading)] outline-none"
+                    className="w-full bg-[#090b0e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-200 text-xs outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold flex items-center gap-1">
+                  <label className="block text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold flex items-center gap-1">
                     <FiPhone size={9} /> Mobile Number
                   </label>
                   <input 
@@ -162,20 +160,20 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
                     required
                     value={recipientPhone}
                     onChange={(e) => setRecipientPhone(e.target.value)}
-                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded text-[10px] text-[var(--crm-heading)] outline-none font-mono"
+                    className="w-full bg-[#090b0e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-200 text-xs outline-none font-mono"
                   />
                 </div>
               </div>
 
               {/* Template Select */}
               <div>
-                <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold">
+                <label className="block text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold">
                   Quick Reply Templates
                 </label>
                 <select
                   value={selectedTemplate}
                   onChange={handleTemplateChange}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1.5 rounded text-[10px] text-[var(--crm-heading)] outline-none cursor-pointer font-medium"
+                  className="w-full bg-[#090b0e] border border-slate-800 px-3 py-2 rounded-lg text-slate-200 text-xs outline-none cursor-pointer font-sans"
                 >
                   {TEMPLATES.map((t, idx) => (
                     <option key={idx} value={t.label}>{t.label}</option>
@@ -183,54 +181,52 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
                 </select>
               </div>
 
-              {/* Message Body Textarea */}
-              <div>
-                <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold">
-                  Message Body *
-                </label>
-                <textarea
-                  rows={4}
+              {/* Message Input & Send */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                <input
+                  type="text"
                   required
-                  placeholder="Enter manual operational message to driver or executive..."
+                  placeholder="Message Transport Manager..."
                   value={messageBody}
                   onChange={(e) => setMessageBody(e.target.value)}
-                  className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] p-2.5 rounded text-[11px] text-[var(--crm-heading)] outline-none focus:border-[#c9a84c] transition"
+                  className="flex-1 py-3 px-4 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
                 />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 border border-[var(--crm-line)] rounded text-[10px] uppercase font-bold text-[var(--crm-ink-soft)] hover:text-white transition cursor-pointer"
-                >
-                  Cancel
-                </button>
                 <button
                   type="submit"
-                  disabled={sending}
-                  className="px-4 py-2 bg-[#0a192f] hover:bg-[#122b50] border border-[#c9a84c] text-[#c9a84c] hover:text-white rounded text-[10px] uppercase font-bold tracking-wider transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  disabled={sending || !messageBody.trim()}
+                  className="p-3 bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 text-white rounded-xl shadow transition cursor-pointer flex items-center justify-center"
                 >
-                  <FiSend size={11} /> {sending ? 'Sending...' : 'Send Message'}
+                  <FiSend size={16} />
                 </button>
               </div>
             </form>
           ) : (
-            <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
-              {historyList.map((item) => (
-                <div key={item.id} className="p-3 border rounded border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]">
-                  <div className="flex justify-between items-center mb-1 text-[9px]">
-                    <span className="font-bold text-[#c9a84c]">{item.sender}</span>
-                    <span className="text-[var(--crm-ink-faint)] font-mono flex items-center gap-1">
-                      <FiClock size={9} /> {new Date(item.sentAt).toLocaleString()}
-                    </span>
+            <div className="space-y-3 max-h-[300px] min-h-[220px] overflow-y-auto pr-2 custom-scrollbar flex flex-col">
+              {historyList.map((item) => {
+                const isMe = item.sender?.includes('You') || item.sender === currentUser?.name;
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex flex-col max-w-[80%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
+                  >
+                    <div
+                      className={`p-3.5 rounded-2xl text-xs space-y-1 shadow-md ${
+                        isMe
+                          ? 'bg-[#00897b] text-white rounded-tr-none'
+                          : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
+                      }`}
+                    >
+                      <span className={`text-[10px] font-bold block ${isMe ? 'text-teal-100' : 'text-slate-400'}`}>
+                        {item.sender}
+                      </span>
+                      <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
+                        {item.text}
+                      </p>
+                    </div>
+                    <span className="text-[9px] text-slate-500 mt-1 font-mono">{new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                  <p className="text-[11px] text-[var(--crm-heading)] leading-snug">
-                    {item.text}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </motion.div>

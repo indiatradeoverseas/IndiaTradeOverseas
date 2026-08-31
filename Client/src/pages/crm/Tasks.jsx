@@ -398,53 +398,53 @@ export default function Tasks() {
                     <motion.div
                       key={lead._id}
                       variants={blockVariants}
-                      whileHover={{ y: -4, borderColor: 'rgba(197,203,211,0.35)' }}
-                      className="bg-[var(--crm-bg-raised)]/30 rounded-sm border border-[var(--crm-ink-soft)]/15 hover:border-[var(--crm-heading)]/40 shadow-2xl transition-all duration-300 flex flex-col justify-between p-6 group"
+                      whileHover={{ y: -4 }}
+                      className="bg-[var(--crm-bg-raised)]/40 rounded-xl border border-[var(--crm-line)] hover:border-teal-500/60 shadow-xl transition-all duration-300 flex flex-col justify-between p-5 group font-mono"
                     >
                       <div className="text-left">
                         {/* Unique Identifier Strip */}
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] tracking-wider">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-[10px] font-mono font-bold text-teal-400 tracking-wider">
                             {lead.leadCode}
                           </span>
-                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]/90 border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-teal-300 bg-teal-950/40 border border-teal-800/60 px-2.5 py-0.5 rounded">
                             {lead.productCategory}
                           </span>
                         </div>
 
                         {/* Consignee Data */}
-                        <div className="mb-4">
-                          <h3 onClick={() => navigate(`/crm/leads/${lead._id}`)} className="text-base font-serif font-normal text-[var(--crm-heading)] cursor-pointer hover:text-white transition-colors leading-tight">
+                        <div className="mb-3">
+                          <h3 onClick={() => navigate(`/crm/leads/${lead._id}`)} className="text-base font-bold text-[var(--crm-heading)] cursor-pointer hover:text-teal-300 transition-colors leading-tight font-sans">
                             {lead.customerName}
                           </h3>
                           {lead.companyName && (
-                            <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1.5">{lead.companyName}</p>
+                            <p className="text-xs text-[var(--crm-ink-faint)] mt-1">{lead.companyName}</p>
                           )}
                         </div>
 
                         {/* Specifications Metrics list */}
-                        <div className="space-y-3 text-xs text-[var(--crm-ink-soft)]/80 py-3.5 border-t border-b border-[var(--crm-ink-soft)]/10 mb-4">
+                        <div className="space-y-2.5 text-xs text-[var(--crm-ink-soft)] py-3 border-t border-b border-[var(--crm-line)] mb-3">
                           {lead.quantity && (
                             <div className="flex items-center gap-2">
-                              <FiLayers className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
-                              <span>Mass Metrics: <strong className="text-[var(--crm-heading)] font-medium">{lead.quantity}</strong></span>
+                              <FiLayers className="text-teal-400 shrink-0" size={13} />
+                              <span>Mass Metrics: <strong className="text-emerald-400 font-bold">{lead.quantity}</strong></span>
                             </div>
                           )}
                           {lead.destination && (
                             <div className="flex items-center gap-2">
-                              <FiMapPin className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
-                              <span>Discharge Point: <strong className="text-[var(--crm-heading)] font-medium">{lead.destination}</strong></span>
+                              <FiMapPin className="text-sky-400 shrink-0" size={13} />
+                              <span>Discharge Point: <strong className="text-sky-300 font-bold">{lead.destination}</strong></span>
                             </div>
                           )}
                           <div className="flex items-center gap-2">
-                            <FiClock className="text-[var(--crm-ink-faint)] shrink-0" size={13} />
+                            <FiClock className="text-teal-400 shrink-0" size={13} />
                             <span>Stage Axis:</span>
-                            <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border ${getStageColor(lead.stage)}`}>
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${getStageColor(lead.stage)}`}>
                               {getStageDisplay(lead.stage)}
                             </span>
                           </div>
                           {lead.nextFollowupAt && (
-                            <div className="flex items-center gap-2 text-[var(--crm-danger)] font-medium bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/20 p-2 rounded-sm font-mono text-[10px]">
+                            <div className="flex items-center gap-2 text-[var(--crm-danger)] font-medium bg-[var(--crm-danger-bg)] border border-[var(--crm-danger)]/20 p-2 rounded font-mono text-[10px]">
                               <FiCalendar className="shrink-0 text-[var(--crm-danger)]" size={13} />
                               <span>Follow-up: <strong>{new Date(lead.nextFollowupAt).toLocaleString()}</strong></span>
                             </div>
@@ -453,18 +453,18 @@ export default function Tasks() {
 
                         {/* Remarks Block */}
                         {lead.remarks && (
-                          <div className="mb-4 bg-[var(--crm-bg)] p-3 rounded-sm border border-[var(--crm-ink-soft)]/10">
-                            <p className="text-[8px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1">Latest Manifest Remark</p>
-                            <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic line-clamp-2">"{lead.remarks}"</p>
+                          <div className="mb-3 bg-[var(--crm-bg-sunken)] p-2.5 rounded border border-[var(--crm-line)] text-xs">
+                            <p className="text-[8px] font-mono font-bold text-teal-400 uppercase tracking-widest mb-0.5">Latest Manifest Remark</p>
+                            <p className="text-xs text-[var(--crm-ink-soft)] italic line-clamp-2">"{lead.remarks}"</p>
                           </div>
                         )}
                       </div>
 
                       {/* Actions Hub Row */}
-                      <div className="flex gap-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10">
+                      <div className="flex gap-2.5 pt-3 border-t border-[var(--crm-line)]">
                         <Link
                           to={`/crm/leads/${lead._id}`}
-                          className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-ink-soft)]/40 rounded-sm transition-all text-center flex items-center justify-center gap-1.5"
+                          className="flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-300 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] hover:border-slate-600 rounded-md transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                         >
                           <FiEye size={12} />
                           <span>History</span>
@@ -473,13 +473,13 @@ export default function Tasks() {
                         {!isClosed ? (
                           <button
                             onClick={() => handleOpenPerform(lead)}
-                            className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-bg)] bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] rounded-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                            className="flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider text-white bg-teal-700 hover:bg-teal-600 border border-teal-500/50 rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg hover:shadow-teal-900/40"
                           >
                             <FiEdit size={12} />
                             <span>Perform Task</span>
                           </button>
                         ) : (
-                          <span className="flex-1 py-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-center border border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)] text-[var(--crm-ink-faint)]/60 rounded-sm flex items-center justify-center gap-1.5 cursor-not-allowed select-none">
+                          <span className="flex-1 py-2 text-[10px] font-mono font-bold uppercase tracking-wider text-center border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] rounded-md flex items-center justify-center gap-1.5 cursor-not-allowed select-none">
                             <FiCheckSquare size={12} />
                             <span>Node Finalized</span>
                           </span>

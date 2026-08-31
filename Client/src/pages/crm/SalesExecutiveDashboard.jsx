@@ -253,12 +253,13 @@ export default function SalesExecutiveDashboard() {
         setPerformance(perfRes.data.performance);
       }
 
-      // 2. Fetch User's Deals
-      const leadsRes = await leadsApi.getLeads({ limit: 100, myLeadsOnly: 'true' });
-      if (leadsRes.success) {
-        // Filter leads assigned to the logged-in user by email or ID
-        const myLeads = (leadsRes.data.leads || []).filter(lead => {
-          if (!user || !lead || !lead.assignedTo) return false;
+      // 2. Fetch User's Deals & All System Leads for LOI Ingestion
+      const leadsRes = await leadsApi.getLeads({ limit: 100 });
+      if (leadsRes.success || leadsRes.data) {
+        const fetchedLeads = leadsRes.data?.leads || leadsRes.leads || [];
+        const myLeads = fetchedLeads.filter(lead => {
+          if (!user || !lead) return false;
+          if (!lead.assignedTo) return true;
           const assigned = lead.assignedTo;
           const myUserId = String(user._id || user.id || '');
           const myEmpId = user.employeeDbId ? String(user.employeeDbId) : '';
@@ -275,10 +276,12 @@ export default function SalesExecutiveDashboard() {
           }
           return false;
         });
-        setDeals(myLeads);
+
+        const activeDeals = myLeads.length > 0 ? myLeads : fetchedLeads;
+        setDeals(activeDeals);
 
         // 3. Generate priority to-dos from active deal status
-        generateToDos(myLeads);
+        generateToDos(activeDeals);
       }
 
       // 4. Fetch initial leaderboard (monthly)
@@ -1083,7 +1086,7 @@ export default function SalesExecutiveDashboard() {
                                 className="w-full h-7 rounded accent-teal-500"
                                 src={(() => {
                                   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
                                   return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
                                 })()}
                               />
@@ -1240,7 +1243,7 @@ export default function SalesExecutiveDashboard() {
                                           key={i}
                                           href={(() => {
                                             const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
                                             const token = localStorage.getItem('token') || '';
                                             return `${baseUrl}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(token)}`;
                                           })()}
@@ -1930,10 +1933,10 @@ export default function SalesExecutiveDashboard() {
                   onChange={(e) => setLoiTargetLeadId(e.target.value)}
                   className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2.5 rounded outline-none focus:border-teal-500 transition cursor-pointer"
                 >
-                  <option value="">-- Choose Assigned Lead --</option>
+                  <option value="">-- Choose Assigned Lead ({deals.length} Available) --</option>
                   {deals.map((d) => (
                     <option key={d._id} value={d._id}>
-                      {d.customerName} ({d.leadCode || 'N/A'}) - {d.productCategory}
+                      {d.customerName} ({d.leadCode || 'N/A'}) • {d.productCategory || 'General'} • [Stage: {(d.stage || 'NEW_LEAD').replace(/_/g, ' ')}]
                     </option>
                   ))}
                 </select>

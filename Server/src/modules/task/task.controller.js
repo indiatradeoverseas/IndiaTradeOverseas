@@ -111,18 +111,19 @@ async function getTasks(req, res) {
 
     if (isManager) {
       // Managers can filter by specific employee or see tasks they assigned
-      if (req.query.employeeId) {
-        let targetIds = [req.query.employeeId];
+      const targetEmployeeId = req.query.employeeId || req.query.assignedTo;
+      if (targetEmployeeId) {
+        let targetIds = [targetEmployeeId];
         try {
           const Employee = require('../employee/employee.model');
           const User = require('../users/user.model');
           
           let emp = null;
-          if (mongoose.isValidObjectId(req.query.employeeId)) {
-            emp = await Employee.findById(req.query.employeeId);
+          if (mongoose.isValidObjectId(targetEmployeeId)) {
+            emp = await Employee.findById(targetEmployeeId);
           }
           if (!emp) {
-            emp = await Employee.findOne({ email: { $regex: new RegExp('^' + req.query.employeeId.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+            emp = await Employee.findOne({ email: { $regex: new RegExp('^' + targetEmployeeId.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
           }
           
           if (emp) {
@@ -151,7 +152,7 @@ async function getTasks(req, res) {
       }
       
       // If no filter, show tasks assigned BY this manager
-      if (!req.query.employeeId && !req.query.assignedBy && !req.query.all) {
+      if (!targetEmployeeId && !req.query.assignedBy && !req.query.all) {
         const mgrIds = [req.user._id.toString()];
         if (mongoose.isValidObjectId(req.user._id)) {
           mgrIds.push(new mongoose.Types.ObjectId(req.user._id));

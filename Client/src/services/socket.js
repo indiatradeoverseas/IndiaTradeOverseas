@@ -18,12 +18,13 @@ export const socketService = {
         window.location.hostname === '127.0.0.1' ||
         window.location.hostname.startsWith('192.168.'))
         ? 'http://localhost:5000'
-        : 'https://indiatradeoverseas-1.onrender.com';
+        : 'https://indiatradeoverseas-ito.onrender.com';
 
     socket = io(SOCKET_URL, {
       query: { employeeId, role, name },
-      autoConnect: true,
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5
     });
 
     socket.on('connect', () => {

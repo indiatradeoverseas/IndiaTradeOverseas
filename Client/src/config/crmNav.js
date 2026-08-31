@@ -20,7 +20,8 @@ import {
   FiAward,
   FiCommand,
   FiHome,
-  FiLayers
+  FiLayers,
+  FiCreditCard
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -154,14 +155,8 @@ function isTransportExecutiveUser(user) {
   const pos = (user.position || '').toLowerCase();
 
   return (
-    dept === 'TRANSPORT' ||
-    dept === 'LOGISTICS' ||
-    role === 'TRANSPORT' ||
-    role === 'LOGISTICS' ||
-    role === 'TRANSPORT_EXECUTIVE' ||
-    role === 'EXECUTIVE' ||
-    pos.includes('executive') ||
-    pos.includes('transport')
+    (dept === 'TRANSPORT' || dept === 'LOGISTICS' || role === 'TRANSPORT' || role === 'LOGISTICS' || role === 'TRANSPORT_EXECUTIVE') ||
+    (pos.includes('transport') || pos.includes('logistics'))
   );
 }
 
@@ -179,11 +174,12 @@ function isDriverRole(user) {
 export function getCrmMainNavItems(user) {
   const admin = isAdminUser(user);
 
-  // 1. DRIVER: Driver Dashboard & My Profile
+  // 1. DRIVER: Driver Dashboard, Payment Proof & My Profile
   if (!admin && isDriverRole(user)) {
     return [
       { to: '/crm/transport/driver', label: 'Driver Dashboard', icon: FiTruck },
-      { to: '/crm/profile', label: 'My Profile', icon: FiUser }
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+      { to: '/crm/transport/driver?tab=PAYMENTS', label: 'Payment Proof', icon: FiCreditCard }
     ];
   }
 
@@ -195,11 +191,14 @@ export function getCrmMainNavItems(user) {
     ];
   }
 
-  // 3. TRANSPORT MANAGER: Transport Manager Dashboard & My Profile
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Payment & Receipts, Quotation Rates, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
       { to: '/crm/transport/manager', label: 'Transport Manager Dashboard', icon: FiTruck },
-      { to: '/crm/profile', label: 'My Profile', icon: FiUser }
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+      { to: '/crm/transport/manager?tab=PAYMENTS', label: 'Payment & Receipts', icon: FiCreditCard },
+      { to: '/crm/transport/manager?tab=QUOTATIONS', label: 'Quotation Rates', icon: FiFileText },
+      { to: '/crm/transport/manager?tab=DRIVER_PROOFS', label: 'Driver Uploaded All Proof', icon: FiFolder }
     ];
   }
 
@@ -209,20 +208,59 @@ export function getCrmMainNavItems(user) {
   const hrExec = isHRExecutive(user);
 
   return [
-    // My Profile — Common to all
-    { to: '/crm/profile', label: 'My Profile', icon: FiUser },
-
-    // Dashboard — ADMIN & FOUNDER
-    admin && { to: '/crm/dashboard', label: 'Dashboard', icon: FiLayout },
-
-    // Founder Dashboard — ADMIN & FOUNDER
+    // 1. Founder Dashboard — ADMIN & FOUNDER
     admin && { to: '/crm/founder', label: 'Founder Dashboard', icon: FiCommand },
 
-    // Sales Dashboard — ADMIN + Sales Manager + Sales Executive
+    // 2. HR Dashboard — ADMIN + HR Manager + HR Executive
+    (admin || hrMgr || hrExec) && { to: '/crm/hr', label: 'HR Dashboard', icon: FiAward },
+
+    // 3. Sales Dashboard — ADMIN + Sales Manager + Sales Executive
     (admin || salesMgr || salesExec) && { to: '/crm/sales-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
 
-    // HR Dashboard — ADMIN + HR Manager + HR Executive
-    (admin || hrMgr || hrExec) && { to: '/crm/hr', label: 'HR Dashboard', icon: FiAward },
+    // 4. Transport Dashboard — Transport Dept or Permitted or Admin
+    (admin || isTransportAllowed(user)) && { 
+      to: getTransportDefaultPath(user), 
+      label: 'Transport Dashboard', 
+      icon: FiTruck,
+      children: getTransportChildren(user)
+    },
+
+    // 5. Attendance — ADMIN + HR_MANAGER
+    (admin || hrMgr) && { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
+
+    // 6. Leads — ADMIN, Sales Manager, Sales Executive, or permission-based
+    (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
+
+    // 7. Distributors — ADMIN + Sales Manager
+    (admin || salesMgr) && {
+      to: '/crm/distributors',
+      label: 'Distributors',
+      icon: FiBriefcase,
+      children: [
+        { to: '/crm/distributors/tea', label: 'Tea Orders', dotColor: '#2dd4a7' },
+        { to: '/crm/distributors/rice', label: 'Rice Orders', dotColor: '#f5b942' },
+        { to: '/crm/distributors/stone', label: 'Stone Orders', dotColor: '#94a3b8' }
+      ]
+    },
+
+    // 8. Buyer Visitors — ADMIN + Sales Manager
+    (admin || salesMgr) && {
+      to: '/crm/visitors',
+      label: 'Buyer Visitors',
+      icon: FiUserPlus,
+      children: [
+        { to: '/crm/visitors/tea', label: 'Tea Visitors', dotColor: '#2dd4a7' },
+        { to: '/crm/visitors/rice', label: 'Rice Visitors', dotColor: '#f5b942' },
+        { to: '/crm/visitors/stone', label: 'Stone Visitors', dotColor: '#94a3b8' }
+      ]
+    },
+
+    // 9. My Profile — Common to all
+    { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+
+    // ── REMAINING OPTIONS ──
+    // Overview Dashboard — ADMIN & FOUNDER
+    admin && { to: '/crm/dashboard', label: 'Overview Dashboard', icon: FiLayout },
 
     // Finance & Accounts — ADMIN + Finance department + Accounts role
     (admin || user?.department === 'FINANCE' || user?.role === 'ACCOUNTS' || user?.role === 'FINANCE_MANAGER') && { 
@@ -233,9 +271,6 @@ export function getCrmMainNavItems(user) {
 
     // Notifications — Common to all employees
     { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
-
-    // Attendance — ADMIN + HR_MANAGER
-    (admin || hrMgr) && { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
 
     // Leave — ADMIN + HR_MANAGER
     (admin || hrMgr) && { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
@@ -252,17 +287,6 @@ export function getCrmMainNavItems(user) {
     // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
 
-    // Leads — ADMIN, Sales Manager, Sales Executive, or permission-based
-    (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
-
-    // Dispatches & Transport — Transport Dept or Permitted or Admin
-    (admin || isTransportAllowed(user)) && { 
-      to: getTransportDefaultPath(user), 
-      label: 'Transport Operations', 
-      icon: FiTruck,
-      children: getTransportChildren(user)
-    },
-
     // Dispatches — ADMIN or permission-based
     (admin || user?.permissions?.dispatch === true || user?.dispatchPermission === true) && { to: '/crm/dispatches', label: 'Dispatches Manifest', icon: FiFileText },
 
@@ -273,31 +297,7 @@ export function getCrmMainNavItems(user) {
     (admin || user?.permissions?.payment === true || user?.paymentPermission === true) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
 
     // Documents — ADMIN or permission-based
-    (admin || user?.permissions?.document === true || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder },
-
-    // Distributors — ADMIN + Sales Manager
-    (admin || salesMgr) && {
-      to: '/crm/distributors',
-      label: 'Distributors',
-      icon: FiBriefcase,
-      children: [
-        { to: '/crm/distributors/tea', label: 'Tea Orders', dotColor: '#2dd4a7' },
-        { to: '/crm/distributors/rice', label: 'Rice Orders', dotColor: '#f5b942' },
-        { to: '/crm/distributors/stone', label: 'Stone Orders', dotColor: '#94a3b8' }
-      ]
-    },
-
-    // Buyer Visitors — ADMIN + Sales Manager
-    (admin || salesMgr) && {
-      to: '/crm/visitors',
-      label: 'Buyer Visitors',
-      icon: FiUserPlus,
-      children: [
-        { to: '/crm/visitors/tea', label: 'Tea Visitors', dotColor: '#2dd4a7' },
-        { to: '/crm/visitors/rice', label: 'Rice Visitors', dotColor: '#f5b942' },
-        { to: '/crm/visitors/stone', label: 'Stone Visitors', dotColor: '#94a3b8' }
-      ]
-    }
+    (admin || user?.permissions?.document === true || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder }
   ].filter(Boolean);
 }
 

@@ -119,8 +119,8 @@ async function getBalanceForUser(employeeOrUser, month) {
 
   let balance = await MonthlyLeaveBalance.findOne({ employeeId: { $in: allIds }, month });
   if (!balance) {
-    const preferredEmployee = emps[0] || users[0];
-    const preferredModel = emps[0] ? 'Employee' : 'User';
+    const preferredEmployee = emps[0] || users[0] || employeeOrUser;
+    const preferredModel = emps[0] ? 'Employee' : (users[0] ? 'User' : (employeeOrUser.constructor?.modelName || (employeeOrUser.passwordHash ? 'User' : 'Employee')));
     
     balance = await MonthlyLeaveBalance.create({
       employeeId: preferredEmployee._id,
