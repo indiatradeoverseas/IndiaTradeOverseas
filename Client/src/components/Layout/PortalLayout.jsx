@@ -4,13 +4,14 @@ import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
+import NotificationDropdown from '../common/NotificationDropdown';
 import { useAuth } from '../../hooks/useAuth';
 import { attendanceApi } from '../../api/attendance';
 import toast from 'react-hot-toast';
 // Removed the duplicate main-site Navbar import from here to protect CRM view real estate
 
 export default function PortalLayout({ children }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
@@ -26,10 +27,11 @@ export default function PortalLayout({ children }) {
   }, [theme]);
 
   const fetchTodayAttendance = async () => {
-    if (!user || user.role === 'ADMIN') return;
+    if (!user) return;
     try {
       const res = await attendanceApi.getMyToday();
-        setTodayAttendance(res.data.record || res.data.attendance);
+      const att = res.data?.attendance || res.data?.record;
+      setTodayAttendance(att);
     } catch (err) {
       console.error('Error fetching today attendance in PortalLayout:', err);
     }
@@ -60,7 +62,7 @@ export default function PortalLayout({ children }) {
     try {
       const res = await attendanceApi.checkOut();
       if (res.success) {
-        toast.success('Successfully checked out! See you tomorrow. 🌙');
+        toast.success('Successfully checked out! Shift completed. 🌙');
         fetchTodayAttendance();
         window.dispatchEvent(new Event('attendance_updated'));
       }
@@ -124,30 +126,34 @@ export default function PortalLayout({ children }) {
             India Trade Center
           </div>
           <div className="flex items-center gap-2 justify-end">
-            {user && user.role !== 'ADMIN' && (
+            {user && (
               <div className="flex items-center gap-1.5 mr-1">
-                {!todayAttendance && (
+                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.clockIn)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
                   >
                     In
                   </button>
                 )}
-                {todayAttendance && !todayAttendance.clockOut && (
+                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.clockIn) && (!todayAttendance.checkOutTime && !todayAttendance.clockOut) && (
                   <button
                     onClick={handleCheckOut}
                     disabled={loadingAttendance}
-                    className="bg-rose-950/90 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                    className="bg-rose-950/90 hover:bg-rose-900 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
                   >
                     Out
                   </button>
                 )}
-                {todayAttendance && todayAttendance.clockOut && (
-                  <span className="text-[8px] text-[var(--crm-positive)] font-mono font-bold">
-                    ✓ Complete
-                  </span>
+                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.clockOut) && (
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={loadingAttendance}
+                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                  >
+                    In
+                  </button>
                 )}
               </div>
             )}
@@ -159,6 +165,7 @@ export default function PortalLayout({ children }) {
             >
               {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
             </button>
+            <NotificationDropdown compact />
             <VoiceStatusPill compact />
           </div>
         </div>
@@ -195,7 +202,7 @@ export default function PortalLayout({ children }) {
         </AnimatePresence>
 
         {/* Core Main Viewport Workspace Terminal Container */}
-        <div className="flex-1 flex flex-col min-h-screen" style={{ background: 'var(--crm-bg)' }}>
+        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden" style={{ background: 'var(--crm-bg)' }}>
           {/* Buffer spacer block to balance mobile fixed top bar overlay */}
           <div className="md:hidden h-[57px]" />
 
@@ -204,38 +211,44 @@ export default function PortalLayout({ children }) {
             className="hidden md:flex items-center justify-end gap-3 px-8 py-3 border-b"
             style={{ borderColor: 'var(--crm-line)' }}
           >
-            {user && user.role !== 'ADMIN' && (
-              <div className="flex items-center gap-2 mr-4">
-                {!todayAttendance && (
+            {user && (
+              <div className="flex items-center gap-2 mr-4 font-mono">
+                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.clockIn)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="flex items-center gap-1 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-900/40 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer"
+                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
                   >
                     <FiLogIn size={12} /> Check In
                   </button>
                 )}
-                {todayAttendance && !todayAttendance.clockOut && (
+                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.clockIn) && (!todayAttendance.checkOutTime && !todayAttendance.clockOut) && (
                   <button
                     onClick={handleCheckOut}
                     disabled={loadingAttendance}
-                    className="flex items-center gap-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-900/40 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer"
+                    className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
                   >
                     <FiLogOut size={12} /> Check Out
                   </button>
                 )}
-                {todayAttendance && todayAttendance.clockOut && (
-                  <span className="text-[10px] text-[var(--crm-positive)] font-mono font-bold">
-                    ✓ Shift Completed
-                  </span>
+                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.clockOut) && (
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={loadingAttendance}
+                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                    title="Click to check in again"
+                  >
+                    <FiLogIn size={12} /> Check In
+                  </button>
                 )}
-                {todayAttendance && todayAttendance.clockIn && (
-                  <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-                    Clocked in: {new Date(todayAttendance.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.clockIn) && (
+                  <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
+                    Clocked in: <strong className="text-[var(--crm-heading)]">{todayAttendance.checkInTime || todayAttendance.clockIn}</strong>
                   </span>
                 )}
               </div>
             )}
+            <NotificationDropdown />
             <button
               type="button"
               onClick={toggleTheme}
@@ -248,8 +261,8 @@ export default function PortalLayout({ children }) {
             <CommandPalette />
           </div>
 
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 pt-6 md:pt-8">
-            <div className="max-w-7xl mx-auto">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:p-8 pt-6 md:pt-8 min-w-0">
+            <div className="max-w-7xl mx-auto min-w-0">
               {children}
             </div>
           </main>

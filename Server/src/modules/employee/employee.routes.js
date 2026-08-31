@@ -29,7 +29,7 @@ const hrOnly = [authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTI
 
 router.get('/next-id', getNextEmployeeId);
 router.get('/list-managers', getListManagers);
-router.get('/all', ...adminOnly, getAllEmployees);
+router.get('/all', authenticate, getAllEmployees);
 
 // Self-registration endpoint (public - no auth required)
 router.post('/signup/request', signupEmployeeSelfRegistration);
@@ -37,6 +37,9 @@ router.post('/signup/request', signupEmployeeSelfRegistration);
 // OTP-based signup flow (public - no auth required)
 router.post('/signup/send-otp', sendSignupOtp);
 router.post('/signup/verify-otp', verifySignupOtp);
+
+// Direct signup endpoint
+router.post('/signup', signupEmployee);
 
 // Pending employees management (HR/Admin only)
 router.get('/pending', ...hrOnly, getPendingEmployees);

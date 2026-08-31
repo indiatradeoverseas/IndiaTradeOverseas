@@ -92,8 +92,8 @@ const registerDistributor = async (req, res, next) => {
       distributor.name = name;
       distributor.mobile = mobile;
       distributor.address = address || distributor.address;
-      distributor.city = city;
-      distributor.state = state;
+      distributor.city = city || distributor.city;
+      distributor.state = state || distributor.state;
       distributor.country = country || distributor.country;
       distributor.company = company || distributor.company || fallbackCompanyName(division || distributor.division || 'TEA');
       distributor.teaType = teaType || distributor.teaType;
@@ -102,6 +102,27 @@ const registerDistributor = async (req, res, next) => {
       distributor.businessType = businessType || distributor.businessType;
       distributor.gstNumber = gstNumber || distributor.gstNumber;
       distributor.division = division || distributor.division || 'TEA';
+
+      // Always update registrationSource to QUICK_GATE if submitted via Quick Gate form
+      if (registrationSource === 'QUICK_GATE' || isQuickGateSubmission) {
+        distributor.registrationSource = 'QUICK_GATE';
+      }
+
+      // Track repeat visits and timestamp telemetry
+      distributor.lastVisitedAt = new Date();
+      distributor.visitCount = (distributor.visitCount || 1) + 1;
+
+      if (!Array.isArray(distributor.visitHistory)) {
+        distributor.visitHistory = [];
+      }
+      distributor.visitHistory.push({
+        visitedAt: new Date(),
+        city: city || distributor.city || 'N/A',
+        state: state || distributor.state || 'N/A',
+        mobile: mobile,
+        name: name,
+        registrationSource: registrationSource || 'QUICK_GATE'
+      });
 
       distributor.otpToken = otpCode;
       distributor.otpExpires = otpExpires;
@@ -138,9 +159,37 @@ const registerDistributor = async (req, res, next) => {
         isOtpVerified: false,
         approvalStatus: 'pending',
         division: division || 'TEA',
-        registrationSource: isQuickGateSubmission ? 'QUICK_GATE' : 'STANDARD_KYC'
+        registrationSource: isQuickGateSubmission || registrationSource === 'QUICK_GATE' ? 'QUICK_GATE' : 'STANDARD_KYC',
+        lastVisitedAt: new Date(),
+        visitCount: 1,
+        visitHistory: [{
+          visitedAt: new Date(),
+          city: city || 'N/A',
+          state: state || 'N/A',
+          mobile,
+          name,
+          registrationSource: isQuickGateSubmission || registrationSource === 'QUICK_GATE' ? 'QUICK_GATE' : 'STANDARD_KYC'
+        }]
       });
       await distributor.save();
+    }
+
+    // Automatically create a CRM Lead for Sales Manager
+    try {
+      const { processAiLead } = require('../leads/ai-agent/aiLead.service');
+      await processAiLead({
+        customerName: name,
+        email,
+        phone: mobile,
+        city,
+        state,
+        companyName: company || `Buyer (${division || 'TEA'})`,
+        productCategory: division || 'TEA',
+        source: 'WEBSITE',
+        chatSummary: `Inquiry registered via ${division || 'TEA'} division website form.`
+      });
+    } catch (leadErr) {
+      console.error('Auto lead creation note:', leadErr.message);
     }
 
     const subject = `Distributor Verification OTP - India Trade Overseas ${DIVISION_LABELS[division] || 'Prakriti Tea'} Division`;

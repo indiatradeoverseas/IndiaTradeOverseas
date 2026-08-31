@@ -65,6 +65,11 @@ import SalesDashboard from './pages/crm/SalesDashboard';
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
 import FounderDashboard from './pages/crm/FounderDashboard';
+import FinanceManagerDashboard from './pages/crm/FinanceManagerDashboard';
+import TransportManager from './pages/crm/transport/TransportManager';
+import TransportExecutive from './pages/crm/transport/TransportExecutive';
+import DriverMobileView from './pages/crm/transport/DriverMobileView';
+import FinanceDashboard from './pages/crm/FinanceDashboard';
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -94,10 +99,23 @@ function ProtectedRoute({ children }) {
 
 
 function isAdminUser(user) {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const department = (user.department || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+
   return (
-    user?.role === 'ADMIN' ||
-    user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'))
+    role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'SUPER_ADMIN' ||
+    department === 'ADMIN' ||
+    department === 'MANAGEMENT' ||
+    position.includes('admin') ||
+    position.includes('founder') ||
+    position.includes('ceo') ||
+    position.includes('director') ||
+    position.includes('owner')
   );
 }
 
@@ -791,6 +809,32 @@ function AppLayout() {
             path="/prakriti/rice"
             element={<Rice />}
           />
+          <Route path="/crm/finance" element={<FinanceRedirectGate />} />
+          <Route
+            path="/crm/finance/manager"
+            element={
+              <ProtectedRoute>
+                <FinanceManagerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/finance/executive"
+            element={
+              <ProtectedRoute>
+                <FinanceDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Phase 4: Transport Module Routes */}
+          <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
+          <Route path="/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
+          <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+          <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+          <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+          <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+          <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
 
           {/* Building & Construction → Stone */}
           <Route

@@ -62,6 +62,66 @@ const rolePermissions = {
     taskPermission: true,
     documentPermission: true
   },
+  DRIVER: {
+    exportPermission: true,
+    productUploadPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true,
+    dispatchPermission: true,
+    paymentPermission: true,
+    quotationPermission: true
+  },
+  FLEET_CAPTAIN: {
+    exportPermission: true,
+    productUploadPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true,
+    dispatchPermission: true,
+    paymentPermission: true,
+    quotationPermission: true
+  },
+  TRANSPORT: {
+    exportPermission: true,
+    productUploadPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true,
+    dispatchPermission: true,
+    paymentPermission: true,
+    quotationPermission: true
+  },
+  TRANSPORT_MANAGER: {
+    exportPermission: true,
+    productUploadPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true,
+    dispatchPermission: true,
+    paymentPermission: true,
+    quotationPermission: true
+  },
+  LOGISTICS: {
+    exportPermission: true,
+    productUploadPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true,
+    dispatchPermission: true,
+    paymentPermission: true,
+    quotationPermission: true
+  },
+  LOGISTICS_MANAGER: {
+    exportPermission: true,
+    productUploadPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true,
+    dispatchPermission: true,
+    paymentPermission: true,
+    quotationPermission: true
+  },
   IT: {
     exportPermission: true,
     productUploadPermission: true,

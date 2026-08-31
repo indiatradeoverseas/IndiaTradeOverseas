@@ -44,5 +44,16 @@ export const salesApi = {
   async sendCoachingMessage(payload) {
     const response = await axiosInstance.post('/sales/coaching-messages', payload);
     return response.data;
+  },
+
+  async submitDailyWorkLog(payload) {
+    const response = await axiosInstance.post('/sales/daily-work-logs', payload);
+    return response.data;
+  },
+
+  async getDailyWorkLogs(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await axiosInstance.get(`/sales/daily-work-logs${queryString ? `?${queryString}` : ''}`);
+    return response.data;
   }
 };

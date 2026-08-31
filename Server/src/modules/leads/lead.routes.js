@@ -5,7 +5,7 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage, assignLead, assignLeadsBulk, bulkImportLeads } = require('./lead.controller');
+const { getLeadsList, getLeadDetails, changeLeadStage, changeLeadPriority, assignLead, assignLeadsBulk, bulkImportLeads } = require('./lead.controller');
 const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
@@ -16,8 +16,34 @@ const {
   streamVoiceNote,
   addActivity,
   logWhatsAppActivity,
-  logEmailActivity
+  logEmailActivity,
+  uploadCallRecording,
+  getCallRecordings,
+  streamCallRecording,
+  updateCallRecordingRemark,
+  uploadLOIDocument,
+  streamLOIDocument
 } = require('./leadManagement.controller');
+
+// Multer setup for LOI documents
+const loiStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const destDir = path.join(process.cwd(), 'uploads', 'loi_documents');
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    cb(null, destDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = `loi-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, safeName);
+  }
+});
+
+const uploadLOIFile = multer({
+  storage: loiStorage,
+  limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for LOI files
+});
 
 // Multer setup for lead voice notes
 const storage = multer.diskStorage({
@@ -42,9 +68,31 @@ const upload = multer({
 // Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
 // and the public chat widget. Must stay above router.use(authenticate) below.
 router.post('/from-chat', createFromChat);
+router.get('/call-recordings/:recordingId/stream', streamCallRecording);
 
 router.use(authenticate);
 
+// Multer setup for Call Recordings
+const callRecordingStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const destDir = path.join(process.cwd(), 'uploads', 'call_recordings');
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    cb(null, destDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = `call-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, safeName);
+  }
+});
+
+const uploadCallAudio = multer({
+  storage: callRecordingStorage,
+  limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit
+});
+
+// 1. Static Sub-Routes (MUST stay above dynamic /:id routes to avoid CastError)
 router.post('/score', async (req, res, next) => {
   try {
     const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
@@ -54,7 +102,10 @@ router.post('/score', async (req, res, next) => {
   }
 });
 
-router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadsList);
+router.get('/call-recordings', getCallRecordings);
+router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
+router.patch('/call-recordings/:recordingId/remark', updateCallRecordingRemark);
+
 router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
   try {
     const Lead = require('./lead.model');
@@ -66,18 +117,7 @@ router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadP
   }
 });
 
-// Reminders & Creation Routes
 router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
-router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
-router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
-router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
-
-// Voice Notes & Integration logs
-router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
-router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
-router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
-router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
-router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
 router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
 
 router.get('/count', checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
@@ -97,8 +137,24 @@ router.get('/count', checkPermission('leadPermission', 'taskPermission'), async 
   }
 });
 
+router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
+router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
+router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadsList);
+router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
+
+// 2. Dynamic /:id Sub-Routes
+router.post('/:id/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLead);
+router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
+router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
+router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
+router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
+router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
+router.post('/:id/loi', checkPermission('leadPermission', 'taskPermission'), uploadLOIFile.single('file'), uploadLOIDocument);
+router.get('/:id/loi/:index', checkPermission('leadPermission', 'taskPermission'), streamLOIDocument);
+
 router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
+router.patch('/:id/priority', checkPermission('leadPermission', 'taskPermission'), changeLeadPriority);
 router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);  
 
 module.exports = router;

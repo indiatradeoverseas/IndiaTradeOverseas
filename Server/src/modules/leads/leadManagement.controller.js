@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
+const CallRecording = require('./callRecording.model');
+const Employee = require('../employee/employee.model');
 const { getRelativePath, resolveUploadPath, proxyFromProduction } = require('../../utils/file');
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
@@ -333,6 +335,348 @@ async function getSalesMetrics(req, res, next) {
     next(error);
   }
 }
+
+// 7. Upload Call Recording by Sales Executive
+async function uploadCallRecording(req, res, next) {
+  try {
+    if (!req.file) {
+      return fail(res, 400, 'FILE_REQUIRED', 'Please select a call recording audio file.');
+    }
+
+    const { leadId, notes, duration, leadPriority, customerName: inputCustomerName } = req.body;
+
+    let lead = null;
+    let customerName = inputCustomerName || '';
+    let leadCode = '';
+
+    if (leadId) {
+      lead = await Lead.findById(leadId);
+      if (lead) {
+        customerName = lead.customerName || customerName;
+        leadCode = lead.leadCode || '';
+
+        // Attach to lead voiceNotes if lead exists
+        lead.voiceNotes.push({
+          path: getRelativePath(req.file.path),
+          originalName: req.file.originalname,
+          uploadedBy: req.user._id,
+          createdAt: new Date()
+        });
+        await lead.save();
+
+        await LeadActivity.create({
+          leadId: lead._id,
+          actionType: 'VOICE_NOTE_ADDED',
+          note: `Call recording uploaded by ${req.user.fullName || req.user.name}: "${req.file.originalname}"`,
+          actorId: req.user._id
+        });
+      }
+    }
+
+    const callRecording = await CallRecording.create({
+      executiveId: req.user._id,
+      executiveName: req.user.fullName || req.user.name || 'Sales Executive',
+      leadId: lead ? lead._id : null,
+      leadCode: leadCode,
+      customerName: customerName || 'Direct Customer',
+      audioPath: getRelativePath(req.file.path),
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype || 'audio/mpeg',
+      size: req.file.size || 0,
+      duration: duration || '',
+      notes: notes || '',
+      leadPriority: ['HOT', 'WARM', 'COLD'].includes(leadPriority) ? leadPriority : (lead ? lead.priority : 'WARM')
+    });
+
+    // Upload to Google Drive directly in background/inline
+    try {
+      const { uploadToGoogleDrive } = require('../../services/googleDrive.service');
+      const driveResult = await uploadToGoogleDrive(req.file.path, req.file.originalname, req.file.mimetype);
+      if (driveResult && driveResult.fileId) {
+        callRecording.driveFileId = driveResult.fileId;
+        callRecording.driveWebViewLink = driveResult.webViewLink || '';
+        callRecording.driveWebContentLink = driveResult.webContentLink || '';
+        await callRecording.save();
+        console.log(`[CallRecording] Recording attached to Google Drive File ID: ${driveResult.fileId}`);
+      }
+    } catch (driveErr) {
+      console.warn('[CallRecording] Google Drive upload notice:', driveErr.message);
+    }
+
+    return ok(res, { callRecording }, 'Call recording uploaded and saved to Google Drive & Server successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 8. Get list of all Call Recordings for Manager / Executive Dashboard
+async function getCallRecordings(req, res, next) {
+  try {
+    const filter = {};
+    const { executiveId, leadId, priority } = req.query;
+
+    const role = req.user?.role || '';
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(role) || role.endsWith('_MANAGER') || role.toLowerCase().includes('manager');
+
+    if (!isManagerOrAdmin) {
+      const mongoose = require('mongoose');
+      const User = require('../users/user.model');
+
+      const idSet = new Set();
+      if (req.user._id) idSet.add(String(req.user._id));
+      if (req.user.email) {
+        const emp = await Employee.findOne({ email: req.user.email });
+        if (emp && emp._id) idSet.add(String(emp._id));
+        const uDoc = await User.findOne({ email: req.user.email });
+        if (uDoc && uDoc._id) idSet.add(String(uDoc._id));
+      }
+
+      const matchIds = [];
+      idSet.forEach((idStr) => {
+        matchIds.push(idStr);
+        if (mongoose.isValidObjectId(idStr)) {
+          matchIds.push(new mongoose.Types.ObjectId(idStr));
+        }
+      });
+
+      filter.executiveId = { $in: matchIds };
+    } else if (executiveId) {
+      filter.executiveId = executiveId;
+    }
+
+    if (leadId) filter.leadId = leadId;
+    if (priority) filter.leadPriority = priority;
+
+    const recordings = await CallRecording.find(filter)
+      .populate('leadId', 'customerName leadCode companyName priority stage')
+      .sort({ createdAt: -1 });
+
+    return ok(res, { recordings }, 'Call recordings retrieved successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 9. Stream Audio for Call Recording
+async function streamCallRecording(req, res, next) {
+  try {
+    const { recordingId } = req.params;
+    const recording = await CallRecording.findById(recordingId);
+    if (!recording || !recording.audioPath) {
+      return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
+    }
+
+    const filePath = resolveUploadPath(recording.audioPath, 'call_recordings');
+    if (!filePath || !fs.existsSync(filePath)) {
+      if (recording.driveFileId) {
+        try {
+          const { getDriveFileStream } = require('../../services/googleDrive.service');
+          const driveStream = await getDriveFileStream(recording.driveFileId);
+          if (driveStream) {
+            res.setHeader('Content-Type', recording.mimeType || 'audio/mpeg');
+            return driveStream.pipe(res);
+          }
+        } catch (driveStreamErr) {
+          console.warn('[CallRecording] Drive stream error:', driveStreamErr.message);
+        }
+      }
+
+      try {
+        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
+        await proxyFromProduction(prodUrl, req.headers.authorization, res);
+        return;
+      } catch (proxyError) {
+        console.warn(`Local call recording missing: ${proxyError.message}`);
+      }
+      return fail(res, 404, 'FILE_NOT_FOUND', 'Audio file not found on disk or Drive.');
+    }
+
+    const absPath = path.resolve(filePath);
+    const stat = fs.statSync(absPath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    const mimeType = recording.mimeType || 'audio/mpeg';
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(absPath, { start, end });
+      const head = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': mimeType,
+        'Access-Control-Allow-Origin': '*',
+        'Cross-Origin-Resource-Policy': 'cross-origin'
+      };
+      res.writeHead(206, head);
+      file.pipe(res);
+    } else {
+      const head = {
+        'Content-Length': fileSize,
+        'Content-Type': mimeType,
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*',
+        'Cross-Origin-Resource-Policy': 'cross-origin'
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(absPath).pipe(res);
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 10. Update Manager Remark on Call Recording
+async function updateCallRecordingRemark(req, res, next) {
+  try {
+    const { recordingId } = req.params;
+    const { managerRemark } = req.body;
+
+    const recording = await CallRecording.findByIdAndUpdate(
+      recordingId,
+      {
+        managerRemark: managerRemark || '',
+        managerRemarkBy: req.user.fullName || req.user.name || 'Sales Manager',
+        managerRemarkAt: new Date()
+      },
+      { new: true }
+    );
+
+    if (!recording) {
+      return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
+    }
+
+    return ok(res, { recording }, 'Manager remark updated successfully', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 11. Upload LOI Document for a Lead
+async function uploadLOIDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    if (!req.file) {
+      return fail(res, 400, 'FILE_REQUIRED', 'Please select an LOI document file to upload.');
+    }
+
+    const lead = await Lead.findById(id);
+    if (!lead) {
+      return fail(res, 404, 'NOT_FOUND', 'Lead not found.');
+    }
+
+    const loiObj = {
+      path: getRelativePath(req.file.path),
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype || 'application/pdf',
+      size: req.file.size || 0,
+      notes: notes || '',
+      uploadedBy: req.user._id,
+      uploadedByName: req.user.fullName || req.user.name || 'Sales Executive',
+      createdAt: new Date(),
+      driveFileId: '',
+      driveWebViewLink: ''
+    };
+
+    // Upload to Google Drive directly in background/inline
+    try {
+      const { uploadToGoogleDrive } = require('../../services/googleDrive.service');
+      const driveResult = await uploadToGoogleDrive(req.file.path, `LOI_${lead.leadCode}_${req.file.originalname}`, req.file.mimetype);
+      if (driveResult && driveResult.fileId) {
+        loiObj.driveFileId = driveResult.fileId;
+        loiObj.driveWebViewLink = driveResult.webViewLink || '';
+      }
+    } catch (driveErr) {
+      console.warn('[LOI Upload] Google Drive upload notice:', driveErr.message);
+    }
+
+    if (!lead.loiDocuments) lead.loiDocuments = [];
+    lead.loiDocuments.push(loiObj);
+
+    // Auto update stage to LOI_PO_PENDING if currently in earlier stage
+    if (['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'NEGOTIATION'].includes(lead.stage)) {
+      lead.stage = 'LOI_PO_PENDING';
+    }
+
+    await lead.save();
+
+    // Log Activity
+    await LeadActivity.create({
+      leadId: lead._id,
+      actionType: 'LOI_UPLOADED',
+      note: `LOI Document uploaded by ${req.user.fullName || req.user.name}: "${req.file.originalname}"${notes ? ` (Notes: ${notes})` : ''}`,
+      actorId: req.user._id
+    });
+
+    return ok(res, { loiDocuments: lead.loiDocuments, lead }, 'LOI document uploaded and attached successfully', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// 12. Stream/Download LOI Document
+async function streamLOIDocument(req, res, next) {
+  try {
+    const { id, index } = req.params;
+    const lead = await Lead.findById(id);
+    if (!lead) {
+      return fail(res, 404, 'NOT_FOUND', 'Lead not found.');
+    }
+
+    const loiDoc = lead.loiDocuments?.[Number(index)];
+    if (!loiDoc || !loiDoc.path) {
+      return fail(res, 404, 'NOT_FOUND', 'LOI document not found at this index.');
+    }
+
+    const filePath = resolveUploadPath(loiDoc.path, 'loi_documents');
+    if (filePath && fs.existsSync(filePath)) {
+      const absPath = path.resolve(filePath);
+      const ext = path.extname(absPath).toLowerCase();
+      let mimeType = loiDoc.mimeType;
+      if (!mimeType || mimeType === 'application/octet-stream') {
+        if (ext === '.pdf') mimeType = 'application/pdf';
+        else if (ext === '.png') mimeType = 'image/png';
+        else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+        else if (ext === '.docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        else if (ext === '.doc') mimeType = 'application/msword';
+        else mimeType = 'application/pdf';
+      }
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(loiDoc.originalName || 'loi-document')}"`);
+      return res.sendFile(absPath);
+    }
+
+    if (loiDoc.driveFileId) {
+      try {
+        const { getDriveFileStream } = require('../../services/googleDrive.service');
+        const driveStream = await getDriveFileStream(loiDoc.driveFileId);
+        if (driveStream) {
+          res.setHeader('Content-Type', loiDoc.mimeType || 'application/pdf');
+          res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(loiDoc.originalName || 'loi-document')}"`);
+          return driveStream.pipe(res);
+        }
+      } catch (driveStreamErr) {
+        console.warn('[LOIDoc] Drive stream error:', driveStreamErr.message);
+      }
+    }
+
+    if (loiDoc.driveWebViewLink) {
+      return res.redirect(loiDoc.driveWebViewLink);
+    }
+
+    return fail(res, 404, 'FILE_NOT_FOUND', 'LOI document file not found on disk or Drive.');
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -341,5 +685,11 @@ module.exports = {
   addActivity,
   logWhatsAppActivity,
   logEmailActivity,
-  getSalesMetrics
+  getSalesMetrics,
+  uploadCallRecording,
+  getCallRecordings,
+  streamCallRecording,
+  updateCallRecordingRemark,
+  uploadLOIDocument,
+  streamLOIDocument
 };

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
 const Quotation = require('../quotations/quotation.model');
@@ -19,11 +20,13 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
   QUOTATION_SHARED: ['DISPATCH_PLANNED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
   NEGOTIATION: ['LOI_PO_PENDING', 'CLOSED_LOST', 'SAMPLE_SENT', 'DEAL_WON', 'DEAL_LOST'],
   LOI_PO_PENDING: ['ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  ORDER_CONFIRMED: ['DISPATCH_PENDING', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DISPATCH_PENDING: ['PAYMENT_PENDING', 'CLOSED_LOST', 'DEAL_LOST'],
-  DISPATCH_PLANNED: ['PAYMENT_PENDING', 'CLOSED_LOST', 'DEAL_LOST'],
-  PAYMENT_PENDING: ['DOCUMENT_PENDING', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DOCUMENT_PENDING: ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  ORDER_CONFIRMED: ['DISPATCH_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DISPATCH_PENDING: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
+  DISPATCH_PLANNED: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
+  PAYMENT_PENDING: ['DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DOCUMENT_PENDING: ['CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DELIVERED: ['CLOSED_WON', 'COMPLETED'],
+  COMPLETED: [],
   CLOSED_WON: [],
   CLOSED_LOST: [],
   
@@ -41,12 +44,19 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
 function canAccessLead(user, lead) {
   if (!user) return false;
   const role = user.role || '';
+  const dept = user.department || '';
   const isManagerOrAdmin =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.toLowerCase().includes('manager') ||
-    user.department === 'ADMIN' ||
+    role === 'TRANSPORT' ||
+    role === 'LOGISTICS' ||
+    role === 'DRIVER' ||
+    role.toLowerCase().includes('driver') ||
+    dept === 'ADMIN' ||
+    dept === 'TRANSPORT' ||
+    dept === 'LOGISTICS' ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
   let result = false;
@@ -121,25 +131,35 @@ function getLeadDisplay(lead, user) {
 async function listLeads(user, query = {}) {
   const filter = {};
   if (query.stage) filter.stage = query.stage;
+  if (query.priority) filter.priority = String(query.priority).toUpperCase();
 
   const role = user.role || '';
+  const dept = user.department || '';
   const isManagerOrAdminUser =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.toLowerCase().includes('manager') ||
-    user.department === 'ADMIN' ||
+    role === 'TRANSPORT' ||
+    role === 'LOGISTICS' ||
+    role === 'TRANSPORT_MANAGER' ||
+    role === 'LOGISTICS_MANAGER' ||
+    dept === 'ADMIN' ||
+    dept === 'TRANSPORT' ||
+    dept === 'LOGISTICS' ||
+    user.dispatchPermission === true ||
+    user.permissions?.dispatch === true ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
-  if (
+  const shouldFilterMyLeadsOnly = query.myLeadsOnly === 'true' || (
     !isManagerOrAdminUser &&
     role !== 'HR' &&
     role !== 'ACCOUNTS' &&
     role !== 'FINANCE' &&
-    user.paymentPermission !== true &&
-    user.dispatchPermission !== true &&
-    user.quotationPermission !== true
-  ) {
+    query.dispatchQueue !== 'true'
+  );
+
+  if (shouldFilterMyLeadsOnly) {
     const actorIds = [user._id];
     if (user.employeeDbId) {
       actorIds.push(user.employeeDbId);
@@ -159,7 +179,10 @@ async function listLeads(user, query = {}) {
     filter.assignedTo = { $in: actorIds };
   }
 
-  const leads = await Lead.find(filter).populate('assignedTo', 'fullName name email role profileImage').sort({ createdAt: -1 });
+  const leads = await Lead.find(filter)
+    .populate('assignedTo', 'fullName name email role profileImage')
+    .populate('createdBy', 'fullName name email role profileImage')
+    .sort({ createdAt: -1 });
 
   // Resolve mixed User/Employee populated assignees
   const populatedLeads = await Promise.all(leads.map(async (l) => {
@@ -220,7 +243,13 @@ async function getLeadById(id, user) {
 
 async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, user, ipAddress, deviceHash }) {
   // 1. Fetch the lead record first so `lead` exists in memory
-  const lead = await Lead.findById(leadId);
+  let lead = null;
+  if (mongoose.isValidObjectId(leadId)) {
+    lead = await Lead.findById(leadId);
+  }
+  if (!lead) {
+    lead = await Lead.findOne({ $or: [{ leadCode: leadId }, { leadId: leadId }, { orderNumber: leadId }] });
+  }
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
   // 2. Access control check
@@ -229,7 +258,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
       actorId: user._id,
       actionType: 'UNAUTHORIZED_VIEW',
       entityType: 'LEAD',
-      entityId: leadId,
+      entityId: lead._id,
       severity: 'HIGH',
       ipAddress,
       deviceHash,
@@ -242,14 +271,18 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   const previousStage = lead.stage;
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
   
-  // Allow ADMIN and MANAGER roles to override pipeline rules
+  // Allow ADMIN, MANAGER, and DRIVER roles to override pipeline rules
   const role = user.role || '';
   const isManagerOrAdminUser =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.toLowerCase().includes('manager') ||
+    role === 'DRIVER' ||
+    role.toLowerCase().includes('driver') ||
+    role === 'TRANSPORT' ||
     user.department === 'ADMIN' ||
+    user.department === 'TRANSPORT' ||
     (user.position && user.position.toLowerCase().includes('admin'));
 
   const canOverride = isManagerOrAdminUser;
@@ -262,6 +295,27 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+
+  // Auto-recalculate lead score & priority on stage progression
+  try {
+    const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+    const { score, priority: calculatedPriority } = scoreAndClassifyLead({
+      quantity: lead.quantity,
+      leadValue: lead.leadValue,
+      stage: newStage,
+      source: lead.source,
+      contactPerson: lead.customerName,
+      mobile: lead.phoneMasked,
+      chatSummary: lead.remarks || ''
+    });
+    lead.score = score;
+    if (calculatedPriority === 'HOT' || (calculatedPriority === 'WARM' && lead.priority === 'COLD')) {
+      lead.priority = calculatedPriority;
+    }
+  } catch (calcErr) {
+    console.warn('Lead score recalculation notice:', calcErr.message);
+  }
+
   await lead.save();
 
   // 5. Record activity log
@@ -486,7 +540,7 @@ async function bulkImportLeads(leadsArray, user) {
 
       // Run AI scoring
       const qtyText = String(quantity || '');
-      const { score, priority } = scoreAndClassifyLead({
+      const { score, priority: aiPriority } = scoreAndClassifyLead({
         quantity: qtyText,
         hasLOI: false,
         paymentTerms: 'Pending',
@@ -495,6 +549,12 @@ async function bulkImportLeads(leadsArray, user) {
         email: email || '',
         chatSummary: 'Bulk imported lead.'
       });
+
+      // Priority resolution: Explicit choice from row/import > AI priority
+      const rowPriority = String(row.priority || row.temperature || row.quality || '').trim().toUpperCase();
+      const finalPriority = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'].includes(rowPriority)
+        ? rowPriority
+        : aiPriority;
 
       const timestamp = Date.now();
       const random = Math.floor(Math.random() * 10000);
@@ -519,7 +579,7 @@ async function bulkImportLeads(leadsArray, user) {
         destination: destination || '',
         leadValue: Number(leadValue || 0),
         score,
-        priority,
+        priority: finalPriority,
         stage: 'NEW_LEAD',
         assignedTo: null,
         duplicateOf: duplicate ? duplicate._id : null,
@@ -546,6 +606,34 @@ async function bulkImportLeads(leadsArray, user) {
   };
 }
 
+async function updatePriority({ leadId, priority, user }) {
+  const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
+  const upperPriority = String(priority || '').toUpperCase();
+  if (!validPriorities.includes(upperPriority)) {
+    throw new Error('INVALID_PRIORITY');
+  }
+
+  const lead = await Lead.findById(leadId);
+  if (!lead) throw new Error('LEAD_NOT_FOUND');
+
+  if (!canAccessLead(user, lead)) {
+    throw new Error('OWNERSHIP_FORBIDDEN');
+  }
+
+  const oldPriority = lead.priority;
+  lead.priority = upperPriority;
+  await lead.save();
+
+  await LeadActivity.create({
+    leadId: lead._id,
+    actionType: 'PRIORITY_UPDATED',
+    note: `Lead priority manually updated from ${oldPriority} to ${upperPriority} by ${user.fullName || user.name}`,
+    actorId: user._id
+  });
+
+  return getLeadDisplay(lead, user);
+}
+
 module.exports = {
   listLeads,
   getLeadById,
@@ -555,5 +643,6 @@ module.exports = {
   assignLead,
   deleteLead,
   assignLeadsBulk,
-  bulkImportLeads
+  bulkImportLeads,
+  updatePriority
 };

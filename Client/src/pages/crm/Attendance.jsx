@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FiClock, FiLogIn, FiLogOut, FiFilter, FiUsers, FiCheckCircle, FiAlertCircle, FiXCircle, FiTrash2, FiCoffee } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../services/socket';
+import { employeesApi } from '../../api/employees';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -23,6 +24,11 @@ const formatLocalDate = (d) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getTodayBounds = () => {
+  const todayStr = formatLocalDate(new Date());
+  return { startDate: todayStr, endDate: todayStr, department: '' };
 };
 
 const getCurrentMonthBounds = () => {
@@ -81,21 +87,76 @@ const formatElapsed = (totalSeconds) => {
 };
 
 export default function Attendance() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [today, setToday] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [report, setReport] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
-  const [filters, setFilters] = useState(getCurrentMonthBounds);
+  const [filters, setFilters] = useState(getTodayBounds);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [lunchLoading, setLunchLoading] = useState(false);
   const [lunchElapsed, setLunchElapsed] = useState(0);
   const [myHistory, setMyHistory] = useState([]);
   const [myHistoryLoading, setMyHistoryLoading] = useState(false);
 
+  // Manual Attendance states
+  const [employeesList, setEmployeesList] = useState([]);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    employeeId: '',
+    date: formatLocalDate(new Date()),
+    status: 'PRESENT',
+    checkInTime: '09:00 AM',
+    checkOutTime: '06:00 PM'
+  });
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+
   const isManagerTier = ['ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(user?.role);
   const isAdmin = user?.role === 'ADMIN';
+
+  useEffect(() => {
+    if (isManagerTier) {
+      const fetchAllEmployees = async () => {
+        try {
+          const res = await employeesApi.getEmployees();
+          if (res.success) {
+            setEmployeesList(res.data.employees || []);
+          }
+        } catch (err) {
+          console.error('Error fetching employees list:', err);
+        }
+      };
+      fetchAllEmployees();
+    }
+  }, [isManagerTier]);
+
+  const handleManualMarkSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualForm.employeeId || !manualForm.date || !manualForm.status) {
+      return toast.error('Employee, Date, and Status are required!');
+    }
+    setManualSubmitting(true);
+    try {
+      const res = await attendanceApi.markAttendanceManually(manualForm);
+      if (res.success) {
+        toast.success('Attendance marked manually!');
+        setShowManualModal(false);
+        setManualForm(prev => ({
+          ...prev,
+          employeeId: '',
+          status: 'PRESENT',
+          checkInTime: '09:00 AM',
+          checkOutTime: '06:00 PM'
+        }));
+        fetchReport(filters);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to mark attendance');
+    } finally {
+      setManualSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     fetchToday();
@@ -184,14 +245,14 @@ export default function Attendance() {
   };
 
   const handleCheckOut = async () => {
-    if (!window.confirm('Check out now? This ends your work day and cannot be undone.')) {
+    if (!window.confirm('Check out now? This ends your work shift.')) {
       return;
     }
     setActionLoading(true);
     try {
       const response = await attendanceApi.checkOut();
       if (response.success) {
-        toast.success('Checked out successfully');
+        toast.success('Checked out successfully! Shift completed. 🌙');
         setToday(response.data.attendance);
         if (isManagerTier) fetchReport(filters);
         else fetchMyHistory(getCurrentMonthBounds());
@@ -314,7 +375,7 @@ export default function Attendance() {
         </div>
       </motion.div>
 
-      <div className="w-full px-4 md:px-8 py-6 space-y-6">
+      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-6 min-w-0 overflow-x-hidden">
 
         {/* Check-in / Check-out card */}
         <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/20 rounded-sm p-6 shadow-xl">
@@ -353,7 +414,7 @@ export default function Attendance() {
               )}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {!today?.checkInAt && (
                 <button
                   onClick={handleCheckIn}
@@ -429,51 +490,79 @@ export default function Attendance() {
               ))}
             </motion.div>
 
-            <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm flex flex-col md:flex-row gap-4 items-center">
-              <div className="w-full md:w-52 flex items-center gap-2">
-                <FiUsers className="text-[var(--crm-ink-faint)] shrink-0" size={14} />
+            <motion.div variants={blockVariants} className="p-2.5 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-md flex flex-wrap items-center justify-between gap-2 shadow-sm text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Department Dropdown */}
                 <select
                   value={filters.department}
                   onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs cursor-pointer text-[var(--crm-heading)]"
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] cursor-pointer text-[var(--crm-heading)] font-mono"
                 >
-                  <option value="">All Departments</option>
+                  <option value="">All Depts</option>
                   {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
-              </div>
-              <div className="flex-1 w-full flex items-center gap-2">
-                <FiFilter className="text-[var(--crm-ink-faint)] shrink-0" size={14} />
+
+                {/* Compact Date Range Pickers */}
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs text-[var(--crm-heading)]"
+                  className="px-2 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono"
                 />
-              </div>
-              <div className="flex-1 w-full">
+                <span className="text-slate-500 text-[10px]">&ndash;</span>
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 rounded-sm outline-none text-xs text-[var(--crm-heading)]"
+                  className="px-2 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono"
                 />
-              </div>
-              <button
-                onClick={handleApplyFilter}
-                className="bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm transition-all whitespace-nowrap"
-              >
-                Apply Filter
-              </button>
-              {isAdmin && (
+
+                {/* Apply Filter Button */}
                 <button
-                  onClick={handleCleanupOrphaned}
-                  disabled={cleanupLoading}
-                  title="Permanently delete attendance records with no check-in time (invalid/test data)"
-                  className="flex items-center gap-1.5 bg-transparent border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] text-[11px] uppercase tracking-widest font-semibold px-4 py-2.5 rounded-sm transition-all whitespace-nowrap disabled:opacity-50"
+                  onClick={handleApplyFilter}
+                  className="px-3 py-1.5 bg-[var(--crm-bg-raised)] hover:bg-[#1e3b61]/40 border border-[var(--crm-ink-soft)]/25 text-[var(--crm-heading)] text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
                 >
-                  <FiTrash2 size={12} /> {cleanupLoading ? 'Cleaning...' : 'Clean Up Invalid Records'}
+                  Filter
                 </button>
-              )}
+
+                {/* Today Only Button */}
+                <button
+                  onClick={() => {
+                    const todayStr = formatLocalDate(new Date());
+                    const todayF = { startDate: todayStr, endDate: todayStr, department: '' };
+                    setFilters(todayF);
+                    if (isManagerTier) fetchReport(todayF);
+                    else fetchMyHistory(todayF);
+                  }}
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[#c9a84c]/40 hover:bg-[#c9a84c]/10 text-[#c9a84c] text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  title="Reset to today's date"
+                >
+                  Today
+                </button>
+              </div>
+
+              {/* Right Side Action Buttons */}
+              <div className="flex items-center gap-2">
+                {isManagerTier && (
+                  <button
+                    onClick={() => setShowManualModal(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  >
+                    <FiLogIn size={11} /> Manual Mark
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    onClick={handleCleanupOrphaned}
+                    disabled={cleanupLoading}
+                    title="Clean invalid records"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-transparent border border-rose-900/40 hover:bg-rose-950/50 text-rose-400 text-[10px] uppercase tracking-wider font-bold rounded transition disabled:opacity-50"
+                  >
+                    <FiTrash2 size={11} /> {cleanupLoading ? '...' : 'Clean'}
+                  </button>
+                )}
+              </div>
             </motion.div>
 
             <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/10 rounded-sm overflow-hidden shadow-xl">
@@ -577,6 +666,126 @@ export default function Attendance() {
           </motion.div>
         )}
       </div>
+      {/* Manual Logger Modal */}
+      <AnimatePresence>
+        {showManualModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowManualModal(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, y: 10, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 10, opacity: 0 }}
+              className="relative bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-full max-w-md p-6 rounded-lg shadow-2xl font-mono text-xs z-10 text-left"
+            >
+              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 mb-4">
+                <h3 className="text-sm font-serif font-normal uppercase text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiClock className="text-teal-400" /> Manual Attendance Log
+                </h3>
+                <button
+                  onClick={() => setShowManualModal(false)}
+                  className="text-[var(--crm-ink-faint)] hover:text-white transition cursor-pointer"
+                >
+                  <FiXCircle size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleManualMarkSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold">Select Employee *</label>
+                  <select
+                    required
+                    value={manualForm.employeeId}
+                    onChange={(e) => setManualForm({ ...manualForm, employeeId: e.target.value })}
+                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2.5 py-2 rounded outline-none text-[var(--crm-heading)] cursor-pointer"
+                  >
+                    <option value="">Choose employee...</option>
+                    {employeesList.map(emp => (
+                      <option key={emp._id} value={emp._id}>{emp.name} ({emp.department} - {emp.role.replace('_', ' ')})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold">Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={manualForm.date}
+                      onChange={(e) => setManualForm({ ...manualForm, date: e.target.value })}
+                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2.5 py-1.5 rounded outline-none text-[var(--crm-heading)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1 font-bold">Classification *</label>
+                    <select
+                      required
+                      value={manualForm.status}
+                      onChange={(e) => setManualForm({ ...manualForm, status: e.target.value })}
+                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2.5 py-1.5 rounded outline-none text-[var(--crm-heading)] cursor-pointer font-bold"
+                    >
+                      <option value="PRESENT" className="text-emerald-400 font-bold">Present (Full Time)</option>
+                      <option value="LATE" className="text-amber-400 font-bold">Late Arrival</option>
+                      <option value="HALF_DAY" className="text-sky-400 font-bold">Half Day (Half Time)</option>
+                      <option value="ABSENT" className="text-rose-400 font-bold">Absent</option>
+                      <option value="HOLIDAY" className="text-slate-400 font-bold">Holiday</option>
+                      <option value="WEEKEND" className="text-slate-400 font-bold">Weekend</option>
+                    </select>
+                  </div>
+                </div>
+
+                {manualForm.status !== 'ABSENT' && manualForm.status !== 'HOLIDAY' && manualForm.status !== 'WEEKEND' && (
+                  <div className="grid grid-cols-2 gap-3 border border-[var(--crm-line)] p-3 rounded bg-[var(--crm-bg-sunken)]/30 animate-fadeIn">
+                    <div>
+                      <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1">Check In Time</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 09:00 AM"
+                        value={manualForm.checkInTime}
+                        onChange={(e) => setManualForm({ ...manualForm, checkInTime: e.target.value })}
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded outline-none text-[var(--crm-heading)] text-[10px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] mb-1">Check Out Time</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 06:00 PM"
+                        value={manualForm.checkOutTime}
+                        onChange={(e) => setManualForm({ ...manualForm, checkOutTime: e.target.value })}
+                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded outline-none text-[var(--crm-heading)] text-[10px]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualModal(false)}
+                    className="border border-[var(--crm-line)] hover:border-white px-4 py-2 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={manualSubmitting}
+                    className="bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] px-4 py-2 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer disabled:opacity-40"
+                  >
+                    {manualSubmitting ? 'Logging...' : 'Save Attendance'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

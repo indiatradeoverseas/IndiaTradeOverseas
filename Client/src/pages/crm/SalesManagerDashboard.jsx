@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiDollarSign, 
@@ -20,7 +21,17 @@ import {
   FiPaperclip,
   FiCheckSquare,
   FiDownload,
-  FiUpload
+  FiUpload,
+  FiClock,
+  FiMic,
+  FiFolder,
+  FiTrash2,
+  FiGrid,
+  FiSearch,
+  FiUserCheck,
+  FiMail,
+  FiPhone,
+  FiTruck
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -92,6 +103,8 @@ export default function SalesManagerDashboard() {
   const [fileForm, setFileForm] = useState({ sentTo: '', note: '' });
   const [shareFile, setShareFile] = useState(null);
   const [submittingFile, setSubmittingFile] = useState(false);
+  const [sharedFiles, setSharedFiles] = useState([]);
+  const [dailyWorkLogs, setDailyWorkLogs] = useState([]);
 
   // Target Setting states
   const [showTargetModal, setShowTargetModal] = useState(false);
@@ -104,8 +117,87 @@ export default function SalesManagerDashboard() {
   const [assigneeExecId, setAssigneeExecId] = useState('');
   const [submittingBulkAssign, setSubmittingBulkAssign] = useState(false);
 
+  // Incoming Division Leads & Single Assignment State
+  const [leadDivisionFilter, setLeadDivisionFilter] = useState('ALL');
+  const [leadSearchTerm, setLeadSearchTerm] = useState('');
+  const [selectedExecPerLead, setSelectedExecPerLead] = useState({});
+  const [assigningSingleLeadId, setAssigningSingleLeadId] = useState(null);
+
+  const handleAssignSingleLead = async (leadId) => {
+    const execId = selectedExecPerLead[leadId];
+    if (!execId) {
+      toast.error('Please select a Sales Executive to assign');
+      return;
+    }
+    setAssigningSingleLeadId(leadId);
+    try {
+      const res = await leadsApi.assignLead(leadId, { assignedTo: execId });
+      if (res.success) {
+        toast.success('Lead assigned to Sales Executive successfully! 🚀');
+        loadDashboardData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lead assignment failed');
+    } finally {
+      setAssigningSingleLeadId(null);
+    }
+  };
+
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [submittingLeaveReview, setSubmittingLeaveReview] = useState(null);
+
+  // Call Recordings State
+  const [callRecordings, setCallRecordings] = useState([]);
+  const [recordingPriorityFilter, setRecordingPriorityFilter] = useState('ALL');
+  const [remarkInputs, setRemarkInputs] = useState({});
+  const [savingRemarkId, setSavingRemarkId] = useState(null);
+
+  // Calendar Date Filtering State
+  const [dateFilterMode, setDateFilterMode] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'PICK_DATE'
+  const [selectedDate, setSelectedDate] = useState('');
+  const [attendanceFilter, setAttendanceFilter] = useState('ALL'); // 'ALL' | 'PRESENT' | 'ABSENT'
+
+  const getFilteredByDate = (items = []) => {
+    if (dateFilterMode === 'ALL') return items;
+    return items.filter(item => {
+      const rawDate = item.createdAt || item.date || item.uploadedAt;
+      if (!rawDate) return true;
+      const itemDate = new Date(rawDate);
+      const dStr = itemDate.toISOString().split('T')[0];
+
+      if (dateFilterMode === 'TODAY') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        return dStr === todayStr;
+      }
+      if (dateFilterMode === 'YESTERDAY') {
+        const yest = new Date();
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().split('T')[0];
+        return dStr === yestStr;
+      }
+      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
+        return dStr === selectedDate;
+      }
+      return true;
+    });
+  };
+
+  const handleSaveRemark = async (recordingId) => {
+    const remarkText = remarkInputs[recordingId];
+    if (remarkText === undefined) return;
+    setSavingRemarkId(recordingId);
+    try {
+      const res = await leadsApi.updateCallRecordingRemark(recordingId, remarkText);
+      if (res.success) {
+        toast.success('Manager remark saved!');
+        setCallRecordings(prev => prev.map(r => r._id === recordingId ? { ...r, managerRemark: remarkText, managerRemarkBy: user?.fullName || user?.name } : r));
+      }
+    } catch (err) {
+      toast.error('Failed to save remark');
+    } finally {
+      setSavingRemarkId(null);
+    }
+  };
 
   // Strategic Insights & Chat States
   const [strategicInsights, setStrategicInsights] = useState(null);
@@ -133,11 +225,33 @@ export default function SalesManagerDashboard() {
           [data.employeeId]: data
         }));
       };
+
+      const handleAttendanceUpdate = (data) => {
+        if (data && data.employeeId) {
+          setTeamEmployees(prev => prev.map(emp => {
+            const isTarget = String(emp._id) === String(data.employeeId) || 
+                             String(emp.employeeId) === String(data.employeeId) ||
+                             (emp.email && data.record?.email && emp.email.toLowerCase() === data.record.email.toLowerCase());
+            if (isTarget) {
+              return {
+                ...emp,
+                isCheckedIn: data.type === 'check-in' || data.type === 'manual' || data.type === 'clock-in',
+                status: (data.type === 'check-in' || data.type === 'manual' || data.type === 'clock-in') ? 'IDLE' : 'OFFLINE',
+                currentActivity: (data.type === 'check-in' || data.type === 'manual' || data.type === 'clock-in') ? 'Available' : 'Offline',
+                lastUpdated: new Date()
+              };
+            }
+            return emp;
+          }));
+        }
+      };
       
       skt.on('employee_status_updated', handleStatusUpdate);
+      skt.on('attendance_updated', handleAttendanceUpdate);
       
       return () => {
         skt.off('employee_status_updated', handleStatusUpdate);
+        skt.off('attendance_updated', handleAttendanceUpdate);
       };
     }
   }, [user]);
@@ -148,6 +262,69 @@ export default function SalesManagerDashboard() {
       currentActivity: emp.currentActivity || 'Offline',
       lastUpdated: emp.lastUpdated,
       duration: emp.duration || '00:00:00'
+    };
+  };
+
+  const getEmployeeAttendanceData = (emp) => {
+    // 1. Is Logged-in User?
+    const isMe = user && (
+      (emp._id && String(emp._id) === String(user._id || user.employeeDbId || '')) ||
+      (emp.email && user.email && String(emp.email).toLowerCase() === String(user.email).toLowerCase()) ||
+      (emp.name && (emp.name === user.fullName || emp.name === user.name)) ||
+      ((emp.fullName || '').toLowerCase() === (user.fullName || user.name || '').toLowerCase())
+    );
+
+    // 2. Is Approved Leave?
+    const isOnLeave = teamLeaves.some(l => 
+      (l.applicantId?._id === emp._id || l.applicantId === emp._id || l.employeeId === emp._id) &&
+      l.status === 'APPROVED'
+    );
+    if (isOnLeave) {
+      return {
+        statusKey: 'LEAVE',
+        badgeText: '🟡 ON LEAVE',
+        badgeColor: 'bg-amber-950/60 text-amber-400 border-amber-800/60',
+        currentActivity: 'On Approved Leave',
+        lastActiveText: 'On Leave Today'
+      };
+    }
+
+    // 3. Live Socket Status or DB Attendance check
+    const live = liveStatuses[emp._id] || liveStatuses[emp.email];
+    const isCheckedInInDB = emp.isCheckedIn === true || 
+      (emp.status && emp.status !== 'OFFLINE' && emp.status !== 'ABSENT') ||
+      (emp.statusInfo && emp.statusInfo.status !== 'OFFLINE' && emp.statusInfo.status !== 'ABSENT');
+
+    // 4. Daily Work Log submission check for today
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todaysLog = dailyWorkLogs.find(log => {
+      const logEmpId = String(log.employeeId || log.employee?._id || '');
+      const logEmpName = String(log.employeeName || '');
+      const logDateStr = new Date(log.createdAt || log.date).toISOString().split('T')[0];
+      return (
+        (logEmpId === String(emp._id) || logEmpName.toLowerCase() === (emp.name || emp.fullName || '').toLowerCase()) &&
+        logDateStr === todayStr
+      );
+    });
+
+    const isPresent = isMe || isCheckedInInDB || (live && live.status && live.status !== 'OFFLINE' && live.status !== 'ABSENT') || Boolean(todaysLog) || emp.isOnline === true;
+
+    if (isPresent) {
+      return {
+        statusKey: 'PRESENT',
+        badgeText: '🟢 PRESENT',
+        badgeColor: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60',
+        currentActivity: live?.currentActivity || (emp.currentActivity && emp.currentActivity !== 'Offline' ? emp.currentActivity : (isMe ? 'Available (Logged In)' : todaysLog ? `Submitted Work Log (${todaysLog.numberOfCalls} Calls)` : 'Available (Checked-In)')),
+        lastActiveText: live?.lastUpdated ? new Date(live.lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (emp.lastUpdated ? new Date(emp.lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (todaysLog ? new Date(todaysLog.createdAt || todaysLog.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Checked-in Today'))
+      };
+    }
+
+    return {
+      statusKey: 'ABSENT',
+      badgeText: '🔴 ABSENT',
+      badgeColor: 'bg-rose-950/60 text-rose-400 border-rose-800/60',
+      currentActivity: 'Offline',
+      lastActiveText: live?.lastUpdated ? new Date(live.lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'No Check-In Today'
     };
   };
 
@@ -230,6 +407,30 @@ export default function SalesManagerDashboard() {
           setMetrics(metricsRes.data.metrics);
         }
       } catch (e) { console.error('Metrics fetch error:', e); }
+
+      // 8. Fetch Call Recordings
+      try {
+        const recRes = await leadsApi.getCallRecordings();
+        if (recRes.success) {
+          setCallRecordings(recRes.data?.recordings || []);
+        }
+      } catch (e) { console.error('Call recordings fetch error:', e); }
+
+      // 9. Fetch Shared Files
+      try {
+        const sfRes = await sharedFilesApi.getSharedFiles();
+        if (sfRes.success) {
+          setSharedFiles(sfRes.data?.files || []);
+        }
+      } catch (e) { console.error('Shared files fetch error:', e); }
+
+      // 10. Fetch Executive Daily Work Logs
+      try {
+        const logsRes = await salesApi.getDailyWorkLogs();
+        if (logsRes.success) {
+          setDailyWorkLogs(logsRes.data?.logs || logsRes.logs || []);
+        }
+      } catch (e) { console.error('Daily work logs fetch error:', e); }
 
     } catch (err) {
       console.error('Error loading manager dashboard details:', err);
@@ -616,9 +817,49 @@ export default function SalesManagerDashboard() {
     }
   };
 
+  // Filter for Division Leads (Only Website Forms for Tea, Rice, Stone & Website Chat leads)
+  const getFilteredDivisionLeads = () => {
+    return getFilteredByDate(allLeads).filter(lead => {
+      // 1. Exclude third-party import / whatsapp / indiamart external channels
+      const src = (lead.source || '').toUpperCase();
+      const isExcludedExternalSource = src === 'INDIAMART' || src === 'WHATSAPP' || src === 'IMPORT';
+      if (isExcludedExternalSource) return false;
+
+      // 2. Division Category constraint: Must be Tea, Rice, or Stone
+      const cat = (lead.productCategory || '').toUpperCase();
+      const isDivisionProduct =
+        cat.includes('TEA') ||
+        cat.includes('RICE') ||
+        cat.includes('STONE') ||
+        cat.includes('WHITE_STONE');
+
+      if (!isDivisionProduct) return false;
+
+      // 3. Filter by Selected Division Tab (ALL, TEA, RICE, STONE)
+      const matchesDiv = leadDivisionFilter === 'ALL' ||
+        (leadDivisionFilter === 'TEA' && cat.includes('TEA')) ||
+        (leadDivisionFilter === 'RICE' && cat.includes('RICE')) ||
+        (leadDivisionFilter === 'STONE' && (cat.includes('STONE') || cat.includes('WHITE_STONE')));
+
+      if (!matchesDiv) return false;
+
+      // 4. Search Filter
+      const searchLower = leadSearchTerm.toLowerCase();
+      const matchesSearch = !leadSearchTerm ||
+        (lead.customerName || '').toLowerCase().includes(searchLower) ||
+        (lead.leadCode || '').toLowerCase().includes(searchLower) ||
+        (lead.companyName || '').toLowerCase().includes(searchLower) ||
+        (lead.emailEncrypted || lead.emailMasked || '').toLowerCase().includes(searchLower) ||
+        (lead.phoneEncrypted || lead.phoneMasked || '').toLowerCase().includes(searchLower);
+
+      return matchesSearch;
+    });
+  };
+
   const handleSelectAllLeads = (e) => {
+    const filteredLeads = getFilteredDivisionLeads();
     if (e.target.checked) {
-      setSelectedLeads(allLeads.map(l => l._id));
+      setSelectedLeads(filteredLeads.map(l => l._id));
     } else {
       setSelectedLeads([]);
     }
@@ -637,20 +878,20 @@ export default function SalesManagerDashboard() {
       initial="hidden" 
       animate="visible" 
       variants={containerVariants} 
-      className="space-y-6 block pb-12 w-full max-w-full font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] print:bg-white print:p-0"
+      className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] overflow-x-hidden print:bg-white print:p-0"
     >
       {/* Header Bar */}
-      <motion.div variants={itemVariants} className="w-full bg-[var(--crm-bg-raised)] border-b border-[var(--crm-line)] px-6 py-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 shadow-sm rounded-b-md print:shadow-none print:border-none print:pb-2">
-        <div className="space-y-1 text-left flex-1 min-w-0">
+      <motion.div variants={itemVariants} className="w-full bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shadow-sm print:shadow-none print:border-none print:pb-2">
+        <div className="space-y-1 text-left flex-1 min-w-0 pr-2">
           <span className="text-[10px] uppercase tracking-[0.25em] text-teal-500 font-bold block font-mono">Operations Management Console</span>
-          <h1 className="text-2xl sm:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">Sales Team Command Center</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">Sales Team Command Center</h1>
           <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
             Manager: <strong className="text-[var(--crm-heading)] font-semibold font-mono">{user?.name || user?.fullName || 'Sales Manager'}</strong> &bull; Region: <span className="text-[var(--crm-heading)] font-semibold font-mono">Global Operations</span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 self-stretch md:self-auto font-mono print:hidden">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-mono shrink-0 print:hidden">
           {/* Date Filter */}
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded shadow-sm">
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded shadow-sm shrink-0 whitespace-nowrap">
             <FiFilter className="text-[var(--crm-ink-faint)]" size={12} />
             <select
               value={dateFilter}
@@ -665,39 +906,110 @@ export default function SalesManagerDashboard() {
 
           <button 
             onClick={loadDashboardData}
-            className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Refresh
           </button>
 
           <button 
             onClick={handlePrintPDF}
-            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <FiPrinter size={12} /> Export to PDF
+            <FiPrinter size={12} /> Export PDF
           </button>
 
           <button 
             onClick={() => setShowTaskModal(true)}
-            className="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiCheckSquare size={12} /> Assign Task
           </button>
 
           <button 
             onClick={() => setShowFileModal(true)}
-            className="flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-800 px-3.5 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiUpload size={12} /> Send File
           </button>
         </div>
       </motion.div>
 
+      {/* Calendar Date Filter Bar */}
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
+        <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
+          <FiCalendar className="text-teal-400 animate-pulse" size={16} />
+          <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+              dateFilterMode === 'ALL'
+                ? 'bg-teal-600 text-white font-black shadow'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            }`}
+          >
+            All Dates
+          </button>
+          <button
+            onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+              dateFilterMode === 'TODAY'
+                ? 'bg-teal-600 text-white font-black shadow'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+              dateFilterMode === 'YESTERDAY'
+                ? 'bg-teal-600 text-white font-black shadow'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            }`}
+          >
+            Yesterday
+          </button>
+
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
+            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
+              }}
+              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+            />
+          </div>
+
+          {dateFilterMode !== 'ALL' && (
+            <button
+              onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
+              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+            >
+              Clear Filter
+            </button>
+          )}
+        </div>
+
+        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          &bull; ({getFilteredByDate(allLeads).length} Leads &bull; {getFilteredByDate(callRecordings).length} Recordings)
+        </div>
+      </motion.div>
+
       {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-6 py-1 flex overflow-x-auto scrollbar-none shadow-sm print:hidden">
-        <nav className="flex space-x-8 min-w-max">
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full print:hidden">
+        <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
+            { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
+            { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
+            { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
           ].map(tab => (
@@ -720,9 +1032,9 @@ export default function SalesManagerDashboard() {
       {/* Main Tab Screen Render */}
       <AnimatePresence mode="wait">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-3 print:hidden">
+          <div className="flex flex-col items-center justify-center py-32 space-y-3">
             <div className="w-10 h-10 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-xs font-mono tracking-widest uppercase text-[var(--crm-ink-faint)]">Compiling Team Analytics...</p>
+            <p className="text-xs font-mono tracking-widest uppercase text-[var(--crm-ink-faint)]">Syncing Team Command Center Data...</p>
           </div>
         ) : (
           <motion.div
@@ -731,7 +1043,7 @@ export default function SalesManagerDashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="px-6 space-y-6"
+            className="px-0 sm:px-2 space-y-6 w-full min-w-0"
           >
             {/* TAB 1: TEAM COMMAND CENTER */}
             {activeTab === 'command' && (
@@ -740,8 +1052,35 @@ export default function SalesManagerDashboard() {
                 {/* Left/Middle Column */}
                 <div className="lg:col-span-8 space-y-6">
                   
-                  {/* Headline KPIs Row (6 Metrics) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
+                  {/* Lead Temperature Classification Banner */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] rounded-lg font-mono text-xs text-left">
+                    <div className="flex items-center space-x-3 p-2 bg-rose-950/40 border border-rose-900/40 rounded">
+                      <span className="text-xl">🔥</span>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-rose-400 block">Hot Deals (Urgent)</span>
+                        <strong className="text-sm text-rose-200 font-bold">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'HOT').length} Leads</strong>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-2 bg-amber-950/40 border border-amber-900/40 rounded">
+                      <span className="text-xl">⚡</span>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-amber-400 block">Warm Pipeline</span>
+                        <strong className="text-sm text-amber-200 font-bold">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'WARM').length} Leads</strong>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-2 bg-cyan-950/40 border border-cyan-900/40 rounded">
+                      <span className="text-xl">❄️</span>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-cyan-400 block">Cold / Nurturing</span>
+                        <strong className="text-sm text-cyan-200 font-bold">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'COLD').length} Leads</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPI Cards Row (Responsive Grid) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 animate-fadeIn">
                     {[
                       { label: 'TOTAL TARGET', val: currency(metrics.totalTarget), sub: 'Monthly Goal', icon: FiTrendingUp, color: 'text-indigo-400 bg-indigo-950/20 border-indigo-900/30' },
                       { label: 'TOTAL LEADS', val: metrics.totalLeads, sub: 'All Sources', icon: FiUsers, color: 'text-teal-400 bg-teal-950/20 border-teal-900/30' },
@@ -753,16 +1092,16 @@ export default function SalesManagerDashboard() {
                       <motion.div 
                         key={idx}
                         whileHover={{ y: -3 }}
-                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left"
+                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3.5 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left min-w-0"
                       >
-                        <div className="flex justify-between items-start">
-                          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono leading-none">{kpi.label}</span>
-                          <div className={`p-1.5 rounded-md ${kpi.color}`}>
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono leading-tight">{kpi.label}</span>
+                          <div className={`p-1.5 rounded-md shrink-0 ${kpi.color}`}>
                             <kpi.icon size={12} />
                           </div>
                         </div>
-                        <div className="mt-3">
-                          <p className="text-base font-bold text-[var(--crm-heading)] leading-tight truncate tracking-tight">{kpi.val}</p>
+                        <div className="mt-2.5">
+                          <p className="text-sm sm:text-base font-bold text-[var(--crm-heading)] leading-tight tracking-tight break-words">{kpi.val}</p>
                           <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mt-0.5">{kpi.sub}</span>
                         </div>
                       </motion.div>
@@ -828,7 +1167,7 @@ export default function SalesManagerDashboard() {
                       </h3>
 
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <FunnelChart>
                             <Tooltip 
                               contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
@@ -846,66 +1185,63 @@ export default function SalesManagerDashboard() {
                       </div>
                     </div>
 
-                    {/* Approval Queue */}
+                    {/* Dispatch Ready & Order Confirmed Queue */}
                     <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left flex flex-col justify-between">
                       <div>
                         <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                          <span>Document Approval Queue</span>
-                          <span className="bg-rose-950/40 text-rose-400 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold border border-rose-900/30">
-                            {pendingDocs.length} Pending
+                          <span className="flex items-center gap-1.5 text-teal-400">
+                            <FiTruck size={14} /> Ready for Dispatch & Logistics
+                          </span>
+                          <span className="bg-amber-950/40 text-amber-400 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold border border-amber-900/30">
+                            {allLeads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'].includes((l.stage || '').toUpperCase())).length} Orders
                           </span>
                         </h3>
 
-                        <div className="mt-4 space-y-3 overflow-y-auto max-h-[220px] pr-1 custom-scrollbar">
-                          {pendingDocs.length === 0 ? (
+                        <div className="mt-4 space-y-3 overflow-y-auto max-h-[240px] pr-1 custom-scrollbar">
+                          {allLeads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'].includes((l.stage || '').toUpperCase())).length === 0 ? (
                             <div className="py-12 border border-dashed border-[var(--crm-line)] rounded flex flex-col items-center justify-center">
-                              <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase">Approval queue empty</span>
-                              <span className="text-[8px] text-[var(--crm-ink-faint)]/70 mt-1">No documents require manager override.</span>
+                              <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase">No dispatch orders pending</span>
+                              <span className="text-[8px] text-[var(--crm-ink-faint)]/70 mt-1">Confirmed orders ready for logistics will appear here.</span>
                             </div>
                           ) : (
-                            pendingDocs.map((doc) => (
-                              <div key={doc._id} className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/50 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-2">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <span className="bg-slate-900 text-teal-400 font-mono font-bold text-[8px] px-1.5 py-0.5 rounded uppercase border border-slate-800">
-                                      {doc.exportDocType || 'DOCUMENT'}
+                            allLeads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'].includes((l.stage || '').toUpperCase())).map((lead) => {
+                              const execName = typeof lead.assignedTo === 'object' && lead.assignedTo
+                                ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email)
+                                : (lead.assignedTo || 'Unassigned');
+
+                              return (
+                                <div key={lead._id} className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/50 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-2">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="bg-amber-950/80 text-amber-300 font-mono font-bold text-[8px] px-1.5 py-0.5 rounded uppercase border border-amber-800/40">
+                                        {lead.stage?.replace(/_/g, ' ')}
+                                      </span>
+                                      <h5 className="font-serif font-bold text-[var(--crm-heading)] mt-1.5 truncate max-w-[160px]">
+                                        {lead.customerName}
+                                      </h5>
+                                    </div>
+                                    <span className="text-[9px] text-[var(--crm-positive)] font-bold">
+                                      {lead.leadValue ? `₹${lead.leadValue.toLocaleString('en-IN')}` : '—'}
                                     </span>
-                                    <h5 className="font-sans font-bold text-[var(--crm-heading)] mt-1.5 truncate max-w-[150px]">
-                                      {doc.fileName}
-                                    </h5>
                                   </div>
-                                  <span className="text-[7px] text-[var(--crm-ink-faint)] font-light mt-0.5">
-                                    {new Date(doc.createdAt).toLocaleDateString()}
-                                  </span>
-                                </div>
 
-                                <div className="text-[9px] text-[var(--crm-ink-soft)] space-y-0.5">
-                                  <p>Deal: <strong className="text-[var(--crm-heading)]">{doc.ownerId?.customerName || 'Direct Trading'}</strong></p>
-                                  <p>By: <strong className="text-[var(--crm-heading)]">{doc.uploadedBy?.fullName || 'Trading Executive'}</strong></p>
-                                </div>
+                                  <div className="text-[9px] text-[var(--crm-ink-soft)] space-y-0.5">
+                                    <p>Lead Code: <strong className="text-[var(--crm-heading)]">{lead.leadCode}</strong></p>
+                                    <p>Order Owner: <strong className="text-teal-400">{execName}</strong></p>
+                                  </div>
 
-                                <div className="flex gap-2 pt-1">
-                                  <button
-                                    onClick={() => {
-                                      setActionType('APPROVE');
-                                      setActioningDoc(doc);
-                                    }}
-                                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-[8px] font-bold uppercase tracking-wider py-1.5 rounded transition cursor-pointer flex items-center justify-center gap-0.5"
-                                  >
-                                    <FiCheck size={10} /> Approve
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setActionType('REJECT');
-                                      setActioningDoc(doc);
-                                    }}
-                                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-[8px] font-bold uppercase tracking-wider py-1.5 rounded transition cursor-pointer flex items-center justify-center gap-0.5"
-                                  >
-                                    <FiX size={10} /> Reject
-                                  </button>
+                                  <div className="pt-1 border-t border-[var(--crm-line)]/40 flex justify-between items-center">
+                                    <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase">{lead.productCategory}</span>
+                                    <Link
+                                      to={`/crm/leads/${lead._id}`}
+                                      className="bg-teal-700/30 hover:bg-teal-700/50 text-teal-300 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer"
+                                    >
+                                      View Lead Details →
+                                    </Link>
+                                  </div>
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
                       </div>
@@ -1018,17 +1354,17 @@ export default function SalesManagerDashboard() {
                 {/* Right Sidebar (Employee Management Card) */}
                 <div className="lg:col-span-4 space-y-6 text-left print:hidden">
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
-                        <FiUsers className="text-teal-500" size={14} />
-                        <span>Sales Team Members</span>
+                    <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 gap-2">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5 min-w-0">
+                        <FiUsers className="text-teal-500 shrink-0" size={14} />
+                        <span className="truncate">Sales Team Members</span>
                       </h3>
                       <button
                         onClick={() => {
                           setTaskForm({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL', leadId: '' });
                           setShowTaskModal(true);
                         }}
-                        className="bg-teal-700 hover:bg-teal-600 text-white font-mono font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition shadow-sm cursor-pointer"
+                        className="bg-teal-700 hover:bg-teal-600 text-white font-mono font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
                       >
                         + Assign Task
                       </button>
@@ -1041,89 +1377,55 @@ export default function SalesManagerDashboard() {
                         </div>
                       ) : (
                         teamEmployees.map((emp) => {
-                          const liveStatus = getEmployeeLiveStatus(emp);
-                          
-                          // Map status type to aesthetic representation
-                          const statusMap = {
-                            ON_CALL: { label: 'On Call', color: 'bg-emerald-500', pulse: true, text: 'text-emerald-400' },
-                            FOLLOWING_UP: { label: 'Following Up', color: 'bg-sky-500', pulse: true, text: 'text-sky-400' },
-                            CONVERTING: { label: 'Converting', color: 'bg-violet-500', pulse: true, text: 'text-violet-400' },
-                            PAYMENT: { label: 'Payment', color: 'bg-amber-500', pulse: true, text: 'text-amber-400' },
-                            IDLE: { label: 'Idle', color: 'bg-slate-400', pulse: false, text: 'text-slate-400' },
-                            OFFLINE: { label: 'Offline', color: 'bg-rose-500', pulse: false, text: 'text-rose-400' }
-                          };
-                          
-                          const statusConfig = statusMap[liveStatus.status] || statusMap.OFFLINE;
-
                           return (
                             <div 
                               key={emp._id} 
-                              className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-3"
+                              className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-2.5"
                             >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="font-sans font-bold text-[var(--crm-heading)] text-sm">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="min-w-0 pr-1">
+                                  <h4 className="font-sans font-bold text-[var(--crm-heading)] text-sm truncate">
                                     {emp.name}
                                   </h4>
-                                  <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono uppercase">
+                                  <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono uppercase block truncate">
                                     {emp.position || emp.role || 'Executive'}
                                   </span>
                                 </div>
-                                
-                                {/* Status indicator with animation */}
-                                <div className="flex items-center gap-1.5">
-                                  <span className="relative flex h-2 w-2">
-                                    {statusConfig.pulse && (
-                                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusConfig.color} opacity-75`}></span>
-                                    )}
-                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${statusConfig.color}`}></span>
-                                  </span>
-                                  <span className={`text-[9px] font-bold uppercase tracking-wider ${statusConfig.text}`}>
-                                    {statusConfig.label}
-                                  </span>
-                                </div>
                               </div>
 
-                              <div className="flex justify-between items-center text-[10px] text-[var(--crm-ink-soft)] border-t border-[var(--crm-line)]/50 pt-2">
-                                <div className="truncate max-w-[150px]">
-                                  Activity: <strong className="text-[var(--crm-heading)]">{liveStatus.currentActivity || 'No active task'}</strong>
-                                </div>
+                              <div className="flex justify-between items-center text-[10px] text-[var(--crm-ink-soft)] border-t border-[var(--crm-line)]/50 pt-2 font-mono">
+                                <span className="text-[var(--crm-ink-faint)] uppercase text-[9px] font-bold tracking-wider">Pending Tasks</span>
                                 <div>
-                                  Pending: <strong className="text-teal-400">{emp.tasksCount || 0} Tasks</strong>
+                                  <strong className="text-teal-400">{emp.tasksCount || 0} Tasks</strong>
                                 </div>
                               </div>
 
-                              <div className="flex justify-between items-center pt-1 font-sans">
-                                <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">
-                                  {liveStatus.lastUpdated ? `Since: ${new Date(liveStatus.lastUpdated).toLocaleTimeString()}` : ''}
-                                </span>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => {
-                                      setTaskForm(prev => ({ ...prev, assignedTo: emp._id }));
-                                      setShowTaskModal(true);
-                                    }}
-                                    className="flex-1 bg-teal-700/25 hover:bg-teal-700/40 text-teal-400 font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition cursor-pointer"
-                                  >
-                                    Assign Task
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setTargetForm({
-                                        employeeId: emp._id,
-                                        month: new Date().getMonth() + 1,
-                                        year: new Date().getFullYear(),
-                                        targetValue: '',
-                                        targetDeals: ''
-                                      });
-                                      setSelectedEmpName(emp.name);
-                                      setShowTargetModal(true);
-                                    }}
-                                    className="flex-1 bg-sky-700/25 hover:bg-sky-700/40 text-sky-400 font-bold text-[9px] uppercase tracking-wider py-1 px-2.5 rounded transition cursor-pointer"
-                                  >
-                                    Set Target
-                                  </button>
-                                </div>
+                              <div className="flex items-center gap-2 pt-1 font-mono">
+                                <button
+                                  onClick={() => {
+                                    setTaskForm(prev => ({ ...prev, assignedTo: emp._id }));
+                                    setShowTaskModal(true);
+                                  }}
+                                  className="flex-1 bg-teal-950/60 hover:bg-teal-900/80 text-teal-300 border border-teal-800/50 font-bold text-[9px] uppercase tracking-wider py-1.5 px-2 rounded transition cursor-pointer whitespace-nowrap text-center"
+                                >
+                                  Assign Task
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setTargetForm({
+                                      employeeId: emp._id,
+                                      month: new Date().getMonth() + 1,
+                                      year: new Date().getFullYear(),
+                                      targetValue: '',
+                                      targetDeals: ''
+                                    });
+                                    setSelectedEmpName(emp.name);
+                                    setShowTargetModal(true);
+                                  }}
+                                  className="flex-1 bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 border border-sky-800/50 font-bold text-[9px] uppercase tracking-wider py-1.5 px-2 rounded transition cursor-pointer whitespace-nowrap text-center"
+                                >
+                                  Set Target
+                                </button>
                               </div>
                             </div>
                           );
@@ -1133,6 +1435,389 @@ export default function SalesManagerDashboard() {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* TAB: INCOMING DIVISION LEADS & ASSIGNMENT HUB */}
+            {activeTab === 'incoming_leads' && (
+              <div className="space-y-6 text-left">
+                {/* Header & Filter Controls Card */}
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--crm-line)] pb-4">
+                    <div>
+                      <h2 className="text-base font-bold text-[var(--crm-heading)] tracking-tight uppercase flex items-center gap-2">
+                        <FiGrid className="text-teal-400" size={18} />
+                        Division Leads & Executive Assignment Hub
+                      </h2>
+                      <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1">
+                        Review incoming leads from Prakriti Tea Division, Prakriti Rice Division, and Stone & Infrastructure, then assign them directly to Sales Executives.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                      <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Filter Division:</span>
+                      <div className="flex flex-wrap gap-1 bg-[var(--crm-bg-sunken)] p-1 rounded border border-[var(--crm-line)]">
+                        {[
+                          { id: 'ALL', label: 'All Divisions' },
+                          { id: 'TEA', label: '🍃 Tea Division' },
+                          { id: 'RICE', label: '🌾 Rice Division' },
+                          { id: 'STONE', label: '🪨 Stone & Infra' }
+                        ].map(divFilter => (
+                          <button
+                            key={divFilter.id}
+                            onClick={() => setLeadDivisionFilter(divFilter.id)}
+                            className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition cursor-pointer ${
+                              leadDivisionFilter === divFilter.id
+                                ? 'bg-teal-600 text-white shadow-sm'
+                                : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                            }`}
+                          >
+                            {divFilter.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bulk Action Bar (When 1 or more leads are selected) */}
+                  {selectedLeads.length > 0 && (
+                    <div className="bg-teal-950/80 border border-teal-800 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 font-mono text-xs shadow-md animate-fadeIn">
+                      <div className="flex items-center gap-2 text-teal-300 font-bold">
+                        <FiCheckSquare size={16} />
+                        <span>{selectedLeads.length} Lead{selectedLeads.length > 1 ? 's' : ''} Selected for Bulk Assignment</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={assigneeExecId}
+                          onChange={(e) => setAssigneeExecId(e.target.value)}
+                          className="bg-[var(--crm-bg-sunken)] border border-teal-700 text-[var(--crm-heading)] text-xs px-3 py-1.5 rounded outline-none font-mono cursor-pointer"
+                        >
+                          <option value="">-- Select Executive --</option>
+                          {teamEmployees.map(emp => (
+                            <option key={emp._id} value={emp._id}>{emp.fullName || emp.name} ({emp.position || emp.role})</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={handleBulkAssignLeads}
+                          disabled={submittingBulkAssign || !assigneeExecId}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-4 py-1.5 rounded transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                        >
+                          <FiSend size={12} /> {submittingBulkAssign ? 'Assigning...' : 'Bulk Assign Now'}
+                        </button>
+                        <button
+                          onClick={() => setSelectedLeads([])}
+                          className="text-slate-400 hover:text-white px-2 py-1 text-xs cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Search Bar */}
+                  <div className="relative w-full">
+                    <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search leads by customer name, code, email, phone, or company..."
+                      value={leadSearchTerm}
+                      onChange={(e) => setLeadSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] rounded outline-none focus:border-teal-500 transition font-mono placeholder-[var(--crm-ink-faint)]"
+                    />
+                  </div>
+                </div>
+
+                {/* Leads Table Container */}
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg shadow-sm overflow-hidden">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse min-w-[950px] text-xs">
+                      <thead>
+                        <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                          <th className="py-3 px-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={getFilteredDivisionLeads().length > 0 && selectedLeads.length === getFilteredDivisionLeads().length}
+                              onChange={handleSelectAllLeads}
+                              className="accent-teal-500 cursor-pointer"
+                              title="Select All Leads"
+                            />
+                          </th>
+                          <th className="py-3 px-4">Date & Time</th>
+                          <th className="py-3 px-4">Lead Identifier</th>
+                          <th className="py-3 px-4">Customer & Entity</th>
+                          <th className="py-3 px-4">Contact Details</th>
+                          <th className="py-3 px-4">Division / Source Origin</th>
+                          <th className="py-3 px-4">Assigned Executive</th>
+                          <th className="py-3 px-4">LOI Status</th>
+                          <th className="py-3 px-4 text-right">Assign Lead</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)]">
+                        {(() => {
+                          const divisionLeadsList = getFilteredDivisionLeads();
+                          if (divisionLeadsList.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan="9" className="text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
+                                  No website form or live chat leads found for this division and selected date filter.
+                                </td>
+                              </tr>
+                            );
+                          }
+                          return divisionLeadsList.map((lead) => {
+                            const catUpper = (lead.productCategory || '').toUpperCase();
+                            let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-900 text-slate-300 border-slate-700' };
+                            if (catUpper.includes('TEA')) {
+                              divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40' };
+                            } else if (catUpper.includes('RICE')) {
+                              divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-950/60 text-amber-400 border-amber-800/40' };
+                            } else if (catUpper.includes('STONE')) {
+                              divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-950/60 text-sky-400 border-sky-800/40' };
+                            }
+
+                            const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || (lead.source || '').toUpperCase().includes('CHAT');
+                            const originBadge = isChatLead 
+                              ? { label: '💬 Website Chat', color: 'bg-indigo-950/60 text-indigo-300 border-indigo-800/40' }
+                              : { label: '🌐 Website Form', color: 'bg-cyan-950/60 text-cyan-300 border-sky-800/40' };
+
+                            const assignedEmp = teamEmployees.find(e => 
+                              e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
+                            );
+
+                            return (
+                              <tr key={lead._id} className={`hover:bg-[var(--crm-bg-sunken)]/60 transition ${selectedLeads.includes(lead._id) ? 'bg-teal-950/30' : ''}`}>
+                                <td className="py-3 px-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedLeads.includes(lead._id)}
+                                    onChange={(e) => handleSelectLead(lead._id, e.target.checked)}
+                                    className="accent-teal-500 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="py-3 px-4 font-mono text-[10px] text-[var(--crm-ink-faint)] whitespace-nowrap">
+                                  {new Date(lead.createdAt || Date.now()).toLocaleString('en-IN', {
+                                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                                  })}
+                                </td>
+                                <td className="py-3 px-4 font-mono font-bold text-teal-400 text-xs whitespace-nowrap">
+                                  {lead.leadCode}
+                                </td>
+                                <td className="py-3 px-4 space-y-0.5 min-w-[170px]">
+                                  <div className="font-bold text-[var(--crm-heading)] text-sm">{lead.customerName}</div>
+                                  <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
+                                </td>
+                                <td className="py-3 px-4 space-y-1 font-mono text-[11px]">
+                                  <div className="text-[var(--crm-ink-soft)] flex items-center gap-1.5">
+                                    <FiPhone size={10} className="text-teal-400 shrink-0" />
+                                    <span>{lead.phoneMasked || lead.phoneEncrypted || 'N/A'}</span>
+                                  </div>
+                                  <div className="text-[var(--crm-ink-faint)] text-[10px] flex items-center gap-1.5 truncate max-w-[180px]">
+                                    <FiMail size={10} className="text-sky-400 shrink-0" />
+                                    <span>{lead.emailMasked || lead.emailEncrypted || 'N/A'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex flex-col gap-1.5 items-start">
+                                    <span className={`inline-block px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider rounded border ${divisionBadge.color}`}>
+                                      {divisionBadge.label}
+                                    </span>
+                                    <span className={`inline-block px-2 py-0.5 text-[8px] font-mono font-semibold uppercase tracking-wider rounded border ${originBadge.color}`}>
+                                      {originBadge.label}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 font-mono text-xs">
+                                  {assignedEmp ? (
+                                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                      <FiUserCheck size={12} /> {assignedEmp.fullName || assignedEmp.name}
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                      Unassigned
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 font-mono text-xs">
+                                  {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
+                                    <div className="space-y-1">
+                                      <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                        ✓ LOI Uploaded ({lead.loiDocuments.length})
+                                      </span>
+                                      {lead.loiDocuments.map((loi, idx) => (
+                                        <a
+                                          key={idx}
+                                          href={(() => {
+                                            const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+                                            const token = localStorage.getItem('token') || '';
+                                            return `${baseUrl}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(token)}`;
+                                          })()}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="block text-[9px] text-teal-400 hover:underline truncate max-w-[140px]"
+                                          title={loi.originalName}
+                                        >
+                                          📄 {loi.originalName}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-[9px] text-[var(--crm-ink-faint)]">No LOI</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <select
+                                      value={selectedExecPerLead[lead._id] || (assignedEmp ? assignedEmp._id : '')}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedExecPerLead(prev => ({ ...prev, [lead._id]: val }));
+                                      }}
+                                      className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-[10px] font-mono px-2 py-1.5 rounded outline-none cursor-pointer focus:border-teal-500"
+                                    >
+                                      <option value="">Select Executive</option>
+                                      {teamEmployees.map(emp => (
+                                        <option key={emp._id} value={emp._id}>{emp.fullName || emp.name} ({emp.position || emp.role})</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleAssignSingleLead(lead._id)}
+                                      disabled={assigningSingleLeadId === lead._id}
+                                      className="bg-teal-600 hover:bg-teal-700 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded transition cursor-pointer font-mono shadow-sm flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                      <FiSend size={10} /> Assign
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Division Lead Cards View (< 768px screens) */}
+                  <div className="block md:hidden space-y-3 p-3">
+                    {(() => {
+                      const divisionLeadsList = getFilteredDivisionLeads();
+                      if (divisionLeadsList.length === 0) {
+                        return (
+                          <div className="text-center py-10 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px] border border-[var(--crm-line)] rounded">
+                            No website form or live chat leads found for this division.
+                          </div>
+                        );
+                      }
+                      return divisionLeadsList.map((lead) => {
+                        const catUpper = (lead.productCategory || '').toUpperCase();
+                        let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-900 text-slate-300 border-slate-700' };
+                        if (catUpper.includes('TEA')) {
+                          divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40' };
+                        } else if (catUpper.includes('RICE')) {
+                          divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-950/60 text-amber-400 border-amber-800/40' };
+                        } else if (catUpper.includes('STONE')) {
+                          divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-950/60 text-sky-400 border-sky-800/40' };
+                        }
+
+                        const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || (lead.source || '').toUpperCase().includes('CHAT');
+                        const originBadge = isChatLead 
+                          ? { label: '💬 Website Chat', color: 'bg-indigo-950/60 text-indigo-300 border-indigo-800/40' }
+                          : { label: '🌐 Website Form', color: 'bg-cyan-950/60 text-cyan-300 border-sky-800/40' };
+
+                        const assignedEmp = teamEmployees.find(e => 
+                          e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
+                        );
+
+                        return (
+                          <div key={lead._id} className={`bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-3.5 space-y-3 font-mono text-xs text-left shadow-sm ${selectedLeads.includes(lead._id) ? 'bg-teal-950/30 border-teal-800' : ''}`}>
+                            {/* Header: Checkbox + Lead Code + Date */}
+                            <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-line)] pb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedLeads.includes(lead._id)}
+                                  onChange={(e) => handleSelectLead(lead._id, e.target.checked)}
+                                  className="accent-teal-500 cursor-pointer shrink-0"
+                                />
+                                <span className="font-bold text-teal-400 text-xs truncate">{lead.leadCode}</span>
+                              </div>
+                              <span className="text-[9px] text-[var(--crm-ink-faint)] shrink-0">
+                                {new Date(lead.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                              </span>
+                            </div>
+
+                            {/* Customer & Division Info */}
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="font-bold text-[var(--crm-heading)] text-sm truncate">{lead.customerName}</div>
+                                <div className="text-[10px] text-[var(--crm-ink-faint)] truncate">{lead.companyName || 'Individual Inquiry'}</div>
+                              </div>
+                              <div className="flex flex-col gap-1 items-end shrink-0">
+                                <span className={`inline-block px-2 py-0.5 text-[8px] font-bold uppercase rounded border ${divisionBadge.color}`}>
+                                  {divisionBadge.label}
+                                </span>
+                                <span className={`inline-block px-1.5 py-0.5 text-[8px] font-semibold uppercase rounded border ${originBadge.color}`}>
+                                  {originBadge.label}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Contact details */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--crm-ink-soft)] bg-[var(--crm-bg-sunken)] p-2 rounded border border-[var(--crm-line)]">
+                              <div className="flex items-center gap-1">
+                                <FiPhone size={10} className="text-teal-400 shrink-0" />
+                                <span>{lead.phoneMasked || lead.phoneEncrypted || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center gap-1 truncate max-w-[170px]">
+                                <FiMail size={10} className="text-sky-400 shrink-0" />
+                                <span>{lead.emailMasked || lead.emailEncrypted || 'N/A'}</span>
+                              </div>
+                            </div>
+
+                            {/* Executive Assignment controls */}
+                            <div className="pt-1 border-t border-[var(--crm-line)] space-y-2">
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-[var(--crm-ink-faint)] font-bold uppercase">Executive Assigned:</span>
+                                {assignedEmp ? (
+                                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                    <FiUserCheck size={11} /> {assignedEmp.fullName || assignedEmp.name}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-400 font-bold uppercase">Unassigned</span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={selectedExecPerLead[lead._id] || (assignedEmp ? assignedEmp._id : '')}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSelectedExecPerLead(prev => ({ ...prev, [lead._id]: val }));
+                                  }}
+                                  className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-[10px] font-mono px-2 py-1.5 rounded outline-none cursor-pointer flex-1 min-w-0"
+                                >
+                                  <option value="">Select Executive</option>
+                                  {teamEmployees.map(emp => (
+                                    <option key={emp._id} value={emp._id}>{emp.fullName || emp.name}</option>
+                                  ))}
+                                </select>
+
+                                <button
+                                  onClick={() => handleAssignSingleLead(lead._id)}
+                                  disabled={assigningSingleLeadId === lead._id}
+                                  className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded cursor-pointer font-mono flex items-center gap-1 shrink-0 disabled:opacity-50"
+                                >
+                                  <FiSend size={10} /> Assign
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1153,7 +1838,7 @@ export default function SalesManagerDashboard() {
                     </h3>
                     
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <LineChart data={strategicInsights?.forecastHistory || []} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="month" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
@@ -1223,79 +1908,80 @@ export default function SalesManagerDashboard() {
                     </div>
                   </div>
 
-                  {/* Department Activity Heatmap */}
+                  {/* Executive Daily Work Logs Table */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>Team Activity Heatmap</span>
-                      <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">Total activities (calls+emails) per day</span>
-                    </h3>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-line)] pb-3 mb-4 gap-2">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
+                          <FiCheckSquare size={14} className="text-teal-400" /> Executive Daily Activity & Sales Logs
+                        </h3>
+                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                          Real-time daily work entries submitted by Sales Executives (Calls, Conversions & Closed Sales).
+                        </p>
+                      </div>
+                      <span className="bg-teal-950/60 border border-teal-800 text-teal-300 font-mono text-[9px] px-2.5 py-0.5 rounded font-bold uppercase">
+                        {dailyWorkLogs.length} Entries Logged
+                      </span>
+                    </div>
 
-                    {/* Matrix Grid */}
-                    <div className="grid grid-cols-7 gap-2 mt-5 max-w-lg">
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                        <div key={day} className="text-center font-mono text-[9px] text-[var(--crm-ink-faint)] font-bold uppercase">{day}</div>
-                      ))}
-                      {(strategicInsights?.heatmapData || []).map((cell, idx) => (
-                        <div 
-                          key={idx} 
-                          title={`${cell.val} Activities`}
-                          className={`aspect-square rounded flex flex-col justify-between p-1.5 ${cell.fill} hover:scale-105 transition cursor-default`}
-                        >
-                          <span className="text-[7px] font-bold block">{cell.day}</span>
-                          <span className="text-[9px] font-mono font-bold block text-right">{cell.val}</span>
-                        </div>
-                      ))}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                          <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                            <th className="py-3 px-3">Employee Name</th>
+                            <th className="py-3 px-3">Dept</th>
+                            <th className="py-3 px-3 text-teal-400">📞 Calls Made</th>
+                            <th className="py-3 px-3 text-amber-400">🎯 Conversions</th>
+                            <th className="py-3 px-3 text-emerald-400">💰 Sales Count</th>
+                            <th className="py-3 px-3">Date & Time</th>
+                            <th className="py-3 px-3">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                          {dailyWorkLogs.length === 0 ? (
+                            <tr>
+                              <td colSpan="7" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                                No daily work logs submitted by executives yet today.
+                              </td>
+                            </tr>
+                          ) : (
+                            dailyWorkLogs.map((log) => (
+                              <tr key={log._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                                <td className="py-3 px-3 font-bold text-[var(--crm-heading)] font-sans">
+                                  {log.employeeName || 'Sales Executive'}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className="bg-slate-900 border border-slate-800 text-teal-400 px-2 py-0.5 rounded text-[8px] uppercase">
+                                    {log.department || 'SALES'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-teal-300 font-bold">
+                                  {log.numberOfCalls} Calls
+                                </td>
+                                <td className="py-3 px-3 text-amber-300 font-bold">
+                                  {log.numberOfConversions} Conversions
+                                </td>
+                                <td className="py-3 px-3 text-emerald-400 font-bold">
+                                  {log.numberOfSales} Sales
+                                </td>
+                                <td className="py-3 px-3 text-[var(--crm-ink-faint)] text-[10px]">
+                                  {new Date(log.createdAt || log.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                </td>
+                                <td className="py-3 px-3 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[150px]">
+                                  {log.note ? `"${log.note}"` : '—'}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
                 </div>
 
-                {/* Right Sidebar (1-on-1 Meeting suggestions & Chat Box) */}
+                {/* Right Sidebar (Sales Team Chat Hub) */}
                 <div className="lg:col-span-4 space-y-6 text-left">
-                  
-                  {/* 1-on-1 Coaching Talking Points */}
-                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>1-on-1 Coaching Talking Points</span>
-                      <FiCpu className="text-teal-600" size={14} />
-                    </h3>
-                    <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1.5 font-light leading-relaxed">
-                      Founder directive and AI-generated discussion guidelines based on representative conversion variance.
-                    </p>
-
-                    <div className="mt-5 space-y-4">
-                      {/* Founder/Manager/HR Broadcast Message */}
-                      {strategicInsights?.founderMessage && (
-                        <div className="p-3 border border-blue-900/30 bg-blue-950/40 rounded-lg space-y-2 text-[10px] mb-2 font-mono">
-                          <div className="flex justify-between items-center font-sans">
-                            <span className="font-bold text-blue-400">
-                              {strategicInsights.founderMessage.senderRole === 'ADMIN' ? "Founder's Broadcast" :
-                               strategicInsights.founderMessage.senderRole === 'HR' ? "HR Announcement" :
-                               "Manager's Directive"}
-                            </span>
-                            <span className="text-[8px] text-[var(--crm-ink-faint)]">{new Date(strategicInsights.founderMessage.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          <p className="text-[var(--crm-ink-soft)] leading-relaxed italic font-sans">
-                            "{strategicInsights.founderMessage.content}"
-                          </p>
-                          <div className="text-right text-[8px] text-[var(--crm-ink-faint)] font-sans">
-                            — Posted by {strategicInsights.founderMessage.senderName} ({strategicInsights.founderMessage.senderRole})
-                          </div>
-                        </div>
-                      )}
-
-                      {getAISuggestions().map((sug, idx) => (
-                        <div key={idx} className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/50 hover:bg-[var(--crm-bg-sunken)] rounded-lg transition duration-150 font-mono text-[10px] space-y-2">
-                          <span className="text-[8px] uppercase tracking-wide font-sans font-bold bg-teal-950/40 text-teal-400 border border-teal-900/30 px-2 py-0.5 rounded inline-block">
-                            Discuss with {sug.repName}
-                          </span>
-                          <p className="text-[var(--crm-ink-soft)] font-sans leading-relaxed italic">
-                            "{sug.msg}"
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
                   {/* Sales Team Chat Hub */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm flex flex-col h-[350px]">
@@ -1468,10 +2154,264 @@ export default function SalesManagerDashboard() {
                                       </button>
                                     </div>
                                   ) : (
-                                    <span className="text-[10px] text-[var(--crm-ink-faint)] italic">
-                                      {isSelfRequest ? 'Own request' : isApplicantManager ? 'HR review only' : 'Reviewed'}
+                                    <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                                      {isSelfRequest ? 'Own request' : isApplicantManager ? 'HR review only' : (
+                                        (lv.approvedBy || lv.extraApprovedBy) ? (
+                                          <span className={['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                                            {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved' : '✗ Rejected'} by {(lv.approvedBy || lv.extraApprovedBy).fullName || (lv.approvedBy || lv.extraApprovedBy).name} ({(lv.approvedBy || lv.extraApprovedBy).role || (lv.approvedBy || lv.extraApprovedBy).department || 'HR'})
+                                          </span>
+                                        ) : 'Reviewed'
+                                      )}
                                     </span>
                                   )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: EXECUTIVE CALL RECORDINGS HUB */}
+            {activeTab === 'call_recordings' && (
+              <div className="space-y-6 text-left font-mono">
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[var(--crm-line)] pb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                        <FiMic className="text-rose-500 animate-pulse" size={16} /> Sales Executive Call Recordings Hub
+                      </h3>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1 font-sans">
+                        Listen to call recordings uploaded by Sales Executives, inspect client discussion notes, and audit lead quality ratings.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[var(--crm-ink-faint)]">Filter Quality:</span>
+                      {['ALL', 'HOT', 'WARM', 'COLD'].map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setRecordingPriorityFilter(p)}
+                          className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase transition cursor-pointer ${
+                            recordingPriorityFilter === p
+                              ? 'bg-teal-700 text-white font-black'
+                              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                    {getFilteredByDate(callRecordings).filter(rec => recordingPriorityFilter === 'ALL' || rec.leadPriority === recordingPriorityFilter).length === 0 ? (
+                      <div className="col-span-full text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
+                        No call recordings found for the selected date filter.
+                      </div>
+                    ) : (
+                      getFilteredByDate(callRecordings)
+                        .filter(rec => recordingPriorityFilter === 'ALL' || rec.leadPriority === recordingPriorityFilter)
+                        .map((rec) => {
+                          const priorityColors = {
+                            HOT: 'bg-rose-950/60 text-rose-400 border-rose-800/60',
+                            WARM: 'bg-amber-950/60 text-amber-400 border-amber-800/60',
+                            COLD: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
+                          };
+                          const pColor = priorityColors[rec.leadPriority] || 'bg-slate-900 text-slate-300 border-slate-700';
+
+                          return (
+                            <div key={rec._id} className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between space-y-3 shadow-sm hover:border-teal-500/40 transition min-w-0 overflow-hidden">
+                              <div className="space-y-2 min-w-0">
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className="text-[10px] font-bold text-teal-400 truncate max-w-[180px]">
+                                    👤 {rec.executiveName || rec.executiveId?.fullName || rec.executiveId?.name || 'Sales Executive'}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase border shrink-0 ${pColor}`}>
+                                    {rec.leadPriority || 'WARM'}
+                                  </span>
+                                </div>
+
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-bold font-serif text-[var(--crm-heading)] truncate">
+                                    {rec.customerName || rec.leadId?.customerName || 'Direct Call'}
+                                  </h4>
+                                  {rec.leadCode && (
+                                    <span className="text-[9px] text-[var(--crm-ink-faint)] block truncate">
+                                      Lead: {rec.leadCode}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {rec.notes && (
+                                  <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] bg-[var(--crm-bg-raised)] p-2.5 rounded border border-[var(--crm-line)] italic line-clamp-3 break-words">
+                                    "{rec.notes}"
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="space-y-2 pt-2 border-t border-[var(--crm-line)] min-w-0">
+                                {/* HTML5 Audio Player */}
+                                <audio
+                                  controls
+                                  controlsList="nodownload"
+                                  className="w-full h-8 rounded accent-teal-500 min-w-0"
+                                  src={(() => {
+                                    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+                                    return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
+                                  })()}
+                                />
+
+                                <div className="flex justify-between items-center text-[8px] text-[var(--crm-ink-faint)]">
+                                  <span className="truncate">📅 {new Date(rec.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                  {rec.duration && <span className="shrink-0 ml-1">⏱️ {rec.duration}</span>}
+                                </div>
+
+                                {/* Manager Remark section */}
+                                <div className="pt-2 border-t border-[var(--crm-line)]/60 min-w-0">
+                                  <label className="block text-[8px] uppercase tracking-widest text-teal-400 font-bold mb-1 truncate">
+                                    💬 Manager Feedback / Remark
+                                  </label>
+                                  <div className="flex gap-2 items-center min-w-0 w-full">
+                                    <input
+                                      type="text"
+                                      placeholder="Add manager feedback..."
+                                      value={remarkInputs[rec._id] !== undefined ? remarkInputs[rec._id] : (rec.managerRemark || '')}
+                                      onChange={(e) => setRemarkInputs({ ...remarkInputs, [rec._id]: e.target.value })}
+                                      className="flex-1 min-w-0 w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2.5 py-1 rounded text-[10px] text-[var(--crm-heading)] outline-none focus:border-teal-500 font-sans"
+                                    />
+                                    <button
+                                      onClick={() => handleSaveRemark(rec._id)}
+                                      disabled={savingRemarkId === rec._id}
+                                      className="shrink-0 whitespace-nowrap bg-teal-950 hover:bg-teal-900 border border-teal-800 text-teal-300 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition cursor-pointer disabled:opacity-50"
+                                    >
+                                      {savingRemarkId === rec._id ? 'Saving...' : 'Save'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: SHARED FILES HUB */}
+            {activeTab === 'shared_files_hub' && (
+              <div className="space-y-6">
+                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-6 rounded-lg shadow-sm text-left">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[var(--crm-line)] pb-4 mb-4 gap-3">
+                    <div>
+                      <h3 className="text-sm font-serif font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-2">
+                        <FiFolder className="text-teal-400" /> Team Shared Files Repository
+                      </h3>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                        Inspect, download, and manage client Excel files and documents shared by Sales Executives and Managers.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowFileModal(true)}
+                      className="bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-4 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition cursor-pointer flex items-center gap-2 font-mono"
+                    >
+                      <FiUpload size={12} /> + Share File
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[900px]">
+                      <thead>
+                        <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                          <th className="py-3.5 px-4">File Name</th>
+                          <th className="py-3.5 px-4">Sent By (Executive)</th>
+                          <th className="py-3.5 px-4">Sent To (Recipient)</th>
+                          <th className="py-3.5 px-4">Department</th>
+                          <th className="py-3.5 px-4">Date Shared</th>
+                          <th className="py-3.5 px-4">Note / Context</th>
+                          <th className="py-3.5 px-4 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                        {sharedFiles.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                              No files shared by executives yet. Click "+ Share File" to send a document.
+                            </td>
+                          </tr>
+                        ) : (
+                          sharedFiles.map((file) => {
+                            const isSender = String(file.sentBy?._id || file.sentBy) === String(user?._id);
+                            return (
+                              <tr key={file._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                                <td className="py-3.5 px-4 font-bold text-[var(--crm-heading)]">
+                                  <div className="flex items-center gap-2">
+                                    <FiFileText className="text-teal-400 shrink-0" size={14} />
+                                    <span className="truncate max-w-[200px]" title={file.originalName}>{file.originalName}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  {file.sentBy?.name || file.sentBy?.fullName || 'Executive'}
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  {file.sentTo?.name || file.sentTo?.fullName || 'Recipient'}
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <span className="bg-slate-900 border border-slate-800 text-teal-300 px-2 py-0.5 rounded text-[9px] uppercase">
+                                    {file.department || 'SALES'}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4 text-[var(--crm-ink-faint)]">
+                                  {new Date(file.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                </td>
+                                <td className="py-3.5 px-4 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[180px]">
+                                  {file.note ? `"${file.note}"` : '—'}
+                                </td>
+                                <td className="py-3.5 px-4 text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const response = await sharedFilesApi.downloadFile(file._id);
+                                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                                          const link = document.createElement('a');
+                                          link.href = url;
+                                          link.setAttribute('download', file.originalName || 'shared-file');
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          link.remove();
+                                          toast.success('Download completed');
+                                        } catch (err) {
+                                          toast.error('Could not download file');
+                                        }
+                                      }}
+                                      className="bg-teal-950/60 hover:bg-teal-900 border border-teal-800 text-teal-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <FiDownload size={11} /> Download
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (window.confirm('Delete this shared file?')) {
+                                          try {
+                                            await sharedFilesApi.deleteSharedFile(file._id);
+                                            toast.success('File deleted successfully');
+                                            setSharedFiles(prev => prev.filter(f => f._id !== file._id));
+                                          } catch (err) {
+                                            toast.error('Failed to delete file');
+                                          }
+                                        }
+                                      }}
+                                      className="bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 p-1.5 rounded transition cursor-pointer"
+                                      title="Delete Shared File"
+                                    >
+                                      <FiTrash2 size={12} />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );

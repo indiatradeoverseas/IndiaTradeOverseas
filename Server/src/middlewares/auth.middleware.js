@@ -6,7 +6,11 @@ const { fail } = require('../utils/response');
 
 async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  let token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token && req.query && req.query.token) {
+    token = req.query.token;
+  }
 
   if (!token) {
     return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Missing authentication token', [], req);

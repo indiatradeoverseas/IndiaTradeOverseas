@@ -1858,7 +1858,12 @@ const handleTriggerReset = async () => {
                       <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
                         {leaves.map((item) => {
                           const emp = item.employeeId || {};
+                          const approver = item.approvedBy || item.extraApprovedBy;
                           const isPendingReview = ['PENDING', 'PENDING_HR_APPROVAL'].includes(item.status);
+                          const empName = emp.fullName || emp.name || emp.email || 'Employee';
+                          const approverName = approver ? (approver.fullName || approver.name || 'HR Approver') : 'HR Manager';
+                          const approverRole = approver ? (approver.role || approver.department || 'HR') : 'HR';
+
                           return (
                             <div 
                               key={item._id} 
@@ -1869,8 +1874,8 @@ const handleTriggerReset = async () => {
                             >
                               <div className="flex justify-between items-start">
                                 <div className="space-y-0.5">
-                                  <span className="text-[9px] font-mono font-bold text-[var(--crm-heading)]">
-                                    {emp.name || 'Unknown Employee'}
+                                  <span className="text-[10px] font-mono font-bold text-[var(--crm-heading)]">
+                                    {empName}
                                   </span>
                                   <p className="text-[9px] text-[var(--crm-ink-faint)] font-mono">
                                     {emp.department || 'HQ'} • {emp.role || 'STAFF'}
@@ -1925,7 +1930,7 @@ const handleTriggerReset = async () => {
                                       <div className="flex gap-1.5">
                                         <button 
                                           onClick={() => handleReviewLeaveWithRemarks('APPROVED')}
-                                          className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] py-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] transition-colors cursor-pointer"
+                                          className="flex-1 bg-emerald-900/60 text-emerald-300 py-1 rounded text-[8px] font-mono font-bold uppercase tracking-wider hover:bg-emerald-800 transition-colors cursor-pointer"
                                         >
                                           Confirm Approval
                                         </button>
@@ -1961,19 +1966,24 @@ const handleTriggerReset = async () => {
                                   )}
                                 </div>
                               ) : (
-                                <div className="flex justify-between items-center text-[8px] font-mono">
-                                  <span className={`px-2 py-0.5 border rounded-sm font-bold uppercase ${
-                                    ['APPROVED', 'HR_APPROVED_EXTRA'].includes(item.status)
-                                      ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
-                                      : 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20'
-                                  }`}>
-                                    {item.status}
-                                  </span>
-                                  {item.approvedOn && (
-                                    <span className="text-[var(--crm-ink-faint)]">
-                                      Reviewed on {new Date(item.approvedOn).toLocaleDateString()}
+                                <div className="pt-1.5 border-t space-y-1" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <div className="flex justify-between items-center text-[8px] font-mono">
+                                    <span className={`px-2 py-0.5 border rounded-sm font-bold uppercase ${
+                                      ['APPROVED', 'HR_APPROVED_EXTRA'].includes(item.status)
+                                        ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
+                                        : 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20'
+                                    }`}>
+                                      {item.status.replace(/_/g, ' ')}
                                     </span>
-                                  )}
+                                    <span className="text-[var(--crm-ink-faint)]">
+                                      Reviewed on {new Date(item.approvedOn || item.extraApprovedOn || item.updatedAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="text-[9px] font-mono text-right">
+                                    <span className={['APPROVED', 'HR_APPROVED_EXTRA'].includes(item.status) ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                                      {['APPROVED', 'HR_APPROVED_EXTRA'].includes(item.status) ? '✓ Approved' : '✗ Rejected'} by: {approverName} ({approverRole})
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -2163,7 +2173,7 @@ const handleTriggerReset = async () => {
                             {leaveBalances.map(bal => (
                               <tr key={bal._id} className="hover:bg-[var(--crm-bg-raised)]/30">
                                 <td className="p-2 text-[var(--crm-heading)] font-sans font-semibold">
-                                  {bal.employeeId?.name || 'Unknown'}
+                                  {bal.employeeId?.fullName || bal.employeeId?.name || 'Employee'}
                                   <span className="block text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase">{bal.employeeId?.department}</span>
                                 </td>
                                 <td className="p-2 text-center text-[var(--crm-positive)] font-bold">{bal.remainingLeaves} / 4</td>
@@ -2189,7 +2199,7 @@ const handleTriggerReset = async () => {
                         {auditLogs.map(log => (
                           <div key={log._id} className="text-[9px] font-mono border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
                             <div className="flex justify-between items-center mb-0.5">
-                              <span className="text-[var(--crm-heading)] font-semibold">{log.employeeId?.name || 'Employee'}</span>
+                              <span className="text-[var(--crm-heading)] font-semibold">{log.employeeId?.fullName || log.employeeId?.name || 'Employee'}</span>
                               <span className={`text-[7px] font-bold px-1 rounded-sm uppercase ${
                                 log.action === 'EXTRA_APPROVED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
                                 log.action === 'REJECTED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]' :

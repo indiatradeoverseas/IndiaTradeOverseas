@@ -34,30 +34,57 @@ async function getSettingsDoc() {
   return settings;
 }
 
-// Helper to find all DB IDs (User and Employee) associated with a given ID's email
+// Helper to find all DB IDs (User and Employee) associated with a given ID's email (returns String & ObjectId formats)
 async function getAllIdsForId(id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) return [id];
-  
+  if (!id) return [];
+  const rawIdStr = id.toString();
+  const rawObjId = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
+
   const User = require('../users/user.model');
-  const user = await User.findById(id);
+  const Employee = require('../employee/employee.model');
+
+  const isObj = mongoose.Types.ObjectId.isValid(id);
+  const user = isObj ? await User.findById(id) : await User.findOne({ $or: [{ _id: id }, { employeeId: id }, { email: id }] });
   let email = user ? user.email : null;
-  
+
   if (!email) {
-    const emp = await Employee.findById(id);
-    email = emp ? emp.email : null;
+    const emp = isObj ? await Employee.findById(id) : await Employee.findOne({ $or: [{ _id: id }, { employeeId: id }, { email: id }] });
+    if (emp) email = emp.email;
   }
-  
-  if (!email) return [id];
-  
-  const users = await User.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
-  const emps = await Employee.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
-  
-  const ids = [
-    ...users.map(u => u._id.toString()),
-    ...emps.map(e => e._id.toString())
-  ];
-  
-  return [...new Set(ids)];
+
+  const idSet = new Set();
+  const result = [];
+
+  const addId = (i) => {
+    if (!i) return;
+    const str = i.toString();
+    if (!idSet.has(str)) {
+      idSet.add(str);
+      result.push(str);
+      if (mongoose.Types.ObjectId.isValid(str)) {
+        result.push(new mongoose.Types.ObjectId(str));
+      }
+    }
+  };
+
+  addId(id);
+  if (rawObjId) addId(rawObjId);
+
+  if (!email) return result;
+
+  const users = await User.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id employeeId');
+  const emps = await Employee.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id employeeId');
+
+  users.forEach(u => {
+    addId(u._id);
+    if (u.employeeId) addId(u.employeeId);
+  });
+  emps.forEach(e => {
+    addId(e._id);
+    if (e.employeeId) addId(e.employeeId);
+  });
+
+  return result;
 }
 
 // Helper to find or create balance by email/IDs
@@ -92,8 +119,8 @@ async function getBalanceForUser(employeeOrUser, month) {
 
   let balance = await MonthlyLeaveBalance.findOne({ employeeId: { $in: allIds }, month });
   if (!balance) {
-    const preferredEmployee = emps[0] || users[0];
-    const preferredModel = emps[0] ? 'Employee' : 'User';
+    const preferredEmployee = emps[0] || users[0] || employeeOrUser;
+    const preferredModel = emps[0] ? 'Employee' : (users[0] ? 'User' : (employeeOrUser.constructor?.modelName || (employeeOrUser.passwordHash ? 'User' : 'Employee')));
     
     balance = await MonthlyLeaveBalance.create({
       employeeId: preferredEmployee._id,
@@ -289,11 +316,16 @@ async function listLeaves(req, res, next) {
     const filter = {};
     
     // Role based filtering: 
-    // HR/Admin see all requests.
-    // Managers see their own leaves OR leaves of employees in their department.
-    // Executives / Employees see only their own.
+    // If req.query.employeeId is passed, filter for that specific employee
+    // Otherwise: HR/Admin see all requests; Managers see department + own; Executives see own.
     const isHRorAdmin = ['ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
-    if (!isHRorAdmin) {
+    if (req.query.employeeId) {
+      const targetIds = await getAllIdsForId(req.query.employeeId);
+      filter.$or = [
+        { employeeId: { $in: targetIds } },
+        { appliedBy: { $in: targetIds } }
+      ];
+    } else if (!isHRorAdmin) {
       if (req.user.role === 'MANAGER') {
         const deptIds = await getDeptEmployeeIds(req.user.department);
         const managerIds = await getAllIdsForId(req.user._id);
@@ -302,19 +334,20 @@ async function listLeaves(req, res, next) {
           const ids = await getAllIdsForId(dId);
           allDeptIds.push(...ids);
         }
-        const uniqueDeptIds = [...new Set(allDeptIds)];
 
         filter.$or = [
           { employeeId: { $in: managerIds } },
-          { employeeId: { $in: uniqueDeptIds } }
+          { appliedBy: { $in: managerIds } },
+          { employeeId: { $in: allDeptIds } },
+          { appliedBy: { $in: allDeptIds } }
         ];
       } else {
         const myIds = await getAllIdsForId(req.user._id);
-        filter.employeeId = { $in: myIds };
+        filter.$or = [
+          { employeeId: { $in: myIds } },
+          { appliedBy: { $in: myIds } }
+        ];
       }
-    } else if (req.query.employeeId) {
-      const allIds = await getAllIdsForId(req.query.employeeId);
-      filter.employeeId = { $in: allIds };
     }
 
     if (req.query.status) {
@@ -328,9 +361,9 @@ async function listLeaves(req, res, next) {
     }
 
     const leaves = await LeaveRequest.find(filter)
-      .populate('employeeId', 'name fullName email department role phone')
-      .populate('approvedBy', 'fullName email')
-      .populate('extraApprovedBy', 'fullName email')
+      .populate('employeeId', 'fullName name email department role position phone')
+      .populate('approvedBy', 'fullName name email role department position')
+      .populate('extraApprovedBy', 'fullName name email role department position')
       .sort({ createdAt: -1 });
 
     return ok(res, { leaves }, 'Leave requests retrieved successfully', 200, req);
@@ -387,11 +420,7 @@ async function reviewLeave(req, res, next) {
       }
     }
 
-    const balance = await MonthlyLeaveBalance.findOne({ employeeId: leave.employeeId, month: leave.month });
-    if (!balance) {
-      return fail(res, 404, 'BALANCE_NOT_FOUND', 'Monthly balance registry not found', [], req);
-    }
-
+    const balance = await getBalanceForUser(employee, leave.month);
     const prevRemaining = balance.remainingLeaves;
 
     if (status === 'REJECTED') {
@@ -636,6 +665,11 @@ async function getMyBalance(req, res, next) {
       res,
       {
         balance: {
+          remainingLeaves: balance.remainingLeaves,
+          usedLeaves: balance.usedLeaves,
+          totalLeaves: balance.totalLeaves,
+          extraLeavesUsed: balance.extraLeavesUsed,
+          totalLeavesUsed: balance.totalLeavesUsed,
           paidLeave: {
             total: balance.totalLeaves,
             used: balance.usedLeaves,
