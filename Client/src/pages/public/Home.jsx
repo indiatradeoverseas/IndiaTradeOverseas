@@ -12,7 +12,8 @@ import {
   FiBookOpen,
   FiGlobe,
   FiShield,
-  FiClipboard
+  FiClipboard,
+  FiSpeaker
 } from 'react-icons/fi';
 import { GiTeapot, GiWheat, GiStonePile } from 'react-icons/gi';
 
@@ -108,6 +109,18 @@ export default function Home() {
         'Multiple grades: 10/20/40/60mm & dust',
         'Direct sourcing requests, no middlemen',
         'Live marketplace pricing on approval'
+      ]
+    },
+    {
+      to: '/ito-ads',
+      icon: FiSpeaker,
+      label: 'ITO Ads',
+      image: '/images/ito_images/ito_1.jpeg',
+      points: [
+        'Paid inbound lead generation campaigns',
+        'Performance marketing & customer acquisition',
+        'CRM-ready lead delivery & automation',
+        'Pan-India targeting with transparent reporting'
       ]
     }
   ];
@@ -278,7 +291,7 @@ export default function Home() {
                       key={item.to}
                       className="absolute inset-0"
                       style={{
-                        transform: `rotateY(${i * 120}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
+                        transform: `rotateY(${i * 90}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
                         transformStyle: 'preserve-3d'
                       }}
                     >

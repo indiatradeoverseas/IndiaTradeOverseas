@@ -91,11 +91,17 @@ export default function Navbar() {
       links: [
         { to: '/stone', label: 'STONE DIVISION' },
       ]
+    },
+    {
+      groupLabel: 'ADVERTISING & LEAD GEN',
+      links: [
+        { to: '/ito-ads', label: 'ITO ADS' },
+      ]
     }
   ];
 
   const isActive = (path) => location.pathname === path;
-  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
+  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
 
   // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
   const mobileMenuContainer = {

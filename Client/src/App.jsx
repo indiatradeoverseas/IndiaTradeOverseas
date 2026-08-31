@@ -24,6 +24,7 @@ import EmployeeSignup from './pages/public/EmployeeSignup';
 import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
+import ITOAds from './pages/public/ITOAds';
 
 
 import Dashboard from './pages/crm/Dashboard';
@@ -365,6 +366,8 @@ function AppLayout() {
     return <Navigate to="/login" />;
   }
 
+  const isITOAds = location.pathname === '/ito-ads';
+
   return (
     <div>
       <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
@@ -381,9 +384,10 @@ function AppLayout() {
           <Route path="/prakriti" element={<Prakriti />} />
           <Route path='/prakriti/rice' element={<Rice/>}/>
           <Route path="/stone" element={<Stone />} />
+          <Route path="/ito-ads" element={<ITOAds />} />
         </Routes>
       </main>
-      <Footer />
+      {!isITOAds && <Footer />}
       <ChatWidget />
     </div>
   );
