@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+
+# Private / internal application routes
 Disallow: /products
 Disallow: /crm/
 Disallow: /login
@@ -13,6 +15,7 @@ Disallow: /device-pending
 Disallow: /verify-email
 Disallow: /forgot-password
 
+# AI crawlers
 User-agent: GPTBot
 Allow: /
 
@@ -25,4 +28,5 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
+# Sitemap
 Sitemap: https://www.indiatradeoverseas.com/sitemap.xml
