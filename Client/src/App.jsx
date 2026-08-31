@@ -100,22 +100,10 @@ function ProtectedRoute({ children }) {
 
 function isAdminUser(user) {
   if (!user) return false;
-  const role = (user.role || '').toUpperCase();
-  const department = (user.department || '').toUpperCase();
-  const position = (user.position || '').toLowerCase();
-
   return (
-    role === 'ADMIN' ||
-    role === 'FOUNDER' ||
-    role === 'CO_FOUNDER' ||
-    role === 'SUPER_ADMIN' ||
-    department === 'ADMIN' ||
-    department === 'MANAGEMENT' ||
-    position.includes('admin') ||
-    position.includes('founder') ||
-    position.includes('ceo') ||
-    position.includes('director') ||
-    position.includes('owner')
+    user?.role === 'ADMIN' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin'))
   );
 }
 
@@ -809,7 +797,8 @@ function AppLayout() {
             path="/prakriti/rice"
             element={<Rice />}
           />
-          <Route path="/crm/finance" element={<FinanceRedirectGate />} />
+
+          {/* Finance Routes */}
           <Route
             path="/crm/finance/manager"
             element={
@@ -818,6 +807,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/crm/finance/executive"
             element={
@@ -827,14 +817,63 @@ function AppLayout() {
             }
           />
 
-          {/* Phase 4: Transport Module Routes */}
-          <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
-          <Route path="/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
-          <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
-          <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
-          <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-          <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-          <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
+          {/* Transport Module Routes */}
+          <Route
+            path="/crm/transport/manager"
+            element={
+              <ProtectedRoute>
+                <TransportManager />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transport/manager"
+            element={
+              <ProtectedRoute>
+                <TransportManager />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/transport/executive"
+            element={
+              <ProtectedRoute>
+                <TransportExecutive />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transport/executive"
+            element={
+              <ProtectedRoute>
+                <TransportExecutive />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/crm/transport/driver"
+            element={
+              <ProtectedRoute>
+                <DriverMobileView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transport/driver"
+            element={
+              <ProtectedRoute>
+                <DriverMobileView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/founder"
+            element={
+              <AdminRoute>
+                <FounderDashboard />
+              </AdminRoute>
+            }
+          />
 
           {/* Building & Construction → Stone */}
           <Route
