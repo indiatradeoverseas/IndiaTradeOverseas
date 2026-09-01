@@ -186,7 +186,10 @@ export default function Home() {
       to: '/ito-ads',
       icon: FiSpeaker,
       label: 'ITO Ads',
-      image: '/images/ito_images/ito_1.jpeg',
+      image: '/images/ito_ads.png',
+      imageClass: 'object-center',
+      overlayClass: 'from-[#0E1116]/75 via-[#0E1116]/45 to-transparent',
+      textShadow: 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]',
       points: [
         'Paid inbound lead generation campaigns',
         'Performance marketing & customer acquisition',
@@ -542,6 +545,11 @@ export default function Home() {
                         "
                       >
 
+                        className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${item.imageClass || ''}`}
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${item.overlayClass || 'from-[#0E1116]/55 via-[#0E1116]/25 to-transparent'}`} />
+
+                      <div className={`relative h-full flex flex-col justify-between p-3.5 sm:p-5 ${item.textShadow || ''}`}>
                         <div className="flex items-start justify-between">
 
                           <div

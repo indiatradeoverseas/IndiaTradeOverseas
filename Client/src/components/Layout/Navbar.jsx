@@ -125,17 +125,19 @@ export default function Navbar() {
       links: [
         { to: '/ito-ads', label: 'ITO ADS' },
       ]
+    },
+    {
+      groupLabel: 'ADVERTISING & LEAD GEN',
+      links: [
+        { to: '/ito-ads', label: 'ITO ADS' },
+      ]
     }
   ];
 
-const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path;
+  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
 
-const isServicesActive =
-  location.pathname === '/our-services' ||
-  location.pathname.startsWith('/prakriti') ||
-  location.pathname === '/stone' ||
-  location.pathname === '/ito-ads';
-  // Staggered cascade animation for mobile menu
+  // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
   const mobileMenuContainer = {
     hidden: {},
     visible: {
@@ -182,40 +184,30 @@ const isServicesActive =
 
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* =========================================================
-            MOBILE NAVIGATION BAR HEADER
-        ========================================================= */}
-        <div className="flex lg:hidden justify-between items-center h-[80px] w-full">
-
-          <div className="flex items-center space-x-3">
-
-            <Link
-              to="/"
-              className="flex items-center space-x-3 group"
-            >
-              <div className="h-[40px] w-[40px] flex items-center justify-center shrink-0">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-contain"
-                  loading="eager"
+        {/* MOBILE NAVIGATION BAR HEADER */}
+        <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
+          <div className="flex items-center space-x-3 text-right">
+<div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
-
-              <div className="flex flex-col justify-center text-left leading-none">
-
-                <span className="font-serif font-semibold text-[18px] tracking-[0.05em] text-white whitespace-nowrap">
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="flex flex-col justify-center text-right leading-none">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap drop-shadow">
                   INDIA
                 </span>
-
-                <span className="font-sans font-light text-[10px] tracking-[0.18em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap drop-shadow">
                   TRADE OVERSEAS
                 </span>
-
-                <span className="font-sans font-medium text-[7px] tracking-[0.1em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
-                  WHERE QUALITY MEETS GLOBAL DEMAND
-                </span>
-
               </div>
             </Link>
 
@@ -270,40 +262,30 @@ const isServicesActive =
           </div>
         </div>
 
-        {/* =========================================================
-            DESKTOP NAVIGATION BAR HEADER
-        ========================================================= */}
-        <div className="hidden lg:flex justify-between items-center h-[80px]">
-
-          {/* LOGO */}
+        {/* DESKTOP NAVIGATION BAR HEADER */}
+        <div className="hidden lg:flex justify-between items-center h-[104px]">
           <div className="flex items-center shrink-0">
-
-            <Link
-              to="/"
-              className="flex items-center space-x-4 group"
-            >
-
-              <div className="h-[56px] w-[56px] flex items-center justify-center shrink-0">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-contain"
-                  loading="eager"
+            <Link to="/" className="flex items-center space-x-3.5 group">
+              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/30 bg-black/40 shrink-0 shadow-lg">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
 
               <div className="flex flex-col justify-center text-left">
-
-                <span className="font-serif font-semibold text-[20px] tracking-[0.07em] text-white leading-tight uppercase whitespace-nowrap">
-                  INDIA
+                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap drop-shadow-md">
+                  India Trade Overseas
                 </span>
-
-                <span className="font-sans font-light text-[16px] tracking-[0.18em] text-[#C5CBD3] uppercase mt-1 whitespace-nowrap">
-                  TRADE OVERSEAS
-                </span>
-
-                <span className="font-sans font-medium text-[10px] tracking-[0.1em] text-[#C5CBD3] uppercase whitespace-nowrap">
-                  WHERE QUALITY MEETS GLOBAL DEMAND
+                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap drop-shadow-sm">
+                  Trade. Supply. Logistics. Growth.
                 </span>
 
               </div>
@@ -620,49 +602,37 @@ const isServicesActive =
       <AnimatePresence>
 
         {isMobileMenuOpen && (
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{
-              duration: 0.25,
-              ease: 'easeInOut'
-            }}
-            className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
-          >
-
-            {/* MOBILE MENU HEADER */}
-            <div className="flex justify-between items-center h-[80px] px-4 sm:px-6">
-
-              <div className="flex items-center space-x-3">
-
-                <div className="h-[40px] w-[40px] flex items-center justify-center shrink-0">
-                  <img
-                    src={CompanyLogo}
-                    alt="India Trade Overseas Logo"
-                    className="h-full w-full object-contain"
-                    loading="eager"
-                  />
-                </div>
-
-                <div className="flex flex-col justify-center text-left leading-none">
-
-                  <span className="font-serif font-semibold text-[18px] tracking-[0.05em] text-white whitespace-nowrap">
-                    INDIA
-                  </span>
-
-                  <span className="font-sans font-light text-[10px] tracking-[0.18em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
-                    TRADE OVERSEAS
-                  </span>
-
-                  <span className="font-sans font-medium text-[7px] tracking-[0.1em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
-                    WHERE QUALITY MEETS GLOBAL DEMAND
-                  </span>
-
-                </div>
-
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
+        >
+          <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
+            <div className="flex items-center space-x-3">
+              <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
+                />
               </div>
+              <div className="flex flex-col justify-center text-left leading-none">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase text-[#F2F4F7] whitespace-nowrap">
+                  INDIA
+                </span>
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                  TRADE OVERSEAS
+                </span>
+              </div>
+            </div>
 
               <button
                 onClick={() => setIsMobileMenuOpen(false)}

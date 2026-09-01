@@ -33,7 +33,7 @@ import EmployeeSignup from './pages/public/EmployeeSignup';
 import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
-import ITOAds from './pages/public/ITOAds';
+const ITOAds = React.lazy(() => import('./pages/public/ITOAds'));
 
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
@@ -887,6 +887,33 @@ function AppLayout() {
             element={<ITOAds />}
           />
 
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/prakriti" element={<Prakriti />} />
+          <Route path="/prakriti/rice" element={<Rice />} />
+          <Route path="/stone" element={<Stone />} />
+          <Route
+            path="/ito-ads"
+            element={
+              <React.Suspense
+                fallback={
+                  <div
+                    className="min-h-screen flex items-center justify-center"
+                    style={{ background: '#01102D' }}
+                  >
+                    <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-[#F76E01]" />
+                  </div>
+                }
+              >
+                <ITOAds /> {/* Replace with your lazy-loaded component */}
+              </React.Suspense>
+            }
+          />
         </Routes>
 
       </main>
