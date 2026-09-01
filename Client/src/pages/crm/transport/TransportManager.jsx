@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 
 import { dispatchesApi } from '../../../api/dispatches';
+import { chatApi } from '../../../api/chat';
 import { employeeSignupApi } from '../../../api/employee-signup';
 import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
@@ -122,18 +123,17 @@ export default function TransportManager() {
 
     const fetchMongoChats = async () => {
       try {
-        const res = await fetch('/api/chat/transport');
-        const data = await res.json();
-        if (data && (data.chats || data.data?.chats)) {
-          const list = data.chats || data.data?.chats || [];
-          setChatMessages(list.map(c => ({
-            id: c.id || c._id,
-            sender: c.sender || c.senderName || 'Driver',
-            text: c.text || c.message || '',
-            time: c.time || (c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00 PM')
-          })));
-        }
-      } catch (e) {}
+        const data = await chatApi.getTransportMessages();
+        const list = data?.data?.chats || data?.chats || [];
+        setChatMessages(list.map(c => ({
+          id: c.id || c._id,
+          sender: c.sender || c.senderName || 'Driver',
+          text: c.text || c.message || '',
+          time: c.time || (c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00 PM')
+        })));
+      } catch (e) {
+        console.error('[fetchMongoChats Manager] Error fetching chats:', e);
+      }
     };
 
     fetchMongoChats();
@@ -155,7 +155,7 @@ export default function TransportManager() {
 
     window.addEventListener('ito_driver_gps_update_event', handleGpsEvent);
 
-    let socket = socketService.getSocket();
+    const socket = socketService.getSocket();
     if (socket) {
       socket.on('driver_location_update', (data) => {
         if (data && data.lat && data.long) setGpsLocation({ lat: data.lat, long: data.long });
@@ -168,18 +168,8 @@ export default function TransportManager() {
       socket.on('transport_chat_receive', handleIncomingChat);
     }
 
-    const checkSocketInterval = setInterval(() => {
-      const currentSocket = socketService.getSocket();
-      if (currentSocket && currentSocket !== socket) {
-        socket = currentSocket;
-        socket.on('driver_chat_message', handleIncomingChat);
-        socket.on('transport_chat_receive', handleIncomingChat);
-      }
-    }, 1000);
-
     return () => {
       window.removeEventListener('ito_driver_gps_update_event', handleGpsEvent);
-      clearInterval(checkSocketInterval);
       if (socket) {
         socket.off('driver_chat_message', handleIncomingChat);
         socket.off('transport_chat_receive', handleIncomingChat);
@@ -213,21 +203,29 @@ export default function TransportManager() {
 
     setInputMessage('');
 
-    // Save directly to MongoDB Database
-    try {
-      await fetch('/api/chat/transport', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMsg)
-      });
-    } catch (e) {}
+    // Append locally immediately for instant feedback
+    setChatMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        sender: senderName,
+        text: clean,
+        time: newMsg.time
+      }
+    ]);
 
-    // Real-Time Socket Broadcast
+    // Save directly to MongoDB Database via chatApi (uses axiosInstance with correct baseURL + auth)
+    try {
+      await chatApi.sendTransportMessage(newMsg);
+    } catch (e) {
+      console.error('[handleSendMessage Manager] Error saving chat:', e);
+    }
+
+    // Real-Time Socket Broadcast - emit event that Driver listens for
     try {
       const socket = socketService.getSocket();
       if (socket) {
-        socket.emit('transport_chat_send', newMsg);
-        socket.emit('driver_chat_message', newMsg);
+        socket.emit('transport_chat_receive', newMsg);
       }
     } catch (err) {}
   };
@@ -239,10 +237,11 @@ export default function TransportManager() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tripsRes, queueRes, empRes] = await Promise.allSettled([
+      const [tripsRes, queueRes, empRes, workUpdatesRes] = await Promise.allSettled([
         dispatchesApi.getDispatches(),
         dispatchesApi.getDispatchQueue(),
-        employeeSignupApi.getAllEmployees()
+        employeeSignupApi.getAllEmployees(),
+        dispatchesApi.getWorkUpdates()
       ]);
 
       let fetchedTrips = [];
@@ -292,6 +291,24 @@ export default function TransportManager() {
       }
 
       setDispatchQueue(fetchedQueue);
+
+      // Load Driver Work Updates from MongoDB
+      if (workUpdatesRes.status === 'fulfilled') {
+        const wuData = workUpdatesRes.value?.data?.workUpdates || workUpdatesRes.value?.workUpdates || [];
+        if (wuData.length > 0) {
+          const formattedUpdates = wuData.map(u => ({
+            id: u.id || u._id,
+            driver: u.driverName || u.driver || 'Ramesh Driver',
+            vehicle: u.vehicleNo || u.vehicle || 'BR-01-TR-4521',
+            stage: u.updateType || u.type || 'In Transit',
+            update: u.notes || u.update || '',
+            location: u.location || '',
+            photoUrl: u.photoUrl || '',
+            time: u.time || (u.createdAt ? new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
+          }));
+          setDriverWorkUpdates(formattedUpdates);
+        }
+      }
 
       let fetchedDrivers = [];
       if (empRes.status === 'fulfilled' && (empRes.value?.success || empRes.value?.data)) {

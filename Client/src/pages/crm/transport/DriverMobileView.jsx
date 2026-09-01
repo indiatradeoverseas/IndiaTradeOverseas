@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 
 import { dispatchesApi } from '../../../api/dispatches';
+import { chatApi } from '../../../api/chat';
 import { leadsApi } from '../../../api/leads';
 import { taskApi } from '../../../api/task';
 import { attendanceApi } from '../../../api/attendance';
@@ -49,6 +50,7 @@ export default function DriverMobileView() {
   const [loading, setLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueue, setOfflineQueue] = useState([]);
+  const [deliveredIdsSet, setDeliveredIdsSet] = useState(new Set());
 
   // Payment Proofs List
   const [paymentProofsList, setPaymentProofsList] = useState([]);
@@ -239,6 +241,17 @@ export default function DriverMobileView() {
       }
       return item;
     }));
+
+    // Update deliveredIdsSet for metrics calculation
+    setDeliveredIdsSet(prev => {
+      const next = new Set(prev);
+      if (targetId) next.add(targetId);
+      if (deliveringOrder._id) next.add(deliveringOrder._id);
+      if (deliveringOrder.orderNumber) next.add(deliveringOrder.orderNumber);
+      if (deliveringOrder.dispatchNumber) next.add(deliveringOrder.dispatchNumber);
+      if (deliveringOrder.leadCode) next.add(deliveringOrder.leadCode);
+      return next;
+    });
 
     // Add log entry to Driver Work Update Log
     setWorkUpdateLogs(prev => [
@@ -464,24 +477,23 @@ export default function DriverMobileView() {
 
     const fetchMongoChats = async () => {
       try {
-        const res = await fetch('/api/chat/transport');
-        const data = await res.json();
-        if (data && (data.chats || data.data?.chats)) {
-          const list = data.chats || data.data?.chats || [];
-          const formattedList = list.map(c => ({
-            id: c.id || c._id,
-            sender: c.sender || c.senderName || 'User',
-            text: c.text || c.message || '',
-            channel: c.channel || 'MANAGER',
-            time: c.time || (c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00 PM')
-          }));
+        const data = await chatApi.getTransportMessages();
+        const list = data?.data?.chats || data?.chats || [];
+        const formattedList = list.map(c => ({
+          id: c.id || c._id,
+          sender: c.sender || c.senderName || 'User',
+          text: c.text || c.message || '',
+          channel: c.channel || 'MANAGER',
+          time: c.time || (c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00 PM')
+        }));
 
-          setChatMessages({
-            MANAGER: formattedList.filter(c => c.channel !== 'EXECUTIVE'),
-            EXECUTIVE: formattedList.filter(c => c.channel === 'EXECUTIVE')
-          });
-        }
-      } catch (err) {}
+        setChatMessages({
+          MANAGER: formattedList.filter(c => c.channel !== 'EXECUTIVE'),
+          EXECUTIVE: formattedList.filter(c => c.channel === 'EXECUTIVE')
+        });
+      } catch (err) {
+        console.error('[fetchMongoChats] Error fetching transport chats from MongoDB:', err);
+      }
     };
 
     fetchMongoChats();
@@ -549,11 +561,15 @@ export default function DriverMobileView() {
   const fetchDriverTrip = async () => {
     setLoading(true);
     try {
-      const [tripRes, queueRes, taskRes, summaryRes] = await Promise.allSettled([
+      const driverIdStr = String(user?._id || user?.employeeId || '');
+      const driverNameStr = user?.name || user?.fullName || '';
+
+      const [tripRes, queueRes, taskRes, summaryRes, workUpdatesRes] = await Promise.allSettled([
         dispatchesApi.getDispatches(),
         dispatchesApi.getDispatchQueue(),
         taskApi.getTasks({ employeeId: user?._id || user?.employeeId, assignedTo: user?._id || user?.employeeId }),
-        dispatchesApi.getDispatchSummary()
+        dispatchesApi.getDispatchSummary(),
+        dispatchesApi.getWorkUpdates({ driverId: driverIdStr, driverName: driverNameStr })
       ]);
 
       let apiList = [];
@@ -591,8 +607,7 @@ export default function DriverMobileView() {
 
       const processedCombinedList = Array.from(mapById.values());
 
-      const driverNameLower = (user?.name || user?.fullName || '').toLowerCase();
-      const driverIdStr = String(user?._id || user?.employeeId || '');
+      const driverNameLower = driverNameStr.toLowerCase();
 
       // Filter dispatches assigned to this driver
       let matchedDispatches = processedCombinedList.filter(t => {
@@ -614,6 +629,18 @@ export default function DriverMobileView() {
 
       setDispatchesList(matchedDispatches);
 
+      // Initialize deliveredIdsSet from fetched data
+      const deliveredSet = new Set();
+      matchedDispatches.forEach(item => {
+        if (['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL_WON'].includes((item.status || item.dispatchStatus || item.stage || item.rawStage || '').toUpperCase())) {
+          if (item._id) deliveredSet.add(item._id);
+          if (item.orderNumber) deliveredSet.add(item.orderNumber);
+          if (item.dispatchNumber) deliveredSet.add(item.dispatchNumber);
+          if (item.leadCode) deliveredSet.add(item.leadCode);
+        }
+      });
+      setDeliveredIdsSet(deliveredSet);
+
       const activeTrip = matchedDispatches[0] || null;
       setTrip(activeTrip);
 
@@ -622,6 +649,43 @@ export default function DriverMobileView() {
           ...prev,
           vehicleNumber: prev.vehicleNumber || activeTrip.vehicleNo || activeTrip.assignedVehicleNo || activeTrip.truckNumber
         }));
+      }
+
+      // ─── LOAD FUEL EXPENSE LOGS FROM DISPATCH fuelLogs (MongoDB) ─────────
+      const allFuelLogs = [];
+      matchedDispatches.forEach(d => {
+        if (d.fuelLogs && Array.isArray(d.fuelLogs)) {
+          d.fuelLogs.forEach(fl => {
+            allFuelLogs.push({
+              id: fl._id || `fl-${Date.now()}-${Math.random()}`,
+              driver: d.driverName || driverNameStr || 'Driver',
+              vehicle: d.vehicleNumber || d.vehicleNo || '',
+              leadCode: d.orderNumber || d.dispatchNumber || d.leadCode || '',
+              leadCustomer: d.customerName || '',
+              totalKm: Number(fl.kmDriven) || 0,
+              fromLocation: fl.fromLocation || d.origin || '',
+              toLocation: fl.toLocation || d.destination || '',
+              fuelCost: Number(fl.amountPaid) || 0,
+              litres: Number(fl.quantityLiters) || 0,
+              punctureCost: Number(fl.punctureCost) || 0,
+              otherCost: Number(fl.otherCost) || 0,
+              remarks: fl.remarks || 'Trip Mileage & Expense Log',
+              time: fl.loggedAt ? new Date(fl.loggedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+              date: fl.loggedAt ? new Date(fl.loggedAt).toLocaleDateString('en-IN') : ''
+            });
+          });
+        }
+      });
+      if (allFuelLogs.length > 0) {
+        setFuelExpenseLogs(allFuelLogs);
+      }
+
+      // ─── LOAD WORK UPDATE LOGS FROM MongoDB ─────────────────────────────
+      if (workUpdatesRes.status === 'fulfilled') {
+        const wuData = workUpdatesRes.value?.data?.workUpdates || workUpdatesRes.value?.workUpdates || [];
+        if (wuData.length > 0) {
+          setWorkUpdateLogs(wuData);
+        }
       }
 
       let tasks = [];
@@ -846,6 +910,17 @@ export default function DriverMobileView() {
       return item;
     }));
 
+    // Update deliveredIdsSet for metrics calculation
+    setDeliveredIdsSet(prev => {
+      const next = new Set(prev);
+      if (targetId) next.add(targetId);
+      if (d._id) next.add(d._id);
+      if (d.orderNumber) next.add(d.orderNumber);
+      if (d.dispatchNumber) next.add(d.dispatchNumber);
+      if (d.leadCode) next.add(d.leadCode);
+      return next;
+    });
+
     // Post live work update to Transport Manager Feed
     const driverName = user?.name || user?.fullName || 'Ramesh Driver';
     const feedItem = {
@@ -861,34 +936,69 @@ export default function DriverMobileView() {
     toast.success(`🎉 Load ${d.dispatchNumber || d.orderNumber || ''} Marked DELIVERED! Lead Stage updated to DEAL_WON.`);
   };
 
-  // Submit Work Update
+  // Submit Work Update — Save to MongoDB via dedicated Work Update API
   const handleWorkUpdateSubmit = async (e) => {
     e.preventDefault();
     if (!workUpdateForm.notes.trim()) return toast.error('Please enter work update details');
 
     setSubmittingWorkUpdate(true);
     
-    const newUpdate = {
-      id: Date.now(),
-      type: workUpdateForm.updateType,
+    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const vehicleName = attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'BR-01-TR-4521';
+
+    const payload = {
+      driverId: user?._id || user?.employeeId || '',
+      driverName,
+      vehicleNo: vehicleName,
+      updateType: workUpdateForm.updateType,
       notes: workUpdateForm.notes,
       location: workUpdateForm.location || `${gpsLocation.lat}, ${gpsLocation.long}`,
       photoUrl: workUpdateForm.photoUrl,
-      time: new Date().toLocaleTimeString()
+      dispatchId: trip?._id || dispatchesList[0]?._id || ''
     };
 
-    if (trip?._id) {
-      try {
-        await dispatchesApi.logTripExpense(trip._id, {
-          notes: `${workUpdateForm.updateType}: ${workUpdateForm.notes}`,
-          location: workUpdateForm.location
-        });
-      } catch (e) {
-        console.log('Work update logged to DB');
-      }
+    // Save to MongoDB via dedicated Work Update API
+    try {
+      const result = await dispatchesApi.createWorkUpdate(payload);
+      const savedUpdate = result?.data || result;
+      const newUpdate = {
+        id: savedUpdate?._id || Date.now(),
+        type: workUpdateForm.updateType,
+        notes: workUpdateForm.notes,
+        location: payload.location,
+        photoUrl: workUpdateForm.photoUrl,
+        time: new Date().toLocaleTimeString()
+      };
+      setWorkUpdateLogs(prev => [newUpdate, ...prev]);
+    } catch (err) {
+      console.error('[handleWorkUpdateSubmit] Error saving work update to MongoDB:', err);
+      // Still add to local state as fallback
+      setWorkUpdateLogs(prev => [{
+        id: Date.now(),
+        type: workUpdateForm.updateType,
+        notes: workUpdateForm.notes,
+        location: payload.location,
+        photoUrl: workUpdateForm.photoUrl,
+        time: new Date().toLocaleTimeString()
+      }, ...prev]);
     }
 
-    setWorkUpdateLogs(prev => [newUpdate, ...prev]);
+    // Emit work update to Transport Manager via Socket.IO
+    try {
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('driver_work_update', {
+          id: Date.now(),
+          driver: driverName,
+          vehicle: vehicleName,
+          stage: workUpdateForm.updateType,
+          update: workUpdateForm.notes,
+          location: payload.location,
+          photoUrl: workUpdateForm.photoUrl,
+          time: new Date().toLocaleTimeString()
+        });
+      }
+    } catch (err) {}
 
     setWorkUpdateForm({ updateType: 'In Transit', notes: '', location: '', photoUrl: '' });
     setSubmittingWorkUpdate(false);
@@ -915,14 +1025,26 @@ export default function DriverMobileView() {
 
     setInputMessage('');
 
-    // Save directly to MongoDB Database
+    // Append message to local state immediately for instant rendering
+    const localMsg = {
+      id: Date.now(),
+      sender: msgObj.senderName,
+      text: cleanText,
+      channel: chatChannel || 'MANAGER',
+      time: msgObj.time
+    };
+
+    setChatMessages(prev => ({
+      ...prev,
+      [chatChannel || 'MANAGER']: [...(prev[chatChannel || 'MANAGER'] || []), localMsg]
+    }));
+
+    // Save directly to MongoDB Database via chatApi (uses axiosInstance with correct baseURL + auth)
     try {
-      await fetch('/api/chat/transport', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(msgObj)
-      });
-    } catch (e) {}
+      await chatApi.sendTransportMessage(msgObj);
+    } catch (e) {
+      console.error('[handleSendMessage] Error saving chat to MongoDB:', e);
+    }
 
     // Emit WebSocket event for real-time broadcast
     try {

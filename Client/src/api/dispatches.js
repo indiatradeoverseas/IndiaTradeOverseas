@@ -179,6 +179,19 @@ export const submitDeliveryImages = async (id, data) => {
   return res.data;
 };
 
+// ─── WORK UPDATE LOG PERSISTENCE ──────────────────────────────────────────
+
+export const createWorkUpdate = async (data) => {
+  const res = await axios.post('/v1/dispatch/work-updates', data);
+  return res.data;
+};
+
+export const getWorkUpdates = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const res = await axios.get(`/v1/dispatch/work-updates${queryString ? `?${queryString}` : ''}`);
+  return res.data;
+};
+
 export const dispatchesApi = {
   getDispatchSummary,
   getDispatches,
@@ -199,5 +212,7 @@ export const dispatchesApi = {
   recordEndOdometer,
   addFuelLog,
   submitDepartureImages,
-  submitDeliveryImages
+  submitDeliveryImages,
+  createWorkUpdate,
+  getWorkUpdates
 };

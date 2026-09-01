@@ -7,6 +7,21 @@ const { authenticate, authorize } = require('../../middlewares/auth.middleware')
 // Apply authentication middleware globally to all dispatch endpoints
 router.use(authenticate);
 
+// ─── DRIVER WORK UPDATE LOG PERSISTENCE ────────────────────────────────────
+// These routes MUST be before /:id routes to prevent 'work-updates' being treated as an :id
+
+router.get(
+  '/work-updates',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'LOGISTICS_MANAGER', 'EMPLOYEE', 'SALES', 'CRM', 'IT', 'Admin', 'LogisticsManager', 'SalesManager', 'HRManager', 'Driver', 'HR']),
+  dispatchController.getWorkUpdates
+);
+
+router.post(
+  '/work-updates',
+  authorize(['ADMIN', 'MANAGER', 'DRIVER', 'TRANSPORT', 'LOGISTICS_MANAGER', 'EMPLOYEE', 'SALES', 'CRM', 'IT', 'Admin', 'LogisticsManager', 'SalesManager', 'HRManager', 'Driver', 'HR']),
+  dispatchController.createWorkUpdate
+);
+
 // ─── READ OPERATIONS ───────────────────────────────────────────────────
 
 // Fetch transport dashboard summary metrics (Admin / Managers / Procurement)

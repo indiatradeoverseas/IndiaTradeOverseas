@@ -172,3 +172,24 @@ exports.submitDeliveryImages = async (req, res) => {
     return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
   }
 };
+
+// ─── WORK UPDATE LOG PERSISTENCE ──────────────────────────────────────────
+
+exports.createWorkUpdate = async (req, res) => {
+  try {
+    const result = await dispatchService.createWorkUpdate(req.body);
+    return ok(res, result, 'Work update saved to MongoDB', 201, req);
+  } catch (error) {
+    return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};
+
+exports.getWorkUpdates = async (req, res) => {
+  try {
+    const { driverId, driverName } = req.query;
+    const updates = await dispatchService.getWorkUpdates(driverId, driverName);
+    return ok(res, { workUpdates: updates }, 'Work updates fetched from MongoDB', 200, req);
+  } catch (error) {
+    return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
+  }
+};

@@ -829,6 +829,64 @@ class DispatchService {
 
     return { success: true, dispatchId: dispatch._id, totalTollCharges: dispatch.tollCharges };
   }
+
+  /**
+   * Create a Driver Work Update log entry in MongoDB
+   */
+  async createWorkUpdate(payload) {
+    const DriverWorkUpdate = require('./workUpdate.model');
+    const { driverId, driverName, vehicleNo, updateType, notes, location, photoUrl, dispatchId } = payload;
+
+    if (!notes || !notes.trim()) {
+      throw new Error('Work update notes are required');
+    }
+
+    const workUpdate = await DriverWorkUpdate.create({
+      driverId: String(driverId || ''),
+      driverName: driverName || 'Driver',
+      vehicleNo: vehicleNo || '',
+      updateType: updateType || 'In Transit',
+      notes: notes.trim(),
+      location: location || '',
+      photoUrl: photoUrl || '',
+      dispatchId: String(dispatchId || '')
+    });
+
+    return workUpdate;
+  }
+
+  /**
+   * Get all work updates for a specific driver, sorted newest first
+   */
+  async getWorkUpdates(driverId, driverName) {
+    const DriverWorkUpdate = require('./workUpdate.model');
+
+    // Build query: match by driverId OR driverName (case-insensitive partial match)
+    const query = {};
+    const conditions = [];
+    if (driverId) conditions.push({ driverId: String(driverId) });
+    if (driverName) conditions.push({ driverName: { $regex: driverName, $options: 'i' } });
+
+    if (conditions.length > 0) {
+      query.$or = conditions;
+    }
+
+    const updates = await DriverWorkUpdate.find(query)
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    return updates.map(u => ({
+      id: u._id.toString(),
+      _id: u._id.toString(),
+      type: u.updateType,
+      notes: u.notes,
+      location: u.location,
+      photoUrl: u.photoUrl,
+      time: new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: u.createdAt
+    }));
+  }
 }
 
-module.exports = new DispatchService();
+module.exports = new DispatchService();
