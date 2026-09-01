@@ -19,9 +19,33 @@ async function startServer() {
     if (!process.env.VERCEL) {
       const server = http.createServer(app);
       socketService.init(server);
-      server.listen(PORT, () => {
+
+      server.on('error', (e) => {
+        if (e.code === 'EADDRINUSE') {
+          console.log(`Port ${PORT} is busy, retrying in 1s...`);
+          setTimeout(() => {
+            server.close();
+            server.listen(PORT);
+          }, 1000);
+        } else {
+          console.error('Server error:', e);
+        }
+      });
+
+      const listenServer = server.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
       });
+
+      const gracefulShutdown = () => {
+        console.log('Closing HTTP server...');
+        listenServer.close(() => {
+          console.log('HTTP server closed.');
+          process.exit(0);
+        });
+      };
+
+      process.once('SIGINT', gracefulShutdown);
+      process.once('SIGTERM', gracefulShutdown);
     } else {
       console.log('Server initialized on Vercel (serverless mode)');
     }

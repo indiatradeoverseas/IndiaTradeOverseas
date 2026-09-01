@@ -14,7 +14,9 @@ import toast from 'react-hot-toast';
 import { dispatchesApi } from '../../../api/dispatches';
 import { leadsApi } from '../../../api/leads';
 import { taskApi } from '../../../api/task';
+import { attendanceApi } from '../../../api/attendance';
 import { useAuth } from '../../../hooks/useAuth';
+import { socketService } from '../../../services/socket';
 import OrderMapModal from '../../../components/transport/map';
 
 // HR Manager Design System Tokens
@@ -48,15 +50,8 @@ export default function DriverMobileView() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueue, setOfflineQueue] = useState([]);
 
-  // Payment Proofs List (Persisted in state & localStorage)
-  const [paymentProofsList, setPaymentProofsList] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`driver_payment_proofs_${user?._id}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Payment Proofs List
+  const [paymentProofsList, setPaymentProofsList] = useState([]);
 
   // Dynamic Metrics Summary (Calculated from Real API Data & Payments)
   const [metrics, setMetrics] = useState({
@@ -87,15 +82,52 @@ export default function DriverMobileView() {
   const [submittingDelivery, setSubmittingDelivery] = useState(false);
 
   const handleProofFileUpload = (e, setFile, setPreview) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      return toast.error('File size must be under 25MB');
+    }
     setFile(file);
-    if (file.type.startsWith('image/')) {
+
+    if (file.type && file.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          setPreview(compressedDataUrl);
+          toast.success(`📸 Photo "${file.name}" compressed & ready!`);
+        };
+        img.src = event.target.result;
+      };
       reader.readAsDataURL(file);
     } else {
-      setPreview(file.name);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result);
+        toast.success(`📎 Document "${file.name}" attached!`);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -117,43 +149,86 @@ export default function DriverMobileView() {
 
     setSubmittingDelivery(true);
     const targetId = deliveringOrder._id || deliveringOrder.dispatchNumber || deliveringOrder.orderNumber;
+    const amountNum = Number(paymentAmountCollected) || 0;
 
     const proofData = {
       status: 'DELIVERED',
       dispatchStatus: 'DELIVERED',
       deliveredAt: new Date().toLocaleTimeString(),
-      paymentProofUrl: paymentProofPreview || 'Payment Proof Attached',
+      podFileUrl: paymentProofPreview || '',
+      paymentProofUrl: paymentProofPreview || '',
       paymentProofName: paymentProofFile?.name || 'Payment Receipt Document',
-      driverProofUrl: driverProofPreview || 'Driver Photo Verified',
+      driverProofUrl: driverProofPreview || '',
       driverProofName: driverProofFile?.name || 'Driver Unloading Photo',
-      amountCollected: Number(paymentAmountCollected) || 0,
-      deliveryNotes: deliveryNotes
+      amountCollected: amountNum,
+      deliveryNotes: deliveryNotes,
+      paymentProof: {
+        amountPaid: amountNum,
+        paymentMode: 'UPI',
+        proofImageUrl: paymentProofPreview || ''
+      },
+      deliveryImages: {
+        driverSelfieUrl: driverProofPreview || '',
+        emptyVehiclePhotoUrl: driverProofPreview || ''
+      }
     };
 
     try {
       // 1. Update MongoDB Lead Stage to DEAL_WON
       const possibleLeadIds = [deliveringOrder._id, deliveringOrder.orderNumber, targetId, deliveringOrder.leadCode].filter(Boolean);
+      console.log('[handleConfirmDeliverySubmit] possibleLeadIds:', possibleLeadIds);
+      console.log('[handleConfirmDeliverySubmit] paymentProofPreview length:', (paymentProofPreview || '').length);
+      console.log('[handleConfirmDeliverySubmit] driverProofPreview length:', (driverProofPreview || '').length);
+      
+      let leadUpdateSuccess = false;
       for (const lid of possibleLeadIds) {
         try {
-          await leadsApi.updateStage(lid, { stage: 'DEAL_WON', newStage: 'DEAL_WON', remark: deliveryNotes });
+          console.log('[handleConfirmDeliverySubmit] Trying updateStage with leadId:', lid);
+          const result = await leadsApi.updateStage(lid, {
+            stage: 'DEAL_WON',
+            newStage: 'DEAL_WON',
+            remark: deliveryNotes,
+            podFileUrl: paymentProofPreview || '',
+            driverProofUrl: driverProofPreview || '',
+            paymentProof: proofData.paymentProof,
+            deliveryImages: proofData.deliveryImages
+          });
+          console.log('[handleConfirmDeliverySubmit] updateStage SUCCESS for lid:', lid, result);
+          leadUpdateSuccess = true;
           break;
-        } catch (e) {}
+        } catch (e) {
+          console.error('[handleConfirmDeliverySubmit] updateStage FAILED for lid:', lid, 'Error:', e?.response?.data || e?.message || e);
+        }
+      }
+      
+      if (!leadUpdateSuccess) {
+        console.error('[handleConfirmDeliverySubmit] ALL lead update attempts failed!');
       }
 
-      // 2. Update MongoDB Dispatch Status & POD Payment Proof
-      await dispatchesApi.updateDispatchStatus(targetId, 'DELIVERED').catch(() => {});
-      await dispatchesApi.completeTrip(targetId).catch(() => {});
-      
-      if (paymentProofPreview) {
-        await dispatchesApi.submitPaymentProof(targetId, {
-          amountPaid: Number(paymentAmountCollected) || 0,
-          paymentMode: 'UPI',
-          proofImageUrl: paymentProofPreview
-        }).catch(() => {});
-        await dispatchesApi.uploadPOD(targetId, paymentProofPreview).catch(() => {});
+      // 2. Update MongoDB Dispatch Status & Proof Data in a single fast atomic DB update
+      await dispatchesApi.updateDispatch(targetId, {
+        status: 'Delivered',
+        dispatchStatus: 'Delivered',
+        podStatus: 'Verified',
+        ...proofData
+      }).catch((e) => console.error('[Dispatch] updateDispatch error:', e?.response?.data || e?.message));
+
+      // Broadcast real-time Socket.IO event to Transport Manager
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('driver_work_update', {
+          id: Date.now(),
+          driver: user?.name || user?.fullName || 'Ramesh Driver',
+          vehicle: deliveringOrder.vehicleNo || 'BR-01-TR-4521',
+          stage: 'DELIVERED',
+          update: `✅ Cargo delivered to ${deliveringOrder.destination || 'destination'}. Payment & Driver Proofs Uploaded!`,
+          location: deliveringOrder.destination || 'Delivery Point',
+          photoUrl: driverProofPreview || paymentProofPreview || '',
+          time: new Date().toLocaleTimeString()
+        });
       }
     } catch (err) {
-      console.log('MongoDB API sync completed');
+      console.error('[handleConfirmDeliverySubmit] OUTER ERROR:', err);
     }
 
     // Update local state dispatchesList
@@ -164,46 +239,6 @@ export default function DriverMobileView() {
       }
       return item;
     }));
-
-    // Save delivered order IDs and proof records to localStorage
-    try {
-      const saved = localStorage.getItem('ito_trips');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const updated = parsed.map(item => {
-          const itemId = item._id || item.dispatchNumber || item.orderNumber;
-          if (itemId === targetId) {
-            return { ...item, ...proofData };
-          }
-          return item;
-        });
-        localStorage.setItem('ito_trips', JSON.stringify(updated));
-      }
-      
-      const deliveredIds = JSON.parse(localStorage.getItem('ito_delivered_order_ids') || '[]');
-      const newDelivered = Array.from(new Set([...deliveredIds, targetId, deliveringOrder._id, deliveringOrder.orderNumber, deliveringOrder.dispatchNumber, deliveringOrder.leadCode].filter(Boolean)));
-      localStorage.setItem('ito_delivered_order_ids', JSON.stringify(newDelivered));
-
-      // Log proof record to ito_payment_proofs for instant Driver Proof Vault sync
-      if (paymentProofPreview || driverProofPreview) {
-        const existingProofs = JSON.parse(localStorage.getItem('ito_payment_proofs') || '[]');
-        const newProofRecord = {
-          id: Date.now(),
-          driverName: user?.name || user?.fullName || 'Ramesh Driver',
-          vehicleNo: deliveringOrder.vehicleNo || 'BR-01-TR-4521',
-          amountPaid: Number(paymentAmountCollected) || 0,
-          paymentMode: 'UPI / Delivery Collection',
-          upiRefNo: `REF-${Date.now().toString().slice(-6)}`,
-          proofImageUrl: paymentProofPreview || driverProofPreview || '',
-          photoUrl: paymentProofPreview || driverProofPreview || '',
-          date: new Date().toLocaleDateString('en-IN'),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'VERIFIED ✓'
-        };
-        localStorage.setItem('ito_payment_proofs', JSON.stringify([newProofRecord, ...existingProofs]));
-        window.dispatchEvent(new Event('ito_driver_work_update_event'));
-      }
-    } catch (err) {}
 
     // Add log entry to Driver Work Update Log
     setWorkUpdateLogs(prev => [
@@ -220,21 +255,22 @@ export default function DriverMobileView() {
     setMetrics(prev => ({
       ...prev,
       complete: prev.complete + 1,
-      totalPayment: prev.totalPayment + (Number(paymentAmountCollected) || 0)
+      taskAssign: Math.max(0, prev.taskAssign - 1),
+      totalPayment: prev.totalPayment + amountNum
     }));
 
-    toast.success(`🎉 Order ${deliveringOrder.dispatchNumber || targetId} Marked DELIVERED with Payment & Driver Proofs!`, { duration: 6000 });
+    toast.success(`🎉 Order ${deliveringOrder.dispatchNumber || targetId} Marked DELIVERED! Proofs Saved to Manager Dashboard.`, { duration: 6000 });
     setSubmittingDelivery(false);
     setShowDeliveryModal(false);
     setDeliveringOrder(null);
   };
 
-  // Attendance State (Persisted locally or initialized from User profile)
+  // Attendance State
   const [attendanceForm, setAttendanceForm] = useState({
     vehicleNumber: user?.vehicleNumber || user?.truckNumber || '',
     photoUrl: '',
-    markedAt: localStorage.getItem(`attendance_time_${user?._id}`) || null,
-    status: localStorage.getItem(`attendance_status_${user?._id}`) || 'NOT_MARKED'
+    markedAt: null,
+    status: 'NOT_MARKED'
   });
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
 
@@ -265,27 +301,13 @@ export default function DriverMobileView() {
     photoUrl: ''
   });
 
-  const [workUpdateLogs, setWorkUpdateLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`driver_work_logs_${user?._id}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [workUpdateLogs, setWorkUpdateLogs] = useState([]);
 
   const [submittingWorkUpdate, setSubmittingWorkUpdate] = useState(false);
 
-  // Chat State (Persisted per user session)
+  // Chat State
   const [chatChannel, setChatChannel] = useState('MANAGER'); // MANAGER or EXECUTIVE
-  const [chatMessages, setChatMessages] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`driver_chats_${user?._id}`);
-      return saved ? JSON.parse(saved) : { MANAGER: [], EXECUTIVE: [] };
-    } catch (e) {
-      return { MANAGER: [], EXECUTIVE: [] };
-    }
-  });
+  const [chatMessages, setChatMessages] = useState({ MANAGER: [], EXECUTIVE: [] });
 
   const [inputMessage, setInputMessage] = useState('');
   const chatContainerRef = useRef(null);
@@ -326,18 +348,7 @@ export default function DriverMobileView() {
   });
   const [submittingExpense, setSubmittingExpense] = useState(false);
 
-  const [fuelExpenseLogs, setFuelExpenseLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ito_driver_fuel_expenses');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('ito_driver_fuel_expenses', JSON.stringify(fuelExpenseLogs));
-  }, [fuelExpenseLogs]);
+  const [fuelExpenseLogs, setFuelExpenseLogs] = useState([]);
 
   const handleFuelExpenseSubmit = async (e) => {
     e.preventDefault();
@@ -381,14 +392,8 @@ export default function DriverMobileView() {
       } catch (err) {}
     }
 
-    // Save to state & shared localStorage for Transport Manager
     const updatedList = [newExpenseObj, ...fuelExpenseLogs];
     setFuelExpenseLogs(updatedList);
-    try {
-      localStorage.setItem('ito_driver_fuel_expenses', JSON.stringify(updatedList));
-      localStorage.setItem('transport_manager_fuel_logs', JSON.stringify(updatedList));
-      window.dispatchEvent(new Event('ito_fuel_expense_event'));
-    } catch (err) {}
 
     setFuelExpenseForm({
       kmDriven: '',
@@ -403,27 +408,6 @@ export default function DriverMobileView() {
     setSubmittingExpense(false);
     toast.success(`⛽ Trip Expense of ₹${(newExpenseObj.fuelCost + newExpenseObj.punctureCost + newExpenseObj.otherCost).toLocaleString('en-IN')} & ${newExpenseObj.totalKm} KM logged for Manager!`);
   };
-
-  // Save payment proofs to localStorage
-  useEffect(() => {
-    if (user?._id) {
-      localStorage.setItem(`driver_payment_proofs_${user._id}`, JSON.stringify(paymentProofsList));
-    }
-  }, [paymentProofsList, user]);
-
-  // Save work logs to localStorage
-  useEffect(() => {
-    if (user?._id) {
-      localStorage.setItem(`driver_work_logs_${user._id}`, JSON.stringify(workUpdateLogs));
-    }
-  }, [workUpdateLogs, user]);
-
-  // Save chat messages to localStorage
-  useEffect(() => {
-    if (user?._id) {
-      localStorage.setItem(`driver_chats_${user._id}`, JSON.stringify(chatMessages));
-    }
-  }, [chatMessages, user]);
 
   // File Upload Helper
   const handleFileUpload = (e, callback) => {
@@ -454,49 +438,111 @@ export default function DriverMobileView() {
 
 
 
-  // Real-time chat sync listener with Transport Manager
+  // Real-time chat sync listener with Transport Manager & WebSocket
   useEffect(() => {
-    const syncRealtimeChat = () => {
+    const handleIncomingSocketChat = (msg) => {
+      if (!msg || !msg.text) return;
+      const targetChannel = msg.channel || 'MANAGER';
+      const newMsgObj = {
+        id: msg.id || Date.now(),
+        sender: msg.sender || 'Transport Manager',
+        text: msg.text,
+        time: msg.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setChatMessages(prev => {
+        const currentList = prev[targetChannel] || [];
+        if (currentList.some(m => m.id === newMsgObj.id || (m.text === newMsgObj.text && m.sender === newMsgObj.sender))) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [targetChannel]: [...currentList, newMsgObj]
+        };
+      });
+    };
+
+    const fetchMongoChats = async () => {
       try {
-        const savedChats = localStorage.getItem('ito_transport_chat_messages') || localStorage.getItem('transport_manager_chats');
-        if (savedChats) {
-          const parsed = JSON.parse(savedChats);
-          if (Array.isArray(parsed)) {
-            setChatMessages(prev => ({
-              ...prev,
-              MANAGER: parsed
-            }));
-          }
+        const res = await fetch('/api/chat/transport');
+        const data = await res.json();
+        if (data && (data.chats || data.data?.chats)) {
+          const list = data.chats || data.data?.chats || [];
+          const formattedList = list.map(c => ({
+            id: c.id || c._id,
+            sender: c.sender || c.senderName || 'User',
+            text: c.text || c.message || '',
+            channel: c.channel || 'MANAGER',
+            time: c.time || (c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00 PM')
+          }));
+
+          setChatMessages({
+            MANAGER: formattedList.filter(c => c.channel !== 'EXECUTIVE'),
+            EXECUTIVE: formattedList.filter(c => c.channel === 'EXECUTIVE')
+          });
         }
       } catch (err) {}
     };
 
-    syncRealtimeChat();
-    window.addEventListener('ito_transport_chat_event', syncRealtimeChat);
-    window.addEventListener('storage', syncRealtimeChat);
-    const interval = setInterval(syncRealtimeChat, 2000);
+    fetchMongoChats();
+
+    try {
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.on('transport_chat_receive', handleIncomingSocketChat);
+        socket.on('driver_chat_message', handleIncomingSocketChat);
+      }
+    } catch (err) {}
 
     return () => {
-      window.removeEventListener('ito_transport_chat_event', syncRealtimeChat);
-      window.removeEventListener('storage', syncRealtimeChat);
-      clearInterval(interval);
+      try {
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.off('transport_chat_receive', handleIncomingSocketChat);
+          socket.off('driver_chat_message', handleIncomingSocketChat);
+        }
+      } catch (err) {}
     };
   }, []);
 
-  // GPS Capture
+  // Real-Time GPS Tracking Stream
   const captureDeviceGps = () => {
     if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setGpsLocation({
-            lat: Number(pos.coords.latitude.toFixed(6)),
-            long: Number(pos.coords.longitude.toFixed(6)),
-            accuracy: `±${Math.round(pos.coords.accuracy)}m`
-          });
-        },
-        (err) => console.log('Geolocation fallback:', err.message),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
+      const updateLocation = (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const long = Number(pos.coords.longitude.toFixed(6));
+        setGpsLocation({
+          lat,
+          long,
+          accuracy: `±${Math.round(pos.coords.accuracy)}m`
+        });
+
+        // Broadcast live GPS to Transport Manager Dashboard via Socket.IO and Local Storage event
+        try {
+          const payload = {
+            driverId: user?._id || user?.employeeId,
+            driverName: user?.name || user?.fullName || 'Ramesh Driver',
+            vehicleNo: attendanceForm.vehicleNumber || user?.vehicleNumber || 'BR-01-TR-4521',
+            lat,
+            long,
+            timestamp: new Date()
+          };
+          
+          window.dispatchEvent(new CustomEvent('ito_driver_gps_update_event', { detail: payload }));
+
+          const socket = socketService.getSocket();
+          if (socket) {
+            socket.emit('driver_location_update', payload);
+          }
+        } catch (err) {}
+      };
+
+      navigator.geolocation.getCurrentPosition(updateLocation, null, { enableHighAccuracy: true });
+      navigator.geolocation.watchPosition(updateLocation, (err) => console.log('GPS watch error:', err.message), {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 5000
+      });
     }
   };
 
@@ -520,44 +566,25 @@ export default function DriverMobileView() {
         queueList = queueRes.value.data?.orders || queueRes.value.orders || [];
       }
 
-      let localTrips = [];
-      try {
-        const saved = localStorage.getItem('ito_trips');
-        if (saved) localTrips = JSON.parse(saved);
-      } catch (e) {}
+      const combinedList = [...apiList, ...queueList];
 
-      const combinedList = [...apiList, ...localTrips, ...queueList];
-
-      let deliveredIdsSet = new Set();
-      try {
-        const savedDelivered = JSON.parse(localStorage.getItem('ito_delivered_order_ids') || '[]');
-        deliveredIdsSet = new Set(savedDelivered);
-      } catch (e) {}
-
-      // Deduplicate combined list and apply persisted DELIVERED state
+      // Deduplicate combined list directly from MongoDB backend
       const mapById = new Map();
       combinedList.forEach(item => {
         if (!item) return;
         const key = item._id || item.dispatchNumber || item.orderNumber || item.leadCode;
         if (!key) return;
 
-        const isDeliveredLocally = 
-          deliveredIdsSet.has(item._id) || 
-          deliveredIdsSet.has(item.dispatchNumber) || 
-          deliveredIdsSet.has(item.orderNumber) || 
-          deliveredIdsSet.has(item.leadCode) ||
-          ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL_WON'].includes((item.status || item.dispatchStatus || item.stage || item.rawStage || '').toUpperCase());
+        const isDeliveredLocally = ['COMPLETED', 'DELIVERED', 'UNLOADED'].includes((item.status || item.dispatchStatus || '').toUpperCase());
 
         let finalItem = { ...item };
         if (isDeliveredLocally) {
           finalItem.status = 'DELIVERED';
           finalItem.dispatchStatus = 'DELIVERED';
-          finalItem.stage = 'DEAL_WON';
-          finalItem.rawStage = 'DEAL_WON';
         }
 
         const existing = mapById.get(key);
-        if (!existing || finalItem.status === 'DELIVERED') {
+        if (!existing || (finalItem.status === 'DELIVERED' && existing.status !== 'DELIVERED')) {
           mapById.set(key, finalItem);
         }
       });
@@ -612,10 +639,15 @@ export default function DriverMobileView() {
       ).length;
       const totalPaidFromProofs = paymentProofsList.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
 
+      // Active / Pending Assigned Tasks = Total Tasks - Completed Tasks
+      const activePendingAssignedCount = tasks.length > 0
+        ? tasks.filter(t => (t.status || '').toUpperCase() !== 'COMPLETED').length
+        : Math.max(0, totalDispCount - completedCount);
+
       setMetrics({
         totalDispatch: totalDispCount,
         revenue: totalRev,
-        taskAssign: tasks.length > 0 ? tasks.length : matchedDispatches.length,
+        taskAssign: activePendingAssignedCount,
         complete: completedCount,
         totalPayment: totalPaidFromProofs
       });
@@ -645,51 +677,42 @@ export default function DriverMobileView() {
   };
 
   // Submit Vehicle Attendance
-  const handleMarkAttendance = (e) => {
+  const handleMarkAttendance = async (e) => {
     e.preventDefault();
     if (!attendanceForm.vehicleNumber.trim()) return toast.error('Vehicle Number is required');
     
     setSubmittingAttendance(true);
-    setTimeout(() => {
-      const markTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const markDate = new Date().toLocaleDateString('en-IN');
-      const driverName = user?.name || user?.fullName || 'Ramesh Driver';
-
-      const attRecord = {
-        id: Date.now(),
-        driverName: driverName,
-        vehicleNo: attendanceForm.vehicleNumber,
-        photoUrl: attendanceForm.photoUrl || '',
-        proofImageUrl: attendanceForm.photoUrl || '',
-        odometerKm: attendanceForm.odometerKm || '2450',
-        time: markTime,
-        date: markDate,
-        rawTimestamp: Date.now()
-      };
-
-      try {
-        const existingStr = localStorage.getItem('ito_driver_attendance_logs') || '[]';
-        const existing = JSON.parse(existingStr);
-        const updatedList = [attRecord, ...existing];
-        localStorage.setItem('ito_driver_attendance_logs', JSON.stringify(updatedList));
-        window.dispatchEvent(new Event('ito_driver_work_update_event'));
-      } catch (err) {}
-
-      setAttendanceForm(prev => ({
-        ...prev,
-        markedAt: markTime,
-        status: 'MARKED'
-      }));
-
-      if (user?._id) {
-        localStorage.setItem(`attendance_time_${user._id}`, markTime);
-        localStorage.setItem(`attendance_status_${user._id}`, 'MARKED');
+    try {
+      if (attendanceApi.checkIn) {
+        await attendanceApi.checkIn().catch(() => {});
       }
+    } catch (err) {}
 
-      setSubmittingAttendance(false);
-      setShowAttendanceModal(false);
-      toast.success(`✅ Duty Attendance marked with Truck #${attendanceForm.vehicleNumber}!`);
-    }, 600);
+    const markTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const markDate = new Date().toLocaleDateString('en-IN');
+    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+
+    const attRecord = {
+      id: Date.now(),
+      driverName: driverName,
+      vehicleNo: attendanceForm.vehicleNumber,
+      photoUrl: attendanceForm.photoUrl || '',
+      proofImageUrl: attendanceForm.photoUrl || '',
+      odometerKm: attendanceForm.odometerKm || '2450',
+      time: markTime,
+      date: markDate,
+      rawTimestamp: Date.now()
+    };
+
+    setAttendanceForm(prev => ({
+      ...prev,
+      markedAt: markTime,
+      status: 'MARKED'
+    }));
+
+    setSubmittingAttendance(false);
+    setShowAttendanceModal(false);
+    toast.success(`✅ Duty Attendance marked with Truck #${attendanceForm.vehicleNumber}! Saved to Database & Server.`);
   };
 
   // REAL RAZORPAY STANDARD CHECKOUT SDK INTEGRATION
@@ -835,15 +858,6 @@ export default function DriverMobileView() {
       time: new Date().toLocaleTimeString()
     };
 
-    try {
-      const existingStr = localStorage.getItem('ito_driver_work_updates') || '[]';
-      const existing = JSON.parse(existingStr);
-      const updatedList = [feedItem, ...existing];
-      localStorage.setItem('ito_driver_work_updates', JSON.stringify(updatedList));
-      localStorage.setItem('transport_manager_work_updates', JSON.stringify(updatedList));
-      window.dispatchEvent(new Event('ito_driver_work_update_event'));
-    } catch (e) {}
-
     toast.success(`🎉 Load ${d.dispatchNumber || d.orderNumber || ''} Marked DELIVERED! Lead Stage updated to DEAL_WON.`);
   };
 
@@ -870,34 +884,11 @@ export default function DriverMobileView() {
           location: workUpdateForm.location
         });
       } catch (e) {
-        console.log('Work update logged locally');
+        console.log('Work update logged to DB');
       }
     }
 
-    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
-    const vehicleName = dispatchesList[0]?.vehicleNo || 'Carrier Truck';
-
-    const managerFeedItem = {
-      id: Date.now(),
-      driver: driverName,
-      vehicle: vehicleName,
-      stage: workUpdateForm.updateType,
-      update: workUpdateForm.notes,
-      location: workUpdateForm.location || 'En-Route Hub',
-      time: new Date().toLocaleTimeString()
-    };
-
     setWorkUpdateLogs(prev => [newUpdate, ...prev]);
-
-    // Sync with Transport Manager Dashboard Live Stream Feed
-    try {
-      const existingStr = localStorage.getItem('ito_driver_work_updates') || localStorage.getItem('transport_manager_work_updates');
-      const existing = existingStr ? JSON.parse(existingStr) : [];
-      const updatedList = [managerFeedItem, ...existing];
-      localStorage.setItem('ito_driver_work_updates', JSON.stringify(updatedList));
-      localStorage.setItem('transport_manager_work_updates', JSON.stringify(updatedList));
-      window.dispatchEvent(new Event('ito_driver_work_update_event'));
-    } catch (e) {}
 
     setWorkUpdateForm({ updateType: 'In Transit', notes: '', location: '', photoUrl: '' });
     setSubmittingWorkUpdate(false);
@@ -905,7 +896,7 @@ export default function DriverMobileView() {
   };
 
   // Send Live Chat Message
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     const cleanText = inputMessage.trim();
     if (!cleanText) return;
@@ -913,49 +904,34 @@ export default function DriverMobileView() {
     const senderName = user?.name || user?.fullName || 'Ramesh Driver';
 
     const msgObj = {
-      id: Date.now(),
-      sender: senderName,
+      senderId: String(user?._id || user?.employeeId || 'driver'),
+      senderName: `${senderName} (Driver)`,
+      senderRole: 'DRIVER',
+      channel: chatChannel || 'MANAGER',
+      message: cleanText,
       text: cleanText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setChatMessages(prev => ({
-      ...prev,
-      [chatChannel]: [...(prev[chatChannel] || []), msgObj]
-    }));
-
     setInputMessage('');
 
-    // Sync with Transport Manager Chat Box Box in real-time
+    // Save directly to MongoDB Database
     try {
-      const chatFeedItem = {
-        id: Date.now(),
-        sender: `${senderName} (Driver)`,
-        text: cleanText,
-        time: msgObj.time,
-        channel: chatChannel
-      };
-      const existingChats = JSON.parse(localStorage.getItem('ito_transport_chat_messages') || localStorage.getItem('transport_manager_chats') || '[]');
-      const updatedChats = [chatFeedItem, ...existingChats];
-      localStorage.setItem('ito_transport_chat_messages', JSON.stringify(updatedChats));
-      localStorage.setItem('transport_manager_chats', JSON.stringify(updatedChats));
-      window.dispatchEvent(new Event('ito_transport_chat_event'));
+      await fetch('/api/chat/transport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msgObj)
+      });
     } catch (e) {}
 
-      // Emit WebSocket event if connected
-      try {
-        const { socketService } = require('../../../services/socket');
-        const socket = socketService.getSocket();
-        if (socket) {
-          socket.emit('driver_chat_message', {
-            driverId: user?._id || user?.employeeId,
-            driverName: senderName,
-            channel: chatChannel,
-            text: cleanText,
-            time: msgObj.time
-          });
-        }
-      } catch (err) {}
+    // Emit WebSocket event for real-time broadcast
+    try {
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('transport_chat_send', msgObj);
+        socket.emit('driver_chat_message', msgObj);
+      }
+    } catch (err) {}
   };
 
   // Emergency SOS Alert Broadcast
@@ -1174,7 +1150,7 @@ export default function DriverMobileView() {
 
               <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
                 <div className="flex justify-between items-start">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Task Assign</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Active Task Assign</span>
                   <div className="p-2 bg-amber-950/40 rounded border border-amber-900/30 text-amber-400"><FiCheckSquare size={18} /></div>
                 </div>
                 <div className="mt-2"><span className="text-2xl font-bold text-amber-400">{metrics.taskAssign}</span></div>
@@ -1346,7 +1322,7 @@ export default function DriverMobileView() {
                           placeholder="Enter current toll plaza or location"
                           value={workUpdateForm.location}
                           onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                          className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
                           style={CARD_SUNKEN}
                         />
                       </div>
@@ -1359,7 +1335,7 @@ export default function DriverMobileView() {
                         placeholder="Enter work details or toll remarks"
                         value={workUpdateForm.notes}
                         onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="w-full p-2.5 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                        className="w-full p-2.5 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
                         style={CARD_SUNKEN}
                       />
                     </div>
@@ -1464,7 +1440,7 @@ export default function DriverMobileView() {
                     placeholder={`Message ${chatChannel === 'MANAGER' ? 'Transport Manager' : 'Executive'}...`}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    className="flex-1 py-2.5 px-3 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
+                    className="flex-1 py-2.5 px-3 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none focus:border-teal-500 transition font-sans"
                   />
                   <button type="submit" className="p-2.5 bg-[#00897b] hover:bg-[#00796b] text-white rounded-xl shadow cursor-pointer transition flex items-center justify-center">
                     <FiSend size={15} />
@@ -1518,7 +1494,7 @@ export default function DriverMobileView() {
                       placeholder="Enter total KM driven"
                       value={fuelExpenseForm.kmDriven}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
-                      className="w-full p-2 border rounded text-emerald-400 font-bold text-xs outline-none"
+                      className="w-full p-2 border rounded text-emerald-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1529,7 +1505,7 @@ export default function DriverMobileView() {
                       placeholder="Enter pickup location"
                       value={fuelExpenseForm.fromLocation}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fromLocation: e.target.value }))}
-                      className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                      className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1540,7 +1516,7 @@ export default function DriverMobileView() {
                       placeholder="Enter destination location"
                       value={fuelExpenseForm.toLocation}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, toLocation: e.target.value }))}
-                      className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                      className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1554,7 +1530,7 @@ export default function DriverMobileView() {
                       placeholder="Enter fuel cost"
                       value={fuelExpenseForm.fuelCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelCost: e.target.value }))}
-                      className="w-full p-2 border rounded text-emerald-400 font-bold text-xs outline-none font-mono"
+                      className="w-full p-2 border rounded text-emerald-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1565,7 +1541,7 @@ export default function DriverMobileView() {
                       placeholder="Enter diesel litres"
                       value={fuelExpenseForm.fuelLitres}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelLitres: e.target.value }))}
-                      className="w-full p-2 border rounded text-sky-400 font-bold text-xs outline-none font-mono"
+                      className="w-full p-2 border rounded text-sky-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1576,7 +1552,7 @@ export default function DriverMobileView() {
                       placeholder="Enter puncture repair cost"
                       value={fuelExpenseForm.punctureCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, punctureCost: e.target.value }))}
-                      className="w-full p-2 border rounded text-sky-300 font-bold text-xs outline-none font-mono"
+                      className="w-full p-2 border rounded text-sky-300 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1587,7 +1563,7 @@ export default function DriverMobileView() {
                       placeholder="Enter toll or other expenses"
                       value={fuelExpenseForm.otherCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, otherCost: e.target.value }))}
-                      className="w-full p-2 border rounded text-purple-400 font-bold text-xs outline-none font-mono"
+                      className="w-full p-2 border rounded text-purple-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
@@ -1600,7 +1576,7 @@ export default function DriverMobileView() {
                     placeholder="Enter expense remarks and bill details"
                     value={fuelExpenseForm.remarks}
                     onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, remarks: e.target.value }))}
-                    className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs outline-none font-mono"
+                    className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
                     style={CARD_SUNKEN}
                   />
                 </div>

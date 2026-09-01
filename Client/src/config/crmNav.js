@@ -194,7 +194,7 @@ export function getCrmMainNavItems(user) {
   // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Payment & Receipts, Quotation Rates, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
-      { to: '/crm/transport/manager', label: 'Transport Manager Dashboard', icon: FiTruck },
+      { to: '/crm/transport/manager?tab=DASHBOARD', label: 'Transport Manager Dashboard', icon: FiTruck },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/transport/manager?tab=PAYMENTS', label: 'Payment & Receipts', icon: FiCreditCard },
       { to: '/crm/transport/manager?tab=QUOTATIONS', label: 'Quotation Rates', icon: FiFileText },
@@ -278,8 +278,8 @@ export function getCrmMainNavItems(user) {
     // Sales Performance — ADMIN only
     admin && { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
 
-    // Support Tickets — ADMIN only
-    admin && { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+    // Support Tickets — Available to all employees for raising tickets/grievances
+    { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
 
     // Product Upload / Products — ADMIN, Manager or permitted
     (admin || ['MANAGER', 'IT', 'SOFTWARE_ENGINEER'].includes(user?.role) || user?.productUploadPermission) && { to: '/crm/products', label: 'Products Upload', icon: FiLayers },

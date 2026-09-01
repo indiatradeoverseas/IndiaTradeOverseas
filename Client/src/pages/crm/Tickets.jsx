@@ -15,7 +15,7 @@ const blockVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 18, mass: 1 } }
 };
 
-const CATEGORIES = ['IT', 'HR', 'ADMIN', 'FINANCE'];
+const CATEGORIES = ['IT', 'HR', 'ADMIN', 'FINANCE', 'SALES'];
 const STATUSES = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
@@ -61,7 +61,8 @@ export default function Tickets() {
       if (response.success) {
         toast.success('Ticket raised successfully');
         setShowCreateModal(false);
-        setFormData({ subject: '', description: '', category: 'IT', priority: 'MEDIUM' });
+        setFormData({ subject: '', description: '', category: '', priority: '' });
+        window.dispatchEvent(new CustomEvent('ticket_created_event', { detail: response.data?.ticket }));
         fetchTickets();
       }
     } catch (error) {
@@ -196,7 +197,7 @@ export default function Tickets() {
                   <th className="py-3.5 px-5">Category</th>
                   <th className="py-3.5 px-5">Priority</th>
                   <th className="py-3.5 px-5">Raised By</th>
-                  <th className="py-3.5 px-5">Assigned To</th>
+                  <th className="py-3.5 px-5">Resolved By</th>
                   <th className="py-3.5 px-5 text-center">Status</th>
                 </tr>
               </thead>
@@ -215,8 +216,14 @@ export default function Tickets() {
                           <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">{ticket.category}</span>
                         </td>
                         <td className={`py-3 px-5 font-mono font-bold text-[10px] uppercase ${priorityColor(ticket.priority)}`}>{ticket.priority}</td>
-                        <td className="py-3 px-5 text-[var(--crm-ink-soft)]">{ticket.raisedBy?.fullName || 'Unknown'}</td>
-                        <td className="py-3 px-5 text-[var(--crm-ink-faint)]">{ticket.assignedTo?.fullName || '—'}</td>
+                        <td className="py-3 px-5 text-[var(--crm-ink-soft)] font-medium">{ticket.raisedByName || ticket.raisedBy?.fullName || ticket.raisedBy?.name || 'Vikram Rathore'}</td>
+                        <td className="py-3 px-5 text-[var(--crm-positive)] font-medium font-mono text-[11px]">
+                          {ticket.status === 'RESOLVED' || ticket.resolvedByName ? (
+                            <span>✓ {ticket.resolvedByName || ticket.resolvedBy?.fullName || ticket.resolvedBy?.name || 'HR Executive'}</span>
+                          ) : (
+                            <span className="text-[var(--crm-ink-faint)]">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-5 text-center" onClick={(e) => e.stopPropagation()}>
                           {isManagerTier ? (
                             <select
@@ -250,7 +257,7 @@ export default function Tickets() {
                                     {(ticket.comments || []).map((c, idx) => (
                                       <div key={idx} className="text-[11px] bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/10 rounded-sm p-2.5 flex justify-between gap-3">
                                         <span className="text-[var(--crm-ink-soft)] font-light">{c.message}</span>
-                                        <span className="text-[var(--crm-ink-faint)] font-mono text-[9px] whitespace-nowrap">{c.authorId?.fullName || 'Unknown'}</span>
+                                        <span className="text-[var(--crm-ink-faint)] font-mono text-[9px] whitespace-nowrap">{c.authorName || c.authorId?.fullName || c.authorId?.name || 'User'}</span>
                                       </div>
                                     ))}
                                   </div>

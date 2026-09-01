@@ -42,7 +42,7 @@ router.post(
 // Update dispatch fields (e.g., DPR compliance fields, freight details, etc.)
 router.patch(
   '/:id', 
-  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'TRANSPORT', 'Admin', 'LogisticsManager']), 
+  authorize(['ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 'Admin', 'LogisticsManager', 'Driver']), 
   dispatchController.updateDispatch
 );
 

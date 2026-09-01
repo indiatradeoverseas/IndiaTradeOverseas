@@ -48,6 +48,36 @@ async function syncEmployeeToUser(employee, passwordHash) {
   }
 }
 
+function mapPositionToRole(department, position, explicitRole) {
+  if (explicitRole && explicitRole !== 'EMPLOYEE') return explicitRole;
+
+  const posLower = (position || '').toLowerCase();
+  const deptUpper = (department || '').toUpperCase();
+
+  if (deptUpper === 'HR') {
+    if (posLower.includes('manager') || posLower.includes('head') || posLower.includes('director')) {
+      return 'HR_MANAGER';
+    }
+    return 'HR_EXECUTIVE';
+  }
+
+  if (deptUpper === 'ADMIN') {
+    return 'ADMIN';
+  }
+
+  if (deptUpper === 'TRANSPORT') {
+    if (posLower.includes('driver')) return 'DRIVER';
+    if (posLower.includes('manager')) return 'MANAGER';
+    return 'EMPLOYEE';
+  }
+
+  if (posLower.includes('manager') || posLower.includes('head') || posLower.includes('director')) {
+    return 'MANAGER';
+  }
+
+  return 'EMPLOYEE';
+}
+
 function calculateAge(dob) {
   if (!dob) return 28;
   const birthDate = new Date(dob);
@@ -344,6 +374,7 @@ async function signupEmployee(req, res, next) {
       employmentType: employmentType || 'Permanent',
       probationEndDate: employmentType === 'Probation' ? probationEndDate : undefined,
       reportingManager: reportingManager || null,
+      role: mapPositionToRole(department, position, req.body.role),
       salary: salary || 0,
       bankName,
       bankAccountNumber,
@@ -488,7 +519,7 @@ async function signupEmployeeSelfRegistration(req, res, next) {
       position,
       joiningDate: new Date(),
       employmentType: 'Permanent',
-      role: 'EMPLOYEE',
+      role: mapPositionToRole(department, position),
       status: 'PENDING_VERIFICATION',
       salary: 0,
       permissions: {
@@ -707,7 +738,7 @@ async function verifySignupOtp(req, res, next) {
       position,
       joiningDate: new Date(),
       employmentType: 'Permanent',
-      role: 'EMPLOYEE',
+      role: mapPositionToRole(department, position),
       status: 'ACTIVE',
       salary: 0,
       permissions: {

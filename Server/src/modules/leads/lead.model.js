@@ -239,6 +239,30 @@ const leadSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    podFileUrl: {
+      type: String,
+      default: "",
+    },
+    paymentProofUrl: {
+      type: String,
+      default: "",
+    },
+    driverProofUrl: {
+      type: String,
+      default: "",
+    },
+    photoUrl: {
+      type: String,
+      default: "",
+    },
+    paymentProof: {
+      type: Object,
+      default: {},
+    },
+    deliveryImages: {
+      type: Object,
+      default: {},
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

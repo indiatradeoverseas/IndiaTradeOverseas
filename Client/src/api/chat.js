@@ -30,5 +30,15 @@ export const chatApi = {
   async resolveSession(sessionId) {
     const response = await axiosInstance.patch(`/chat/admin/sessions/${sessionId}/resolve`);
     return response.data;
+  },
+
+  async getTransportMessages() {
+    const response = await axiosInstance.get('/chat/transport');
+    return response.data;
+  },
+
+  async sendTransportMessage(payload) {
+    const response = await axiosInstance.post('/chat/transport', payload);
+    return response.data;
   }
 };

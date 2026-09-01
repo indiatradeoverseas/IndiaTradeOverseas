@@ -995,7 +995,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Won vs Pending vs Lost</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={[
                             { name: 'Won', count: wonMyDeals, fill: '#10b981' },
                             { name: 'Pending', count: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f59e0b' },
@@ -1020,7 +1020,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Materials Breakdown</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'].map(cat => ({
                             name: cat,
                             leads: deals.filter(d => d.productCategory === cat).length
@@ -1086,7 +1086,7 @@ export default function SalesExecutiveDashboard() {
                                 className="w-full h-7 rounded accent-teal-500"
                                 src={(() => {
                                   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
                                   return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
                                 })()}
                               />
@@ -1243,7 +1243,7 @@ export default function SalesExecutiveDashboard() {
                                           key={i}
                                           href={(() => {
                                             const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
                                             const token = localStorage.getItem('token') || '';
                                             return `${baseUrl}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(token)}`;
                                           })()}
@@ -1601,7 +1601,7 @@ export default function SalesExecutiveDashboard() {
 
                     {/* Department Chart */}
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <BarChart data={departmentRankings} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />

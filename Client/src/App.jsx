@@ -433,6 +433,8 @@ function AppLayout() {
             }
           />
 
+          <Route path="/crm/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
+
           {/* Phase 4: Transport Module Routes */}
           <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
           <Route path="/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />

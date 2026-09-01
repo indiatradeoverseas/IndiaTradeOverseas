@@ -25,9 +25,9 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
   DISPATCH_PLANNED: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
   PAYMENT_PENDING: ['DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
   DOCUMENT_PENDING: ['CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DELIVERED: ['CLOSED_WON', 'COMPLETED'],
-  COMPLETED: [],
-  CLOSED_WON: [],
+  DELIVERED: ['CLOSED_WON', 'COMPLETED', 'DEAL_WON'],
+  COMPLETED: ['DEAL_WON'],
+  CLOSED_WON: ['DEAL_WON'],
   CLOSED_LOST: [],
   
   // New pipeline transition mappings
@@ -182,30 +182,10 @@ async function listLeads(user, query = {}) {
   const leads = await Lead.find(filter)
     .populate('assignedTo', 'fullName name email role profileImage')
     .populate('createdBy', 'fullName name email role profileImage')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  // Resolve mixed User/Employee populated assignees
-  const populatedLeads = await Promise.all(leads.map(async (l) => {
-    const populatedL = l.toObject ? l.toObject() : l;
-    const rawAssignedId = (typeof l.populated === 'function' && l.populated('assignedTo')) || l.assignedTo;
-    if (rawAssignedId && !l.assignedTo) {
-      const Employee = require('../employee/employee.model');
-      const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
-      if (employee) {
-        populatedL.assignedTo = {
-          _id: employee._id,
-          fullName: employee.fullName || employee.name,
-          name: employee.name || employee.fullName,
-          email: employee.email,
-          role: employee.role,
-          profileImage: employee.profileImage
-        };
-      }
-    }
-    return getLeadDisplay(populatedL, user);
-  }));
-
-  return populatedLeads;
+  return leads.map(l => getLeadDisplay(l, user));
 }
 
 async function getLeadById(id, user) {
@@ -241,7 +221,11 @@ async function getLeadById(id, user) {
   };
 }
 
-async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, user, ipAddress, deviceHash }) {
+async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
+  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage);
+  console.log('[updateStage] Proof fields received:', { hasPodFileUrl: !!podFileUrl, hasPaymentProofUrl: !!paymentProofUrl, hasDriverProofUrl: !!driverProofUrl, hasPhotoUrl: !!photoUrl, hasPaymentProof: !!paymentProof, hasDeliveryImages: !!deliveryImages });
+  console.log('[updateStage] User role:', user?.role, 'department:', user?.department);
+
   // 1. Fetch the lead record first so `lead` exists in memory
   let lead = null;
   if (mongoose.isValidObjectId(leadId)) {
@@ -250,7 +234,11 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   if (!lead) {
     lead = await Lead.findOne({ $or: [{ leadCode: leadId }, { leadId: leadId }, { orderNumber: leadId }] });
   }
-  if (!lead) throw new Error('LEAD_NOT_FOUND');
+  if (!lead) {
+    console.log('[updateStage] LEAD_NOT_FOUND for leadId:', leadId);
+    throw new Error('LEAD_NOT_FOUND');
+  }
+  console.log('[updateStage] Found lead:', lead.leadCode, 'current stage:', lead.stage);
 
   // 2. Access control check
   if (!canAccessLead(user, lead)) {
@@ -295,6 +283,31 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+  
+  const activePodUrl = podFileUrl || paymentProofUrl || (paymentProof && paymentProof.proofImageUrl) || '';
+  const activeDriverUrl = driverProofUrl || photoUrl || (deliveryImages && deliveryImages.driverSelfieUrl) || '';
+
+  if (activePodUrl) {
+    lead.podFileUrl = activePodUrl;
+    lead.paymentProofUrl = activePodUrl;
+  }
+  if (activeDriverUrl) {
+    lead.driverProofUrl = activeDriverUrl;
+    lead.photoUrl = activeDriverUrl;
+  }
+  if (paymentProof) lead.paymentProof = paymentProof;
+  if (deliveryImages) lead.deliveryImages = deliveryImages;
+
+  console.log('[updateStage] About to save lead with proof data:', {
+    stage: lead.stage,
+    hasPodFileUrl: !!(lead.podFileUrl && lead.podFileUrl.length > 5),
+    hasPaymentProofUrl: !!(lead.paymentProofUrl && lead.paymentProofUrl.length > 5),
+    hasDriverProofUrl: !!(lead.driverProofUrl && lead.driverProofUrl.length > 5),
+    hasPhotoUrl: !!(lead.photoUrl && lead.photoUrl.length > 5),
+    podFileUrlLength: (lead.podFileUrl || '').length,
+    paymentProofUrlLength: (lead.paymentProofUrl || '').length,
+    driverProofUrlLength: (lead.driverProofUrl || '').length
+  });
 
   // Auto-recalculate lead score & priority on stage progression
   try {
@@ -317,6 +330,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   await lead.save();
+  console.log('[updateStage] Lead saved successfully! Stage:', lead.stage, 'leadCode:', lead.leadCode);
 
   // 5. Record activity log
   const activity = await LeadActivity.create({

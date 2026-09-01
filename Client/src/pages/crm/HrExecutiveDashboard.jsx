@@ -15,7 +15,8 @@ import {
   FiShield,
   FiMessageSquare,
   FiAward,
-  FiSend
+  FiSend,
+  FiActivity
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -23,6 +24,8 @@ import { ticketsApi } from '../../api/tickets';
 import { taskApi } from '../../api/task';
 import { attendanceApi } from '../../api/attendance';
 import { leaveApi } from '../../api/leave';
+import { employeesApi } from '../../api/employees';
+import { employeeProfileApi } from '../../api/employeeProfile';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -50,15 +53,10 @@ export default function HrExecutiveDashboard() {
   const [checklist, setChecklist] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
-  // Local state - Document Telemetry Verification (Local persistence fallback)
-  const [documentRegistry, setDocumentRegistry] = useState(() => {
-    const defaultRegistry = [
-      { employeeId: 'EMP_201', fullName: 'Vikram Aditya', department: 'SALES', aadhaarVerified: false, panVerified: false, bankVerified: false },
-      { employeeId: 'EMP_202', fullName: 'Shalini Murthy', department: 'IT', aadhaarVerified: true, panVerified: false, bankVerified: false },
-      { employeeId: 'EMP_203', fullName: 'Rajesh Yadav', department: 'TRANSPORT', aadhaarVerified: true, panVerified: true, bankVerified: true }
-    ];
-    return JSON.parse(localStorage.getItem('hr_documents_telemetry_registry')) || defaultRegistry;
-  });
+  // Local state - Documents Verification Telemetry Registry
+  const [documentRegistry, setDocumentRegistry] = useState([]);
+  const [telemetryFilter, setTelemetryFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'DATE'
+  const [telemetryDate, setTelemetryDate] = useState('');
 
   // Helpdesk Grievance tickets
   const [ticketsList, setTicketsList] = useState([]);
@@ -110,12 +108,20 @@ export default function HrExecutiveDashboard() {
   useEffect(() => {
     const handleSocketTask = () => {
       fetchPersonalHRData();
+      fetchRealTelemetry();
+      fetchTickets();
     };
     window.addEventListener('task_assigned_event', handleSocketTask);
     window.addEventListener('task_updated_event', handleSocketTask);
+    window.addEventListener('document_uploaded_event', handleSocketTask);
+    window.addEventListener('ticket_created_event', fetchTickets);
+    window.addEventListener('storage', handleSocketTask);
     return () => {
       window.removeEventListener('task_assigned_event', handleSocketTask);
       window.removeEventListener('task_updated_event', handleSocketTask);
+      window.removeEventListener('document_uploaded_event', handleSocketTask);
+      window.removeEventListener('ticket_created_event', fetchTickets);
+      window.removeEventListener('storage', handleSocketTask);
     };
   }, []);
 
@@ -138,21 +144,128 @@ export default function HrExecutiveDashboard() {
     fetchTickets();
     // Load backend tasks, logs, and balances
     fetchPersonalHRData();
+    // Load live telemetry from MongoDB employees
+    fetchRealTelemetry();
   }, [user]);
 
-  useEffect(() => {
-    localStorage.setItem('hr_documents_telemetry_registry', JSON.stringify(documentRegistry));
-  }, [documentRegistry]);
+  const fetchRealTelemetry = async () => {
+    try {
+      const res = await employeesApi.getEmployees();
+      const emps = res?.data?.employees || res?.employees || res?.data || [];
+      if (Array.isArray(emps) && emps.length > 0) {
+        const storedVerifications = JSON.parse(localStorage.getItem('hr_telemetry_verifications')) || {};
+
+        // Extract cached uploaded docs across all employees from global vault & local keys
+        const globalVault = JSON.parse(localStorage.getItem('hr_global_uploaded_documents_vault')) || [];
+        const allUploadedDocs = [...globalVault];
+
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('emp_docs_') || key.includes('doc'))) {
+            const empIdKey = key.replace('emp_docs_', '');
+            try {
+              const val = localStorage.getItem(key);
+              const docsArr = JSON.parse(val);
+              if (Array.isArray(docsArr)) {
+                docsArr.forEach(d => {
+                  if (d && d.fileName && !allUploadedDocs.some(x => x.fileName === d.fileName)) {
+                    allUploadedDocs.push({ ...d, empTargetId: empIdKey });
+                  }
+                });
+              }
+            } catch (e) {}
+          }
+        }
+
+        const realDocs = emps.map(emp => {
+          const empId = emp.employeeId || emp._id;
+          const v = storedVerifications[empId] || {};
+
+          // Flexible match for this employee
+          const empEmailLower = (emp.email || '').toLowerCase();
+          const empNameLower = (emp.name || emp.fullName || '').toLowerCase();
+          const empCodeLower = (emp.employeeId || '').toLowerCase();
+          const empMongoId = (emp._id || '').toString();
+
+          const myDocs = allUploadedDocs.filter(d => {
+            const dTarget = (d.empTargetId || '').toString().toLowerCase();
+            const dEmpId = (d.employeeId || '').toString().toLowerCase();
+            const dUserMongoId = (d.userMongoId || '').toString();
+            const dEmail = (d.employeeEmail || '').toLowerCase();
+            const dUploader = (d.uploadedBy || '').toLowerCase();
+
+            return (
+              (dTarget && (dTarget === empCodeLower || dTarget === empMongoId)) ||
+              (dEmpId && (dEmpId === empCodeLower || dEmpId === empMongoId)) ||
+              (dUserMongoId && dUserMongoId === empMongoId) ||
+              (dEmail && empEmailLower && dEmail === empEmailLower) ||
+              (dUploader && empNameLower && dUploader === empNameLower)
+            );
+          });
+
+          if ((emp.aadhaarCardCopy || emp.aadhaarNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
+            myDocs.push({ _id: 'doc_aadhaar', fileName: 'Aadhaar Card Copy', createdAt: emp.updatedAt || emp.createdAt });
+          }
+          if ((emp.panCardCopy || emp.panCardNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('pan'))) {
+            myDocs.push({ _id: 'doc_pan', fileName: 'PAN Card Copy', createdAt: emp.updatedAt || emp.createdAt });
+          }
+
+          const latestDoc = myDocs.length > 0 ? myDocs[0] : null;
+
+          return {
+            employeeId: empId,
+            fullName: emp.name || emp.fullName,
+            department: emp.department || 'GENERAL',
+            aadhaarVerified: emp.aadhaarVerified !== undefined ? emp.aadhaarVerified : !!(emp.aadhaarNumber || emp.aadhaarCardCopy),
+            panVerified: emp.panVerified !== undefined ? emp.panVerified : !!(emp.panCardNumber || emp.panCardCopy),
+            bankVerified: emp.bankVerified !== undefined ? emp.bankVerified : !!(emp.bankAccountNumber || emp.bankName),
+            uploadedDocs: myDocs,
+            latestDoc: latestDoc
+          };
+        });
+
+        setDocumentRegistry(realDocs);
+      }
+    } catch (err) {
+      console.error('Error fetching telemetry employees:', err);
+    }
+  };
+
+  const handleVerifyDocument = async (employeeId, field) => {
+    try {
+      const emp = documentRegistry.find(item => item.employeeId === employeeId);
+      const currentVal = emp ? emp[field] : false;
+      const nextVal = !currentVal;
+
+      setDocumentRegistry(prev => prev.map(item => {
+        if (item.employeeId === employeeId) {
+          return { ...item, [field]: nextVal };
+        }
+        return item;
+      }));
+
+      // Update directly in MongoDB User & Employee models
+      await employeeProfileApi.updateEmployeeProfile(employeeId, { [field]: nextVal }).catch(async () => {
+        await employeesApi.updateEmployee(employeeId, { [field]: nextVal }).catch(() => null);
+      });
+
+      toast.success(`${field.replace('Verified', '').toUpperCase()} status updated in MongoDB!`);
+    } catch (err) {
+      console.error('Error saving document verification:', err);
+      toast.error('Failed to update verification status in MongoDB');
+    }
+  };
 
   const fetchTickets = async () => {
     try {
       const res = await ticketsApi.getTickets().catch(() => null);
-      if (res && res.success) {
-        setTicketsList(res.data.tickets || []);
+      const ticketsFromDb = res?.data?.tickets || res?.tickets || [];
+      if (Array.isArray(ticketsFromDb) && ticketsFromDb.length > 0) {
+        setTicketsList(ticketsFromDb);
       } else {
         const mockTickets = [
           { _id: 't_1', ticketCode: 'GRI-2026-09', title: 'Salary Discrepancy - Leave Deductions', description: 'My salary check for July had an extra day leave deduction though it was approved.', status: 'OPEN', priority: 'HIGH', createdBy: { fullName: 'Sunil Kumar' }, createdAt: new Date(Date.now() - 86400000).toISOString(), comments: [] },
-          { _id: 't_2', ticketCode: 'GRI-2026-10', title: 'Policy Doubt - Maternity/Paternity Leave', description: 'Seeking details on paid paternity leave durations for new fathers.', status: 'INVESTIGATING', priority: 'MEDIUM', createdBy: { fullName: 'Neha Sharma' }, createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), comments: [] }
+          { _id: 't_2', ticketCode: 'GRI-2026-10', title: 'Policy Doubt - Paternity Leave', description: 'Seeking details on paid paternity leave durations for new fathers.', status: 'OPEN', priority: 'MEDIUM', createdBy: { fullName: 'Neha Sharma' }, createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), comments: [] }
         ];
         setTicketsList(mockTickets);
       }
@@ -304,18 +417,7 @@ export default function HrExecutiveDashboard() {
     setSelectedInterview(null);
   };
 
-  // Document Verification Telemetry toggle
-  const handleVerifyDocument = (employeeId, field) => {
-    const updated = documentRegistry.map(emp => {
-      if (emp.employeeId === employeeId) {
-        const nextVal = !emp[field];
-        toast.success(`${field.replace('Verified', '').toUpperCase()} verification toggled successfully!`);
-        return { ...emp, [field]: nextVal };
-      }
-      return emp;
-    });
-    setDocumentRegistry(updated);
-  };
+
 
   // Support Helpdesk Grievance updates
   const handleUpdateTicketStatus = async (ticketId, status) => {
@@ -400,9 +502,7 @@ export default function HrExecutiveDashboard() {
             Manage your daily tasks, scheduled candidate panels, verify onboarding documents, and resolve internal employee grievances.
           </p>
         </div>
-        <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-4 py-2 text-[10px] font-mono font-bold text-[var(--crm-heading)] tracking-widest uppercase rounded-sm select-none shrink-0">
-          Code // {user?.employeeId} (Executive)
-        </div>
+
       </motion.div>
 
       {/* Tabs navigation */}
@@ -412,11 +512,7 @@ export default function HrExecutiveDashboard() {
             { id: 'tasks', label: `My Tasks (${pendingTasksCount})`, icon: FiCheckSquare },
             { id: 'interviews', label: `Interview Board (${pendingInterviewsCount})`, icon: FiCalendar },
             { id: 'telemetry', label: 'Documents Telemetry', icon: FiShield },
-            { id: 'helpdesk', label: `Helpdesk Grievances (${ticketsList.filter(t => t.status === 'OPEN').length})`, icon: FiMessageSquare },
-            { id: 'checklist', label: `Daily Checklist (${checklistCompletionRate}%)`, icon: FiList },
-            { id: 'attendance', label: 'My Attendance', icon: FiClock },
-            { id: 'leaves', label: 'My Leaves', icon: FiCalendar },
-            { id: 'profile', label: 'My Profile', icon: FiUser }
+            { id: 'helpdesk', label: `Helpdesk Grievances (${ticketsList.filter(t => t.status === 'OPEN').length})`, icon: FiMessageSquare }
           ].map(tab => (
             <button
               key={tab.id}
@@ -597,9 +693,74 @@ export default function HrExecutiveDashboard() {
           {/* DOCUMENTS TELEMETRY PANEL */}
           {activeTab === 'telemetry' && (
             <div className="space-y-6">
-              <div className="bg-[var(--crm-bg-raised)]/20 p-4 border border-[var(--crm-line)] rounded-sm">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Onboarding Documents Verification Telemetry</h3>
-                <p className="text-[11px] text-[var(--crm-ink-faint)] font-light mt-1">Cross-check Aadhaar, PAN, and Bank Account records for validation compliance.</p>
+              {/* Filter Bar with Today, Calendar Date Picker, and All buttons */}
+              <div className="bg-[var(--crm-bg-raised)]/20 p-4 border border-[var(--crm-line)] rounded-sm flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Onboarding Documents Verification Telemetry</h3>
+                  <p className="text-[11px] text-[var(--crm-ink-faint)] font-light mt-0.5">Cross-check Aadhaar, PAN, and Bank Account records for validation compliance.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                  {/* All Records Button */}
+                  <button
+                    onClick={() => { setTelemetryFilter('ALL'); setTelemetryDate(''); }}
+                    className={`px-3 py-1.5 rounded-sm border text-[10px] uppercase font-bold transition-all cursor-pointer ${
+                      telemetryFilter === 'ALL'
+                        ? 'bg-teal-500/20 text-teal-400 border-teal-500/50 shadow-sm'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    All Records ({documentRegistry.length})
+                  </button>
+
+                  {/* Today Button */}
+                  <button
+                    onClick={() => { setTelemetryFilter('TODAY'); setTelemetryDate(''); }}
+                    className={`px-3 py-1.5 rounded-sm border text-[10px] uppercase font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      telemetryFilter === 'TODAY'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-sm'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Today's Uploads ({documentRegistry.filter(i => {
+                      if (!i.uploadedDocs || i.uploadedDocs.length === 0) return false;
+                      return i.uploadedDocs.some(d => {
+                        if (!d.createdAt) return false;
+                        const dateObj = new Date(d.createdAt);
+                        const nowObj = new Date();
+                        return dateObj.getFullYear() === nowObj.getFullYear() &&
+                               dateObj.getMonth() === nowObj.getMonth() &&
+                               dateObj.getDate() === nowObj.getDate();
+                      });
+                    }).length})
+                  </button>
+
+                  {/* Calendar Date Picker Filter */}
+                  <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-sm text-[10px]">
+                    <FiCalendar size={12} className="text-teal-400" />
+                    <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)]">Calendar:</span>
+                    <input
+                      type="date"
+                      value={telemetryDate}
+                      onChange={(e) => {
+                        setTelemetryDate(e.target.value);
+                        if (e.target.value) setTelemetryFilter('DATE');
+                        else setTelemetryFilter('ALL');
+                      }}
+                      className="bg-transparent text-[var(--crm-heading)] outline-none cursor-pointer font-mono"
+                    />
+                    {telemetryDate && (
+                      <button
+                        onClick={() => { setTelemetryDate(''); setTelemetryFilter('ALL'); }}
+                        className="text-rose-400 hover:text-rose-300 font-bold ml-1 cursor-pointer"
+                        title="Clear date filter"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Document Registry Table */}
@@ -610,6 +771,7 @@ export default function HrExecutiveDashboard() {
                       <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[10px] font-mono uppercase border-b border-[var(--crm-line)]">
                         <th className="py-3.5 px-5">Employee Name & ID</th>
                         <th className="py-3.5 px-5">Department</th>
+                        <th className="py-3.5 px-5">Latest Uploaded File & Date</th>
                         <th className="py-3.5 px-5 text-center">Aadhaar Card</th>
                         <th className="py-3.5 px-5 text-center">PAN Card</th>
                         <th className="py-3.5 px-5 text-center">Bank Account details</th>
@@ -617,64 +779,131 @@ export default function HrExecutiveDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--crm-line)] text-xs">
-                      {documentRegistry.map((item) => {
-                        const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified;
-                        return (
-                          <tr key={item.employeeId} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                            <td className="py-4 px-5">
-                              <div className="font-serif text-sm font-semibold text-[var(--crm-heading)]">{item.fullName}</div>
-                              <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{item.employeeId}</div>
-                            </td>
-                            <td className="py-4 px-5 font-mono uppercase font-semibold text-[var(--crm-ink-soft)]">{item.department}</td>
-                            
-                            {/* Aadhaar */}
-                            <td className="py-4 px-5 text-center">
-                              <button
-                                onClick={() => handleVerifyDocument(item.employeeId, 'aadhaarVerified')}
-                                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                  item.aadhaarVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
-                                }`}
-                              >
-                                {item.aadhaarVerified ? 'Verified' : 'Verify'}
-                              </button>
-                            </td>
+                      {documentRegistry.filter((item) => {
+                        if (telemetryFilter === 'TODAY') {
+                          const nowObj = new Date();
+                          return item.uploadedDocs && item.uploadedDocs.some(d => {
+                            if (!d.createdAt) return false;
+                            const dateObj = new Date(d.createdAt);
+                            return dateObj.getFullYear() === nowObj.getFullYear() &&
+                                   dateObj.getMonth() === nowObj.getMonth() &&
+                                   dateObj.getDate() === nowObj.getDate();
+                          });
+                        }
+                        if (telemetryFilter === 'DATE' && telemetryDate) {
+                          return item.uploadedDocs && item.uploadedDocs.some(d => {
+                            if (!d.createdAt) return false;
+                            const dateObj = new Date(d.createdAt).toISOString().slice(0, 10);
+                            return dateObj === telemetryDate;
+                          });
+                        }
+                        return true;
+                      }).length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase tracking-wider">
+                            {telemetryFilter === 'TODAY'
+                              ? "No document uploads recorded today yet. Click 'ALL RECORDS' to view all employee files."
+                              : telemetryFilter === 'DATE'
+                              ? `No document uploads recorded for ${telemetryDate}. Click 'ALL RECORDS' to clear filter.`
+                              : "No employee document records found."}
+                          </td>
+                        </tr>
+                      ) : (
+                        documentRegistry.filter((item) => {
+                          if (telemetryFilter === 'TODAY') {
+                            const nowObj = new Date();
+                            return item.uploadedDocs && item.uploadedDocs.some(d => {
+                              if (!d.createdAt) return false;
+                              const dateObj = new Date(d.createdAt);
+                              return dateObj.getFullYear() === nowObj.getFullYear() &&
+                                     dateObj.getMonth() === nowObj.getMonth() &&
+                                     dateObj.getDate() === nowObj.getDate();
+                            });
+                          }
+                          if (telemetryFilter === 'DATE' && telemetryDate) {
+                            return item.uploadedDocs && item.uploadedDocs.some(d => {
+                              if (!d.createdAt) return false;
+                              const dateObj = new Date(d.createdAt).toISOString().slice(0, 10);
+                              return dateObj === telemetryDate;
+                            });
+                          }
+                          return true;
+                        }).map((item) => {
+                          const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified;
+                          return (
+                            <tr key={item.employeeId} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                              <td className="py-4 px-5">
+                                <div className="font-serif text-sm font-semibold text-[var(--crm-heading)]">{item.fullName}</div>
+                                <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{item.employeeId}</div>
+                              </td>
+                              <td className="py-4 px-5 font-mono uppercase font-semibold text-[var(--crm-ink-soft)]">{item.department}</td>
+                              
+                              {/* Latest Uploaded File & Timestamp */}
+                              <td className="py-4 px-5">
+                                {item.latestDoc ? (
+                                  <div className="space-y-1 text-left">
+                                    <div className="font-mono text-xs font-semibold text-emerald-400 flex items-center gap-1.5 truncate max-w-[200px]" title={item.latestDoc.fileName}>
+                                      <span>📄</span>
+                                      <span className="truncate">{item.latestDoc.fileName}</span>
+                                    </div>
+                                    <div className="text-[9px] font-mono text-[var(--crm-ink-faint)]">
+                                      {item.latestDoc.createdAt ? new Date(item.latestDoc.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently Uploaded'}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] italic">No docs uploaded</span>
+                                )}
+                              </td>
+                              
+                              {/* Aadhaar */}
+                              <td className="py-4 px-5 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'aadhaarVerified')}
+                                  className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
+                                    item.aadhaarVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                                  }`}
+                                >
+                                  {item.aadhaarVerified ? 'Verified' : 'Verify'}
+                                </button>
+                              </td>
 
-                            {/* PAN */}
-                            <td className="py-4 px-5 text-center">
-                              <button
-                                onClick={() => handleVerifyDocument(item.employeeId, 'panVerified')}
-                                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                  item.panVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
-                                }`}
-                              >
-                                {item.panVerified ? 'Verified' : 'Verify'}
-                              </button>
-                            </td>
+                              {/* PAN */}
+                              <td className="py-4 px-5 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'panVerified')}
+                                  className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
+                                    item.panVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                                  }`}
+                                >
+                                  {item.panVerified ? 'Verified' : 'Verify'}
+                                </button>
+                              </td>
 
-                            {/* Bank Details */}
-                            <td className="py-4 px-5 text-center">
-                              <button
-                                onClick={() => handleVerifyDocument(item.employeeId, 'bankVerified')}
-                                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                  item.bankVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
-                                }`}
-                              >
-                                {item.bankVerified ? 'Verified' : 'Verify'}
-                              </button>
-                            </td>
+                              {/* Bank Details */}
+                              <td className="py-4 px-5 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'bankVerified')}
+                                  className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
+                                    item.bankVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                                  }`}
+                                >
+                                  {item.bankVerified ? 'Verified' : 'Verify'}
+                                </button>
+                              </td>
 
-                            {/* Status badge */}
-                            <td className="py-4 px-5 text-center">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase border rounded-sm ${
-                                allVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25'
-                              }`}>
-                                {allVerified ? <FiCheckCircle size={10} /> : <FiAlertCircle size={10} />}
-                                {allVerified ? 'VERIFIED' : 'PENDING'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              {/* Status badge */}
+                              <td className="py-4 px-5 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase border rounded-sm ${
+                                  allVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25'
+                                }`}>
+                                  {allVerified ? <FiCheckCircle size={10} /> : <FiAlertCircle size={10} />}
+                                  {allVerified ? 'VERIFIED' : 'PENDING'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -705,14 +934,14 @@ export default function HrExecutiveDashboard() {
                       }`}
                     >
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-serif text-sm font-semibold truncate text-[var(--crm-heading)]">{ticket.title}</span>
+                        <span className="font-serif text-sm font-semibold truncate text-[var(--crm-heading)]">{ticket.title || ticket.subject}</span>
                         <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 border rounded-sm uppercase ${
-                          ticket.priority === 'HIGH' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                          ticket.priority === 'HIGH' || ticket.priority === 'URGENT' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
                         }`}>
                           {ticket.priority}
                         </span>
                       </div>
-                      <p className="text-[10.5px] font-mono text-[var(--crm-ink-faint)] uppercase">CODE: {ticket.ticketCode} | BY: {ticket.createdBy?.fullName || 'Employee'}</p>
+                      <p className="text-[10.5px] font-mono text-[var(--crm-ink-faint)] uppercase">CODE: {ticket.ticketCode} | BY: {ticket.createdBy?.fullName || ticket.raisedBy?.fullName || 'Vikram Rathore'}</p>
                       <p className="text-xs text-[var(--crm-ink-soft)] line-clamp-2 italic font-light">"{ticket.description}"</p>
                       <div className="flex justify-between items-center w-full mt-2 border-t border-[var(--crm-line)] pt-2 text-[9px] font-mono text-[var(--crm-ink-faint)]">
                         <span className={`px-2 py-0.5 border rounded-sm font-bold uppercase ${
@@ -734,10 +963,10 @@ export default function HrExecutiveDashboard() {
                     <div className="bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-line)] p-4 flex justify-between items-center text-left shrink-0">
                       <div>
                         <h3 className="font-serif text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">
-                          {selectedTicket.title}
+                          {selectedTicket.title || selectedTicket.subject}
                         </h3>
                         <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
-                          CODE: {selectedTicket.ticketCode} | Submitter: {selectedTicket.createdBy?.fullName || 'Employee'}
+                          CODE: {selectedTicket.ticketCode} | Submitter: {selectedTicket.createdBy?.fullName || selectedTicket.raisedBy?.fullName || 'Vikram Rathore'}
                         </p>
                       </div>
                       
@@ -810,332 +1039,6 @@ export default function HrExecutiveDashboard() {
             </div>
           )}
 
-          {/* CHECKLIST PANEL */}
-          {activeTab === 'checklist' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Daily Checklist Tracker */}
-              <div className="lg:col-span-8 border border-[var(--crm-line)] rounded-sm p-6 bg-[var(--crm-bg-raised)]/10 shadow-md">
-                <div className="flex justify-between items-center mb-4 border-b border-[var(--crm-line)] pb-2.5">
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
-                    <FiList className="text-[var(--crm-accent)]" /> Daily Operational Protocol
-                  </h3>
-                  <span className="text-[10px] font-mono text-[var(--crm-accent)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)]/20 px-2 py-0.5 rounded-sm">
-                    {checklistCompletionRate}% COMPLETED
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full h-1 bg-[var(--crm-bg-sunken)] rounded-full mb-6 overflow-hidden">
-                  <div
-                    className="h-full bg-[var(--crm-accent)] transition-all duration-300"
-                    style={{ width: `${checklistCompletionRate}%` }}
-                  />
-                </div>
-
-                {checklist.length === 0 ? (
-                  <p className="py-12 text-center text-xs text-[var(--crm-ink-faint)] font-mono uppercase">Your daily checklist is empty.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {checklist.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3.5 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-accent)]/30 transition-colors"
-                      >
-                        <label className="flex items-center gap-3 cursor-pointer select-none text-xs text-left w-full mr-2">
-                          <input
-                            type="checkbox"
-                            checked={item.completed}
-                            onChange={() => handleToggleChecklist(item.id)}
-                            className="rounded-sm border-[var(--crm-line)] text-[var(--crm-bg-raised)] w-4 h-4 cursor-pointer accent-[var(--crm-accent)] shrink-0"
-                          />
-                          <span className={`${item.completed ? 'line-through text-[var(--crm-ink-faint)]' : 'text-[var(--crm-heading)] font-light'}`}>
-                            {item.text}
-                          </span>
-                        </label>
-                        <button
-                          onClick={() => handleDeleteChecklistItem(item.id)}
-                          className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] p-1 shrink-0 transition-colors"
-                        >
-                          <FiTrash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add checklist item */}
-              <div className="lg:col-span-4 border border-[var(--crm-line)] rounded-sm p-6 bg-[var(--crm-bg-raised)]/10 shadow-md h-fit">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] mb-4 font-bold border-b border-[var(--crm-line)] pb-2 flex items-center gap-1.5">
-                  <FiPlus className="text-[var(--crm-accent)]" /> Add Daily Protocol Item
-                </h3>
-                <form onSubmit={handleAddChecklistItem} className="space-y-4">
-                  <div>
-                    <label className="block text-[9px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Protocol Description *</label>
-                    <textarea
-                      required
-                      rows={3}
-                      value={newChecklistItem}
-                      onChange={(e) => setNewChecklistItem(e.target.value)}
-                      placeholder="e.g. Schedule follow-ups for junior designer candidates..."
-                      className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-xs outline-none resize-none text-[var(--crm-heading)] font-sans"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md"
-                  >
-                    Add Protocol
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* PERSONAL ATTENDANCE LOGGER */}
-          {activeTab === 'attendance' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-5 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>My Attendance marking</span>
-                  <FiClock size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 border rounded-sm" style={CARD_SUNKEN}>
-                    <span className="text-xs font-mono text-[var(--crm-ink-faint)]">Status Today:</span>
-                    <strong className={`text-xs font-mono uppercase ${
-                      todayAttendance ? 'text-[var(--crm-positive)]' : 'text-[var(--crm-danger)] animate-pulse'
-                    }`}>
-                      {todayAttendance ? (todayAttendance.clockOut ? 'Shift Completed' : 'Clocked In') : 'Absent / Not Checked In'}
-                    </strong>
-                  </div>
-
-                  {todayAttendance && (
-                    <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                      <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                        <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check In</span>
-                        <span className="text-[var(--crm-heading)] font-bold">{new Date(todayAttendance.clockIn).toLocaleTimeString()}</span>
-                      </div>
-                      <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                        <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check Out</span>
-                        <span className="text-[var(--crm-heading)] font-bold">
-                          {todayAttendance.clockOut ? new Date(todayAttendance.clockOut).toLocaleTimeString() : '--:--'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    {!todayAttendance && (
-                      <button
-                        onClick={handleCheckIn}
-                        className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                      >
-                        Clock In
-                      </button>
-                    )}
-                    {todayAttendance && !todayAttendance.clockOut && (
-                      <button
-                        onClick={handleCheckOut}
-                        className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                      >
-                        Clock Out
-                      </button>
-                    )}
-                    {todayAttendance && todayAttendance.clockOut && (
-                      <button
-                        disabled
-                        className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider cursor-not-allowed text-center"
-                      >
-                        Shift Completed
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-7 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>Recent Clock Logs</span>
-                  <FiActivity size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar">
-                  {attendanceHistory.length === 0 ? (
-                    <div className="text-center py-6 text-xs font-mono text-[var(--crm-ink-faint)]">No recent history logs</div>
-                  ) : (
-                    attendanceHistory.map((log) => (
-                      <div key={log._id} className="flex justify-between items-center border-b pb-2 text-xs font-mono last:border-0" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="text-[var(--crm-heading)]">{new Date(log.date).toLocaleDateString()}</span>
-                        <span className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
-                          log.status === 'PRESENT' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
-                          log.status === 'LATE' ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]' :
-                          'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]'
-                        }`}>{log.status}</span>
-                        <span className="text-[var(--crm-ink-faint)]">
-                          {log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'} - {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PERSONAL LEAVES DESK */}
-          {activeTab === 'leaves' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-5 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>Leave Balances (This Month)</span>
-                  <FiCalendar size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="p-3 border rounded-sm text-center" style={CARD_SUNKEN}>
-                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mb-1">Paid Remaining</span>
-                    <strong className="text-xl font-serif text-[var(--crm-positive)]">{leaveBalance.remainingLeaves} / 4</strong>
-                  </div>
-                  <div className="p-3 border rounded-sm text-center" style={CARD_SUNKEN}>
-                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mb-1">Extra Used</span>
-                    <strong className="text-xl font-serif text-[var(--crm-warning)]">{leaveBalance.extraLeavesUsed || 0}</strong>
-                  </div>
-                </div>
-
-                <form onSubmit={handleApplyLeave} className="space-y-3 font-mono text-xs text-left">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">From Date</label>
-                      <input
-                        type="date"
-                        required
-                        value={applyFromDate}
-                        onChange={(e) => setApplyFromDate(e.target.value)}
-                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">To Date</label>
-                      <input
-                        type="date"
-                        required
-                        value={applyToDate}
-                        onChange={(e) => setApplyToDate(e.target.value)}
-                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">Leave Type</label>
-                    <select
-                      value={leaveType}
-                      onChange={(e) => setLeaveType(e.target.value)}
-                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
-                    >
-                      <option value="CASUAL">Casual Leave</option>
-                      <option value="MEDICAL">Medical Leave</option>
-                      <option value="SICK">Sick Leave</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">Reason</label>
-                    <textarea
-                      required
-                      rows={2}
-                      value={leaveReason}
-                      onChange={(e) => setLeaveReason(e.target.value)}
-                      placeholder="Specify reason..."
-                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px] resize-none"
-                    />
-                  </div>
-
-                  {leaveBalance.remainingLeaves === 0 && (
-                    <div className="p-2.5 border border-[var(--crm-warning)]/30 bg-[var(--crm-warning-bg)]/10 rounded-sm space-y-1">
-                      <span className="text-[8px] text-[var(--crm-warning)] font-bold uppercase block">⚠️ Paid Balance Exhausted!</span>
-                      <input
-                        type="text"
-                        required
-                        value={extraReason}
-                        onChange={(e) => setExtraReason(e.target.value)}
-                        placeholder="Provide Extra Leave remarks..."
-                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-warning)]/30 px-2 py-1 rounded-sm text-[10px]"
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={applyingLeave}
-                    className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-[10px] font-bold uppercase rounded-sm transition cursor-pointer"
-                  >
-                    File Application
-                  </button>
-                </form>
-              </div>
-
-              <div className="lg:col-span-7 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>My Leave Ledger</span>
-                  <FiFileText size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
-                  {leaveHistory.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-[var(--crm-ink-faint)] font-mono">No leave requests filed</div>
-                  ) : (
-                    leaveHistory.map((item) => (
-                      <div key={item._id} className="p-3 border rounded-sm text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-[var(--crm-heading)]">
-                            {new Date(item.fromDate).toLocaleDateString()} - {new Date(item.toDate).toLocaleDateString()}
-                          </span>
-                          <span className={`text-[7px] font-bold px-1.5 py-0.5 border rounded-sm uppercase ${
-                            item.status === 'APPROVED' || item.status === 'HR_APPROVED_EXTRA' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
-                            item.status === 'REJECTED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'
-                          }`}>{item.status}</span>
-                        </div>
-                        <p className="text-[9px] text-[var(--crm-ink-soft)]">Type: {item.leaveType} {item.isExtraLeave && '(EXTRA)'} • Reason: "{item.reason}"</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MY PROFILE CARD */}
-          {activeTab === 'profile' && (
-            <div className="max-w-xl mx-auto border p-6 rounded-sm space-y-6" style={CARD}>
-              <div className="flex flex-col sm:flex-row items-center gap-5 border-b pb-6" style={{ borderColor: 'var(--crm-line)' }}>
-                <div className="w-16 h-16 bg-[var(--crm-bg-sunken)] rounded-full flex items-center justify-center text-[var(--crm-ink-faint)] overflow-hidden shrink-0 shadow-inner">
-                  {user?.profileImage ? (
-                    <img src={user.profileImage} alt="profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <FiUser size={30} />
-                  )}
-                </div>
-                <div className="text-center sm:text-left space-y-1">
-                  <h3 className="text-base font-serif text-[var(--crm-heading)]">{user?.name || user?.fullName}</h3>
-                  <p className="text-[10px] font-mono text-[var(--crm-accent)] uppercase tracking-wider">{user?.position || 'HR Executive'} • {user?.role}</p>
-                  <p className="text-[9px] font-mono text-[var(--crm-ink-faint)]">{user?.email}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-left">
-                <div>
-                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Department</span>
-                  <strong className="text-[var(--crm-heading)]">{user?.department}</strong>
-                </div>
-                <div>
-                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Joining Date</span>
-                  <strong className="text-[var(--crm-heading)]">{user?.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : '--'}</strong>
-                </div>
-                <div>
-                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Reporting Manager</span>
-                  <strong className="text-[var(--crm-heading)]">{user?.reportingManager ? user.reportingManager.name || 'Assigned Manager' : 'HR Manager / Admin'}</strong>
-                </div>
-              </div>
-            </div>
-          )}
         </motion.div>
       </AnimatePresence>
 

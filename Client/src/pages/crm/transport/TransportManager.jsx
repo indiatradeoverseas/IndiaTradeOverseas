@@ -38,6 +38,8 @@ export default function TransportManager() {
     const tabParam = params.get('tab');
     if (tabParam) {
       setActiveTab(tabParam.toUpperCase());
+    } else {
+      setActiveTab('DASHBOARD');
     }
   }, [location]);
 
@@ -79,25 +81,11 @@ export default function TransportManager() {
   });
   const [submittingTrip, setSubmittingTrip] = useState(false);
 
-  // Driver Work Updates Feed (Persisted & Synced locally)
-  const [driverWorkUpdates, setDriverWorkUpdates] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ito_driver_work_updates') || localStorage.getItem('transport_manager_work_updates');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Driver Work Updates Feed (DB & Socket Synced)
+  const [driverWorkUpdates, setDriverWorkUpdates] = useState([]);
 
   // Dedicated Live Chat Hub States
-  const [chatMessages, setChatMessages] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ito_transport_chat_messages');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [chatMessages, setChatMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const chatContainerRef = useRef(null);
 
@@ -106,38 +94,17 @@ export default function TransportManager() {
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [broadcastText, setBroadcastText] = useState('');
 
-  // Fuel & Maintenance Logs (Persisted locally)
-  const [fuelMaintenanceLogs, setFuelMaintenanceLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('transport_manager_fuel_logs');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Fuel & Maintenance Logs (Loaded dynamically from MongoDB Dispatches)
+  const [fuelMaintenanceLogs, setFuelMaintenanceLogs] = useState([]);
 
-  // Driver Uploaded Proofs List (Persisted locally)
-  const [driverUploadedProofs, setDriverUploadedProofs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('transport_manager_driver_proofs');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Driver Uploaded Proofs List
+  const [driverUploadedProofs, setDriverUploadedProofs] = useState([]);
 
   // Driver Scorecards
   const [driverScorecards, setDriverScorecards] = useState([]);
 
-  // Quotations Form & List (Persisted locally)
-  const [quotationsList, setQuotationsList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('transport_manager_quotations');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Quotations Form & List
+  const [quotationsList, setQuotationsList] = useState([]);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [quotationForm, setQuotationForm] = useState({ clientName: '', route: '', ratePerTon: '', tonnage: '25' });
 
@@ -145,68 +112,82 @@ export default function TransportManager() {
   const [gpsLocation, setGpsLocation] = useState({ lat: 28.6139, long: 77.2090 });
   const [etaKmRemaining, setEtaKmRemaining] = useState(120);
 
-  // Persistence Effects & Real-Time Listeners
+  // Real-Time Socket.IO & Event Listeners
   useEffect(() => {
-    localStorage.setItem('ito_driver_work_updates', JSON.stringify(driverWorkUpdates));
-    localStorage.setItem('transport_manager_work_updates', JSON.stringify(driverWorkUpdates));
-  }, [driverWorkUpdates]);
-
-  useEffect(() => {
-    localStorage.setItem('ito_transport_chat_messages', JSON.stringify(chatMessages));
-    localStorage.setItem('transport_manager_chats', JSON.stringify(chatMessages));
-  }, [chatMessages]);
-
-  useEffect(() => {
-    const syncRealtimeData = () => {
-      try {
-        const savedUpdates = localStorage.getItem('ito_driver_work_updates') || localStorage.getItem('transport_manager_work_updates');
-        if (savedUpdates) setDriverWorkUpdates(JSON.parse(savedUpdates));
-
-        const savedChats = localStorage.getItem('ito_transport_chat_messages') || localStorage.getItem('transport_manager_chats');
-        if (savedChats) setChatMessages(JSON.parse(savedChats));
-
-        const savedFuelLogs = localStorage.getItem('ito_driver_fuel_expenses') || localStorage.getItem('transport_manager_fuel_logs');
-        if (savedFuelLogs) {
-          const list = JSON.parse(savedFuelLogs);
-          setFuelMaintenanceLogs(list);
-          setDriverScorecards(list.map(item => ({
-            driver: item.driver || 'Driver',
-            vehicle: item.vehicle || 'Carrier Truck',
-            tripsCount: 1,
-            totalKm: item.totalKm || item.kmDriven || 0,
-            avgMileageKmL: item.litres && Number(item.litres) > 0 ? (Number(item.totalKm || 0) / Number(item.litres)).toFixed(1) : '4.5'
-          })));
-        }
-      } catch (err) {}
+    const handleGpsEvent = (e) => {
+      if (e.detail && e.detail.lat && e.detail.long) {
+        setGpsLocation({ lat: e.detail.lat, long: e.detail.long });
+      }
     };
 
-    syncRealtimeData();
-    window.addEventListener('ito_driver_work_update_event', syncRealtimeData);
-    window.addEventListener('ito_transport_chat_event', syncRealtimeData);
-    window.addEventListener('ito_fuel_expense_event', syncRealtimeData);
-    window.addEventListener('storage', syncRealtimeData);
-    const timer = setInterval(syncRealtimeData, 2000);
+    const fetchMongoChats = async () => {
+      try {
+        const res = await fetch('/api/chat/transport');
+        const data = await res.json();
+        if (data && (data.chats || data.data?.chats)) {
+          const list = data.chats || data.data?.chats || [];
+          setChatMessages(list.map(c => ({
+            id: c.id || c._id,
+            sender: c.sender || c.senderName || 'Driver',
+            text: c.text || c.message || '',
+            time: c.time || (c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00 PM')
+          })));
+        }
+      } catch (e) {}
+    };
+
+    fetchMongoChats();
+
+    const handleIncomingChat = (msg) => {
+      if (!msg || (!msg.text && !msg.message)) return;
+      const formatted = {
+        id: msg.id || msg._id || Date.now(),
+        sender: msg.sender || msg.senderName || 'Driver',
+        text: msg.text || msg.message || '',
+        time: msg.time || (msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      };
+
+      setChatMessages(prev => {
+        if (prev.some(m => m.id === formatted.id || (m.text === formatted.text && m.sender === formatted.sender))) return prev;
+        return [...prev, formatted];
+      });
+    };
+
+    window.addEventListener('ito_driver_gps_update_event', handleGpsEvent);
+
+    let socket = socketService.getSocket();
+    if (socket) {
+      socket.on('driver_location_update', (data) => {
+        if (data && data.lat && data.long) setGpsLocation({ lat: data.lat, long: data.long });
+      });
+      socket.on('driver_work_update', (data) => {
+        if (data) setDriverWorkUpdates(prev => [data, ...prev]);
+        fetchData();
+      });
+      socket.on('driver_chat_message', handleIncomingChat);
+      socket.on('transport_chat_receive', handleIncomingChat);
+    }
+
+    const checkSocketInterval = setInterval(() => {
+      const currentSocket = socketService.getSocket();
+      if (currentSocket && currentSocket !== socket) {
+        socket = currentSocket;
+        socket.on('driver_chat_message', handleIncomingChat);
+        socket.on('transport_chat_receive', handleIncomingChat);
+      }
+    }, 1000);
 
     return () => {
-      window.removeEventListener('ito_driver_work_update_event', syncRealtimeData);
-      window.removeEventListener('ito_transport_chat_event', syncRealtimeData);
-      window.removeEventListener('ito_fuel_expense_event', syncRealtimeData);
-      window.removeEventListener('storage', syncRealtimeData);
-      clearInterval(timer);
+      window.removeEventListener('ito_driver_gps_update_event', handleGpsEvent);
+      clearInterval(checkSocketInterval);
+      if (socket) {
+        socket.off('driver_chat_message', handleIncomingChat);
+        socket.off('transport_chat_receive', handleIncomingChat);
+      }
     };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('transport_manager_fuel_logs', JSON.stringify(fuelMaintenanceLogs));
-  }, [fuelMaintenanceLogs]);
-
-  useEffect(() => {
-    localStorage.setItem('transport_manager_driver_proofs', JSON.stringify(driverUploadedProofs));
-  }, [driverUploadedProofs]);
-
   const [selectedPreviewImage, setSelectedPreviewImage] = useState(null);
-
-
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -214,67 +195,42 @@ export default function TransportManager() {
     }
   }, [chatMessages.length]);
 
-  useEffect(() => {
-    const handleChatSync = () => {
-      try {
-        const saved = localStorage.getItem('ito_transport_chat_messages');
-        if (saved) setChatMessages(JSON.parse(saved));
-      } catch (e) {}
-    };
-
-    window.addEventListener('ito_transport_chat_event', handleChatSync);
-    window.addEventListener('storage', handleChatSync);
-
-    try {
-      const socket = socketService.getSocket();
-      if (socket) {
-        socket.on('driver_chat_message', (msg) => {
-          setChatMessages(prev => [...prev, msg]);
-        });
-      }
-    } catch (e) {}
-
-    return () => {
-      window.removeEventListener('ito_transport_chat_event', handleChatSync);
-      window.removeEventListener('storage', handleChatSync);
-    };
-  }, []);
-
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     const clean = inputMessage.trim();
     if (!clean) return;
 
     const senderName = `${user?.name || user?.fullName || 'Vikram Singh'} (MANAGER)`;
     const newMsg = {
-      id: Date.now(),
-      sender: senderName,
+      senderId: String(user?._id || user?.employeeId || 'manager'),
+      senderName,
+      senderRole: 'TRANSPORT_MANAGER',
+      channel: 'ALL',
+      message: clean,
       text: clean,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setChatMessages(prev => {
-      const updated = [...prev, newMsg];
-      try {
-        localStorage.setItem('ito_transport_chat_messages', JSON.stringify(updated));
-        window.dispatchEvent(new Event('ito_transport_chat_event'));
-      } catch (err) {}
-      return updated;
-    });
+    setInputMessage('');
 
+    // Save directly to MongoDB Database
+    try {
+      await fetch('/api/chat/transport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMsg)
+      });
+    } catch (e) {}
+
+    // Real-Time Socket Broadcast
     try {
       const socket = socketService.getSocket();
       if (socket) {
+        socket.emit('transport_chat_send', newMsg);
         socket.emit('driver_chat_message', newMsg);
       }
     } catch (err) {}
-
-    setInputMessage('');
   };
-
-  useEffect(() => {
-    localStorage.setItem('transport_manager_quotations', JSON.stringify(quotationsList));
-  }, [quotationsList]);
 
   useEffect(() => {
     fetchData();
@@ -294,38 +250,11 @@ export default function TransportManager() {
         fetchedTrips = tripsRes.value.data?.dispatches || tripsRes.value.dispatches || [];
       }
 
-      // Merge locally created trips from localStorage
-      let localCreatedTrips = [];
-      try {
-        const saved = localStorage.getItem('ito_created_trips');
-        if (saved) localCreatedTrips = JSON.parse(saved);
-      } catch (e) {}
-
-      // Combine fetchedTrips with localCreatedTrips (deduplicating by _id / orderNumber / dispatchNumber)
-      const tripsMap = new Map();
-      fetchedTrips.forEach(t => tripsMap.set(t._id || t.orderNumber || t.dispatchNumber, t));
-      localCreatedTrips.forEach(t => tripsMap.set(t._id || t.orderNumber || t.dispatchNumber, t));
-      const combinedTripsList = Array.from(tripsMap.values());
-
-      // Apply edited revenues map from localStorage
-      let editedRevenues = {};
-      try {
-        const savedRev = localStorage.getItem('ito_edited_revenues');
-        if (savedRev) editedRevenues = JSON.parse(savedRev);
-      } catch (e) {}
-
-      const updatedTrips = combinedTripsList.map(t => {
-        const key = t._id || t.orderNumber || t.dispatchNumber;
-        if (editedRevenues[key]) {
-          return { ...t, totalFreightAmount: editedRevenues[key], freightAmount: editedRevenues[key] };
-        }
-        return t;
-      });
-      setTrips(updatedTrips);
+      setTrips(fetchedTrips);
 
       // Extract MongoDB Database fuel logs from backend dispatches
       const dbFuelLogs = [];
-      updatedTrips.forEach(t => {
+      fetchedTrips.forEach(t => {
         if (t.fuelLogs && Array.isArray(t.fuelLogs) && t.fuelLogs.length > 0) {
           t.fuelLogs.forEach(fl => {
             dbFuelLogs.push({
@@ -362,29 +291,7 @@ export default function TransportManager() {
         fetchedQueue = val?.data?.orders || val?.orders || val?.data?.leads || val?.leads || (Array.isArray(val) ? val : []);
       }
 
-      // Filter assigned & delivered lead IDs from localStorage
-      let assignedLeadIds = [];
-      let deliveredLeadIds = [];
-      try {
-        const savedAssigned = localStorage.getItem('ito_assigned_lead_ids');
-        if (savedAssigned) assignedLeadIds = JSON.parse(savedAssigned);
-        const savedDelivered = localStorage.getItem('ito_delivered_order_ids');
-        if (savedDelivered) deliveredLeadIds = JSON.parse(savedDelivered);
-      } catch (e) {}
-
-      const updatedQueue = fetchedQueue.map(q => {
-        const key = q._id || q.orderNumber || q.dispatchNumber;
-        if (editedRevenues[key]) {
-          q = { ...q, totalFreightAmount: editedRevenues[key], freightAmount: editedRevenues[key] };
-        }
-        if (deliveredLeadIds.includes(key) || deliveredLeadIds.includes(q._id) || deliveredLeadIds.includes(q.orderNumber) || deliveredLeadIds.includes(q.dispatchNumber)) {
-          q = { ...q, stage: 'DEAL_WON', status: 'DELIVERED', dispatchStatus: 'DELIVERED' };
-        } else if (assignedLeadIds.includes(key) || assignedLeadIds.includes(q._id) || assignedLeadIds.includes(q.orderNumber)) {
-          q = { ...q, stage: 'ASSIGNED', status: 'ASSIGNED' };
-        }
-        return q;
-      });
-      setDispatchQueue(updatedQueue);
+      setDispatchQueue(fetchedQueue);
 
       let fetchedDrivers = [];
       if (empRes.status === 'fulfilled' && (empRes.value?.success || empRes.value?.data)) {
@@ -395,7 +302,7 @@ export default function TransportManager() {
         // Build dynamic Driver Scorecards from actual driver list
         if (fetchedDrivers.length > 0) {
           const scorecards = fetchedDrivers.map(d => {
-            const driverTrips = updatedTrips.filter(t => t.driverName?.toLowerCase().includes(d.name?.toLowerCase()));
+            const driverTrips = fetchedTrips.filter(t => t.driverName?.toLowerCase().includes(d.name?.toLowerCase()));
             return {
               driver: d.name,
               vehicle: d.vehicleNumber || d.truckNumber || 'Assigned Carrier',
@@ -410,7 +317,7 @@ export default function TransportManager() {
       }
 
       // Compute Real-Time Dynamic Metrics
-      const combinedAll = [...updatedTrips, ...updatedQueue];
+      const combinedAll = [...fetchedTrips, ...fetchedQueue];
 
       const totalFreightRev = combinedAll.reduce((sum, t) => {
         const amt = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.totalAmount || (t.weightTons ? Number(t.weightTons) * 750 : 18000)) || 18000;
@@ -435,7 +342,7 @@ export default function TransportManager() {
         (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('ASSIGN')
       ).length;
 
-      const pendingUnassignedLeads = updatedQueue.filter(lead => {
+      const pendingUnassignedLeads = fetchedQueue.filter(lead => {
         const st = (lead.stage || lead.status || lead.dispatchStatus || '').toUpperCase();
         return st !== 'DELIVERED' && st !== 'COMPLETED' && st !== 'DEAL_WON' && st !== 'ASSIGNED' && st !== 'IN_TRANSIT';
       });
@@ -513,22 +420,7 @@ export default function TransportManager() {
       console.log('Trip recorded');
     }
 
-    setTrips(prev => {
-      const updated = [newTripObj, ...prev];
-      try {
-        const existingCreated = JSON.parse(localStorage.getItem('ito_created_trips') || '[]');
-        localStorage.setItem('ito_created_trips', JSON.stringify([newTripObj, ...existingCreated]));
-      } catch (e) {}
-      return updated;
-    });
-
-    try {
-      const targetLeadId = createTripForm.orderNumber;
-      const existingAssigned = JSON.parse(localStorage.getItem('ito_assigned_lead_ids') || '[]');
-      if (targetLeadId && !existingAssigned.includes(targetLeadId)) {
-        localStorage.setItem('ito_assigned_lead_ids', JSON.stringify([...existingAssigned, targetLeadId]));
-      }
-    } catch (e) {}
+    setTrips(prev => [newTripObj, ...prev]);
 
     setMetrics(prev => ({
       ...prev,
@@ -580,14 +472,7 @@ export default function TransportManager() {
   };
 
   // Verified POD IDs State
-  const [verifiedPodIds, setVerifiedPodIds] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ito_verified_pod_ids');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [verifiedPodIds, setVerifiedPodIds] = useState([]);
 
   const handleVerifyPODAndComplete = async (item, e) => {
     if (e) e.stopPropagation();
@@ -601,9 +486,6 @@ export default function TransportManager() {
 
     const updated = [...verifiedPodIds, targetId, item.orderNumber, item.dispatchNumber].filter(Boolean);
     setVerifiedPodIds(updated);
-    try {
-      localStorage.setItem('ito_verified_pod_ids', JSON.stringify(updated));
-    } catch (err) {}
 
     setDispatchQueue(prev => prev.map(l => (l._id === targetId || l.orderNumber === item.orderNumber) ? { ...l, podStatus: 'VERIFIED', stage: 'COMPLETED' } : l));
     setTrips(prev => prev.map(t => (t._id === targetId || t.dispatchNumber === item.dispatchNumber) ? { ...t, podStatus: 'VERIFIED', status: 'COMPLETED' } : t));
@@ -645,16 +527,6 @@ export default function TransportManager() {
         }).catch(() => {});
       }
     } catch (err) {}
-
-    // Save edited revenue to localStorage
-    try {
-      const existingRevenues = JSON.parse(localStorage.getItem('ito_edited_revenues') || '{}');
-      existingRevenues[targetId] = numAmt;
-      if (editingOrder._id) existingRevenues[editingOrder._id] = numAmt;
-      if (editingOrder.orderNumber) existingRevenues[editingOrder.orderNumber] = numAmt;
-      if (editingOrder.dispatchNumber) existingRevenues[editingOrder.dispatchNumber] = numAmt;
-      localStorage.setItem('ito_edited_revenues', JSON.stringify(existingRevenues));
-    } catch (e) {}
 
     // Update local states
     setDispatchQueue(prev => prev.map(item => {
@@ -700,30 +572,13 @@ export default function TransportManager() {
       return 'IMAGE';
     };
 
-    // 1. Process Payment Proofs from localStorage
-    try {
-      const savedPaymentProofs = JSON.parse(localStorage.getItem('ito_payment_proofs') || localStorage.getItem('driver_payment_proofs') || '[]');
-      savedPaymentProofs.forEach((p, idx) => {
-        if (p.proofImageUrl || p.photoUrl) {
-          const url = p.proofImageUrl || p.photoUrl;
-          records.push({
-            id: `PAYMENT-PROOF-${p.id || idx}`,
-            driverName: p.driverName || 'Ramesh Driver',
-            vehicleNo: p.vehicleNo || 'BR-01-TR-4521',
-            proofType: `Payment Receipt (${p.paymentMode || 'UPI'})`,
-            fileType: detectFileType(url),
-            orderCode: `Amount: ₹${p.amountPaid || 0}`,
-            date: p.date || todayStr,
-            rawTimestamp: p.id || Date.now() - (idx * 1000),
-            photoUrl: url,
-            notes: `Payment Mode: ${p.paymentMode || 'UPI'} • UPI Ref: ${p.upiRefNo || 'N/A'} • Amount Collected: ₹${p.amountPaid || 0}`,
-            status: 'PAYMENT VERIFIED ✓'
-          });
-        }
-      });
-    } catch (e) {}
+    const isValidMediaUrl = (url = '') => {
+      if (!url || typeof url !== 'string') return false;
+      const u = url.trim();
+      return u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('/');
+    };
 
-    // 2. Process all Trips & Queue Items with uploaded POD or Proof documents from MongoDB Database
+    // 1. Process all Trips & Queue Items with uploaded POD or Proof documents from MongoDB Database
     [...trips, ...dispatchQueue].forEach((t, idx) => {
       const driver = t.driverName || t.assignedDriverName || 'Ramesh Driver';
       const vehicle = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'BR-01-TR-4521';
@@ -745,7 +600,7 @@ export default function TransportManager() {
       ];
 
       proofSources.forEach((src, pIdx) => {
-        if (src.url && typeof src.url === 'string' && src.url.trim() !== '') {
+        if (src.url && isValidMediaUrl(src.url)) {
           records.push({
             id: `PROOF-DB-${code}-${idx}-${pIdx}`,
             driverName: driver,
@@ -763,12 +618,12 @@ export default function TransportManager() {
       });
     });
 
-    // 3. Process Fuel & Maintenance Logs
+    // 2. Process Fuel & Maintenance Logs
     fuelMaintenanceLogs.forEach((fl, idx) => {
       const dateStr = fl.date || new Date(fl.loggedAt || Date.now()).toLocaleDateString('en-IN');
       const ts = fl.loggedAt ? new Date(fl.loggedAt).getTime() : Date.now() - (idx * 7200000);
       const url = fl.photoUrl || fl.receiptPhotoUrl || '';
-      if (url && url.trim() !== '') {
+      if (url && isValidMediaUrl(url)) {
         records.push({
           id: `FUEL-${fl.id || idx}`,
           driverName: fl.driver || 'Ramesh Driver',
@@ -785,12 +640,12 @@ export default function TransportManager() {
       }
     });
 
-    // 4. Process Driver Work Updates
+    // 3. Process Driver Work Updates
     driverWorkUpdates.forEach((up, idx) => {
       const dateStr = up.date || new Date().toLocaleDateString('en-IN');
       const ts = up.id || Date.now() - (idx * 1800000);
       const url = up.photoUrl || '';
-      if (url && url.trim() !== '') {
+      if (url && isValidMediaUrl(url)) {
         records.push({
           id: `WORKUP-${up.id || idx}`,
           driverName: up.driver || 'Ramesh Driver',
@@ -807,31 +662,141 @@ export default function TransportManager() {
       }
     });
 
-    // 5. Process Vehicle Attendance Check-in Logs from localStorage
-    try {
-      const savedAtt = JSON.parse(localStorage.getItem('ito_driver_attendance_logs') || '[]');
-      savedAtt.forEach((att, idx) => {
-        if (att.photoUrl || att.proofImageUrl) {
-          const url = att.photoUrl || att.proofImageUrl;
-          records.push({
-            id: `ATT-PROOF-${att.id || idx}`,
-            driverName: att.driverName || 'Ramesh Driver',
-            vehicleNo: att.vehicleNo || 'BR-01-TR-4521',
-            proofType: 'Driver Duty Attendance & Vehicle Check-in',
-            fileType: detectFileType(url),
-            orderCode: `Check-in Time: ${att.time || 'On Duty'}`,
-            date: att.date || todayStr,
-            rawTimestamp: att.rawTimestamp || Date.now() - (idx * 1000),
-            photoUrl: url,
-            notes: `Vehicle Check-in #${att.vehicleNo || 'Carrier'} • Odometer: ${att.odometerKm || '0'} KM • Marked at ${att.time || 'Shift Start'}`,
-            status: 'ATTENDANCE VERIFIED ✓'
-          });
-        }
-      });
-    } catch (e) {}
+    // 4. Process Driver Uploaded Proofs State
+    driverUploadedProofs.forEach((p, idx) => {
+      const dateStr = p.date || todayStr;
+      const ts = p.rawTimestamp || p.id || Date.now() - (idx * 1000);
+      const url = p.photoUrl || p.proofImageUrl || p.url || '';
+      if (url && isValidMediaUrl(url)) {
+        records.push({
+          id: `PROOF-STATE-${p.id || idx}`,
+          driverName: p.driverName || p.driver || 'Ramesh Driver',
+          vehicleNo: p.vehicleNo || p.vehicle || 'BR-01-TR-4521',
+          proofType: p.proofType || 'Driver Delivery Proof',
+          fileType: detectFileType(url),
+          orderCode: p.orderCode || p.orderNumber || `PRO-${idx + 1}`,
+          date: dateStr,
+          rawTimestamp: ts,
+          photoUrl: url,
+          notes: p.notes || 'Driver uploaded proof document',
+          status: p.status || 'VERIFIED ✓'
+        });
+      }
+    });
 
     return records.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-  }, [trips, dispatchQueue, fuelMaintenanceLogs, driverWorkUpdates]);
+  }, [trips, dispatchQueue, fuelMaintenanceLogs, driverWorkUpdates, driverUploadedProofs]);
+
+  // ─── 5-COLUMN DATA TABLE PROOF ROWS GENERATOR ────────────────────────────
+  const proofTableRows = useMemo(() => {
+    const combined = [...trips, ...dispatchQueue];
+    const mapByCode = new Map();
+    const todayStr = new Date().toLocaleDateString('en-IN');
+
+    const detectFileType = (url = '') => {
+      const u = (url || '').toLowerCase();
+      if (u.includes('.pdf') || u.startsWith('data:application/pdf')) return 'PDF';
+      if (u.includes('.doc') || u.includes('.docx') || u.startsWith('data:application/msword') || u.startsWith('data:application/vnd.openxmlformats')) return 'DOC';
+      return 'IMAGE';
+    };
+
+    const isValidMediaUrl = (url = '') => {
+      if (!url || typeof url !== 'string') return false;
+      const u = url.trim();
+      return u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:') || u.startsWith('/');
+    };
+
+    combined.forEach((t, idx) => {
+      const code = t.dispatchNumber || t.orderNumber || t.leadCode || t._id || `LD-${1000 + idx}`;
+      if (!code) return;
+
+      const driverName = t.driverName || t.assignedDriverName || 'Ramesh Driver';
+      const vehicleNo = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'BR-01-TR-4521';
+      const customer = t.customerName || t.companyName || 'Lead Customer Cargo';
+      const origin = t.origin || t.originCity || 'Depot';
+      const destination = t.destination || t.destCity || t.city || 'Destination';
+      const route = `${origin} ➔ ${destination}`;
+      const amount = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.leadValue || 18000) || 18000;
+      const dateStr = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-IN') : todayStr;
+      const ts = t.updatedAt ? new Date(t.updatedAt).getTime() : Date.now() - (idx * 3600000);
+
+      // Attendance Proof (Driver Selfie / Unloading Point Photo)
+      const attendeeUrl = t.driverProofUrl || t.deliveryImages?.driverSelfieUrl || t.deliveryImages?.emptyVehiclePhotoUrl || t.departureImages?.driverSelfieUrl || t.photoUrl;
+
+      // Payment Proof (Payment Receipt / UPI Screenshot / POD PDF Document)
+      const paymentUrl = t.paymentProofUrl || t.podFileUrl || t.paymentProof?.proofImageUrl;
+
+      const hasAttendee = isValidMediaUrl(attendeeUrl);
+      const hasPayment = isValidMediaUrl(paymentUrl);
+
+      const existing = mapByCode.get(code);
+
+      if (!existing || hasAttendee || hasPayment) {
+        mapByCode.set(code, {
+          id: `TBL-ROW-${code}-${idx}`,
+          code,
+          customer,
+          route,
+          driverName,
+          vehicleNo,
+          totalAmount: amount,
+          dateStr,
+          rawTimestamp: ts,
+          attendeeUrl: hasAttendee ? attendeeUrl : (existing?.attendeeUrl || ''),
+          attendeeFileType: hasAttendee ? detectFileType(attendeeUrl) : (existing?.attendeeFileType || ''),
+          paymentUrl: hasPayment ? paymentUrl : (existing?.paymentUrl || ''),
+          paymentFileType: hasPayment ? detectFileType(paymentUrl) : (existing?.paymentFileType || ''),
+          status: ['DELIVERED', 'COMPLETED', 'DEAL_WON'].includes((t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase()) ? 'POD VERIFIED ✓' : 'DOC SUBMITTED ✓'
+        });
+      }
+    });
+
+    const rowsArray = Array.from(mapByCode.values());
+    rowsArray.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+    return rowsArray;
+  }, [trips, dispatchQueue]);
+
+  const handleViewPdf = (url = '', fileName = 'POD_Document.pdf') => {
+    if (!url) return;
+
+    if (url.startsWith('data:application/pdf') || url.includes('data:application/pdf')) {
+      try {
+        const parts = url.split(',');
+        const base64Data = parts[1] || parts[0];
+        const binaryString = window.atob(base64Data.trim());
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        const win = window.open(blobUrl, '_blank');
+        if (!win) {
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+        return;
+      } catch (e) {
+        console.error('Error opening base64 PDF blob:', e);
+      }
+    }
+
+    const win = window.open(url, '_blank');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
 
   const handleToggleVoiceRecord = () => {
     if (!isRecordingVoice) {
@@ -888,13 +853,11 @@ export default function TransportManager() {
     setChatMessages(prev => [newMsg, ...prev]);
     setChatInput('');
 
-    // Real-time sync to Driver Mobile View
     try {
-      const existing = JSON.parse(localStorage.getItem('ito_transport_chat_messages') || localStorage.getItem('transport_manager_chats') || '[]');
-      const updated = [newMsg, ...existing];
-      localStorage.setItem('ito_transport_chat_messages', JSON.stringify(updated));
-      localStorage.setItem('transport_manager_chats', JSON.stringify(updated));
-      window.dispatchEvent(new Event('ito_transport_chat_event'));
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('driver_chat_message', newMsg);
+      }
     } catch (err) {}
   };
 
@@ -1191,9 +1154,9 @@ export default function TransportManager() {
 
           </div>
 
-          {/* MIDDLE ROW 2: GOOGLE MAP LIVE GPS & CHAT BOX WITH MIC */}
+          {/* MIDDLE ROW 2: GOOGLE MAP LIVE GPS & TRANSPORT & DRIVER CHAT HUB */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
-            <div className="lg:col-span-8 border rounded-sm overflow-hidden flex flex-col" style={CARD}>
+            <div className="lg:col-span-7 border rounded-sm overflow-hidden flex flex-col h-[420px]" style={CARD}>
               <div className="p-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <h2 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
                   <FiNavigation className="text-sky-400" size={15} /> Google Map Live Driver Location & Geofencing
@@ -1216,44 +1179,80 @@ export default function TransportManager() {
               </div>
             </div>
 
-            {/* Live Desk Chat Box with Driver */}
-            <div className="lg:col-span-4 border rounded-sm p-4 flex flex-col justify-between h-[375px]" style={CARD}>
-              <div>
-                <div className="flex justify-between items-center border-b pb-2 mb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                  <h2 className="text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 text-sky-400" style={HEADING}>
-                    <FiMessageSquare size={15} /> Live Desk Chat with Driver
-                  </h2>
-                  <button onClick={handleToggleVoiceRecord} className={`p-1.5 rounded-sm cursor-pointer transition ${isRecordingVoice ? 'bg-rose-600 text-white animate-pulse' : 'border border-[var(--crm-line)] text-[var(--crm-accent)] hover:bg-[var(--crm-bg-sunken)]'}`}>
-                    <FiMic size={14} />
+            {/* TRANSPORT & DRIVER CHAT HUB */}
+            <div className="lg:col-span-5 border rounded-xl p-4 space-y-3 font-mono bg-[#111317] border-slate-800 shadow-2xl flex flex-col justify-between h-[420px]">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
+                  <FiMessageSquare className="text-teal-400" size={15} /> TRANSPORT & DRIVER CHAT HUB
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleVoiceRecord}
+                    className={`p-1 rounded cursor-pointer transition ${isRecordingVoice ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-900 border border-slate-700 text-teal-400 hover:bg-slate-800'}`}
+                    title="Record Voice Note for Driver"
+                  >
+                    <FiMic size={13} />
                   </button>
-                </div>
-
-                <div className="space-y-2 overflow-y-auto max-h-[250px] pr-1 text-xs custom-scrollbar">
-                  {chatMessages.length === 0 ? (
-                    <div className="p-6 text-center text-[var(--crm-ink-faint)] text-xs">No chat messages yet. Send a message or record a voice note below.</div>
-                  ) : (
-                    chatMessages.map((m) => (
-                      <div key={m.id} className="p-2 rounded-sm border text-left" style={m.isBroadcast ? { borderColor: 'rgba(244, 63, 94, 0.4)', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' } : CARD_SUNKEN}>
-                        <div className="text-[9px] font-bold text-[var(--crm-accent)]">{m.sender}</div>
-                        <p className="text-[11px] leading-relaxed">{m.text}</p>
-                        <div className="text-[8px] opacity-75 text-right mt-0.5">{m.time}</div>
-                      </div>
-                    ))
-                  )}
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-[9px] font-bold text-emerald-400 tracking-widest uppercase">LIVE CONNECTION</span>
+                  </div>
                 </div>
               </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); handleSendManagerMessage(); }} className="pt-2 border-t flex gap-2" style={{ borderColor: 'var(--crm-line)' }}>
-                <input
-                  type="text"
-                  placeholder="Type message or voice note for driver..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 p-2 border rounded-sm text-xs outline-none"
-                  style={{ background: 'var(--crm-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
-                />
-                <button type="submit" className="px-3 py-2 border rounded-sm font-bold text-[10px] uppercase cursor-pointer" style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)' }}>
-                  Send
+              {/* MESSAGES THREAD AREA */}
+              <div ref={chatContainerRef} className="space-y-2.5 max-h-[290px] min-h-[200px] overflow-y-auto pr-1 custom-scrollbar flex flex-col flex-1">
+                {chatMessages.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs italic">
+                    No live messages yet. Type a message below to broadcast to Drivers.
+                  </div>
+                ) : (
+                  chatMessages.map((msg, index) => {
+                    const isManager = msg.sender?.toLowerCase().includes('manager') || msg.sender?.includes(user?.name || user?.fullName || 'Vikram');
+                    return (
+                      <div
+                        key={msg.id || index}
+                        className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${isManager ? 'self-end items-end' : 'self-start items-start'}`}
+                      >
+                        <div
+                          className={`p-2.5 rounded-xl text-xs space-y-0.5 shadow-md ${
+                            isManager
+                              ? 'bg-[#00897b] text-white rounded-tr-none'
+                              : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
+                          }`}
+                        >
+                          <span className={`text-[9px] font-bold block ${isManager ? 'text-teal-100' : 'text-slate-400'}`}>
+                            {msg.sender || (isManager ? `${user?.name || 'Vikram Singh'} (MANAGER)` : 'Driver')}
+                          </span>
+                          <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
+                            {msg.text}
+                          </p>
+                        </div>
+                        <span className="text-[8px] text-slate-500 mt-0.5 font-mono">{msg.time || '12:00 PM'}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* INPUT BAR */}
+              <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Type a message to Drivers..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    className="w-full py-2 px-3 bg-[#090b0e] border border-teal-700/60 rounded-lg text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!inputMessage.trim()}
+                  className="p-2 bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 text-white rounded-lg shadow transition cursor-pointer flex items-center justify-center shrink-0"
+                >
+                  <FiSend size={15} />
                 </button>
               </form>
             </div>
@@ -1411,73 +1410,6 @@ export default function TransportManager() {
             </div>
           </div>
 
-          {/* DEDICATED LIVE CHAT HUB SECTION (MATCHING EXACT USER SCREENSHOT DESIGN) */}
-          <div className="border rounded-xl p-5 space-y-4 font-mono bg-[#111317] border-slate-800 shadow-2xl mt-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
-                TRANSPORT & DRIVER CHAT HUB
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase">LIVE CONNECTION</span>
-              </div>
-            </div>
-
-            {/* MESSAGES THREAD AREA */}
-            <div ref={chatContainerRef} className="space-y-3 max-h-[300px] min-h-[220px] overflow-y-auto pr-2 custom-scrollbar flex flex-col">
-              {chatMessages.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs italic">
-                  No live messages yet. Type a message below to broadcast to Drivers.
-                </div>
-              ) : (
-                chatMessages.map((msg, index) => {
-                  const isManager = msg.sender?.toLowerCase().includes('manager') || msg.sender?.includes(user?.name || user?.fullName || 'Vikram');
-                  return (
-                    <div
-                      key={msg.id || index}
-                      className={`flex flex-col max-w-[80%] sm:max-w-[65%] ${isManager ? 'self-end items-end' : 'self-start items-start'}`}
-                    >
-                      <div
-                        className={`p-3.5 rounded-2xl text-xs space-y-1 shadow-md ${
-                          isManager
-                            ? 'bg-[#00897b] text-white rounded-tr-none'
-                            : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
-                        }`}
-                      >
-                        <span className={`text-[10px] font-bold block ${isManager ? 'text-teal-100' : 'text-slate-400'}`}>
-                          {msg.sender || (isManager ? `${user?.name || 'Vikram Singh'} (MANAGER)` : 'Driver')}
-                        </span>
-                        <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
-                          {msg.text}
-                        </p>
-                      </div>
-                      <span className="text-[9px] text-slate-500 mt-1 font-mono">{msg.time || '12:00 PM'}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* INPUT BAR */}
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="Type a message to Drivers..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  className="w-full py-3 px-4 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!inputMessage.trim()}
-                className="p-3 bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 text-white rounded-xl shadow transition cursor-pointer flex items-center justify-center"
-              >
-                <FiSend size={16} />
-              </button>
-            </form>
-          </div>
         </div>
       ) : null}
 
@@ -1560,13 +1492,13 @@ export default function TransportManager() {
             </div>
           </div>
 
-          {/* DEDICATED SECTION: DRIVER UPLOADED ALL PROOF RECORDS (PICS, PDF, DOC) */}
-          <div className="border rounded-sm p-5 space-y-3 font-mono mt-4" style={CARD}>
+          {/* DEDICATED SECTION: DRIVER UPLOADED ALL PROOF RECORDS (5-COLUMN DATA TABLE) */}
+          <div className="border rounded-sm p-5 space-y-4 font-mono mt-4" style={CARD}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
               <div className="flex items-center gap-2">
                 <FiFolder className="text-purple-400" size={16} />
                 <h3 className="text-xs uppercase font-bold tracking-wider text-purple-300" style={HEADING}>
-                  DRIVER UPLOADED ALL PROOF RECORDS ({compiledDriverProofs.length})
+                  DRIVER UPLOADED ALL PROOF RECORDS ({proofTableRows.length})
                 </h3>
               </div>
               
@@ -1577,107 +1509,169 @@ export default function TransportManager() {
                   onChange={(e) => setSelectedProofDate(e.target.value)}
                   className="p-1.5 border rounded text-[10px] bg-slate-950 text-purple-300 border-purple-800 outline-none font-mono cursor-pointer"
                 >
-                  <option value="ALL">All Dates ({compiledDriverProofs.length} Proofs)</option>
-                  {Array.from(new Set(compiledDriverProofs.map(r => r.date))).map(d => (
+                  <option value="ALL">All Dates ({proofTableRows.length} Proofs)</option>
+                  {Array.from(new Set(proofTableRows.map(r => r.dateStr))).map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[380px] overflow-y-auto pr-1 text-xs custom-scrollbar">
-              {compiledDriverProofs.filter(r => selectedProofDate === 'ALL' || r.date === selectedProofDate).length === 0 ? (
-                <div className="col-span-3 p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-sm">
-                  No driver proof documents uploaded for selected date filter ({selectedProofDate}).
-                </div>
-              ) : (
-                compiledDriverProofs.filter(r => selectedProofDate === 'ALL' || r.date === selectedProofDate).map((rec) => (
-                  <div key={rec.id} className="p-3.5 border border-purple-900/50 rounded-sm space-y-2 bg-purple-950/20 shadow-sm flex flex-col justify-between">
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-start">
-                        <span className="text-[9px] text-purple-300 font-bold uppercase flex items-center gap-1">
-                          {rec.fileType === 'PDF' ? '📄 PDF Document' : rec.fileType === 'DOC' ? '📝 DOC File' : '🖼️ Picture Proof'} &bull; {rec.proofType}
-                        </span>
-                        <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{rec.date}</span>
-                      </div>
-                      <strong className="text-[var(--crm-heading)] text-xs block font-bold">{rec.driverName} ({rec.vehicleNo})</strong>
-                      <span className="text-[10px] text-sky-300 font-mono block">Ref: {rec.orderCode}</span>
-                      <p className="text-[10px] text-[var(--crm-ink-soft)] leading-snug">{rec.notes}</p>
-                      
-                      {/* DISPLAY PIC, PDF, DOC ACCORDING TO FILE TYPE */}
-                      {rec.photoUrl ? (
-                        rec.fileType === 'PDF' ? (
-                          <div className="my-2 p-3 rounded border border-rose-800/60 bg-rose-950/40 text-center space-y-1.5">
-                            <div className="text-rose-300 text-xs font-bold font-mono flex items-center justify-center gap-1.5">
-                              <FiFileText size={15} /> PDF POD Copy Attached
-                            </div>
-                            <a
-                              href={rec.photoUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              download={`Driver_Proof_${rec.orderCode}.pdf`}
-                              className="inline-block px-3 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow transition cursor-pointer"
-                            >
-                              📥 Download / View PDF
-                            </a>
-                          </div>
-                        ) : rec.fileType === 'DOC' ? (
-                          <div className="my-2 p-3 rounded border border-blue-800/60 bg-blue-950/40 text-center space-y-1.5">
-                            <div className="text-blue-300 text-xs font-bold font-mono flex items-center justify-center gap-1.5">
-                              <FiFileText size={15} /> Word DOC File Attached
-                            </div>
-                            <a
-                              href={rec.photoUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              download={`Driver_Proof_${rec.orderCode}.doc`}
-                              className="inline-block px-3 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow transition cursor-pointer"
-                            >
-                              📥 Download Word DOC
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="my-2 overflow-hidden rounded border border-purple-800/60 bg-black/60 relative group">
-                            <img
-                              src={rec.photoUrl}
-                              alt="Driver Uploaded Proof Document"
-                              onClick={() => setSelectedPreviewImage(rec.photoUrl)}
-                              className="w-full h-32 object-cover hover:scale-105 transition duration-200 cursor-pointer"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPreviewImage(rec.photoUrl)}
-                              className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[9px] px-1.5 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-1"
-                            >
-                              <FiExternalLink size={10} /> Zoom View
-                            </button>
-                          </div>
-                        )
-                      ) : (
-                        <div className="my-2 p-2 rounded bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 font-mono text-center flex items-center justify-center gap-1.5">
-                          <span>📷 No Document Attached</span>
-                        </div>
-                      )}
-                    </div>
+            <div className="overflow-x-auto border border-purple-900/60 rounded-sm bg-slate-950/60 custom-scrollbar">
+              <table className="w-full text-left border-collapse font-mono text-xs">
+                <thead>
+                  <tr className="bg-purple-950/70 text-purple-200 border-b border-purple-800/80 text-[11px] uppercase tracking-wider font-bold">
+                    <th className="p-3 w-16 text-center border-r border-purple-900/60">S.NO</th>
+                    <th className="p-3 min-w-[220px] border-r border-purple-900/60">Leads</th>
+                    <th className="p-3 min-w-[200px] border-r border-purple-900/60 text-center">Attendance Proof</th>
+                    <th className="p-3 min-w-[220px] border-r border-purple-900/60 text-center">Payment Proof</th>
+                    <th className="p-3 min-w-[160px] text-right">Total Payment</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-purple-900/40 text-[11px]">
+                  {proofTableRows.filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate).length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="p-8 text-center text-[var(--crm-ink-faint)] text-xs">
+                        No driver proof documents uploaded for selected date filter ({selectedProofDate}).
+                      </td>
+                    </tr>
+                  ) : (
+                    proofTableRows
+                      .filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate)
+                      .map((row, idx) => (
+                        <tr key={row.id} className="hover:bg-purple-950/30 transition duration-150">
+                          {/* 1. S.NO */}
+                          <td className="p-3 text-center border-r border-purple-900/40 font-bold text-purple-300">
+                            {idx + 1}
+                          </td>
 
-                    <div className="pt-2 border-t border-purple-900/40 flex items-center justify-between">
-                      <span className="text-[9px] px-1.5 py-0.5 bg-purple-900/60 text-purple-200 border border-purple-700 font-bold rounded">
-                        {rec.status}
-                      </span>
-                      {rec.photoUrl && (
-                        <a
-                          href={rec.photoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[9px] text-sky-400 underline font-bold flex items-center gap-1 hover:text-purple-300 cursor-pointer"
-                        >
-                          <FiExternalLink size={10} /> Open Original Attachment
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                          {/* 2. LEADS */}
+                          <td className="p-3 border-r border-purple-900/40 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 bg-sky-950 border border-sky-800 text-sky-300 text-[10px] font-bold rounded">
+                                {row.code}
+                              </span>
+                              <span className="text-[10px] text-[var(--crm-ink-faint)]">{row.dateStr}</span>
+                            </div>
+                            <strong className="text-white text-xs block font-bold">{row.customer}</strong>
+                            <div className="text-[10px] text-purple-300/80 font-mono">
+                              📍 {row.route}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              🚚 {row.driverName} ({row.vehicleNo})
+                            </div>
+                          </td>
+
+                          {/* 3. Attendance Proof */}
+                          <td className="p-3 border-r border-purple-900/40 text-center align-middle">
+                            {row.attendeeUrl ? (
+                              row.attendeeFileType === 'PDF' ? (
+                                <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
+                                  <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                                    <FiFileText size={13} /> PDF Attendee Document
+                                  </div>
+                                  <a
+                                    href={row.attendeeUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-block px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[9px] font-bold rounded"
+                                  >
+                                    View PDF
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
+                                  <img
+                                    src={row.attendeeUrl}
+                                    alt="Attendance Proof"
+                                    onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
+                                    className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
+                                    className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
+                                  >
+                                    <FiExternalLink size={9} /> Zoom View
+                                  </button>
+                                </div>
+                              )
+                            ) : (
+                              <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
+                                📷 No Attendance Proof
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 4. PAYMENT PROOF */}
+                          <td className="p-3 border-r border-purple-900/40 text-center align-middle">
+                            {row.paymentUrl ? (
+                              row.paymentFileType === 'PDF' ? (
+                                <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
+                                  <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                                    <FiFileText size={13} /> PDF Payment POD Receipt
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewPdf(row.paymentUrl, `POD_${row.code}.pdf`)}
+                                    className="inline-block px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow cursor-pointer"
+                                  >
+                                    📥 Download / View PDF
+                                  </button>
+                                </div>
+                              ) : row.paymentFileType === 'DOC' ? (
+                                <div className="p-2 bg-blue-950/50 border border-blue-800/80 rounded space-y-1">
+                                  <div className="text-blue-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                                    <FiFileText size={13} /> Word DOC POD Receipt
+                                  </div>
+                                  <a
+                                    href={row.paymentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download={`POD_${row.code}.doc`}
+                                    className="inline-block px-2.5 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow"
+                                  >
+                                    📥 Download DOC
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
+                                  <img
+                                    src={row.paymentUrl}
+                                    alt="Payment Proof"
+                                    onClick={() => setSelectedPreviewImage(row.paymentUrl)}
+                                    className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedPreviewImage(row.paymentUrl)}
+                                    className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
+                                  >
+                                    <FiExternalLink size={9} /> Zoom View
+                                  </button>
+                                </div>
+                              )
+                            ) : (
+                              <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
+                                💳 No Payment Proof
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 5. TOTAL PAYMENT */}
+                          <td className="p-3 text-right align-middle space-y-1">
+                            <strong className="text-emerald-400 text-xs font-bold block font-mono">
+                              ₹{row.totalAmount.toLocaleString('en-IN')}
+                            </strong>
+                            <span className="inline-block text-[9px] px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold rounded">
+                              {row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1719,13 +1713,13 @@ export default function TransportManager() {
       ) : null}
 
       {/* ─────────────────────────────────────────────────────────────
-          TAB 5: DRIVER UPLOADED ALL PROOF VIEW
+          TAB 5: DRIVER UPLOADED ALL PROOF VIEW (5-COLUMN DATA TABLE)
          ───────────────────────────────────────────────────────────── */}
       {activeTab === 'DRIVER_PROOFS' ? (
         <div className="border rounded-sm p-6 space-y-4 font-mono" style={CARD}>
           <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
             <h2 className="text-sm font-bold text-purple-400 uppercase flex items-center gap-2">
-              <FiFolder /> Driver Uploaded All Proof Records ({compiledDriverProofs.length})
+              <FiFolder /> Driver Uploaded All Proof Records ({proofTableRows.length})
             </h2>
             <div className="flex items-center gap-2">
               <label className="text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold">Filter By Date:</label>
@@ -1734,107 +1728,169 @@ export default function TransportManager() {
                 onChange={(e) => setSelectedProofDate(e.target.value)}
                 className="p-1.5 border rounded text-[10px] bg-slate-950 text-purple-300 border-purple-800 outline-none font-mono cursor-pointer"
               >
-                <option value="ALL">All Dates ({compiledDriverProofs.length} Proofs)</option>
-                {Array.from(new Set(compiledDriverProofs.map(r => r.date))).map(d => (
+                <option value="ALL">All Dates ({proofTableRows.length} Proofs)</option>
+                {Array.from(new Set(proofTableRows.map(r => r.dateStr))).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {compiledDriverProofs.filter(r => selectedProofDate === 'ALL' || r.date === selectedProofDate).length === 0 ? (
-              <div className="col-span-3 p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-sm">
-                No driver proof documents uploaded for selected date filter ({selectedProofDate}).
-              </div>
-            ) : (
-              compiledDriverProofs.filter(r => selectedProofDate === 'ALL' || r.date === selectedProofDate).map((rec) => (
-                <div key={rec.id} className="p-4 border border-purple-900/50 rounded-sm space-y-3 bg-purple-950/20 shadow-md flex flex-col justify-between" style={CARD_SUNKEN}>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] text-purple-300 font-bold uppercase flex items-center gap-1">
-                        {rec.fileType === 'PDF' ? '📄 PDF Document' : rec.fileType === 'DOC' ? '📝 DOC File' : '🖼️ Picture Proof'} &bull; {rec.proofType}
-                      </span>
-                      <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{rec.date}</span>
-                    </div>
-                    <strong className="text-[var(--crm-heading)] text-xs block font-bold">{rec.driverName} ({rec.vehicleNo})</strong>
-                    <span className="text-[10px] text-sky-300 font-mono block">Ref: {rec.orderCode}</span>
-                    <p className="text-[10px] text-[var(--crm-ink-soft)] leading-snug">{rec.notes}</p>
-                    
-                    {/* DISPLAY PIC, PDF, DOC ACCORDING TO FILE TYPE */}
-                    {rec.photoUrl ? (
-                      rec.fileType === 'PDF' ? (
-                        <div className="my-2 p-3 rounded border border-rose-800/60 bg-rose-950/40 text-center space-y-1.5">
-                          <div className="text-rose-300 text-xs font-bold font-mono flex items-center justify-center gap-1.5">
-                            <FiFileText size={15} /> PDF POD Copy Attached
-                          </div>
-                          <a
-                            href={rec.photoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={`Driver_Proof_${rec.orderCode}.pdf`}
-                            className="inline-block px-3 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow transition cursor-pointer"
-                          >
-                            📥 Download / View PDF
-                          </a>
-                        </div>
-                      ) : rec.fileType === 'DOC' ? (
-                        <div className="my-2 p-3 rounded border border-blue-800/60 bg-blue-950/40 text-center space-y-1.5">
-                          <div className="text-blue-300 text-xs font-bold font-mono flex items-center justify-center gap-1.5">
-                            <FiFileText size={15} /> Word DOC File Attached
-                          </div>
-                          <a
-                            href={rec.photoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={`Driver_Proof_${rec.orderCode}.doc`}
-                            className="inline-block px-3 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow transition cursor-pointer"
-                          >
-                            📥 Download Word DOC
-                          </a>
-                        </div>
-                      ) : (
-                        <div className="my-2 overflow-hidden rounded border border-purple-800/60 bg-black/60 relative group">
-                          <img
-                            src={rec.photoUrl}
-                            alt="Driver Uploaded Proof Document"
-                            onClick={() => setSelectedPreviewImage(rec.photoUrl)}
-                            className="w-full h-36 object-cover hover:scale-105 transition duration-200 cursor-pointer"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPreviewImage(rec.photoUrl)}
-                            className="absolute bottom-1.5 right-1.5 bg-black/80 text-purple-300 text-[10px] px-2 py-1 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-1"
-                          >
-                            <FiExternalLink size={11} /> Zoom View
-                          </button>
-                        </div>
-                      )
-                    ) : (
-                      <div className="my-2 p-2 rounded bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 font-mono text-center flex items-center justify-center gap-1.5">
-                        <span>📷 No Document Attached</span>
-                      </div>
-                    )}
-                  </div>
+          <div className="overflow-x-auto border border-purple-900/60 rounded-sm bg-slate-950/60 custom-scrollbar">
+            <table className="w-full text-left border-collapse font-mono text-xs">
+              <thead>
+                <tr className="bg-purple-950/70 text-purple-200 border-b border-purple-800/80 text-[11px] uppercase tracking-wider font-bold">
+                  <th className="p-3 w-16 text-center border-r border-purple-900/60">S.NO</th>
+                  <th className="p-3 min-w-[220px] border-r border-purple-900/60">Leads</th>
+                  <th className="p-3 min-w-[200px] border-r border-purple-900/60 text-center">Attendance Proof</th>
+                  <th className="p-3 min-w-[220px] border-r border-purple-900/60 text-center">Payment Proof</th>
+                  <th className="p-3 min-w-[160px] text-right">Total Payment</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-purple-900/40 text-[11px]">
+                {proofTableRows.filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate).length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="p-8 text-center text-[var(--crm-ink-faint)] text-xs">
+                      No driver proof documents uploaded for selected date filter ({selectedProofDate}).
+                    </td>
+                  </tr>
+                ) : (
+                  proofTableRows
+                    .filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate)
+                    .map((row, idx) => (
+                      <tr key={row.id} className="hover:bg-purple-950/30 transition duration-150">
+                        {/* 1. S.NO */}
+                        <td className="p-3 text-center border-r border-purple-900/40 font-bold text-purple-300">
+                          {idx + 1}
+                        </td>
 
-                  <div className="pt-2 border-t border-purple-900/40 flex items-center justify-between">
-                    <span className="text-[9px] px-1.5 py-0.5 bg-purple-900/60 text-purple-200 border border-purple-700 font-bold rounded">
-                      {rec.status}
-                    </span>
-                    {rec.photoUrl && (
-                      <a
-                        href={rec.photoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[9px] text-sky-400 underline font-bold flex items-center gap-1 hover:text-purple-300 cursor-pointer"
-                      >
-                        <FiExternalLink size={10} /> Open Original Attachment
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+                        {/* 2. LEADS */}
+                        <td className="p-3 border-r border-purple-900/40 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 bg-sky-950 border border-sky-800 text-sky-300 text-[10px] font-bold rounded">
+                              {row.code}
+                            </span>
+                            <span className="text-[10px] text-[var(--crm-ink-faint)]">{row.dateStr}</span>
+                          </div>
+                          <strong className="text-white text-xs block font-bold">{row.customer}</strong>
+                          <div className="text-[10px] text-purple-300/80 font-mono">
+                            📍 {row.route}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            🚚 {row.driverName} ({row.vehicleNo})
+                          </div>
+                        </td>
+
+                        {/* 3. Attendance Proof */}
+                        <td className="p-3 border-r border-purple-900/40 text-center align-middle">
+                          {row.attendeeUrl ? (
+                            row.attendeeFileType === 'PDF' ? (
+                              <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
+                                <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                                  <FiFileText size={13} /> PDF Attendee Document
+                                </div>
+                                <a
+                                  href={row.attendeeUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-block px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[9px] font-bold rounded"
+                                >
+                                  View PDF
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
+                                <img
+                                  src={row.attendeeUrl}
+                                  alt="Attendance Proof"
+                                  onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
+                                  className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
+                                  className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
+                                >
+                                  <FiExternalLink size={9} /> Zoom View
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
+                              📷 No Attendance Proof
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 4. PAYMENT PROOF */}
+                        <td className="p-3 border-r border-purple-900/40 text-center align-middle">
+                          {row.paymentUrl ? (
+                            row.paymentFileType === 'PDF' ? (
+                              <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
+                                <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                                  <FiFileText size={13} /> PDF Payment POD Receipt
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewPdf(row.paymentUrl, `POD_${row.code}.pdf`)}
+                                  className="inline-block px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow cursor-pointer"
+                                >
+                                  📥 Download / View PDF
+                                </button>
+                              </div>
+                            ) : row.paymentFileType === 'DOC' ? (
+                              <div className="p-2 bg-blue-950/50 border border-blue-800/80 rounded space-y-1">
+                                <div className="text-blue-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                                  <FiFileText size={13} /> Word DOC POD Receipt
+                                </div>
+                                <a
+                                  href={row.paymentUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download={`POD_${row.code}.doc`}
+                                  className="inline-block px-2.5 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow"
+                                >
+                                  📥 Download DOC
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
+                                <img
+                                  src={row.paymentUrl}
+                                  alt="Payment Proof"
+                                  onClick={() => setSelectedPreviewImage(row.paymentUrl)}
+                                  className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPreviewImage(row.paymentUrl)}
+                                  className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
+                                >
+                                  <FiExternalLink size={9} /> Zoom View
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
+                              💳 No Payment Proof
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 5. TOTAL PAYMENT */}
+                        <td className="p-3 text-right align-middle space-y-1">
+                          <strong className="text-emerald-400 text-xs font-bold block font-mono">
+                            ₹{row.totalAmount.toLocaleString('en-IN')}
+                          </strong>
+                          <span className="inline-block text-[9px] px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold rounded">
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : null}

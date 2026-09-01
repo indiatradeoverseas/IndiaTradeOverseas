@@ -68,7 +68,14 @@ export const getDispatchQueue = async () => {
           salesOwner: execName,
           orderConfirmedBy: execName,
           assignedByManager: mgrName,
-          phone: l.phone || l.phoneMasked || '—'
+          phone: l.phone || l.phoneMasked || '—',
+          podFileUrl: l.podFileUrl || l.podUrl || l.proofUrl || l.paymentProofUrl,
+          paymentProofUrl: l.paymentProofUrl || l.proofUrl,
+          driverProofUrl: l.driverProofUrl,
+          photoUrl: l.photoUrl || l.proofUrl,
+          paymentProof: l.paymentProof,
+          deliveryImages: l.deliveryImages,
+          departureImages: l.departureImages
         };
       });
       return { success: true, data: { orders: dispatchLeads } };

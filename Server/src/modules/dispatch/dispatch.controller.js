@@ -35,7 +35,7 @@ exports.getDispatchById = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const result = await dispatchService.updateStatus(req.params.id, status);
+    const result = await dispatchService.updateDispatchStatus(req.params.id, status, req.body);
     return ok(res, result, 'Dispatch status updated successfully', 200, req);
   } catch (error) {
     return fail(res, 400, 'DISPATCH_ERROR', error.message, [], req);
