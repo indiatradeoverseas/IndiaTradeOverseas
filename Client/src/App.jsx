@@ -897,6 +897,7 @@ function AppLayout() {
           <Route path="/prakriti" element={<Prakriti />} />
           <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
+
           <Route
             path="/ito-ads"
             element={

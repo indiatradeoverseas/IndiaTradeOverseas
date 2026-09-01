@@ -6,6 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
+import FluidCursor from '../../components/Layout/FluidCursor';
 import { 
   FiCheck, FiTarget, FiBarChart2, FiUsers, FiZap, 
   FiShield, FiGlobe, FiMessageSquare, FiSpeaker, FiChevronRight,
@@ -665,6 +666,7 @@ export default function ITOAds() {
 
   return (
     <>
+    <FluidCursor />
       <style>{`
         @keyframes orb-pulse {
           0%, 100% { transform: scale(1); opacity: 0.18; }
