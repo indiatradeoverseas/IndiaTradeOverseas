@@ -510,46 +510,16 @@ export default function Home() {
                       <img
                         src={item.image}
                         alt={item.label}
-                        className="
-                          absolute
-                          inset-0
-                          w-full
-                          h-full
-                          object-cover
-                          transition-transform
-                          duration-300
-                          group-hover:scale-105
-                        "
-                      />
-
-                      <div
-                        className="
-                          absolute
-                          inset-0
-                          bg-gradient-to-t
-                          from-[#0E1116]/70
-                          via-[#0E1116]/25
-                          to-transparent
-                        "
-                      />
-
-                      <div
-                        className="
-                          relative
-                          h-full
-                          flex
-                          flex-col
-                          justify-between
-                          p-3.5
-                          sm:p-5
-                        "
-                      >
-
                         className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${item.imageClass || ''}`}
                       />
-                      <div className={`absolute inset-0 bg-gradient-to-t ${item.overlayClass || 'from-[#0E1116]/55 via-[#0E1116]/25 to-transparent'}`} />
 
-                      <div className={`relative h-full flex flex-col justify-between p-3.5 sm:p-5 ${item.textShadow || ''}`}>
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-t ${item.overlayClass || 'from-[#0E1116]/70 via-[#0E1116]/25 to-transparent'}`}
+                      />
+
+                      <div
+                        className={`relative h-full flex flex-col justify-between p-3.5 sm:p-5 ${item.textShadow || ''}`}
+                      >
                         <div className="flex items-start justify-between">
 
                           <div
