@@ -37,12 +37,12 @@ const dispatchSchema = new mongoose.Schema({
   gateOutTime: { type: Date },
 
   // ─── DPR COMPLIANCE: VEHICLE & DRIVER MASTER CHECKS ───────────────
-  vehicleNumber: { type: String, default: 'BR-01-TR-4521' },
-  pucExpiry: { type: Date, default: () => new Date(Date.now() + 30 * 86400000) },
-  insuranceExpiry: { type: Date, default: () => new Date(Date.now() + 30 * 86400000) },
-  driverName: { type: String, default: 'Ramesh Driver' },
-  driverLicenseNumber: { type: String, default: 'DL-ACTIVE' },
-  driverPhone: { type: String, default: '9876543210' },
+  vehicleNumber: { type: String, default: '' },
+  pucExpiry: { type: Date },
+  insuranceExpiry: { type: Date },
+  driverName: { type: String, default: '' },
+  driverLicenseNumber: { type: String, default: '' },
+  driverPhone: { type: String, default: '' },
 
   // ─── DPR COMPLIANCE: COMMERCIAL FREIGHT ACCOUNTING ───────────────
   fuelSurcharge: { type: Number, default: 0 },

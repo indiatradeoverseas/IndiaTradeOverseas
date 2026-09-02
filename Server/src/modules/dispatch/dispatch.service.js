@@ -697,7 +697,7 @@ class DispatchService {
         dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
         orderNumber: payload.leadCode || `ORD-${Date.now()}`,
         customerName: payload.leadCustomer || 'Lead Cargo Customer',
-        vehicleNumber: payload.vehicleNumber || payload.vehicleNo || 'BR-01-TR-4521',
+        vehicleNumber: payload.vehicleNumber || payload.vehicleNo || '',
         driverName: payload.driverName || user?.fullName || user?.name || 'Driver'
       });
     }

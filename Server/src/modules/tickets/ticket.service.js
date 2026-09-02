@@ -8,7 +8,17 @@ const CATEGORY_ROLE_MAP = {
   SALES: ['SALES', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'ADMIN', 'FOUNDER']
 };
 
-const MANAGER_TIER_ROLES = ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'MANAGER', 'HR', 'HR_EXECUTIVE', 'HR_MANAGER', 'IT', 'FINANCE', 'ACCOUNTS', 'SOFTWARE_ENGINEER', 'SALES_MANAGER', 'SALES_EXECUTIVE'];
+const HR_AND_FOUNDER_ROLES = [
+  'ADMIN', 
+  'FOUNDER', 
+  'CO_FOUNDER', 
+  'SUPER_ADMIN', 
+  'HR', 
+  'HR_MANAGER', 
+  'HR_EXECUTIVE', 
+  'HRMANAGE', 
+  'HREXECUTIVE'
+];
 
 function canManageCategory(user, category) {
   if (!user) return false;
@@ -41,7 +51,7 @@ async function listTickets(user, query = {}) {
   if (query.category) filter.category = query.category;
 
   const role = (user?.role || '').toUpperCase();
-  if (!MANAGER_TIER_ROLES.includes(role)) {
+  if (!HR_AND_FOUNDER_ROLES.includes(role)) {
     filter.raisedBy = user._id;
   }
 

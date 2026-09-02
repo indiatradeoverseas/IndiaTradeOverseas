@@ -7,8 +7,7 @@ const driverWorkUpdateSchema = new mongoose.Schema(
     vehicleNo: { type: String, default: '' },
     updateType: { 
       type: String, 
-      default: 'In Transit',
-      enum: ['In Transit', 'Loading', 'Unloading', 'Empty Vehicle', 'Waiting', 'Breakdown', 'Fuel Stop', 'Toll Plaza', 'Rest Stop', 'ORDER DELIVERED ✓', 'Distance Fare Logged', 'Other']
+      default: 'In Transit'
     },
     notes: { type: String, required: true },
     location: { type: String, default: '' },

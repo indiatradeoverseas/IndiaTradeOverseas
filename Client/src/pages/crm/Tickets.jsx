@@ -31,7 +31,19 @@ export default function Tickets() {
   const [formData, setFormData] = useState({ subject: '', description: '', category: 'IT', priority: 'MEDIUM' });
   const [submitting, setSubmitting] = useState(false);
 
-  const isManagerTier = ['ADMIN', 'MANAGER', 'HR', 'IT', 'FINANCE', 'ACCOUNTS', 'SOFTWARE_ENGINEER'].includes(user?.role);
+  const userRole = (user?.role || '').toUpperCase();
+  const isManagerTier = ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE', 'HRMANAGE', 'HREXECUTIVE'].includes(userRole);
+
+  const visibleTickets = isManagerTier 
+    ? tickets 
+    : tickets.filter(t => {
+        const creatorId = String(t.raisedBy?._id || t.raisedBy || '');
+        const userId = String(user?._id || user?.employeeId || '');
+        const creatorName = (t.raisedByName || t.raisedBy?.fullName || t.raisedBy?.name || '').toLowerCase().trim();
+        const myName = (user?.fullName || user?.name || '').toLowerCase().trim();
+
+        return (creatorId && userId && creatorId === userId) || (creatorName && myName && creatorName === myName);
+      });
 
   useEffect(() => {
     fetchTickets();
@@ -151,7 +163,6 @@ export default function Tickets() {
 
       <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div>
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MODULE 10 // INTERNAL TICKETING</span>
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Support Tickets</h1>
         </div>
         <button
@@ -202,10 +213,10 @@ export default function Tickets() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
-                {tickets.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No tickets found.</td></tr>
+                {visibleTickets.length === 0 ? (
+                  <tr><td colSpan="6" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">{isManagerTier ? 'No tickets found in the system.' : 'No tickets raised by you yet.'}</td></tr>
                 ) : (
-                  tickets.map((ticket) => (
+                  visibleTickets.map((ticket) => (
                     <React.Fragment key={ticket._id}>
                       <tr className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors cursor-pointer" onClick={() => handleExpand(ticket._id)}>
                         <td className="py-3 px-5">

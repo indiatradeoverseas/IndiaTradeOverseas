@@ -193,15 +193,13 @@ export function getCrmMainNavItems(user) {
     ];
   }
 
-  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Support Tickets, Payment & Receipts, Quotation Rates, Driver Uploaded All Proof & My Profile
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Support Tickets, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
       { to: '/crm/transport/manager?tab=DASHBOARD', label: 'Transport Manager Dashboard', icon: FiTruck },
       { to: '/crm/transport/manager?tab=ASSIGN_LEADS', label: 'Lead & Trip Assignment', icon: FiCheckSquare },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
-      { to: '/crm/transport/manager?tab=PAYMENTS', label: 'Payment & Receipts', icon: FiCreditCard },
-      { to: '/crm/transport/manager?tab=QUOTATIONS', label: 'Quotation Rates', icon: FiFileText },
       { to: '/crm/transport/manager?tab=DRIVER_PROOFS', label: 'Driver Uploaded All Proof', icon: FiFolder }
     ];
   }

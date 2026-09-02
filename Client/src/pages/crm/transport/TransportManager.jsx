@@ -156,15 +156,21 @@ export default function TransportManager() {
 
     const handleIncomingChat = (msg) => {
       if (!msg || (!msg.text && !msg.message)) return;
+      const cleanText = (msg.text || msg.message || '').trim();
       const formatted = {
-        id: msg.id || msg._id || Date.now(),
+        id: msg.id || msg._id || `mgr-msg-${cleanText}-${msg.time || ''}`,
         sender: msg.sender || msg.senderName || 'Driver',
-        text: msg.text || msg.message || '',
+        text: cleanText,
+        timestamp: msg.timestamp || Date.now(),
         time: msg.time || (msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
       };
 
       setChatMessages(prev => {
-        if (prev.some(m => m.id === formatted.id || (m.text === formatted.text && m.sender === formatted.sender))) return prev;
+        const isDup = prev.some(m => 
+          m.id === formatted.id || 
+          ((m.text || '').trim() === cleanText && Math.abs((m.timestamp || Date.now()) - formatted.timestamp) < 8000)
+        );
+        if (isDup) return prev;
         return [...prev, formatted];
       });
     };
@@ -667,8 +673,8 @@ export default function TransportManager() {
 
     // 1. Process all Trips & Queue Items with uploaded POD or Proof documents from MongoDB Database
     [...trips, ...dispatchQueue].forEach((t, idx) => {
-      const driver = t.driverName || t.assignedDriverName || 'Ramesh Driver';
-      const vehicle = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'BR-01-TR-4521';
+      const driver = t.driverName || t.assignedDriverName || 'Driver';
+      const vehicle = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'Unassigned';
       const code = t.dispatchNumber || t.orderNumber || t.leadCode || t._id || `LD-${1000 + idx}`;
       const dateStr = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-IN') : todayStr;
       const ts = t.updatedAt ? new Date(t.updatedAt).getTime() : Date.now() - (idx * 3600000);
@@ -713,8 +719,8 @@ export default function TransportManager() {
       if (url && isValidMediaUrl(url)) {
         records.push({
           id: `FUEL-${fl.id || idx}`,
-          driverName: fl.driver || 'Ramesh Driver',
-          vehicleNo: fl.vehicle || 'BR-01-TR-4521',
+          driverName: fl.driver || 'Driver',
+          vehicleNo: fl.vehicle || 'Unassigned',
           proofType: 'Fuel & Maintenance Slip',
           fileType: detectFileType(url),
           orderCode: `Diesel ₹${fl.fuelCost || 4500}`,
@@ -735,8 +741,8 @@ export default function TransportManager() {
       if (url && isValidMediaUrl(url)) {
         records.push({
           id: `WORKUP-${up.id || idx}`,
-          driverName: up.driver || 'Ramesh Driver',
-          vehicleNo: up.vehicle || 'BR-01-TR-4521',
+          driverName: up.driver || 'Driver',
+          vehicleNo: up.vehicle || 'Unassigned',
           proofType: `Driver Status (${up.stage || 'In Transit'})`,
           fileType: detectFileType(url),
           orderCode: `Location: ${up.location || 'Expressway Toll Plaza'}`,
@@ -757,8 +763,8 @@ export default function TransportManager() {
       if (url && isValidMediaUrl(url)) {
         records.push({
           id: `PROOF-STATE-${p.id || idx}`,
-          driverName: p.driverName || p.driver || 'Ramesh Driver',
-          vehicleNo: p.vehicleNo || p.vehicle || 'BR-01-TR-4521',
+          driverName: p.driverName || p.driver || 'Driver',
+          vehicleNo: p.vehicleNo || p.vehicle || 'Unassigned',
           proofType: p.proofType || 'Driver Delivery Proof',
           fileType: detectFileType(url),
           orderCode: p.orderCode || p.orderNumber || `PRO-${idx + 1}`,
@@ -1096,8 +1102,8 @@ export default function TransportManager() {
                 </span>
               </div>
 
-              <div className="h-[210px] w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[210px] w-full pt-2 min-w-0 min-h-[180px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
                   <BarChart
                     data={[
                       { name: 'Total Leads', count: metrics.totalLeads, fill: '#f59e0b' },
@@ -1139,8 +1145,8 @@ export default function TransportManager() {
                 <span className="text-[9px] text-teal-400 font-bold">₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
               </div>
 
-              <div className="h-[170px] w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[170px] w-full flex items-center justify-center min-w-0 min-h-[160px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={160}>
                   <PieChart>
                     <Pie
                       data={[
@@ -1571,278 +1577,8 @@ export default function TransportManager() {
       ) : null}
 
       {/* ─────────────────────────────────────────────────────────────
-          TAB 3: PAYMENT & RECEIPTS VIEW
+          TAB 5: DRIVER UPLOADED ALL PROOF VIEW (5-COLUMN DATA TABLE)
          ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'PAYMENTS' ? (
-        <div className="space-y-4 font-mono">
-          <div className="border rounded-sm p-6 space-y-4 font-mono" style={CARD}>
-            <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-              <h2 className="text-sm font-bold text-emerald-400 uppercase flex items-center gap-2">
-                <FiCreditCard /> Delivered Freight Collections & Payment Verification Log
-              </h2>
-              <span className="text-xs font-bold text-[var(--crm-heading)]">Total Freight Revenue: <strong className="text-emerald-400">₹{metrics.totalRevenue.toLocaleString('en-IN')}</strong></span>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {(() => {
-                const deliveredOnlyTrips = [...trips, ...dispatchQueue].filter(t => {
-                  const st = (t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase();
-                  return st.includes('DELIVER') || st.includes('COMPLET') || st.includes('WON');
-                });
-
-                if (deliveredOnlyTrips.length === 0) {
-                  return (
-                    <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-sm">
-                      No delivered freight trips recorded yet. Once leads are delivered & POD verified, payment collection logs will appear here.
-                    </div>
-                  );
-                }
-
-                return deliveredOnlyTrips.map(t => (
-                  <div key={t._id || t.orderNumber || t.dispatchNumber} className="p-3.5 border rounded-sm flex items-center justify-between font-mono" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-[var(--crm-heading)] text-xs font-bold">{t.dispatchNumber || t.orderNumber || t._id} &bull; {t.customerName || 'Client'}</strong>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-emerald-950/80 text-emerald-300 border border-emerald-700 font-bold rounded">
-                          DEAL WON (DELIVERED) ✓
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-[var(--crm-ink-faint)] block">
-                        Driver: <strong className="text-emerald-300">{t.driverName || t.assignedDriverName || 'Ramesh Driver'}</strong> ({t.vehicleNo || t.vehicleNumber || 'BR-01-TR-4521'}) &bull; Route: {t.origin || 'Delhi'} &rarr; {t.destination || 'Patna'}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[9px] text-[var(--crm-ink-faint)] uppercase block font-bold">Freight Revenue</span>
-                      <strong className="text-emerald-400 text-sm block font-bold">₹{Number(t.totalFreightAmount || t.freightAmount || 18000).toLocaleString('en-IN')}</strong>
-                      <span className="px-2 py-0.5 border text-[9px] font-bold uppercase text-emerald-400 border-emerald-900 bg-emerald-950/60 rounded-sm">
-                        Payment Verified ✓
-                      </span>
-                    </div>
-                  </div>
-                ));
-              })()}
-            </div>
-          </div>
-
-          {/* DEDICATED SECTION: DRIVER UPLOADED ALL PROOF RECORDS (5-COLUMN DATA TABLE) */}
-          <div className="border rounded-sm p-5 space-y-4 font-mono mt-4" style={CARD}>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-              <div className="flex items-center gap-2">
-                <FiFolder className="text-purple-400" size={16} />
-                <h3 className="text-xs uppercase font-bold tracking-wider text-purple-300" style={HEADING}>
-                  DRIVER UPLOADED ALL PROOF RECORDS ({proofTableRows.length})
-                </h3>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <label className="text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold">Filter By Date:</label>
-                <select
-                  value={selectedProofDate}
-                  onChange={(e) => setSelectedProofDate(e.target.value)}
-                  className="p-1.5 border rounded text-[10px] bg-slate-950 text-purple-300 border-purple-800 outline-none font-mono cursor-pointer"
-                >
-                  <option value="ALL">All Dates ({proofTableRows.length} Proofs)</option>
-                  {Array.from(new Set(proofTableRows.map(r => r.dateStr))).map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto border border-purple-900/60 rounded-sm bg-slate-950/60 custom-scrollbar">
-              <table className="w-full text-left border-collapse font-mono text-xs">
-                <thead>
-                  <tr className="bg-purple-950/70 text-purple-200 border-b border-purple-800/80 text-[11px] uppercase tracking-wider font-bold">
-                    <th className="p-3 w-16 text-center border-r border-purple-900/60">S.NO</th>
-                    <th className="p-3 min-w-[220px] border-r border-purple-900/60">Leads</th>
-                    <th className="p-3 min-w-[200px] border-r border-purple-900/60 text-center">Attendance Proof</th>
-                    <th className="p-3 min-w-[220px] border-r border-purple-900/60 text-center">Payment Proof</th>
-                    <th className="p-3 min-w-[160px] text-right">Total Payment</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-purple-900/40 text-[11px]">
-                  {proofTableRows.filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate).length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="p-8 text-center text-[var(--crm-ink-faint)] text-xs">
-                        No driver proof documents uploaded for selected date filter ({selectedProofDate}).
-                      </td>
-                    </tr>
-                  ) : (
-                    proofTableRows
-                      .filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate)
-                      .map((row, idx) => (
-                        <tr key={row.id} className="hover:bg-purple-950/30 transition duration-150">
-                          {/* 1. S.NO */}
-                          <td className="p-3 text-center border-r border-purple-900/40 font-bold text-purple-300">
-                            {idx + 1}
-                          </td>
-
-                          {/* 2. LEADS */}
-                          <td className="p-3 border-r border-purple-900/40 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="px-1.5 py-0.5 bg-sky-950 border border-sky-800 text-sky-300 text-[10px] font-bold rounded">
-                                {row.code}
-                              </span>
-                              <span className="text-[10px] text-[var(--crm-ink-faint)]">{row.dateStr}</span>
-                            </div>
-                            <strong className="text-white text-xs block font-bold">{row.customer}</strong>
-                            <div className="text-[10px] text-purple-300/80 font-mono">
-                              📍 {row.route}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              🚚 {row.driverName} ({row.vehicleNo})
-                            </div>
-                          </td>
-
-                          {/* 3. Attendance Proof */}
-                          <td className="p-3 border-r border-purple-900/40 text-center align-middle">
-                            {row.attendeeUrl ? (
-                              row.attendeeFileType === 'PDF' ? (
-                                <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
-                                  <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
-                                    <FiFileText size={13} /> PDF Attendee Document
-                                  </div>
-                                  <a
-                                    href={row.attendeeUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-block px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[9px] font-bold rounded"
-                                  >
-                                    View PDF
-                                  </a>
-                                </div>
-                              ) : (
-                                <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
-                                  <img
-                                    src={row.attendeeUrl}
-                                    alt="Attendance Proof"
-                                    onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
-                                    className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
-                                    className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
-                                  >
-                                    <FiExternalLink size={9} /> Zoom View
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
-                                📷 No Attendance Proof
-                              </div>
-                            )}
-                          </td>
-
-                          {/* 4. PAYMENT PROOF */}
-                          <td className="p-3 border-r border-purple-900/40 text-center align-middle">
-                            {row.paymentUrl ? (
-                              row.paymentFileType === 'PDF' ? (
-                                <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
-                                  <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
-                                    <FiFileText size={13} /> PDF Payment POD Receipt
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleViewPdf(row.paymentUrl, `POD_${row.code}.pdf`)}
-                                    className="inline-block px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow cursor-pointer"
-                                  >
-                                    📥 Download / View PDF
-                                  </button>
-                                </div>
-                              ) : row.paymentFileType === 'DOC' ? (
-                                <div className="p-2 bg-blue-950/50 border border-blue-800/80 rounded space-y-1">
-                                  <div className="text-blue-300 text-[10px] font-bold flex items-center justify-center gap-1">
-                                    <FiFileText size={13} /> Word DOC POD Receipt
-                                  </div>
-                                  <a
-                                    href={row.paymentUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    download={`POD_${row.code}.doc`}
-                                    className="inline-block px-2.5 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow"
-                                  >
-                                    📥 Download DOC
-                                  </a>
-                                </div>
-                              ) : (
-                                <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
-                                  <img
-                                    src={row.paymentUrl}
-                                    alt="Payment Proof"
-                                    onClick={() => setSelectedPreviewImage(row.paymentUrl)}
-                                    className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedPreviewImage(row.paymentUrl)}
-                                    className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
-                                  >
-                                    <FiExternalLink size={9} /> Zoom View
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
-                                💳 No Payment Proof
-                              </div>
-                            )}
-                          </td>
-
-                          {/* 5. TOTAL PAYMENT */}
-                          <td className="p-3 text-right align-middle space-y-1">
-                            <strong className="text-emerald-400 text-xs font-bold block font-mono">
-                              ₹{row.totalAmount.toLocaleString('en-IN')}
-                            </strong>
-                            <span className="inline-block text-[9px] px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold rounded">
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ─────────────────────────────────────────────────────────────
-          TAB 4: QUOTATIONS VIEW
-         ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'QUOTATIONS' ? (
-        <div className="border rounded-sm p-6 space-y-4 font-mono" style={CARD}>
-          <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-            <h2 className="text-sm font-bold text-sky-400 uppercase flex items-center gap-2">
-              <FiFileText /> Client Rate Quotation Engine
-            </h2>
-            <button onClick={() => setShowQuotationModal(true)} className="px-3 py-1.5 border text-xs font-bold uppercase rounded-sm cursor-pointer" style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)' }}>
-              + Send Rate Quote
-            </button>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            {quotationsList.length === 0 ? (
-              <div className="p-6 text-center text-[var(--crm-ink-faint)] text-xs">No client rate quotes generated yet. Click "+ Send Rate Quote" to generate one.</div>
-            ) : (
-              quotationsList.map(q => (
-                <div key={q.id} className="p-3.5 border rounded-sm flex items-center justify-between" style={CARD_SUNKEN}>
-                  <div>
-                    <strong className="text-[var(--crm-accent)] text-xs block">{q.id} &bull; {q.clientName}</strong>
-                    <span className="text-[var(--crm-ink-soft)] text-[11px]">Route: {q.route} &bull; Rate: ₹{q.ratePerTon}/Ton</span>
-                  </div>
-                  <div className="text-right">
-                    <strong className="text-emerald-400 text-sm block">₹{q.totalFreight.toLocaleString('en-IN')}</strong>
-                    <span className="px-2 py-0.5 border text-[9px] font-bold uppercase text-sky-400 border-sky-900 bg-sky-950/40 rounded-sm">{q.status}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      ) : null}
 
       {/* ─────────────────────────────────────────────────────────────
           TAB 5: DRIVER UPLOADED ALL PROOF VIEW (5-COLUMN DATA TABLE)
@@ -2047,10 +1783,10 @@ export default function TransportManager() {
             <div className="flex items-center gap-2 bg-[var(--crm-bg-sunken)] p-1 border rounded-sm shrink-0" style={{ borderColor: 'var(--crm-line)' }}>
               <button
                 onClick={() => setAssignSubTab('PENDING')}
-                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${
                   assignSubTab === 'PENDING'
-                    ? 'bg-amber-500 text-black shadow font-bold'
-                    : 'text-[var(--crm-ink-soft)] hover:text-amber-300'
+                    ? 'bg-emerald-700 text-white border border-emerald-500/60 shadow font-bold'
+                    : 'text-[var(--crm-ink-soft)] hover:text-emerald-300'
                 }`}
               >
                 📌 Active & Pending Assignments ({
@@ -2060,9 +1796,9 @@ export default function TransportManager() {
 
               <button
                 onClick={() => setAssignSubTab('COMPLETED')}
-                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${
                   assignSubTab === 'COMPLETED'
-                    ? 'bg-emerald-500 text-black shadow font-bold'
+                    ? 'bg-emerald-600 text-white border border-emerald-400/60 shadow font-bold'
                     : 'text-[var(--crm-ink-soft)] hover:text-emerald-300'
                 }`}
               >
@@ -2077,7 +1813,7 @@ export default function TransportManager() {
           {assignSubTab === 'PENDING' ? (
             <div className="space-y-4">
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">
+                <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">
                   Confirmed Orders Ready for Transport & Driver Assignment
                 </span>
               </div>
@@ -2101,18 +1837,18 @@ export default function TransportManager() {
                           : (item.salesOwner || item.driverName || 'Unassigned');
 
                         return (
-                          <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm hover:border-amber-500/50 transition-all flex flex-col justify-between" style={CARD}>
+                          <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm hover:border-emerald-500/50 transition-all flex flex-col justify-between" style={CARD}>
                             <div className="space-y-2">
                               <div className="flex justify-between items-start gap-2 border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
                                 <div>
-                                  <span className="text-[9px] text-amber-400 font-bold uppercase tracking-wider block">
+                                  <span className="text-[9px] text-teal-300 font-bold uppercase tracking-wider block font-mono">
                                     {item.orderNumber || item.dispatchNumber || `ORD-${idx + 1}`}
                                   </span>
                                   <h3 className="text-xs font-bold text-[var(--crm-heading)] truncate max-w-[180px]">
                                     {item.customerName || 'Confirmed Client'}
                                   </h3>
                                 </div>
-                                <span className="text-[9px] px-2 py-0.5 bg-amber-950 text-amber-300 border border-amber-800 rounded font-bold uppercase shrink-0">
+                                <span className="text-[9px] px-2 py-0.5 bg-teal-950/80 text-teal-300 border border-teal-800/80 rounded font-bold uppercase shrink-0">
                                   {item.stage || item.status || 'ORDER CONFIRMED'}
                                 </span>
                               </div>
@@ -2138,7 +1874,7 @@ export default function TransportManager() {
                                 </div>
                                 <div>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Assigned To</span>
-                                  <span className="text-amber-300 font-bold truncate block">
+                                  <span className="text-teal-300 font-bold truncate block">
                                     {currAssignedName}
                                   </span>
                                 </div>
@@ -2160,7 +1896,7 @@ export default function TransportManager() {
                                       }
                                     }}
                                     defaultValue=""
-                                    className="w-full p-1.5 border rounded text-[10px] bg-slate-950 text-amber-200 border-amber-800 outline-none font-mono cursor-pointer"
+                                    className="w-full p-1.5 border rounded text-[10px] bg-[var(--crm-bg-sunken)] text-slate-200 border-[var(--crm-line)] outline-none font-mono cursor-pointer focus:border-teal-500 transition"
                                   >
                                     <option value="" disabled>Select Transport Driver...</option>
                                     {driversList.map(d => (
@@ -2181,7 +1917,7 @@ export default function TransportManager() {
                                     toast.error('Select a Transport Driver from the dropdown first');
                                   }
                                 }}
-                                className="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-bold uppercase rounded tracking-wider shadow cursor-pointer flex items-center justify-center gap-1 transition"
+                                className="w-full py-2 bg-teal-700 hover:bg-teal-600 text-white text-[10px] font-bold uppercase rounded tracking-wider shadow cursor-pointer flex items-center justify-center gap-1 transition border border-teal-500/40"
                               >
                                 <FiUserCheck size={12} /> Assign Driver To Lead
                               </button>
@@ -2402,83 +2138,6 @@ export default function TransportManager() {
                   <button type="button" onClick={() => setShowBroadcastModal(false)} className="px-3 py-1.5 border border-slate-700 text-slate-300 text-[10px] font-bold rounded-sm uppercase">Cancel</button>
                   <button type="submit" className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wider rounded-sm shadow cursor-pointer">
                     Broadcast Now
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL: SEND RATE QUOTATION */}
-      <AnimatePresence>
-        {showQuotationModal && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowQuotationModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-xs" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative border w-full max-w-md p-6 rounded-sm shadow-2xl z-10 text-left space-y-4 font-mono text-xs" style={CARD}>
-              <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs font-bold uppercase text-sky-400 flex items-center gap-2">
-                  <FiFileText size={16} /> Send Freight Rate Quote
-                </h3>
-                <button onClick={() => setShowQuotationModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white cursor-pointer"><FiX size={16} /></button>
-              </div>
-
-              <form onSubmit={handleQuotationSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Client / Business Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter client business name"
-                    value={quotationForm.clientName}
-                    onChange={(e) => setQuotationForm(prev => ({ ...prev, clientName: e.target.value }))}
-                    className="w-full p-2 border rounded-sm text-xs font-bold outline-none"
-                    style={{ background: 'var(--crm-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Freight Route Vector *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter freight route"
-                    value={quotationForm.route}
-                    onChange={(e) => setQuotationForm(prev => ({ ...prev, route: e.target.value }))}
-                    className="w-full p-2 border rounded-sm text-xs font-bold outline-none"
-                    style={{ background: 'var(--crm-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Rate per Ton (₹) *</label>
-                    <input
-                      type="number"
-                      required
-                      placeholder="750"
-                      value={quotationForm.ratePerTon}
-                      onChange={(e) => setQuotationForm(prev => ({ ...prev, ratePerTon: e.target.value }))}
-                      className="w-full p-2 border rounded-sm text-xs font-bold outline-none"
-                      style={{ background: 'var(--crm-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Tonnage (MT)</label>
-                    <input
-                      type="number"
-                      value={quotationForm.tonnage}
-                      onChange={(e) => setQuotationForm(prev => ({ ...prev, tonnage: e.target.value }))}
-                      className="w-full p-2 border rounded-sm text-xs font-bold outline-none"
-                      style={{ background: 'var(--crm-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={() => setShowQuotationModal(false)} className="px-3 py-1.5 border rounded-sm text-[10px] font-bold uppercase" style={{ borderColor: 'var(--crm-line)' }}>Cancel</button>
-                  <button type="submit" className="px-4 py-1.5 border text-xs font-bold uppercase rounded-sm cursor-pointer" style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)' }}>
-                    Send Quote
                   </button>
                 </div>
               </form>

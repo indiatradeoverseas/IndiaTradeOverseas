@@ -134,6 +134,77 @@ export default function DriverMobileView() {
     }
   };
 
+  // Payment Options & Razorpay Integration
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState('RAZORPAY'); // 'RAZORPAY' | 'COD' | 'RECEIPT'
+  const [razorpayTxnId, setRazorpayTxnId] = useState('');
+  const [loadingRazorpay, setLoadingRazorpay] = useState(false);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const triggerRazorpayCheckout = async (order) => {
+    if (!order) return;
+    setLoadingRazorpay(true);
+    const loaded = await loadRazorpayScript();
+    setLoadingRazorpay(false);
+
+    if (!loaded) {
+      toast.error('Razorpay SDK failed to load. Please check network connectivity.');
+      return;
+    }
+
+    const payAmount = Number(paymentAmountCollected) || Number(order.totalFreightAmount) || Number(order.freightAmount) || 5000;
+    const amountInPaise = Math.round(payAmount * 100);
+
+    const options = {
+      key: "rzp_live_TDkYIhxFKBUK3K",
+      amount: amountInPaise,
+      currency: "INR",
+      name: "India Trade Overseas",
+      description: `Delivery Payment for Freight Order #${order.dispatchNumber || order.orderNumber || order.leadCode || order._id}`,
+      image: "https://indiatradeoverseas.com/assets/web_icon_1.jpeg",
+      handler: function (response) {
+        const txnId = response.razorpay_payment_id;
+        setRazorpayTxnId(txnId);
+        toast.success(`🎉 Payment Verified! Razorpay Txn: ${txnId}`, { duration: 6000 });
+      },
+      prefill: {
+        name: order.customerName || "Customer",
+        contact: order.customerPhone || "9876543210",
+        email: order.customerEmail || "customer@indiatradeoverseas.com"
+      },
+      notes: {
+        orderId: order.dispatchNumber || order.orderNumber || '',
+        driverName: user?.name || user?.fullName || 'Driver'
+      },
+      theme: {
+        color: "#059669"
+      }
+    };
+
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (resp) {
+        toast.error(`Payment Failed: ${resp.error?.description || 'Cancelled'}`);
+      });
+      rzp.open();
+    } catch (err) {
+      console.error('Razorpay Modal Error:', err);
+      toast.error('Could not open Razorpay checkout window.');
+    }
+  };
+
   const handleOpenDeliveryModal = (orderItem, e) => {
     if (e) e.stopPropagation();
     setDeliveringOrder(orderItem);
@@ -143,6 +214,8 @@ export default function DriverMobileView() {
     setPaymentProofPreview('');
     setDriverProofFile(null);
     setDriverProofPreview('');
+    setSelectedPaymentMode('RAZORPAY');
+    setRazorpayTxnId('');
     setShowDeliveryModal(true);
   };
 
@@ -154,20 +227,29 @@ export default function DriverMobileView() {
     const targetId = deliveringOrder._id || deliveringOrder.dispatchNumber || deliveringOrder.orderNumber;
     const amountNum = Number(paymentAmountCollected) || 0;
 
+    const modeLabel = selectedPaymentMode === 'COD' 
+      ? 'Cash on Delivery (COD)' 
+      : selectedPaymentMode === 'RAZORPAY' 
+        ? `Razorpay Online (${razorpayTxnId || 'Paid'})` 
+        : 'Bank Receipt Upload';
+
     const proofData = {
       status: 'DELIVERED',
       dispatchStatus: 'DELIVERED',
       deliveredAt: new Date().toLocaleTimeString(),
       podFileUrl: paymentProofPreview || '',
       paymentProofUrl: paymentProofPreview || '',
-      paymentProofName: paymentProofFile?.name || 'Payment Receipt Document',
+      paymentProofName: paymentProofFile?.name || `${selectedPaymentMode} Receipt`,
       driverProofUrl: driverProofPreview || '',
       driverProofName: driverProofFile?.name || 'Driver Unloading Photo',
       amountCollected: amountNum,
-      deliveryNotes: deliveryNotes,
+      deliveryNotes: `${deliveryNotes} | Payment Method: ${modeLabel}`,
+      paymentMode: selectedPaymentMode,
+      razorpayPaymentId: razorpayTxnId,
       paymentProof: {
         amountPaid: amountNum,
-        paymentMode: 'UPI',
+        paymentMode: modeLabel,
+        razorpayPaymentId: razorpayTxnId,
         proofImageUrl: paymentProofPreview || ''
       },
       deliveryImages: {
@@ -349,9 +431,41 @@ export default function DriverMobileView() {
   const [mapZoom, setMapZoom] = useState(12);
   const [mapType, setMapType] = useState('roadmap'); // roadmap, satellite
 
+  // Driver Profile & Vehicle Number State
+  const vehicleStorageKey = `driver_assigned_vehicle_${user?._id || user?.employeeId || 'active'}`;
+  const [profileVehicleNumber, setProfileVehicleNumber] = useState(() => {
+    return localStorage.getItem(vehicleStorageKey) || user?.vehicleNumber || user?.truckNumber || '';
+  });
+
+  const handleSaveVehicleProfile = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const cleanVeh = (profileVehicleNumber || '').trim().toUpperCase();
+    if (!cleanVeh) {
+      toast.error('Please enter a valid Vehicle Number');
+      return;
+    }
+    localStorage.setItem(vehicleStorageKey, cleanVeh);
+    setProfileVehicleNumber(cleanVeh);
+    setFuelExpenseForm(prev => ({ ...prev, vehicleNumber: cleanVeh }));
+    setAttendanceForm(prev => ({ ...prev, vehicleNumber: cleanVeh }));
+
+    try {
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('driver_vehicle_registered', {
+          driverId: user?._id || user?.employeeId,
+          driverName: user?.name || user?.fullName || 'Driver',
+          vehicleNumber: cleanVeh
+        });
+      }
+    } catch (err) {}
+
+    toast.success(`✅ Vehicle ${cleanVeh} saved to profile!`);
+  };
+
   // Trip Expense, Fuel, KM & Maintenance Form State
   const [fuelExpenseForm, setFuelExpenseForm] = useState({
-    vehicleNumber: user?.vehicleNumber || user?.truckNumber || '',
+    vehicleNumber: profileVehicleNumber || user?.vehicleNumber || user?.truckNumber || '',
     fuelCost: '',
     kmDriven: '', // Total Drive Today
     todaysTrip: '', // Todays Trip
@@ -376,8 +490,8 @@ export default function DriverMobileView() {
     }
 
     setSubmittingExpense(true);
-    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
-    const vehicleName = (fuelExpenseForm.vehicleNumber || '').trim() || attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'BR-01-TR-4521';
+    const driverName = user?.name || user?.fullName || 'Driver';
+    const vehicleName = (fuelExpenseForm.vehicleNumber || '').trim() || profileVehicleNumber || attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'Vehicle Unassigned';
 
     const kmDrivenNum = Number(fuelExpenseForm.kmDriven) || 0;
     const fuelCostNum = Number(fuelExpenseForm.fuelCost) || 0;
@@ -504,20 +618,28 @@ export default function DriverMobileView() {
   // Real-time chat sync listener with Transport Manager & WebSocket
   useEffect(() => {
     const handleIncomingSocketChat = (msg) => {
-      if (!msg || !msg.text) return;
+      if (!msg || (!msg.text && !msg.message)) return;
       const targetChannel = msg.channel || 'MANAGER';
+      const cleanText = (msg.text || msg.message || '').trim();
+      const msgSender = msg.sender || msg.senderName || 'Transport Manager';
+      const msgId = msg.id || msg._id || `msg-${cleanText}-${msg.time || ''}`;
+
       const newMsgObj = {
-        id: msg.id || Date.now(),
-        sender: msg.sender || 'Transport Manager',
-        text: msg.text,
+        id: msgId,
+        sender: msgSender,
+        text: cleanText,
+        timestamp: msg.timestamp || Date.now(),
         time: msg.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
       setChatMessages(prev => {
         const currentList = prev[targetChannel] || [];
-        if (currentList.some(m => m.id === newMsgObj.id || (m.text === newMsgObj.text && m.sender === newMsgObj.sender))) {
-          return prev;
-        }
+        const isDuplicate = currentList.some(m => 
+          m.id === newMsgObj.id || 
+          (m.text === cleanText && Math.abs((m.timestamp || Date.now()) - newMsgObj.timestamp) < 8000)
+        );
+
+        if (isDuplicate) return prev;
         return {
           ...prev,
           [targetChannel]: [...currentList, newMsgObj]
@@ -599,12 +721,20 @@ export default function DriverMobileView() {
         } catch (err) {}
       };
 
-      navigator.geolocation.getCurrentPosition(updateLocation, null, { enableHighAccuracy: true });
-      navigator.geolocation.watchPosition(updateLocation, (err) => console.log('GPS watch error:', err.message), {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 5000
-      });
+      navigator.geolocation.getCurrentPosition(updateLocation, null, { enableHighAccuracy: false, timeout: 30000 });
+      navigator.geolocation.watchPosition(
+        updateLocation, 
+        (err) => {
+          if (err && err.code !== 3) {
+            console.log('GPS watch note:', err.message);
+          }
+        }, 
+        {
+          enableHighAccuracy: false,
+          timeout: 30000,
+          maximumAge: 10000
+        }
+      );
     }
   };
 
@@ -1079,26 +1209,31 @@ export default function DriverMobileView() {
     if (!cleanText) return;
 
     const senderName = user?.name || user?.fullName || 'Ramesh Driver';
+    const uniqueId = `msg-driver-${Date.now()}`;
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const msgObj = {
+      id: uniqueId,
       senderId: String(user?._id || user?.employeeId || 'driver'),
       senderName: `${senderName} (Driver)`,
       senderRole: 'DRIVER',
       channel: chatChannel || 'MANAGER',
       message: cleanText,
       text: cleanText,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: Date.now(),
+      time: nowTime
     };
 
     setInputMessage('');
 
     // Append message to local state immediately for instant rendering
     const localMsg = {
-      id: Date.now(),
+      id: uniqueId,
       sender: msgObj.senderName,
       text: cleanText,
       channel: chatChannel || 'MANAGER',
-      time: msgObj.time
+      timestamp: Date.now(),
+      time: nowTime
     };
 
     setChatMessages(prev => ({
@@ -1106,19 +1241,18 @@ export default function DriverMobileView() {
       [chatChannel || 'MANAGER']: [...(prev[chatChannel || 'MANAGER'] || []), localMsg]
     }));
 
-    // Save directly to MongoDB Database via chatApi (uses axiosInstance with correct baseURL + auth)
+    // Save directly to MongoDB Database via chatApi
     try {
       await chatApi.sendTransportMessage(msgObj);
     } catch (e) {
       console.error('[handleSendMessage] Error saving chat to MongoDB:', e);
     }
 
-    // Emit WebSocket event for real-time broadcast
+    // Emit WebSocket event for real-time broadcast once
     try {
       const socket = socketService.getSocket();
       if (socket) {
         socket.emit('transport_chat_send', msgObj);
-        socket.emit('driver_chat_message', msgObj);
       }
     } catch (err) {}
   };
@@ -1178,156 +1312,57 @@ export default function DriverMobileView() {
       <div className="space-y-4">
 
         {/* ─────────────────────────────────────────────────────────────
-            TAB 2: DEDICATED PAYMENTS & PROOFS SIDEBAR SECTION VIEW
-           ───────────────────────────────────────────────────────────── */}
-        {activeTab === 'PAYMENTS' ? (
-          <div className="space-y-4 font-mono">
-            <div className="border rounded-lg p-5 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4" style={CARD}>
-              <div>
-                <h1 className="text-lg md:text-xl font-bold flex items-center gap-2" style={HEADING}>
-                  <FiCreditCard className="text-emerald-400" /> Payments & Collected Proofs Section
-                </h1>
-                <p className="text-xs mt-1" style={LABEL_MONO}>Manage UPI receipts, bank transfers, and client payment proofs.</p>
-              </div>
-            </div>
-
-            {/* Payment Add & History Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              
-              {/* Left Column: Upload / Add Payment Proof Form (5 cols) */}
-              <div className="lg:col-span-5 border rounded-lg p-5 shadow-sm space-y-4" style={CARD}>
-                <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2 border-b pb-3" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-                  <FiPlus className="text-emerald-400" size={16} /> Log / Submit Payment Proof
-                </h3>
-
-                <form onSubmit={handleAddNewPaymentProof} className="space-y-3 text-xs font-mono">
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>Payment Mode *</label>
-                    <select
-                      value={newProofForm.paymentMode}
-                      onChange={(e) => setNewProofForm(prev => ({ ...prev, paymentMode: e.target.value }))}
-                      className="w-full p-2.5 border rounded text-[var(--crm-heading)] font-bold outline-none cursor-pointer"
-                      style={CARD_SUNKEN}
-                    >
-                      <option value="Razorpay SDK">Razorpay Checkout SDK</option>
-                      <option value="Google Pay (GPay)">Google Pay (GPay App)</option>
-                      <option value="PhonePe">PhonePe App</option>
-                      <option value="Paytm UPI">Paytm UPI</option>
-                      <option value="Bank Transfer (IMPS/NEFT)">Bank Transfer (IMPS/NEFT)</option>
-                      <option value="Cash Payment">Cash Handover</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>Amount Collected (₹) *</label>
-                    <input
-                      type="number"
-                      required
-                      placeholder="Enter amount collected"
-                      value={newProofForm.amountPaid}
-                      onChange={(e) => setNewProofForm(prev => ({ ...prev, amountPaid: e.target.value }))}
-                      className="w-full p-2.5 border rounded text-[var(--crm-heading)] font-bold outline-none font-mono"
-                      style={CARD_SUNKEN}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>UPI Transaction Reference ID</label>
-                    <input
-                      type="text"
-                      placeholder="Enter UPI reference number"
-                      value={newProofForm.upiRefNo}
-                      onChange={(e) => setNewProofForm(prev => ({ ...prev, upiRefNo: e.target.value }))}
-                      className="w-full p-2.5 border rounded text-[var(--crm-heading)] outline-none font-mono"
-                      style={CARD_SUNKEN}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold mb-1" style={LABEL_MONO}>Attach Payment Screenshot / Receipt</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e, (dataUrl) => setNewProofForm(prev => ({ ...prev, proofImageUrl: dataUrl })))}
-                      className="w-full text-xs p-2 border rounded cursor-pointer font-mono text-[var(--crm-ink-soft)]"
-                      style={CARD_SUNKEN}
-                    />
-                  </div>
-
-                  {newProofForm.proofImageUrl && (
-                    <div className="p-2 border rounded text-[10px] text-emerald-400 font-mono bg-emerald-950/40 border-emerald-900/40">
-                      ✓ Screenshot Attached & Ready
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={submittingNewProof}
-                    className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded shadow transition cursor-pointer"
-                  >
-                    {submittingNewProof ? 'Logging...' : 'Save & Log Payment Proof'}
-                  </button>
-                </form>
-              </div>
-
-              {/* Right Column: Submitted Payment Proofs List (7 cols) */}
-              <div className="lg:col-span-7 border rounded-lg p-5 shadow-sm space-y-4" style={CARD}>
-                <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-                  <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={LABEL_MONO}>
-                    <FiFileText className="text-sky-400" size={16} /> Payment Proof Receipts History ({paymentProofsList.length})
-                  </h3>
-                  <span className="text-[10px] text-emerald-400 font-bold font-mono">Total: ₹{metrics.totalPayment.toLocaleString('en-IN')}</span>
-                </div>
-
-                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                  {paymentProofsList.length === 0 ? (
-                    <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs font-mono border border-dashed border-[var(--crm-line)] rounded">
-                      No payment proofs logged yet. Use the form on the left or Razorpay button.
-                    </div>
-                  ) : (
-                    paymentProofsList.map((proof) => (
-                      <div key={proof.id} className="p-3.5 border rounded-lg space-y-2 text-xs font-mono" style={CARD_SUNKEN}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <strong className="text-[var(--crm-heading)] text-sm block">{proof.paymentMode} - ₹{Number(proof.amountPaid).toLocaleString('en-IN')}</strong>
-                            <span className="text-[10px] text-[var(--crm-ink-faint)]">Ref: <code className="text-amber-400">{proof.upiRefNo}</code> &bull; {proof.date}</span>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase ${
-                            proof.status === 'VERIFIED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' : 'bg-amber-950/40 text-amber-400 border border-amber-900/30'
-                          }`}>
-                            {proof.status || 'SUBMITTED'} ✓
-                          </span>
-                        </div>
-
-                        {proof.proofImageUrl && proof.proofImageUrl.startsWith('data:image') && (
-                          <img src={proof.proofImageUrl} alt="Proof" className="h-24 rounded border border-[var(--crm-line)] object-cover mt-1" />
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        ) : null}
-
-        {/* ─────────────────────────────────────────────────────────────
             TAB 1: OVERVIEW DASHBOARD VIEW (DEFAULT)
            ───────────────────────────────────────────────────────────── */}
         {activeTab === 'DASHBOARD' || activeTab === 'DISPATCHES' ? (
           <>
-            {/* Top Quick Header Bar with Support Tickets Link */}
-            <div className="flex items-center justify-between pb-1">
-              <span className="text-xs font-bold uppercase tracking-wider font-mono text-[var(--crm-heading)] flex items-center gap-2">
-                <FiTruck className="text-teal-400" size={16} /> Driver Console Overview
-              </span>
-              <Link
-                to="/crm/tickets"
-                className="px-3 py-1.5 bg-sky-950/60 border border-sky-800/80 text-sky-400 hover:text-white hover:bg-sky-900 font-mono text-[10px] font-bold uppercase rounded shadow transition flex items-center gap-1.5"
-              >
-                <FiLifeBuoy size={14} className="text-sky-400" /> Support Tickets / Helpdesk
-              </Link>
+            {/* DRIVER PROFILE & VEHICLE ASSIGNMENT FORM (DRIVER NAME & VEHICLE NUMBER ONLY) */}
+            <div className="border border-teal-800/60 rounded-xl p-4 font-mono shadow-md bg-[var(--crm-bg-raised)] space-y-3" style={CARD}>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
+                <div className="flex items-center gap-2">
+                  <FiUser className="text-teal-400" size={18} />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                    Driver Profile & Vehicle Assignment
+                  </h3>
+                </div>
+                <span className="text-[10px] text-teal-300 font-bold bg-teal-950/80 border border-teal-800/60 px-2.5 py-0.5 rounded">
+                  Driver: <strong className="text-white">{user?.name || user?.fullName || 'Logged Driver'}</strong>
+                </span>
+              </div>
+
+              <form onSubmit={handleSaveVehicleProfile} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-5 space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-soft)]">Driver Name</label>
+                  <input
+                    type="text"
+                    disabled
+                    readOnly
+                    value={user?.name || user?.fullName || 'Logged Driver'}
+                    className="w-full p-2.5 border rounded text-xs font-bold text-teal-300 bg-[var(--crm-bg-sunken)] border-teal-900/60 outline-none cursor-not-allowed opacity-90 font-mono"
+                  />
+                </div>
+
+                <div className="sm:col-span-5 space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-teal-400 font-mono">Driver Vehicle Number *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter Vehicle Number (e.g. UP32KK0001)"
+                    value={profileVehicleNumber}
+                    onChange={(e) => setProfileVehicleNumber(e.target.value.toUpperCase())}
+                    className="w-full p-2.5 border rounded text-xs font-bold text-emerald-400 bg-[var(--crm-bg-sunken)] border-teal-700/80 outline-none font-mono focus:border-emerald-400 transition"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 text-white text-[11px] font-bold uppercase rounded cursor-pointer transition shadow flex items-center justify-center gap-1.5"
+                  >
+                    <FiCheckCircle size={14} /> Save Profile
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* 4 Metrics Cards Row */}
@@ -1494,7 +1529,12 @@ export default function DriverMobileView() {
               <div className="lg:col-span-7 border rounded-lg p-4 space-y-3 shadow-sm flex flex-col justify-between" style={CARD}>
                 <div>
                   <h2 className="text-xs uppercase font-bold tracking-wider border-b pb-2 flex items-center justify-between" style={{ ...HEADING, borderColor: 'var(--crm-line)' }}>
-                    <span>Driver Work Update Log</span>
+                    <span className="flex items-center gap-2">
+                      <span>Driver Work Update Log</span>
+                      <span className="text-[10px] text-teal-300 font-normal bg-teal-950/70 border border-teal-800/60 px-2 py-0.5 rounded">
+                        Driver: <strong className="text-white font-bold">{user?.name || user?.fullName || 'Active Driver'}</strong>
+                      </span>
+                    </span>
                     <span className="text-[10px] text-teal-400 font-mono">({workUpdateLogs.length} Entries)</span>
                   </h2>
                   <form onSubmit={handleWorkUpdateSubmit} className="space-y-2.5 mt-2">
@@ -1651,9 +1691,12 @@ export default function DriverMobileView() {
 
             {/* DRIVER VEHICLE DAILY TRIP & EXPENSE LOG FORM CARD (LAYOUT MATCHES DESIGN WIREFRAME) */}
             <div className="border-2 border-[var(--crm-line)] rounded-xl p-5 space-y-4 shadow-lg font-mono mt-5 bg-[var(--crm-bg-raised)]" style={CARD}>
-              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+              <div className="flex items-center justify-between border-b pb-3 flex-wrap gap-2" style={{ borderColor: 'var(--crm-line)' }}>
                 <h2 className="text-sm uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
                   <FiTool size={18} className="text-emerald-400" /> DRIVER VEHICLE & DAILY TRIP LOG
+                  <span className="text-[11px] text-teal-300 font-normal bg-teal-950/70 border border-teal-800/60 px-2.5 py-0.5 rounded ml-2">
+                    Logged Driver: <strong className="text-white font-bold">{user?.name || user?.fullName || 'Active Driver'}</strong>
+                  </span>
                 </h2>
                 <span className="text-[11px] text-emerald-400 font-bold bg-emerald-950/50 px-2.5 py-1 rounded border border-emerald-800/40">
                   ({fuelExpenseLogs.length} Logged)
@@ -1842,6 +1885,96 @@ export default function DriverMobileView() {
         ) : null}
 
         {/* ─────────────────────────────────────────────────────────────
+            TAB 2: DEDICATED CUSTOMER PAYMENT PROOFS & SETTLEMENT HISTORY
+           ───────────────────────────────────────────────────────────── */}
+        {activeTab === 'PAYMENTS' ? (
+          <div className="space-y-5 font-mono">
+            {/* Top Header Card */}
+            <div className="border border-emerald-700/80 rounded-xl p-5 shadow-lg bg-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={CARD}>
+              <div>
+                <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 text-emerald-400" style={HEADING}>
+                  <FiCreditCard className="text-emerald-400" /> Customer Payment Proofs & Settlement Records
+                </h1>
+                <p className="text-xs text-slate-300 mt-1" style={LABEL_MONO}>
+                  Verified logs of Razorpay Online payments, Cash on Delivery (COD) handovers, and uploaded receipts.
+                </p>
+              </div>
+              <div className="px-3 py-1.5 bg-emerald-900/60 border border-emerald-600 rounded-lg text-xs text-emerald-300 font-bold font-mono">
+                Total Freight Collected: <code className="text-amber-300">₹{metrics.totalPayment.toLocaleString('en-IN')}</code>
+              </div>
+            </div>
+
+            {/* 3 Summary Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 border border-emerald-800/80 rounded-xl bg-emerald-950/30 space-y-1">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Deliveries Paid</span>
+                <strong className="text-xl text-emerald-400 font-bold block">
+                  {dispatchesList.filter(d => d.status === 'Delivered' || d.status === 'DELIVERED' || deliveredIdsSet.has(d._id)).length} Orders
+                </strong>
+              </div>
+
+              <div className="p-4 border border-amber-800/80 rounded-xl bg-amber-950/30 space-y-1">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Amount Collected</span>
+                <strong className="text-xl text-amber-400 font-bold block">
+                  ₹{metrics.totalPayment.toLocaleString('en-IN')}
+                </strong>
+              </div>
+
+              <div className="p-4 border border-sky-800/80 rounded-xl bg-sky-950/30 space-y-1">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Verification</span>
+                <strong className="text-xs text-sky-300 font-bold block flex items-center gap-1.5 pt-1">
+                  <FiCheckCircle className="text-emerald-400" /> Razorpay & COD Active
+                </strong>
+              </div>
+            </div>
+
+            {/* COMPLETED PAYMENTS & SETTLED ORDERS HISTORY SECTION */}
+            <div className="border border-emerald-800/60 rounded-xl p-5 shadow-sm space-y-3 bg-[var(--crm-bg-raised)]" style={CARD}>
+
+              <div className="space-y-3">
+                {dispatchesList.filter(d => d.status === 'Delivered' || d.status === 'DELIVERED' || deliveredIdsSet.has(d._id)).length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-mono space-y-2">
+                    <FiCreditCard size={28} className="mx-auto text-slate-500" />
+                    <div>No completed payment records found yet.</div>
+                    <div className="text-[10px] text-slate-500">Deliveries confirmed with Razorpay / COD will automatically appear here.</div>
+                  </div>
+                ) : (
+                  dispatchesList.filter(d => d.status === 'Delivered' || d.status === 'DELIVERED' || deliveredIdsSet.has(d._id)).map((item) => (
+                    <div key={item._id || item.dispatchNumber} className="p-4 border border-emerald-900/60 rounded-xl bg-emerald-950/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-mono">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm text-white block">{item.customerName || 'Client'}</strong>
+                          <span className="text-[9px] px-2 py-0.5 bg-emerald-900 text-emerald-300 border border-emerald-500 rounded font-bold uppercase">
+                            ✓ PAYMENT DONE
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 block font-mono">
+                          Order #{item.dispatchNumber || item.orderNumber || item._id} &bull; Route: <strong className="text-emerald-300">{item.origin || 'Delhi'} &rarr; {item.destination || 'Patna'}</strong>
+                        </span>
+                        {item.deliveryNotes && (
+                          <div className="text-[10px] text-slate-400">
+                            Notes: {item.deliveryNotes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-right space-y-1">
+                        <strong className="text-base text-emerald-400 font-bold block">
+                          ₹{Number(item.amountCollected || item.totalFreightAmount || item.freightAmount || 18000).toLocaleString('en-IN')}
+                        </strong>
+                        <span className="text-[10px] text-slate-300 block">
+                          Method: <strong className="text-amber-300">{item.paymentMode || 'Razorpay / Verified'}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ─────────────────────────────────────────────────────────────
             TAB 3: MY DRIVER PROFILE VIEW
            ───────────────────────────────────────────────────────────── */}
         {activeTab === 'PROFILE' ? (
@@ -1913,102 +2046,313 @@ export default function DriverMobileView() {
       {/* MODAL: MARK ORDER DELIVERED CONFIRMATION */}
       <AnimatePresence>
         {showDeliveryModal && (
-          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-xs" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-[var(--crm-bg,#090d16)] border border-emerald-600/70 w-full max-w-md p-6 rounded-xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs">
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-2 sm:p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/85 backdrop-blur-xs" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg,#090d16)] border border-emerald-600/70 w-full max-w-4xl p-4 sm:p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs max-h-[92vh] flex flex-col">
               
+              {/* Modal Header */}
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-sm font-bold uppercase text-emerald-400 flex items-center gap-2">
-                  <FiCheckCircle size={18} /> Confirm Order Delivery
-                </h3>
-                <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><FiX size={18} /></button>
+                <div className="flex items-center gap-2">
+                  <FiCheckCircle size={20} className="text-emerald-400" />
+                  <h3 className="text-sm sm:text-base font-bold uppercase text-emerald-400 font-mono tracking-wider">
+                    Customer Payment & Delivery Completion
+                  </h3>
+                </div>
+                <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><FiX size={20} /></button>
               </div>
 
-              <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-1 custom-scrollbar">
-                <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-mono">ORDER ID: <strong className="text-amber-400">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong></span>
-                  <strong className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName}</strong>
-                  <span className="text-emerald-400 text-xs block font-bold">🚩 Destination: {deliveringOrder?.destination || 'Destination Hub'}</span>
-                </div>
-
-                {/* Total Payment Collected */}
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Total Payment (₹)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 18000"
-                    value={paymentAmountCollected}
-                    onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                    className="w-full p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-emerald-400 font-bold text-sm outline-none font-mono"
-                  />
-                </div>
-
-                {/* 1. PAYMENT PROOF UPLOAD (Pic, PDF, DOC) */}
-                <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg space-y-2">
-                  <label className="block text-[10px] uppercase font-bold text-sky-400 flex items-center gap-1.5 font-mono">
-                    <FiUpload size={13} /> 1. Upload Payment Proof / Receipt (Pic, PDF, DOC)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
-                    className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-sky-950 file:text-sky-300 hover:file:bg-sky-900 cursor-pointer font-mono"
-                  />
-                  {paymentProofPreview && (
-                    <div className="p-2 bg-[var(--crm-bg)] border border-sky-900/50 rounded flex items-center justify-between text-[11px] font-mono">
-                      <span className="text-sky-300 truncate font-mono">📄 {paymentProofFile?.name || 'Payment Proof Document Attached'}</span>
-                      <span className="text-emerald-400 font-bold text-[10px]">Attached ✓</span>
+              {/* Modal Main Body (2-Column Grid) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto pr-1 custom-scrollbar flex-1">
+                
+                {/* LEFT COLUMN: LEAD DETAILS & DRIVER PROOF (5 Columns) */}
+                <div className="lg:col-span-5 space-y-3.5 border-r lg:border-[var(--crm-line)] lg:pr-4">
+                  <div className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2 font-mono">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                      Lead / Order ID: <strong className="text-teal-300 font-mono">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
+                    </span>
+                    <strong className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName || 'Client Business'}</strong>
+                    <div className="text-[11px] text-emerald-300 font-bold">
+                      📍 {deliveringOrder?.origin || 'Origin'} &rarr; {deliveringOrder?.destination || 'Destination'}
                     </div>
-                  )}
+                    <div className="text-[10px] text-slate-400">
+                      🚚 Truck: <strong className="text-white">{deliveringOrder?.vehicleNo || attendanceForm.vehicleNumber || 'Assigned Vehicle'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Total Payment Payable Card */}
+                  <div className="p-3.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-1.5 font-mono">
+                    <label className="block text-[10px] uppercase font-bold text-emerald-300">Total Freight Payable (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={paymentAmountCollected}
+                      onChange={(e) => setPaymentAmountCollected(e.target.value)}
+                      className="w-full p-2 bg-black/60 border border-emerald-700/80 rounded-lg text-emerald-400 font-bold text-base outline-none font-mono"
+                    />
+                    <span className="text-[9px] text-slate-400 block">* Amount collected from customer upon delivery.</span>
+                  </div>
+
+                  {/* PROOF OF DRIVER (Selfie / Unloading Point Photo) */}
+                  <div className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2">
+                    <label className="block text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
+                      <FiCamera size={13} /> Driver Unloading Proof (Selfie / Photo) *
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => handleProofFileUpload(e, setDriverProofFile, setDriverProofPreview)}
+                      className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-emerald-950 file:text-emerald-300 hover:file:bg-emerald-900 cursor-pointer font-mono"
+                    />
+                    {driverProofPreview && (
+                      <div className="p-2 bg-[var(--crm-bg)] border border-emerald-800/60 rounded-lg flex items-center gap-2 font-mono">
+                        {driverProofFile?.type?.startsWith('image/') ? (
+                          <img src={driverProofPreview} alt="Driver Selfie" className="w-10 h-10 object-cover rounded border border-emerald-500" />
+                        ) : null}
+                        <div>
+                          <span className="text-emerald-300 text-[11px] block font-bold">📷 Driver Photo Attached</span>
+                          <span className="text-[10px] text-emerald-400">Verified at Site ✓</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Delivery Notes / POD Remarks */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Delivery Notes / POD Remarks</label>
+                    <textarea
+                      rows={2}
+                      value={deliveryNotes}
+                      onChange={(e) => setDeliveryNotes(e.target.value)}
+                      className="w-full p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-[var(--crm-heading)] text-xs outline-none font-mono"
+                    />
+                  </div>
                 </div>
 
-                {/* 2. PROOF OF DRIVER (Selfie / Unloading Photo) */}
-                <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg space-y-2">
-                  <label className="block text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1.5 font-mono">
-                    <FiCamera size={13} /> 2. Proof of Driver (Selfie & Unloading Point Photo)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => handleProofFileUpload(e, setDriverProofFile, setDriverProofPreview)}
-                    className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-amber-950 file:text-amber-300 hover:file:bg-amber-900 cursor-pointer font-mono"
-                  />
-                  {driverProofPreview && (
-                    <div className="p-2 bg-[var(--crm-bg)] border border-amber-900/50 rounded flex items-center gap-2 font-mono">
-                      {driverProofFile?.type?.startsWith('image/') ? (
-                        <img src={driverProofPreview} alt="Driver Selfie" className="w-10 h-10 object-cover rounded border border-amber-500" />
-                      ) : null}
-                      <div>
-                        <span className="text-amber-300 text-[11px] block font-bold">📷 Driver Photo Attached</span>
-                        <span className="text-[10px] text-emerald-400">Verified at Unloading Site ✓</span>
+                {/* RIGHT COLUMN: LIVE PAYMENT GATEWAY & MODES (7 Columns) */}
+                <div className="lg:col-span-7 space-y-4 font-mono">
+                  
+                  {/* Payment Mode Selector Tabs */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-2 font-mono">Select Customer Payment Method</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMode('RAZORPAY')}
+                        className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                          selectedPaymentMode === 'RAZORPAY'
+                            ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 font-bold ring-1 ring-emerald-500'
+                            : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-emerald-400' : 'text-slate-400'} />
+                        <span className="text-[10px] uppercase font-bold">Razorpay (UPI/QR)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMode('COD')}
+                        className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                          selectedPaymentMode === 'COD'
+                            ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 font-bold ring-1 ring-emerald-500'
+                            : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-emerald-400' : 'text-slate-400'} />
+                        <span className="text-[10px] uppercase font-bold">Cash on Delivery</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMode('RECEIPT')}
+                        className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                          selectedPaymentMode === 'RECEIPT'
+                            ? 'bg-sky-950/80 border-sky-500 text-sky-300 font-bold ring-1 ring-sky-500'
+                            : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-sky-400' : 'text-slate-400'} />
+                        <span className="text-[10px] uppercase font-bold">Upload Receipt</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OPTION 1: RAZORPAY CHECKOUT SDK (LIVE PAYMENT TERMINAL) */}
+                  {selectedPaymentMode === 'RAZORPAY' && (
+                    <div className="p-4 border border-emerald-800/80 rounded-2xl bg-[var(--crm-bg-sunken)] shadow-xl space-y-4 font-mono text-slate-100">
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-left">
+                        
+                        {/* LEFT COLUMN: Payment Methods List */}
+                        <div className="md:col-span-6 space-y-2 border-r border-[var(--crm-line)] pr-3">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 font-mono flex items-center gap-1.5">
+                            <FiCreditCard size={13} /> Razorpay Payment Options
+                          </div>
+
+                          <div 
+                            onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
+                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700 font-bold text-xs flex items-center justify-center font-mono">
+                                UPI
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">UPI (Google Pay, PhonePe, Paytm)</h5>
+                                <p className="text-[10px] text-slate-400">Pay instantly using any UPI app</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                          </div>
+
+                          <div 
+                            onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
+                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-blue-950 text-blue-300 border border-blue-700 font-bold text-xs flex items-center justify-center font-mono">
+                                CARD
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">Credit / Debit / ATM Card</h5>
+                                <p className="text-[10px] text-slate-400">Visa, MasterCard, RuPay, Maestro</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                          </div>
+
+                          <div 
+                            onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
+                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-purple-950 text-purple-300 border border-purple-700 font-bold text-xs flex items-center justify-center font-mono">
+                                EMI
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">EMI & Pay Later</h5>
+                                <p className="text-[10px] text-slate-400">Credit & Debit Card EMI</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                          </div>
+
+                          <div 
+                            onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
+                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700 font-bold text-xs flex items-center justify-center font-mono">
+                                BANK
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">Net Banking</h5>
+                                <p className="text-[10px] text-slate-400">All Indian Banks (SBI, HDFC, ICICI)</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Razorpay Checkout Action Terminal Card */}
+                        <div className="md:col-span-6 flex flex-col justify-between items-center text-center p-4 bg-emerald-950/40 rounded-xl border border-emerald-800/80 font-mono space-y-4">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Total Freight Amount</span>
+                            <div className="text-2xl font-black text-emerald-400 font-mono">
+                              ₹{Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')}
+                            </div>
+                          </div>
+
+                          {razorpayTxnId ? (
+                            <div className="p-3 bg-emerald-900/80 border border-emerald-500 rounded-xl text-emerald-300 text-xs font-bold space-y-1 w-full text-center">
+                              <div>✓ Razorpay Live Payment Verified!</div>
+                              <div className="text-[10px] text-slate-200 font-mono">Txn ID: <strong className="text-teal-300">{razorpayTxnId}</strong></div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => triggerRazorpayCheckout(deliveringOrder)}
+                              disabled={loadingRazorpay}
+                              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2 border border-emerald-400/40"
+                            >
+                              <FiCreditCard size={16} />
+                              {loadingRazorpay ? 'Launching Gateway...' : `Launch Razorpay Live (₹${Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')})`}
+                            </button>
+                          )}
+
+                          {/* Security Notice Footer */}
+                          <div className="w-full pt-2 border-t border-[var(--crm-line)]">
+                            <p className="text-[9px] text-slate-400 font-mono">
+                              * Do not hit back or close this screen until the transaction is complete.
+                            </p>
+                          </div>
+                        </div>
+
                       </div>
                     </div>
                   )}
+
+                  {/* OPTION 2: CASH ON DELIVERY (COD) */}
+                  {selectedPaymentMode === 'COD' && (
+                    <div className="p-4 border border-emerald-800/80 rounded-xl bg-emerald-950/30 space-y-3 font-mono">
+                      <h4 className="text-xs font-bold uppercase text-emerald-400 flex items-center gap-2">
+                        <FiDollarSign /> Cash Handover / Cash on Delivery (COD)
+                      </h4>
+                      <p className="text-[10px] text-slate-300">
+                        Customer has paid cash directly to driver upon delivery.
+                      </p>
+
+                      <div className="space-y-2">
+                        <label className="block text-[10px] uppercase font-bold text-emerald-300">Cash Amount Collected (₹)</label>
+                        <input
+                          type="number"
+                          value={paymentAmountCollected}
+                          onChange={(e) => setPaymentAmountCollected(e.target.value)}
+                          className="w-full p-2.5 bg-black/60 border border-emerald-700/80 rounded-lg text-emerald-400 font-bold text-sm outline-none font-mono"
+                        />
+                      </div>
+                      <div className="p-2 bg-emerald-950/60 border border-emerald-800/50 rounded text-[10px] text-emerald-300">
+                        ✓ Cash Handover will be logged in Driver Daily Freight Settlement.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* OPTION 3: UPLOAD MANUAL PAYMENT RECEIPT */}
+                  {selectedPaymentMode === 'RECEIPT' && (
+                    <div className="p-4 border border-sky-800/80 rounded-xl bg-sky-950/30 space-y-3 font-mono">
+                      <h4 className="text-xs font-bold uppercase text-sky-400 flex items-center gap-2">
+                        <FiUpload /> Upload Bank / UPI Screenshot Receipt
+                      </h4>
+
+                      <input
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx"
+                        onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
+                        className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-sky-950 file:text-sky-300 hover:file:bg-sky-900 cursor-pointer font-mono"
+                      />
+                      {paymentProofPreview && (
+                        <div className="p-2 bg-[var(--crm-bg)] border border-sky-900/50 rounded flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-sky-300 truncate font-mono">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
+                          <span className="text-emerald-400 font-bold text-[10px]">Attached ✓</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
 
-                {/* Delivery Notes / POD Remarks */}
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Delivery Notes / POD Remarks</label>
-                  <textarea
-                    rows={2}
-                    required
-                    value={deliveryNotes}
-                    onChange={(e) => setDeliveryNotes(e.target.value)}
-                    className="w-full p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-[var(--crm-heading)] text-xs outline-none font-mono"
-                  />
-                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--crm-line)]">
+              {/* Modal Footer / Confirm Action */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--crm-line)]">
                 <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg uppercase cursor-pointer">Cancel</button>
                 <button 
                   type="button" 
                   onClick={handleConfirmDeliverySubmit} 
                   disabled={submittingDelivery} 
-                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow cursor-pointer transition flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg cursor-pointer transition flex items-center gap-2 border border-emerald-400/40"
                 >
-                  <FiCheckCircle size={14} />
+                  <FiCheckCircle size={16} />
                   {submittingDelivery ? 'Updating Status...' : 'CONFIRM DELIVERY & NOTIFY MANAGER'}
                 </button>
               </div>

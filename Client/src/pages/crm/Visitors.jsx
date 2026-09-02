@@ -100,12 +100,12 @@ export default function Visitors() {
 
     const getVisitorLatestDate = (v) => {
         if (!v) return null;
-        if (v.lastVisitedAt) return v.lastVisitedAt;
         if (Array.isArray(v.visitHistory) && v.visitHistory.length > 0) {
             const lastEntry = v.visitHistory[v.visitHistory.length - 1];
             if (lastEntry && lastEntry.visitedAt) return lastEntry.visitedAt;
         }
-        return v.createdAt || v.updatedAt || null;
+        if (v.createdAt) return v.createdAt;
+        return v.lastVisitedAt || v.updatedAt || null;
     };
 
     const isSameDay = (date1Str, date2Str) => {
