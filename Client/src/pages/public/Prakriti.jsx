@@ -77,6 +77,8 @@ const HERO_BACKGROUNDS = [
     '/images/tea_images/g1.jpeg',
     '/images/tea_images/g2.jpeg',
     '/images/tea_images/g3.jpeg',
+    '/images/tea_images/g4.jpeg',
+    '/images/tea_images/g5.jpeg',
     '/images/tea_images/g6.jpeg',
     '/images/tea_images/g7.jpeg',
 ];
@@ -92,42 +94,35 @@ const CAROUSEL_IMAGES = [
         format: 'Retail Pack',
         description:
             'Compact retail format for household use, online sales and shelf-ready consumer products.',
-        image: './images/tea_variants/chai_1.png',
+        image: '/images/tea_variants/chai_1.png',
     },
     {
         size: '250 g',
         format: 'Retail Pack',
         description:
             'Retail format designed for regular household purchase and premium shelf presentation.',
-        image: './images/tea_variants/chai_2.png',
+        image: '/images/tea_variants/chai_2.png',
     },
     {
         size: '500 g',
         format: 'Retail Pack',
         description:
             'Larger consumer format suitable for family consumption and retail programmes.',
-        image: './images/tea_variants/chai_3.png',
+        image: '/images/tea_variants/chai_3.png',
     },
     {
         size: '1 kg',
         format: 'Trade Pack',
         description:
             'Commercial format for tea shops, cafes, restaurants and regular business use.',
-        image: './images/tea_variants/chai_4.png',
+        image: '/images/tea_variants/chai_4.png',
     },
     {
         size: '5 kg',
         format: 'Bulk Pack',
         description:
             'Bulk format for distributors, wholesalers, foodservice and blending programmes.',
-        image: './images/tea_variants/chai_5.png',
-    },
-    {
-        size: '10 kg',
-        format: 'Bulk Pack',
-        description:
-            'Large-volume trade format for distributors, wholesalers and institutional requirements.',
-        image: './images/tea_variants/chai_5.png',
+        image: '/images/tea_variants/chai_5.png',
     },
 ];
 
@@ -253,7 +248,7 @@ const BUSINESS_CHANNELS = [
         icon: GiBoxUnpacking,
         title: 'Distributors & Wholesalers',
         description:
-            '1 kg to 10 kg trade packs for commercial distribution and bulk movement.',
+            '1 kg to 5 kg trade packs for commercial distribution and bulk movement.',
     },
     {
         icon: FiShield,
@@ -385,11 +380,11 @@ function GiAward({ size = 18, className = '' }) {
 
 export default function Prakriti() {
     useDocumentMeta({
-        title: 'Prakriti Premium Indian Tea | Bulk Supply & Private Label',
-        description:
-            'Prakriti by India Trade Overseas supplies premium Indian tea from Assam, Darjeeling, Dooars and the Siliguri corridor for retail, trade, hospitality, distribution and private-label buyers.',
-        canonicalPath: '/prakriti',
-    });
+    title: 'Prakriti Premium Indian Tea | Bulk Supply & Private Label',
+    description:
+        'Prakriti by India Trade Overseas supplies premium Indian tea from Assam, Darjeeling, Dooars and the Siliguri corridor for retail, trade, hospitality, distribution and private-label buyers.',
+    canonicalPath: '/prakriti/tea',
+});
 
 
     /* =====================================================
@@ -1690,7 +1685,7 @@ export default function Prakriti() {
                                     {
                                         icon: GiBoxUnpacking,
                                         title: 'Flexible Packing',
-                                        text: 'Retail and bulk pack sizes from 100 g to 10 kg.',
+                                        text: 'Retail and bulk pack sizes from 100 g to 5 kg.',
                                     },
                                     {
                                         icon: FiBriefcase,
