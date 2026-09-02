@@ -223,15 +223,18 @@ export default function DriverMobileView() {
     e.preventDefault();
     if (!deliveringOrder) return;
 
+    if (!driverProofFile && !driverProofPreview) {
+      setSubmittingDelivery(false);
+      return toast.error('📷 Driver Unloading Proof (Selfie / Photo) is MANDATORY! Please upload photo to proceed.');
+    }
+
     setSubmittingDelivery(true);
     const targetId = deliveringOrder._id || deliveringOrder.dispatchNumber || deliveringOrder.orderNumber;
     const amountNum = Number(paymentAmountCollected) || 0;
 
-    const modeLabel = selectedPaymentMode === 'COD' 
-      ? 'Cash on Delivery (COD)' 
-      : selectedPaymentMode === 'RAZORPAY' 
-        ? `Razorpay Online (${razorpayTxnId || 'Paid'})` 
-        : 'Bank Receipt Upload';
+    const isCod = selectedPaymentMode === 'COD';
+    const paymentModeText = isCod ? 'COD' : 'Online';
+    const modeLabel = isCod ? 'Cash on Delivery (COD)' : `Razorpay Online (${razorpayTxnId || 'Paid'})`;
 
     const proofData = {
       status: 'DELIVERED',
@@ -239,16 +242,18 @@ export default function DriverMobileView() {
       deliveredAt: new Date().toLocaleTimeString(),
       podFileUrl: paymentProofPreview || '',
       paymentProofUrl: paymentProofPreview || '',
-      paymentProofName: paymentProofFile?.name || `${selectedPaymentMode} Receipt`,
+      paymentProofName: paymentProofFile?.name || `${paymentModeText} Receipt`,
       driverProofUrl: driverProofPreview || '',
       driverProofName: driverProofFile?.name || 'Driver Unloading Photo',
       amountCollected: amountNum,
       deliveryNotes: `${deliveryNotes} | Payment Method: ${modeLabel}`,
-      paymentMode: selectedPaymentMode,
+      paymentMode: paymentModeText,
+      paymentModeType: paymentModeText,
+      paymentStatus: 'PAID',
       razorpayPaymentId: razorpayTxnId,
       paymentProof: {
         amountPaid: amountNum,
-        paymentMode: modeLabel,
+        paymentMode: paymentModeText,
         razorpayPaymentId: razorpayTxnId,
         proofImageUrl: paymentProofPreview || ''
       },
@@ -275,6 +280,8 @@ export default function DriverMobileView() {
             remark: deliveryNotes,
             podFileUrl: paymentProofPreview || '',
             driverProofUrl: driverProofPreview || '',
+            paymentMode: paymentModeText,
+            paymentStatus: 'PAID',
             paymentProof: proofData.paymentProof,
             deliveryImages: proofData.deliveryImages
           });
@@ -304,7 +311,7 @@ export default function DriverMobileView() {
         socket.emit('driver_work_update', {
           id: Date.now(),
           driver: user?.name || user?.fullName || 'Ramesh Driver',
-          vehicle: deliveringOrder.vehicleNo || 'BR-01-TR-4521',
+          vehicle: deliveringOrder.vehicleNo || profileVehicleNumber || user?.vehicleNumber || 'Unassigned',
           stage: 'DELIVERED',
           update: `✅ Cargo delivered to ${deliveringOrder.destination || 'destination'}. Payment & Driver Proofs Uploaded!`,
           location: deliveringOrder.destination || 'Delivery Point',
@@ -469,8 +476,8 @@ export default function DriverMobileView() {
     fuelCost: '',
     kmDriven: '', // Total Drive Today
     todaysTrip: '', // Todays Trip
-    vehicleMileage: '', // Vehical milage
-    otherCost: '', // other Expence
+    vehicleMileage: '', // Vehicle Mileage
+    otherCost: '', // Other Expense
     fromLocation: '',
     toLocation: '',
     fuelLitres: '',
@@ -675,15 +682,23 @@ export default function DriverMobileView() {
       if (socket) {
         socket.on('transport_chat_receive', handleIncomingSocketChat);
         socket.on('driver_chat_message', handleIncomingSocketChat);
+        socket.on('task_assigned', () => fetchDriverTrip());
+        socket.on('dispatch_assigned', () => fetchDriverTrip());
       }
     } catch (err) {}
 
+    const handleCustomDispatchUpdate = () => fetchDriverTrip();
+    window.addEventListener('ito_dispatch_updated_event', handleCustomDispatchUpdate);
+
     return () => {
+      window.removeEventListener('ito_dispatch_updated_event', handleCustomDispatchUpdate);
       try {
         const socket = socketService.getSocket();
         if (socket) {
           socket.off('transport_chat_receive', handleIncomingSocketChat);
           socket.off('driver_chat_message', handleIncomingSocketChat);
+          socket.off('task_assigned');
+          socket.off('dispatch_assigned');
         }
       } catch (err) {}
     };
@@ -706,7 +721,7 @@ export default function DriverMobileView() {
           const payload = {
             driverId: user?._id || user?.employeeId,
             driverName: user?.name || user?.fullName || 'Ramesh Driver',
-            vehicleNo: attendanceForm.vehicleNumber || user?.vehicleNumber || 'BR-01-TR-4521',
+            vehicleNo: profileVehicleNumber || attendanceForm.vehicleNumber || user?.vehicleNumber || 'Unassigned',
             lat,
             long,
             timestamp: new Date()
@@ -787,18 +802,32 @@ export default function DriverMobileView() {
 
       const processedCombinedList = Array.from(mapById.values());
 
-      const driverNameLower = driverNameStr.toLowerCase();
+      const driverNameLower = driverNameStr.toLowerCase().trim();
+      const targetUserIdStr = String(user?._id || user?.employeeId || '');
+      const targetUserEmail = String(user?.email || '').toLowerCase().trim();
 
       // Filter dispatches assigned to this driver
       let matchedDispatches = processedCombinedList.filter(t => {
         if (!t) return false;
-        const assignedDriverId = String(t.assignedDriverId || t.driverId || t.assignedTo || '');
-        const tripDriverName = (t.driverName || '').toLowerCase();
+        
+        const itemAssignedToId = typeof t.assignedTo === 'object'
+          ? String(t.assignedTo?._id || t.assignedTo?.id || '')
+          : String(t.assignedTo || '');
+          
+        const itemAssignedDriverId = String(t.assignedDriverId || t.driverId || '');
+        const itemAssignedEmail = (
+          t.driverEmail ||
+          (typeof t.assignedTo === 'object' ? t.assignedTo?.email : '') ||
+          ''
+        ).toLowerCase().trim();
+        
+        const tripDriverName = (t.driverName || t.salesOwner || '').toLowerCase().trim();
 
         return (
-          (assignedDriverId && assignedDriverId === driverIdStr) ||
-          (driverNameLower && tripDriverName.includes(driverNameLower)) ||
-          (driverNameLower && driverNameLower.includes(tripDriverName))
+          (itemAssignedToId && (itemAssignedToId === targetUserIdStr || itemAssignedToId === String(user?._id) || itemAssignedToId === String(user?.employeeId))) ||
+          (itemAssignedDriverId && (itemAssignedDriverId === targetUserIdStr || itemAssignedDriverId === String(user?._id) || itemAssignedDriverId === String(user?.employeeId))) ||
+          (targetUserEmail && itemAssignedEmail && targetUserEmail === itemAssignedEmail) ||
+          (driverNameLower && tripDriverName && (tripDriverName.includes(driverNameLower) || driverNameLower.includes(tripDriverName)))
         );
       });
 
@@ -1141,7 +1170,7 @@ export default function DriverMobileView() {
     setSubmittingWorkUpdate(true);
     
     const driverName = user?.name || user?.fullName || 'Ramesh Driver';
-    const vehicleName = attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'BR-01-TR-4521';
+    const vehicleName = profileVehicleNumber || attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'Unassigned';
 
     const payload = {
       driverId: user?._id || user?.employeeId || '',
@@ -1508,9 +1537,18 @@ export default function DriverMobileView() {
                               <strong className="text-[var(--crm-heading)] text-sm font-bold block">{d.customerName || 'Delivered Cargo'}</strong>
                               <span className="text-[10px] text-teal-400 font-mono">Trip ID: {d.dispatchNumber || d.orderNumber || d._id}</span>
                             </div>
-                            <span className="px-2.5 py-1 bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-[9px] font-bold uppercase rounded font-mono shadow-sm">
-                              DELIVERED ✓
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="px-2.5 py-0.5 bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 text-[9px] font-bold uppercase rounded font-mono shadow-sm">
+                                DELIVERED ✓
+                              </span>
+                              <span className={`px-2 py-0.5 border text-[9px] font-bold uppercase rounded font-mono ${
+                                (d.paymentMode || '').toUpperCase().includes('COD')
+                                  ? 'bg-amber-950/80 text-amber-300 border-amber-600'
+                                  : 'bg-emerald-950/80 text-emerald-300 border-emerald-500'
+                              }`}>
+                                {(d.paymentMode || '').toUpperCase().includes('COD') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
+                              </span>
+                            </div>
                           </div>
                           <div className="p-2 bg-[var(--crm-bg)]/80 border border-emerald-900/40 rounded text-[10px] text-[var(--crm-ink-soft)] font-mono flex justify-between items-center">
                             <span>📍 {d.origin || 'Delhi'} &rarr; 🚩 {d.destination || 'Destination'}</span>
@@ -1794,15 +1832,15 @@ export default function DriverMobileView() {
                     />
                   </div>
 
-                  {/* Row 3 - Left: Vehical milage */}
+                  {/* Row 3 - Left: Vehicle Mileage */}
                   <div className="space-y-1">
                     <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
-                      Vehical milage (KM/L)
+                      Vehicle Mileage (KM/L)
                     </label>
                     <input
                       type="number"
                       step="0.1"
-                      placeholder="Vehical milage"
+                      placeholder="Vehicle Mileage (KM/L)"
                       value={fuelExpenseForm.vehicleMileage}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleMileage: e.target.value }))}
                       className="w-full p-3 border-2 rounded-lg text-amber-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-amber-500 transition font-mono"
@@ -1810,10 +1848,10 @@ export default function DriverMobileView() {
                     />
                   </div>
 
-                  {/* Row 3 - Right: other Expence */}
+                  {/* Row 3 - Right: Other Expense */}
                   <div className="space-y-1">
                     <label className="block text-xs uppercase font-bold tracking-wide text-purple-300" style={LABEL_MONO}>
-                      other Expence (₹)
+                      Other Expense (₹)
                     </label>
                     <input
                       type="number"
@@ -1944,8 +1982,12 @@ export default function DriverMobileView() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <strong className="text-sm text-white block">{item.customerName || 'Client'}</strong>
-                          <span className="text-[9px] px-2 py-0.5 bg-emerald-900 text-emerald-300 border border-emerald-500 rounded font-bold uppercase">
-                            ✓ PAYMENT DONE
+                          <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase ${
+                            (item.paymentMode || '').toUpperCase().includes('COD')
+                              ? 'bg-amber-950/80 text-amber-300 border-amber-600'
+                              : 'bg-emerald-950/80 text-emerald-300 border-emerald-500'
+                          }`}>
+                            {(item.paymentMode || '').toUpperCase().includes('COD') ? '✓ COD CASH PAID' : '✓ ONLINE PAID'}
                           </span>
                         </div>
                         <span className="text-[11px] text-slate-400 block font-mono">
@@ -1963,7 +2005,9 @@ export default function DriverMobileView() {
                           ₹{Number(item.amountCollected || item.totalFreightAmount || item.freightAmount || 18000).toLocaleString('en-IN')}
                         </strong>
                         <span className="text-[10px] text-slate-300 block">
-                          Method: <strong className="text-amber-300">{item.paymentMode || 'Razorpay / Verified'}</strong>
+                          Payment Mode: <strong className={(item.paymentMode || '').toUpperCase().includes('COD') ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold'}>
+                            {(item.paymentMode || '').toUpperCase().includes('COD') ? 'COD (Cash on Delivery)' : 'Online Payment'}
+                          </strong>
                         </span>
                       </div>
                     </div>
@@ -2047,18 +2091,23 @@ export default function DriverMobileView() {
       <AnimatePresence>
         {showDeliveryModal && (
           <div className="fixed inset-0 z-[160] flex items-center justify-center p-2 sm:p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/85 backdrop-blur-xs" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg,#090d16)] border border-emerald-600/70 w-full max-w-4xl p-4 sm:p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs max-h-[92vh] flex flex-col">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg,#090d16)] border border-[var(--crm-line)] w-full max-w-4xl p-4 sm:p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs max-h-[92vh] flex flex-col" style={{ color: 'var(--crm-ink-soft)' }}>
               
               {/* Modal Header */}
-              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <div className="flex items-center gap-2">
-                  <FiCheckCircle size={20} className="text-emerald-400" />
-                  <h3 className="text-sm sm:text-base font-bold uppercase text-emerald-400 font-mono tracking-wider">
-                    Customer Payment & Delivery Completion
-                  </h3>
+              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] flex items-center justify-center text-[var(--crm-accent)]">
+                    <FiCheckCircle size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold uppercase text-[var(--crm-heading)] font-mono tracking-wider flex items-center gap-2">
+                      Customer Payment & Delivery Completion
+                    </h3>
+                    <p className="text-[10px] text-[var(--crm-ink-faint)]">Confirm cargo handover and verify payment collection</p>
+                  </div>
                 </div>
-                <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><FiX size={20} /></button>
+                <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] cursor-pointer transition"><FiX size={18} /></button>
               </div>
 
               {/* Modal Main Body (2-Column Grid) */}
@@ -2066,65 +2115,117 @@ export default function DriverMobileView() {
                 
                 {/* LEFT COLUMN: LEAD DETAILS & DRIVER PROOF (5 Columns) */}
                 <div className="lg:col-span-5 space-y-3.5 border-r lg:border-[var(--crm-line)] lg:pr-4">
-                  <div className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2 font-mono">
+                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2.5 font-mono shadow-sm">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                      Lead / Order ID: <strong className="text-teal-300 font-mono">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
+                      Lead / Order ID: <strong className="text-[var(--crm-accent)] font-mono">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
                     </span>
                     <strong className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName || 'Client Business'}</strong>
-                    <div className="text-[11px] text-emerald-300 font-bold">
-                      📍 {deliveringOrder?.origin || 'Origin'} &rarr; {deliveringOrder?.destination || 'Destination'}
+                    <div className="text-[11px] text-[var(--crm-accent)] font-bold flex items-center gap-1">
+                      <span>📍</span> {deliveringOrder?.origin || 'Origin'} &rarr; {deliveringOrder?.destination || 'Destination'}
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      🚚 Truck: <strong className="text-white">{deliveringOrder?.vehicleNo || attendanceForm.vehicleNumber || 'Assigned Vehicle'}</strong>
+                    <div className="text-[10px] text-slate-400 border-t border-[var(--crm-line)] pt-2 mt-1">
+                      🚚 Truck: <strong className="text-[var(--crm-heading)]">{deliveringOrder?.vehicleNo || attendanceForm.vehicleNumber || profileVehicleNumber || 'Assigned Vehicle'}</strong>
                     </div>
                   </div>
 
                   {/* Total Payment Payable Card */}
-                  <div className="p-3.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-1.5 font-mono">
-                    <label className="block text-[10px] uppercase font-bold text-emerald-300">Total Freight Payable (₹)</label>
+                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2 font-mono">
+                    <label className="block text-[10px] uppercase font-bold text-[var(--crm-heading)] tracking-wider">Total Freight Payable (₹)</label>
                     <input
                       type="number"
                       placeholder="Enter amount"
                       value={paymentAmountCollected}
                       onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                      className="w-full p-2 bg-black/60 border border-emerald-700/80 rounded-lg text-emerald-400 font-bold text-base outline-none font-mono"
+                      className="w-full p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] font-bold text-base outline-none font-mono transition"
                     />
                     <span className="text-[9px] text-slate-400 block">* Amount collected from customer upon delivery.</span>
                   </div>
 
                   {/* PROOF OF DRIVER (Selfie / Unloading Point Photo) */}
-                  <div className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2">
-                    <label className="block text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
-                      <FiCamera size={13} /> Driver Unloading Proof (Selfie / Photo) *
-                    </label>
+                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] uppercase font-bold text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
+                        <FiCamera size={14} className="text-[var(--crm-accent)]" /> Driver Unloading Proof *
+                      </label>
+                      <span className="text-[9px] text-rose-400 font-bold uppercase tracking-wider bg-rose-950/40 border border-rose-900/60 px-2 py-0.5 rounded">MANDATORY *</span>
+                    </div>
+
                     <input
                       type="file"
+                      required
                       accept="image/*"
                       capture="environment"
                       onChange={(e) => handleProofFileUpload(e, setDriverProofFile, setDriverProofPreview)}
-                      className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-emerald-950 file:text-emerald-300 hover:file:bg-emerald-900 cursor-pointer font-mono"
+                      className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-[var(--crm-line)] file:text-xs file:font-bold file:bg-[var(--crm-bg-sunken)] file:text-[var(--crm-heading)] hover:file:bg-[var(--crm-bg)] cursor-pointer font-mono"
                     />
-                    {driverProofPreview && (
-                      <div className="p-2 bg-[var(--crm-bg)] border border-emerald-800/60 rounded-lg flex items-center gap-2 font-mono">
-                        {driverProofFile?.type?.startsWith('image/') ? (
-                          <img src={driverProofPreview} alt="Driver Selfie" className="w-10 h-10 object-cover rounded border border-emerald-500" />
-                        ) : null}
-                        <div>
-                          <span className="text-emerald-300 text-[11px] block font-bold">📷 Driver Photo Attached</span>
-                          <span className="text-[10px] text-emerald-400">Verified at Site ✓</span>
+
+                    {/* Preview Box directly underneath file upload */}
+                    {driverProofPreview ? (
+                      <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-mono">
+                        <div className="flex items-center gap-2.5">
+                          {driverProofPreview.startsWith('data:image') || driverProofFile?.type?.startsWith('image/') ? (
+                            <img src={driverProofPreview} alt="Driver Selfie" className="w-12 h-12 object-cover rounded-lg border border-[var(--crm-accent)] shadow" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-[var(--crm-bg)] flex items-center justify-center text-xs">📷</div>
+                          )}
+                          <div>
+                            <span className="text-[var(--crm-heading)] text-[11px] block font-bold">📷 Driver Photo Uploaded</span>
+                            <span className="text-[10px] text-slate-400">{driverProofFile?.name || 'Unloading Selfie Verified'}</span>
+                          </div>
                         </div>
+                        <span className="text-[10px] text-[var(--crm-accent)] font-bold bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">VERIFIED ✓</span>
                       </div>
+                    ) : (
+                      <span className="text-[9px] text-slate-400 block font-mono">
+                        * Driver must upload site selfie or cargo unloading photo to confirm delivery.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* UPLOAD PAYMENT PROOF RECEIPT (Right under Driver Unloading Proof) */}
+                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
+                    <label className="block text-[10px] uppercase font-bold text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
+                      <FiUpload size={14} className="text-[var(--crm-accent)]" /> Upload Payment Proof / Receipt (Bank / UPI Screenshot)
+                    </label>
+
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
+                      className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-[var(--crm-line)] file:text-xs file:font-bold file:bg-[var(--crm-bg-sunken)] file:text-[var(--crm-heading)] hover:file:bg-[var(--crm-bg)] cursor-pointer font-mono"
+                    />
+
+                    {paymentProofPreview ? (
+                      <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-mono">
+                        <div className="flex items-center gap-2.5">
+                          {paymentProofPreview.startsWith('data:image') || paymentProofFile?.type?.startsWith('image/') ? (
+                            <img src={paymentProofPreview} alt="Payment Receipt" className="w-12 h-12 object-cover rounded-lg border border-[var(--crm-accent)] shadow" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-[var(--crm-bg)] flex items-center justify-center text-xs">📄</div>
+                          )}
+                          <div className="truncate max-w-[180px]">
+                            <span className="text-[var(--crm-heading)] text-[11px] block font-bold truncate">📄 Payment Receipt Attached</span>
+                            <span className="text-[10px] text-slate-400 truncate block">{paymentProofFile?.name || 'Bank/UPI Slip Verified'}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-[var(--crm-accent)] font-bold bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded shrink-0">ATTACHED ✓</span>
+                      </div>
+                    ) : (
+                      <span className="text-[9px] text-slate-400 block font-mono">
+                        * Upload customer payment receipt screenshot or bank slip if applicable.
+                      </span>
                     )}
                   </div>
 
                   {/* Delivery Notes / POD Remarks */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Delivery Notes / POD Remarks</label>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 font-mono">Delivery Notes / POD Remarks</label>
                     <textarea
                       rows={2}
                       value={deliveryNotes}
                       onChange={(e) => setDeliveryNotes(e.target.value)}
-                      className="w-full p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-[var(--crm-heading)] text-xs outline-none font-mono"
+                      className="w-full p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] text-xs outline-none font-mono transition"
+                      placeholder="Enter delivery comments or POD receipt details..."
                     />
                   </div>
                 </div>
@@ -2134,44 +2235,44 @@ export default function DriverMobileView() {
                   
                   {/* Payment Mode Selector Tabs */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-2 font-mono">Select Customer Payment Method</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-2 font-mono tracking-wider">Select Customer Payment Method</label>
+                    <div className="grid grid-cols-3 gap-2.5">
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('RAZORPAY')}
-                        className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                        className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RAZORPAY'
-                            ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 font-bold ring-1 ring-emerald-500'
-                            : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-slate-400 hover:text-white'
+                            ? 'bg-[var(--crm-accent-bg)] border-[var(--crm-accent)] text-[var(--crm-heading)] font-bold shadow-md'
+                            : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                         }`}
                       >
-                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-emerald-400' : 'text-slate-400'} />
+                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-[var(--crm-accent)]' : 'text-slate-400'} />
                         <span className="text-[10px] uppercase font-bold">Razorpay (UPI/QR)</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('COD')}
-                        className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                        className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'COD'
-                            ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 font-bold ring-1 ring-emerald-500'
-                            : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-slate-400 hover:text-white'
+                            ? 'bg-[var(--crm-accent-bg)] border-[var(--crm-accent)] text-[var(--crm-heading)] font-bold shadow-md'
+                            : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                         }`}
                       >
-                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-emerald-400' : 'text-slate-400'} />
+                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-[var(--crm-accent)]' : 'text-slate-400'} />
                         <span className="text-[10px] uppercase font-bold">Cash on Delivery</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('RECEIPT')}
-                        className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                        className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RECEIPT'
-                            ? 'bg-sky-950/80 border-sky-500 text-sky-300 font-bold ring-1 ring-sky-500'
-                            : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-slate-400 hover:text-white'
+                            ? 'bg-[var(--crm-accent-bg)] border-[var(--crm-accent)] text-[var(--crm-heading)] font-bold shadow-md'
+                            : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                         }`}
                       >
-                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-sky-400' : 'text-slate-400'} />
+                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-[var(--crm-accent)]' : 'text-slate-400'} />
                         <span className="text-[10px] uppercase font-bold">Upload Receipt</span>
                       </button>
                     </div>
@@ -2179,101 +2280,102 @@ export default function DriverMobileView() {
 
                   {/* OPTION 1: RAZORPAY CHECKOUT SDK (LIVE PAYMENT TERMINAL) */}
                   {selectedPaymentMode === 'RAZORPAY' && (
-                    <div className="p-4 border border-emerald-800/80 rounded-2xl bg-[var(--crm-bg-sunken)] shadow-xl space-y-4 font-mono text-slate-100">
+                    <div className="p-4 border border-[var(--crm-line)] rounded-2xl bg-[var(--crm-bg-raised)] shadow-xl space-y-4 font-mono text-slate-100">
                       
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-left">
                         
                         {/* LEFT COLUMN: Payment Methods List */}
                         <div className="md:col-span-6 space-y-2 border-r border-[var(--crm-line)] pr-3">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 font-mono flex items-center gap-1.5">
-                            <FiCreditCard size={13} /> Razorpay Payment Options
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--crm-heading)] mb-2 font-mono flex items-center gap-1.5">
+                            <FiCreditCard size={13} className="text-[var(--crm-accent)]" /> Razorpay Payment Options
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700 font-bold text-xs flex items-center justify-center font-mono">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 UPI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">UPI (Google Pay, PhonePe, Paytm)</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">UPI (Google Pay, PhonePe, Paytm)</h5>
                                 <p className="text-[10px] text-slate-400">Pay instantly using any UPI app</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-blue-950 text-blue-300 border border-blue-700 font-bold text-xs flex items-center justify-center font-mono">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 CARD
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">Credit / Debit / ATM Card</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">Credit / Debit / ATM Card</h5>
                                 <p className="text-[10px] text-slate-400">Visa, MasterCard, RuPay, Maestro</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-purple-950 text-purple-300 border border-purple-700 font-bold text-xs flex items-center justify-center font-mono">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 EMI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">EMI & Pay Later</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">EMI & Pay Later</h5>
                                 <p className="text-[10px] text-slate-400">Credit & Debit Card EMI</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-2.5 rounded-xl border border-emerald-900/60 bg-emerald-950/20 hover:border-emerald-500 hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700 font-bold text-xs flex items-center justify-center font-mono">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 BANK
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">Net Banking</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">Net Banking</h5>
                                 <p className="text-[10px] text-slate-400">All Indian Banks (SBI, HDFC, ICICI)</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
                           </div>
                         </div>
 
                         {/* RIGHT COLUMN: Razorpay Checkout Action Terminal Card */}
-                        <div className="md:col-span-6 flex flex-col justify-between items-center text-center p-4 bg-emerald-950/40 rounded-xl border border-emerald-800/80 font-mono space-y-4">
+                        <div className="md:col-span-6 flex flex-col justify-between items-center text-center p-4 bg-[var(--crm-bg-sunken)] rounded-xl border border-[var(--crm-line)] font-mono space-y-4">
                           <div className="space-y-1">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Total Freight Amount</span>
-                            <div className="text-2xl font-black text-emerald-400 font-mono">
+                            <div className="text-2xl font-black text-[var(--crm-heading)] font-mono">
                               ₹{Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')}
                             </div>
                           </div>
 
                           {razorpayTxnId ? (
-                            <div className="p-3 bg-emerald-900/80 border border-emerald-500 rounded-xl text-emerald-300 text-xs font-bold space-y-1 w-full text-center">
+                            <div className="p-3 bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] text-xs font-bold space-y-1 w-full text-center">
                               <div>✓ Razorpay Live Payment Verified!</div>
-                              <div className="text-[10px] text-slate-200 font-mono">Txn ID: <strong className="text-teal-300">{razorpayTxnId}</strong></div>
+                              <div className="text-[10px] text-slate-300 font-mono">Txn ID: <strong className="text-[var(--crm-heading)]">{razorpayTxnId}</strong></div>
                             </div>
                           ) : (
                             <button
                               type="button"
                               onClick={() => triggerRazorpayCheckout(deliveringOrder)}
                               disabled={loadingRazorpay}
-                              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2 border border-emerald-400/40"
+                              className="w-full py-3 px-4 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
+                              style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)', border: '1px solid var(--crm-accent)' }}
                             >
                               <FiCreditCard size={16} />
                               {loadingRazorpay ? 'Launching Gateway...' : `Launch Razorpay Live (₹${Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')})`}
@@ -2294,24 +2396,24 @@ export default function DriverMobileView() {
 
                   {/* OPTION 2: CASH ON DELIVERY (COD) */}
                   {selectedPaymentMode === 'COD' && (
-                    <div className="p-4 border border-emerald-800/80 rounded-xl bg-emerald-950/30 space-y-3 font-mono">
-                      <h4 className="text-xs font-bold uppercase text-emerald-400 flex items-center gap-2">
-                        <FiDollarSign /> Cash Handover / Cash on Delivery (COD)
+                    <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-raised)] space-y-3 font-mono">
+                      <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
+                        <FiDollarSign className="text-[var(--crm-accent)]" /> Cash Handover / Cash on Delivery (COD)
                       </h4>
                       <p className="text-[10px] text-slate-300">
                         Customer has paid cash directly to driver upon delivery.
                       </p>
 
                       <div className="space-y-2">
-                        <label className="block text-[10px] uppercase font-bold text-emerald-300">Cash Amount Collected (₹)</label>
+                        <label className="block text-[10px] uppercase font-bold text-slate-300">Cash Amount Collected (₹)</label>
                         <input
                           type="number"
                           value={paymentAmountCollected}
                           onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                          className="w-full p-2.5 bg-black/60 border border-emerald-700/80 rounded-lg text-emerald-400 font-bold text-sm outline-none font-mono"
+                          className="w-full p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] font-bold text-sm outline-none font-mono"
                         />
                       </div>
-                      <div className="p-2 bg-emerald-950/60 border border-emerald-800/50 rounded text-[10px] text-emerald-300">
+                      <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-[10px] text-slate-300">
                         ✓ Cash Handover will be logged in Driver Daily Freight Settlement.
                       </div>
                     </div>
@@ -2319,21 +2421,21 @@ export default function DriverMobileView() {
 
                   {/* OPTION 3: UPLOAD MANUAL PAYMENT RECEIPT */}
                   {selectedPaymentMode === 'RECEIPT' && (
-                    <div className="p-4 border border-sky-800/80 rounded-xl bg-sky-950/30 space-y-3 font-mono">
-                      <h4 className="text-xs font-bold uppercase text-sky-400 flex items-center gap-2">
-                        <FiUpload /> Upload Bank / UPI Screenshot Receipt
+                    <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-raised)] space-y-3 font-mono">
+                      <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
+                        <FiUpload className="text-[var(--crm-accent)]" /> Upload Bank / UPI Screenshot Receipt
                       </h4>
 
                       <input
                         type="file"
                         accept="image/*,.pdf,.doc,.docx"
                         onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
-                        className="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-sky-950 file:text-sky-300 hover:file:bg-sky-900 cursor-pointer font-mono"
+                        className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-[var(--crm-line)] file:text-xs file:font-bold file:bg-[var(--crm-bg-sunken)] file:text-[var(--crm-heading)] hover:file:bg-[var(--crm-bg)] cursor-pointer font-mono"
                       />
                       {paymentProofPreview && (
-                        <div className="p-2 bg-[var(--crm-bg)] border border-sky-900/50 rounded flex items-center justify-between text-[11px] font-mono">
-                          <span className="text-sky-300 truncate font-mono">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
-                          <span className="text-emerald-400 font-bold text-[10px]">Attached ✓</span>
+                        <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-[var(--crm-heading)] truncate font-mono">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
+                          <span className="text-[var(--crm-accent)] font-bold text-[10px]">Attached ✓</span>
                         </div>
                       )}
                     </div>
@@ -2344,19 +2446,19 @@ export default function DriverMobileView() {
               </div>
 
               {/* Modal Footer / Confirm Action */}
-              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--crm-line)]">
-                <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg uppercase cursor-pointer">Cancel</button>
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--crm-line)]">
+                <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2.5 border border-[var(--crm-line)] hover:border-slate-500 text-slate-300 text-xs font-bold rounded-xl uppercase cursor-pointer transition font-mono">Cancel</button>
                 <button 
                   type="button" 
                   onClick={handleConfirmDeliverySubmit} 
                   disabled={submittingDelivery} 
-                  className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg cursor-pointer transition flex items-center gap-2 border border-emerald-400/40"
+                  className="px-6 py-2.5 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center gap-2 shadow-lg"
+                  style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)', border: '1px solid var(--crm-accent)' }}
                 >
                   <FiCheckCircle size={16} />
                   {submittingDelivery ? 'Updating Status...' : 'CONFIRM DELIVERY & NOTIFY MANAGER'}
                 </button>
               </div>
-
             </motion.div>
           </div>
         )}

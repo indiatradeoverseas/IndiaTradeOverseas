@@ -283,9 +283,6 @@ export function getCrmMainNavItems(user) {
     // Support Tickets — Available to all employees for raising tickets/grievances
     { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
 
-    // Product Upload / Products — ADMIN, Manager or permitted
-    (admin || ['MANAGER', 'IT', 'SOFTWARE_ENGINEER'].includes(user?.role) || user?.productUploadPermission) && { to: '/crm/products', label: 'Products Upload', icon: FiLayers },
-
     // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
 

@@ -178,14 +178,89 @@ async function listLeads(user, query = {}) {
     }
     filter.assignedTo = { $in: actorIds };
   }
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
 
-  const leads = await Lead.find(filter)
-    .populate('assignedTo', 'fullName name email role profileImage')
+  // Fetch raw leads WITHOUT Mongoose populate on assignedTo so raw ObjectId is preserved
+  const rawLeads = await Lead.find(filter)
     .populate('createdBy', 'fullName name email role profileImage')
     .sort({ createdAt: -1 })
     .lean();
 
-  return leads.map(l => getLeadDisplay(l, user));
+  // Collect all assignedTo values (IDs, emails, or ObjectIds)
+  const rawAssignedValues = [...new Set(rawLeads.map(l => l.assignedTo ? String(l.assignedTo._id || l.assignedTo) : null).filter(Boolean))];
+
+  if (rawAssignedValues.length > 0) {
+    const objectIds = [];
+    const emailStrings = [];
+
+    rawAssignedValues.forEach(v => {
+      if (v.includes('@')) {
+        emailStrings.push(v.toLowerCase());
+      }
+      if (mongoose.Types.ObjectId.isValid(v)) {
+        objectIds.push(new mongoose.Types.ObjectId(v));
+        objectIds.push(String(v));
+      }
+    });
+
+    const [users, employees] = await Promise.all([
+      User.find({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId').lean(),
+      Employee.find({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } }
+        ]
+      }).select('_id fullName name email role profileImage').lean()
+    ]);
+
+    const assigneeMap = new Map();
+
+    const addToMap = (info) => {
+      if (!info) return;
+      if (info._id) assigneeMap.set(String(info._id), info);
+      if (info.email) assigneeMap.set(info.email.toLowerCase(), info);
+      if (info.employeeDbId) assigneeMap.set(String(info.employeeDbId), info);
+    };
+
+    users.forEach(u => addToMap({
+      _id: u._id,
+      fullName: u.fullName || u.name || u.email,
+      name: u.name || u.fullName || u.email,
+      email: u.email,
+      role: u.role,
+      profileImage: u.profileImage,
+      employeeDbId: u.employeeDbId
+    }));
+
+    employees.forEach(e => addToMap({
+      _id: e._id,
+      fullName: e.name || e.fullName || e.email,
+      name: e.name || e.fullName || e.email,
+      email: e.email,
+      role: e.role,
+      profileImage: e.profileImage
+    }));
+
+    rawLeads.forEach(l => {
+      if (l.assignedTo) {
+        const rawVal = String(l.assignedTo._id || l.assignedTo);
+        const resolved = assigneeMap.get(rawVal) || (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null);
+        if (resolved) {
+          l.assignedTo = resolved;
+        } else {
+          l.assignedTo = null;
+        }
+      }
+    });
+  }
+
+  return rawLeads.map(l => getLeadDisplay(l, user));
 }
 
 async function getLeadById(id, user) {
@@ -495,44 +570,65 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
     throw new Error('LEAD_IDS_REQUIRED');
   }
 
+  const targetLeadIds = leadIds.map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id);
+  let targetAssignedTo = null;
+  if (assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) {
+    targetAssignedTo = new mongoose.Types.ObjectId(assignedTo);
+  } else if (assignedTo) {
+    targetAssignedTo = assignedTo;
+  }
+
   const results = await Lead.updateMany(
-    { _id: { $in: leadIds } },
+    { _id: { $in: targetLeadIds } },
     { 
       $set: { 
-        assignedTo: assignedTo || null,
+        assignedTo: targetAssignedTo,
         stage: 'ASSIGNED'
       } 
     }
   );
 
   for (const leadId of leadIds) {
-    await LeadActivity.create({
-      leadId,
-      actionType: 'LEAD_ASSIGNED',
-      note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
-      actorId: user._id
-    });
+    try {
+      await LeadActivity.create({
+        leadId,
+        actionType: 'LEAD_ASSIGNED',
+        note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
+        actorId: user._id
+      });
+    } catch (actErr) {
+      console.warn('LeadActivity creation warning during bulk assign:', actErr.message);
+    }
 
     if (assignedTo) {
-      const lead = await Lead.findById(leadId);
-      if (lead) {
-        await Notification.create({
-          targetUserId: assignedTo,
-          message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName}.`,
-          type: 'TASK_ASSIGNMENT',
-          metadata: { leadId: lead._id }
-        });
+      try {
+        const lead = await Lead.findById(leadId);
+        if (lead) {
+          await Notification.create({
+            targetUserId: assignedTo,
+            message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name || 'Manager'}.`,
+            type: 'TASK_ASSIGNMENT',
+            metadata: { leadId: lead._id }
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Notification creation warning during bulk assign:', notifErr.message);
       }
     }
   }
 
-  await recordAudit({
-    actorId: user._id,
-    actionType: 'LEADS_BULK_ASSIGNED',
-    entityType: 'LEAD',
-    severity: 'MEDIUM',
-    metadata: { leadIds, assignedTo }
-  });
+  try {
+    await recordAudit({
+      actorId: user._id,
+      actionType: 'LEAD_ASSIGNED',
+      entityType: 'LEAD',
+      entityId: String(leadIds[0]),
+      severity: 'MEDIUM',
+      metadata: { leadIds, assignedTo }
+    });
+  } catch (auditErr) {
+    console.warn('Audit log warning during bulk assign:', auditErr.message);
+  }
 
   return { success: true, modifiedCount: results.modifiedCount };
 }

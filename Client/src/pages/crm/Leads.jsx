@@ -67,10 +67,19 @@ export default function Leads() {
   };
 
   const isUnassigned = (lead) => {
-    if (!lead) return true;
-    if (!lead.assignedTo) return true;
-    if (typeof lead.assignedTo === 'string' && (lead.assignedTo.toLowerCase() === 'unassigned' || lead.assignedTo.trim() === '')) return true;
-    return false;
+    if (!lead || !lead.assignedTo) return true;
+    const assigned = lead.assignedTo;
+    if (typeof assigned === 'object' && assigned !== null) {
+      const name = assigned.fullName || assigned.name || assigned.email;
+      if (!name || String(name).toLowerCase() === 'unassigned') return true;
+      return false;
+    }
+    if (typeof assigned === 'string') {
+      const s = assigned.trim().toLowerCase();
+      if (!s || s === 'unassigned' || s === 'null' || s === 'undefined') return true;
+      return false;
+    }
+    return true;
   };
 
   // Toggle between Table and Visual Kanban Board
@@ -507,7 +516,41 @@ export default function Leads() {
     }
   };
 
-  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'];
+  const isWonOrDelivered = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
+  };
+
+  const isOrderConfirmedStage = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return [
+      'ORDER_CONFIRMED',
+      'PO_RECEIVED',
+      'LOI_PO_PENDING',
+      'DISPATCH_PENDING',
+      'DISPATCH_PLANNED',
+      'PAYMENT_PENDING',
+      'PAYMENT_DISCUSSION',
+      'DOCUMENT_PENDING',
+      'QUOTATION_APPROVED'
+    ].includes(s);
+  };
+
+  const isNewOrAssignedLead = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return !isWonOrDelivered(s) && !isOrderConfirmedStage(s) && !['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const isLost = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED'];
 
   const activeLeads = leads.filter(l => !completedStages.includes((l.stage || '').toUpperCase()));
   const completedLeads = leads.filter(l => completedStages.includes((l.stage || '').toUpperCase()));
@@ -522,6 +565,10 @@ export default function Leads() {
 
     if (leadTab === 'ACTIVE' && isCompleted) return false;
     if (leadTab === 'COMPLETED' && !isCompleted) return false;
+    if (leadTab === 'WON_DELIVERED' && !isWonOrDelivered(lead.stage)) return false;
+    if (leadTab === 'ORDER_CONFIRM' && !isOrderConfirmedStage(lead.stage)) return false;
+    if (leadTab === 'NEW_LEAD' && !isNewOrAssignedLead(lead.stage)) return false;
+    if (leadTab === 'CALENDAR' && !lead.nextFollowupAt) return false;
 
     if (filterPriority !== 'ALL') {
       const pUpper = (lead.priority || 'WARM').toUpperCase();
@@ -798,60 +845,74 @@ export default function Leads() {
           </motion.div>
         )}
 
-        {/* Lead Section Tab Switcher (Active Leads vs Completed Leads) */}
+        {/* Lead Section Tab Switcher */}
         <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-ink-soft)]/15 pb-2 font-mono">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setLeadTab('ACTIVE')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
-                leadTab === 'ACTIVE'
-                  ? 'bg-teal-950/80 text-teal-400 border-teal-800/80 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
-              }`}
-            >
-              <span>🔥 Active Leads Pipeline</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
-                {activeLeads.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setLeadTab('COMPLETED')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
-                leadTab === 'COMPLETED'
-                  ? 'bg-emerald-950/90 text-emerald-400 border-emerald-800/90 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
-              }`}
-            >
-              <span>🏆 Lead Complete Section</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
-                {completedLeads.length}
-              </span>
-            </button>
-
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
             <button
               onClick={() => setLeadTab('ALL')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ALL'
-                  ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/30'
+                  ? 'bg-teal-950/80 text-teal-300 border-teal-500/50 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              <span>📁 All Inquiries Registry</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20">
+              <span>All Lead</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
                 {leads.length}
               </span>
             </button>
 
             <button
+              onClick={() => setLeadTab('WON_DELIVERED')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'WON_DELIVERED'
+                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>DEAL WON, DELIVERED, CLOSED WON</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
+                {leads.filter(l => isWonOrDelivered(l.stage)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadTab('ORDER_CONFIRM')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'ORDER_CONFIRM'
+                  ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>order Confirm</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-900/60 text-cyan-200 border border-cyan-700/40">
+                {leads.filter(l => isOrderConfirmedStage(l.stage)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadTab('NEW_LEAD')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'NEW_LEAD'
+                  ? 'bg-amber-950/90 text-amber-300 border-amber-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>New Lead</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-900/60 text-amber-200 border border-amber-700/40">
+                {leads.filter(l => isNewOrAssignedLead(l.stage)).length}
+              </span>
+            </button>
+
+            <button
               onClick={() => setLeadTab('WORKLOAD')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WORKLOAD'
                   ? 'bg-sky-950/90 text-sky-300 border-sky-800/90 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              <span>👥 Employee Workload Allocation</span>
+              <span>👥 Employee Workload</span>
               <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-900/60 text-sky-200 border border-sky-700/40">
                 {executiveWorkloadSummary.list.length} Members
               </span>

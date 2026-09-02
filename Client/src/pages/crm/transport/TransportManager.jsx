@@ -640,8 +640,40 @@ export default function TransportManager() {
       const assignedEmp = allEmployeesList.find(emp => String(emp._id) === String(targetUserId)) || driversList.find(d => String(d._id) === String(targetUserId));
       const empName = assignedEmp?.fullName || assignedEmp?.name || 'Driver';
       
-      setDispatchQueue(prev => prev.map(l => (l._id === leadId || l.orderNumber === leadId) ? { ...l, assignedTo: assignedEmp, driverName: empName, salesOwner: empName } : l));
-      setTrips(prev => prev.map(t => (t._id === leadId || t.orderNumber === leadId) ? { ...t, assignedTo: assignedEmp, driverName: empName } : t));
+      const targetLeadObj = [...dispatchQueue, ...trips].find(l => l._id === leadId || l.orderNumber === leadId || l.dispatchNumber === leadId) || {};
+
+      // Attempt to register/update dispatch with driver information
+      try {
+        if (dispatchesApi.createDispatch) {
+          await dispatchesApi.createDispatch({
+            orderNumber: targetLeadObj.orderNumber || targetLeadObj.dispatchNumber || leadId,
+            customerName: targetLeadObj.customerName || 'Confirmed Client',
+            origin: targetLeadObj.origin || 'Depot',
+            destination: targetLeadObj.destination || 'Destination',
+            material: targetLeadObj.material || 'Goods',
+            freightRate: Number(targetLeadObj.totalFreightAmount || targetLeadObj.freightAmount || 18000),
+            truckNo: targetLeadObj.vehicleNo || 'Carrier',
+            driverName: empName,
+            driverId: targetUserId,
+            assignedDriverId: targetUserId,
+            assignedTo: targetUserId
+          }).catch(() => {});
+        }
+      } catch (err) {}
+
+      // Update local states
+      setDispatchQueue(prev => prev.map(l => (l._id === leadId || l.orderNumber === leadId) ? { ...l, assignedTo: assignedEmp, driverId: targetUserId, assignedDriverId: targetUserId, driverName: empName, salesOwner: empName } : l));
+      setTrips(prev => prev.map(t => (t._id === leadId || t.orderNumber === leadId) ? { ...t, assignedTo: assignedEmp, driverId: targetUserId, assignedDriverId: targetUserId, driverName: empName } : t));
+      
+      // Dispatch real-time events for instant driver dashboard sync
+      try {
+        window.dispatchEvent(new CustomEvent('ito_dispatch_updated_event', { detail: { leadId, targetUserId, empName } }));
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.emit('task_assigned', { leadId, assignedTo: targetUserId, driverName: empName });
+        }
+      } catch (err) {}
+
       toast.success(`✅ Order assigned directly to ${empName}! Real-time notification sent.`);
     } catch (err) {
       console.error('Lead assign error:', err);
@@ -804,7 +836,7 @@ export default function TransportManager() {
       if (!code) return;
 
       const driverName = t.driverName || t.assignedDriverName || 'Ramesh Driver';
-      const vehicleNo = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'BR-01-TR-4521';
+      const vehicleNo = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'Unassigned';
       const customer = t.customerName || t.companyName || 'Lead Customer Cargo';
       const origin = t.origin || t.originCity || 'Depot';
       const destination = t.destination || t.destCity || t.city || 'Destination';
@@ -839,6 +871,7 @@ export default function TransportManager() {
           attendeeFileType: hasAttendee ? detectFileType(attendeeUrl) : (existing?.attendeeFileType || ''),
           paymentUrl: hasPayment ? paymentUrl : (existing?.paymentUrl || ''),
           paymentFileType: hasPayment ? detectFileType(paymentUrl) : (existing?.paymentFileType || ''),
+          paymentMode: t.paymentMode || t.paymentProof?.paymentMode || 'Online',
           status: ['DELIVERED', 'COMPLETED', 'DEAL_WON'].includes((t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase()) ? 'POD VERIFIED ✓' : 'DOC SUBMITTED ✓'
         });
       }
@@ -1962,9 +1995,18 @@ export default function TransportManager() {
                                     {item.customerName || 'Client Cargo'}
                                   </h3>
                                 </div>
-                                <span className="text-[9px] px-2 py-0.5 bg-emerald-900 text-emerald-200 border border-emerald-700 rounded font-bold uppercase shrink-0">
-                                  DEAL WON ✓
-                                </span>
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="text-[9px] px-2 py-0.5 bg-emerald-900 text-emerald-200 border border-emerald-700 rounded font-bold uppercase shrink-0">
+                                    DEAL WON ✓
+                                  </span>
+                                  <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase shrink-0 ${
+                                    (item.paymentMode || '').toUpperCase().includes('COD')
+                                      ? 'bg-amber-950/90 text-amber-300 border-amber-500'
+                                      : 'bg-emerald-950/90 text-emerald-300 border-emerald-400'
+                                  }`}>
+                                    {(item.paymentMode || '').toUpperCase().includes('COD') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
+                                  </span>
+                                </div>
                               </div>
 
                               <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
@@ -2099,7 +2141,7 @@ export default function TransportManager() {
                   >
                     <option value="">Select Fleet Captain Driver...</option>
                     {driversList.map(d => (
-                      <option key={d._id} value={d._id}>{d.name} ({d.vehicleNumber || 'BR-01-TR-4521'})</option>
+                      <option key={d._id} value={d._id}>{d.name} ({d.vehicleNumber || 'No Truck Assigned'})</option>
                     ))}
                   </select>
                 </div>
