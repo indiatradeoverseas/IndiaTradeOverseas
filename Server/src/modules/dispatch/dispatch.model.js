@@ -102,6 +102,13 @@ const dispatchSchema = new mongoose.Schema({
 
   // Feature 2: Fuel / Diesel Tracking Logs
   fuelLogs: [{
+    driverName: { type: String },
+    vehicleNumber: { type: String },
+    vehicleNo: { type: String },
+    leadCode: { type: String },
+    leadCustomer: { type: String },
+    todaysTrip: { type: String },
+    vehicleMileage: { type: Number, default: 0 },
     fuelType: { type: String, enum: ['Diesel', 'Petrol', 'CNG', 'AdBlue'], default: 'Diesel' },
     quantityLiters: { type: Number, default: 0 },
     amountPaid: { type: Number, default: 0 },

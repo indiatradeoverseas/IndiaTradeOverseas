@@ -356,6 +356,21 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     }
   }
 
+  // 6b. Automation trigger: Notify Transport Manager & Transport Department when Order is Confirmed
+  if (newStage === 'ORDER_CONFIRMED' || newStage === 'PO_RECEIVED') {
+    try {
+      const Notification = require('../notifications/notification.model');
+      await Notification.create({
+        targetDepartment: 'TRANSPORT',
+        message: `🎉 New Order Confirmed! Lead ${lead.leadCode || lead.customerName} (${lead.customerName}) is ready for transport & driver assignment.`,
+        type: 'ORDER_CONFIRMED',
+        metadata: { leadId: lead._id, leadCode: lead.leadCode }
+      });
+    } catch (notifErr) {
+      console.warn('Order confirmation notification notice:', notifErr.message);
+    }
+  }
+
   // 7. Record security audit log
   await recordAudit({
     actorId: user._id,
@@ -406,11 +421,24 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
 
 
   if (assignedTo && String(assignedTo) !== String(oldAssignedTo)) {
+    const User = require('../users/user.model');
+    const assignedUser = await User.findById(assignedTo).select('fullName name role department');
+    const assignedUserName = assignedUser?.fullName || assignedUser?.name || 'team member';
+
+    // 1. Notify the assigned Executive or Driver
     await Notification.create({
       targetUserId: assignedTo,
-      message: `Lead ${lead.leadCode} has been assigned to you by ${user.fullName}.`,
+      message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
       metadata: { leadId: lead._id }
+    });
+
+    // 2. Also notify the Transport Manager / TRANSPORT department
+    await Notification.create({
+      targetDepartment: 'TRANSPORT',
+      message: `📋 Lead ${lead.leadCode || lead.customerName} assigned to ${assignedUserName} (${assignedUser?.role || 'Transport'}) by ${user.fullName || user.name}.`,
+      type: 'TASK_ASSIGNMENT',
+      metadata: { leadId: lead._id, assignedTo }
     });
   } else if (assignedDepartment && assignedDepartment !== oldAssignedDept) {
     await Notification.create({

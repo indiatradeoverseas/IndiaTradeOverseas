@@ -174,27 +174,31 @@ function isDriverRole(user) {
 export function getCrmMainNavItems(user) {
   const admin = isAdminUser(user);
 
-  // 1. DRIVER: Driver Dashboard, Payment Proof & My Profile
+  // 1. DRIVER: Driver Dashboard, Support Tickets, Payment Proof & My Profile
   if (!admin && isDriverRole(user)) {
     return [
       { to: '/crm/transport/driver', label: 'Driver Dashboard', icon: FiTruck },
+      { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/transport/driver?tab=PAYMENTS', label: 'Payment Proof', icon: FiCreditCard }
     ];
   }
 
-  // 2. TRANSPORT EXECUTIVE: Transport Executive Dashboard & My Profile
+  // 2. TRANSPORT EXECUTIVE: Transport Executive Dashboard, Support Tickets & My Profile
   if (!admin && isTransportExecutiveUser(user)) {
     return [
       { to: '/crm/transport/executive', label: 'Transport Executive Dashboard', icon: FiTruck },
+      { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser }
     ];
   }
 
-  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Payment & Receipts, Quotation Rates, Driver Uploaded All Proof & My Profile
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Support Tickets, Payment & Receipts, Quotation Rates, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
       { to: '/crm/transport/manager?tab=DASHBOARD', label: 'Transport Manager Dashboard', icon: FiTruck },
+      { to: '/crm/transport/manager?tab=ASSIGN_LEADS', label: 'Lead & Trip Assignment', icon: FiCheckSquare },
+      { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/transport/manager?tab=PAYMENTS', label: 'Payment & Receipts', icon: FiCreditCard },
       { to: '/crm/transport/manager?tab=QUOTATIONS', label: 'Quotation Rates', icon: FiFileText },

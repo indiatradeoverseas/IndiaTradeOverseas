@@ -682,16 +682,25 @@ class DispatchService {
     if (mongoose.isValidObjectId(dispatchId)) {
       dispatch = await Dispatch.findById(dispatchId);
     }
-    if (!dispatch) {
+    if (!dispatch && dispatchId) {
       dispatch = await Dispatch.findOne({
-        $or: [{ dispatchNumber: dispatchId }, { salesOrderId: mongoose.isValidObjectId(dispatchId) ? dispatchId : null }]
+        $or: [{ dispatchNumber: dispatchId }, { orderNumber: dispatchId }, { leadCode: dispatchId }]
       });
     }
     if (!dispatch) {
       // Fallback: update latest dispatch
       dispatch = await Dispatch.findOne().sort({ createdAt: -1 });
     }
-    if (!dispatch) throw new Error('Dispatch record not found');
+    if (!dispatch) {
+      const count = await Dispatch.countDocuments();
+      dispatch = new Dispatch({
+        dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
+        orderNumber: payload.leadCode || `ORD-${Date.now()}`,
+        customerName: payload.leadCustomer || 'Lead Cargo Customer',
+        vehicleNumber: payload.vehicleNumber || payload.vehicleNo || 'BR-01-TR-4521',
+        driverName: payload.driverName || user?.fullName || user?.name || 'Driver'
+      });
+    }
 
     const {
       fuelType = 'Diesel',
@@ -708,21 +717,37 @@ class DispatchService {
       location,
       lat,
       long,
-      receiptPhotoUrl
+      receiptPhotoUrl,
+      driverName,
+      vehicleNumber,
+      vehicleNo,
+      leadCode,
+      leadCustomer,
+      todaysTrip,
+      vehicleMileage
     } = payload;
 
     const finalFuelCost = Number(fuelCost || amountPaid) || 0;
     const finalLitres = Number(litres || quantityLiters) || 0;
+    const finalDriver = driverName || user?.fullName || user?.name || dispatch.driverName || 'Driver';
+    const finalVehicle = vehicleNumber || vehicleNo || dispatch.vehicleNumber || 'Carrier Truck';
 
     dispatch.fuelLogs.push({
+      driverName: finalDriver,
+      vehicleNumber: finalVehicle,
+      vehicleNo: finalVehicle,
+      leadCode: leadCode || dispatch.orderNumber || dispatch.dispatchNumber || '',
+      leadCustomer: leadCustomer || dispatch.customerName || '',
+      todaysTrip: todaysTrip || '',
+      vehicleMileage: Number(vehicleMileage) || 0,
       fuelType,
       quantityLiters: finalLitres,
       amountPaid: finalFuelCost,
       kmDriven: Number(kmDriven) || 0,
       punctureCost: Number(punctureCost) || 0,
       otherCost: Number(otherCost) || 0,
-      fromLocation: fromLocation || dispatch.origin || '',
-      toLocation: toLocation || dispatch.destination || '',
+      fromLocation: fromLocation || dispatch.origin || 'Depot',
+      toLocation: toLocation || dispatch.destination || 'Destination Hub',
       remarks: remarks || '',
       location: location || `${fromLocation || ''} to ${toLocation || ''}`,
       gps: { lat: Number(lat) || 0, long: Number(long) || 0 },

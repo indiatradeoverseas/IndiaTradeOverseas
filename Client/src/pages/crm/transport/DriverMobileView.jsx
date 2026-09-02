@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiTruck, FiCheckCircle, FiUpload, FiPhone, FiMessageSquare, 
@@ -7,7 +7,8 @@ import {
   FiShield, FiActivity, FiDollarSign, FiClock, FiTool, FiFileText,
   FiCheckSquare, FiPlus, FiCompass, FiNavigation, FiUser, FiCreditCard,
   FiSend, FiX, FiLayers, FiCamera, FiTrendingUp, FiCrosshair, FiMaximize2,
-  FiHelpCircle, FiCalendar, FiBriefcase, FiMenu, FiExternalLink, FiDownload
+  FiHelpCircle, FiCalendar, FiBriefcase, FiMenu, FiExternalLink, FiDownload,
+  FiLifeBuoy
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -350,14 +351,18 @@ export default function DriverMobileView() {
 
   // Trip Expense, Fuel, KM & Maintenance Form State
   const [fuelExpenseForm, setFuelExpenseForm] = useState({
-    kmDriven: '',
+    vehicleNumber: user?.vehicleNumber || user?.truckNumber || '',
+    fuelCost: '',
+    kmDriven: '', // Total Drive Today
+    todaysTrip: '', // Todays Trip
+    vehicleMileage: '', // Vehical milage
+    otherCost: '', // other Expence
     fromLocation: '',
     toLocation: '',
-    fuelCost: '',
     fuelLitres: '',
     punctureCost: '',
-    otherCost: '',
-    remarks: ''
+    remarks: '',
+    leadCode: ''
   });
   const [submittingExpense, setSubmittingExpense] = useState(false);
 
@@ -365,61 +370,106 @@ export default function DriverMobileView() {
 
   const handleFuelExpenseSubmit = async (e) => {
     e.preventDefault();
-    if (!fuelExpenseForm.kmDriven && !fuelExpenseForm.fuelCost) {
-      toast.error('Please enter KM Driven or Fuel Cost');
+    if (!fuelExpenseForm.vehicleNumber && !fuelExpenseForm.kmDriven && !fuelExpenseForm.fuelCost && !fuelExpenseForm.todaysTrip) {
+      toast.error('Please enter Vehicle Number, Total Drive Today, or Fuel Cost');
       return;
     }
 
     setSubmittingExpense(true);
     const driverName = user?.name || user?.fullName || 'Ramesh Driver';
-    const vehicleName = dispatchesList[0]?.vehicleNo || attendanceForm.vehicleNumber || 'BR-01-TR-4521';
+    const vehicleName = (fuelExpenseForm.vehicleNumber || '').trim() || attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'BR-01-TR-4521';
+
+    const kmDrivenNum = Number(fuelExpenseForm.kmDriven) || 0;
+    const fuelCostNum = Number(fuelExpenseForm.fuelCost) || 0;
+    const otherCostNum = Number(fuelExpenseForm.otherCost) || 0;
+    const mileageNum = Number(fuelExpenseForm.vehicleMileage) || (fuelCostNum > 0 && kmDrivenNum > 0 ? Number((kmDrivenNum / (fuelCostNum / 95)).toFixed(2)) : 0);
 
     const newExpenseObj = {
       id: Date.now(),
       driver: driverName,
       vehicle: vehicleName,
-      leadCode: fuelExpenseForm.leadCode || dispatchesList[0]?.orderNumber || dispatchesList[0]?.dispatchNumber || 'LD-1787912189516-9647',
-      leadCustomer: fuelExpenseForm.leadCustomer || dispatchesList[0]?.customerName || 'jjh (Chat Customer)',
-      totalKm: Number(fuelExpenseForm.kmDriven) || 0,
-      fromLocation: fuelExpenseForm.fromLocation || dispatchesList[0]?.origin || 'Delhi',
+      leadCode: fuelExpenseForm.leadCode || dispatchesList[0]?.orderNumber || dispatchesList[0]?.dispatchNumber || 'LD-LOGGED',
+      leadCustomer: fuelExpenseForm.leadCustomer || dispatchesList[0]?.customerName || 'Client',
+      totalKm: kmDrivenNum,
+      todaysTrip: fuelExpenseForm.todaysTrip || 'Trip 1',
+      vehicleMileage: mileageNum,
+      fromLocation: fuelExpenseForm.fromLocation || dispatchesList[0]?.origin || 'Depot',
       toLocation: fuelExpenseForm.toLocation || dispatchesList[0]?.destination || 'Destination',
-      fuelCost: Number(fuelExpenseForm.fuelCost) || 0,
+      fuelCost: fuelCostNum,
       litres: Number(fuelExpenseForm.fuelLitres) || 0,
       punctureCost: Number(fuelExpenseForm.punctureCost) || 0,
-      otherCost: Number(fuelExpenseForm.otherCost) || 0,
-      remarks: fuelExpenseForm.remarks || 'Trip Mileage & Expense Log',
+      otherCost: otherCostNum,
+      remarks: fuelExpenseForm.remarks || 'Driver Daily Log Submission',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       date: new Date().toLocaleDateString('en-IN')
     };
 
     // Attempt API logs if active trip exists
-    const activeTargetId = dispatchesList[0]?._id;
-    if (activeTargetId) {
-      try {
-        await dispatchesApi.addFuelLog(activeTargetId, {
-          fuelCost: newExpenseObj.fuelCost,
-          litres: newExpenseObj.litres,
-          kmDriven: newExpenseObj.totalKm,
-          punctureCost: newExpenseObj.punctureCost
-        }).catch(() => {});
-      } catch (err) {}
-    }
+    const activeTargetId = fuelExpenseForm.leadCode || dispatchesList[0]?._id || 'GLOBAL_LOG';
+    try {
+      await dispatchesApi.addFuelLog(activeTargetId, {
+        driverName: driverName,
+        vehicleNumber: vehicleName,
+        vehicleNo: vehicleName,
+        leadCode: newExpenseObj.leadCode,
+        leadCustomer: newExpenseObj.leadCustomer,
+        fuelCost: newExpenseObj.fuelCost,
+        litres: newExpenseObj.litres,
+        kmDriven: newExpenseObj.totalKm,
+        todaysTrip: newExpenseObj.todaysTrip,
+        vehicleMileage: newExpenseObj.vehicleMileage,
+        otherCost: newExpenseObj.otherCost,
+        remarks: newExpenseObj.remarks,
+        fromLocation: newExpenseObj.fromLocation,
+        toLocation: newExpenseObj.toLocation
+      }).catch(() => {});
+    } catch (err) {}
+
+    // Post to Driver Work Updates Feed so Manager sees it live
+    try {
+      await dispatchesApi.createWorkUpdate({
+        driverId: user?._id || user?.employeeId || '',
+        driverName,
+        vehicleNo: vehicleName,
+        updateType: 'Fuel Stop',
+        notes: `⛽ Trip & Vehicle Log: Drive ${kmDrivenNum} KM | Fuel: ₹${fuelCostNum} | Mileage: ${mileageNum} KM/L | ${fuelExpenseForm.todaysTrip || 'Trip Logged'} | Remarks: ${fuelExpenseForm.remarks || 'Ok'}`,
+        location: `${newExpenseObj.fromLocation} -> ${newExpenseObj.toLocation}`
+      }).catch(() => {});
+    } catch (err) {}
+
+    // Emit live socket event to Transport Manager
+    try {
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('driver_work_update', {
+          id: Date.now(),
+          driver: driverName,
+          vehicle: vehicleName,
+          stage: 'Fuel Stop',
+          update: `⛽ Trip & Vehicle Log: Drive ${kmDrivenNum} KM | Fuel: ₹${fuelCostNum} | Mileage: ${mileageNum} KM/L | ${fuelExpenseForm.todaysTrip || 'Trip Logged'}`,
+          location: `${newExpenseObj.fromLocation} -> ${newExpenseObj.toLocation}`,
+          time: new Date().toLocaleTimeString()
+        });
+      }
+    } catch (err) {}
 
     const updatedList = [newExpenseObj, ...fuelExpenseLogs];
     setFuelExpenseLogs(updatedList);
 
-    setFuelExpenseForm({
+    setFuelExpenseForm(prev => ({
+      ...prev,
+      vehicleNumber: vehicleName,
       kmDriven: '',
-      fromLocation: '',
-      toLocation: '',
+      todaysTrip: '',
+      vehicleMileage: '',
       fuelCost: '',
       fuelLitres: '',
       punctureCost: '',
       otherCost: '',
       remarks: ''
-    });
+    }));
     setSubmittingExpense(false);
-    toast.success(`⛽ Trip Expense of ₹${(newExpenseObj.fuelCost + newExpenseObj.punctureCost + newExpenseObj.otherCost).toLocaleString('en-IN')} & ${newExpenseObj.totalKm} KM logged for Manager!`);
+    toast.success(`⛽ Vehicle ${vehicleName} Daily Log Submitted! Drive: ${kmDrivenNum} KM | Fuel Cost: ₹${fuelCostNum.toLocaleString('en-IN')}`);
   };
 
   // File Upload Helper
@@ -629,10 +679,24 @@ export default function DriverMobileView() {
 
       setDispatchesList(matchedDispatches);
 
+      // Helper to check if a dispatch/lead item is completed or delivered
+      const isItemDelivered = (item) => {
+        if (!item) return false;
+        const stage = (item.stage || item.rawStage || '').toUpperCase().replace(/_/g, ' ').trim();
+        const status = (item.status || item.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').trim();
+        const podStatus = (item.podStatus || '').toUpperCase().replace(/_/g, ' ').trim();
+
+        const completedKeywords = ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'];
+        return (
+          completedKeywords.some(kw => stage.includes(kw) || status.includes(kw)) ||
+          podStatus === 'VERIFIED'
+        );
+      };
+
       // Initialize deliveredIdsSet from fetched data
       const deliveredSet = new Set();
       matchedDispatches.forEach(item => {
-        if (['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL_WON'].includes((item.status || item.dispatchStatus || item.stage || item.rawStage || '').toUpperCase())) {
+        if (isItemDelivered(item)) {
           if (item._id) deliveredSet.add(item._id);
           if (item.orderNumber) deliveredSet.add(item.orderNumber);
           if (item.dispatchNumber) deliveredSet.add(item.dispatchNumber);
@@ -644,10 +708,15 @@ export default function DriverMobileView() {
       const activeTrip = matchedDispatches[0] || null;
       setTrip(activeTrip);
 
-      if (activeTrip?.vehicleNo || activeTrip?.assignedVehicleNo || activeTrip?.truckNumber) {
+      if (activeTrip?.vehicleNo || activeTrip?.assignedVehicleNo || activeTrip?.truckNumber || activeTrip?.vehicleNumber) {
+        const activeVeh = activeTrip.vehicleNo || activeTrip.assignedVehicleNo || activeTrip.truckNumber || activeTrip.vehicleNumber;
         setAttendanceForm(prev => ({
           ...prev,
-          vehicleNumber: prev.vehicleNumber || activeTrip.vehicleNo || activeTrip.assignedVehicleNo || activeTrip.truckNumber
+          vehicleNumber: prev.vehicleNumber || activeVeh
+        }));
+        setFuelExpenseForm(prev => ({
+          ...prev,
+          vehicleNumber: prev.vehicleNumber || activeVeh
         }));
       }
 
@@ -698,15 +767,13 @@ export default function DriverMobileView() {
       const totalDispCount = matchedDispatches.length;
       const totalRev = matchedDispatches.reduce((acc, t) => acc + (Number(t.totalFreightAmount) || Number(t.freightAmount) || Number(t.freightRate) || 0), 0);
       const completedCount = matchedDispatches.filter(t => 
-        ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL_WON'].includes((t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase()) ||
+        isItemDelivered(t) ||
         deliveredIdsSet.has(t._id) || deliveredIdsSet.has(t.orderNumber) || deliveredIdsSet.has(t.dispatchNumber) || deliveredIdsSet.has(t.leadCode)
       ).length;
       const totalPaidFromProofs = paymentProofsList.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
 
       // Active / Pending Assigned Tasks = Total Tasks - Completed Tasks
-      const activePendingAssignedCount = tasks.length > 0
-        ? tasks.filter(t => (t.status || '').toUpperCase() !== 'COMPLETED').length
-        : Math.max(0, totalDispCount - completedCount);
+      const activePendingAssignedCount = Math.max(0, totalDispCount - completedCount);
 
       setMetrics({
         totalDispatch: totalDispCount,
@@ -1250,7 +1317,18 @@ export default function DriverMobileView() {
            ───────────────────────────────────────────────────────────── */}
         {activeTab === 'DASHBOARD' || activeTab === 'DISPATCHES' ? (
           <>
-
+            {/* Top Quick Header Bar with Support Tickets Link */}
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-xs font-bold uppercase tracking-wider font-mono text-[var(--crm-heading)] flex items-center gap-2">
+                <FiTruck className="text-teal-400" size={16} /> Driver Console Overview
+              </span>
+              <Link
+                to="/crm/tickets"
+                className="px-3 py-1.5 bg-sky-950/60 border border-sky-800/80 text-sky-400 hover:text-white hover:bg-sky-900 font-mono text-[10px] font-bold uppercase rounded shadow transition flex items-center gap-1.5"
+              >
+                <FiLifeBuoy size={14} className="text-sky-400" /> Support Tickets / Helpdesk
+              </Link>
+            </div>
 
             {/* 4 Metrics Cards Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 font-mono">
@@ -1319,12 +1397,12 @@ export default function DriverMobileView() {
                 </div>
 
                 <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
-                  {dispatchesList.filter(d => (d.status || d.dispatchStatus) !== 'DELIVERED').length === 0 ? (
+                  {dispatchesList.filter(d => !(['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'].some(kw => (d.stage || d.rawStage || d.status || d.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').includes(kw)))).length === 0 ? (
                     <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded">
                       No active pending dispatches. All assigned trips are completed!
                     </div>
                   ) : (
-                    dispatchesList.filter(d => (d.status || d.dispatchStatus) !== 'DELIVERED').map((d, idx) => (
+                    dispatchesList.filter(d => !(['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'].some(kw => (d.stage || d.rawStage || d.status || d.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').includes(kw)))).map((d, idx) => (
                       <div 
                         key={d._id || idx} 
                         onClick={() => setSelectedMapOrder(d)}
@@ -1338,8 +1416,8 @@ export default function DriverMobileView() {
                             <span className="text-teal-300 text-[10px] block font-mono">Material: {d.material || d.productName || 'Cargo Goods'} ({d.weightTons || '20'} MT)</span>
                           </div>
                           <div className="flex flex-col items-end gap-1">
-                            <span className="px-2 py-0.5 bg-emerald-950/40 border border-emerald-900/30 text-emerald-400 text-[9px] font-bold uppercase rounded font-mono">
-                              {d.status || d.dispatchStatus || 'ASSIGNED'}
+                            <span className="px-2 py-0.5 bg-amber-950/40 border border-amber-900/30 text-amber-400 text-[9px] font-bold uppercase rounded font-mono">
+                              {d.stage || d.status || d.dispatchStatus || 'ASSIGNED'}
                             </span>
                             <span className="text-[9px] text-sky-400 font-bold underline flex items-center gap-1 group-hover:text-teal-300">
                               <FiNavigation size={10} /> View Map &rarr;
@@ -1376,11 +1454,11 @@ export default function DriverMobileView() {
                 </div>
 
                 {/* COMPLETED & DELIVERED LOADS SECTION */}
-                {dispatchesList.filter(d => (d.status || d.dispatchStatus) === 'DELIVERED').length > 0 && (
+                {dispatchesList.filter(d => ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'].some(kw => (d.stage || d.rawStage || d.status || d.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').includes(kw))).length > 0 && (
                   <div className="pt-4 border-t border-[var(--crm-line)] space-y-3 font-mono">
                     <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
                       <h3 className="text-xs uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
-                        <FiCheckCircle size={15} className="text-emerald-400" /> COMPLETED & DELIVERED LOADS ({dispatchesList.filter(d => (d.status || d.dispatchStatus) === 'DELIVERED').length})
+                        <FiCheckCircle size={15} className="text-emerald-400" /> COMPLETED & DELIVERED LOADS ({dispatchesList.filter(d => ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'].some(kw => (d.stage || d.rawStage || d.status || d.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').includes(kw))).length})
                       </h3>
                       <span className="text-[9px] text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-900/40 px-2 py-0.5 rounded">
                         POD Verified ✓
@@ -1388,7 +1466,7 @@ export default function DriverMobileView() {
                     </div>
 
                     <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
-                      {dispatchesList.filter(d => (d.status || d.dispatchStatus) === 'DELIVERED').map((d, idx) => (
+                      {dispatchesList.filter(d => ['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'].some(kw => (d.stage || d.rawStage || d.status || d.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').includes(kw))).map((d, idx) => (
                         <div key={d._id || idx} className="p-3.5 border border-emerald-900/40 rounded-lg space-y-2 bg-emerald-950/20 text-xs font-mono shadow-sm">
                           <div className="flex justify-between items-start">
                             <div>
@@ -1571,19 +1649,21 @@ export default function DriverMobileView() {
               </div>
             </div>
 
-            {/* TRIP EXPENSE, KM RUN & MAINTENANCE LOG FORM CARD */}
-            <div className="border rounded-lg p-4 space-y-3 shadow-sm font-mono mt-4" style={CARD}>
-              <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                <h2 className="text-xs uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
-                  <FiTool size={15} /> DRIVER TRIP KM RUN, DIESEL & MAINTENANCE EXPENSE LOG FORM
+            {/* DRIVER VEHICLE DAILY TRIP & EXPENSE LOG FORM CARD (LAYOUT MATCHES DESIGN WIREFRAME) */}
+            <div className="border-2 border-[var(--crm-line)] rounded-xl p-5 space-y-4 shadow-lg font-mono mt-5 bg-[var(--crm-bg-raised)]" style={CARD}>
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                <h2 className="text-sm uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
+                  <FiTool size={18} className="text-emerald-400" /> DRIVER VEHICLE & DAILY TRIP LOG
                 </h2>
-                <span className="text-[10px] text-emerald-400">({fuelExpenseLogs.length} Logged)</span>
+                <span className="text-[11px] text-emerald-400 font-bold bg-emerald-950/50 px-2.5 py-1 rounded border border-emerald-800/40">
+                  ({fuelExpenseLogs.length} Logged)
+                </span>
               </div>
 
-              <form onSubmit={handleFuelExpenseSubmit} className="space-y-3">
+              <form onSubmit={handleFuelExpenseSubmit} className="space-y-4">
                 {/* SELECT ASSIGNED LEAD / TRIP ORDER DROPDOWN */}
                 <div>
-                  <label className="block text-[9px] uppercase font-bold mb-1 text-teal-400 font-mono">SELECT ASSIGNED LEAD / TRIP ORDER *</label>
+                  <label className="block text-[10px] uppercase font-bold mb-1 text-teal-400 font-mono">SELECT ASSIGNED LEAD / TRIP ORDER (OPTIONAL)</label>
                   <select
                     value={fuelExpenseForm.leadCode || ''}
                     onChange={(e) => {
@@ -1597,7 +1677,7 @@ export default function DriverMobileView() {
                         toLocation: selectedDisp ? (selectedDisp.destination || prev.toLocation) : prev.toLocation
                       }));
                     }}
-                    className="w-full p-2.5 border rounded text-teal-300 font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-teal-800/60 font-mono cursor-pointer shadow-sm"
+                    className="w-full p-2.5 border rounded-lg text-teal-300 font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-teal-800/60 font-mono cursor-pointer shadow-sm"
                   >
                     <option value="">Select Associated Lead / Cargo Order...</option>
                     {dispatchesList.map(d => (
@@ -1608,134 +1688,149 @@ export default function DriverMobileView() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Total KM Driven *</label>
-                    <input
-                      type="number"
-                      placeholder="Enter total KM driven"
-                      value={fuelExpenseForm.kmDriven}
-                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
-                      className="w-full p-2 border rounded text-emerald-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
-                      style={CARD_SUNKEN}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Route From (Pickup Point)</label>
+                {/* 2-COLUMN GRID matching the Wireframe */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Row 1 - Left: Driver Vechical number */}
+                  <div className="space-y-1">
+                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                      Driver Vechical number *
+                    </label>
                     <input
                       type="text"
-                      placeholder="Enter pickup location"
-                      value={fuelExpenseForm.fromLocation}
-                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fromLocation: e.target.value }))}
-                      className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
+                      required
+                      placeholder="Driver Vechical number"
+                      value={fuelExpenseForm.vehicleNumber}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                      className="w-full p-3 border-2 rounded-lg text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Route To (Destination Point)</label>
-                    <input
-                      type="text"
-                      placeholder="Enter destination location"
-                      value={fuelExpenseForm.toLocation}
-                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, toLocation: e.target.value }))}
-                      className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
-                      style={CARD_SUNKEN}
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Fuel / Diesel Cost (₹)</label>
+                  {/* Row 1 - Right: fuel Cost */}
+                  <div className="space-y-1">
+                    <label className="block text-xs uppercase font-bold tracking-wide text-emerald-400" style={LABEL_MONO}>
+                      fuel Cost (₹)
+                    </label>
                     <input
                       type="number"
-                      placeholder="Enter fuel cost"
+                      placeholder="fuel Cost"
                       value={fuelExpenseForm.fuelCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelCost: e.target.value }))}
-                      className="w-full p-2 border rounded text-emerald-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
+                      className="w-full p-3 border-2 rounded-lg text-emerald-400 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-emerald-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Diesel Litres (L)</label>
+
+                  {/* Row 2 - Left: Total Drive Today */}
+                  <div className="space-y-1">
+                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                      Total Drive Today (KM)
+                    </label>
                     <input
                       type="number"
-                      placeholder="Enter diesel litres"
-                      value={fuelExpenseForm.fuelLitres}
-                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelLitres: e.target.value }))}
-                      className="w-full p-2 border rounded text-sky-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
+                      placeholder="Total Drive Today"
+                      value={fuelExpenseForm.kmDriven}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
+                      className="w-full p-3 border-2 rounded-lg text-teal-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Puncture / Tire Repair (₹)</label>
+
+                  {/* Row 2 - Right: Todays Trip */}
+                  <div className="space-y-1">
+                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                      Todays Trip
+                    </label>
                     <input
-                      type="number"
-                      placeholder="Enter puncture repair cost"
-                      value={fuelExpenseForm.punctureCost}
-                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, punctureCost: e.target.value }))}
-                      className="w-full p-2 border rounded text-sky-300 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
+                      type="text"
+                      placeholder="Todays Trip"
+                      value={fuelExpenseForm.todaysTrip}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, todaysTrip: e.target.value }))}
+                      className="w-full p-3 border-2 rounded-lg text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Toll / Other Expenses (₹)</label>
+
+                  {/* Row 3 - Left: Vehical milage */}
+                  <div className="space-y-1">
+                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                      Vehical milage (KM/L)
+                    </label>
                     <input
                       type="number"
-                      placeholder="Enter toll or other expenses"
+                      step="0.1"
+                      placeholder="Vehical milage"
+                      value={fuelExpenseForm.vehicleMileage}
+                      onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleMileage: e.target.value }))}
+                      className="w-full p-3 border-2 rounded-lg text-amber-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-amber-500 transition font-mono"
+                      style={CARD_SUNKEN}
+                    />
+                  </div>
+
+                  {/* Row 3 - Right: other Expence */}
+                  <div className="space-y-1">
+                    <label className="block text-xs uppercase font-bold tracking-wide text-purple-300" style={LABEL_MONO}>
+                      other Expence (₹)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="other Expence"
                       value={fuelExpenseForm.otherCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, otherCost: e.target.value }))}
-                      className="w-full p-2 border rounded text-purple-400 placeholder:text-slate-400 placeholder:opacity-90 font-bold text-xs outline-none font-mono"
+                      className="w-full p-3 border-2 rounded-lg text-purple-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-purple-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
                 </div>
 
+                {/* Optional Remarks input */}
                 <div>
-                  <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Expense & Bill Remarks</label>
+                  <label className="block text-[10px] uppercase font-bold mb-1 text-slate-400 font-mono">Remarks / Bill Notes (Optional)</label>
                   <input
                     type="text"
-                    placeholder="Enter expense remarks and bill details"
+                    placeholder="Enter trip remarks or expense bill details"
                     value={fuelExpenseForm.remarks}
                     onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, remarks: e.target.value }))}
-                    className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
+                    className="w-full p-2.5 border rounded-lg text-slate-200 placeholder:text-slate-500 text-xs outline-none font-mono"
                     style={CARD_SUNKEN}
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={submittingExpense}
-                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer transition flex items-center justify-center gap-2 shadow"
-                >
-                  <FiCheckCircle size={14} />
-                  {submittingExpense ? 'Logging Expenses...' : 'SUBMIT TRIP EXPENSE & FUEL LOG TO TRANSPORT MANAGER'}
-                </button>
+                {/* Bottom Row - Centered Submit Button */}
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="submit"
+                    disabled={submittingExpense}
+                    className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm uppercase tracking-wider rounded-xl cursor-pointer transition shadow-lg flex items-center justify-center gap-2 border border-emerald-400/40"
+                  >
+                    <FiCheckCircle size={18} />
+                    {submittingExpense ? 'Submitting Log...' : 'Submit'}
+                  </button>
+                </div>
               </form>
 
               {/* Submitted Expense Logs History */}
-              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar pt-2 border-t border-[var(--crm-line)]">
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar pt-3 border-t border-[var(--crm-line)]">
                 {fuelExpenseLogs.length === 0 ? (
-                  <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded">
-                    No trip expenses logged yet. Use form above to log fuel, KM & puncture costs.
+                  <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded-lg">
+                    No trip logs recorded yet. Use the form above to log vehicle number, drive KM, fuel & mileage.
                   </div>
                 ) : (
                   fuelExpenseLogs.map((log) => (
-                    <div key={log.id} className="p-2.5 border rounded text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
+                    <div key={log.id} className="p-3 border rounded-lg text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
                       <div className="flex justify-between items-center text-[10px]">
                         <span className="text-teal-400 font-bold font-mono">
-                          📦 Associated Lead: <strong className="underline">{log.leadCode || 'LD-1787912189516-9647'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
+                          🚚 Truck: <strong className="text-white">{log.vehicle}</strong> {log.todaysTrip && `| ${log.todaysTrip}`}
                         </span>
                         <span className="text-[var(--crm-ink-faint)]">{log.date} {log.time}</span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between text-[11px] gap-2">
-                        <span className="text-emerald-400 font-bold">📍 {log.fromLocation} &rarr; 🚩 {log.toLocation} ({log.totalKm} KM)</span>
-                        <strong className="text-emerald-400 font-mono font-bold">Total Trip Cost: ₹{(log.fuelCost + log.punctureCost + log.otherCost).toLocaleString('en-IN')}</strong>
+                        <span className="text-teal-300 font-bold">Total Drive: {log.totalKm} KM {log.vehicleMileage > 0 && `| Mileage: ${log.vehicleMileage} KM/L`}</span>
+                        <strong className="text-emerald-400 font-mono font-bold">Total Expenses: ₹{(log.fuelCost + log.otherCost + log.punctureCost).toLocaleString('en-IN')}</strong>
                       </div>
                       <div className="flex gap-3 text-[10px] text-[var(--crm-ink-faint)] font-mono">
-                        <span>Fuel: ₹{log.fuelCost.toLocaleString('en-IN')} ({log.litres}L)</span>
-                        {log.punctureCost > 0 && <span className="text-sky-300 font-bold">Puncture Repair: ₹{log.punctureCost}</span>}
-                        {log.otherCost > 0 && <span className="text-purple-300 font-bold">Other/Toll: ₹{log.otherCost}</span>}
+                        {log.fuelCost > 0 && <span className="text-emerald-400 font-bold">Fuel Cost: ₹{log.fuelCost.toLocaleString('en-IN')}</span>}
+                        {log.otherCost > 0 && <span className="text-purple-300 font-bold">Other Expense: ₹{log.otherCost}</span>}
                       </div>
                       {log.remarks && <div className="text-[10px] text-[var(--crm-ink-soft)]">Remarks: {log.remarks}</div>}
                     </div>
