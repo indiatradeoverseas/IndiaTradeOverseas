@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
 import {
   FiArrowUpRight,
   FiCheckCircle,
@@ -11,7 +12,13 @@ import {
   FiShoppingBag,
   FiUsers,
 } from 'react-icons/fi';
-import { GiTeapot, GiWheat, GiStonePile } from 'react-icons/gi';
+
+import {
+  GiTeapot,
+  GiWheat,
+  GiStonePile,
+} from 'react-icons/gi';
+
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 const divisions = [
@@ -39,6 +46,7 @@ const divisions = [
       },
     ],
   },
+
   {
     number: '02',
     title: 'Building & Construction',
@@ -67,6 +75,7 @@ const buyerPaths = [
     cta: 'Request Bulk Quote',
     link: '/quote-request',
   },
+
   {
     icon: FiUsers,
     title: 'I Want to Supply',
@@ -75,6 +84,7 @@ const buyerPaths = [
     cta: 'Contact Commercial Team',
     link: '/contact',
   },
+
   {
     icon: FiTruck,
     title: 'I Need Logistics',
@@ -92,18 +102,21 @@ const processSteps = [
     description:
       'Tell us the product, specification, quantity and delivery location.',
   },
+
   {
     number: '02',
     title: 'Source & Review',
     description:
       'We review sourcing options, product requirements and availability.',
   },
+
   {
     number: '03',
     title: 'Confirm Commercials',
     description:
       'Pricing, specifications, availability and delivery requirements are discussed.',
   },
+
   {
     number: '04',
     title: 'Dispatch & Delivery',
@@ -119,18 +132,21 @@ const supportPoints = [
     description:
       'Supply support for domestic buyers as well as international trade requirements.',
   },
+
   {
     icon: FiShield,
     title: 'Commercial Coordination',
     description:
       'Product, quantity, documentation and delivery requirements coordinated through one process.',
   },
+
   {
     icon: FiFileText,
     title: 'Documentation Support',
     description:
       'Relevant commercial and product documentation coordinated as part of the trade process.',
   },
+
   {
     icon: FiTruck,
     title: 'Logistics Coordination',
@@ -144,6 +160,7 @@ const fadeUp = {
     opacity: 0,
     y: 20,
   },
+
   visible: {
     opacity: 1,
     y: 0,
@@ -156,6 +173,7 @@ const fadeUp = {
 
 const stagger = {
   hidden: {},
+
   visible: {
     transition: {
       staggerChildren: 0.1,
@@ -534,6 +552,7 @@ export default function OurServices() {
                     "
                   >
                     {path.cta}
+
                     <FiArrowUpRight
                       size={14}
                       className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
@@ -586,11 +605,29 @@ export default function OurServices() {
 
               <motion.div
                 key={division.number}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.65 }}
-                className="grid lg:grid-cols-2 border border-[#C5CBD3]/20 bg-[#121D29]/35 overflow-hidden"
+                initial={{
+                  opacity: 0,
+                  y: 20,
+                }}
+                whileInView={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                viewport={{
+                  once: true,
+                  margin: '-80px',
+                }}
+                transition={{
+                  duration: 0.65,
+                }}
+                className="
+                  grid
+                  lg:grid-cols-2
+                  border
+                  border-[#C5CBD3]/20
+                  bg-[#121D29]/35
+                  overflow-hidden
+                "
               >
 
                 {/* IMAGE */}
@@ -615,7 +652,22 @@ export default function OurServices() {
 
                   <div className="absolute top-6 left-6">
 
-                    <span className="inline-flex items-center justify-center min-w-[48px] h-8 px-3 border border-[#C5CBD3]/30 bg-[#0E1116]/60 backdrop-blur-sm text-[#F2F4F7] text-[11px] font-mono tracking-wider">
+                    <span className="
+                      inline-flex
+                      items-center
+                      justify-center
+                      min-w-[48px]
+                      h-8
+                      px-3
+                      border
+                      border-[#C5CBD3]/30
+                      bg-[#0E1116]/60
+                      backdrop-blur-sm
+                      text-[#F2F4F7]
+                      text-[11px]
+                      font-mono
+                      tracking-wider
+                    ">
                       {division.number}
                     </span>
 
@@ -754,7 +806,10 @@ export default function OurServices() {
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
+              viewport={{
+                once: true,
+                margin: '-80px',
+              }}
               variants={stagger}
               className="grid sm:grid-cols-2 gap-8"
             >
@@ -826,10 +881,20 @@ export default function OurServices() {
 
               <motion.div
                 key={step.number}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.55 }}
+                initial={{
+                  opacity: 0,
+                  y: 15,
+                }}
+                whileInView={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                viewport={{
+                  once: true,
+                }}
+                transition={{
+                  duration: 0.55,
+                }}
                 className="
                   border
                   border-[#C5CBD3]/20
@@ -894,7 +959,17 @@ export default function OurServices() {
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
 
-          <div className="inline-flex items-center gap-2 bg-[#2B3440]/70 border border-[#C5CBD3]/20 rounded-full px-4 py-1">
+          <div className="
+            inline-flex
+            items-center
+            gap-2
+            bg-[#2B3440]/70
+            border
+            border-[#C5CBD3]/20
+            rounded-full
+            px-4
+            py-1
+          ">
 
             <span className="w-1.5 h-1.5 rounded-full bg-[#F2F4F7]" />
 
