@@ -6,7 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
-import FluidCursor from '../../components/Layout/FluidCursor';
+import SmokeyCursor from '@/components/lightswind/smokey-cursor';
 import { 
   FiCheck, FiTarget, FiBarChart2, FiUsers, FiZap, 
   FiShield, FiGlobe, FiMessageSquare, FiSpeaker, FiChevronRight,
@@ -666,7 +666,16 @@ export default function ITOAds() {
 
   return (
     <>
-    <FluidCursor />
+    <SmokeyCursor
+        transparent={true}
+        densityDissipation={7}
+        velocityDissipation={4}
+        splatRadius={0.20}
+        splatForce={3200}
+        colorUpdateSpeed={2}
+        enableShading={false}
+        className="fixed inset-0 pointer-events-none z-30"
+      />
       <style>{`
         @keyframes orb-pulse {
           0%, 100% { transform: scale(1); opacity: 0.18; }

@@ -711,9 +711,9 @@ function AppLayout() {
   }
 
 
-  /* =========================
+/* =========================
      PUBLIC WEBSITE ROUTES
-  ========================= */
+   ========================= */
 
   const isITOAds = location.pathname === '/ito-ads';
 
@@ -722,7 +722,7 @@ function AppLayout() {
 
       <ScrollToTop />
 
-      <Navbar />
+      {!isITOAds && <Navbar />}
 
       <main>
 
