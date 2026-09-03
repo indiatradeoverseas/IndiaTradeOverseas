@@ -78,6 +78,15 @@ import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
 import Prakriti from './pages/public/Prakriti';
 
+/* =========================
+   LEGAL PAGES
+========================= */
+
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import Terms from './pages/legal/Terms';
+import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
+import Disclaimer from './pages/legal/Disclaimer';
+
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -100,6 +109,7 @@ function ProtectedRoute({ children }) {
 
 function isAdminUser(user) {
   if (!user) return false;
+
   return (
     user?.role === 'ADMIN' ||
     user?.department === 'ADMIN' ||
@@ -826,6 +836,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/transport/manager"
             element={
@@ -834,6 +845,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/crm/transport/executive"
             element={
@@ -842,6 +854,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/transport/executive"
             element={
@@ -850,6 +863,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/crm/transport/driver"
             element={
@@ -858,6 +872,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/transport/driver"
             element={
@@ -866,6 +881,7 @@ function AppLayout() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/founder"
             element={
@@ -885,6 +901,30 @@ function AppLayout() {
           <Route
             path="/ito-ads"
             element={<ITOAds />}
+          />
+
+          {/* =========================
+              LEGAL PAGES
+          ========================= */}
+
+          <Route
+            path="/privacy-policy"
+            element={<PrivacyPolicy />}
+          />
+
+          <Route
+            path="/terms"
+            element={<Terms />}
+          />
+
+          <Route
+            path="/fraud-payment-policy"
+            element={<FraudPaymentPolicy />}
+          />
+
+          <Route
+            path="/disclaimer"
+            element={<Disclaimer />}
           />
 
         </Routes>
