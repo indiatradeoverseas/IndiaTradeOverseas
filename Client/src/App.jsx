@@ -33,7 +33,7 @@ import EmployeeSignup from './pages/public/EmployeeSignup';
 import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
-import ITOAds from './pages/public/ITOAds';
+const ITOAds = React.lazy(() => import('./pages/public/ITOAds'));
 
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
@@ -721,9 +721,9 @@ function AppLayout() {
   }
 
 
-  /* =========================
+/* =========================
      PUBLIC WEBSITE ROUTES
-  ========================= */
+   ========================= */
 
   const isITOAds = location.pathname === '/ito-ads';
 
@@ -732,7 +732,7 @@ function AppLayout() {
 
       <ScrollToTop />
 
-      <Navbar />
+      {!isITOAds && <Navbar />}
 
       <main>
 

@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
-import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
+import SmokeyCursor from '@/components/lightswind/smokey-cursor';
 import { 
   FiCheck, FiTarget, FiBarChart2, FiUsers, FiZap, 
   FiShield, FiGlobe, FiMessageSquare, FiSpeaker, FiChevronRight,
@@ -32,7 +30,7 @@ const STORM_CONFIG = {
   flameColor2: '#ffb066',
   flameAmt: 0.18,
   atmoColor: '#ffa04d',
-  atmoCount: 260,
+  atmoCount: 80,
   atmoSize: 22,
   atmoSpeed: 1.0,
   coreColor: '#0a1f4a',
@@ -51,18 +49,38 @@ const STORM_CONFIG = {
   parallax: 0.7,
 };
 
-const LAYERS = { NONE: 0, TORUS_SCENE: 1, BLOOM_SCENE: 2, ENTIRE_SCENE: 3 };
-
 function hexToVec3(hex) {
   const n = parseInt(hex.slice(1), 16);
   return new THREE.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
 }
 
-// 3D Storm Canvas Component for Section Background
+// 3D Storm Canvas Component for Section Background - Optimized
 function SectionStormBackground() {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const animIdRef = useRef(null);
+  const threeRef = useRef(null);
 
+  // IntersectionObserver to only run when visible
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { rootMargin: '100px', threshold: 0.01 }
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Initialize Three.js only when visible
+  useEffect(() => {
+    if (!isVisible) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -76,8 +94,6 @@ function SectionStormBackground() {
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.VSMShadowMap;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
@@ -85,115 +101,17 @@ function SectionStormBackground() {
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 80);
     camera.position.set(0, 0, 7);
-    camera.layers.enable(LAYERS.TORUS_SCENE);
-    camera.layers.enable(LAYERS.BLOOM_SCENE);
-    camera.layers.enable(LAYERS.ENTIRE_SCENE);
     scene.add(camera);
 
+    // Single composer with bloom - simpler and faster
     const renderScene = new RenderPass(scene, camera);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 0.35, 0.4, 0);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
 
-    const createRenderTarget = (w, h) => {
-      return new THREE.WebGLRenderTarget(w, h, {
-        minFilter: THREE.LinearFilter,
-        magFilter: THREE.LinearFilter,
-        format: THREE.RGBAFormat,
-        type: THREE.HalfFloatType
-      });
-    };
-
-    const torusTarget = createRenderTarget(width, height);
-    const torusComposer = new EffectComposer(renderer, torusTarget);
-    torusComposer.renderToScreen = false;
-    torusComposer.addPass(renderScene);
-    torusComposer.addPass(new ShaderPass(GammaCorrectionShader));
-    torusComposer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.22, 0.2, 0));
-    torusComposer.addPass(new ShaderPass(CopyShader));
-
-    const bloomTarget = createRenderTarget(width, height);
-    const bloomComposer = new EffectComposer(renderer, bloomTarget);
-    bloomComposer.renderToScreen = false;
-    bloomComposer.addPass(renderScene);
-    bloomComposer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.4, 0.55, 0));
-    bloomComposer.addPass(new ShaderPass(GammaCorrectionShader));
-
-    const FinalPass = {
-      uniforms: {
-        iTime: { value: 0 },
-        tDiffuse: { value: null },
-        torusTexture: { value: null },
-        bloomTexture: { value: null },
-        haloTexture: { value: null },
-        uBg: { value: hexToVec3(STORM_CONFIG.bgColor) },
-        uFlameA: { value: hexToVec3(STORM_CONFIG.flameColor) },
-        uFlameB: { value: hexToVec3(STORM_CONFIG.flameColor2) },
-        uFlameAmt: { value: STORM_CONFIG.flameAmt }
-      },
-      vertexShader: `
-        varying vec2 vUv; 
-        void main(){ 
-          vUv = uv; 
-          gl_Position = vec4(position, 1.0); 
-        }
-      `,
-      fragmentShader: `
-        uniform float iTime; 
-        uniform sampler2D tDiffuse; 
-        uniform sampler2D bloomTexture; 
-        uniform sampler2D torusTexture; 
-        uniform sampler2D haloTexture;
-        uniform vec3 uBg; 
-        uniform vec3 uFlameA; 
-        uniform vec3 uFlameB; 
-        uniform float uFlameAmt;
-        varying vec2 vUv;
-        
-        vec3 warp3d(vec3 pos, float t){ 
-          float curv = 0.8, a = 1.9, b = 0.7; 
-          pos *= 2.0;
-          pos.x += curv * sin(t + a * pos.y) + t * b; 
-          pos.y += curv * cos(t + a * pos.x);
-          pos.y += curv * sin(t + a * pos.z) + t * b; 
-          pos.z += curv * cos(t + a * pos.y);
-          pos.z += curv * sin(t + a * pos.x) + t * b; 
-          pos.x += curv * cos(t + a * pos.z);
-          return 0.5 + 0.5 * cos(pos.xyz + vec3(1.0, 2.0, 4.0)); 
-        }
-        
-        void main(){
-          vec2 uv = 2.0 * vUv - 1.0;
-          vec3 w = pow(warp3d(vec3(uv.x, sin(uv.y), uv.y), iTime * 1.5), vec3(1.5));
-          vec3 flame = 1.5 * uFlameA * w.x; 
-          flame *= w.y; 
-          flame += uFlameB * w.z;
-          flame *= smoothstep(0.25, 1.0, abs(uv.y));
-          
-          float md = smoothstep(-0.7, 1.0, -uv.y * uv.x); 
-          flame *= md * md;
-          
-          vec3 bg = uBg * (1.0 - 0.4 * length(uv));
-          vec3 halo = texture2D(haloTexture, vUv).xyz;
-          
-          gl_FragColor = vec4(
-            bg + 
-            flame * uFlameAmt + 
-            texture2D(bloomTexture, vUv).xyz + 
-            texture2D(torusTexture, vUv).xyz + 
-            texture2D(tDiffuse, vUv).xyz + 
-            halo, 
-            1.0
-          );
-        }
-      `
-    };
-
-    const finalComposer = new EffectComposer(renderer);
-    finalComposer.addPass(renderScene);
-    const finalPass = new ShaderPass(FinalPass);
-    finalPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
-    finalPass.uniforms.torusTexture.value = torusComposer.readBuffer.texture;
-    finalComposer.addPass(finalPass);
-
-    const count = 50000;
+    // Drastically reduced particle count: 50000 -> 8000
+    const count = 8000;
     const radius = 2.5;
     const positions = new Float32Array(count * 3);
     const scales = new Float32Array(count);
@@ -302,13 +220,12 @@ function SectionStormBackground() {
     });
 
     const stormPoints = new THREE.Points(stormGeo, stormMat);
-    stormPoints.layers.enable(LAYERS.ENTIRE_SCENE);
-
     const stormGroup = new THREE.Group();
     stormGroup.add(stormPoints);
     scene.add(stormGroup);
 
-    const N = Math.round(STORM_CONFIG.atmoCount);
+    // Reduced atmosphere particles: 260 -> 80
+    const N = 80;
     const atmoPos = new Float32Array(N * 3);
     const atmoSizes = new Float32Array(N);
     const atmoSeeds = new Float32Array(N);
@@ -376,7 +293,6 @@ function SectionStormBackground() {
 
     const atmoPoints = new THREE.Points(atmoGeo, atmoMat);
     atmoPoints.frustumCulled = false;
-    atmoPoints.layers.enable(LAYERS.ENTIRE_SCENE);
     scene.add(atmoPoints);
 
     const Lerp = (a, b, t) => a + (b - a) * t;
@@ -431,10 +347,9 @@ function SectionStormBackground() {
 
     const appearStart = performance.now();
     let t0 = appearStart / 1000;
-    let animId;
 
     const animate = () => {
-      animId = requestAnimationFrame(animate);
+      animIdRef.current = requestAnimationFrame(animate);
 
       scrollSmooth = Lerp(scrollSmooth, scrollTarget, 0.10);
       scrollCurrent = Lerp(scrollCurrent, scrollSmooth, 0.06);
@@ -467,18 +382,8 @@ function SectionStormBackground() {
 
       atmoMat.uniforms.uTime.value = t * STORM_CONFIG.atmoSpeed * 8.0;
       atmoPoints.position.copy(camera.position);
-      finalPass.uniforms.iTime.value = t;
 
-      camera.layers.set(LAYERS.TORUS_SCENE);
-      torusComposer.render();
-      finalPass.uniforms.torusTexture.value = torusComposer.readBuffer.texture;
-
-      camera.layers.set(LAYERS.BLOOM_SCENE);
-      bloomComposer.render();
-      finalPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
-
-      camera.layers.set(LAYERS.ENTIRE_SCENE);
-      finalComposer.render();
+      composer.render();
     };
 
     animate();
@@ -495,12 +400,8 @@ function SectionStormBackground() {
       renderer.setPixelRatio(pr);
       renderer.setSize(width, height);
 
-      torusComposer.setPixelRatio(pr);
-      torusComposer.setSize(width, height);
-      bloomComposer.setPixelRatio(pr);
-      bloomComposer.setSize(width, height);
-      finalComposer.setPixelRatio(pr);
-      finalComposer.setSize(width, height);
+      composer.setPixelRatio(pr);
+      composer.setSize(width, height);
 
       atmoMat.uniforms.uRes.value.set(width * pr, height * pr);
       updateScroll();
@@ -508,48 +409,41 @@ function SectionStormBackground() {
 
     window.addEventListener('resize', onResize);
 
+    threeRef.current = { renderer, scene, camera, composer, stormGeo, stormMat, atmoGeo, atmoMat };
+
     return () => {
-      cancelAnimationFrame(animId);
+      if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseout', onMouseOut);
       window.removeEventListener('scroll', updateScroll);
       window.removeEventListener('resize', onResize);
 
-      renderer.dispose();
-      torusTarget.dispose();
-      bloomTarget.dispose();
-      stormGeo.dispose();
-      stormMat.dispose();
-      atmoGeo.dispose();
-      atmoMat.dispose();
+      if (threeRef.current) {
+        const { renderer, stormGeo, stormMat, atmoGeo, atmoMat } = threeRef.current;
+        renderer.dispose();
+        stormGeo.dispose();
+        stormMat.dispose();
+        atmoGeo.dispose();
+        atmoMat.dispose();
+      }
     };
-  }, []);
+  }, [isVisible]);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="absolute inset-0 w-full h-full pointer-events-none z-0 block opacity-80"
-    />
+    <div ref={containerRef} className="absolute inset-0">
+      <canvas 
+        ref={canvasRef} 
+        className="absolute inset-0 w-full h-full pointer-events-none z-0 block opacity-80"
+      />
+    </div>
   );
 }
 
-// Advanced 3D Tilt Card with Dynamic Mouse Spotlight Sheen
+// Lightweight 3D Tilt Card using CSS transforms (no framer-motion overhead)
 function TiltCard3D({ children, className = '', style = {}, glare = true, ...props }) {
   const cardRef = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const glareX = useMotionValue(50);
-  const glareY = useMotionValue(50);
-
-  const mouseXSpring = useSpring(x, { stiffness: 260, damping: 25 });
-  const mouseYSpring = useSpring(y, { stiffness: 260, damping: 25 });
-
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ['12deg', '-12deg']);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ['-12deg', '12deg']);
-  const glareBackground = useTransform(
-    [glareX, glareY],
-    ([gx, gy]) => `radial-gradient(circle at ${gx}% ${gy}%, rgba(247, 110, 1, 0.22) 0%, rgba(255, 255, 255, 0.05) 30%, transparent 70%)`
-  );
+  const [transform, setTransform] = useState('perspective(1200px) rotateX(0deg) rotateY(0deg)');
+  const [glareStyle, setGlareStyle] = useState({});
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -559,44 +453,54 @@ function TiltCard3D({ children, className = '', style = {}, glare = true, ...pro
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    x.set(mouseX / width - 0.5);
-    y.set(mouseY / height - 0.5);
-    glareX.set((mouseX / width) * 100);
-    glareY.set((mouseY / height) * 100);
+    const rotateY = ((mouseX / width) - 0.5) * 24; // -12 to 12
+    const rotateX = -((mouseY / height) - 0.5) * 24; // -12 to 12
+    
+    setTransform(`perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`);
+    
+    if (glare) {
+      const glareX = (mouseX / width) * 100;
+      const glareY = (mouseY / height) * 100;
+      setGlareStyle({
+        background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(247, 110, 1, 0.22) 0%, rgba(255, 255, 255, 0.05) 30%, transparent 70%)`,
+        opacity: 1
+      });
+    }
   };
 
   const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-    glareX.set(50);
-    glareY.set(50);
+    setTransform('perspective(1200px) rotateX(0deg) rotateY(0deg)');
+    if (glare) {
+      setGlareStyle(prev => ({ ...prev, opacity: 0 }));
+    }
   };
 
   return (
-    <motion.div
+    <div
       ref={cardRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{
-        rotateY,
-        rotateX,
+        transform,
         transformStyle: 'preserve-3d',
-        transformPerspective: 1200,
+        transition: 'transform 0.15s ease-out',
         ...style
       }}
       className={`relative ${className}`}
       {...props}
     >
       {glare && (
-        <motion.div 
-          className="absolute inset-0 rounded-2xl pointer-events-none z-30 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
-          style={{ background: glareBackground }}
+        <div 
+          className="absolute inset-0 rounded-2xl pointer-events-none z-30 transition-opacity duration-300"
+          style={{ ...glareStyle, opacity: glareStyle.opacity ?? 0 }}
         />
       )}
       {children}
-    </motion.div>
+    </div>
   );
 }
+
+/*
 
 const particles = Array.from({ length: 35 }, (_, i) => ({
   id: i,
@@ -605,6 +509,8 @@ const particles = Array.from({ length: 35 }, (_, i) => ({
   size: Math.random() * 3 + 1.5,
   opacity: Math.random() * 0.4 + 0.1
 }));
+
+*/
 
 const services = [
   {
@@ -752,68 +658,62 @@ export default function ITOAds() {
   const heroRef = useRef(null);
 
   const scrollIndicator = (
-    <motion.div
-      animate={{ y: [0, 8, 0] }}
-      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-      className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50 pointer-events-none"
-    >
+    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50 pointer-events-none">
       <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
-      <motion.div
-        animate={{ y: [0, 6, 0] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-        className="w-px h-6 bg-gradient-to-b from-[#F76E01] to-transparent"
-      />
-    </motion.div>
+      <div className="w-px h-6 bg-gradient-to-b from-[#F76E01] to-transparent animate-scroll-line" />
+    </div>
   );
 
   return (
-    <div 
-      className="min-h-screen text-white font-sans overflow-x-hidden relative"
-      style={{ backgroundColor: COLORS.navy }}
-    >
-      {/* 3D Global Ambient Glowing Orbs */}
+    <>
+    <SmokeyCursor
+        transparent={true}
+        densityDissipation={7}
+        velocityDissipation={4}
+        splatRadius={0.20}
+        splatForce={3200}
+        colorUpdateSpeed={2}
+        enableShading={false}
+        className="fixed inset-0 pointer-events-none z-30"
+      />
+      <style>{`
+        @keyframes orb-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.18; }
+          50% { transform: scale(1.2); opacity: 0.28; }
+        }
+        .animate-orb-pulse {
+          animation: orb-pulse infinite ease-in-out;
+          will-change: transform, opacity;
+        }
+        @keyframes scroll-bounce {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(8px); }
+        }
+        @keyframes scroll-line {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(6px); }
+        }
+        .animate-scroll-bounce {
+          animation: scroll-bounce 2s infinite ease-in-out;
+        }
+        .animate-scroll-line {
+          animation: scroll-line 1.5s infinite ease-in-out;
+        }
+      `}</style>
+      <div 
+        className="min-h-screen text-white font-sans overflow-x-hidden relative"
+        style={{ backgroundColor: COLORS.navy }}
+      >
+        {/* 3D Global Ambient Glowing Orbs - CSS animated */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.18, 0.28, 0.18] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[950px] h-[520px] rounded-full blur-[170px]"
-          style={{ background: `radial-gradient(circle, ${COLORS.orange} 0%, transparent 70%)` }}
+        <div 
+          className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[950px] h-[520px] rounded-full blur-[170px] animate-orb-pulse"
+          style={{ background: `radial-gradient(circle, ${COLORS.orange} 0%, transparent 70%)`, animationDuration: '10s', animationDelay: '0s' }}
         />
-        <motion.div 
-          animate={{ scale: [1, 1.15, 1], opacity: [0.12, 0.22, 0.12] }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute top-[45%] -left-[15%] w-[650px] h-[650px] rounded-full blur-[190px]"
-          style={{ background: `radial-gradient(circle, ${COLORS.orange} 0%, transparent 70%)` }}
+        <div 
+          className="absolute top-[45%] -left-[15%] w-[650px] h-[650px] rounded-full blur-[190px] animate-orb-pulse"
+          style={{ background: `radial-gradient(circle, ${COLORS.orange} 0%, transparent 70%)`, animationDuration: '12s', animationDelay: '2s' }}
         />
-      </div>
-
-      {/* Floating 3D Background Dust Particles */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" style={{ perspective: '1000px' }}>
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            animate={{ 
-              y: [0, -35, 0],
-              x: [0, (p.id % 2 === 0 ? 20 : -20), 0],
-              scale: [0.8, 1.3, 0.8],
-              opacity: [p.opacity, p.opacity * 1.8, p.opacity]
-            }}
-            transition={{ 
-              duration: 7 + (p.id % 6), 
-              repeat: Infinity, 
-              ease: 'easeInOut' 
-            }}
-            className="absolute rounded-full"
-            style={{ 
-              width: `${p.size}px`, 
-              height: `${p.size}px`, 
-              left: `${p.x}%`, 
-              top: `${p.y}%`,
-              background: COLORS.orange,
-              boxShadow: `0 0 ${p.size * 4}px ${COLORS.orange}`
-            }}
-          />
-        ))}
       </div>
 
       {/* Navigation */}
@@ -827,12 +727,11 @@ export default function ITOAds() {
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
-            <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 group-hover:rotate-3"
-              style={{ background: `linear-gradient(135deg, ${COLORS.orange}, ${COLORS.orangeLight})` }}
-            >
-              <FiSpeaker size={20} className="text-white" />
-            </div>
+            <img 
+              src="/images/web_trans_icon.jpeg" 
+              alt="ITO Ads Logo" 
+              className="w-10 h-10 rounded-xl object-cover shadow-lg transition-transform group-hover:scale-105 group-hover:rotate-3"
+            />
             <span className="font-serif text-xl font-bold tracking-tight text-white">ITO Ads</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
@@ -860,6 +759,7 @@ export default function ITOAds() {
             muted
             loop
             playsInline
+            preload="metadata"
             className="w-full h-full object-cover opacity-30"
             style={{ filter: 'brightness(1.2) contrast(2.2)' }}
           >
@@ -1455,12 +1355,11 @@ export default function ITOAds() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
             <div className="md:col-span-2">
               <Link to="/" className="flex items-center space-x-3 mb-6">
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-                  style={{ background: `linear-gradient(135deg, ${COLORS.orange}, ${COLORS.orangeLight})` }}
-                >
-                  <FiSpeaker size={20} className="text-white" />
-                </div>
+              <img 
+              src="/images/web_trans_icon.jpeg" 
+              alt="ITO Ads Logo" 
+              className="w-10 h-10 rounded-xl object-cover shadow-lg transition-transform group-hover:scale-105 group-hover:rotate-3"
+            />
                 <span className="font-serif text-xl font-bold tracking-tight text-white">ITO Ads</span>
               </Link>
               <p className="text-white/70 max-w-md font-light leading-relaxed text-sm">
@@ -1481,7 +1380,7 @@ export default function ITOAds() {
               <address className="space-y-3 text-white/70 font-light not-italic text-sm">
                 <div className="flex items-center gap-2"><FiMapPin size={16} />Kishanganj, Siliguri, Jaigaon, Noida</div>
                 <div className="flex items-center gap-2"><FiMail size={16} />info@indiatradeoverseas.com</div>
-                <div className="flex items-center gap-2"><FiPhone size={16} />+91 98765 43210</div>
+                <div className="flex items-center gap-2"><FiPhone size={16} />01169262028</div>
                 <div className="flex items-center gap-2"><FiClock size={16} />Mon–Sat, 9:30 AM – 6:30 PM IST</div>
               </address>
             </div>
@@ -1493,6 +1392,7 @@ export default function ITOAds() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
