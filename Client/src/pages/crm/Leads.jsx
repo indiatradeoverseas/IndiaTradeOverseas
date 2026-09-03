@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { adminApi } from '../../api/admin';
@@ -39,6 +39,7 @@ const LEAD_FIELDS = [
 ];
 
 export default function Leads() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [leads, setLeads] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -67,10 +68,37 @@ export default function Leads() {
   };
 
   const isUnassigned = (lead) => {
-    if (!lead) return true;
-    if (!lead.assignedTo) return true;
-    if (typeof lead.assignedTo === 'string' && (lead.assignedTo.toLowerCase() === 'unassigned' || lead.assignedTo.trim() === '')) return true;
-    return false;
+    if (!lead || !lead.assignedTo) return true;
+    const assigned = lead.assignedTo;
+    if (typeof assigned === 'object' && assigned !== null) {
+      const name = assigned.fullName || assigned.name || assigned.email;
+      if (!name || String(name).toLowerCase() === 'unassigned') return true;
+      return false;
+    }
+    if (typeof assigned === 'string') {
+      const s = assigned.trim().toLowerCase();
+      if (!s || s === 'unassigned' || s === 'null' || s === 'undefined') return true;
+      return false;
+    }
+    return true;
+  };
+
+  const getLeadValuationDisplay = (lead) => {
+    if (!lead) return '—';
+    if (lead.leadValue && Number(lead.leadValue) > 0) {
+      return `₹${Number(lead.leadValue).toLocaleString('en-IN')}`;
+    }
+    if (lead.estimatedValue && String(lead.estimatedValue).trim().length > 0) {
+      return String(lead.estimatedValue).trim();
+    }
+    const text = lead.chatSummary || lead.remarks || '';
+    if (text) {
+      const match = text.match(/(?:Valuation|Budget|Value|Valuation\/Budget)[^\n:]*[:—]\s*([^\n,]+)/i);
+      if (match && match[1] && match[1].trim() !== 'Not specified') {
+        return match[1].trim();
+      }
+    }
+    return '—';
   };
 
   // Toggle between Table and Visual Kanban Board
@@ -173,6 +201,7 @@ export default function Leads() {
     email: '',
     quantity: '',
     destination: '',
+    targetDate: '',
     leadValue: '',
     assignedTo: '',
     source: 'MANUAL'
@@ -507,7 +536,41 @@ export default function Leads() {
     }
   };
 
-  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'];
+  const isWonOrDelivered = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
+  };
+
+  const isOrderConfirmedStage = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return [
+      'ORDER_CONFIRMED',
+      'PO_RECEIVED',
+      'LOI_PO_PENDING',
+      'DISPATCH_PENDING',
+      'DISPATCH_PLANNED',
+      'PAYMENT_PENDING',
+      'PAYMENT_DISCUSSION',
+      'DOCUMENT_PENDING',
+      'QUOTATION_APPROVED'
+    ].includes(s);
+  };
+
+  const isNewOrAssignedLead = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return !isWonOrDelivered(s) && !isOrderConfirmedStage(s) && !['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const isLost = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED'];
 
   const activeLeads = leads.filter(l => !completedStages.includes((l.stage || '').toUpperCase()));
   const completedLeads = leads.filter(l => completedStages.includes((l.stage || '').toUpperCase()));
@@ -522,6 +585,10 @@ export default function Leads() {
 
     if (leadTab === 'ACTIVE' && isCompleted) return false;
     if (leadTab === 'COMPLETED' && !isCompleted) return false;
+    if (leadTab === 'WON_DELIVERED' && !isWonOrDelivered(lead.stage)) return false;
+    if (leadTab === 'ORDER_CONFIRM' && !isOrderConfirmedStage(lead.stage)) return false;
+    if (leadTab === 'NEW_LEAD' && !isNewOrAssignedLead(lead.stage)) return false;
+    if (leadTab === 'CALENDAR' && !lead.nextFollowupAt) return false;
 
     if (filterPriority !== 'ALL') {
       const pUpper = (lead.priority || 'WARM').toUpperCase();
@@ -798,60 +865,74 @@ export default function Leads() {
           </motion.div>
         )}
 
-        {/* Lead Section Tab Switcher (Active Leads vs Completed Leads) */}
+        {/* Lead Section Tab Switcher */}
         <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-ink-soft)]/15 pb-2 font-mono">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setLeadTab('ACTIVE')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
-                leadTab === 'ACTIVE'
-                  ? 'bg-teal-950/80 text-teal-400 border-teal-800/80 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
-              }`}
-            >
-              <span>🔥 Active Leads Pipeline</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
-                {activeLeads.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setLeadTab('COMPLETED')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
-                leadTab === 'COMPLETED'
-                  ? 'bg-emerald-950/90 text-emerald-400 border-emerald-800/90 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
-              }`}
-            >
-              <span>🏆 Lead Complete Section</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
-                {completedLeads.length}
-              </span>
-            </button>
-
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
             <button
               onClick={() => setLeadTab('ALL')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ALL'
-                  ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/30'
+                  ? 'bg-teal-950/80 text-teal-300 border-teal-500/50 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              <span>📁 All Inquiries Registry</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20">
+              <span>All Lead</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
                 {leads.length}
               </span>
             </button>
 
             <button
+              onClick={() => setLeadTab('WON_DELIVERED')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'WON_DELIVERED'
+                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>DEAL WON, DELIVERED, CLOSED WON</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
+                {leads.filter(l => isWonOrDelivered(l.stage)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadTab('ORDER_CONFIRM')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'ORDER_CONFIRM'
+                  ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>order Confirm</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-900/60 text-cyan-200 border border-cyan-700/40">
+                {leads.filter(l => isOrderConfirmedStage(l.stage)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadTab('NEW_LEAD')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'NEW_LEAD'
+                  ? 'bg-amber-950/90 text-amber-300 border-amber-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>New Lead</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-900/60 text-amber-200 border border-amber-700/40">
+                {leads.filter(l => isNewOrAssignedLead(l.stage)).length}
+              </span>
+            </button>
+
+            <button
               onClick={() => setLeadTab('WORKLOAD')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WORKLOAD'
                   ? 'bg-sky-950/90 text-sky-300 border-sky-800/90 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              <span>👥 Employee Workload Allocation</span>
+              <span>👥 Employee Workload</span>
               <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-900/60 text-sky-200 border border-sky-700/40">
                 {executiveWorkloadSummary.list.length} Members
               </span>
@@ -960,19 +1041,6 @@ export default function Leads() {
               className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
             />
           </div>
-          <div className="relative w-full md:w-56">
-            <select
-              value={filterStage}
-              onChange={(e) => setFilterStage(e.target.value)}
-              className="w-full px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none cursor-pointer appearance-none text-[var(--crm-heading)] font-mono"
-            >
-              <option value="" className="bg-[var(--crm-bg)]">All Pipeline Stages</option>
-              {stages.map(st => <option key={st} value={st} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{st.replace(/_/g, ' ')}</option>)}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[var(--crm-ink-faint)]">
-              <FiFilter size={12} />
-            </div>
-          </div>
 
           {/* Temperature Filters */}
           <div className="flex items-center gap-1.5 font-mono text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
@@ -1040,18 +1108,18 @@ export default function Leads() {
                     <th className="py-3.5 px-5">Identifier</th>
                     <th className="py-3.5 px-5">Consignee Name</th>
                     <th className="py-3.5 px-5">Category & Region</th>
+                    <th className="py-3.5 px-5 text-center">Target Timeline</th>
                     <th className="py-3.5 px-5 text-right">Valuation</th>
                     <th className="py-3.5 px-5 text-center">Pipeline Stage</th>
                     <th className="py-3.5 px-5 text-center">Executive / Owner</th>
                     <th className="py-3.5 px-5 text-center">LOI Status</th>
                     <th className="py-3.5 px-5 text-center">Direct Communication</th>
-                    <th className="py-3.5 px-5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={isManagerOrAdmin ? "10" : "9"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
+                      <td colSpan={isManagerOrAdmin ? "9" : "8"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
                         No active inquiry manifests found for the selected date filter.
                       </td>
                     </tr>
@@ -1062,9 +1130,16 @@ export default function Leads() {
                         : (lead.assignedTo || 'Unassigned');
 
                       return (
-                      <tr key={lead._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                      <tr 
+                        key={lead._id} 
+                        onClick={(e) => {
+                          if (e.target.closest('input, button, a, select')) return;
+                          navigate(`/crm/leads/${lead._id}`);
+                        }}
+                        className="hover:bg-[var(--crm-bg-raised)]/60 cursor-pointer transition-colors"
+                      >
                         {isManagerOrAdmin && (
-                          <td className="py-3.5 px-4 text-center shrink-0 w-12">
+                          <td className="py-3.5 px-4 text-center shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selectedLeadIds.includes(lead._id)}
@@ -1073,10 +1148,16 @@ export default function Leads() {
                             />
                           </td>
                         )}
-                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">{lead.leadCode}</td>
+                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
+                          <Link to={`/crm/leads/${lead._id}`} className="hover:underline text-[var(--crm-heading)]">
+                            {lead.leadCode}
+                          </Link>
+                        </td>
                         <td className="py-3.5 px-5 min-w-[160px]">
                           <div className="flex items-center gap-2">
-                            <span className="font-serif text-sm text-[var(--crm-heading)]">{lead.customerName}</span>
+                            <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
+                              {lead.customerName}
+                            </Link>
                             {lead.priority === 'HOT' && (
                               <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
                             )}
@@ -1095,8 +1176,17 @@ export default function Leads() {
                           </span>
                           <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.country || 'IN'}</span>
                         </td>
+                        <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
+                          {lead.targetDate ? (
+                            <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                              📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+                          )}
+                        </td>
                         <td className="py-3.5 px-5 text-right font-mono font-bold text-[var(--crm-positive)]">
-                          {lead.leadValue ? `₹${lead.leadValue.toLocaleString('en-IN')}` : '—'}
+                          {getLeadValuationDisplay(lead)}
                         </td>
                         <td className="py-3.5 px-5 text-center">
                           {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
@@ -1179,27 +1269,6 @@ export default function Leads() {
                             </button>
                           </div>
                         </td>
-
-                        <td className="py-3.5 px-5 text-center">
-                          <div className="flex items-center justify-center space-x-1.5">
-                            <button
-                              onClick={() => {
-                                setLoiTargetLeadId(lead._id);
-                                setShowLOIModal(true);
-                              }}
-                              className="p-1.5 border border-teal-800/50 bg-teal-950/60 hover:bg-teal-900 text-teal-300 transition-all rounded-sm cursor-pointer"
-                              title="Upload LOI for Lead"
-                            >
-                              <FiFileText size={13} />
-                            </button>
-                            <Link
-                              to={`/crm/leads/${lead._id}`}
-                              className="inline-flex p-1.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition-all rounded-sm"
-                            >
-                              <FiEye size={13} />
-                            </Link>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })
@@ -1221,7 +1290,14 @@ export default function Leads() {
                     : (lead.assignedTo || 'Unassigned');
 
                   return (
-                    <div key={lead._id} className="bg-[var(--crm-bg-raised)]/40 border border-[var(--crm-ink-soft)]/20 rounded p-3.5 space-y-3 text-left font-mono text-xs shadow-sm">
+                    <div 
+                      key={lead._id} 
+                      onClick={(e) => {
+                        if (e.target.closest('input, button, a, select')) return;
+                        navigate(`/crm/leads/${lead._id}`);
+                      }}
+                      className="bg-[var(--crm-bg-raised)]/40 border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-heading)]/40 rounded p-3.5 space-y-3 text-left font-mono text-xs shadow-sm cursor-pointer transition-all"
+                    >
                       {/* Header: Checkbox + Lead Code + Priority Badge */}
                       <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-ink-soft)]/15 pb-2">
                         <div className="flex items-center gap-2 min-w-0">
@@ -1260,9 +1336,9 @@ export default function Leads() {
                           <span className="px-2 py-0.5 text-[9px] font-bold bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded block">
                             {lead.productCategory}
                           </span>
-                          {lead.leadValue ? (
-                            <span className="text-[11px] font-bold text-emerald-400 block mt-1">₹{lead.leadValue.toLocaleString('en-IN')}</span>
-                          ) : null}
+                          {getLeadValuationDisplay(lead) !== '—' && (
+                            <span className="text-[11px] font-bold text-emerald-400 block mt-1">{getLeadValuationDisplay(lead)}</span>
+                          )}
                         </div>
                       </div>
 
@@ -1441,7 +1517,14 @@ export default function Leads() {
                       </div>
                     ) : (
                       stageLeads.map((item) => (
-                        <div key={item._id} className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 rounded-sm space-y-2 text-left hover:border-[var(--crm-heading)]/40 transition-all">
+                        <div 
+                          key={item._id} 
+                          onClick={(e) => {
+                            if (e.target.closest('input, button, a, select')) return;
+                            navigate(`/crm/leads/${item._id}`);
+                          }}
+                          className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 rounded-sm space-y-2 text-left hover:border-[var(--crm-heading)]/40 transition-all cursor-pointer"
+                        >
                           <div className="flex justify-between items-start">
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)]">{item.leadCode}</span>
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-warning)]">
@@ -1533,8 +1616,12 @@ export default function Leads() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation (INR)</label>
-                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Value" />
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Requirement Date</label>
+                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer [color-scheme:dark]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation / Budget (INR)</label>
+                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Valuation" />
                   </div>
                 </div>
 

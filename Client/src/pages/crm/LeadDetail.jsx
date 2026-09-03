@@ -42,6 +42,11 @@ export default function LeadDetail() {
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
 
+  const [showLOIModal, setShowLOIModal] = useState(false);
+  const [loiFile, setLoiFile] = useState(null);
+  const [loiNotes, setLoiNotes] = useState('');
+  const [uploadingLOI, setUploadingLOI] = useState(false);
+
   const [revealedPhone, setRevealedPhone] = useState('');
   const [revealedEmail, setRevealedEmail] = useState('');
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -128,10 +133,15 @@ export default function LeadDetail() {
     try {
       const response = await leadsApi.getLeadById(id);
       if (response.success) {
-        setLead(response.data.lead);
+        const fetchedLead = response.data.lead;
+        setLead(fetchedLead);
         setActivities(response.data.activities);
-        setAssignee(response.data.lead.assignedTo?._id || response.data.lead.assignedTo || '');
-        setDeptAssignee(response.data.lead.assignedDepartment || '');
+        setAssignee(fetchedLead.assignedTo?._id || fetchedLead.assignedTo || '');
+        setDeptAssignee(fetchedLead.assignedDepartment || '');
+
+        if (fetchedLead.stage === 'LOI_PO_PENDING' && (!fetchedLead.loiDocuments || fetchedLead.loiDocuments.length === 0)) {
+          setShowLOIModal(true);
+        }
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
@@ -179,11 +189,30 @@ export default function LeadDetail() {
   };
 
   const handleStageChange = async (newStage) => {
+    const advancedList = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (advancedList.includes(newStage) && (lead?.quotationStatus === 'PENDING' || lead?.quotationStatus === 'REJECTED')) {
+      toast.error(`Quotation is ${lead.quotationStatus}. Manager approval is required before advancing to ${newStage.replace(/_/g, ' ')}.`);
+      return;
+    }
+
+    const postLoiStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (postLoiStages.includes(newStage) && (!lead?.loiDocuments || lead.loiDocuments.length === 0)) {
+      toast.error(`LOI Document Required! Please upload the LOI document before advancing to ${newStage.replace(/_/g, ' ')}.`);
+      setShowLOIModal(true);
+      return;
+    }
+
     try {
       const response = await leadsApi.updateStage(id, { newStage });
       if (response.success) {
         toast.success(`Stage updated to ${newStage.replace(/_/g, ' ')}`);
         fetchLeadDetails();
+        if (newStage === 'QUOTATION_REQUIRED') {
+          setShowQuotationModal(true);
+        }
+        if (newStage === 'LOI_PO_PENDING') {
+          setShowLOIModal(true);
+        }
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to update stage'); }
   };
@@ -250,6 +279,37 @@ export default function LeadDetail() {
     } catch (err) { console.error(err); }
   };
 
+  const handleLOISubmit = async (e) => {
+    e.preventDefault();
+    if (!loiFile) {
+      toast.error('Please select an LOI document file');
+      return;
+    }
+
+    setUploadingLOI(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', loiFile);
+      if (loiNotes) formData.append('notes', loiNotes);
+
+      const res = await leadsApi.uploadLOIDocument(id, formData);
+      if (res.success) {
+        toast.success('LOI Document uploaded & saved successfully!');
+        setShowLOIModal(false);
+        setLoiFile(null);
+        setLoiNotes('');
+        fetchLeadDetails();
+      } else {
+        toast.error(res.message || 'LOI upload failed');
+      }
+    } catch (err) {
+      console.error('LOI upload error:', err);
+      toast.error(err.response?.data?.message || 'Failed to upload LOI document');
+    } finally {
+      setUploadingLOI(false);
+    }
+  };
+
   const handleUnmaskClick = (field) => {
     setRevealFieldTarget(field);
     setShowWarningModal(true);
@@ -305,6 +365,13 @@ export default function LeadDetail() {
     else if (hotStages.includes(st)) score += 45;
     else if (warmStages.includes(st)) score += 25;
 
+    if (l.targetDate) {
+      const diffHours = (new Date(l.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60);
+      if (diffHours <= 72) score += 45;
+      else if (diffHours <= 168) score += 30;
+      else score += 15;
+    }
+
     if (l.priority === 'HOT') score = Math.max(score, 85);
     else if (l.priority === 'WARM') score = Math.max(score, 55);
 
@@ -336,18 +403,6 @@ export default function LeadDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
-          <button onClick={() => setShowQuotationModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
-            <FiFileText size={13} className="text-[var(--crm-ink-faint)]" /> <span>Request Quote</span>
-          </button>
-          <button onClick={() => setShowActivityModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
-            <FiActivity size={13} className="text-[var(--crm-ink-faint)]" /> <span>Log Activity</span>
-          </button>
-          <button onClick={() => setShowWhatsAppModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
-            <FiMessageCircle size={13} className="text-[var(--crm-ink-faint)]" /> <span>Log WhatsApp</span>
-          </button>
-          <button onClick={() => setShowEmailModal(true)} className="flex-1 md:flex-none justify-center bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)]">
-            <FiMail size={13} className="text-[var(--crm-ink-faint)]" /> <span>Send Email</span>
-          </button>
           {user?.role === 'ADMIN' && (
             <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-[var(--crm-danger-bg)]">
               <FiTrash2 size={13} /> <span>Delete Node</span>
@@ -360,12 +415,13 @@ export default function LeadDetail() {
       <div className="w-full px-4 md:px-8 py-6 space-y-6">
         
         {/* Metric Specification Hex cards */}
-        <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           {[
             { label: 'Telephony Line', val: revealedPhone || lead.phoneMasked || '••••• •••••', revealTarget: 'phone' },
             { label: 'Email Coordinates', val: revealedEmail || lead.emailMasked || '•••••', revealTarget: 'email' },
             { label: 'Commodity Sector', val: lead.productCategory },
             { label: 'Volume / Mass', val: lead.quantity || '—' },
+            { label: 'Target Timeline', val: lead.targetDate ? new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unspecified', accent: lead.targetDate ? 'text-[var(--crm-warning)]' : undefined },
             { label: 'Assigned Custodian', val: lead.assignedTo?.fullName || lead.assignedTo || 'Unassigned', accent: 'text-[var(--crm-info)]' },
             { label: 'Department Router', val: lead.assignedDepartment || 'None', accent: 'text-[var(--crm-accent)]' }
           ].map((item, i) => (
@@ -431,7 +487,7 @@ export default function LeadDetail() {
             <div className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 rounded-sm text-xs space-y-1">
               <span className="text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold block">Evaluation Rule Breakdown</span>
               <p className="text-[11px] text-[var(--crm-ink-soft)]">
-                {lead.priority === 'HOT' ? '• Order Volume/LOI/Advance Payment agreed. High chance of conversion.' :
+                {lead.priority === 'HOT' ? '• Urgent Target Timeline / High Volume / LOI / Advance Terms. Immediate conversion focus.' :
                  lead.priority === 'WARM' ? '• Active requirement captured. Quotation/Sample pending discussion.' :
                  '• Inbound inquiry requiring nurturing or preliminary qualification call.'}
               </p>
@@ -494,16 +550,33 @@ export default function LeadDetail() {
                 const StageIcon = details.icon;
                 const isCurrent = currentStage === stage;
                 const isCompleted = isClosedWon || isClosedLost || activeStages.indexOf(currentStage) > idx;
-                const isClickable = allowedTransitions[currentStage]?.includes(stage);
+                const advancedList = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+                const postLoiStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+                const isBlockedByQuotation = advancedList.includes(stage) && (lead?.quotationStatus === 'PENDING' || lead?.quotationStatus === 'REJECTED');
+                const isBlockedByLOI = postLoiStages.includes(stage) && (!lead?.loiDocuments || lead.loiDocuments.length === 0);
+                const isClickable = (allowedTransitions[currentStage]?.includes(stage) || (stage === 'LOI_PO_PENDING' && isCurrent) || (stage === 'QUOTATION_REQUIRED' && isCurrent)) && !isBlockedByQuotation && !isBlockedByLOI;
                 
-                let currentStyle = isCurrent ? "border-[var(--crm-heading)] bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-bold"
+                let currentStyle = isCurrent ? "border-[var(--crm-heading)] bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-bold cursor-pointer hover:border-teal-500"
                                   : isCompleted ? "border-[var(--crm-positive)]/30 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] opacity-80"
                                   : isClickable ? "border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/50 cursor-pointer"
                                   : "border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/40 text-[var(--crm-ink-faint)] opacity-30 cursor-not-allowed";
 
                 return (
                   <React.Fragment key={stage}>
-                    <button onClick={() => isClickable && handleStageChange(stage)} disabled={!isClickable} className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${currentStyle}`}>
+                    <button 
+                      onClick={() => {
+                        if (stage === 'LOI_PO_PENDING' && isCurrent) {
+                          setShowLOIModal(true);
+                        } else if (stage === 'QUOTATION_REQUIRED' && isCurrent) {
+                          setShowQuotationModal(true);
+                        } else if (isClickable) {
+                          handleStageChange(stage);
+                        }
+                      }} 
+                      disabled={!isClickable} 
+                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${currentStyle}`}
+                      title={stage === 'LOI_PO_PENDING' ? 'Click to open LOI Upload Form' : details.label}
+                    >
                       <StageIcon className="w-4 h-4 mb-1" />
                       <span className="text-[9px] font-bold tracking-wide uppercase truncate max-w-full">{details.label}</span>
                     </button>
@@ -695,6 +768,66 @@ export default function LeadDetail() {
                 <div className="flex gap-2">
                   <button type="submit" className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-danger-bg)] transition-colors">Confirm Reveal</button>
                   <button type="button" onClick={() => { setShowWarningModal(false); setReason(''); }} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 4. Upload LOI (Letter of Intent) Modal */}
+        {showLOIModal && (
+          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-lg relative text-[var(--crm-ink-soft)] text-left">
+              <div className="flex items-center justify-between border-b border-[var(--crm-ink-soft)]/10 pb-4 mb-4">
+                <h3 className="text-sm font-mono font-bold text-teal-400 flex items-center gap-2 uppercase tracking-wider">
+                  <FiFileText size={16} /> Upload LOI (Letter of Intent)
+                </h3>
+                <button onClick={() => setShowLOIModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition cursor-pointer">
+                  <FiXCircle size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleLOISubmit} className="space-y-4 font-mono text-xs">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1.5">Select LOI Document File * (PDF, DOCX, IMAGE)</label>
+                  <input
+                    type="file"
+                    required
+                    onChange={(e) => setLoiFile(e.target.files[0])}
+                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 p-2.5 rounded-sm text-[var(--crm-heading)] file:mr-3 file:py-1 file:px-3 file:rounded-xs file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-teal-950 file:text-teal-400 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1.5">Optional Notes / Buyer Terms</label>
+                  <textarea
+                    rows="3"
+                    value={loiNotes}
+                    onChange={(e) => setLoiNotes(e.target.value)}
+                    placeholder="e.g. Buyer sent signed LOI for 500 Tons Tea at $1,200/Ton..."
+                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 p-2.5 rounded-sm text-[var(--crm-heading)] outline-none resize-none font-sans"
+                  ></textarea>
+                </div>
+
+                <div className="p-3 bg-teal-950/30 border border-teal-900/40 rounded-sm text-[10px] text-teal-300/80">
+                  ☁️ LOI will be saved on server & automatically backed up to Google Drive for Sales Manager verification.
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={uploadingLOI}
+                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold uppercase py-2.5 text-[10px] tracking-widest rounded-sm transition cursor-pointer disabled:opacity-50"
+                  >
+                    {uploadingLOI ? 'Uploading...' : 'Confirm Upload LOI'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowLOIModal(false)}
+                    className="px-4 py-2.5 border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] font-bold uppercase text-[10px] tracking-widest rounded-sm hover:bg-[var(--crm-bg-raised)] transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </form>
             </motion.div>

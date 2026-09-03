@@ -27,8 +27,8 @@ export const leadsApi = {
     return response.data;
   },
 
-  async updatePriority(leadId, priority) {
-    const response = await axiosInstance.patch(`/leads/${leadId}/priority`, { priority });
+  async updatePriority(leadId, priority, leadValue) {
+    const response = await axiosInstance.patch(`/leads/${leadId}/priority`, { priority, leadValue });
     return response.data;
   },
 

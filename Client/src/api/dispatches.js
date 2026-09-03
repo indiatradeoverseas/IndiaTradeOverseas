@@ -68,7 +68,14 @@ export const getDispatchQueue = async () => {
           salesOwner: execName,
           orderConfirmedBy: execName,
           assignedByManager: mgrName,
-          phone: l.phone || l.phoneMasked || '—'
+          phone: l.phone || l.phoneMasked || '—',
+          podFileUrl: l.podFileUrl || l.podUrl || l.proofUrl || l.paymentProofUrl,
+          paymentProofUrl: l.paymentProofUrl || l.proofUrl,
+          driverProofUrl: l.driverProofUrl,
+          photoUrl: l.photoUrl || l.proofUrl,
+          paymentProof: l.paymentProof,
+          deliveryImages: l.deliveryImages,
+          departureImages: l.departureImages
         };
       });
       return { success: true, data: { orders: dispatchLeads } };
@@ -172,6 +179,19 @@ export const submitDeliveryImages = async (id, data) => {
   return res.data;
 };
 
+// ─── WORK UPDATE LOG PERSISTENCE ──────────────────────────────────────────
+
+export const createWorkUpdate = async (data) => {
+  const res = await axios.post('/v1/dispatch/work-updates', data);
+  return res.data;
+};
+
+export const getWorkUpdates = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const res = await axios.get(`/v1/dispatch/work-updates${queryString ? `?${queryString}` : ''}`);
+  return res.data;
+};
+
 export const dispatchesApi = {
   getDispatchSummary,
   getDispatches,
@@ -192,5 +212,7 @@ export const dispatchesApi = {
   recordEndOdometer,
   addFuelLog,
   submitDepartureImages,
-  submitDeliveryImages
+  submitDeliveryImages,
+  createWorkUpdate,
+  getWorkUpdates
 };

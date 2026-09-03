@@ -25,9 +25,9 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
   DISPATCH_PLANNED: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
   PAYMENT_PENDING: ['DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
   DOCUMENT_PENDING: ['CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DELIVERED: ['CLOSED_WON', 'COMPLETED'],
-  COMPLETED: [],
-  CLOSED_WON: [],
+  DELIVERED: ['CLOSED_WON', 'COMPLETED', 'DEAL_WON'],
+  COMPLETED: ['DEAL_WON'],
+  CLOSED_WON: ['DEAL_WON'],
   CLOSED_LOST: [],
   
   // New pipeline transition mappings
@@ -178,34 +178,89 @@ async function listLeads(user, query = {}) {
     }
     filter.assignedTo = { $in: actorIds };
   }
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
 
-  const leads = await Lead.find(filter)
-    .populate('assignedTo', 'fullName name email role profileImage')
+  // Fetch raw leads WITHOUT Mongoose populate on assignedTo so raw ObjectId is preserved
+  const rawLeads = await Lead.find(filter)
     .populate('createdBy', 'fullName name email role profileImage')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  // Resolve mixed User/Employee populated assignees
-  const populatedLeads = await Promise.all(leads.map(async (l) => {
-    const populatedL = l.toObject ? l.toObject() : l;
-    const rawAssignedId = (typeof l.populated === 'function' && l.populated('assignedTo')) || l.assignedTo;
-    if (rawAssignedId && !l.assignedTo) {
-      const Employee = require('../employee/employee.model');
-      const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
-      if (employee) {
-        populatedL.assignedTo = {
-          _id: employee._id,
-          fullName: employee.fullName || employee.name,
-          name: employee.name || employee.fullName,
-          email: employee.email,
-          role: employee.role,
-          profileImage: employee.profileImage
-        };
+  // Collect all assignedTo values (IDs, emails, or ObjectIds)
+  const rawAssignedValues = [...new Set(rawLeads.map(l => l.assignedTo ? String(l.assignedTo._id || l.assignedTo) : null).filter(Boolean))];
+
+  if (rawAssignedValues.length > 0) {
+    const objectIds = [];
+    const emailStrings = [];
+
+    rawAssignedValues.forEach(v => {
+      if (v.includes('@')) {
+        emailStrings.push(v.toLowerCase());
       }
-    }
-    return getLeadDisplay(populatedL, user);
-  }));
+      if (mongoose.Types.ObjectId.isValid(v)) {
+        objectIds.push(new mongoose.Types.ObjectId(v));
+        objectIds.push(String(v));
+      }
+    });
 
-  return populatedLeads;
+    const [users, employees] = await Promise.all([
+      User.find({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId').lean(),
+      Employee.find({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } }
+        ]
+      }).select('_id fullName name email role profileImage').lean()
+    ]);
+
+    const assigneeMap = new Map();
+
+    const addToMap = (info) => {
+      if (!info) return;
+      if (info._id) assigneeMap.set(String(info._id), info);
+      if (info.email) assigneeMap.set(info.email.toLowerCase(), info);
+      if (info.employeeDbId) assigneeMap.set(String(info.employeeDbId), info);
+    };
+
+    users.forEach(u => addToMap({
+      _id: u._id,
+      fullName: u.fullName || u.name || u.email,
+      name: u.name || u.fullName || u.email,
+      email: u.email,
+      role: u.role,
+      profileImage: u.profileImage,
+      employeeDbId: u.employeeDbId
+    }));
+
+    employees.forEach(e => addToMap({
+      _id: e._id,
+      fullName: e.name || e.fullName || e.email,
+      name: e.name || e.fullName || e.email,
+      email: e.email,
+      role: e.role,
+      profileImage: e.profileImage
+    }));
+
+    rawLeads.forEach(l => {
+      if (l.assignedTo) {
+        const rawVal = String(l.assignedTo._id || l.assignedTo);
+        const resolved = assigneeMap.get(rawVal) || (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null);
+        if (resolved) {
+          l.assignedTo = resolved;
+        } else {
+          l.assignedTo = null;
+        }
+      }
+    });
+  }
+
+  return rawLeads.map(l => getLeadDisplay(l, user));
 }
 
 async function getLeadById(id, user) {
@@ -214,6 +269,31 @@ async function getLeadById(id, user) {
 
   if (!canAccessLead(user, lead)) {
     throw new Error('OWNERSHIP_FORBIDDEN');
+  }
+
+  // Auto-reevaluate priority & score if targetDate is set and lead was COLD or score uncalculated
+  if (lead.targetDate) {
+    try {
+      const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+      const { score: calcScore, priority: calcPriority } = scoreAndClassifyLead({
+        quantity: lead.quantity,
+        leadValue: lead.leadValue,
+        stage: lead.stage,
+        source: lead.source,
+        contactPerson: lead.customerName,
+        mobile: lead.phoneMasked,
+        chatSummary: lead.remarks || '',
+        targetDate: lead.targetDate
+      });
+      if (calcScore > (lead.score || 0) || (calcPriority === 'HOT' && lead.priority !== 'HOT')) {
+        lead.score = Math.max(lead.score || 0, calcScore);
+        if (calcPriority === 'HOT') lead.priority = 'HOT';
+        else if (calcPriority === 'WARM' && lead.priority === 'COLD') lead.priority = 'WARM';
+        await lead.save();
+      }
+    } catch (calcErr) {
+      console.warn('Notice re-scoring lead by targetDate:', calcErr.message);
+    }
   }
 
   // Resolve mixed User/Employee populated assignee
@@ -235,13 +315,22 @@ async function getLeadById(id, user) {
   }
 
   const activities = await LeadActivity.find({ leadId: lead._id }).sort({ createdAt: -1 });
+  const latestQuotation = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
+  if (latestQuotation) {
+    leadObj.quotationStatus = latestQuotation.status;
+  }
+
   return {
     lead: getLeadDisplay(leadObj, user),
     activities
   };
 }
 
-async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, user, ipAddress, deviceHash }) {
+async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
+  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage);
+  console.log('[updateStage] Proof fields received:', { hasPodFileUrl: !!podFileUrl, hasPaymentProofUrl: !!paymentProofUrl, hasDriverProofUrl: !!driverProofUrl, hasPhotoUrl: !!photoUrl, hasPaymentProof: !!paymentProof, hasDeliveryImages: !!deliveryImages });
+  console.log('[updateStage] User role:', user?.role, 'department:', user?.department);
+
   // 1. Fetch the lead record first so `lead` exists in memory
   let lead = null;
   if (mongoose.isValidObjectId(leadId)) {
@@ -250,7 +339,11 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   if (!lead) {
     lead = await Lead.findOne({ $or: [{ leadCode: leadId }, { leadId: leadId }, { orderNumber: leadId }] });
   }
-  if (!lead) throw new Error('LEAD_NOT_FOUND');
+  if (!lead) {
+    console.log('[updateStage] LEAD_NOT_FOUND for leadId:', leadId);
+    throw new Error('LEAD_NOT_FOUND');
+  }
+  console.log('[updateStage] Found lead:', lead.leadCode, 'current stage:', lead.stage);
 
   // 2. Access control check
   if (!canAccessLead(user, lead)) {
@@ -267,7 +360,25 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
-  // 3. Stage transition check with Management Override
+  // 3. Strict Quotation Approval Enforcement
+  const advancedStages = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  if (advancedStages.includes(newStage)) {
+    const existingQuote = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
+    if (existingQuote && (existingQuote.status === 'PENDING' || existingQuote.status === 'REJECTED')) {
+      throw new Error(`QUOTATION_NOT_APPROVED: Cannot transition to ${newStage.replace(/_/g, ' ')}. Quotation is ${existingQuote.status}. Manager approval is required first.`);
+    }
+  }
+
+  // 3.5. Strict LOI Document Enforcement
+  const postLoiStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  if (postLoiStages.includes(newStage)) {
+    const hasLOI = Array.isArray(lead.loiDocuments) && lead.loiDocuments.length > 0;
+    if (!hasLOI) {
+      throw new Error(`LOI_DOCUMENT_REQUIRED: LOI Document must be uploaded before advancing to ${newStage.replace(/_/g, ' ')}.`);
+    }
+  }
+
+  // 4. Stage transition check with Management Override
   const previousStage = lead.stage;
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
   
@@ -295,6 +406,31 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+  
+  const activePodUrl = podFileUrl || paymentProofUrl || (paymentProof && paymentProof.proofImageUrl) || '';
+  const activeDriverUrl = driverProofUrl || photoUrl || (deliveryImages && deliveryImages.driverSelfieUrl) || '';
+
+  if (activePodUrl) {
+    lead.podFileUrl = activePodUrl;
+    lead.paymentProofUrl = activePodUrl;
+  }
+  if (activeDriverUrl) {
+    lead.driverProofUrl = activeDriverUrl;
+    lead.photoUrl = activeDriverUrl;
+  }
+  if (paymentProof) lead.paymentProof = paymentProof;
+  if (deliveryImages) lead.deliveryImages = deliveryImages;
+
+  console.log('[updateStage] About to save lead with proof data:', {
+    stage: lead.stage,
+    hasPodFileUrl: !!(lead.podFileUrl && lead.podFileUrl.length > 5),
+    hasPaymentProofUrl: !!(lead.paymentProofUrl && lead.paymentProofUrl.length > 5),
+    hasDriverProofUrl: !!(lead.driverProofUrl && lead.driverProofUrl.length > 5),
+    hasPhotoUrl: !!(lead.photoUrl && lead.photoUrl.length > 5),
+    podFileUrlLength: (lead.podFileUrl || '').length,
+    paymentProofUrlLength: (lead.paymentProofUrl || '').length,
+    driverProofUrlLength: (lead.driverProofUrl || '').length
+  });
 
   // Auto-recalculate lead score & priority on stage progression
   try {
@@ -317,6 +453,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   await lead.save();
+  console.log('[updateStage] Lead saved successfully! Stage:', lead.stage, 'leadCode:', lead.leadCode);
 
   // 5. Record activity log
   const activity = await LeadActivity.create({
@@ -339,6 +476,21 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
         status: 'PENDING',
         paymentTerms: 'Pending Negotiation'
       });
+    }
+  }
+
+  // 6b. Automation trigger: Notify Transport Manager & Transport Department when Order is Confirmed
+  if (newStage === 'ORDER_CONFIRMED' || newStage === 'PO_RECEIVED') {
+    try {
+      const Notification = require('../notifications/notification.model');
+      await Notification.create({
+        targetDepartment: 'TRANSPORT',
+        message: `🎉 New Order Confirmed! Lead ${lead.leadCode || lead.customerName} (${lead.customerName}) is ready for transport & driver assignment.`,
+        type: 'ORDER_CONFIRMED',
+        metadata: { leadId: lead._id, leadCode: lead.leadCode }
+      });
+    } catch (notifErr) {
+      console.warn('Order confirmation notification notice:', notifErr.message);
     }
   }
 
@@ -392,11 +544,24 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
 
 
   if (assignedTo && String(assignedTo) !== String(oldAssignedTo)) {
+    const User = require('../users/user.model');
+    const assignedUser = await User.findById(assignedTo).select('fullName name role department');
+    const assignedUserName = assignedUser?.fullName || assignedUser?.name || 'team member';
+
+    // 1. Notify the assigned Executive or Driver
     await Notification.create({
       targetUserId: assignedTo,
-      message: `Lead ${lead.leadCode} has been assigned to you by ${user.fullName}.`,
+      message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
       metadata: { leadId: lead._id }
+    });
+
+    // 2. Also notify the Transport Manager / TRANSPORT department
+    await Notification.create({
+      targetDepartment: 'TRANSPORT',
+      message: `📋 Lead ${lead.leadCode || lead.customerName} assigned to ${assignedUserName} (${assignedUser?.role || 'Transport'}) by ${user.fullName || user.name}.`,
+      type: 'TASK_ASSIGNMENT',
+      metadata: { leadId: lead._id, assignedTo }
     });
   } else if (assignedDepartment && assignedDepartment !== oldAssignedDept) {
     await Notification.create({
@@ -453,44 +618,65 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
     throw new Error('LEAD_IDS_REQUIRED');
   }
 
+  const targetLeadIds = leadIds.map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id);
+  let targetAssignedTo = null;
+  if (assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) {
+    targetAssignedTo = new mongoose.Types.ObjectId(assignedTo);
+  } else if (assignedTo) {
+    targetAssignedTo = assignedTo;
+  }
+
   const results = await Lead.updateMany(
-    { _id: { $in: leadIds } },
+    { _id: { $in: targetLeadIds } },
     { 
       $set: { 
-        assignedTo: assignedTo || null,
+        assignedTo: targetAssignedTo,
         stage: 'ASSIGNED'
       } 
     }
   );
 
   for (const leadId of leadIds) {
-    await LeadActivity.create({
-      leadId,
-      actionType: 'LEAD_ASSIGNED',
-      note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
-      actorId: user._id
-    });
+    try {
+      await LeadActivity.create({
+        leadId,
+        actionType: 'LEAD_ASSIGNED',
+        note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
+        actorId: user._id
+      });
+    } catch (actErr) {
+      console.warn('LeadActivity creation warning during bulk assign:', actErr.message);
+    }
 
     if (assignedTo) {
-      const lead = await Lead.findById(leadId);
-      if (lead) {
-        await Notification.create({
-          targetUserId: assignedTo,
-          message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName}.`,
-          type: 'TASK_ASSIGNMENT',
-          metadata: { leadId: lead._id }
-        });
+      try {
+        const lead = await Lead.findById(leadId);
+        if (lead) {
+          await Notification.create({
+            targetUserId: assignedTo,
+            message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name || 'Manager'}.`,
+            type: 'TASK_ASSIGNMENT',
+            metadata: { leadId: lead._id }
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Notification creation warning during bulk assign:', notifErr.message);
       }
     }
   }
 
-  await recordAudit({
-    actorId: user._id,
-    actionType: 'LEADS_BULK_ASSIGNED',
-    entityType: 'LEAD',
-    severity: 'MEDIUM',
-    metadata: { leadIds, assignedTo }
-  });
+  try {
+    await recordAudit({
+      actorId: user._id,
+      actionType: 'LEAD_ASSIGNED',
+      entityType: 'LEAD',
+      entityId: String(leadIds[0]),
+      severity: 'MEDIUM',
+      metadata: { leadIds, assignedTo }
+    });
+  } catch (auditErr) {
+    console.warn('Audit log warning during bulk assign:', auditErr.message);
+  }
 
   return { success: true, modifiedCount: results.modifiedCount };
 }
@@ -606,13 +792,7 @@ async function bulkImportLeads(leadsArray, user) {
   };
 }
 
-async function updatePriority({ leadId, priority, user }) {
-  const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
-  const upperPriority = String(priority || '').toUpperCase();
-  if (!validPriorities.includes(upperPriority)) {
-    throw new Error('INVALID_PRIORITY');
-  }
-
+async function updatePriority({ leadId, priority, leadValue, user }) {
   const lead = await Lead.findById(leadId);
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
@@ -621,13 +801,27 @@ async function updatePriority({ leadId, priority, user }) {
   }
 
   const oldPriority = lead.priority;
-  lead.priority = upperPriority;
+  if (priority) {
+    const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
+    const upperPriority = String(priority || '').toUpperCase();
+    if (validPriorities.includes(upperPriority)) {
+      lead.priority = upperPriority;
+    }
+  }
+
+  if (leadValue !== undefined && leadValue !== null && leadValue !== '') {
+    const numericVal = Number(String(leadValue).replace(/[^0-9.]/g, ''));
+    if (!isNaN(numericVal)) {
+      lead.leadValue = numericVal;
+    }
+  }
+
   await lead.save();
 
   await LeadActivity.create({
     leadId: lead._id,
     actionType: 'PRIORITY_UPDATED',
-    note: `Lead priority manually updated from ${oldPriority} to ${upperPriority} by ${user.fullName || user.name}`,
+    note: `Lead details updated (Priority: ${lead.priority}, Valuation: ₹${lead.leadValue || 0}) by ${user.fullName || user.name}`,
     actorId: user._id
   });
 

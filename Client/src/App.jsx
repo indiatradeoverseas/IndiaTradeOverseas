@@ -875,11 +875,24 @@ function AppLayout() {
             }
           />
 
-          {/* Building & Construction → Stone */}
-          <Route
-            path="/stone"
-            element={<Stone />}
-          />
+          <Route path="/crm/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
+
+          {/* Phase 4: Transport Module Routes */}
+          <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
+          <Route path="/transport/manager" element={<ProtectedRoute><TransportRouteGuard requiredLevel="MANAGER"><TransportManager /></TransportRouteGuard></ProtectedRoute>} />
+          <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+          <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+          <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+          <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+          <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
+
+          <Route path="*" element={<Navigate to="/crm/dashboard" />} />
+        </Routes>
+        <ChatWidget />
+      </PortalLayout>
+      </VoiceAssistantProvider>
+    );
+  }
 
           {/* ITO Ads */}
           <Route

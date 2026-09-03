@@ -30,170 +30,25 @@ const {
  * DPR-aligned lead intake service.
  */
 async function processAiLead(payload, actorId = null) {
-  payload = payload || {};
+  const contactPerson = payload.contactPerson || payload.customerName || payload.name || '';
+  const mobile = payload.mobile || payload.phone || payload.whatsapp || '9999999999';
+  const email = payload.email || '';
+  let productCategory = payload.productCategory || payload.productRequired || payload.division || payload.category || 'TEA';
+  if (productCategory.toLowerCase().includes('tea')) productCategory = 'TEA';
+  else if (productCategory.toLowerCase().includes('rice')) productCategory = 'RICE';
+  else if (productCategory.toLowerCase().includes('stone')) productCategory = 'STONE';
 
-  /* =========================================================
-     1. SOURCE IDENTIFICATION
-  ========================================================= */
+  const quantity = String(payload.quantity || '');
+  const destination = payload.destination || payload.city || '';
+  const targetDateRaw = payload.targetDate || payload.requiredDate || payload.timeline || null;
+  const targetDate = targetDateRaw ? new Date(targetDateRaw) : null;
+  const companyName = payload.companyName || payload.company || '';
+  const chatSummary = payload.chatSummary || payload.message || payload.subject || '';
+  const paymentTerms = payload.paymentTerms || '';
+  const leadSource = payload.source || 'WEBSITE';
 
-  const requestedSource = String(
-    payload.source ||
-    payload.leadSource ||
-    ''
-  ).toUpperCase();
-
-  const isContactForm =
-    requestedSource === 'CONTACT_FORM' ||
-    payload.formSource === 'contact_form' ||
-    payload.formSource === 'CONTACT_FORM';
-
-  /*
-   * Contact Form:
-   *     CONTACT_FORM
-   *
-   * AI Agent:
-   *     AI_AGENT
-   *
-   * This is important because CRM should clearly identify
-   * where the lead originated.
-   */
-  const source = isContactForm
-    ? 'CONTACT_FORM'
-    : 'AI_AGENT';
-
-
-  /* =========================================================
-     2. BASIC CUSTOMER INFORMATION
-  ========================================================= */
-
-  const contactPerson =
-    payload.contactPerson ||
-    payload.customerName ||
-    payload.name ||
-    '';
-
-  const mobile =
-    payload.mobile ||
-    payload.phone ||
-    payload.whatsapp ||
-    payload.whatsAppNumber ||
-    '';
-
-  const email =
-    payload.email ||
-    '';
-
-  const companyName =
-    payload.companyName ||
-    payload.company ||
-    '';
-
-  const country =
-    payload.country ||
-    '';
-
-  const whatsAppNumber =
-    payload.whatsAppNumber ||
-    payload.whatsapp ||
-    payload.mobile ||
-    payload.phone ||
-    '';
-
-
-  /* =========================================================
-     3. DPR LEAD TYPE
-     
-     BUYER
-     SUPPLIER
-     LOGISTICS
-     ========================================================= */
-
-  let leadType = String(
-    payload.leadType ||
-    payload.inquiryType ||
-    payload.enquiryType ||
-    ''
-  ).toUpperCase();
-
-  const allowedLeadTypes = [
-    'BUYER',
-    'SUPPLIER',
-    'LOGISTICS'
-  ];
-
-  if (!allowedLeadTypes.includes(leadType)) {
-    leadType = 'BUYER';
-  }
-
-
-  /* =========================================================
-     4. COMMERCIAL REQUIREMENT
-  ========================================================= */
-
-  const productCategory =
-    payload.productCategory ||
-    payload.productRequired ||
-    payload.product ||
-    '';
-
-  const quantity =
-    payload.quantity !== undefined &&
-    payload.quantity !== null
-      ? String(payload.quantity)
-      : '';
-
-  const destination =
-    payload.destination ||
-    payload.destinationCity ||
-    payload.destinationPort ||
-    '';
-
-  const specification =
-    payload.specification ||
-    payload.grade ||
-    payload.productSpecification ||
-    '';
-
-  const requiredDate =
-    payload.requiredDate ||
-    payload.deliveryDate ||
-    '';
-
-  const paymentTerms =
-    payload.paymentTerms ||
-    '';
-
-  const chatSummary =
-    payload.chatSummary ||
-    payload.message ||
-    payload.requirement ||
-    '';
-
-  const remarks =
-    payload.remarks ||
-    '';
-
-
-  /* =========================================================
-     5. VALIDATION
-  ========================================================= */
-
-  /*
-   * DPR:
-   *
-   * Contact person      -> required
-   * Phone / WhatsApp   -> required
-   * Product            -> required
-   * Quantity           -> required
-   * Destination        -> required
-   *
-   * Email/company are useful but not mandatory.
-   */
-
-  if (!contactPerson.trim()) {
-    throw new Error(
-      'VALIDATION_FAILED: contactPerson/customerName/name is required'
-    );
+  if (!contactPerson) {
+    throw new Error('VALIDATION_FAILED: customerName is required');
   }
 
   if (!mobile.trim()) {
@@ -264,21 +119,24 @@ async function processAiLead(payload, actorId = null) {
   });
 
 
-  /* =========================================================
-     8. LEAD SCORING
-  ========================================================= */
+  const rawValuation = payload.leadValue || payload.estimatedValue || payload.valuation || payload.budget || '';
+  const numericValue = typeof rawValuation === 'number'
+    ? rawValuation
+    : (Number(String(rawValuation).replace(/[^0-9.]/g, '')) || 0);
 
-  const {
-    score = 0,
-    priority
-  } = scoreAndClassifyLead({
+  const whatsAppNumber = payload.whatsAppNumber || payload.whatsapp || payload.whatsApp || mobile;
+  const estimatedValueStr = String(payload.estimatedValue || payload.valuation || payload.budget || (numericValue ? `₹${numericValue.toLocaleString('en-IN')}` : '')).trim();
+
+  const { score, priority } = scoreAndClassifyLead({
     quantity,
     hasLOI: payload.hasLOI,
     paymentTerms,
     contactPerson,
     mobile,
     email,
-    chatSummary
+    chatSummary,
+    leadValue: numericValue,
+    targetDate: (targetDate && !isNaN(targetDate.getTime())) ? targetDate : null
   });
 
 
@@ -355,21 +213,18 @@ async function processAiLead(payload, actorId = null) {
     phoneEncrypted: encryptText(mobile),
     phoneMasked: maskPhone(mobile),
     phoneHash,
-
-    emailEncrypted: email
-      ? encryptText(email)
-      : '',
-
-    emailMasked: email
-      ? maskEmail(email)
-      : '',
-
+    whatsAppNumber,
+    emailEncrypted: email ? encryptText(email) : '',
+    emailMasked: email ? maskEmail(email) : '',
     emailHash,
 
     productCategory,
     quantity,
     destination,
-
+    targetDate: (targetDate && !isNaN(targetDate.getTime())) ? targetDate : null,
+    leadValue: numericValue,
+    estimatedValue: estimatedValueStr,
+    score,
     priority,
     score,
 
@@ -386,11 +241,7 @@ async function processAiLead(payload, actorId = null) {
     whatsAppNumber,
 
     chatSummary,
-
-    originalPayload,
-
-    remarks,
-
+    originalPayload: payload,
     createdBy: actorId
   };
 

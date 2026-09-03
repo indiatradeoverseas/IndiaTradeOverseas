@@ -105,6 +105,54 @@ function init(server) {
       }
     });
 
+    // Transport & Driver Chat Real-Time Broadcast & MongoDB Persistence Handler
+    const handleSaveAndBroadcastChat = async (chatMsg) => {
+      try {
+        if (!chatMsg || (!chatMsg.text && !chatMsg.message)) return;
+        const textMsg = (chatMsg.text || chatMsg.message || '').trim();
+        if (!textMsg) return;
+
+        const TransportChat = require('../modules/chat/transportChat.model');
+        const dbDoc = await TransportChat.create({
+          senderId: String(chatMsg.senderId || chatMsg.driverId || employeeId || 'unknown'),
+          senderName: chatMsg.sender || chatMsg.driverName || name || 'User',
+          senderRole: chatMsg.senderRole || role || 'DRIVER',
+          vehicleNo: chatMsg.vehicleNo || '',
+          channel: chatMsg.channel || 'GENERAL',
+          message: textMsg,
+          photoUrl: chatMsg.photoUrl || ''
+        });
+
+        const formatted = {
+          id: dbDoc._id.toString(),
+          _id: dbDoc._id.toString(),
+          senderId: dbDoc.senderId,
+          sender: dbDoc.senderName,
+          senderRole: dbDoc.senderRole,
+          text: dbDoc.message,
+          message: dbDoc.message,
+          channel: dbDoc.channel,
+          time: new Date(dbDoc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: dbDoc.createdAt
+        };
+
+        io.emit('transport_chat_receive', formatted);
+        io.emit('driver_chat_message', formatted);
+      } catch (err) {
+        console.error('Error persisting transport chat over socket:', err);
+      }
+    };
+
+    socket.on('transport_chat_send', handleSaveAndBroadcastChat);
+    socket.on('driver_chat_message', handleSaveAndBroadcastChat);
+
+    // Driver Work Update Real-Time Broadcast Handler
+    socket.on('driver_work_update', (workData) => {
+      console.log(`[WebSocket] Driver Work Update from ${workData?.driver}:`, workData?.update);
+      io.emit('driver_work_update_receive', workData);
+      io.emit('driver_work_update', workData);
+    });
+
     socket.on('disconnect', () => {
       if (employeeId && connectedEmployees.has(employeeId)) {
         const sockets = connectedEmployees.get(employeeId);

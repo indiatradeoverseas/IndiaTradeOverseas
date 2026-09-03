@@ -153,6 +153,18 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    aadhaarVerified: {
+      type: Boolean,
+      default: false
+    },
+    panVerified: {
+      type: Boolean,
+      default: false
+    },
+    bankVerified: {
+      type: Boolean,
+      default: false
+    },
     // Emergency Contact
     emergencyContactName: {
       type: String,

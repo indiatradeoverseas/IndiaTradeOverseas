@@ -22,9 +22,9 @@ export const socketService = {
 
     socket = io(SOCKET_URL, {
       query: { employeeId, role, name },
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5
+      reconnectionAttempts: 10
     });
 
     socket.on('connect', () => {

@@ -407,6 +407,9 @@ async function updateEmployeeProfile(req, res, next) {
           if (req.body.pan !== undefined) empUpdates.panCardNumber = req.body.pan;
           if (req.body.aadhaar !== undefined) empUpdates.aadhaarNumber = req.body.aadhaar;
           if (req.body.bankAccount !== undefined) empUpdates.bankAccountNumber = req.body.bankAccount;
+          if (req.body.aadhaarVerified !== undefined) empUpdates.aadhaarVerified = !!req.body.aadhaarVerified;
+          if (req.body.panVerified !== undefined) empUpdates.panVerified = !!req.body.panVerified;
+          if (req.body.bankVerified !== undefined) empUpdates.bankVerified = !!req.body.bankVerified;
           
           if (Object.keys(empUpdates).length) {
             await Employee.findOneAndUpdate(empQuery, { $set: empUpdates });

@@ -14,7 +14,8 @@ const DEPARTMENTS = [
   { value: 'ADMIN', label: 'Administration' },
   { value: 'FINANCE', label: 'Finance' },
   { value: 'OPERATIONS', label: 'Operations' },
-  { value: 'MARKETING', label: 'Marketing' }
+  { value: 'MARKETING', label: 'Marketing' },
+  { value: 'TRANSPORT', label: 'Transport' }
 ];
 
 const POSITIONS_BY_DEPT = {
@@ -24,7 +25,8 @@ const POSITIONS_BY_DEPT = {
   ADMIN: ['Admin Executive', 'Office Manager', 'Executive Assistant', 'Administrative Assistant'],
   FINANCE: ['Accountant', 'Finance Analyst', 'Finance Manager', 'Accounts Payable/Receivable'],
   OPERATIONS: ['Operations Executive', 'Operations Manager', 'Logistics Coordinator', 'Supply Chain Analyst'],
-  MARKETING: ['Marketing Executive', 'Marketing Manager', 'Content Writer', 'SEO Specialist', 'Social Media Manager']
+  MARKETING: ['Marketing Executive', 'Marketing Manager', 'Content Writer', 'SEO Specialist', 'Social Media Manager'],
+  TRANSPORT: ['Transport Manager', 'Driver', 'Transport Executive', 'Logistics Specialist']
 };
 
 const EmployeeLogin = () => {
@@ -79,6 +81,10 @@ const EmployeeLogin = () => {
             navigate('/crm/hr/manager');
           } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
             navigate('/crm/hr/executive');
+          } else if (role === 'DRIVER') {
+            navigate('/crm/transport/driver');
+          } else if (role === 'MANAGER' || role === 'LOGISTICS_MANAGER') {
+            navigate('/crm/transport/manager');
           } else {
             navigate('/crm/dashboard');
           }
@@ -314,6 +320,10 @@ const EmployeeLogin = () => {
           navigate('/crm/hr/manager');
         } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
           navigate('/crm/hr/executive');
+        } else if (role === 'DRIVER') {
+          navigate('/crm/transport/driver');
+        } else if (role === 'MANAGER' || role === 'LOGISTICS_MANAGER') {
+          navigate('/crm/transport/manager');
         } else {
           navigate('/crm/dashboard');
         }
