@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
-import { FiSend, FiCheckCircle, FiAnchor } from 'react-icons/fi';
+import { FiSend, FiCheckCircle, FiAnchor, FiCalendar } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
@@ -19,10 +19,13 @@ export default function QuoteRequest() {
     customerName: '',
     companyName: '',
     phone: '',
+    whatsAppNumber: '',
     email: '',
     productCategory: '',
     quantity: '',
     destination: '',
+    targetDate: '',
+    estimatedValue: '',
     message: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -60,8 +63,11 @@ export default function QuoteRequest() {
     setSubmitting(true);
 
     try {
+      const numericVal = Number((formData.estimatedValue || '').replace(/[^0-9.]/g, '')) || undefined;
       const response = await leadsApi.createLead({
         ...formData,
+        whatsAppNumber: formData.whatsAppNumber || formData.phone,
+        leadValue: numericVal,
         source: 'WEBSITE'
       });
       if (response.success) {
@@ -79,10 +85,13 @@ export default function QuoteRequest() {
             customerName: '',
             companyName: '',
             phone: '',
+            whatsAppNumber: '',
             email: '',
             productCategory: '',
             quantity: '',
             destination: '',
+            targetDate: '',
+            estimatedValue: '',
             message: ''
           });
         }, 3000);
@@ -106,6 +115,8 @@ export default function QuoteRequest() {
     hidden: { opacity: 0, y: 15 },
     show: { opacity: 1, y: 0, transition: { type: 'linear', duration: 0.55 } }
   };
+
+  const todayString = new Date().toISOString().split('T')[0];
 
   if (submitted) {
     return (
@@ -210,8 +221,8 @@ export default function QuoteRequest() {
               </motion.div>
             </motion.div>
 
-            {/* Row 2: Phone and Email */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Row 2: Phone and WhatsApp */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
                   Phone Number <span className="text-red-500">*</span>
@@ -222,7 +233,19 @@ export default function QuoteRequest() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
-                  placeholder="Enter phone number"
+                  placeholder="Phone number"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
+                  WhatsApp Number
+                </label>
+                <input
+                  type="tel"
+                  value={formData.whatsAppNumber}
+                  onChange={(e) => setFormData({ ...formData, whatsAppNumber: e.target.value })}
+                  className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
+                  placeholder="WhatsApp number"
                 />
               </div>
               <div>
@@ -283,18 +306,45 @@ export default function QuoteRequest() {
               </div>
             </div>
 
-            {/* Destination */}
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
-                Destination Port or Discharge City
-              </label>
-              <input
-                type="text"
-                value={formData.destination}
-                onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-                className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
-                placeholder="Specify target discharge port or final terminal city location"
-              />
+            {/* Destination, Required Date Timeline, and Valuation */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
+                  Destination Port / City
+                </label>
+                <input
+                  type="text"
+                  value={formData.destination}
+                  onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                  className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
+                  placeholder="Discharge port / city"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono flex items-center space-x-1.5">
+                  <FiCalendar className="text-[#C5CBD3]" size={12} />
+                  <span>Requirement Date</span>
+                </label>
+                <input
+                  type="date"
+                  min={todayString}
+                  value={formData.targetDate}
+                  onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                  className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all cursor-pointer [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
+                  Estimated Valuation / Budget
+                </label>
+                <input
+                  type="text"
+                  value={formData.estimatedValue}
+                  onChange={(e) => setFormData({ ...formData, estimatedValue: e.target.value })}
+                  className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
+                  placeholder="e.g. ₹5,00,000 / $10,000"
+                />
+              </div>
             </div>
 
             {/* Message/Requirements */}

@@ -20,6 +20,7 @@ import { attendanceApi } from '../../../api/attendance';
 import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
 import OrderMapModal from '../../../components/transport/map';
+import DriverCalculator from '../../../components/crm/DriverCalculator';
 
 // HR Manager Design System Tokens
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
@@ -927,9 +928,15 @@ export default function DriverMobileView() {
       const totalRev = matchedDispatches.reduce((acc, t) => acc + (Number(t.totalFreightAmount) || Number(t.freightAmount) || Number(t.freightRate) || 0), 0);
       const completedCount = matchedDispatches.filter(t => 
         isItemDelivered(t) ||
-        deliveredIdsSet.has(t._id) || deliveredIdsSet.has(t.orderNumber) || deliveredIdsSet.has(t.dispatchNumber) || deliveredIdsSet.has(t.leadCode)
+        deliveredSet.has(t._id) || deliveredSet.has(t.orderNumber) || deliveredSet.has(t.dispatchNumber) || deliveredSet.has(t.leadCode)
       ).length;
+
+      const totalPaidFromOrders = matchedDispatches
+        .filter(t => isItemDelivered(t) || deliveredSet.has(t._id) || deliveredSet.has(t.orderNumber) || deliveredSet.has(t.dispatchNumber) || deliveredSet.has(t.leadCode))
+        .reduce((sum, t) => sum + (Number(t.amountCollected || t.totalFreightAmount || t.freightAmount || t.freightRate || 0) || 0), 0);
+
       const totalPaidFromProofs = paymentProofsList.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
+      const finalTotalPayment = Math.max(totalPaidFromOrders, totalPaidFromProofs);
 
       // Active / Pending Assigned Tasks = Total Tasks - Completed Tasks
       const activePendingAssignedCount = Math.max(0, totalDispCount - completedCount);
@@ -939,7 +946,7 @@ export default function DriverMobileView() {
         revenue: totalRev,
         taskAssign: activePendingAssignedCount,
         complete: completedCount,
-        totalPayment: totalPaidFromProofs
+        totalPayment: finalTotalPayment
       });
 
     } catch (err) {
@@ -1542,17 +1549,17 @@ export default function DriverMobileView() {
                                 DELIVERED ✓
                               </span>
                               <span className={`px-2 py-0.5 border text-[9px] font-bold uppercase rounded font-mono ${
-                                (d.paymentMode || '').toUpperCase().includes('COD')
+                                String(d.paymentMode || d.paymentMethod || d.paymentType || d.paymentTerms || d.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(d.paymentMode || d.paymentMethod || d.paymentType || d.paymentTerms || d.paymentProof?.paymentMode || '').toUpperCase().includes('CASH')
                                   ? 'bg-amber-950/80 text-amber-300 border-amber-600'
                                   : 'bg-emerald-950/80 text-emerald-300 border-emerald-500'
                               }`}>
-                                {(d.paymentMode || '').toUpperCase().includes('COD') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
+                                {String(d.paymentMode || d.paymentMethod || d.paymentType || d.paymentTerms || d.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(d.paymentMode || d.paymentMethod || d.paymentType || d.paymentTerms || d.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
                               </span>
                             </div>
                           </div>
                           <div className="p-2 bg-[var(--crm-bg)]/80 border border-emerald-900/40 rounded text-[10px] text-[var(--crm-ink-soft)] font-mono flex justify-between items-center">
                             <span>📍 {d.origin || 'Delhi'} &rarr; 🚩 {d.destination || 'Destination'}</span>
-                            <span className="text-emerald-400 font-bold">Freight: ₹{Number(d.totalFreightAmount || 18000).toLocaleString('en-IN')}</span>
+                            <span className="text-emerald-400 font-bold">Freight: ₹{Number(d.totalFreightAmount || 0).toLocaleString('en-IN')}</span>
                           </div>
                         </div>
                       ))}
@@ -1919,13 +1926,38 @@ export default function DriverMobileView() {
                 )}
               </div>
             </div>
+
+            {/* Calculator for Driver Component matching user layout */}
+            <DriverCalculator defaultDriverName={user?.name || user?.fullName} defaultVehicleNo={profileVehicleNumber || user?.vehicleNumber} />
           </>
         ) : null}
 
         {/* ─────────────────────────────────────────────────────────────
             TAB 2: DEDICATED CUSTOMER PAYMENT PROOFS & SETTLEMENT HISTORY
            ───────────────────────────────────────────────────────────── */}
-        {activeTab === 'PAYMENTS' ? (
+        {activeTab === 'PAYMENTS' ? (() => {
+          const isItemPaidOrDelivered = (d) => {
+            if (!d) return false;
+            const stage = (d.stage || d.rawStage || '').toUpperCase();
+            const status = (d.status || d.dispatchStatus || '').toUpperCase();
+            const pod = (d.podStatus || '').toUpperCase();
+            const hasAmt = Number(d.amountCollected) > 0 || Number(d.totalFreightAmount) > 0 || Number(d.freightAmount) > 0;
+            const hasProof = Boolean(d.paymentProofUrl || d.podFileUrl || d.proofUrl || d.driverProofUrl || d.paymentProof?.receivedAt);
+
+            return (
+              (status.includes('DELIVER') || stage.includes('DELIVER') || stage.includes('WON') || pod === 'VERIFIED' || deliveredIdsSet.has(d._id) || deliveredIdsSet.has(d.orderNumber) || deliveredIdsSet.has(d.dispatchNumber) || deliveredIdsSet.has(d.leadCode)) &&
+              (hasAmt || hasProof)
+            );
+          };
+
+          const displayDispatches = dispatchesList.filter(isItemPaidOrDelivered);
+
+          const liveTotalCollected = displayDispatches.reduce(
+            (sum, d) => sum + (Number(d.amountCollected || d.totalFreightAmount || d.freightAmount || d.freightRate || 0) || 0),
+            0
+          );
+
+          return (
           <div className="space-y-5 font-mono">
             {/* Top Header Card */}
             <div className="border border-emerald-700/80 rounded-xl p-5 shadow-lg bg-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={CARD}>
@@ -1938,30 +1970,23 @@ export default function DriverMobileView() {
                 </p>
               </div>
               <div className="px-3 py-1.5 bg-emerald-900/60 border border-emerald-600 rounded-lg text-xs text-emerald-300 font-bold font-mono">
-                Total Freight Collected: <code className="text-amber-300">₹{metrics.totalPayment.toLocaleString('en-IN')}</code>
+                Total Freight Collected: <code className="text-amber-300">₹{liveTotalCollected.toLocaleString('en-IN')}</code>
               </div>
             </div>
 
-            {/* 3 Summary Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 2 Summary Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-4 border border-emerald-800/80 rounded-xl bg-emerald-950/30 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Deliveries Paid</span>
                 <strong className="text-xl text-emerald-400 font-bold block">
-                  {dispatchesList.filter(d => d.status === 'Delivered' || d.status === 'DELIVERED' || deliveredIdsSet.has(d._id)).length} Orders
+                  {displayDispatches.length} Orders
                 </strong>
               </div>
 
               <div className="p-4 border border-amber-800/80 rounded-xl bg-amber-950/30 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Amount Collected</span>
                 <strong className="text-xl text-amber-400 font-bold block">
-                  ₹{metrics.totalPayment.toLocaleString('en-IN')}
-                </strong>
-              </div>
-
-              <div className="p-4 border border-sky-800/80 rounded-xl bg-sky-950/30 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Verification</span>
-                <strong className="text-xs text-sky-300 font-bold block flex items-center gap-1.5 pt-1">
-                  <FiCheckCircle className="text-emerald-400" /> Razorpay & COD Active
+                  ₹{liveTotalCollected.toLocaleString('en-IN')}
                 </strong>
               </div>
             </div>
@@ -1970,14 +1995,14 @@ export default function DriverMobileView() {
             <div className="border border-emerald-800/60 rounded-xl p-5 shadow-sm space-y-3 bg-[var(--crm-bg-raised)]" style={CARD}>
 
               <div className="space-y-3">
-                {dispatchesList.filter(d => d.status === 'Delivered' || d.status === 'DELIVERED' || deliveredIdsSet.has(d._id)).length === 0 ? (
+                {displayDispatches.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-mono space-y-2">
                     <FiCreditCard size={28} className="mx-auto text-slate-500" />
                     <div>No completed payment records found yet.</div>
                     <div className="text-[10px] text-slate-500">Deliveries confirmed with Razorpay / COD will automatically appear here.</div>
                   </div>
                 ) : (
-                  dispatchesList.filter(d => d.status === 'Delivered' || d.status === 'DELIVERED' || deliveredIdsSet.has(d._id)).map((item) => (
+                  displayDispatches.map((item) => (
                     <div key={item._id || item.dispatchNumber} className="p-4 border border-emerald-900/60 rounded-xl bg-emerald-950/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-mono">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -2002,11 +2027,11 @@ export default function DriverMobileView() {
 
                       <div className="text-right space-y-1">
                         <strong className="text-base text-emerald-400 font-bold block">
-                          ₹{Number(item.amountCollected || item.totalFreightAmount || item.freightAmount || 18000).toLocaleString('en-IN')}
+                          ₹{Number(item.amountCollected || item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
                         </strong>
                         <span className="text-[10px] text-slate-300 block">
-                          Payment Mode: <strong className={(item.paymentMode || '').toUpperCase().includes('COD') ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold'}>
-                            {(item.paymentMode || '').toUpperCase().includes('COD') ? 'COD (Cash on Delivery)' : 'Online Payment'}
+                          Payment Mode: <strong className={String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold'}>
+                            {String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? 'COD (Cash on Delivery)' : 'Online Payment'}
                           </strong>
                         </span>
                       </div>
@@ -2016,7 +2041,8 @@ export default function DriverMobileView() {
               </div>
             </div>
           </div>
-        ) : null}
+          );
+        })() : null}
 
         {/* ─────────────────────────────────────────────────────────────
             TAB 3: MY DRIVER PROFILE VIEW

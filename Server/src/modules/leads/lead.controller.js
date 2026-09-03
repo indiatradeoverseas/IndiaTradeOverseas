@@ -133,16 +133,17 @@ async function bulkImportLeads(req, res, next) {
 
 async function changeLeadPriority(req, res, next) {
   try {
-    const { priority } = req.body;
-    if (!priority) {
-      return fail(res, 400, 'VALIDATION_FAILED', 'Priority parameter is required');
+    const { priority, leadValue } = req.body;
+    if (!priority && (leadValue === undefined || leadValue === null)) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Priority or leadValue parameter is required');
     }
     const lead = await leadService.updatePriority({
       leadId: req.params.id,
       priority,
+      leadValue,
       user: req.user
     });
-    return ok(res, { lead }, 'Lead priority updated successfully', 200, req);
+    return ok(res, { lead }, 'Lead priority and details updated successfully', 200, req);
   } catch (error) {
     if (error.message === 'LEAD_NOT_FOUND') {
       return fail(res, 404, 'VALIDATION_FAILED', 'Lead not found');

@@ -821,8 +821,6 @@ export default function FounderDashboard() {
                   { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 },
                   { to: '/crm/security', label: 'Security', icon: FiShield },
                   { to: '/crm/leads', label: 'Leads Management', icon: FiUsers },
-                  { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
-                  { to: '/crm/payments', label: 'Payments', icon: FiCreditCard },
                   { to: '/crm/documents', label: 'Documents', icon: FiFileText },
                   { to: '/crm/employees', label: 'All Employees', icon: FiUsers },
                   { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },

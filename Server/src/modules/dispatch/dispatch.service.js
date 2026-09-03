@@ -904,7 +904,12 @@ class DispatchService {
     return updates.map(u => ({
       id: u._id.toString(),
       _id: u._id.toString(),
+      driverName: u.driverName || 'Driver',
+      vehicleNo: u.vehicleNo || 'Unassigned',
+      driver: u.driverName || 'Driver',
+      vehicle: u.vehicleNo || 'Unassigned',
       type: u.updateType,
+      updateType: u.updateType,
       notes: u.notes,
       location: u.location,
       photoUrl: u.photoUrl,

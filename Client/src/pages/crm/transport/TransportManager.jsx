@@ -28,6 +28,7 @@ import { dispatchesApi } from '../../../api/dispatches';
 import { leadsApi } from '../../../api/leads';
 import { chatApi } from '../../../api/chat';
 import { employeeSignupApi } from '../../../api/employee-signup';
+import DriverCalculator from '../../../components/crm/DriverCalculator';
 import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
 import OrderMapModal from '../../../components/transport/map';
@@ -395,14 +396,14 @@ export default function TransportManager() {
       const combinedAll = [...fetchedTrips, ...fetchedQueue];
 
       const totalFreightRev = combinedAll.reduce((sum, t) => {
-        const amt = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.totalAmount || (t.weightTons ? Number(t.weightTons) * 750 : 18000)) || 18000;
+        const amt = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.totalAmount || (t.weightTons ? Number(t.weightTons) * 750 : 0)) || 0;
         return sum + amt;
       }, 0);
 
       const todayRev = combinedAll
         .filter(t => new Date(t.createdAt || Date.now()).toDateString() === new Date().toDateString())
         .reduce((sum, t) => {
-          return sum + (Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || 18000) || 18000);
+          return sum + (Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || 0) || 0);
         }, 0);
 
       // Total Delivery Done: Count all completed/delivered leads accurately
@@ -574,7 +575,7 @@ export default function TransportManager() {
   const handleOpenEditRevenueModal = (item, e) => {
     if (e) e.stopPropagation();
     setEditingOrder(item);
-    const currAmt = item.totalFreightAmount || item.freightAmount || 18000;
+    const currAmt = item.totalFreightAmount || item.freightAmount || 0;
     setNewRevenueInput(String(currAmt));
     setRevenueReasonInput('');
     setShowEditRevenueModal(true);
@@ -616,7 +617,7 @@ export default function TransportManager() {
 
     // Recalculate top metrics
     setMetrics(prev => {
-      const oldVal = Number(editingOrder.totalFreightAmount || editingOrder.freightAmount || 18000);
+      const oldVal = Number(editingOrder.totalFreightAmount || editingOrder.freightAmount || 0);
       const diff = numAmt - oldVal;
       return {
         ...prev,
@@ -651,7 +652,7 @@ export default function TransportManager() {
             origin: targetLeadObj.origin || 'Depot',
             destination: targetLeadObj.destination || 'Destination',
             material: targetLeadObj.material || 'Goods',
-            freightRate: Number(targetLeadObj.totalFreightAmount || targetLeadObj.freightAmount || 18000),
+            freightRate: Number(targetLeadObj.totalFreightAmount || targetLeadObj.freightAmount || 0),
             truckNo: targetLeadObj.vehicleNo || 'Carrier',
             driverName: empName,
             driverId: targetUserId,
@@ -841,9 +842,13 @@ export default function TransportManager() {
       const origin = t.origin || t.originCity || 'Depot';
       const destination = t.destination || t.destCity || t.city || 'Destination';
       const route = `${origin} ➔ ${destination}`;
-      const amount = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.leadValue || 18000) || 18000;
-      const dateStr = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-IN') : todayStr;
-      const ts = t.updatedAt ? new Date(t.updatedAt).getTime() : Date.now() - (idx * 3600000);
+      const amount = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.leadValue || 0) || 0;
+      
+      // True Date calculation from lead/dispatch timestamps (prevents fallback to today's date if driver didn't upload today)
+      const rawDate = t.proofUploadedAt || t.podUploadedAt || t.createdAt || t.updatedAt;
+      const dateObj = rawDate ? new Date(rawDate) : null;
+      const dateStr = dateObj ? dateObj.toLocaleDateString('en-IN') : 'Unspecified Date';
+      const ts = dateObj ? dateObj.getTime() : (Date.now() - ((idx + 1) * 86400000));
 
       // Attendance Proof (Driver Selfie / Unloading Point Photo)
       const attendeeUrl = t.driverProofUrl || t.deliveryImages?.driverSelfieUrl || t.deliveryImages?.emptyVehiclePhotoUrl || t.departureImages?.driverSelfieUrl || t.photoUrl;
@@ -1468,7 +1473,7 @@ export default function TransportManager() {
                       <div className="flex justify-between items-center text-[11px] p-2 rounded-sm bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] font-mono">
                         <span className="text-[var(--crm-heading)]">📍 {t.origin || 'Delhi'} &rarr; 🚩 {t.destination || 'Destination'}</span>
                         <span className="text-emerald-400 font-bold font-mono text-xs">
-                          Final Freight Revenue: ₹{Number(t.totalFreightAmount || t.freightAmount || 18000).toLocaleString('en-IN')}
+                          Final Freight Revenue: ₹{Number(t.totalFreightAmount || t.freightAmount || 0).toLocaleString('en-IN')}
                         </span>
                       </div>
 
@@ -1498,34 +1503,7 @@ export default function TransportManager() {
 
           {/* LOWER SECTION: DRIVER SCORECARD & FUEL / MAINTENANCE Tracker */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 font-mono">
-            <div className="border rounded-sm p-4 space-y-3" style={CARD}>
-              <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
-                  <FiCompass className="text-teal-400" size={15} /> Driver Vehicle Utilization & Distance Log
-                </h3>
-                <span className="text-[9px]" style={LABEL_MONO}>Scorecard & KM Log</span>
-              </div>
-
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 text-xs">
-                {driverScorecards.length === 0 ? (
-                  <div className="p-6 text-center text-[var(--crm-ink-faint)] text-xs">No active driver scorecards recorded.</div>
-                ) : (
-                  driverScorecards.map((sc, idx) => (
-                    <div key={idx} className="p-3 border rounded-sm space-y-1.5 hover:border-amber-500/50 transition" style={CARD_SUNKEN}>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-[var(--crm-heading)] font-bold">{sc.driver}</span>
-                        <span className="text-[var(--crm-ink-soft)] font-mono text-[10px]">Truck: <strong className="text-[var(--crm-heading)]">{sc.vehicle}</strong></span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-[10px] text-[var(--crm-ink-soft)] pt-1 font-mono">
-                        <div>Trips: <strong className="text-[var(--crm-heading)]">{sc.tripsCount}</strong></div>
-                        <div>Total Driven: <strong className="text-emerald-400">{sc.totalKm} KM</strong></div>
-                        <div>Mileage: <strong className="text-amber-400">{sc.avgMileageKmL} KM/L</strong></div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <DriverCalculator />
 
             <div className="border rounded-sm p-4 space-y-3" style={CARD}>
               <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
@@ -1619,15 +1597,15 @@ export default function TransportManager() {
       {activeTab === 'DRIVER_PROOFS' ? (
         <div className="border rounded-sm p-6 space-y-4 font-mono" style={CARD}>
           <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-            <h2 className="text-sm font-bold text-purple-400 uppercase flex items-center gap-2">
-              <FiFolder /> Driver Uploaded All Proof Records ({proofTableRows.length})
+            <h2 className="text-sm font-bold text-[var(--crm-heading)] uppercase flex items-center gap-2">
+              <FiFolder className="text-amber-400" /> Driver Uploaded All Proof Records ({proofTableRows.length})
             </h2>
             <div className="flex items-center gap-2">
               <label className="text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold">Filter By Date:</label>
               <select
                 value={selectedProofDate}
                 onChange={(e) => setSelectedProofDate(e.target.value)}
-                className="p-1.5 border rounded text-[10px] bg-slate-950 text-purple-300 border-purple-800 outline-none font-mono cursor-pointer"
+                className="p-1.5 border rounded-sm text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)] outline-none font-mono cursor-pointer"
               >
                 <option value="ALL">All Dates ({proofTableRows.length} Proofs)</option>
                 {Array.from(new Set(proofTableRows.map(r => r.dateStr))).map(d => (
@@ -1637,18 +1615,18 @@ export default function TransportManager() {
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-purple-900/60 rounded-sm bg-slate-950/60 custom-scrollbar">
+          <div className="overflow-x-auto border border-[var(--crm-line)] rounded-sm bg-[var(--crm-bg-raised)]/20 custom-scrollbar">
             <table className="w-full text-left border-collapse font-mono text-xs">
               <thead>
-                <tr className="bg-purple-950/70 text-purple-200 border-b border-purple-800/80 text-[11px] uppercase tracking-wider font-bold">
-                  <th className="p-3 w-16 text-center border-r border-purple-900/60">S.NO</th>
-                  <th className="p-3 min-w-[220px] border-r border-purple-900/60">Leads</th>
-                  <th className="p-3 min-w-[200px] border-r border-purple-900/60 text-center">Attendance Proof</th>
-                  <th className="p-3 min-w-[220px] border-r border-purple-900/60 text-center">Payment Proof</th>
+                <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-b border-[var(--crm-line)] text-[11px] uppercase tracking-wider font-bold">
+                  <th className="p-3 w-16 text-center border-r border-[var(--crm-line)]">S.NO</th>
+                  <th className="p-3 min-w-[220px] border-r border-[var(--crm-line)]">Leads</th>
+                  <th className="p-3 min-w-[200px] border-r border-[var(--crm-line)] text-center">Attendance Proof</th>
+                  <th className="p-3 min-w-[220px] border-r border-[var(--crm-line)] text-center">Payment Proof</th>
                   <th className="p-3 min-w-[160px] text-right">Total Payment</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-purple-900/40 text-[11px]">
+              <tbody className="divide-y divide-[var(--crm-line)] text-[11px]">
                 {proofTableRows.filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate).length === 0 ? (
                   <tr>
                     <td colSpan="5" className="p-8 text-center text-[var(--crm-ink-faint)] text-xs">
@@ -1659,34 +1637,34 @@ export default function TransportManager() {
                   proofTableRows
                     .filter(r => selectedProofDate === 'ALL' || r.dateStr === selectedProofDate)
                     .map((row, idx) => (
-                      <tr key={row.id} className="hover:bg-purple-950/30 transition duration-150">
+                      <tr key={row.id} className="hover:bg-[var(--crm-bg-raised)]/60 transition duration-150">
                         {/* 1. S.NO */}
-                        <td className="p-3 text-center border-r border-purple-900/40 font-bold text-purple-300">
+                        <td className="p-3 text-center border-r border-[var(--crm-line)] font-bold text-[var(--crm-heading)]">
                           {idx + 1}
                         </td>
 
                         {/* 2. LEADS */}
-                        <td className="p-3 border-r border-purple-900/40 space-y-1">
+                        <td className="p-3 border-r border-[var(--crm-line)] space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 bg-sky-950 border border-sky-800 text-sky-300 text-[10px] font-bold rounded">
+                            <span className="px-1.5 py-0.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-[10px] font-bold rounded-sm">
                               {row.code}
                             </span>
                             <span className="text-[10px] text-[var(--crm-ink-faint)]">{row.dateStr}</span>
                           </div>
-                          <strong className="text-white text-xs block font-bold">{row.customer}</strong>
-                          <div className="text-[10px] text-purple-300/80 font-mono">
+                          <strong className="text-[var(--crm-heading)] text-xs block font-bold">{row.customer}</strong>
+                          <div className="text-[10px] text-[var(--crm-ink-soft)] font-mono">
                             📍 {row.route}
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-[var(--crm-ink-faint)]">
                             🚚 {row.driverName} ({row.vehicleNo})
                           </div>
                         </td>
 
                         {/* 3. Attendance Proof */}
-                        <td className="p-3 border-r border-purple-900/40 text-center align-middle">
+                        <td className="p-3 border-r border-[var(--crm-line)] text-center align-middle">
                           {row.attendeeUrl ? (
                             row.attendeeFileType === 'PDF' ? (
-                              <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
+                              <div className="p-2 bg-rose-950/40 border border-rose-800/60 rounded-sm space-y-1">
                                 <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
                                   <FiFileText size={13} /> PDF Attendee Document
                                 </div>
@@ -1694,54 +1672,54 @@ export default function TransportManager() {
                                   href={row.attendeeUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="inline-block px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[9px] font-bold rounded"
+                                  className="inline-block px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[9px] font-bold rounded-sm"
                                 >
                                   View PDF
                                 </a>
                               </div>
                             ) : (
-                              <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
+                              <div className="relative inline-block group overflow-hidden border border-[var(--crm-line)] rounded-sm bg-black">
                                 <img
                                   src={row.attendeeUrl}
                                   alt="Attendance Proof"
                                   onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
-                                  className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
+                                  className="w-28 h-20 object-cover rounded-sm cursor-pointer hover:scale-105 transition"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setSelectedPreviewImage(row.attendeeUrl)}
-                                  className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
+                                  className="absolute bottom-1 right-1 bg-black/80 text-[var(--crm-heading)] text-[8px] px-1 py-0.5 rounded-sm font-bold border border-[var(--crm-line)] cursor-pointer flex items-center gap-0.5"
                                 >
                                   <FiExternalLink size={9} /> Zoom View
                                 </button>
                               </div>
                             )
                           ) : (
-                            <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
+                            <div className="p-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-ink-faint)] font-mono italic">
                               📷 No Attendance Proof
                             </div>
                           )}
                         </td>
 
                         {/* 4. PAYMENT PROOF */}
-                        <td className="p-3 border-r border-purple-900/40 text-center align-middle">
+                        <td className="p-3 border-r border-[var(--crm-line)] text-center align-middle">
                           {row.paymentUrl ? (
                             row.paymentFileType === 'PDF' ? (
-                              <div className="p-2 bg-rose-950/50 border border-rose-800/80 rounded space-y-1">
+                              <div className="p-2 bg-rose-950/40 border border-rose-800/60 rounded-sm space-y-1">
                                 <div className="text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
                                   <FiFileText size={13} /> PDF Payment POD Receipt
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleViewPdf(row.paymentUrl, `POD_${row.code}.pdf`)}
-                                  className="inline-block px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow cursor-pointer"
+                                  className="inline-block px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-bold rounded-sm shadow cursor-pointer"
                                 >
                                   📥 Download / View PDF
                                 </button>
                               </div>
                             ) : row.paymentFileType === 'DOC' ? (
-                              <div className="p-2 bg-blue-950/50 border border-blue-800/80 rounded space-y-1">
-                                <div className="text-blue-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                              <div className="p-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm space-y-1">
+                                <div className="text-[var(--crm-heading)] text-[10px] font-bold flex items-center justify-center gap-1">
                                   <FiFileText size={13} /> Word DOC POD Receipt
                                 </div>
                                 <a
@@ -1749,30 +1727,30 @@ export default function TransportManager() {
                                   target="_blank"
                                   rel="noreferrer"
                                   download={`POD_${row.code}.doc`}
-                                  className="inline-block px-2.5 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow"
+                                  className="inline-block px-2.5 py-1 bg-emerald-800 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-sm shadow"
                                 >
                                   📥 Download DOC
                                 </a>
                               </div>
                             ) : (
-                              <div className="relative inline-block group overflow-hidden border border-purple-800/80 rounded bg-black">
+                              <div className="relative inline-block group overflow-hidden border border-[var(--crm-line)] rounded-sm bg-black">
                                 <img
                                   src={row.paymentUrl}
                                   alt="Payment Proof"
                                   onClick={() => setSelectedPreviewImage(row.paymentUrl)}
-                                  className="w-28 h-20 object-cover rounded cursor-pointer hover:scale-105 transition"
+                                  className="w-28 h-20 object-cover rounded-sm cursor-pointer hover:scale-105 transition"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setSelectedPreviewImage(row.paymentUrl)}
-                                  className="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[8px] px-1 py-0.5 rounded font-bold border border-purple-700 cursor-pointer flex items-center gap-0.5"
+                                  className="absolute bottom-1 right-1 bg-black/80 text-[var(--crm-heading)] text-[8px] px-1 py-0.5 rounded-sm font-bold border border-[var(--crm-line)] cursor-pointer flex items-center gap-0.5"
                                 >
                                   <FiExternalLink size={9} /> Zoom View
                                 </button>
                               </div>
                             )
                           ) : (
-                            <div className="p-2 bg-slate-950/80 border border-slate-800 rounded text-[10px] text-slate-500 font-mono italic">
+                            <div className="p-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-ink-faint)] font-mono italic">
                               💳 No Payment Proof
                             </div>
                           )}
@@ -1783,7 +1761,7 @@ export default function TransportManager() {
                           <strong className="text-emerald-400 text-xs font-bold block font-mono">
                             ₹{row.totalAmount.toLocaleString('en-IN')}
                           </strong>
-                          <span className="inline-block text-[9px] px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold rounded">
+                          <span className="inline-block text-[9px] px-1.5 py-0.5 bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold rounded-sm">
                             {row.status}
                           </span>
                         </td>
@@ -1902,7 +1880,7 @@ export default function TransportManager() {
                                 <div>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Freight Rev</span>
                                   <span className="text-emerald-400 font-bold">
-                                    ₹{(item.totalFreightAmount || item.freightAmount || 18000).toLocaleString('en-IN')}
+                                    ₹{(item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
                                   </span>
                                 </div>
                                 <div>
@@ -2000,11 +1978,11 @@ export default function TransportManager() {
                                     DEAL WON ✓
                                   </span>
                                   <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase shrink-0 ${
-                                    (item.paymentMode || '').toUpperCase().includes('COD')
+                                    String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH')
                                       ? 'bg-amber-950/90 text-amber-300 border-amber-500'
                                       : 'bg-emerald-950/90 text-emerald-300 border-emerald-400'
                                   }`}>
-                                    {(item.paymentMode || '').toUpperCase().includes('COD') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
+                                    {String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
                                   </span>
                                 </div>
                               </div>
@@ -2025,7 +2003,7 @@ export default function TransportManager() {
                                 <div>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Revenue</span>
                                   <span className="text-emerald-400 font-bold">
-                                    ₹{(item.totalFreightAmount || item.freightAmount || 18000).toLocaleString('en-IN')}
+                                    ₹{(item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
                                   </span>
                                 </div>
                                 <div>

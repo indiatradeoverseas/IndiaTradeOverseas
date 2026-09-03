@@ -271,6 +271,31 @@ async function getLeadById(id, user) {
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
+  // Auto-reevaluate priority & score if targetDate is set and lead was COLD or score uncalculated
+  if (lead.targetDate) {
+    try {
+      const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+      const { score: calcScore, priority: calcPriority } = scoreAndClassifyLead({
+        quantity: lead.quantity,
+        leadValue: lead.leadValue,
+        stage: lead.stage,
+        source: lead.source,
+        contactPerson: lead.customerName,
+        mobile: lead.phoneMasked,
+        chatSummary: lead.remarks || '',
+        targetDate: lead.targetDate
+      });
+      if (calcScore > (lead.score || 0) || (calcPriority === 'HOT' && lead.priority !== 'HOT')) {
+        lead.score = Math.max(lead.score || 0, calcScore);
+        if (calcPriority === 'HOT') lead.priority = 'HOT';
+        else if (calcPriority === 'WARM' && lead.priority === 'COLD') lead.priority = 'WARM';
+        await lead.save();
+      }
+    } catch (calcErr) {
+      console.warn('Notice re-scoring lead by targetDate:', calcErr.message);
+    }
+  }
+
   // Resolve mixed User/Employee populated assignee
   const leadObj = lead.toObject ? lead.toObject() : lead;
   const rawAssignedId = (typeof lead.populated === 'function' && lead.populated('assignedTo')) || lead.assignedTo;
@@ -290,6 +315,11 @@ async function getLeadById(id, user) {
   }
 
   const activities = await LeadActivity.find({ leadId: lead._id }).sort({ createdAt: -1 });
+  const latestQuotation = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
+  if (latestQuotation) {
+    leadObj.quotationStatus = latestQuotation.status;
+  }
+
   return {
     lead: getLeadDisplay(leadObj, user),
     activities
@@ -330,7 +360,25 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
-  // 3. Stage transition check with Management Override
+  // 3. Strict Quotation Approval Enforcement
+  const advancedStages = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  if (advancedStages.includes(newStage)) {
+    const existingQuote = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
+    if (existingQuote && (existingQuote.status === 'PENDING' || existingQuote.status === 'REJECTED')) {
+      throw new Error(`QUOTATION_NOT_APPROVED: Cannot transition to ${newStage.replace(/_/g, ' ')}. Quotation is ${existingQuote.status}. Manager approval is required first.`);
+    }
+  }
+
+  // 3.5. Strict LOI Document Enforcement
+  const postLoiStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  if (postLoiStages.includes(newStage)) {
+    const hasLOI = Array.isArray(lead.loiDocuments) && lead.loiDocuments.length > 0;
+    if (!hasLOI) {
+      throw new Error(`LOI_DOCUMENT_REQUIRED: LOI Document must be uploaded before advancing to ${newStage.replace(/_/g, ' ')}.`);
+    }
+  }
+
+  // 4. Stage transition check with Management Override
   const previousStage = lead.stage;
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
   
@@ -744,13 +792,7 @@ async function bulkImportLeads(leadsArray, user) {
   };
 }
 
-async function updatePriority({ leadId, priority, user }) {
-  const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
-  const upperPriority = String(priority || '').toUpperCase();
-  if (!validPriorities.includes(upperPriority)) {
-    throw new Error('INVALID_PRIORITY');
-  }
-
+async function updatePriority({ leadId, priority, leadValue, user }) {
   const lead = await Lead.findById(leadId);
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
@@ -759,13 +801,27 @@ async function updatePriority({ leadId, priority, user }) {
   }
 
   const oldPriority = lead.priority;
-  lead.priority = upperPriority;
+  if (priority) {
+    const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
+    const upperPriority = String(priority || '').toUpperCase();
+    if (validPriorities.includes(upperPriority)) {
+      lead.priority = upperPriority;
+    }
+  }
+
+  if (leadValue !== undefined && leadValue !== null && leadValue !== '') {
+    const numericVal = Number(String(leadValue).replace(/[^0-9.]/g, ''));
+    if (!isNaN(numericVal)) {
+      lead.leadValue = numericVal;
+    }
+  }
+
   await lead.save();
 
   await LeadActivity.create({
     leadId: lead._id,
     actionType: 'PRIORITY_UPDATED',
-    note: `Lead priority manually updated from ${oldPriority} to ${upperPriority} by ${user.fullName || user.name}`,
+    note: `Lead details updated (Priority: ${lead.priority}, Valuation: ₹${lead.leadValue || 0}) by ${user.fullName || user.name}`,
     actorId: user._id
   });
 

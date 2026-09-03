@@ -86,7 +86,27 @@ function scoreAndClassifyLead(leadData = {}) {
     breakdown.push({ factor: 'Advance Payment Terms Agreed', points: 20 });
   }
 
-  // 5. Lead Source Points
+  // 5b. Target Date Urgency Scoring
+  const targetDateVal = leadData.targetDate || leadData.timeline || null;
+  if (targetDateVal) {
+    const tDate = new Date(targetDateVal);
+    if (!isNaN(tDate.getTime())) {
+      const now = new Date();
+      const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (diffHours <= 72) {
+        score += 45;
+        breakdown.push({ factor: 'Urgent Target Timeline (Within 3 Days)', points: 45 });
+      } else if (diffHours <= 168) {
+        score += 30;
+        breakdown.push({ factor: 'Near-term Timeline (Within 7 Days)', points: 30 });
+      } else {
+        score += 15;
+        breakdown.push({ factor: 'Specified Target Timeline', points: 15 });
+      }
+    }
+  }
+
+  // 5c. Lead Source Points
   const srcUpper = String(source).toUpperCase();
   if (['WEBSITE', 'WHATSAPP', 'INDIAMART', 'AI_AGENT', 'MANUAL', 'IMPORT'].includes(srcUpper)) {
     score += 15;

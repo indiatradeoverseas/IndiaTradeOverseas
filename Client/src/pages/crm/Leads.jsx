@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { adminApi } from '../../api/admin';
@@ -39,6 +39,7 @@ const LEAD_FIELDS = [
 ];
 
 export default function Leads() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [leads, setLeads] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -80,6 +81,24 @@ export default function Leads() {
       return false;
     }
     return true;
+  };
+
+  const getLeadValuationDisplay = (lead) => {
+    if (!lead) return '—';
+    if (lead.leadValue && Number(lead.leadValue) > 0) {
+      return `₹${Number(lead.leadValue).toLocaleString('en-IN')}`;
+    }
+    if (lead.estimatedValue && String(lead.estimatedValue).trim().length > 0) {
+      return String(lead.estimatedValue).trim();
+    }
+    const text = lead.chatSummary || lead.remarks || '';
+    if (text) {
+      const match = text.match(/(?:Valuation|Budget|Value|Valuation\/Budget)[^\n:]*[:—]\s*([^\n,]+)/i);
+      if (match && match[1] && match[1].trim() !== 'Not specified') {
+        return match[1].trim();
+      }
+    }
+    return '—';
   };
 
   // Toggle between Table and Visual Kanban Board
@@ -182,6 +201,7 @@ export default function Leads() {
     email: '',
     quantity: '',
     destination: '',
+    targetDate: '',
     leadValue: '',
     assignedTo: '',
     source: 'MANUAL'
@@ -1021,19 +1041,6 @@ export default function Leads() {
               className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
             />
           </div>
-          <div className="relative w-full md:w-56">
-            <select
-              value={filterStage}
-              onChange={(e) => setFilterStage(e.target.value)}
-              className="w-full px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none cursor-pointer appearance-none text-[var(--crm-heading)] font-mono"
-            >
-              <option value="" className="bg-[var(--crm-bg)]">All Pipeline Stages</option>
-              {stages.map(st => <option key={st} value={st} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{st.replace(/_/g, ' ')}</option>)}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[var(--crm-ink-faint)]">
-              <FiFilter size={12} />
-            </div>
-          </div>
 
           {/* Temperature Filters */}
           <div className="flex items-center gap-1.5 font-mono text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
@@ -1101,18 +1108,18 @@ export default function Leads() {
                     <th className="py-3.5 px-5">Identifier</th>
                     <th className="py-3.5 px-5">Consignee Name</th>
                     <th className="py-3.5 px-5">Category & Region</th>
+                    <th className="py-3.5 px-5 text-center">Target Timeline</th>
                     <th className="py-3.5 px-5 text-right">Valuation</th>
                     <th className="py-3.5 px-5 text-center">Pipeline Stage</th>
                     <th className="py-3.5 px-5 text-center">Executive / Owner</th>
                     <th className="py-3.5 px-5 text-center">LOI Status</th>
                     <th className="py-3.5 px-5 text-center">Direct Communication</th>
-                    <th className="py-3.5 px-5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={isManagerOrAdmin ? "10" : "9"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
+                      <td colSpan={isManagerOrAdmin ? "9" : "8"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
                         No active inquiry manifests found for the selected date filter.
                       </td>
                     </tr>
@@ -1123,9 +1130,16 @@ export default function Leads() {
                         : (lead.assignedTo || 'Unassigned');
 
                       return (
-                      <tr key={lead._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                      <tr 
+                        key={lead._id} 
+                        onClick={(e) => {
+                          if (e.target.closest('input, button, a, select')) return;
+                          navigate(`/crm/leads/${lead._id}`);
+                        }}
+                        className="hover:bg-[var(--crm-bg-raised)]/60 cursor-pointer transition-colors"
+                      >
                         {isManagerOrAdmin && (
-                          <td className="py-3.5 px-4 text-center shrink-0 w-12">
+                          <td className="py-3.5 px-4 text-center shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selectedLeadIds.includes(lead._id)}
@@ -1134,10 +1148,16 @@ export default function Leads() {
                             />
                           </td>
                         )}
-                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">{lead.leadCode}</td>
+                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
+                          <Link to={`/crm/leads/${lead._id}`} className="hover:underline text-[var(--crm-heading)]">
+                            {lead.leadCode}
+                          </Link>
+                        </td>
                         <td className="py-3.5 px-5 min-w-[160px]">
                           <div className="flex items-center gap-2">
-                            <span className="font-serif text-sm text-[var(--crm-heading)]">{lead.customerName}</span>
+                            <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
+                              {lead.customerName}
+                            </Link>
                             {lead.priority === 'HOT' && (
                               <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
                             )}
@@ -1156,8 +1176,17 @@ export default function Leads() {
                           </span>
                           <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.country || 'IN'}</span>
                         </td>
+                        <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
+                          {lead.targetDate ? (
+                            <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                              📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+                          )}
+                        </td>
                         <td className="py-3.5 px-5 text-right font-mono font-bold text-[var(--crm-positive)]">
-                          {lead.leadValue ? `₹${lead.leadValue.toLocaleString('en-IN')}` : '—'}
+                          {getLeadValuationDisplay(lead)}
                         </td>
                         <td className="py-3.5 px-5 text-center">
                           {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
@@ -1196,7 +1225,7 @@ export default function Leads() {
                                   key={i}
                                   href={(() => {
                                     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
                                     const token = localStorage.getItem('token') || '';
                                     return `${baseUrl}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(token)}`;
                                   })()}
@@ -1240,27 +1269,6 @@ export default function Leads() {
                             </button>
                           </div>
                         </td>
-
-                        <td className="py-3.5 px-5 text-center">
-                          <div className="flex items-center justify-center space-x-1.5">
-                            <button
-                              onClick={() => {
-                                setLoiTargetLeadId(lead._id);
-                                setShowLOIModal(true);
-                              }}
-                              className="p-1.5 border border-teal-800/50 bg-teal-950/60 hover:bg-teal-900 text-teal-300 transition-all rounded-sm cursor-pointer"
-                              title="Upload LOI for Lead"
-                            >
-                              <FiFileText size={13} />
-                            </button>
-                            <Link
-                              to={`/crm/leads/${lead._id}`}
-                              className="inline-flex p-1.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition-all rounded-sm"
-                            >
-                              <FiEye size={13} />
-                            </Link>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })
@@ -1282,7 +1290,14 @@ export default function Leads() {
                     : (lead.assignedTo || 'Unassigned');
 
                   return (
-                    <div key={lead._id} className="bg-[var(--crm-bg-raised)]/40 border border-[var(--crm-ink-soft)]/20 rounded p-3.5 space-y-3 text-left font-mono text-xs shadow-sm">
+                    <div 
+                      key={lead._id} 
+                      onClick={(e) => {
+                        if (e.target.closest('input, button, a, select')) return;
+                        navigate(`/crm/leads/${lead._id}`);
+                      }}
+                      className="bg-[var(--crm-bg-raised)]/40 border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-heading)]/40 rounded p-3.5 space-y-3 text-left font-mono text-xs shadow-sm cursor-pointer transition-all"
+                    >
                       {/* Header: Checkbox + Lead Code + Priority Badge */}
                       <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-ink-soft)]/15 pb-2">
                         <div className="flex items-center gap-2 min-w-0">
@@ -1321,9 +1336,9 @@ export default function Leads() {
                           <span className="px-2 py-0.5 text-[9px] font-bold bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded block">
                             {lead.productCategory}
                           </span>
-                          {lead.leadValue ? (
-                            <span className="text-[11px] font-bold text-emerald-400 block mt-1">₹{lead.leadValue.toLocaleString('en-IN')}</span>
-                          ) : null}
+                          {getLeadValuationDisplay(lead) !== '—' && (
+                            <span className="text-[11px] font-bold text-emerald-400 block mt-1">{getLeadValuationDisplay(lead)}</span>
+                          )}
                         </div>
                       </div>
 
@@ -1502,7 +1517,14 @@ export default function Leads() {
                       </div>
                     ) : (
                       stageLeads.map((item) => (
-                        <div key={item._id} className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 rounded-sm space-y-2 text-left hover:border-[var(--crm-heading)]/40 transition-all">
+                        <div 
+                          key={item._id} 
+                          onClick={(e) => {
+                            if (e.target.closest('input, button, a, select')) return;
+                            navigate(`/crm/leads/${item._id}`);
+                          }}
+                          className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 rounded-sm space-y-2 text-left hover:border-[var(--crm-heading)]/40 transition-all cursor-pointer"
+                        >
                           <div className="flex justify-between items-start">
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)]">{item.leadCode}</span>
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-warning)]">
@@ -1594,8 +1616,12 @@ export default function Leads() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation (INR)</label>
-                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Value" />
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Requirement Date</label>
+                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer [color-scheme:dark]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation / Budget (INR)</label>
+                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Valuation" />
                   </div>
                 </div>
 

@@ -38,8 +38,24 @@ async function approveQuotation({ id, approvedPrice, actorId }) {
   quotation.approvedAt = new Date();
   await quotation.save();
 
-  
-  await Lead.findByIdAndUpdate(quotation.leadId, { stage: 'QUOTATION_APPROVED' });
+  const lead = await Lead.findByIdAndUpdate(quotation.leadId, { stage: 'QUOTATION_APPROVED' }, { new: true });
+  const leadName = lead ? (lead.customerName || lead.leadCode) : 'Client';
+
+  try {
+    const Notification = require('../notifications/notification.model');
+    const targetUserId = quotation.requestedBy || (lead && lead.assignedTo) || null;
+    const finalPriceStr = (quotation.approvedPrice || 0).toLocaleString('en-IN');
+
+    await Notification.create({
+      targetUserId,
+      targetDepartment: 'SALES',
+      message: `🎉 Quotation Approved! Price for ${leadName} set to ₹${finalPriceStr}. Stage promoted to QUOTATION_APPROVED.`,
+      type: 'QUOTATION_APPROVED',
+      metadata: { quotationId: quotation._id, leadId: quotation.leadId, approvedPrice: quotation.approvedPrice }
+    });
+  } catch (notifErr) {
+    console.warn('Quotation approval notification notice:', notifErr.message);
+  }
 
   await recordAudit({
     actorId,
@@ -60,6 +76,23 @@ async function rejectQuotation({ id, marginNote, actorId }) {
   quotation.status = 'REJECTED';
   if (marginNote) quotation.marginNote = marginNote;
   await quotation.save();
+
+  try {
+    const Notification = require('../notifications/notification.model');
+    const lead = await Lead.findById(quotation.leadId);
+    const leadName = lead ? (lead.customerName || lead.leadCode) : 'Client';
+    const targetUserId = quotation.requestedBy || (lead && lead.assignedTo) || null;
+
+    await Notification.create({
+      targetUserId,
+      targetDepartment: 'SALES',
+      message: `⚠️ Quotation Rejected for ${leadName}. Reason: ${marginNote || 'Price proposal revised by management'}.`,
+      type: 'QUOTATION_REJECTED',
+      metadata: { quotationId: quotation._id, leadId: quotation.leadId, marginNote }
+    });
+  } catch (notifErr) {
+    console.warn('Quotation rejection notification notice:', notifErr.message);
+  }
 
   await recordAudit({
     actorId,
@@ -117,10 +150,53 @@ async function getQuotationSummary() {
   };
 }
 
+async function bulkApproveQuotations({ quotationIds, approvedPrice, actorId }) {
+  if (!Array.isArray(quotationIds) || quotationIds.length === 0) {
+    throw new Error('QUOTATION_IDS_REQUIRED');
+  }
+
+  const results = [];
+  for (const id of quotationIds) {
+    try {
+      const q = await Quotation.findById(id);
+      if (q && q.status === 'PENDING') {
+        const finalPrice = approvedPrice ? parseFloat(approvedPrice) : q.employeeRequestedPrice;
+        const res = await approveQuotation({ id, approvedPrice: finalPrice, actorId });
+        results.push(res);
+      }
+    } catch (err) {
+      console.error(`[bulkApproveQuotations] Failed for quotation ${id}:`, err.message);
+    }
+  }
+  return { approvedCount: results.length, quotations: results };
+}
+
+async function bulkRejectQuotations({ quotationIds, marginNote, actorId }) {
+  if (!Array.isArray(quotationIds) || quotationIds.length === 0) {
+    throw new Error('QUOTATION_IDS_REQUIRED');
+  }
+
+  const results = [];
+  for (const id of quotationIds) {
+    try {
+      const q = await Quotation.findById(id);
+      if (q && q.status === 'PENDING') {
+        const res = await rejectQuotation({ id, marginNote, actorId });
+        results.push(res);
+      }
+    } catch (err) {
+      console.error(`[bulkRejectQuotations] Failed for quotation ${id}:`, err.message);
+    }
+  }
+  return { rejectedCount: results.length, quotations: results };
+}
+
 module.exports = {
   createQuotationRequest,
   approveQuotation,
   rejectQuotation,
+  bulkApproveQuotations,
+  bulkRejectQuotations,
   sendToCustomer,
   getQuotationSummary
 };

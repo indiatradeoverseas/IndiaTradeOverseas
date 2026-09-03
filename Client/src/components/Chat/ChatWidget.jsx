@@ -20,12 +20,15 @@ const PRODUCT_OPTIONS = [
 
 const LEAD_STEPS = [
   { key: 'phone', question: 'Great! To create your enquiry, please share your phone number.', placeholder: 'e.g. 98765 43210', type: 'text' },
+  { key: 'whatsAppNumber', question: 'Please share your WhatsApp number for instant updates.', placeholder: 'e.g. 98765 43210 (or same as phone)', type: 'text' },
   { key: 'productCategory', question: 'Which product are you interested in?', placeholder: '', type: 'options' },
   { key: 'quantity', question: 'What quantity do you require?', placeholder: 'e.g. 500 MT', type: 'text' },
   { key: 'destination', question: 'What is the delivery destination?', placeholder: 'e.g. Kishanganj, Bihar', type: 'text' },
+  { key: 'targetDate', question: 'What is your requirement date / timeline?', placeholder: 'e.g. 2026-09-30 or Immediate', type: 'text' },
+  { key: 'estimatedValue', question: 'What is your estimated requirement valuation / budget?', placeholder: 'e.g. ₹5,00,000 or $10,000', type: 'text' }
 ];
 
-const EMPTY_LEAD = { phone: '', productCategory: '', quantity: '', destination: '' };
+const EMPTY_LEAD = { phone: '', whatsAppNumber: '', productCategory: '', quantity: '', destination: '', targetDate: '', estimatedValue: '' };
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -218,10 +221,10 @@ export default function ChatWidget() {
       toast.error('Please enter a value to continue');
       return;
     }
-    if (step.key === 'phone') {
+    if (step.key === 'phone' || step.key === 'whatsAppNumber') {
       const digits = val.replace(/\D/g, '');
-      if (digits.length < 10) {
-        toast.error('Please enter a valid phone number');
+      if (digits.length < 10 && val.length < 7) {
+        toast.error('Please enter a valid phone / WhatsApp number');
         return;
       }
     }
@@ -248,16 +251,23 @@ export default function ChatWidget() {
     try {
       const chatLogsText = messages.map(m => `${m.senderName}: ${m.message}`).join("\n");
       const detailsSummary =
-        `Lead details — Phone: ${finalData.phone}, Product: ${finalData.productCategory}, ` +
-        `Quantity: ${finalData.quantity}, Destination: ${finalData.destination}`;
+        `Lead details — Phone: ${finalData.phone}, WhatsApp: ${finalData.whatsAppNumber || finalData.phone}, ` +
+        `Product: ${finalData.productCategory}, Quantity: ${finalData.quantity}, ` +
+        `Destination: ${finalData.destination}, Requirement Date: ${finalData.targetDate || 'Immediate'}, ` +
+        `Valuation/Budget: ${finalData.estimatedValue || 'Not specified'}`;
+
+      const numericValue = Number((finalData.estimatedValue || '').replace(/[^0-9.]/g, '')) || undefined;
 
       const response = await leadsApi.createLead({
         customerName: session.clientName,
         email: session.clientEmail || 'chat@example.com',
         phone: finalData.phone,
+        whatsAppNumber: finalData.whatsAppNumber || finalData.phone,
         productCategory: finalData.productCategory,
         quantity: finalData.quantity,
         destination: finalData.destination,
+        targetDate: finalData.targetDate || undefined,
+        leadValue: numericValue,
         chatSummary: chatLogsText ? `${chatLogsText}\n---\n${detailsSummary}` : detailsSummary
       });
 

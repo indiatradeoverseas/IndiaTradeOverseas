@@ -16,6 +16,8 @@ async function processAiLead(payload, actorId = null) {
 
   const quantity = String(payload.quantity || '');
   const destination = payload.destination || payload.city || '';
+  const targetDateRaw = payload.targetDate || payload.requiredDate || payload.timeline || null;
+  const targetDate = targetDateRaw ? new Date(targetDateRaw) : null;
   const companyName = payload.companyName || payload.company || '';
   const chatSummary = payload.chatSummary || payload.message || payload.subject || '';
   const paymentTerms = payload.paymentTerms || '';
@@ -37,14 +39,24 @@ async function processAiLead(payload, actorId = null) {
 
   const duplicate = await Lead.findOne({ $or: duplicateQueries });
 
-  const { priority } = scoreAndClassifyLead({
+  const rawValuation = payload.leadValue || payload.estimatedValue || payload.valuation || payload.budget || '';
+  const numericValue = typeof rawValuation === 'number'
+    ? rawValuation
+    : (Number(String(rawValuation).replace(/[^0-9.]/g, '')) || 0);
+
+  const whatsAppNumber = payload.whatsAppNumber || payload.whatsapp || payload.whatsApp || mobile;
+  const estimatedValueStr = String(payload.estimatedValue || payload.valuation || payload.budget || (numericValue ? `₹${numericValue.toLocaleString('en-IN')}` : '')).trim();
+
+  const { score, priority } = scoreAndClassifyLead({
     quantity,
     hasLOI: payload.hasLOI,
     paymentTerms,
     contactPerson,
     mobile,
     email,
-    chatSummary
+    chatSummary,
+    leadValue: numericValue,
+    targetDate: (targetDate && !isNaN(targetDate.getTime())) ? targetDate : null
   });
 
   const timestamp = Date.now();
@@ -60,17 +72,22 @@ async function processAiLead(payload, actorId = null) {
     phoneEncrypted: encryptText(mobile),
     phoneMasked: maskPhone(mobile),
     phoneHash,
+    whatsAppNumber,
     emailEncrypted: email ? encryptText(email) : '',
     emailMasked: email ? maskEmail(email) : '',
     emailHash,
     productCategory,
     quantity,
     destination,
+    targetDate: (targetDate && !isNaN(targetDate.getTime())) ? targetDate : null,
+    leadValue: numericValue,
+    estimatedValue: estimatedValueStr,
+    score,
     priority,
     stage: 'NEW_LEAD',
     duplicateOf: duplicate ? duplicate._id : null,
     chatSummary,
-    originalPayload: payload, 
+    originalPayload: payload,
     createdBy: actorId
   });
 
