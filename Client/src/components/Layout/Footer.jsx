@@ -90,6 +90,7 @@ export default function Footer() {
 
   const officialEmail = 'info@indiatradeoverseas.com';
   const officialPhone = '01169262028';
+
   const registeredOfficeText =
     'Deramari, Kishanganj, Bihar - 855107, India';
 
@@ -112,10 +113,18 @@ export default function Footer() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 text-left">
 
-          {/* Column 1: Brand Authority */}
-          <div className="md:col-span-4 space-y-4">
+        {/* =========================================================
+            MAIN FOOTER
+            Desktop: 4 balanced columns
+            Mobile: stacked sections
+        ========================================================= */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-0 md:gap-8 lg:gap-8 text-left">
+
+          {/* =======================================================
+              COLUMN 1 — BRAND
+          ======================================================= */}
+          <div className="md:col-span-3 space-y-4 pb-8 md:pb-0">
             <div>
               <h3 className="text-xl tracking-wide font-normal uppercase">
                 India Trade Overseas
@@ -135,6 +144,7 @@ export default function Footer() {
             </p>
 
             <div className="flex space-x-4 pt-1">
+              {/* Facebook */}
               <a
                 href="#"
                 aria-label="Facebook"
@@ -144,6 +154,7 @@ export default function Footer() {
                 <FiFacebook size={18} />
               </a>
 
+              {/* Twitter */}
               <a
                 href="#"
                 aria-label="Twitter"
@@ -153,6 +164,7 @@ export default function Footer() {
                 <FiTwitter size={18} />
               </a>
 
+              {/* LinkedIn */}
               <a
                 href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in"
                 target="_blank"
@@ -164,6 +176,7 @@ export default function Footer() {
                 <FiLinkedin size={18} />
               </a>
 
+              {/* Instagram */}
               <a
                 href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1"
                 target="_blank"
@@ -177,8 +190,10 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Column 2: Quick Links */}
-          <div className="md:col-span-2 space-y-4">
+          {/* =======================================================
+              COLUMN 2 — QUICK LINKS
+          ======================================================= */}
+          <div className="md:col-span-3 space-y-4 py-8 md:py-0 border-t border-white/10 md:border-t-0">
             <h4 className="text-xs uppercase tracking-widest font-semibold">
               Quick Links
             </h4>
@@ -286,8 +301,10 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Column 3: Business Verticals */}
-          <div className="md:col-span-3 space-y-4">
+          {/* =======================================================
+              COLUMN 3 — BUSINESS VERTICALS
+          ======================================================= */}
+          <div className="md:col-span-3 space-y-4 py-8 md:py-0 border-t border-white/10 md:border-t-0">
             <h4 className="text-xs uppercase tracking-widest font-semibold">
               Business Verticals
             </h4>
@@ -345,36 +362,28 @@ export default function Footer() {
                   className="hover:underline transition-all text-left"
                   style={{ color: theme.accentText }}
                 >
-                  ITO Transport &amp; Logistics
-                </button>
-              </li>
-
-              <li>
-                <button
-                  type="button"
-                  onClick={openServicesMenu}
-                  className="hover:underline transition-all text-left"
-                  style={{ color: theme.accentText }}
-                >
-                  Clay &amp; Consumer Products
+                  Transport &amp; Logistics
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Column 4: Contact Info */}
-          <div className="md:col-span-3 space-y-4">
+          {/* =======================================================
+              COLUMN 4 — CONTACT INFO
+          ======================================================= */}
+          <div className="md:col-span-3 space-y-4 py-8 md:py-0 border-t border-white/10 md:border-t-0">
             <h4 className="text-xs uppercase tracking-widest font-semibold">
-              Contact Info
+              Contact
             </h4>
 
             <div
               className="space-y-3 font-sans text-xs font-light leading-relaxed"
               style={{ color: theme.accentText }}
             >
+              {/* Registered Office */}
               <div className="space-y-1">
                 <div className="font-bold uppercase tracking-wider text-[9px] opacity-70">
-                  Registered Office Address:
+                  Address
                 </div>
 
                 <p className="text-[11px] font-serif leading-normal opacity-90">
@@ -382,53 +391,131 @@ export default function Footer() {
                 </p>
               </div>
 
+              {/* Email */}
               <div className="space-y-2 pt-2 border-t border-white/10">
-                <div className="flex items-center justify-between group">
-                  <a
-                    href={`mailto:${officialEmail}`}
-                    className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]"
-                  >
-                    Email:{' '}
-                    <span className="font-medium underline">
-                      {officialEmail}
-                    </span>
-                  </a>
-                </div>
+                <a
+                  href={`mailto:${officialEmail}`}
+                  className="hover:underline transition-all block text-xs tracking-wide break-all"
+                >
+                  Email:{' '}
+                  <span className="font-medium underline">
+                    {officialEmail}
+                  </span>
+                </a>
 
-                <div className="flex items-center justify-between group">
-                  <a
-                    href={`tel:${officialPhone}`}
-                    className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]"
-                  >
-                    Phone:{' '}
-                    <span className="font-medium underline">
-                      {officialPhone}
-                    </span>
-                  </a>
-                </div>
+                {/* Phone */}
+                <a
+                  href={`tel:${officialPhone}`}
+                  className="hover:underline transition-all block text-xs tracking-wide"
+                >
+                  Phone:{' '}
+                  <span className="font-medium underline">
+                    {officialPhone}
+                  </span>
+                </a>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Verification Notice Bar */}
-        <div className="border-t mt-8 pt-8 text-center border-white/10">
-          <p
-            className="text-[10px] font-sans font-light max-w-3xl mx-auto leading-relaxed tracking-wider"
+        {/* =========================================================
+            LEGAL SECTION
+            Desktop: one horizontal row
+            Mobile: clean vertical stack
+        ========================================================= */}
+        <div className="border-t border-white/10 mt-0 md:mt-10 pt-7 md:pt-6">
+
+          <nav
+            aria-label="Legal and Policies"
+            className="
+              flex
+              flex-col
+              items-start
+              gap-3
+              text-[10px]
+              font-sans
+              tracking-wide
+              md:flex-row
+              md:flex-wrap
+              md:items-center
+              md:justify-center
+              md:gap-x-6
+              md:gap-y-3
+            "
             style={{ color: theme.accentText }}
           >
-            Every appointment, price, margin, scheme, target, product
-            specification, and territory protection right must be confirmed
-            explicitly through authorized written company communication loops.
-          </p>
+            <Link
+              to="/privacy-policy"
+              className="hover:underline transition-all"
+            >
+              Privacy Policy
+            </Link>
 
-          <p
-            className="text-[10px] tracking-wider uppercase font-mono font-light mt-3"
-            style={{ color: theme.subtleAccent }}
-          >
-            &copy; 2026 India Trade Overseas. All rights reserved. Protected
-            Environment Terminal.
-          </p>
+            <span
+              className="hidden md:inline opacity-30"
+              aria-hidden="true"
+            >
+              •
+            </span>
+
+            <Link
+              to="/terms"
+              className="hover:underline transition-all"
+            >
+              Terms &amp; Conditions
+            </Link>
+
+            <span
+              className="hidden md:inline opacity-30"
+              aria-hidden="true"
+            >
+              •
+            </span>
+
+            <Link
+              to="/fraud-payment-policy"
+              className="hover:underline transition-all"
+            >
+              Fraud &amp; Payment Policy
+            </Link>
+
+            <span
+              className="hidden md:inline opacity-30"
+              aria-hidden="true"
+            >
+              •
+            </span>
+
+            <Link
+              to="/disclaimer"
+              className="hover:underline transition-all"
+            >
+              Disclaimer
+            </Link>
+          </nav>
+        </div>
+
+        {/* =========================================================
+            COPYRIGHT
+        ========================================================= */}
+        <div className="border-t border-white/10 mt-6 pt-5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+
+            <p
+              className="text-[10px] tracking-wider uppercase font-mono font-light"
+              style={{ color: theme.subtleAccent }}
+            >
+              &copy; 2026 India Trade Overseas. All rights reserved.
+            </p>
+
+            <p
+              className="text-[9px] font-sans tracking-wider opacity-60"
+              style={{ color: theme.accentText }}
+            >
+              Trade &bull; Supply &bull; Logistics
+            </p>
+
+          </div>
         </div>
       </div>
     </footer>
