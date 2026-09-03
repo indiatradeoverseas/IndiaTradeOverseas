@@ -69,6 +69,8 @@ import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
 import Prakriti from './pages/public/Prakriti';
+import OurServices from './pages/public/OurServices';
+import ITOAds from './pages/public/ITOAds';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -456,10 +458,12 @@ function AppLayout() {
     return <Navigate to="/login" />;
   }
 
+  const isITOAds = location.pathname === '/ito-ads';
+
   return (
     <div>
       <ScrollToTop /> {/* <-- INJECTED TO HANDLE ALL CORE WEBSITE SCREENS */}
-      <Navbar />
+      {!isITOAds && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -469,12 +473,15 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
-          <Route path="/prakriti" element={<Prakriti />} />
-          <Route path='/prakriti/rice' element={<Rice/>}/>
+          <Route path="/our-services" element={<OurServices />} />
+          <Route path="/prakriti" element={<Navigate to="/prakriti/tea" replace />} />
+          <Route path="/prakriti/tea" element={<Prakriti />} />
+          <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
+          <Route path="/ito-ads" element={<ITOAds />} />
         </Routes>
       </main>
-      <Footer />
+      {!isITOAds && <Footer />}
       <ChatWidget />
     </div>
   );

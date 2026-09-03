@@ -6,7 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
-import SmokeyCursor from '@/components/lightswind/smokey-cursor';
+import SmokeyCursor from '../../components/lightswind/smokey-cursor';
 import { 
   FiCheck, FiTarget, FiBarChart2, FiUsers, FiZap, 
   FiShield, FiGlobe, FiMessageSquare, FiSpeaker, FiChevronRight,

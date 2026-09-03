@@ -24,7 +24,8 @@
     "react-router-dom": "^7.17.0",
     "recharts": "^3.8.1",
     "socket.io-client": "^4.8.3",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@sparticuz/chromium": "^149.0.0",
