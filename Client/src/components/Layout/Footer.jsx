@@ -1,10 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiFacebook, FiTwitter, FiLinkedin, FiInstagram, FiChevronDown } from 'react-icons/fi';
+import {
+  FiFacebook,
+  FiTwitter,
+  FiLinkedin,
+  FiInstagram,
+  FiChevronDown
+} from 'react-icons/fi';
 
 export default function Footer() {
   const location = useLocation();
   const currentPath = location.pathname;
+
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const servicesRef = useRef(null);
 
@@ -14,28 +21,35 @@ export default function Footer() {
       groupLabel: 'PRAKRITI DIVISION',
       links: [
         { to: '/prakriti', label: 'Tea Division' },
-        { to: '/prakriti/rice', label: 'Rice Division' },
+        { to: '/prakriti/rice', label: 'Rice Division' }
       ]
     },
     {
-      groupLabel: 'STONE & INFRASTRUCTURE',
+      groupLabel: 'BUILDING & CONSTRUCTION',
       links: [
-        { to: '/stone', label: 'Stone Division' },
+        { to: '/stone', label: 'Stone Division' }
       ]
     }
   ];
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (servicesRef.current && !servicesRef.current.contains(event.target)) {
+      if (
+        servicesRef.current &&
+        !servicesRef.current.contains(event.target)
+      ) {
         setIsServicesOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  // 1. Determine active colour scheme token object
+  // Determine active colour scheme
   let theme = {
     bg: 'bg-[#08121D]',
     text: 'text-white',
@@ -64,27 +78,36 @@ export default function Footer() {
       subtleAccent: '#D9B85C'
     };
   } else if (currentPath === '/stone') {
-    // Strictly Mapped Palette Tokens for Stone Division
     theme = {
-      bg: 'bg-[#37424B]',           // Primary Slate Blue Background
-      text: 'text-[#F4F2EE]',         // Sand White Text
-      border: 'border-[#A89E8E]/40',  // Stone Taupe Border
-      doubleBorder: '#C5A059',        // Metallic Gold Double Line Accent
-      accentText: '#DCCCB4',          // Warm Beige Body / Secondary Links
-      subtleAccent: '#A89E8E'         // Stone Taupe Icons & Subtle Details
+      bg: 'bg-[#37424B]',
+      text: 'text-[#F4F2EE]',
+      border: 'border-[#A89E8E]/40',
+      doubleBorder: '#C5A059',
+      accentText: '#DCCCB4',
+      subtleAccent: '#A89E8E'
     };
   }
 
-  const officialEmail = "info@indiatradeoverseas.com";
-  const officialPhone = "01169262028";
-  const registeredOfficeText = "Deramari, Kishanganj, Bihar - 855107, India";
+  const officialEmail = 'info@indiatradeoverseas.com';
+  const officialPhone = '01169262028';
+  const registeredOfficeText =
+    'Deramari, Kishanganj, Bihar - 855107, India';
+
+  const closeServicesMenu = () => {
+    setIsServicesOpen(false);
+  };
+
+  const openServicesMenu = () => {
+    setIsServicesOpen(true);
+  };
 
   return (
-    <footer className={`w-full py-6 px-4 transition-colors duration-300 font-serif ${theme.bg} ${theme.text} border-t ${theme.border}`}>
-      
+    <footer
+      className={`w-full py-6 px-4 transition-colors duration-300 font-serif ${theme.bg} ${theme.text} border-t ${theme.border}`}
+    >
       {/* Structural Double Line Border Accent */}
-      <div 
-        className="border-t-[3px] border-double w-full opacity-40 mb-8" 
+      <div
+        className="border-t-[3px] border-double w-full opacity-40 mb-8"
         style={{ borderColor: theme.doubleBorder }}
       />
 
@@ -97,49 +120,123 @@ export default function Footer() {
               <h3 className="text-xl tracking-wide font-normal uppercase">
                 India Trade Overseas
               </h3>
-              <div className="w-12 h-[1px] mt-2" style={{ backgroundColor: theme.doubleBorder }} />
+
+              <div
+                className="w-12 h-[1px] mt-2"
+                style={{ backgroundColor: theme.doubleBorder }}
+              />
             </div>
 
-            <p className="font-serif italic text-xs tracking-wide" style={{ color: theme.accentText }}>
+            <p
+              className="font-serif italic text-xs tracking-wide"
+              style={{ color: theme.accentText }}
+            >
               "Where Quality Meets Global Demand."
             </p>
 
             <div className="flex space-x-4 pt-1">
-              <a href="#" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiFacebook size={18} /></a>
-              <a href="#" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiTwitter size={18} /></a>
-              <a href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiLinkedin size={18} /></a>
-              <a href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1" target="_blank" rel="noopener noreferrer" className="hover:opacity-100 transition-opacity" style={{ color: theme.subtleAccent }}><FiInstagram size={18} /></a>
+              <a
+                href="#"
+                aria-label="Facebook"
+                className="hover:opacity-100 transition-opacity"
+                style={{ color: theme.subtleAccent }}
+              >
+                <FiFacebook size={18} />
+              </a>
+
+              <a
+                href="#"
+                aria-label="Twitter"
+                className="hover:opacity-100 transition-opacity"
+                style={{ color: theme.subtleAccent }}
+              >
+                <FiTwitter size={18} />
+              </a>
+
+              <a
+                href="https://linkedin.com/in/india-trade-overseas-64012234b?original_referer=https%3A%2F%2Fwww%2Egoogle%2Ecom%2F&originalSubdomain=in"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="LinkedIn"
+                className="hover:opacity-100 transition-opacity"
+                style={{ color: theme.subtleAccent }}
+              >
+                <FiLinkedin size={18} />
+              </a>
+
+              <a
+                href="https://www.instagram.com/indiatradeoverseas?igsh=MmVkZjg0cXVhazN1"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="hover:opacity-100 transition-opacity"
+                style={{ color: theme.subtleAccent }}
+              >
+                <FiInstagram size={18} />
+              </a>
             </div>
           </div>
 
           {/* Column 2: Quick Links */}
           <div className="md:col-span-2 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold">Quick Links</h4>
-            <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
-              <li><Link to="/" className="hover:underline transition-all cursor-pointer">Home</Link></li>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">
+              Quick Links
+            </h4>
+
+            <ul
+              className="space-y-2.5 text-xs font-sans font-light"
+              style={{ color: theme.accentText }}
+            >
+              <li>
+                <Link
+                  to="/"
+                  className="hover:underline transition-all cursor-pointer"
+                >
+                  Home
+                </Link>
+              </li>
+
               <li className="relative" ref={servicesRef}>
                 <button
                   type="button"
-                  onClick={() => setIsServicesOpen((prev) => !prev)}
+                  onClick={() =>
+                    setIsServicesOpen((prev) => !prev)
+                  }
+                  aria-expanded={isServicesOpen}
+                  aria-haspopup="true"
                   className="flex items-center gap-1 hover:underline transition-all cursor-pointer"
                   style={{ color: theme.accentText }}
                 >
                   <span>Our Services</span>
-                  <FiChevronDown size={11} className={`transition-transform duration-200 ${isServicesOpen ? 'rotate-180' : ''}`} />
+
+                  <FiChevronDown
+                    size={11}
+                    className={`transition-transform duration-200 ${
+                      isServicesOpen ? 'rotate-180' : ''
+                    }`}
+                  />
                 </button>
 
                 {isServicesOpen && (
                   <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#0E1116] border border-white/10 shadow-2xl py-2 z-50 rounded-[2px] text-left">
                     {servicesGroups.map((group, gIdx) => (
-                      <div key={gIdx} className={gIdx > 0 ? "border-t border-white/10 mt-2 pt-2" : ""}>
+                      <div
+                        key={group.groupLabel}
+                        className={
+                          gIdx > 0
+                            ? 'border-t border-white/10 mt-2 pt-2'
+                            : ''
+                        }
+                      >
                         <div className="px-3 py-1 text-[9px] font-mono font-bold tracking-widest text-white/40 uppercase">
                           {group.groupLabel}
                         </div>
+
                         {group.links.map((subLink) => (
                           <Link
                             key={subLink.to}
                             to={subLink.to}
-                            onClick={() => setIsServicesOpen(false)}
+                            onClick={closeServicesMenu}
                             className="block px-3 py-1.5 text-xs text-[#C5CBD3] hover:bg-white/10 hover:text-white transition-colors whitespace-nowrap"
                           >
                             {subLink.label}
@@ -150,33 +247,136 @@ export default function Footer() {
                   </div>
                 )}
               </li>
-              <li><Link to="/about" className="hover:underline transition-all cursor-pointer">About Us</Link></li>
-              <li><Link to="/contact" className="hover:underline transition-all cursor-pointer">Contact</Link></li>
-              <li><Link to="/careers" className="hover:underline transition-all cursor-pointer">Careers</Link></li>
-              <li><Link to="/quote-request" className="hover:underline transition-all cursor-pointer">Get Quote</Link></li>
+
+              <li>
+                <Link
+                  to="/about"
+                  className="hover:underline transition-all cursor-pointer"
+                >
+                  About Us
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/contact"
+                  className="hover:underline transition-all cursor-pointer"
+                >
+                  Contact
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/careers"
+                  className="hover:underline transition-all cursor-pointer"
+                >
+                  Careers
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/quote-request"
+                  className="hover:underline transition-all cursor-pointer"
+                >
+                  Get Quote
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Column 3: Business Verticals */}
           <div className="md:col-span-3 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold">Business Verticals</h4>
-            <ul className="space-y-2.5 text-xs font-sans font-light" style={{ color: theme.accentText }}>
-              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Trade &amp; Export</button></li>
-              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Food &amp; Agriculture</button></li>
-              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Coal &amp; Industrial Materials</button></li>
-              <li><Link to="/stone" className="hover:underline transition-all">Stone &amp; Construction Supply</Link></li>
-              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>ITO Transport &amp; Logistics</button></li>
-              <li><button type="button" onClick={() => setIsServicesOpen(true)} className="hover:underline transition-all text-left" style={{ color: theme.accentText }}>Clay &amp; Consumer Products</button></li>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">
+              Business Verticals
+            </h4>
+
+            <ul
+              className="space-y-2.5 text-xs font-sans font-light"
+              style={{ color: theme.accentText }}
+            >
+              <li>
+                <button
+                  type="button"
+                  onClick={openServicesMenu}
+                  className="hover:underline transition-all text-left"
+                  style={{ color: theme.accentText }}
+                >
+                  Trade &amp; Export
+                </button>
+              </li>
+
+              <li>
+                <button
+                  type="button"
+                  onClick={openServicesMenu}
+                  className="hover:underline transition-all text-left"
+                  style={{ color: theme.accentText }}
+                >
+                  Food &amp; Agriculture
+                </button>
+              </li>
+
+              <li>
+                <button
+                  type="button"
+                  onClick={openServicesMenu}
+                  className="hover:underline transition-all text-left"
+                  style={{ color: theme.accentText }}
+                >
+                  Coal &amp; Industrial Materials
+                </button>
+              </li>
+
+              <li>
+                <Link
+                  to="/stone"
+                  className="hover:underline transition-all"
+                >
+                  Stone &amp; Construction Supply
+                </Link>
+              </li>
+
+              <li>
+                <button
+                  type="button"
+                  onClick={openServicesMenu}
+                  className="hover:underline transition-all text-left"
+                  style={{ color: theme.accentText }}
+                >
+                  ITO Transport &amp; Logistics
+                </button>
+              </li>
+
+              <li>
+                <button
+                  type="button"
+                  onClick={openServicesMenu}
+                  className="hover:underline transition-all text-left"
+                  style={{ color: theme.accentText }}
+                >
+                  Clay &amp; Consumer Products
+                </button>
+              </li>
             </ul>
           </div>
 
           {/* Column 4: Contact Info */}
           <div className="md:col-span-3 space-y-4">
-            <h4 className="text-xs uppercase tracking-widest font-semibold">Contact Info</h4>
-            <div className="space-y-3 font-sans text-xs font-light leading-relaxed" style={{ color: theme.accentText }}>
+            <h4 className="text-xs uppercase tracking-widest font-semibold">
+              Contact Info
+            </h4>
 
+            <div
+              className="space-y-3 font-sans text-xs font-light leading-relaxed"
+              style={{ color: theme.accentText }}
+            >
               <div className="space-y-1">
-                <div className="font-bold uppercase tracking-wider text-[9px] opacity-70">Registered Office Address:</div>
+                <div className="font-bold uppercase tracking-wider text-[9px] opacity-70">
+                  Registered Office Address:
+                </div>
+
                 <p className="text-[11px] font-serif leading-normal opacity-90">
                   {registeredOfficeText}
                 </p>
@@ -184,30 +384,50 @@ export default function Footer() {
 
               <div className="space-y-2 pt-2 border-t border-white/10">
                 <div className="flex items-center justify-between group">
-                  <a href={`mailto:${officialEmail}`} className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]">
-                    Email: <span className="font-medium underline">{officialEmail}</span>
+                  <a
+                    href={`mailto:${officialEmail}`}
+                    className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]"
+                  >
+                    Email:{' '}
+                    <span className="font-medium underline">
+                      {officialEmail}
+                    </span>
                   </a>
                 </div>
 
                 <div className="flex items-center justify-between group">
-                  <a href={`tel:${officialPhone}`} className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]">
-                    Phone: <span className="font-medium underline">{officialPhone}</span>
+                  <a
+                    href={`tel:${officialPhone}`}
+                    className="hover:underline transition-all block text-xs tracking-wide truncate max-w-[90%]"
+                  >
+                    Phone:{' '}
+                    <span className="font-medium underline">
+                      {officialPhone}
+                    </span>
                   </a>
                 </div>
               </div>
-
             </div>
           </div>
-
         </div>
 
         {/* Verification Notice Bar */}
         <div className="border-t mt-8 pt-8 text-center border-white/10">
-          <p className="text-[10px] font-sans font-light max-w-3xl mx-auto leading-relaxed tracking-wider" style={{ color: theme.accentText }}>
-            Every appointment, price, margin, scheme, target, product specification, and territory protection right must be confirmed explicitly through authorized written company communication loops.
+          <p
+            className="text-[10px] font-sans font-light max-w-3xl mx-auto leading-relaxed tracking-wider"
+            style={{ color: theme.accentText }}
+          >
+            Every appointment, price, margin, scheme, target, product
+            specification, and territory protection right must be confirmed
+            explicitly through authorized written company communication loops.
           </p>
-          <p className="text-[10px] tracking-wider uppercase font-mono font-light mt-3" style={{ color: theme.subtleAccent }}>
-            &copy; 2026 India Trade Overseas. All rights reserved. Protected Environment Terminal.
+
+          <p
+            className="text-[10px] tracking-wider uppercase font-mono font-light mt-3"
+            style={{ color: theme.subtleAccent }}
+          >
+            &copy; 2026 India Trade Overseas. All rights reserved. Protected
+            Environment Terminal.
           </p>
         </div>
       </div>
