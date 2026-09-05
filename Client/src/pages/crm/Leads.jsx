@@ -242,6 +242,58 @@ export default function Leads() {
     }
   };
 
+  const triggerWhatsApp = (eOrPhone, phone, lead) => {
+    let e = null;
+    let targetPhone = '';
+    let targetLead = null;
+
+    if (eOrPhone && typeof eOrPhone === 'object' && eOrPhone.stopPropagation) {
+      e = eOrPhone;
+      targetPhone = phone;
+      targetLead = lead;
+    } else {
+      targetPhone = eOrPhone;
+      targetLead = phone;
+    }
+
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    let num = (targetPhone || targetLead?.whatsAppNumber || targetLead?.phone || '').replace(/[^0-9]/g, '');
+    if (!num) {
+      return toast.error('No valid phone number available for this client');
+    }
+    if (num.length === 10) num = '91' + num;
+    const clientName = targetLead?.customerName || 'Client';
+    const message = encodeURIComponent(`Hello ${clientName},\n\nThis is regarding your inquiry with India Trade Overseas (Ref: ${targetLead?.leadCode || 'N/A'}).`);
+    window.open(`https://api.whatsapp.com/send?phone=${num}&text=${message}`, '_blank');
+  };
+
+  const triggerEmail = (eOrEmail, email, lead) => {
+    let e = null;
+    let targetEmail = '';
+    let targetLead = null;
+
+    if (eOrEmail && typeof eOrEmail === 'object' && eOrEmail.stopPropagation) {
+      e = eOrEmail;
+      targetEmail = email;
+      targetLead = lead;
+    } else {
+      targetEmail = eOrEmail;
+      targetLead = email;
+    }
+
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    const clientEmail = targetEmail || targetLead?.email || targetLead?.customerEmail || targetLead?.emailMasked || (targetLead?.customerName ? `${targetLead.customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@indiatradeoverseas.com` : '');
+    if (!clientEmail) {
+      return toast.error('No email address available for this client');
+    }
+    const subject = encodeURIComponent(`India Trade Overseas - Lead Communication (${targetLead?.leadCode || targetLead?.customerName || 'Inquiry'})`);
+    const body = encodeURIComponent(`Hello ${targetLead?.customerName || 'Client'},\n\nWe are following up regarding your inquiry (Reference: ${targetLead?.leadCode || 'N/A'})...\n\nBest regards,\nIndia Trade Overseas`);
+    
+    window.location.href = `mailto:${clientEmail}?subject=${subject}&body=${body}`;
+  };
+
   const fetchReminders = async () => {
     try {
       const response = await leadsApi.getDueReminders();
@@ -1112,8 +1164,7 @@ export default function Leads() {
                     <th className="py-3.5 px-5 text-right">Valuation</th>
                     <th className="py-3.5 px-5 text-center">Pipeline Stage</th>
                     <th className="py-3.5 px-5 text-center">Executive / Owner</th>
-                    <th className="py-3.5 px-5 text-center">LOI Status</th>
-                    <th className="py-3.5 px-5 text-center">Direct Communication</th>
+                    <th className="py-3.5 px-5 text-center">LOI Status & Direct Communication</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
@@ -1214,59 +1265,72 @@ export default function Leads() {
                           )}
                         </td>
 
-                        <td className="py-3.5 px-5 text-center font-mono">
-                          {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
-                            <div className="space-y-1">
-                              <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
-                                ✓ LOI ({lead.loiDocuments.length})
-                              </span>
-                              {lead.loiDocuments.map((loi, i) => (
-                                <a
-                                  key={i}
-                                  href={(() => {
-                                    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
-                                    const token = localStorage.getItem('token') || '';
-                                    return `${baseUrl}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(token)}`;
-                                  })()}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="block text-[9px] text-teal-400 hover:underline truncate max-w-[120px] mx-auto"
-                                  title={loi.originalName}
+                        <td className="py-3.5 px-5 text-center font-mono" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-3">
+                            {/* LOI Section */}
+                            {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
+                              <div className="space-y-1 text-center">
+                                <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                  ✓ LOI ({lead.loiDocuments.length})
+                                </span>
+                                {lead.loiDocuments.map((loi, i) => (
+                                  <a
+                                    key={i}
+                                    href={(() => {
+                                      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                      const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                      const token = localStorage.getItem('token') || '';
+                                      return `${baseUrl}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(token)}`;
+                                    })()}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block text-[9px] text-teal-400 hover:underline truncate max-w-[100px] mx-auto"
+                                    title={loi.originalName}
+                                  >
+                                    📄 {loi.originalName}
+                                  </a>
+                                ))}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLoiTargetLeadId(lead._id);
+                                    setShowLOIModal(true);
+                                  }}
+                                  className="text-[8px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-1.5 py-0.5 rounded cursor-pointer transition block mx-auto"
                                 >
-                                  📄 {loi.originalName}
-                                </a>
-                              ))}
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setLoiTargetLeadId(lead._id);
-                                setShowLOIModal(true);
-                              }}
-                              className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition"
-                            >
-                              + LOI
-                            </button>
-                          )}
-                        </td>
+                                  + Add LOI
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLoiTargetLeadId(lead._id);
+                                  setShowLOIModal(true);
+                                }}
+                                className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition shadow-sm inline-flex items-center gap-1"
+                              >
+                                + LOI
+                              </button>
+                            )}
 
-                        <td className="py-3.5 px-5 text-center">
-                          <div className="flex items-center justify-center space-x-2">
-                            <button
-                              onClick={() => triggerWhatsApp(lead.whatsAppNumber || lead.phone)}
-                              className="p-1.5 bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/30 text-[var(--crm-positive)] hover:bg-[var(--crm-positive-bg)] transition-all rounded-sm cursor-pointer"
-                              title="Launch WhatsApp Chat"
-                            >
-                              <FiMessageSquare size={13} />
-                            </button>
-                            <button
-                              onClick={() => triggerEmail(lead.email)}
-                              className="p-1.5 bg-[var(--crm-info-bg)] border border-[var(--crm-info)]/30 text-[var(--crm-info)] hover:bg-[var(--crm-info-bg)] transition-all rounded-sm cursor-pointer"
-                              title="Send Direct Email"
-                            >
-                              <FiMail size={13} />
-                            </button>
+                            {/* Direct Communication Icons */}
+                            <div className="flex items-center space-x-1.5">
+                              <button
+                                onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
+                                className="p-1.5 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 hover:bg-emerald-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                title="Launch WhatsApp Chat"
+                              >
+                                <FiMessageSquare size={13} />
+                              </button>
+                              <button
+                                onClick={(e) => triggerEmail(e, lead.email, lead)}
+                                className="p-1.5 bg-sky-950/80 border border-sky-800/60 text-sky-400 hover:bg-sky-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                title="Send Direct Email"
+                              >
+                                <FiMail size={13} />
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

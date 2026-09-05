@@ -513,8 +513,9 @@ export default function SalesExecutiveDashboard() {
     if (!fileUrl) return;
     // Construct absolute URL to download the file from server static files / uploads directory
     // If it's a relative path starting with 'uploads', prepend backend base url
-    const baseUrl = 'http://localhost:5000/'; // fallback local api base
-    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${baseUrl}${fileUrl}`;
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${baseUrl}/${fileUrl.replace(/^\/+/, '')}`;
     
     const link = document.createElement('a');
     link.href = absoluteUrl;
@@ -1086,7 +1087,7 @@ export default function SalesExecutiveDashboard() {
                                 className="w-full h-7 rounded accent-teal-500"
                                 src={(() => {
                                   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
                                   return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
                                 })()}
                               />
@@ -1243,7 +1244,7 @@ export default function SalesExecutiveDashboard() {
                                           key={i}
                                           href={(() => {
                                             const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
                                             const token = localStorage.getItem('token') || '';
                                             return `${baseUrl}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(token)}`;
                                           })()}

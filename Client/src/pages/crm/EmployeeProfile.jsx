@@ -370,14 +370,6 @@ export default function EmployeeProfile() {
         docList = [...docsRes.data.documents];
       }
 
-      // Merge local storage cached docs
-      const storedLocalDocs = JSON.parse(localStorage.getItem(`emp_docs_${isSelf ? user?._id : id}`)) || [];
-      storedLocalDocs.forEach(ld => {
-        if (!docList.some(d => d._id === ld._id || d.fileName === ld.fileName)) {
-          docList.push(ld);
-        }
-      });
-
       if (p) {
         if ((p.aadhaarCardCopy || p.aadhaarNumber) && !docList.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
           docList.push({ _id: 'doc_aadhaar', fileName: 'Aadhaar Card Copy', fileUrl: p.aadhaarCardCopy || '' });
@@ -583,7 +575,6 @@ export default function EmployeeProfile() {
           createdAt: new Date().toISOString(),
           docCategory: docCategory
         };
-        saveToGlobalVault(uploadedDoc);
         window.dispatchEvent(new CustomEvent('document_uploaded_event', { detail: uploadedDoc }));
         fetchData();
         setShowDocUploadModal(false);
@@ -666,9 +657,14 @@ export default function EmployeeProfile() {
     );
   }
 
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const backendBase = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=0f172a&color=2dd4bf&bold=true&size=128`;
+
   const profileImgUrl = profile.profileImage 
-    ? (profile.profileImage.startsWith('http') ? profile.profileImage : `http://localhost:5000/${profile.profileImage}`)
-    : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256';
+    ? (profile.profileImage.startsWith('http') ? profile.profileImage : `${backendBase}/${profile.profileImage.replace(/^\/+/, '')}`)
+    : defaultAvatar;
 
   return (
     <motion.div 
@@ -710,6 +706,10 @@ export default function EmployeeProfile() {
                     src={profileImgUrl} 
                     alt={profile.fullName} 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = defaultAvatar;
+                    }}
                   />
                 )}
               </div>

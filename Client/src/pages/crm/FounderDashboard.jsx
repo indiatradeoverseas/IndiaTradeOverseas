@@ -24,7 +24,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import FounderTransportWidget from './transport/FounderTransportWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
 
-const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING'];
+const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT'];
 const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -216,11 +216,11 @@ function StatusBadge({ status }) {
   );
 }
 
-function SectionHeader({ icon, title, count, action, children }) {
+function SectionHeader({ icon: Icon, title, count, action, children }) {
   return (
     <div className="p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)' }}>
       <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
-        {icon && <icon size={14} style={{ color: 'var(--crm-heading)' }} />}{title}
+        {Icon && <Icon size={14} style={{ color: 'var(--crm-heading)' }} />}{title}
       </h3>
       <div className="flex flex-wrap items-center gap-2">
         {count !== undefined && (
@@ -235,13 +235,13 @@ function SectionHeader({ icon, title, count, action, children }) {
   );
 }
 
-function StatCard({ title, value, subtitle, icon, tone, trend }) {
+function StatCard({ title, value, subtitle, icon: Icon, tone, trend }) {
   return (
     <motion.div whileHover={{ y: -4 }} className="border p-4 sm:p-5 transition-all duration-300 rounded-sm flex flex-col min-w-0" style={CARD}>
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <span className="text-[9px] uppercase tracking-widest font-bold truncate" style={LABEL_MONO}>{title}</span>
         <div className="p-2 border rounded-sm flex-shrink-0" style={{ borderColor: 'var(--crm-line)', color: toneColor(tone), background: toneBg(tone) }}>
-          <icon size={13} />
+          {Icon && <Icon size={13} />}
         </div>
       </div>
       <div className="flex flex-col mt-4 min-w-0">

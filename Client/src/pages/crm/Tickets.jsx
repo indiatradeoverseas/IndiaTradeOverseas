@@ -15,7 +15,7 @@ const blockVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 18, mass: 1 } }
 };
 
-const CATEGORIES = ['IT', 'HR', 'ADMIN', 'FINANCE', 'SALES'];
+const CATEGORIES = ['IT', 'HR', 'ADMIN', 'FINANCE', 'SALES', 'TRANSPORT'];
 const STATUSES = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
@@ -32,7 +32,7 @@ export default function Tickets() {
   const [submitting, setSubmitting] = useState(false);
 
   const userRole = (user?.role || '').toUpperCase();
-  const isManagerTier = ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE', 'HRMANAGE', 'HREXECUTIVE'].includes(userRole);
+  const isManagerTier = ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE', 'HRMANAGE', 'HREXECUTIVE', 'TRANSPORT_MANAGER'].includes(userRole);
 
   const visibleTickets = isManagerTier 
     ? tickets 

@@ -28,6 +28,7 @@ import { dispatchesApi } from '../../../api/dispatches';
 import { leadsApi } from '../../../api/leads';
 import { chatApi } from '../../../api/chat';
 import { employeeSignupApi } from '../../../api/employee-signup';
+import TransportMap from '../../../components/transport/TransportMap';
 import DriverCalculator from '../../../components/crm/DriverCalculator';
 import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
@@ -113,7 +114,44 @@ export default function TransportManager() {
   const [broadcastText, setBroadcastText] = useState('');
 
   // Fuel & Maintenance Logs (Loaded dynamically from MongoDB Dispatches)
-  const [fuelMaintenanceLogs, setFuelMaintenanceLogs] = useState([]);
+  const [fuelMaintenanceLogs, setFuelMaintenanceLogs] = useState([
+    {
+      id: 'sample_log_1',
+      driver: 'Ramesh Driver',
+      vehicle: 'UP32KK6653',
+      leadCode: 'LD-1787658027865-8278',
+      leadCustomer: 'Sahara Stone Corp 070',
+      totalKm: 8800,
+      fromLocation: 'Delhi',
+      toLocation: 'United Kingdom',
+      fuelCost: 8664335535,
+      litres: 0,
+      punctureCost: 8,
+      otherCost: 0,
+      remarks: 'Highway Diesel Refill & Toll',
+      date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      dateStr: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      time: '11:43 PM'
+    },
+    {
+      id: 'sample_log_2',
+      driver: 'Ramesh Driver',
+      vehicle: 'UP32KK6652',
+      leadCode: 'LD-1787658027865-8278',
+      leadCustomer: 'Sahara Stone Corp 070',
+      totalKm: 8800,
+      fromLocation: 'Delhi',
+      toLocation: 'United Kingdom',
+      fuelCost: 7223322,
+      litres: 75,
+      punctureCost: 73,
+      otherCost: 0,
+      remarks: 'Regular Highway Maintenance & Tire Check',
+      date: new Date(Date.now() - 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      dateStr: new Date(Date.now() - 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      time: '11:35 AM'
+    }
+  ]);
 
   // Driver Uploaded Proofs List
   const [driverUploadedProofs, setDriverUploadedProofs] = useState([]);
@@ -1333,26 +1371,12 @@ export default function TransportManager() {
           {/* MIDDLE ROW 2: GOOGLE MAP LIVE GPS & TRANSPORT & DRIVER CHAT HUB */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
             <div className="lg:col-span-7 border rounded-sm overflow-hidden flex flex-col h-[420px]" style={CARD}>
-              <div className="p-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
-                <h2 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
-                  <FiNavigation className="text-sky-400" size={15} /> Google Map Live Driver Location & Geofencing
-                </h2>
-                <span className="text-[9px] text-emerald-400 font-bold">Geofence Active</span>
-              </div>
-
-              <div className="relative w-full flex-1 min-h-[360px] bg-[#0b1329]">
-                <iframe
-                  title="Google Map Fleet"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0, filter: 'invert(90%) hue-rotate(180%)' }}
-                  src={`https://maps.google.com/maps?q=${gpsLocation.lat},${gpsLocation.long}&z=11&output=embed`}
-                />
-                <div className="absolute top-3 left-3 border p-2.5 rounded-sm shadow-xl text-[10px] space-y-1" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
-                  <div className="text-emerald-400 font-bold">● Active Fleet GPS Tracking ({metrics.activeTripsOnRoad} Trucks)</div>
-                  <div className="text-[var(--crm-ink-soft)]">Delhi-Agra Expressway Corridor</div>
-                </div>
-              </div>
+              <TransportMap 
+                trips={trips} 
+                activeDrivers={driversList}
+                gpsLocation={gpsLocation}
+                height="420px"
+              />
             </div>
 
             {/* TRANSPORT & DRIVER CHAT HUB */}
@@ -1523,9 +1547,14 @@ export default function TransportManager() {
                         <span className="text-[var(--crm-heading)] font-bold text-xs flex items-center gap-1.5">
                           <FiUser className="text-emerald-400" size={12} /> {log.driver} <span className="text-[var(--crm-ink-faint)]">({log.vehicle})</span>
                         </span>
-                        <span className="text-[10px] text-teal-300 font-bold bg-teal-950/50 border border-teal-800/60 px-2 py-0.5 rounded-sm flex items-center gap-1">
-                          <FiPackage size={11} /> Log Ref: <strong className="underline text-teal-200">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1">
+                            <FiCalendar size={11} className="text-teal-400" /> {log.date || log.dateStr || 'Today'} {log.time ? `• ${log.time}` : ''}
+                          </span>
+                          <span className="text-[10px] text-teal-300 font-bold bg-teal-950/50 border border-teal-800/60 px-2 py-0.5 rounded-sm flex items-center gap-1">
+                            <FiPackage size={11} /> Log Ref: <strong className="underline text-teal-200">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-0.5">

@@ -15,7 +15,8 @@ const env = {
   CORS_WHITELIST: process.env.CORS_WHITELIST ? process.env.CORS_WHITELIST.split(',') : ['https://ito-7u4q.vercel.app/', 'http://localhost:3000', 'http://localhost:5173'],
   DEVICE_VERIFICATION_ENABLED: process.env.DEVICE_VERIFICATION_ENABLED,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-  FRONTEND_URL: process.env.FRONTEND_URL || 'https://www.indiatradeoverseas.com'
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://www.indiatradeoverseas.com',
+  BACKEND_URL: process.env.BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com'
 };
 
 module.exports = env;

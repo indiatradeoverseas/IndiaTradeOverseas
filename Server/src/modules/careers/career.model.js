@@ -66,6 +66,39 @@ const careerApplicationSchema = new mongoose.Schema({
     enum: ['PENDING', 'REVIEWED', 'ACCEPTED', 'REJECTED'],
     default: 'PENDING'
   },
+  totalRounds: {
+    type: Number,
+    default: 3
+  },
+  interviews: [
+    {
+      roundNumber: { type: Number, default: 1 },
+      totalRounds: { type: Number, default: 3 },
+      roundName: { type: String, default: 'Round 1' },
+      interviewerId: { type: String },
+      interviewerName: { type: String },
+      scheduledDate: { type: String },
+      scheduledTime: { type: String },
+      meetingLink: { type: String, default: '' },
+      notes: { type: String, default: '' },
+      status: { type: String, enum: ['SCHEDULED', 'PASSED', 'FAILED', 'ON_HOLD'], default: 'SCHEDULED' },
+      rating: { type: Number, default: 0 },
+      feedback: { type: String, default: '' },
+      evaluatedBy: { type: String, default: '' },
+      evaluatedAt: { type: Date }
+    }
+  ],
+  assignedTo: {
+    type: String,
+    default: ''
+  },
+  assignedToName: {
+    type: String,
+    default: ''
+  },
+  assignedAt: {
+    type: Date
+  },
   appliedAt: {
     type: Date,
     default: Date.now

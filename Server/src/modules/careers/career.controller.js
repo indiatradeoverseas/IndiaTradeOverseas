@@ -79,38 +79,60 @@ const updateApplicationStatus = async (req, res, next) => {
       return fail(res, 400, 'VALIDATION_ERROR', 'Please provide a valid status.');
     }
 
-    const application = await CareerApplication.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
+    const application = await CareerApplication.findById(req.params.id);
 
     if (!application) {
       return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
     }
 
-    // Send email to candidate when status is set to REVIEWED (meaning interview scheduled)
-    if (status === 'REVIEWED' && interviewDetails) {
-      const { date, time, interviewerName, notes } = interviewDetails;
-      const { sendEmail } = require('../../utils/mailer');
+    application.status = status;
+
+    // Push new interview round into interviews array if interview details are provided
+    if (interviewDetails) {
+      const { date, time, interviewerName, interviewerId, roundNumber, roundName, totalRounds, notes, meetingLink } = interviewDetails;
       
-      const subject = 'Your Interview has been Scheduled - India Trade Overseas';
-      const text = `Dear ${application.fullName},\n\nYour interview for the position of ${application.position} has been scheduled.\n\nDate: ${date}\nTime: ${time}\nInterviewer: ${interviewerName}\n\nNotes: ${notes || 'None'}\n\nBest regards,\nIndia Trade Overseas`;
+      if (totalRounds) {
+        application.totalRounds = Number(totalRounds);
+      }
+
+      const calculatedTotalRounds = Number(totalRounds || application.totalRounds || 3);
+
+      const newRound = {
+        roundNumber: Number(roundNumber || (application.interviews ? application.interviews.length + 1 : 1)),
+        totalRounds: calculatedTotalRounds,
+        roundName: roundName || `Round ${application.interviews ? application.interviews.length + 1 : 1}`,
+        interviewerId: interviewerId || '',
+        interviewerName: interviewerName || 'Assigned Interviewer',
+        scheduledDate: date || '',
+        scheduledTime: time || '',
+        meetingLink: meetingLink || '',
+        notes: notes || '',
+        status: 'SCHEDULED'
+      };
+
+      if (!application.interviews) application.interviews = [];
+      application.interviews.push(newRound);
+
+      // Send email to candidate
+      const { sendEmail } = require('../../utils/mailer');
+      const subject = `Interview Scheduled - ${newRound.roundName} - India Trade Overseas`;
+      const text = `Dear ${application.fullName},\n\nYour interview (${newRound.roundName}) for the position of ${application.position} has been scheduled.\n\nDate: ${date}\nTime: ${time}\nInterviewer: ${interviewerName}\nMeeting Link: ${meetingLink || 'To be shared'}\nNotes: ${notes || 'None'}\n\nBest regards,\nIndia Trade Overseas`;
       
       const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #0E1116; border-bottom: 2px solid #C89A54; padding-bottom: 10px;">Interview Invitation</h2>
+          <h2 style="color: #0E1116; border-bottom: 2px solid #C89A54; padding-bottom: 10px;">Interview Invitation - ${newRound.roundName}</h2>
           <p>Dear <strong>${application.fullName}</strong>,</p>
-          <p>We are pleased to invite you for an interview for the <strong>${application.position}</strong> position at India Trade Overseas.</p>
+          <p>We are pleased to invite you for <strong>${newRound.roundName}</strong> for the <strong>${application.position}</strong> position at India Trade Overseas.</p>
           
           <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #C89A54; margin: 20px 0;">
             <p style="margin: 5px 0;"><strong>Date:</strong> ${date}</p>
             <p style="margin: 5px 0;"><strong>Time:</strong> ${time}</p>
             <p style="margin: 5px 0;"><strong>Interviewer:</strong> ${interviewerName}</p>
+            ${meetingLink ? `<p style="margin: 5px 0;"><strong>Meeting Link (Google Meet / Zoom):</strong> <a href="${meetingLink}" target="_blank" style="color: #C89A54; font-weight: bold;">${meetingLink}</a></p>` : ''}
             ${notes ? `<p style="margin: 5px 0;"><strong>Additional Info:</strong> ${notes}</p>` : ''}
           </div>
           
-          <p>Please stay tuned for further details or online meeting links.</p>
+          <p>Please click on the meeting link at the scheduled time to join the interview session.</p>
           <p style="margin-top: 25px;">Best regards,<br/><strong>India Trade Overseas HR Team</strong></p>
         </div>
       `;
@@ -120,7 +142,62 @@ const updateApplicationStatus = async (req, res, next) => {
       });
     }
 
+    await application.save();
+
     return ok(res, { application }, `Application status updated to ${status}`, 200, req);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const submitInterviewFeedback = async (req, res, next) => {
+  try {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can submit interview feedback.');
+    }
+
+    const { id: applicationId, interviewId } = req.params;
+    const { status, rating, feedback } = req.body;
+
+    if (!status || !['PASSED', 'FAILED', 'ON_HOLD'].includes(status)) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Please select a valid evaluation result (PASSED, FAILED, ON_HOLD).');
+    }
+
+    const application = await CareerApplication.findById(applicationId);
+    if (!application) {
+      return fail(res, 404, 'NOT_FOUND', 'Job application not found.');
+    }
+
+    let round = null;
+    if (interviewId && application.interviews) {
+      round = application.interviews.id(interviewId) || application.interviews.find(i => i._id && i._id.toString() === interviewId);
+    }
+    if (!round && application.interviews && application.interviews.length > 0) {
+      round = application.interviews[application.interviews.length - 1];
+    }
+
+    if (!round) {
+      return fail(res, 404, 'NOT_FOUND', 'No interview round record found to evaluate.');
+    }
+
+    round.status = status;
+    round.rating = Number(rating || 0);
+    round.feedback = feedback || '';
+    round.evaluatedBy = req.user.fullName || req.user.name || 'HR Evaluator';
+    round.evaluatedAt = new Date();
+
+    if (status === 'FAILED') {
+      application.status = 'REJECTED';
+    } else if (status === 'PASSED') {
+      const allPassed = application.interviews.every(i => i.status === 'PASSED');
+      if (allPassed) {
+        application.status = 'ACCEPTED';
+      }
+    }
+
+    await application.save();
+
+    return ok(res, { application }, `Interview evaluation submitted: ${status}`, 200, req);
   } catch (error) {
     next(error);
   }
@@ -149,7 +226,7 @@ const downloadResume = async (req, res, next) => {
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
       try {
-        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/${req.params.id}/resume`;
+        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/careers/${req.params.id}/resume`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -187,7 +264,7 @@ const downloadCoverLetter = async (req, res, next) => {
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
       try {
-        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/${req.params.id}/cover-letter`;
+        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/careers/${req.params.id}/cover-letter`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -432,7 +509,7 @@ const downloadJobJD = async (req, res, next) => {
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
       try {
-        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/jobs/${req.params.id}/jd`;
+        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/careers/jobs/${req.params.id}/jd`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -447,10 +524,51 @@ const downloadJobJD = async (req, res, next) => {
   }
 };
 
+const bulkAssignApplications = async (req, res, next) => {
+  try {
+    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can assign applications.');
+    }
+
+    const { applicationIds, assignedTo, assignedToName } = req.body;
+
+    if (!applicationIds || !Array.isArray(applicationIds) || applicationIds.length === 0) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Please provide a non-empty array of applicationIds.');
+    }
+
+    if (!assignedToName) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Please select an HR Executive to assign.');
+    }
+
+    await CareerApplication.updateMany(
+      { _id: { $in: applicationIds } },
+      {
+        $set: {
+          assignedTo: assignedTo || '',
+          assignedToName,
+          assignedAt: new Date()
+        }
+      }
+    );
+
+    return ok(
+      res,
+      { count: applicationIds.length },
+      `Successfully assigned ${applicationIds.length} candidate applications to ${assignedToName}`,
+      200,
+      req
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   applyJob,
   listApplications,
   updateApplicationStatus,
+  submitInterviewFeedback,
+  bulkAssignApplications,
   downloadResume,
   downloadCoverLetter,
   submitGateLead,

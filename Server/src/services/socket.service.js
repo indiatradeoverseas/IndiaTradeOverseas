@@ -153,6 +153,20 @@ function init(server) {
       io.emit('driver_work_update', workData);
     });
 
+    // Driver GPS Live Location Real-Time Broadcast Handler
+    socket.on('driver_location_update', (locationData) => {
+      console.log(`[WebSocket] Driver GPS Update from ${locationData?.driverName}:`, locationData?.lat, locationData?.long);
+      io.emit('driver_location_update', locationData);
+    });
+
+    socket.on('task_assigned', (data) => {
+      io.emit('task_assigned', data);
+    });
+
+    socket.on('dispatch_assigned', (data) => {
+      io.emit('dispatch_assigned', data);
+    });
+
     socket.on('disconnect', () => {
       if (employeeId && connectedEmployees.has(employeeId)) {
         const sockets = connectedEmployees.get(employeeId);

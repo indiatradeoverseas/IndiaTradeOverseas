@@ -43,17 +43,17 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
 
 function canAccessLead(user, lead) {
   if (!user) return false;
-  const role = user.role || '';
-  const dept = user.department || '';
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
   const isManagerOrAdmin =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
-    role.toLowerCase().includes('manager') ||
+    role.includes('MANAGER') ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS' ||
     role === 'DRIVER' ||
-    role.toLowerCase().includes('driver') ||
+    role.includes('DRIVER') ||
     dept === 'ADMIN' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
@@ -65,9 +65,17 @@ function canAccessLead(user, lead) {
     role === 'HR' ||
     role === 'ACCOUNTS' ||
     role === 'FINANCE' ||
+    role === 'SALES' ||
+    role === 'SALES_EXECUTIVE' ||
+    role === 'EMPLOYEE' ||
+    user.leadPermission === true ||
+    user.permissions?.lead === true ||
+    user.taskPermission === true ||
+    user.permissions?.task === true ||
     user.paymentPermission === true ||
     user.dispatchPermission === true ||
-    user.quotationPermission === true
+    user.quotationPermission === true ||
+    dept === 'SALES'
   ) {
     result = true;
   } else {

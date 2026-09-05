@@ -21,7 +21,8 @@ import {
   FiCommand,
   FiHome,
   FiLayers,
-  FiCreditCard
+  FiCreditCard,
+  FiCheckCircle
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -174,13 +175,14 @@ function isDriverRole(user) {
 export function getCrmMainNavItems(user) {
   const admin = isAdminUser(user);
 
-  // 1. DRIVER: Driver Dashboard, Support Tickets, Payment Proof & My Profile
+  // 1. DRIVER: Driver Dashboard, Completed & Delivered Loads, Payment Proof, Support Tickets & My Profile
   if (!admin && isDriverRole(user)) {
     return [
       { to: '/crm/transport/driver', label: 'Driver Dashboard', icon: FiTruck },
+      { to: '/crm/transport/driver?tab=COMPLETED_DELIVERED', label: 'Completed & Delivered Loads', icon: FiCheckCircle },
+      { to: '/crm/transport/driver?tab=PAYMENTS', label: 'Payment Proof', icon: FiCreditCard },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
-      { to: '/crm/profile', label: 'My Profile', icon: FiUser },
-      { to: '/crm/transport/driver?tab=PAYMENTS', label: 'Payment Proof', icon: FiCreditCard }
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser }
     ];
   }
 

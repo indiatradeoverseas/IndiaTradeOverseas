@@ -77,14 +77,19 @@ const EmployeeLogin = () => {
           });
           pushDataLayerEvent('login', { method: 'employee' });
           const role = response.data?.employee?.role;
-          if (role === 'HR_MANAGER') {
+          const dept = response.data?.employee?.department;
+          if (role === 'HR_MANAGER' || (dept === 'HR' && role === 'MANAGER')) {
             navigate('/crm/hr/manager');
           } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
             navigate('/crm/hr/executive');
           } else if (role === 'DRIVER') {
             navigate('/crm/transport/driver');
-          } else if (role === 'MANAGER' || role === 'LOGISTICS_MANAGER') {
+          } else if (role === 'TRANSPORT_MANAGER' || role === 'LOGISTICS_MANAGER' || ((dept === 'TRANSPORT' || dept === 'LOGISTICS') && role === 'MANAGER')) {
             navigate('/crm/transport/manager');
+          } else if (role === 'TRANSPORT_EXECUTIVE' || ((dept === 'TRANSPORT' || dept === 'LOGISTICS') && role !== 'MANAGER')) {
+            navigate('/crm/transport/executive');
+          } else if (role === 'FINANCE_MANAGER' || (dept === 'FINANCE' && role === 'MANAGER')) {
+            navigate('/crm/finance/manager');
           } else {
             navigate('/crm/dashboard');
           }
@@ -316,14 +321,19 @@ const EmployeeLogin = () => {
 
         // Redirect based on role
         const role = response.data?.employee?.role;
-        if (role === 'HR_MANAGER') {
+        const dept = response.data?.employee?.department;
+        if (role === 'HR_MANAGER' || (dept === 'HR' && role === 'MANAGER')) {
           navigate('/crm/hr/manager');
         } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
           navigate('/crm/hr/executive');
         } else if (role === 'DRIVER') {
           navigate('/crm/transport/driver');
-        } else if (role === 'MANAGER' || role === 'LOGISTICS_MANAGER') {
+        } else if (role === 'TRANSPORT_MANAGER' || role === 'LOGISTICS_MANAGER' || ((dept === 'TRANSPORT' || dept === 'LOGISTICS') && role === 'MANAGER')) {
           navigate('/crm/transport/manager');
+        } else if (role === 'TRANSPORT_EXECUTIVE' || ((dept === 'TRANSPORT' || dept === 'LOGISTICS') && role !== 'MANAGER')) {
+          navigate('/crm/transport/executive');
+        } else if (role === 'FINANCE_MANAGER' || (dept === 'FINANCE' && role === 'MANAGER')) {
+          navigate('/crm/finance/manager');
         } else {
           navigate('/crm/dashboard');
         }

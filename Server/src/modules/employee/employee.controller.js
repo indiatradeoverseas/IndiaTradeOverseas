@@ -16,6 +16,7 @@ async function syncEmployeeToUser(employee, passwordHash) {
       fullName: employee.name || employee.fullName,
       email: employee.email.toLowerCase(),
       phone: employee.phone || '',
+      profileImage: employee.profileImage || '',
       passwordHash: passwordHash || employee.password,
       role: employee.role || 'EMPLOYEE',
       department: employee.department || 'SALES',

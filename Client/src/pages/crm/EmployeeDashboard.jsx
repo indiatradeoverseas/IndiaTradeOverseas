@@ -571,8 +571,9 @@ export default function EmployeeDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const baseUrl = 'http://localhost:5000/';
-                                const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}${t.fileUrl}`;
+                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}/${t.fileUrl.replace(/^\/+/, '')}`;
                                 const link = document.createElement('a');
                                 link.href = absoluteUrl;
                                 link.setAttribute('download', t.fileOriginalName);
@@ -594,8 +595,9 @@ export default function EmployeeDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const baseUrl = 'http://localhost:5000/';
-                                const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}${t.completionFileUrl}`;
+                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}/${t.completionFileUrl.replace(/^\/+/, '')}`;
                                 const link = document.createElement('a');
                                 link.href = absoluteUrl;
                                 link.setAttribute('download', t.completionFileOriginalName);

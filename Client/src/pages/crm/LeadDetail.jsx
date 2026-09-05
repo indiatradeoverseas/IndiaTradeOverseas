@@ -367,9 +367,10 @@ export default function LeadDetail() {
 
     if (l.targetDate) {
       const diffHours = (new Date(l.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60);
-      if (diffHours <= 72) score += 45;
-      else if (diffHours <= 168) score += 30;
-      else score += 15;
+      const diffDays = Math.ceil(diffHours / 24);
+      if (diffDays <= 4) score += 50;
+      else if (diffDays <= 10) score += 30;
+      else score += 10;
     }
 
     if (l.priority === 'HOT') score = Math.max(score, 85);

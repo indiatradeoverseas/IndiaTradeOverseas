@@ -71,6 +71,10 @@ import ChatWidget from './components/Chat/ChatWidget';
 import Prakriti from './pages/public/Prakriti';
 import OurServices from './pages/public/OurServices';
 import ITOAds from './pages/public/ITOAds';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import Terms from './pages/legal/Terms';
+import Disclaimer from './pages/legal/Disclaimer';
+import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -479,6 +483,11 @@ function AppLayout() {
           <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
           <Route path="/ito-ads" element={<ITOAds />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/terms-and-conditions" element={<Terms />} />
+          <Route path="/fraud-payment-policy" element={<FraudPaymentPolicy />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
         </Routes>
       </main>
       {!isITOAds && <Footer />}

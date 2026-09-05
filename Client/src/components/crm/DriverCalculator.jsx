@@ -12,6 +12,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
   const [numberOfTrips, setNumberOfTrips] = useState(1);
   const [km, setKm] = useState('');
   const [rate, setRate] = useState('');
+  const [calcDate, setCalcDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [submittedHistory, setSubmittedHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +39,28 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
       if (socket) socket.off('driver_work_update', handleIncomingSocketWorkUpdate);
     };
   }, [defaultDriverName, defaultVehicleNo]);
+
+  // Safe Date + Time Formatter Helper (guarantees no NaN / Undefined crashes)
+  const formatSafeDateDisplay = (dateVal, timeVal) => {
+    try {
+      let datePart = '';
+      if (dateVal) {
+        const dObj = new Date(dateVal);
+        if (!isNaN(dObj.getTime())) {
+          datePart = dObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        } else {
+          datePart = String(dateVal);
+        }
+      }
+      if (!datePart) {
+        datePart = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      const timePart = timeVal ? String(timeVal) : '';
+      return timePart ? `${datePart} • ${timePart}` : datePart;
+    } catch (e) {
+      return 'Today';
+    }
+  };
 
   const fetchCalculationsFromMongo = async () => {
     try {
@@ -74,6 +97,24 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               if (mTotal) totalVal = Number(mTotal[1].replace(/,/g, ''));
             }
 
+            const rawDate = meta.calculationDate || meta.calcDate || u.createdAt || u.date;
+            let formattedTime = u.time || '12:00 PM';
+            let formattedDate = '';
+
+            if (rawDate) {
+              const parsedD = new Date(rawDate);
+              if (!isNaN(parsedD.getTime())) {
+                formattedTime = parsedD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                formattedDate = parsedD.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+              } else if (typeof rawDate === 'string') {
+                formattedDate = rawDate;
+              }
+            }
+
+            if (!formattedDate) {
+              formattedDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            }
+
             return {
               id: u._id || u.id || Date.now(),
               driverName: u.driverName || u.driver || meta.driverName || 'Driver',
@@ -82,8 +123,8 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               km: kmVal || 0,
               rate: rateVal || 0,
               totalRupees: totalVal || 0,
-              timestamp: u.createdAt ? new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (u.time || '12:00 PM'),
-              dateStr: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')
+              timestamp: formattedTime,
+              dateStr: formattedDate
             };
           });
 
@@ -107,6 +148,16 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
 
     setLoading(true);
 
+    let displayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    try {
+      if (calcDate) {
+        const dObj = new Date(calcDate);
+        if (!isNaN(dObj.getTime())) {
+          displayDate = dObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+      }
+    } catch (e) {}
+
     const calcObj = {
       id: Date.now(),
       driverName: driverName.trim(),
@@ -116,7 +167,8 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
       rate: numRate,
       totalRupees,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      dateStr: new Date().toLocaleDateString('en-IN')
+      dateStr: displayDate,
+      calcDate: calcDate
     };
 
     // Optimistically prepend to UI state
@@ -128,7 +180,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
         driverName: calcObj.driverName,
         vehicleNo: calcObj.vehicleNumber,
         updateType: 'Calculation',
-        notes: `📊 Fare Calculation: ${numKm} KM * ₹${numRate} (${numTrips} Trips) = ₹${totalRupees.toLocaleString('en-IN')}`,
+        notes: `📊 Fare Calculation (${displayDate}): ${numKm} KM * ₹${numRate} (${numTrips} Trips) = ₹${totalRupees.toLocaleString('en-IN')}`,
         location: 'Fare Calculator',
         metadata: {
           type: 'CALCULATION',
@@ -137,7 +189,8 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
           numberOfTrips: numTrips,
           km: numKm,
           rate: numRate,
-          totalRupees
+          totalRupees,
+          calculationDate: calcDate
         }
       });
 
@@ -149,7 +202,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
           driver: calcObj.driverName,
           vehicle: calcObj.vehicleNumber,
           stage: 'Calculation',
-          update: `📊 Fare Calculation Submitted: ${numKm} KM * ₹${numRate} (${numTrips} Trips) = ₹${totalRupees.toLocaleString('en-IN')}`,
+          update: `📊 Fare Calculation Submitted (${displayDate}): ${numKm} KM * ₹${numRate} (${numTrips} Trips) = ₹${totalRupees.toLocaleString('en-IN')}`,
           location: 'Fare Calculator',
           time: calcObj.timestamp
         });
@@ -179,8 +232,8 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
 
       {/* Form Fields Grid matching sketch */}
       <div className="space-y-4 text-xs font-mono">
-        {/* ROW 1: DriverName, Vehical Number, Number of Trip */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* ROW 1: DriverName, Vehical Number, Number of Trip, Date */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
               DriverName
@@ -218,6 +271,18 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               onChange={(e) => setNumberOfTrips(e.target.value)}
               placeholder="1"
               className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-mono rounded-sm outline-none focus:border-teal-500/60"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
+              Date
+            </label>
+            <input
+              type="date"
+              value={calcDate}
+              onChange={(e) => setCalcDate(e.target.value)}
+              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-mono rounded-sm outline-none focus:border-teal-500/60 cursor-pointer"
             />
           </div>
         </div>
@@ -271,7 +336,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
                 Total Rupess
               </label>
               <div className="w-full px-3 py-2 bg-emerald-950/50 border border-emerald-800 text-emerald-400 font-extrabold text-sm font-mono rounded-sm flex items-center justify-between">
-                <span>₹{totalRupees.toLocaleString('en-IN')}</span>
+                <span>₹{(Number(totalRupees) || 0).toLocaleString('en-IN')}</span>
                 {numTrips > 1 && (
                   <span className="text-[9px] text-emerald-300/80 font-normal">
                     ({numTrips} Trips)
@@ -310,15 +375,17 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               {submittedHistory.map((item) => (
                 <div key={item.id} className="p-2 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] rounded-sm text-[11px] flex items-center justify-between font-mono hover:border-emerald-500/40 transition">
                   <div>
-                    <strong className="text-[var(--crm-heading)]">{item.driverName}</strong>
-                    <span className="text-[var(--crm-ink-faint)] ml-1">({item.vehicleNumber})</span>
+                    <strong className="text-[var(--crm-heading)]">{item.driverName || 'Driver'}</strong>
+                    <span className="text-[var(--crm-ink-faint)] ml-1">({item.vehicleNumber || 'Unassigned'})</span>
                     <div className="text-[10px] text-[var(--crm-ink-soft)]">
                       {item.km > 0 ? `${item.km} KM * ₹${item.rate}` : 'Fare Calculation'} {item.numberOfTrips > 1 && `(${item.numberOfTrips} Trips)`}
                     </div>
                   </div>
                   <div className="text-right">
-                    <strong className="text-emerald-400 text-xs block">₹{item.totalRupees.toLocaleString('en-IN')}</strong>
-                    <span className="text-[9px] text-[var(--crm-ink-faint)]">{item.timestamp}</span>
+                    <strong className="text-emerald-400 text-xs block">₹{(Number(item.totalRupees) || 0).toLocaleString('en-IN')}</strong>
+                    <span className="text-[9px] text-[var(--crm-ink-faint)] block font-mono">
+                      📅 {formatSafeDateDisplay(item.dateStr, item.timestamp)}
+                    </span>
                   </div>
                 </div>
               ))}

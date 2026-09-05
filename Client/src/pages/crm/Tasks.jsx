@@ -677,7 +677,11 @@ export default function Tasks() {
                           <div className="flex justify-between items-center pt-1 border-t border-[var(--crm-line)]/40">
                             <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Attachment:</span>
                             <a
-                              href={`http://localhost:5000/${task.fileUrl}`}
+                              href={(() => {
+                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                return task.fileUrl.startsWith('http') ? task.fileUrl : `${baseUrl}/${task.fileUrl.replace(/^\/+/, '')}`;
+                              })()}
                               target="_blank"
                               rel="noreferrer"
                               className="text-xs text-teal-400 hover:underline flex items-center gap-1 font-mono text-[10px]"
@@ -695,7 +699,11 @@ export default function Tasks() {
                           <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic">"{task.remarks}"</p>
                           {task.completionFileUrl && (
                             <a
-                              href={`http://localhost:5000/${task.completionFileUrl}`}
+                              href={(() => {
+                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                return task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}/${task.completionFileUrl.replace(/^\/+/, '')}`;
+                              })()}
                               target="_blank"
                               rel="noreferrer"
                               className="text-[9px] text-teal-400 hover:underline flex items-center gap-1 font-mono mt-1.5"

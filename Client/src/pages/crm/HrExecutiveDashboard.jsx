@@ -26,6 +26,8 @@ import { attendanceApi } from '../../api/attendance';
 import { leaveApi } from '../../api/leave';
 import { employeesApi } from '../../api/employees';
 import { employeeProfileApi } from '../../api/employeeProfile';
+import { adminApi } from '../../api/admin';
+import { careersApi } from '../../api/careers';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -69,6 +71,18 @@ export default function HrExecutiveDashboard() {
   const [candidateRating, setCandidateRating] = useState(5);
   const [interviewStatus, setInterviewStatus] = useState('PENDING');
 
+  // Schedule Interview Modal state for HR Executive
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedCandidateForSchedule, setSelectedCandidateForSchedule] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    date: '',
+    time: '11:00',
+    roundName: 'Round 1 - Screening',
+    totalRounds: 3,
+    meetingLink: '',
+    notes: ''
+  });
+
   // New Personal Attendance & Leave states for Executive Role
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
@@ -83,12 +97,13 @@ export default function HrExecutiveDashboard() {
 
   const fetchPersonalHRData = async () => {
     try {
-      const [attToday, attLogs, lvBal, lvLogs, tskList] = await Promise.all([
+      const [attToday, attLogs, lvBal, lvLogs, tskList, appsRes] = await Promise.all([
         attendanceApi.getMyToday().catch(() => null),
         attendanceApi.getMyHistory({ limit: 5 }).catch(() => null),
         leaveApi.getMyBalance().catch(() => null),
         leaveApi.getLeaves().catch(() => null),
-        taskApi.getTasks().catch(() => null)
+        taskApi.getTasks().catch(() => null),
+        careersApi.getApplications().catch(() => null)
       ]);
 
       if (attToday && attToday.success) setTodayAttendance(attToday.data.record || attToday.data.attendance);
@@ -99,7 +114,87 @@ export default function HrExecutiveDashboard() {
       } else if (Array.isArray(lvLogs)) {
         setLeaveHistory(lvLogs);
       }
-      if (tskList && tskList.success) setTasks(tskList.data.tasks || []);
+
+      let backendTasks = [];
+      if (tskList && tskList.success) {
+        backendTasks = (tskList.data.tasks || []).map(t => ({ ...t, isUserBackendTask: true }));
+      }
+
+      let candidateTasks = [];
+      let extractedInterviews = [];
+
+      if (appsRes && appsRes.success) {
+        const mongoApplications = appsRes.data.applications || [];
+        mongoApplications.forEach(app => {
+          const isCandidateAssigned = isTaskForUser({ assignedTo: app.assignedTo, assignedToName: app.assignedToName }, user);
+          
+          if (isCandidateAssigned) {
+            candidateTasks.push({
+              _id: `app_task_${app._id}`,
+              id: app._id,
+              isApplicationTask: true,
+              candidateApp: app,
+              title: `Recruitment Lead Review: ${app.fullName} (${app.position})`,
+              description: `Assigned candidate lead review & evaluation for ${app.position}. Contact: ${app.phone} | ${app.email}.`,
+              dueDate: app.assignedAt || app.appliedAt || new Date().toISOString(),
+              priority: app.status === 'PENDING' ? 'HIGH' : 'MEDIUM',
+              status: app.status === 'ACCEPTED' || app.status === 'REJECTED' ? 'COMPLETED' : 'PENDING',
+              assignedBy: { name: 'HR Manager' },
+              category: 'RECRUITMENT'
+            });
+
+            // If assigned candidate has NO interviews scheduled yet, add an unscheduled panel item for the Executive
+            if (!app.interviews || app.interviews.length === 0) {
+              extractedInterviews.push({
+                id: `unscheduled_${app._id}`,
+                isUnscheduled: true,
+                candidateApp: app,
+                candidateId: app._id,
+                candidateName: app.fullName,
+                candidateEmail: app.email,
+                position: app.position,
+                interviewerId: user?._id || user?.employeeId,
+                interviewerName: user?.fullName || user?.name,
+                assignedTo: app.assignedTo,
+                assignedToName: app.assignedToName,
+                status: 'NOT_SCHEDULED'
+              });
+            }
+          }
+
+          if (app.interviews && app.interviews.length > 0) {
+            app.interviews.forEach(rnd => {
+              const isInterviewer = isInterviewForUser({ interviewerId: rnd.interviewerId, interviewerName: rnd.interviewerName, assignedToName: app.assignedToName }, user);
+              if (isInterviewer || isCandidateAssigned) {
+                extractedInterviews.push({
+                  id: rnd._id || rnd.id,
+                  candidateId: app._id,
+                  candidateApp: app,
+                  interviewId: rnd._id || rnd.id,
+                  candidateName: app.fullName,
+                  candidateEmail: app.email,
+                  position: app.position,
+                  interviewerId: rnd.interviewerId,
+                  interviewerName: rnd.interviewerName,
+                  assignedTo: app.assignedTo,
+                  assignedToName: app.assignedToName,
+                  date: rnd.scheduledDate || 'TBD',
+                  time: rnd.scheduledTime || 'TBD',
+                  roundName: rnd.roundName || `Round ${rnd.roundNumber || 1}`,
+                  meetingLink: rnd.meetingLink || '',
+                  notes: rnd.notes || '',
+                  status: rnd.status || 'SCHEDULED',
+                  rating: rnd.rating || 5,
+                  feedback: rnd.feedback || ''
+                });
+              }
+            });
+          }
+        });
+      }
+
+      setTasks([...backendTasks, ...candidateTasks]);
+      setInterviews(extractedInterviews);
     } catch (err) {
       console.error(err);
     }
@@ -123,113 +218,172 @@ export default function HrExecutiveDashboard() {
       window.removeEventListener('ticket_created_event', fetchTickets);
       window.removeEventListener('storage', handleSocketTask);
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    // Load local storage fallback records
-    const storedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews')) || [];
-    setInterviews(storedInterviews);
+    // Initial checklist items
+    if (checklist.length === 0) {
+      setChecklist([
+        { id: 'item_1', text: 'Audit daily biometric attendance logs', completed: false },
+        { id: 'item_2', text: 'Filter new resume submissions from the Careers portal', completed: false },
+        { id: 'item_3', text: 'Contact scheduled panel candidates for verification', completed: false },
+        { id: 'item_4', text: 'Verify pending documents for newly boarded employees', completed: false },
+        { id: 'item_5', text: 'Compile daily recruitment pipeline summaries for Manager review', completed: false }
+      ]);
+    }
 
-    // Load user-specific checklist
-    const storedChecklist = JSON.parse(localStorage.getItem(`hr_executive_checklist_${user?.employeeId}`)) || [
-      { id: 'item_1', text: 'Audit daily biometric attendance logs', completed: false },
-      { id: 'item_2', text: 'Filter new resume submissions from the Careers portal', completed: false },
-      { id: 'item_3', text: 'Contact scheduled panel candidates for verification', completed: false },
-      { id: 'item_4', text: 'Verify pending documents for newly boarded employees', completed: false },
-      { id: 'item_5', text: 'Compile daily recruitment pipeline summaries for Manager review', completed: false }
-    ];
-    setChecklist(storedChecklist);
-
-    // Load support tickets/grievances
     fetchTickets();
-    // Load backend tasks, logs, and balances
     fetchPersonalHRData();
-    // Load live telemetry from MongoDB employees
     fetchRealTelemetry();
   }, [user]);
 
   const fetchRealTelemetry = async () => {
     try {
-      const res = await employeesApi.getEmployees();
-      const emps = res?.data?.employees || res?.employees || res?.data || [];
-      if (Array.isArray(emps) && emps.length > 0) {
-        const storedVerifications = JSON.parse(localStorage.getItem('hr_telemetry_verifications')) || {};
+      const [empRes, userRes, myDocRes] = await Promise.all([
+        employeesApi.getEmployees().catch(() => null),
+        adminApi.getUsers().catch(() => null),
+        employeeProfileApi.getMyDocuments().catch(() => null)
+      ]);
 
-        // Extract cached uploaded docs across all employees from global vault & local keys
-        const globalVault = JSON.parse(localStorage.getItem('hr_global_uploaded_documents_vault')) || [];
-        const allUploadedDocs = [...globalVault];
+      const empList = empRes?.data?.employees || empRes?.employees || empRes?.data || (Array.isArray(empRes) ? empRes : []);
+      const userList = userRes?.data?.users || userRes?.users || userRes?.data || (Array.isArray(userRes) ? userRes : []);
+      const myDocsList = myDocRes?.data?.documents || myDocRes?.documents || (Array.isArray(myDocRes) ? myDocRes : []);
 
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.startsWith('emp_docs_') || key.includes('doc'))) {
-            const empIdKey = key.replace('emp_docs_', '');
-            try {
-              const val = localStorage.getItem(key);
-              const docsArr = JSON.parse(val);
-              if (Array.isArray(docsArr)) {
-                docsArr.forEach(d => {
-                  if (d && d.fileName && !allUploadedDocs.some(x => x.fileName === d.fileName)) {
-                    allUploadedDocs.push({ ...d, empTargetId: empIdKey });
-                  }
-                });
-              }
-            } catch (e) {}
-          }
+      const empsMap = new Map();
+
+      if (user) {
+        const uId = String(user._id || user.id || 'me');
+        empsMap.set(uId, {
+          _id: user._id || user.id,
+          employeeId: user.employeeId || 'EMP-ME',
+          name: user.fullName || user.name || 'Current User',
+          email: user.email,
+          department: user.department || 'HR'
+        });
+      }
+
+      (Array.isArray(empList) ? empList : []).forEach(e => {
+        const key = String(e._id || e.employeeId || e.email);
+        if (key) {
+          empsMap.set(key, { ...e, name: e.name || e.fullName || 'Employee' });
+        }
+      });
+
+      (Array.isArray(userList) ? userList : []).forEach(u => {
+        const key = String(u._id || u.employeeId || u.email);
+        if (key && !empsMap.has(key)) {
+          empsMap.set(key, { ...u, name: u.fullName || u.name || 'User' });
+        }
+      });
+
+      const emps = Array.from(empsMap.values());
+
+      const mongoDocsMap = {};
+
+      if (Array.isArray(myDocsList) && myDocsList.length > 0 && user) {
+        const myKey = String(user._id || user.id);
+        mongoDocsMap[myKey] = myDocsList;
+        if (user.employeeId) mongoDocsMap[String(user.employeeId)] = myDocsList;
+        if (user.email) mongoDocsMap[user.email.toLowerCase()] = myDocsList;
+      }
+
+      await Promise.all(
+        emps.map(async (emp) => {
+          try {
+            const targetId = emp._id || emp.employeeId;
+            if (!targetId) return;
+            const docRes = await employeeProfileApi.getEmployeeDocuments(targetId);
+            if (docRes && docRes.success && Array.isArray(docRes.data?.documents) && docRes.data.documents.length > 0) {
+              const docArr = docRes.data.documents;
+              mongoDocsMap[String(targetId)] = docArr;
+              if (emp.employeeId) mongoDocsMap[String(emp.employeeId)] = docArr;
+              if (emp.email) mongoDocsMap[emp.email.toLowerCase()] = docArr;
+            }
+          } catch (e) {}
+        })
+      );
+
+      const realDocs = emps.map(emp => {
+        const empId = emp.employeeId || emp._id;
+        const empEmailLower = (emp.email || '').toLowerCase();
+        const empCodeLower = (emp.employeeId || '').toLowerCase();
+        const empMongoId = (emp._id || '').toString();
+
+        const dbDocs = mongoDocsMap[empMongoId] || mongoDocsMap[empCodeLower] || mongoDocsMap[empEmailLower] || [];
+
+        const myDocs = [...dbDocs];
+
+        if ((emp.aadhaarCardCopy || emp.aadhaarNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
+          myDocs.push({ _id: 'doc_aadhaar', fileName: 'Aadhaar Card Copy', createdAt: emp.updatedAt || emp.createdAt, isSynthetic: true });
+        }
+        if ((emp.panCardCopy || emp.panCardNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('pan'))) {
+          myDocs.push({ _id: 'doc_pan', fileName: 'PAN Card Copy', createdAt: emp.updatedAt || emp.createdAt, isSynthetic: true });
         }
 
-        const realDocs = emps.map(emp => {
-          const empId = emp.employeeId || emp._id;
-          const v = storedVerifications[empId] || {};
+        const realUploadedDocs = myDocs.filter(isRealUploadedFile);
+        const latestDoc = realUploadedDocs.length > 0 ? realUploadedDocs[0] : null;
 
-          // Flexible match for this employee
-          const empEmailLower = (emp.email || '').toLowerCase();
-          const empNameLower = (emp.name || emp.fullName || '').toLowerCase();
-          const empCodeLower = (emp.employeeId || '').toLowerCase();
-          const empMongoId = (emp._id || '').toString();
+        return {
+          employeeId: empId,
+          fullName: emp.name || emp.fullName,
+          department: emp.department || 'GENERAL',
+          aadhaarVerified: emp.aadhaarVerified !== undefined ? emp.aadhaarVerified : !!(emp.aadhaarNumber || emp.aadhaarCardCopy),
+          panVerified: emp.panVerified !== undefined ? emp.panVerified : !!(emp.panCardNumber || emp.panCardCopy),
+          bankVerified: emp.bankVerified !== undefined ? emp.bankVerified : !!(emp.bankAccountNumber || emp.bankName),
+          uploadedDocs: myDocs,
+          latestDoc: latestDoc
+        };
+      });
 
-          const myDocs = allUploadedDocs.filter(d => {
-            const dTarget = (d.empTargetId || '').toString().toLowerCase();
-            const dEmpId = (d.employeeId || '').toString().toLowerCase();
-            const dUserMongoId = (d.userMongoId || '').toString();
-            const dEmail = (d.employeeEmail || '').toLowerCase();
-            const dUploader = (d.uploadedBy || '').toLowerCase();
-
-            return (
-              (dTarget && (dTarget === empCodeLower || dTarget === empMongoId)) ||
-              (dEmpId && (dEmpId === empCodeLower || dEmpId === empMongoId)) ||
-              (dUserMongoId && dUserMongoId === empMongoId) ||
-              (dEmail && empEmailLower && dEmail === empEmailLower) ||
-              (dUploader && empNameLower && dUploader === empNameLower)
-            );
-          });
-
-          if ((emp.aadhaarCardCopy || emp.aadhaarNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
-            myDocs.push({ _id: 'doc_aadhaar', fileName: 'Aadhaar Card Copy', createdAt: emp.updatedAt || emp.createdAt });
-          }
-          if ((emp.panCardCopy || emp.panCardNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('pan'))) {
-            myDocs.push({ _id: 'doc_pan', fileName: 'PAN Card Copy', createdAt: emp.updatedAt || emp.createdAt });
-          }
-
-          const latestDoc = myDocs.length > 0 ? myDocs[0] : null;
-
-          return {
-            employeeId: empId,
-            fullName: emp.name || emp.fullName,
-            department: emp.department || 'GENERAL',
-            aadhaarVerified: emp.aadhaarVerified !== undefined ? emp.aadhaarVerified : !!(emp.aadhaarNumber || emp.aadhaarCardCopy),
-            panVerified: emp.panVerified !== undefined ? emp.panVerified : !!(emp.panCardNumber || emp.panCardCopy),
-            bankVerified: emp.bankVerified !== undefined ? emp.bankVerified : !!(emp.bankAccountNumber || emp.bankName),
-            uploadedDocs: myDocs,
-            latestDoc: latestDoc
-          };
-        });
-
-        setDocumentRegistry(realDocs);
-      }
+      setDocumentRegistry(realDocs);
     } catch (err) {
       console.error('Error fetching telemetry employees:', err);
     }
   };
+
+function isRealUploadedFile(d) {
+  if (!d) return false;
+  if (d.isSynthetic) return false;
+  const idStr = String(d._id || '');
+  if (idStr === 'doc_aadhaar' || idStr === 'doc_pan' || idStr === 'doc_resume' || idStr === 'doc_offer') {
+    return false;
+  }
+  if (!d.createdAt) return false;
+  return true;
+}
+
+function isSameCalendarDay(dateStr1, dateStr2) {
+  if (!dateStr1 || !dateStr2) return false;
+  const d1 = new Date(dateStr1);
+  const d2 = new Date(dateStr2);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+}
+
+function isDateMatchingPicker(dateStr, yyyyMmDd) {
+  if (!dateStr || !yyyyMmDd) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}` === yyyyMmDd;
+}
+
+function isEmployeeMatchingFilter(item, filterType, filterDate) {
+  if (!item || !item.uploadedDocs) return filterType === 'ALL';
+  const realDocs = item.uploadedDocs.filter(isRealUploadedFile);
+  if (filterType === 'TODAY') {
+    const today = new Date();
+    return realDocs.some(d => isSameCalendarDay(d.createdAt, today));
+  }
+  if (filterType === 'DATE' && filterDate) {
+    return realDocs.some(d => isDateMatchingPicker(d.createdAt, filterDate));
+  }
+  return true;
+}
 
   const handleVerifyDocument = async (employeeId, field) => {
     try {
@@ -274,14 +428,8 @@ export default function HrExecutiveDashboard() {
     }
   };
 
-  const saveInterviews = (newInterviews) => {
-    setInterviews(newInterviews);
-    localStorage.setItem('scheduled_interviews', JSON.stringify(newInterviews));
-  };
-
   const saveChecklist = (newChecklist) => {
     setChecklist(newChecklist);
-    localStorage.setItem(`hr_executive_checklist_${user?.employeeId}`, JSON.stringify(newChecklist));
   };
 
   // Clock Actions for HR Executive
@@ -343,8 +491,76 @@ export default function HrExecutiveDashboard() {
     }
   };
 
+  // Helper matching functions for tasks & interviews
+  const isTaskForUser = (t, currentUser) => {
+    if (!currentUser || !t) return false;
+    if (t.isUserBackendTask || t.isApplicationTask) return true;
+
+    const uId = String(currentUser._id || currentUser.id || '').toLowerCase();
+    const uEmpId = String(currentUser.employeeId || '').toLowerCase();
+    const uEmail = String(currentUser.email || '').toLowerCase();
+    const uName = String(currentUser.fullName || currentUser.name || '').toLowerCase().trim();
+
+    if (t.assignedTo && typeof t.assignedTo === 'object') {
+      const objId = String(t.assignedTo._id || t.assignedTo.id || '').toLowerCase();
+      const objEmpId = String(t.assignedTo.employeeId || '').toLowerCase();
+      const objEmail = String(t.assignedTo.email || '').toLowerCase();
+      const objName = String(t.assignedTo.fullName || t.assignedTo.name || '').toLowerCase().trim();
+
+      if (objId && (objId === uId || objId === uEmpId)) return true;
+      if (objEmpId && (objEmpId === uEmpId || objEmpId === uId)) return true;
+      if (objEmail && uEmail && objEmail === uEmail) return true;
+      if (objName && uName && (objName === uName || objName.includes(uName) || uName.includes(objName))) return true;
+    }
+
+    if (t.assignedTo && typeof t.assignedTo !== 'object') {
+      const str = String(t.assignedTo).toLowerCase().trim();
+      if (str && str !== 'unassigned') {
+        if (str === uId || str === uEmpId || (uEmail && str === uEmail)) return true;
+        if (uName && (str === uName || str.includes(uName) || uName.includes(str))) return true;
+      }
+    }
+
+    if (t.assignedToName) {
+      const nameStr = String(t.assignedToName).toLowerCase().trim();
+      if (uName && (nameStr === uName || nameStr.includes(uName) || uName.includes(nameStr))) return true;
+    }
+
+    return false;
+  };
+
+  const isInterviewForUser = (i, currentUser) => {
+    if (!currentUser || !i) return false;
+    const uId = String(currentUser._id || currentUser.id || '').toLowerCase();
+    const uEmpId = String(currentUser.employeeId || '').toLowerCase();
+    const uName = String(currentUser.fullName || currentUser.name || '').toLowerCase().trim();
+
+    const intId = String(i.interviewerId || '').toLowerCase();
+    const intName = String(i.interviewerName || '').toLowerCase().trim();
+    const assName = String(i.assignedToName || '').toLowerCase().trim();
+
+    if (intId && (intId === uId || intId === uEmpId)) return true;
+    if (intName && uName && (intName === uName || intName.includes(uName) || uName.includes(intName))) return true;
+    if (assName && uName && (assName === uName || assName.includes(uName) || uName.includes(assName))) return true;
+    return false;
+  };
+
   // Complete tasks (Backend connected)
-  const handleToggleTaskStatus = async (taskId, currentStatus) => {
+  const handleToggleTaskStatus = async (taskId, currentStatus, taskObj = null) => {
+    if (taskObj && taskObj.isApplicationTask && taskObj.candidateApp) {
+      handleOpenFeedback({
+        id: taskObj.candidateApp._id,
+        candidateId: taskObj.candidateApp._id,
+        candidateName: taskObj.candidateApp.fullName,
+        position: taskObj.candidateApp.position,
+        candidateEmail: taskObj.candidateApp.email,
+        status: taskObj.candidateApp.status || 'PENDING',
+        feedback: taskObj.candidateApp.feedback || '',
+        rating: taskObj.candidateApp.rating || 5
+      });
+      return;
+    }
+
     const nextStatus = currentStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
     try {
       const res = await taskApi.updateTaskStatus(taskId, nextStatus, 'Checked from HR Executive Dashboard');
@@ -356,6 +572,10 @@ export default function HrExecutiveDashboard() {
       toast.error(err.response?.data?.message || 'Failed to update task status');
     }
   };
+
+  // Filter tasks & interviews for current logged-in employee
+  const myTasks = tasks.filter(t => isTaskForUser(t, user));
+  const myInterviews = interviews.filter(i => isInterviewForUser(i, user));
 
   // Checklist items
   const handleToggleChecklist = (id) => {
@@ -386,6 +606,62 @@ export default function HrExecutiveDashboard() {
     saveChecklist(updated);
   };
 
+  // Schedule Interview Handlers for HR Executive
+  const handleOpenScheduleModal = (candidate) => {
+    setSelectedCandidateForSchedule(candidate);
+    const existingRoundsCount = candidate.interviews ? candidate.interviews.length : 0;
+    const defaultRoundName = existingRoundsCount === 0 
+      ? 'Round 1 - Screening' 
+      : existingRoundsCount === 1 
+      ? 'Round 2 - Technical Interview' 
+      : `Round ${existingRoundsCount + 1} - Final Round`;
+      
+    setScheduleForm({
+      date: new Date().toISOString().split('T')[0],
+      time: '11:00',
+      roundName: defaultRoundName,
+      totalRounds: candidate.totalRounds || 3,
+      meetingLink: '',
+      notes: ''
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!scheduleForm.date || !scheduleForm.time) {
+      return toast.error('Please specify date and time');
+    }
+
+    try {
+      const interviewDetails = {
+        date: scheduleForm.date,
+        time: scheduleForm.time,
+        interviewerId: user?._id || user?.employeeId,
+        interviewerName: user?.fullName || user?.name || 'HR Executive',
+        roundName: scheduleForm.roundName,
+        totalRounds: Number(scheduleForm.totalRounds || 3),
+        meetingLink: scheduleForm.meetingLink ? scheduleForm.meetingLink.trim() : '',
+        notes: scheduleForm.notes
+      };
+
+      const res = await careersApi.updateApplicationStatus(
+        selectedCandidateForSchedule._id || selectedCandidateForSchedule.id,
+        'REVIEWED',
+        interviewDetails
+      );
+
+      if (res && res.success) {
+        toast.success(`Interview scheduled successfully for ${selectedCandidateForSchedule.fullName}! 🗓️`);
+        setShowScheduleModal(false);
+        fetchPersonalHRData();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to schedule interview');
+    }
+  };
+
   // Interview actions
   const handleOpenFeedback = (interview) => {
     setSelectedInterview(interview);
@@ -394,27 +670,36 @@ export default function HrExecutiveDashboard() {
     setInterviewStatus(interview.status || 'PENDING');
   };
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
     if (!feedbackText.trim()) {
       return toast.error('Please enter interview remarks');
     }
 
-    const updated = interviews.map(i => {
-      if (i.id === selectedInterview.id) {
-        return {
-          ...i,
-          status: interviewStatus,
-          rating: candidateRating,
-          feedback: `Rating: ${candidateRating}/10 | ${feedbackText}`
-        };
+    try {
+      if (selectedInterview.candidateId) {
+        const ratingNormalized = candidateRating > 5 ? Math.ceil(candidateRating / 2) : candidateRating;
+        const res = await careersApi.submitInterviewFeedback(
+          selectedInterview.candidateId,
+          selectedInterview.interviewId || selectedInterview.id,
+          {
+            rating: ratingNormalized,
+            status: interviewStatus === 'HELD' ? 'PASSED' : interviewStatus,
+            feedback: feedbackText
+          }
+        );
+        if (res && res.success) {
+          toast.success(`Interview evaluation saved to MongoDB (${interviewStatus})! 🎯`);
+          fetchPersonalHRData();
+        }
       }
-      return i;
-    });
+    } catch (err) {
+      console.error('Failed to submit interview feedback:', err);
+      toast.error(err.response?.data?.message || 'Error saving interview feedback to MongoDB');
+    }
 
-    saveInterviews(updated);
-    toast.success('Interview outcome and logs saved! 🎙️');
     setSelectedInterview(null);
+    fetchPersonalHRData();
   };
 
 
@@ -472,16 +757,9 @@ export default function HrExecutiveDashboard() {
     }
   };
 
-  // Filter tasks & interviews for current logged-in employee
-  const myTasks = tasks.filter(t => {
-    const assigneeId = typeof t.assignedTo === 'object' ? t.assignedTo?._id : t.assignedTo;
-    return String(assigneeId) === String(user?._id);
-  });
-  const myInterviews = interviews.filter(i => i.interviewerId === user?.employeeId || i.interviewerId === user?._id);
-
   // Statistics
   const pendingTasksCount = myTasks.filter(t => t.status !== 'COMPLETED').length;
-  const pendingInterviewsCount = myInterviews.filter(i => i.status === 'PENDING').length;
+  const pendingInterviewsCount = myInterviews.length;
   const checklistCompletionRate = checklist.length > 0
     ? Math.round((checklist.filter(item => item.completed).length / checklist.length) * 100)
     : 0;
@@ -556,9 +834,9 @@ export default function HrExecutiveDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {myTasks.map((t) => (
+                  {myTasks.map((t, idx) => (
                     <div
-                      key={t._id || t.id}
+                      key={`${t._id || t.id || 'task'}_${idx}`}
                       className={`bg-[var(--crm-bg-raised)]/30 border p-5 rounded-sm shadow-xl flex flex-col justify-between transition-all duration-300 ${
                         t.status === 'COMPLETED'
                           ? 'border-[var(--crm-positive)]/25 opacity-75'
@@ -591,14 +869,14 @@ export default function HrExecutiveDashboard() {
                       <div className="mt-4 pt-3 border-t border-[var(--crm-line)] flex items-center justify-between">
                         <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">BY: {t.assignedBy?.name || t.assignedBy?.fullName || 'HR Manager'}</span>
                         <button
-                          onClick={() => handleToggleTaskStatus(t._id || t.id, t.status)}
+                          onClick={() => handleToggleTaskStatus(t._id || t.id, t.status, t)}
                           className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-sm border transition duration-200 cursor-pointer ${
                             t.status === 'COMPLETED'
                               ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
                               : 'bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)]'
                           }`}
                         >
-                          {t.status === 'COMPLETED' ? 'COMPLETED' : 'MARK COMPLETED'}
+                          {t.isApplicationTask ? (t.status === 'COMPLETED' ? 'REVIEWED' : 'EVALUATE CANDIDATE') : (t.status === 'COMPLETED' ? 'COMPLETED' : 'MARK COMPLETED')}
                         </button>
                       </div>
                     </div>
@@ -622,22 +900,23 @@ export default function HrExecutiveDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {myInterviews.map((item) => (
+                  {myInterviews.map((item, idx) => (
                     <div
-                      key={item.id}
+                      key={`${item.id || 'interview'}_${idx}`}
                       className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-line)] p-5 rounded-sm shadow-xl flex flex-col justify-between hover:border-[var(--crm-accent)]/35 transition-all duration-300"
                     >
                       <div className="space-y-3 text-left">
                         <div className="flex justify-between items-center w-full">
                           <span className="text-[10px] font-mono text-[var(--crm-ink-soft)] bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-0.5 rounded-sm">
-                            {item.date} @ {item.time}
+                            {item.isUnscheduled ? 'Pending Schedule' : `${item.date} @ ${item.time}`}
                           </span>
                           <span className={`text-[9px] font-bold font-mono px-2 py-0.5 border rounded-sm ${
+                            item.isUnscheduled ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/30 font-bold' :
                             item.status === 'PASSED' || item.status === 'HELD' || item.status === 'COMPLETED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' :
                             item.status === 'FAILED' || item.status === 'CANCELLED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' :
                             'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20 animate-pulse'
                           }`}>
-                            {item.status}
+                            {item.isUnscheduled ? 'NOT SCHEDULED' : item.status}
                           </span>
                         </div>
 
@@ -650,6 +929,20 @@ export default function HrExecutiveDashboard() {
                           </p>
                           <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">{item.candidateEmail}</p>
                         </div>
+
+                        {item.meetingLink && (
+                          <div className="bg-teal-950/40 border border-teal-800/40 p-2.5 rounded-sm text-[11px]">
+                            <span className="text-[9px] font-mono font-bold text-teal-400 uppercase block mb-1">📹 Video Conference Link:</span>
+                            <a
+                              href={item.meetingLink.startsWith('http') ? item.meetingLink : `https://${item.meetingLink}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-teal-300 underline font-mono text-[10px] font-bold break-all hover:text-white"
+                            >
+                              {item.meetingLink}
+                            </a>
+                          </div>
+                        )}
 
                         {item.notes && (
                           <div className="bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] p-2.5 rounded-sm text-[11px]">
@@ -667,21 +960,20 @@ export default function HrExecutiveDashboard() {
                       </div>
 
                       <div className="mt-5 pt-3.5 border-t border-[var(--crm-line)]">
-                        {item.status === 'PENDING' ? (
+                        <div className="flex flex-col sm:flex-row gap-2.5">
+                          <button
+                            onClick={() => handleOpenScheduleModal(item.candidateApp || { _id: item.candidateId, fullName: item.candidateName, position: item.position })}
+                            className="flex-1 bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/50 py-2.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center flex items-center justify-center gap-1"
+                          >
+                            <span>🗓️ {item.isUnscheduled ? 'Schedule Interview' : 'Re-Schedule'}</span>
+                          </button>
                           <button
                             onClick={() => handleOpenFeedback(item)}
-                            className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center"
+                            className="flex-1 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center"
                           >
-                            Conduct & Log Outcome
+                            {item.status === 'PASSED' || item.status === 'FAILED' ? 'Update Log' : 'Conduct & Log Outcome'}
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOpenFeedback(item)}
-                            className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer text-center"
-                          >
-                            Edit Outcome & Remarks
-                          </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -723,17 +1015,7 @@ export default function HrExecutiveDashboard() {
                     }`}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Today's Uploads ({documentRegistry.filter(i => {
-                      if (!i.uploadedDocs || i.uploadedDocs.length === 0) return false;
-                      return i.uploadedDocs.some(d => {
-                        if (!d.createdAt) return false;
-                        const dateObj = new Date(d.createdAt);
-                        const nowObj = new Date();
-                        return dateObj.getFullYear() === nowObj.getFullYear() &&
-                               dateObj.getMonth() === nowObj.getMonth() &&
-                               dateObj.getDate() === nowObj.getDate();
-                      });
-                    }).length})
+                    Today's Uploads ({documentRegistry.filter(i => isEmployeeMatchingFilter(i, 'TODAY', '')).length})
                   </button>
 
                   {/* Calendar Date Picker Filter */}
@@ -779,26 +1061,7 @@ export default function HrExecutiveDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--crm-line)] text-xs">
-                      {documentRegistry.filter((item) => {
-                        if (telemetryFilter === 'TODAY') {
-                          const nowObj = new Date();
-                          return item.uploadedDocs && item.uploadedDocs.some(d => {
-                            if (!d.createdAt) return false;
-                            const dateObj = new Date(d.createdAt);
-                            return dateObj.getFullYear() === nowObj.getFullYear() &&
-                                   dateObj.getMonth() === nowObj.getMonth() &&
-                                   dateObj.getDate() === nowObj.getDate();
-                          });
-                        }
-                        if (telemetryFilter === 'DATE' && telemetryDate) {
-                          return item.uploadedDocs && item.uploadedDocs.some(d => {
-                            if (!d.createdAt) return false;
-                            const dateObj = new Date(d.createdAt).toISOString().slice(0, 10);
-                            return dateObj === telemetryDate;
-                          });
-                        }
-                        return true;
-                      }).length === 0 ? (
+                      {documentRegistry.filter((item) => isEmployeeMatchingFilter(item, telemetryFilter, telemetryDate)).length === 0 ? (
                         <tr>
                           <td colSpan={7} className="py-12 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase tracking-wider">
                             {telemetryFilter === 'TODAY'
@@ -809,29 +1072,10 @@ export default function HrExecutiveDashboard() {
                           </td>
                         </tr>
                       ) : (
-                        documentRegistry.filter((item) => {
-                          if (telemetryFilter === 'TODAY') {
-                            const nowObj = new Date();
-                            return item.uploadedDocs && item.uploadedDocs.some(d => {
-                              if (!d.createdAt) return false;
-                              const dateObj = new Date(d.createdAt);
-                              return dateObj.getFullYear() === nowObj.getFullYear() &&
-                                     dateObj.getMonth() === nowObj.getMonth() &&
-                                     dateObj.getDate() === nowObj.getDate();
-                            });
-                          }
-                          if (telemetryFilter === 'DATE' && telemetryDate) {
-                            return item.uploadedDocs && item.uploadedDocs.some(d => {
-                              if (!d.createdAt) return false;
-                              const dateObj = new Date(d.createdAt).toISOString().slice(0, 10);
-                              return dateObj === telemetryDate;
-                            });
-                          }
-                          return true;
-                        }).map((item) => {
+                        documentRegistry.filter((item) => isEmployeeMatchingFilter(item, telemetryFilter, telemetryDate)).map((item, idx) => {
                           const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified;
                           return (
-                            <tr key={item.employeeId} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                            <tr key={`${item.employeeId || 'emp'}_${idx}`} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
                               <td className="py-4 px-5">
                                 <div className="font-serif text-sm font-semibold text-[var(--crm-heading)]">{item.fullName}</div>
                                 <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{item.employeeId}</div>
@@ -1124,6 +1368,114 @@ export default function HrExecutiveDashboard() {
                   Save Logs
                 </button>
                 <button type="button" onClick={() => setSelectedInterview(null)} className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] rounded-sm text-[var(--crm-ink-soft)] font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* SCHEDULE INTERVIEW MODAL */}
+      {showScheduleModal && selectedCandidateForSchedule && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-4">
+          <div className="bg-[var(--crm-bg-raised)] rounded-xl p-6 w-full max-w-lg border border-purple-500/30 shadow-2xl text-left overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-5 pb-3 border-b border-[var(--crm-ink-soft)]/20">
+              <div>
+                <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide flex items-center gap-2">
+                  <span>🗓️ Schedule Candidate Interview</span>
+                </h2>
+                <p className="text-xs text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                  CANDIDATE: {selectedCandidateForSchedule.fullName} ({selectedCandidateForSchedule.position})
+                </p>
+              </div>
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleSubmit} className="space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                  Round Title / Stage Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={scheduleForm.roundName}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, roundName: e.target.value })}
+                  placeholder="e.g. Round 1 - Screening / Technical Round"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                    Scheduled Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={scheduleForm.date}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                    Scheduled Time *
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={scheduleForm.time}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, time: e.target.value })}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                  Video Conference Link (Google Meet / Zoom URL)
+                </label>
+                <input
+                  type="url"
+                  value={scheduleForm.meetingLink}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, meetingLink: e.target.value })}
+                  placeholder="https://meet.google.com/abc-defg-hij or Zoom link"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                  Instructions / Manager Remarks
+                </label>
+                <textarea
+                  rows={3}
+                  value={scheduleForm.notes}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+                  placeholder="Additional context for candidate or panel..."
+                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-sans resize-none"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-purple-800 hover:bg-purple-700 text-white rounded font-mono font-bold uppercase tracking-wider transition cursor-pointer shadow-md"
+                >
+                  Save & Schedule Panel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleModal(false)}
+                  className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] rounded font-mono font-bold uppercase tracking-wider transition cursor-pointer"
+                >
                   Cancel
                 </button>
               </div>
