@@ -96,40 +96,32 @@ export default function Navbar() {
     { to: '/careers', label: 'CAREERS' },
   ];
 
-  // Services structure
+  // Services structure - major divisions with sub-divisions
   const servicesGroups = [
     {
-      groupLabel: 'PRAKRITI DIVISION',
+      groupLabel: 'PRAKRITI',
       links: [
-        {
-          to: '/prakriti',
-          label: 'TEA DIVISION'
-        },
-        {
-          to: '/prakriti/rice',
-          label: 'RICE DIVISION'
-        }
+        { to: '/prakriti', label: 'Tea' },
+        { to: '/prakriti/rice', label: 'Rice' },
+        { to: null, label: 'Onion' } // no page yet
       ]
     },
     {
-      groupLabel: 'BUILDING & CONSTRUCTION',
+      groupLabel: 'BUILDING, CONSTRUCTION AND MINERALS',
       links: [
-        {
-          to: '/stone',
-          label: 'STONE DIVISION'
-        }
+        { to: '/stone', label: 'Stone' }
       ]
     },
     {
-      groupLabel: 'ADVERTISING & LEAD GEN',
+      groupLabel: 'INDIA TRADE CENTER',
       links: [
-        { to: '/ito-ads', label: 'ITO ADS' },
+        { to: '/ito-ads', label: 'ITO ADS' }
       ]
-    },
+    }
   ];
 
   const isActive = (path) => location.pathname === path;
-  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
+  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
 
   // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
   const mobileMenuContainer = {
@@ -413,24 +405,29 @@ export default function Navbar() {
                         </div>
 
                         {/* DIVISION LINKS */}
-                        {group.links.map((subLink) => (
-
-                          <Link
-                            key={subLink.to}
-                            to={subLink.to}
-                            className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
-                              location.pathname === subLink.to
-                                ? 'bg-[#2B3440] text-[#F2F4F7]'
-                                : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
-                            }`}
-                            onClick={() =>
-                              setIsServicesDropdownOpen(false)
-                            }
-                          >
-                            {subLink.label}
-                          </Link>
-
-                        ))}
+{group.links.map((subLink) => (
+                            subLink.to ? (
+                              <Link
+                                key={subLink.to}
+                                to={subLink.to}
+                                className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
+                                  location.pathname === subLink.to
+                                    ? 'bg-[#2B3440] text-[#F2F4F7]'
+                                    : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
+                                }`}
+                                onClick={() => setIsServicesDropdownOpen(false)}
+                              >
+                                {subLink.label}
+                              </Link>
+                            ) : (
+                              <span
+                                key={subLink.label}
+                                className="block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider text-[#6D7886] cursor-default"
+                              >
+                                {subLink.label}
+                              </span>
+                            )
+                          ))}
 
                       </div>
 
@@ -733,30 +730,34 @@ export default function Navbar() {
                       {group.groupLabel}
                     </motion.div>
 
-                    {group.links.map((subLink) => (
+{group.links.map((subLink) => (
 
-                      <motion.div
-                        key={subLink.to}
-                        variants={mobileMenuItem}
-                      >
+                          <motion.div
+                            key={subLink.to || subLink.label}
+                            variants={mobileMenuItem}
+                          >
 
-                        <Link
-                          to={subLink.to}
-                          className={`block pl-4 text-sm tracking-wider ${
-                            location.pathname === subLink.to
-                              ? 'text-[#F2F4F7]'
-                              : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
-                          }`}
-                          onClick={() =>
-                            setIsMobileMenuOpen(false)
-                          }
-                        >
-                          {subLink.label}
-                        </Link>
+                            {subLink.to ? (
+                              <Link
+                                to={subLink.to}
+                                className={`block pl-4 text-sm tracking-wider ${
+                                  location.pathname === subLink.to
+                                    ? 'text-[#F2F4F7]'
+                                    : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                                }`}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                              >
+                                {subLink.label}
+                              </Link>
+                            ) : (
+                              <span className="block pl-4 text-sm tracking-wider text-[#6D7886] cursor-default">
+                                {subLink.label}
+                              </span>
+                            )}
 
-                      </motion.div>
+                          </motion.div>
 
-                    ))}
+                        ))}
 
                   </motion.div>
 
