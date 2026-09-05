@@ -1,1398 +1,819 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import useDocumentMeta from '../../hooks/useDocumentMeta';
-import SmokeyCursor from '@/components/lightswind/smokey-cursor';
-import { 
-  FiCheck, FiTarget, FiBarChart2, FiUsers, FiZap, 
-  FiShield, FiGlobe, FiMessageSquare, FiSpeaker, FiChevronRight,
-  FiTrendingUp, FiLayers, FiCpu, FiDatabase, FiAward, FiClock, FiMail, FiPhone, FiMapPin
+import {
+  FiCheck,
+  FiArrowRight,
+  FiTarget,
+  FiLayout,
+  FiShield,
+  FiCpu,
+  FiCompass,
+  FiTrendingUp,
+  FiChevronDown,
+  FiChevronUp,
+  FiMail,
+  FiPhone,
+  FiClock,
+  FiX,
+  FiMessageSquare
 } from 'react-icons/fi';
+import useDocumentMeta from '../../hooks/useDocumentMeta';
+import SmokeyCursor from '../../components/lightswind/smokey-cursor';
 
-const COLORS = {
-  orange: '#F76E01',
-  orangeLight: '#ff8c2e',
-  navy: '#01102D',
-  navyLight: '#081a3d',
-  navyCard: '#041536',
-  white: '#ffffff',
-  gray: '#9ca3af',
-  darkGray: '#374151'
+// ============================================================================
+// APPROVED DESIGN TOKENS (PAGE 4)
+// ============================================================================
+const TOKENS = {
+  bgPrimary: '#0A1526',
+  bgDeep: '#07111F',
+  surfaceCard: '#0D1C30',
+  surfaceRaised: '#1D334D',
+  blueSlate: '#2F4966',
+  blueSteel: '#597598',
+  brandOrange: '#F2580E',
+  brandOrangeHi: '#FF7A18',
+  accentSand: '#F3D0AB',
+  textPrimary: '#F7F6F6',
+  textBody: '#C3C5CA',
+  textMuted: '#A1A1A7'
 };
 
-const STORM_CONFIG = {
-  bgColor: '#01102D',
-  flameColor: '#F76E01',
-  flameColor2: '#ffb066',
-  flameAmt: 0.18,
-  atmoColor: '#ffa04d',
-  atmoCount: 80,
-  atmoSize: 22,
-  atmoSpeed: 1.0,
-  coreColor: '#0a1f4a',
-  midColor: '#F76E01',
-  rimColor: '#ffb066',
-  opacity: 2,
-  pointSize: 75,
-  brightness: 1.5,
-  spin: 0.03,
-  blowUp: 0,
-  repelRadius: 1.4,
-  repelStrength: 4,
-  scrollDive: 3,
-  scrollGrow: 0.5,
-  scrollSpin: 0.6,
-  parallax: 0.7,
-};
-
-function hexToVec3(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return new THREE.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
-}
-
-// 3D Storm Canvas Component for Section Background - Optimized
-function SectionStormBackground() {
-  const canvasRef = useRef(null);
-  const containerRef = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const animIdRef = useRef(null);
-  const threeRef = useRef(null);
-
-  // IntersectionObserver to only run when visible
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-      },
-      { rootMargin: '100px', threshold: 0.01 }
-    );
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-
-  // Initialize Three.js only when visible
-  useEffect(() => {
-    if (!isVisible) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let width = canvas.parentElement.clientWidth || window.innerWidth;
-    let height = canvas.parentElement.clientHeight || 800;
-
-    const renderer = new THREE.WebGLRenderer({ 
-      canvas, 
-      antialias: true, 
-      powerPreference: 'high-performance' 
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(width, height);
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-    scene.fog = new THREE.Fog(0x000000, 0, 15);
-
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 80);
-    camera.position.set(0, 0, 7);
-    scene.add(camera);
-
-    // Single composer with bloom - simpler and faster
-    const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 0.35, 0.4, 0);
-    const composer = new EffectComposer(renderer);
-    composer.addPass(renderScene);
-    composer.addPass(bloomPass);
-
-    // Drastically reduced particle count: 50000 -> 8000
-    const count = 8000;
-    const radius = 2.5;
-    const positions = new Float32Array(count * 3);
-    const scales = new Float32Array(count);
-    const noises = new Float32Array(count);
-    const radialPush = new Float32Array(count);
-    const mixv = new Float32Array(count);
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      let u, v, s;
-      do {
-        u = Math.random() * 2 - 1;
-        v = Math.random() * 2 - 1;
-        s = u * u + v * v;
-      } while (s >= 1 || s === 0);
-      const factor = 2 * Math.sqrt(1 - s);
-      const dx = u * factor, dy = v * factor, dz = 1 - 2 * s;
-      const rN = Math.pow(Math.random(), 0.4);
-      const r = radius * (0.55 + rN * 0.45);
-      positions[i3] = dx * r;
-      positions[i3 + 1] = dy * r;
-      positions[i3 + 2] = dz * r;
-      mixv[i] = rN;
-      scales[i] = 0.45 + Math.random() * 0.8;
-      noises[i] = Math.random();
-      radialPush[i] = 0.4 + rN * 1.1;
-    }
-
-    const stormGeo = new THREE.BufferGeometry();
-    stormGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    stormGeo.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
-    stormGeo.setAttribute('aNoise', new THREE.BufferAttribute(noises, 1));
-    stormGeo.setAttribute('aRadialPush', new THREE.BufferAttribute(radialPush, 1));
-    stormGeo.setAttribute('aMix', new THREE.BufferAttribute(mixv, 1));
-
-    const stormUniforms = {
-      uTime: { value: 0 },
-      uSize: { value: STORM_CONFIG.pointSize },
-      uOpacity: { value: 0 },
-      uBlowUp: { value: 0 },
-      uCursor: { value: new THREE.Vector3() },
-      uRepelRadius: { value: STORM_CONFIG.repelRadius },
-      uRepelStrength: { value: STORM_CONFIG.repelStrength },
-      uActivity: { value: 0 },
-      uCore: { value: hexToVec3(STORM_CONFIG.coreColor) },
-      uMid: { value: hexToVec3(STORM_CONFIG.midColor) },
-      uRim: { value: hexToVec3(STORM_CONFIG.rimColor) },
-      uBrightness: { value: STORM_CONFIG.brightness }
-    };
-
-    const stormMat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: stormUniforms,
-      vertexShader: `
-        uniform float uTime; uniform float uSize; uniform float uBlowUp;
-        uniform vec3 uCursor; uniform float uRepelRadius; uniform float uRepelStrength; uniform float uActivity;
-        uniform vec3 uCore; uniform vec3 uMid; uniform vec3 uRim;
-        attribute float aScale; attribute float aNoise; attribute float aRadialPush; attribute float aMix;
-        varying vec3 vColor; varying float vBlowUp;
-        void main() {
-          vec3 pos = position;
-          float t = uTime * 1.4 + aNoise * 6.2831;
-          float wobble = sin(t) * 0.1 * aRadialPush;
-          pos *= 1.0 + wobble;
-
-          float swirlAngle = uTime * 0.05 + aNoise * 6.2831;
-          mat2 swirl = mat2(cos(swirlAngle), -sin(swirlAngle), sin(swirlAngle), cos(swirlAngle));
-          pos.xz = swirl * pos.xz;
-
-          vec3 outward = normalize(pos + vec3(0.0001));
-          float blow = uBlowUp * uBlowUp;
-          pos += outward * blow * (10.0 + aNoise * 18.0) * aRadialPush;
-
-          vec4 modelPosition = modelMatrix * vec4(pos, 1.0);
-          vec3 toParticle = modelPosition.xyz - uCursor;
-          float dist = length(toParticle);
-          float falloff = smoothstep(uRepelRadius, 0.0, dist);
-          modelPosition.xyz += normalize(toParticle + vec3(0.0001)) * falloff * uRepelStrength * uActivity;
-
-          vec4 viewPosition = viewMatrix * modelPosition;
-          gl_Position = projectionMatrix * viewPosition;
-          gl_PointSize = uSize * aScale * (1.0 / -viewPosition.z);
-
-          float t1 = smoothstep(0.25, 0.85, aMix);
-          vec3 mix1 = mix(uCore, uMid, t1);
-          float t2 = clamp((aMix - 0.7) * 3.0, 0.0, 1.0);
-          vColor = mix(mix1, uRim, t2);
-          vBlowUp = uBlowUp;
-        }
-      `,
-      fragmentShader: `
-        uniform float uOpacity; uniform float uBrightness;
-        varying vec3 vColor; varying float vBlowUp;
-        void main() {
-          vec2 uv = gl_PointCoord - 0.5;
-          float d = length(uv);
-          if (d > 0.5) discard;
-          float strength = pow(1.0 - d * 2.0, 4.5);
-          vec3 color = mix(vec3(0.0), vColor, strength);
-          float blowFade = 1.0 - smoothstep(0.15, 1.0, vBlowUp);
-          gl_FragColor = vec4(color * uBrightness, strength * uOpacity * blowFade);
-        }
-      `
-    });
-
-    const stormPoints = new THREE.Points(stormGeo, stormMat);
-    const stormGroup = new THREE.Group();
-    stormGroup.add(stormPoints);
-    scene.add(stormGroup);
-
-    // Reduced atmosphere particles: 260 -> 80
-    const N = 80;
-    const atmoPos = new Float32Array(N * 3);
-    const atmoSizes = new Float32Array(N);
-    const atmoSeeds = new Float32Array(N);
-
-    for (let i = 0; i < N; i++) {
-      atmoPos[i * 3] = 2 * Math.random() - 1;
-      atmoPos[i * 3 + 1] = 2 * Math.random() - 1;
-      atmoPos[i * 3 + 2] = 2 * Math.random() - 1;
-      atmoSizes[i] = STORM_CONFIG.atmoSize * (0.4 + Math.random());
-      atmoSeeds[i] = Math.random();
-    }
-
-    const atmoGeo = new THREE.BufferGeometry();
-    atmoGeo.setAttribute('position', new THREE.BufferAttribute(atmoPos, 3));
-    atmoGeo.setAttribute('size', new THREE.BufferAttribute(atmoSizes, 1));
-    atmoGeo.setAttribute('seed', new THREE.BufferAttribute(atmoSeeds, 1));
-
-    const atmoMat = new THREE.ShaderMaterial({
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: false,
-      uniforms: {
-        uTime: { value: 0 },
-        uColor: { value: hexToVec3(STORM_CONFIG.atmoColor) },
-        uRes: { value: new THREE.Vector2(width * renderer.getPixelRatio(), height * renderer.getPixelRatio()) }
-      },
-      vertexShader: `
-        attribute float size; attribute float seed; uniform float uTime; uniform vec2 uRes;
-        varying float vA;
-        vec3 warp(vec3 p, float t){ 
-          float c = 0.9, a = 1.9, b = 0.02, s = 0.05; 
-          p *= 2.0;
-          p.x += c * sin(s * t + a * p.y) + t * b; 
-          p.y += c * cos(s * t + a * p.x); 
-          p.y += c * sin(s * t + a * p.z) + t * b;
-          p.z += c * cos(s * t + a * p.y); 
-          p.z += c * sin(s * t + a * p.x); 
-          p.x += c * cos(s * t + a * p.z);
-          return cos(p + vec3(1.0, 2.0, 4.0)); 
-        }
-        void main(){
-          vec3 v = position * 4.0 + warp(position, uTime) * 1.2;
-          vec4 mv = modelViewMatrix * vec4(v, 1.0);
-          float r = length(v); 
-          float farF = 1.0 - smoothstep(5.0, 6.5, r); 
-          float nearF = smoothstep(0.0, 0.5, -mv.z);
-          vA = farF * nearF;
-          gl_PointSize = size * uRes.y / 900.0 / -mv.z; 
-          gl_PointSize = max(gl_PointSize, 1.0);
-          gl_Position = projectionMatrix * mv;
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uColor; varying float vA;
-        void main(){ 
-          vec2 p = gl_PointCoord - 0.5; 
-          float l = length(p); 
-          if (l > 0.5) discard;
-          float tex = smoothstep(0.5, 0.0, l); 
-          gl_FragColor = vec4(uColor * tex, tex * vA * 0.6); 
-        }
-      `
-    });
-
-    const atmoPoints = new THREE.Points(atmoGeo, atmoMat);
-    atmoPoints.frustumCulled = false;
-    scene.add(atmoPoints);
-
-    const Lerp = (a, b, t) => a + (b - a) * t;
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-    let scrollTarget = 0, scrollSmooth = 0, scrollCurrent = 0;
-    const mouseSmooth = { x: 0, y: 0 };
-    const POINTER = { 
-      ndc: new THREE.Vector2(0, 0), 
-      world: new THREE.Vector3(), 
-      activity: 0, 
-      active: false, 
-      lastMove: performance.now() 
-    };
-
-    const onMouseMove = (e) => {
-      POINTER.ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
-      POINTER.ndc.y = -((e.clientY / window.innerHeight) * 2 - 1);
-      POINTER.active = true;
-      POINTER.lastMove = performance.now();
-    };
-
-    const onMouseOut = () => { POINTER.active = false; };
-
-    const updateScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      scrollTarget = max > 0 ? clamp(window.scrollY / max, 0, 1) : 0;
-    };
-
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    window.addEventListener('mouseout', onMouseOut, { passive: true });
-    window.addEventListener('scroll', updateScroll, { passive: true });
-    updateScroll();
-
-    const _ndc = new THREE.Vector3(), _dir = new THREE.Vector3(), _target = new THREE.Vector3();
-    const updatePointer = () => {
-      _target.set(0, 0, 0);
-      if (POINTER.active) {
-        _ndc.set(POINTER.ndc.x, POINTER.ndc.y, 0.5).unproject(camera);
-        _dir.copy(_ndc).sub(camera.position).normalize();
-        const denom = _dir.z;
-        if (Math.abs(denom) > 1e-4) {
-          const t = -camera.position.z / denom;
-          if (t > 0 && Number.isFinite(t)) _target.copy(camera.position).addScaledVector(_dir, t);
-        }
-      }
-      POINTER.world.lerp(_target, 0.12);
-      const idle = (performance.now() - POINTER.lastMove) / 1000;
-      const want = (POINTER.active && idle < 3) ? 1 : 0;
-      POINTER.activity += (want - POINTER.activity) * 0.06;
-    };
-
-    const appearStart = performance.now();
-    let t0 = appearStart / 1000;
-
-    const animate = () => {
-      animIdRef.current = requestAnimationFrame(animate);
-
-      scrollSmooth = Lerp(scrollSmooth, scrollTarget, 0.10);
-      scrollCurrent = Lerp(scrollCurrent, scrollSmooth, 0.06);
-      mouseSmooth.x = Lerp(mouseSmooth.x, POINTER.ndc.x, 0.06);
-      mouseSmooth.y = Lerp(mouseSmooth.y, POINTER.ndc.y, 0.06);
-
-      updatePointer();
-
-      const t = performance.now() / 1000;
-      const dt = Math.min(0.05, t - t0);
-      t0 = t;
-
-      stormUniforms.uTime.value = t;
-      camera.position.set(
-        mouseSmooth.x * STORM_CONFIG.parallax, 
-        mouseSmooth.y * STORM_CONFIG.parallax, 
-        7 - scrollCurrent * STORM_CONFIG.scrollDive
-      );
-      camera.lookAt(0, 0, 0);
-
-      stormGroup.scale.setScalar(1 + scrollCurrent * STORM_CONFIG.scrollGrow);
-      const elapsed = performance.now() - appearStart;
-      const fade = Math.max(0, Math.min(1, (elapsed - 300) / 1400));
-      stormUniforms.uOpacity.value = fade * STORM_CONFIG.opacity;
-      stormUniforms.uCursor.value.copy(POINTER.world);
-      stormUniforms.uActivity.value = POINTER.activity;
-
-      stormGroup.rotation.y += dt * (STORM_CONFIG.spin + scrollCurrent * STORM_CONFIG.scrollSpin);
-      stormGroup.rotation.x += dt * STORM_CONFIG.spin * 0.33;
-
-      atmoMat.uniforms.uTime.value = t * STORM_CONFIG.atmoSpeed * 8.0;
-      atmoPoints.position.copy(camera.position);
-
-      composer.render();
-    };
-
-    animate();
-
-    const onResize = () => {
-      if (!canvas.parentElement) return;
-      width = canvas.parentElement.clientWidth;
-      height = canvas.parentElement.clientHeight;
-      const pr = Math.min(window.devicePixelRatio, 2);
-
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-
-      renderer.setPixelRatio(pr);
-      renderer.setSize(width, height);
-
-      composer.setPixelRatio(pr);
-      composer.setSize(width, height);
-
-      atmoMat.uniforms.uRes.value.set(width * pr, height * pr);
-      updateScroll();
-    };
-
-    window.addEventListener('resize', onResize);
-
-    threeRef.current = { renderer, scene, camera, composer, stormGeo, stormMat, atmoGeo, atmoMat };
-
-    return () => {
-      if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseout', onMouseOut);
-      window.removeEventListener('scroll', updateScroll);
-      window.removeEventListener('resize', onResize);
-
-      if (threeRef.current) {
-        const { renderer, stormGeo, stormMat, atmoGeo, atmoMat } = threeRef.current;
-        renderer.dispose();
-        stormGeo.dispose();
-        stormMat.dispose();
-        atmoGeo.dispose();
-        atmoMat.dispose();
-      }
-    };
-  }, [isVisible]);
-
-  return (
-    <div ref={containerRef} className="absolute inset-0">
-      <canvas 
-        ref={canvasRef} 
-        className="absolute inset-0 w-full h-full pointer-events-none z-0 block opacity-80"
-      />
-    </div>
-  );
-}
-
-// Lightweight 3D Tilt Card using CSS transforms (no framer-motion overhead)
-function TiltCard3D({ children, className = '', style = {}, glare = true, ...props }) {
+// ============================================================================
+// 3D TILT CARD COMPONENT (PERFORMANCE SAFE)
+// ============================================================================
+function Card3D({ children, className = '', isPopular = false }) {
   const cardRef = useRef(null);
-  const [transform, setTransform] = useState('perspective(1200px) rotateX(0deg) rotateY(0deg)');
-  const [glareStyle, setGlareStyle] = useState({});
+  const [rotX, setRotX] = useState(0);
+  const [rotY, setRotY] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e) => {
-    if (!cardRef.current) return;
+    if (!cardRef.current || window.innerWidth < 768) return;
     const rect = cardRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const rotateY = ((mouseX / width) - 0.5) * 24; // -12 to 12
-    const rotateX = -((mouseY / height) - 0.5) * 24; // -12 to 12
-    
-    setTransform(`perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`);
-    
-    if (glare) {
-      const glareX = (mouseX / width) * 100;
-      const glareY = (mouseY / height) * 100;
-      setGlareStyle({
-        background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(247, 110, 1, 0.22) 0%, rgba(255, 255, 255, 0.05) 30%, transparent 70%)`,
-        opacity: 1
-      });
-    }
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    setRotX((-y / (rect.height / 2)) * 6);
+    setRotY((x / (rect.width / 2)) * 6);
   };
 
   const handleMouseLeave = () => {
-    setTransform('perspective(1200px) rotateX(0deg) rotateY(0deg)');
-    if (glare) {
-      setGlareStyle(prev => ({ ...prev, opacity: 0 }));
-    }
+    setRotX(0);
+    setRotY(0);
+    setIsHovered(false);
   };
 
   return (
     <div
-      ref={cardRef}
+      style={{ perspective: 1000 }}
+      className="h-full"
+      onMouseEnter={() => setIsHovered(true)}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      style={{
-        transform,
-        transformStyle: 'preserve-3d',
-        transition: 'transform 0.15s ease-out',
-        ...style
-      }}
-      className={`relative ${className}`}
-      {...props}
     >
-      {glare && (
-        <div 
-          className="absolute inset-0 rounded-2xl pointer-events-none z-30 transition-opacity duration-300"
-          style={{ ...glareStyle, opacity: glareStyle.opacity ?? 0 }}
-        />
-      )}
-      {children}
+      <div
+        ref={cardRef}
+        style={{
+          transform: `rotateX(${rotX}deg) rotateY(${rotY}deg) ${isHovered ? 'scale3d(1.015, 1.015, 1.015)' : 'scale3d(1, 1, 1)'}`,
+          transition: isHovered ? 'transform 0.1s ease-out' : 'transform 0.4s ease-out, border-color 0.2s',
+          backgroundColor: TOKENS.surfaceCard,
+          borderColor: isPopular ? TOKENS.brandOrange : isHovered ? 'rgba(242, 88, 14, 0.45)' : 'rgba(242, 88, 14, 0.22)'
+        }}
+        className={`relative h-full rounded-[22px] border p-6 md:p-8 flex flex-col justify-between shadow-xl ${className}`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
-/*
-
-const particles = Array.from({ length: 35 }, (_, i) => ({
-  id: i,
-  x: Math.random() * 100,
-  y: Math.random() * 100,
-  size: Math.random() * 3 + 1.5,
-  opacity: Math.random() * 0.4 + 0.1
-}));
-
-*/
-
-const services = [
-  {
-    icon: FiTarget,
-    title: 'Paid Inbound Lead Generation',
-    description: 'High-intent campaigns across Google, Meta, LinkedIn & programmatic channels. We build funnels that convert clicks into qualified business inquiries.',
-    features: ['Search & Display Networks', 'Social Media Advertising', 'LinkedIn B2B Targeting', 'Programmatic & Native Ads']
-  },
-  {
-    icon: FiBarChart2,
-    title: 'Performance Marketing',
-    description: 'Data-driven campaign optimization with real-time bidding, audience segmentation, and ROAS maximization. Every rupee tracked, measured, and improved.',
-    features: ['Real-time Bidding', 'A/B Testing Framework', 'Conversion Rate Optimization', 'Attribution Modeling']
-  },
-  {
-    icon: FiUsers,
-    title: 'Customer Acquisition Systems',
-    description: 'End-to-end acquisition funnels from impression to opportunity. Landing pages, lead magnets, qualification workflows, and nurture sequences built for scale.',
-    features: ['Custom Landing Pages', 'Lead Magnets & Forms', 'Qualification Scoring', 'Automated Nurture Sequences']
-  },
-  {
-    icon: FiZap,
-    title: 'CRM Automation & Integration',
-    description: 'Seamless CRM-ready lead delivery with instant notifications, auto-assignment, and pipeline synchronization. Your sales team gets leads in real-time.',
-    features: ['Instant Lead Push', 'Auto-assignment Rules', 'Pipeline Sync', 'WhatsApp/Email Alerts']
-  },
-  {
-    icon: FiGlobe,
-    title: 'Pan-India Targeting',
-    description: 'Geo-fenced campaigns across 28 states and 8 union territories. Hyper-local targeting for manufacturers, distributors, and industrial buyers.',
-    features: ['State & City Targeting', 'Pincode-level Precision', 'Industrial Zone Focus', 'Multi-language Campaigns']
-  },
-  {
-    icon: FiShield,
-    title: 'Transparent Reporting',
-    description: 'Live dashboards with spend, CPL, lead quality scores, and pipeline revenue attribution. No black boxes — full visibility into every campaign.',
-    features: ['Real-time Dashboards', 'Lead Quality Scoring', 'Revenue Attribution', 'Weekly Performance Reviews']
-  }
-];
-
-const packages = [
-  {
-    name: 'Starter',
-    price: '₹5,000',
-    leads: '50 Leads',
-    cpl: '₹100/Lead',
-    description: 'Ideal for businesses testing paid lead generation for the first time.',
-    features: ['Google Search Campaigns', 'Meta Lead Ads', 'Basic Landing Page', 'Weekly Reports', 'Email Lead Delivery', '1 Target Location']
-  },
-  {
-    name: 'Growth',
-    price: '₹10,000',
-    leads: '125 Leads',
-    cpl: '₹80/Lead',
-    description: 'Best for growing businesses needing consistent lead flow with better targeting.',
-    features: ['Everything in Starter', 'LinkedIn Campaigns', 'Advanced Landing Page', 'Bi-weekly Optimization', 'CRM Integration', '3 Target Locations', 'WhatsApp Alerts']
-  },
-  {
-    name: 'Business',
-    price: '₹15,000',
-    leads: '200 Leads',
-    cpl: '₹75/Lead',
-    description: 'For established businesses scaling acquisition across multiple channels.',
-    features: ['Everything in Growth', 'Programmatic Display', 'Custom Lead Scoring', 'Weekly Optimization', 'Dedicated Account Manager', '5 Target Locations', 'API Integration']
-  },
-  {
-    name: 'Scale',
-    price: '₹20,000',
-    leads: '300 Leads',
-    cpl: '≈₹66.67/Lead',
-    description: 'High-volume campaigns for aggressive market expansion.',
-    features: ['Everything in Business', 'YouTube & Video Ads', 'Advanced Attribution', 'Daily Monitoring', 'Priority Support', '10 Target Locations', 'Custom Integrations']
-  },
-  {
-    name: 'Enterprise',
-    price: '₹30,000',
-    leads: '500 Leads',
-    cpl: '₹60/Lead',
-    description: 'Full-scale acquisition engine for market leaders and large organizations.',
-    features: ['Everything in Scale', 'Omnichannel Strategy', 'Predictive Lead Scoring', 'Real-time Optimization', 'Strategic Consulting', 'Unlimited Locations', 'SLA Guarantee']
-  }
-];
-
-const processSteps = [
-  { num: '01', title: 'Understand', desc: 'Deep-dive into your business, product, audience, and revenue goals. We map your ideal customer profile and competitive landscape.' },
-  { num: '02', title: 'Plan', desc: 'Channel strategy, budget allocation, targeting parameters, creative briefs, and KPI frameworks. Every decision backed by data.' },
-  { num: '03', title: 'Create', desc: 'High-converting ad creatives, landing pages, lead forms, and automation workflows. Built for your brand voice and buyer intent.' },
-  { num: '04', title: 'Launch', desc: 'Campaigns go live across selected channels with tracking, pixels, and conversion events configured. Day-one monitoring begins.' },
-  { num: '05', title: 'Optimize', desc: 'Continuous A/B testing, bid adjustments, audience refinement, and creative rotation. Performance compounds week over week.' },
-  { num: '06', title: 'Deliver', desc: 'Qualified leads delivered to your CRM in real-time with full context. Transparent reporting and strategic review sessions.' }
-];
-
-const leadQualityStages = [
-  { stage: 'Raw Lead', description: 'Form submission received. No verification yet.', color: COLORS.gray },
-  { stage: 'Valid Lead', description: 'Contact info verified. Business details confirmed.', color: COLORS.orangeLight },
-  { stage: 'Validated Lead', description: 'Budget, authority, need, timeline (BANT) assessed.', color: COLORS.orange },
-  { stage: 'Sales-Qualified', description: 'Ready for sales conversation. High intent confirmed.', color: '#ffa861' },
-  { stage: 'Opportunity', description: 'Active deal in pipeline. High revenue potential.', color: COLORS.white }
-];
-
-const faqs = [
-  {
-    q: 'What type of businesses do you work with?',
-    a: 'We work with B2B manufacturers, distributors, dealers, industrial businesses, machinery/equipment companies, and B2B service providers across India. Our campaigns are designed for considered purchases with longer sales cycles.'
-  },
-  {
-    q: 'What exactly is a lead?',
-    a: 'A lead is a business inquiry from a decision-maker or influencer who has expressed interest in your product or service by submitting a form, calling, or messaging. It includes their name, company, contact details, and requirement summary.'
-  },
-  {
-    q: 'Are the leads qualified?',
-    a: 'We deliver validated leads — contact info verified and basic intent confirmed. Sales-qualification (BANT) happens on your sales calls. We don\'t guarantee sales; we guarantee qualified inquiries that your team can convert.'
-  },
-  {
-    q: 'How are leads delivered?',
-    a: 'Leads are pushed to your CRM (HubSpot, Zoho, Salesforce, Pipedrive, or custom) in real-time via API. You also get instant WhatsApp/email alerts. A daily digest and weekly performance report are included.'
-  },
-  {
-    q: 'Do you provide CRM-ready information?',
-    a: 'Yes. Every lead includes: full name, company, designation, phone, email, location, product interest, requirement summary, source channel, campaign ID, timestamp, and lead score. Ready for immediate sales follow-up.'
-  },
-  {
-    q: 'Can campaigns target specific cities or regions?',
-    a: 'Absolutely. We can target by state, city, pincode, or radius around industrial zones. Multi-location campaigns with localized ad copy and landing pages are standard in Growth package and above.'
-  },
-  {
-    q: 'Can campaigns run across India?',
-    a: 'Yes. Pan-India targeting is available in all packages. Enterprise includes unlimited locations with dedicated geo-strategy per region.'
-  },
-  {
-    q: 'Do you guarantee sales?',
-    a: 'No. Lead generation ≠ guaranteed sales. We deliver qualified business inquiries. Conversion depends on your product, pricing, sales process, and market fit. We optimize for lead quality and volume; you close the deals.'
-  }
-];
-
+// ============================================================================
+// MAIN ITO ADS COMPONENT
+// ============================================================================
 export default function ITOAds() {
   useDocumentMeta({
-    title: 'ITO Ads | Paid Inbound Lead Generation & Performance Marketing',
-    description: 'ITO Ads delivers qualified B2B leads through paid advertising, performance marketing, and CRM automation. Transparent pricing. Pan-India targeting. Real results.',
+    title: 'ITO Ads | B2B Sourcing, Lead Generation & Conversion Campaigns',
+    description: 'We generate qualified leads. You convert opportunities. Performance marketing, CRM routing, and B2B inbound acquisition across India.',
     canonicalPath: '/ito-ads'
   });
 
-  const [activePackage, setActivePackage] = useState(2);
-  const [activeFAQ, setActiveFAQ] = useState(null);
-  const heroRef = useRef(null);
+  const [selectedPlan, setSelectedPlan] = useState('Professional');
+  const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState(null);
 
-  const scrollIndicator = (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50 pointer-events-none">
-      <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
-      <div className="w-px h-6 bg-gradient-to-b from-[#F76E01] to-transparent animate-scroll-line" />
-    </div>
-  );
+  // Form State
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    industry: '',
+    objective: '',
+    plan: 'Professional',
+    consent: true
+  });
+  const [formSubmitted, setFormSubmitted] = useState(false);
+
+  // Synchronize modal selection
+  const handleSelectPackage = (packageName) => {
+    setSelectedPlan(packageName);
+    setFormData((prev) => ({ ...prev, plan: packageName }));
+    setIsConsultModalOpen(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    setFormSubmitted(true);
+    setTimeout(() => {
+      setIsConsultModalOpen(false);
+      setFormSubmitted(false);
+    }, 2200);
+  };
+
+  // Six Pillars Data
+  const pillars = [
+    {
+      icon: FiTarget,
+      title: 'Paid Inbound Lead Generation',
+      desc: 'High-intent acquisition campaigns executed across Google Search, LinkedIn B2B networks, and programmatic channels to reach active decision-makers.',
+      bullets: ['Multi-network campaign setup', 'High commercial intent filtering', 'Real-time CPC & bid tuning']
+    },
+    {
+      icon: FiLayout,
+      title: 'Landing Page & Conversion',
+      desc: 'Lightning-fast, mobile-optimized acquisition pages built strictly for conversion with clear narrative architecture and structured proof.',
+      bullets: ['Sub-second page speeds', 'Friction-free responsive forms', 'Granular conversion heatmaps']
+    },
+    {
+      icon: FiShield,
+      title: 'Lead Validation & Scoring',
+      desc: 'Multistage phone, email, and business verification to eradicate duplicates, spam, and non-commercial enquiries prior to handover.',
+      bullets: ['Contact data verification', 'BANT qualification criteria', 'Automatic deduplication engine']
+    },
+    {
+      icon: FiCpu,
+      title: 'CRM Automation & Integration',
+      desc: 'Direct pipeline routing straight into your internal CRM, accompanied by instant WhatsApp and email notifications for prompt sales follow-up.',
+      bullets: ['Sub-60s webhook dispatch', 'Round-robin agent routing', 'Sales SLA escalations']
+    },
+    {
+      icon: FiCompass,
+      title: 'Pan-India Targeting',
+      desc: 'Precision geographic targeting matching your specific industrial corridors, commercial states, or regional supply hubs across the nation.',
+      bullets: ['Industrial zone geo-fencing', 'Tier-1 & Tier-2 trade clusters', 'Localized campaign messaging']
+    },
+    {
+      icon: FiTrendingUp,
+      title: 'Reporting & Optimization',
+      desc: 'Completely transparent metrics with zero vanity numbers. Live reporting on Cost Per Qualified Lead (CPQL) and weekly commercial performance.',
+      bullets: ['Weekly video audits', 'Transparent spend ledgers', 'Continuous CAC optimization']
+    }
+  ];
+
+  // Pipeline Stages
+  const stages = [
+    { num: '01', title: 'Raw Lead', desc: 'Inbound prospect fills verified form from target campaign.' },
+    { num: '02', title: 'Valid Lead', desc: 'Phone, corporate email, and legal business existence verified.' },
+    { num: '03', title: 'Validated Lead', desc: 'Commercial requirements, timeline, and purchase budget validated.' },
+    { num: '04', title: 'Qualified Lead', desc: 'Matches agreed campaign criteria and pushed directly to CRM.' }
+  ];
+
+  // Packages Data
+  const packages = [
+    {
+      name: 'Starter',
+      price: '₹5,000',
+      period: '/mo',
+      leads: '50 Qualified Leads',
+      rate: '₹100 / lead',
+      subtitle: 'Best for initial campaign validation and niche trade tests.',
+      features: ['Single campaign channel', 'Dedicated landing page', 'Standard lead verification', 'Email lead dispatch', 'Monthly performance summary']
+    },
+    {
+      name: 'Growth',
+      price: '₹10,000',
+      period: '/mo',
+      leads: '125 Qualified Leads',
+      rate: '₹80 / lead',
+      subtitle: 'Designed for scaling operations demanding predictable flow.',
+      features: ['Dual-channel targeting', 'A/B landing page variants', 'BANT lead scoring', 'Instant WhatsApp notifications', 'Bi-weekly optimization reviews']
+    },
+    {
+      name: 'Professional',
+      price: '₹15,000',
+      period: '/mo',
+      leads: '200 Qualified Leads',
+      rate: '₹75 / lead',
+      popular: true,
+      subtitle: 'The primary choice for ambitious multi-channel market expansion.',
+      features: ['Full omni-channel acquisition', 'Custom conversion funnel', 'Full CRM webhook integration', 'Sub-15m team response SLA', 'Weekly performance dashboard']
+    },
+    {
+      name: 'Scale',
+      price: '₹20,000',
+      period: '/mo',
+      leads: '300 Qualified Leads',
+      rate: '≈ ₹66.67 / lead',
+      subtitle: 'High-volume lead engine built for nationwide dominance.',
+      features: ['Custom target geography', 'Dedicated campaign manager', 'Priority lead validation', 'Live API pipeline sync', 'Executive monthly strategy call']
+    }
+  ];
+
+  // FAQs
+  const faqs = [
+    {
+      q: 'Are platform ad spends included in package prices?',
+      a: 'Package fees cover our comprehensive strategy, conversion funnel development, CRM automation, and lead qualification workflows. Media spend budgets are allocated directly on client accounts or billed as actual pass-through costs.'
+    },
+    {
+      q: 'How does your lead qualification guarantee work?',
+      a: 'Every prospect must satisfy clear contact validity, business ownership, and expressed commercial requirements. Any non-responsive, wrong-number, or duplicate lead reported within 7 days is credited and replaced under our qualification policy.'
+    },
+    {
+      q: 'How fast are qualified leads dispatched to our sales team?',
+      a: 'Instantly. Once a prospect completes the qualifying form, our pipeline scores the lead and pushes the complete payload to your CRM or assigned sales representative within 60 seconds.'
+    }
+  ];
 
   return (
-    <>
-    <SmokeyCursor
-        transparent={true}
-        densityDissipation={7}
-        velocityDissipation={4}
-        splatRadius={0.20}
-        splatForce={3200}
-        colorUpdateSpeed={2}
-        enableShading={false}
-        className="fixed inset-0 pointer-events-none z-30"
-      />
-      <style>{`
-        @keyframes orb-pulse {
-          0%, 100% { transform: scale(1); opacity: 0.18; }
-          50% { transform: scale(1.2); opacity: 0.28; }
-        }
-        .animate-orb-pulse {
-          animation: orb-pulse infinite ease-in-out;
-          will-change: transform, opacity;
-        }
-        @keyframes scroll-bounce {
-          0%, 100% { transform: translateX(-50%) translateY(0); }
-          50% { transform: translateX(-50%) translateY(8px); }
-        }
-        @keyframes scroll-line {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(6px); }
-        }
-        .animate-scroll-bounce {
-          animation: scroll-bounce 2s infinite ease-in-out;
-        }
-        .animate-scroll-line {
-          animation: scroll-line 1.5s infinite ease-in-out;
-        }
-      `}</style>
-      <div 
-        className="min-h-screen text-white font-sans overflow-x-hidden relative"
-        style={{ backgroundColor: COLORS.navy }}
+    <div
+      style={{ backgroundColor: TOKENS.bgPrimary, color: TOKENS.textBody }}
+      className="min-h-screen font-sans selection:bg-[#F2580E]/30 selection:text-white relative overflow-x-hidden"
+    >
+      {/* 1. SMOKY CURSOR OVERLAY */}
+      <SmokeyCursor />
+
+      {/* 2. PERSISTENT BACKGROUND FLOWER MOTIF (REQUIREMENT 1) */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center overflow-hidden opacity-55"
+        aria-hidden="true"
       >
-        {/* 3D Global Ambient Glowing Orbs - CSS animated */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div 
-          className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[950px] h-[520px] rounded-full blur-[170px] animate-orb-pulse"
-          style={{ background: `radial-gradient(circle, ${COLORS.orange} 0%, transparent 70%)`, animationDuration: '10s', animationDelay: '0s' }}
+        <img
+          src="/images/ito_images/ito_17.jpeg"
+          alt=""
+          className="w-[900px] max-w-none md:w-[1350px] object-contain select-none transform scale-110 filter blur-[0.4px]"
         />
-        <div 
-          className="absolute top-[45%] -left-[15%] w-[650px] h-[650px] rounded-full blur-[190px] animate-orb-pulse"
-          style={{ background: `radial-gradient(circle, ${COLORS.orange} 0%, transparent 70%)`, animationDuration: '12s', animationDelay: '2s' }}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(circle at center, transparent 20%, ${TOKENS.bgPrimary} 80%)`
+          }}
         />
       </div>
 
-      {/* Navigation */}
-      <nav 
-        className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b"
-        style={{ 
-          background: 'rgba(1, 16, 45, 0.85)',
-          borderColor: 'rgba(247, 110, 1, 0.25)',
-          boxShadow: '0 10px 30px -10px rgba(1, 16, 45, 0.8)'
+      {/* ====================================================================
+          FIXED HEADER (PAGE 6)
+      ==================================================================== */}
+      <header
+        style={{
+          backgroundColor: `${TOKENS.bgPrimary}EB`,
+          borderBottom: '1px solid rgba(242, 88, 14, 0.15)'
         }}
+        className="fixed top-0 left-0 w-full h-[68px] md:h-[76px] z-50 backdrop-blur-md px-6 lg:px-16 flex items-center justify-between"
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-3 group">
-            <img 
-              src="/images/web_trans_icon.jpeg" 
-              alt="ITO Ads Logo" 
-              className="w-10 h-10 rounded-xl object-cover shadow-lg transition-transform group-hover:scale-105 group-hover:rotate-3"
-            />
-            <span className="font-serif text-xl font-bold tracking-tight text-white">ITO Ads</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#services" className="text-sm font-medium text-white/80 hover:text-white transition-colors">Services</a>
-            <a href="#packages" className="text-sm font-medium text-white/80 hover:text-white transition-colors">Packages</a>
-            <a href="#process" className="text-sm font-medium text-white/80 hover:text-white transition-colors">Process</a>
-            <a href="#faq" className="text-sm font-medium text-white/80 hover:text-white transition-colors">FAQ</a>
-            <Link 
-              to="/contact" 
-              className="px-5 py-2.5 text-white font-semibold text-sm rounded-xl transition-all shadow-lg hover:shadow-orange-500/25 active:scale-95"
-              style={{ background: `linear-gradient(135deg, ${COLORS.orange}, ${COLORS.orangeLight})` }}
-            >
-              Start Your Campaign
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* HERO SECTION */}
-      <section className="relative min-h-screen flex items-center justify-center pt-28 pb-20 overflow-hidden" ref={heroRef}>
-        {/* Background Video Layer */}
-        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="w-full h-full object-cover opacity-30"
-            style={{ filter: 'brightness(1.2) contrast(2.2)' }}
-          >
-            <source src="/images/glass-flower.mp4" type="video/mp4" />
-          </video>
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: `radial-gradient(circle at center, transparent 0%, ${COLORS.navy} 85%), linear-gradient(180deg, ${COLORS.navy} 0%, transparent 20%, transparent 80%, ${COLORS.navy} 100%)`
-            }}
+        <a href="#hero" className="flex items-center gap-3 group">
+          <img
+            src="/images/web_trans_icon.jpeg"
+            alt="ITO Ads Logo"
+            className="w-9 h-9 rounded-lg object-cover border border-[#F2580E]/30 shadow-md group-hover:scale-105 transition-transform"
           />
+          <div className="flex flex-col">
+            <span style={{ color: TOKENS.textPrimary }} className="font-serif font-bold text-lg tracking-wide">
+              ITO <span style={{ color: TOKENS.brandOrange }}>ADS</span>
+            </span>
+            <span style={{ color: TOKENS.textMuted }} className="text-[9px] uppercase tracking-widest -mt-1 hidden sm:block">
+              Powered by ITC
+            </span>
+          </div>
+        </a>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+          {['Services', 'Process', 'Packages', 'FAQ'].map((item) => (
+            <a
+              key={item}
+              href={`#${item.toLowerCase()}`}
+              style={{ color: TOKENS.textBody }}
+              className="hover:text-white transition-colors"
+            >
+              {item}
+            </a>
+          ))}
+        </nav>
+
+        {/* Primary Header CTA */}
+        {/* Primary Header CTA */}
+        <button
+          type="button"
+          onClick={() => handleSelectPackage('Professional')}
+          style={{ backgroundColor: TOKENS.brandOrange }}
+          className="h-9 md:h-10 px-3.5 md:px-5 rounded-[8px] text-white text-xs md:text-sm font-semibold tracking-tight md:tracking-wide whitespace-nowrap hover:brightness-110 transition-all shadow-md active:scale-95 flex items-center justify-center shrink-0"
+        >
+          <span className="sm:hidden">Consult</span>
+          <span className="hidden sm:inline">Book Consultation</span>
+        </button>
+      </header>
+
+      {/* ====================================================================
+          HERO SECTION (PAGE 6)
+      ==================================================================== */}
+      <section
+        id="hero"
+        className="relative z-10 pt-36 md:pt-44 pb-20 md:pb-28 px-6 lg:px-16 max-w-[1440px] mx-auto min-h-[90vh] flex flex-col justify-center text-center items-center"
+      >
+        {/* Eyebrow */}
+        <div
+          style={{
+            backgroundColor: `${TOKENS.surfaceRaised}80`,
+            borderColor: 'rgba(242, 88, 14, 0.35)',
+            color: TOKENS.accentSand
+          }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs  font-mono uppercase tracking-widest  mb-6"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#F2580E] animate-pulse " />
+          Powered by ITC — India Trade Center
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="max-w-4xl mx-auto"
+        {/* Headline Hierarchy: We Generate (medium) QUALIFIED LEADS (primary) You Convert (secondary) */}
+        <h1
+          style={{ color: TOKENS.textPrimary }}
+          className="font-serif text-3xl sm:text-5xl lg:text-[64px] font-normal leading-[1.12] uppercase tracking-tight max-w-5xl"
+        >
+          <span className="text-xl sm:text-3xl block text-[#C3C5CA] font-sans font-light tracking-wide mb-2 normal-case">
+            We Generate
+          </span>
+          <span style={{ color: TOKENS.brandOrange }} className="font-bold tracking-tight">
+            Qualified Leads.
+          </span>
+          <br />
+          <span className="text-2xl sm:text-4xl text-[#F7F6F6] font-light">
+            You Convert Opportunities.
+          </span>
+        </h1>
+
+        {/* Support Copy */}
+        <p
+          style={{ color: TOKENS.textBody }}
+          className="mt-6 text-base md:text-lg max-w-2xl font-light leading-relaxed"
+        >
+          Targeted B2B acquisition campaigns connecting business suppliers with verified domestic and global commercial buyers.
+        </p>
+
+        {/* CTAs */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <a
+            href="#packages"
+            style={{ backgroundColor: TOKENS.brandOrange }}
+            className="w-full sm:w-auto px-8 h-12 rounded-[10px] text-white text-sm font-semibold tracking-wide flex items-center justify-center gap-2 hover:brightness-110 shadow-lg transition-all"
           >
-            {/* Badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-8 backdrop-blur-md"
-              style={{ 
-                background: 'rgba(247, 110, 1, 0.1)', 
-                borderColor: 'rgba(247, 110, 1, 0.35)' 
-              }}
-            >
-              <span className="w-2 h-2 rounded-full bg-[#F76E01] animate-pulse" />
-              <span className="font-mono text-[11px] tracking-widest uppercase text-white font-semibold">
-                Powered by ITC — India Trade Center
-              </span>
-            </motion.div>
+            View Packages <FiArrowRight />
+          </a>
+          <button
+            type="button"
+            onClick={() => handleSelectPackage('Custom')}
+            style={{
+              backgroundColor: TOKENS.surfaceRaised,
+              borderColor: 'rgba(242, 88, 14, 0.3)',
+              color: TOKENS.textPrimary
+            }}
+            className="w-full sm:w-auto px-8 h-12 rounded-[10px] border text-sm font-semibold tracking-wide hover:border-[#F2580E] hover:text-white transition-all flex items-center justify-center"
+          >
+            Book Consultation
+          </button>
+        </div>
 
-            {/* Main Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.7, ease: 'easeOut' }}
-              className="font-serif text-5xl md:text-7xl lg:text-8xl font-normal leading-[1.05] tracking-tight uppercase mb-6"
-            >
-              <span className="block text-white">WE GENERATE</span>
-              <span 
-                className="block bg-clip-text text-transparent"
-                style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}
-              >
-                QUALIFIED LEADS.
-              </span>
-              <span className="block text-white mt-2 text-3xl md:text-4xl lg:text-5xl font-light">
-                YOU CONVERT OPPORTUNITIES.
-              </span>
-            </motion.h1>
-
-            {/* Sub-headline */}
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.7 }}
-              className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
-            >
-              Paid inbound lead generation systems built for B2B manufacturers, distributors & industrial businesses. Targeted campaigns. CRM-ready delivery. Transparent reporting.
-            </motion.p>
-
-            {/* CTA Buttons with 3D Pop */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.7 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
-              <Link
-                to="/contact"
-                className="group px-8 py-4 text-white font-semibold text-sm tracking-wider uppercase rounded-xl transition-all shadow-2xl hover:shadow-orange-500/40 hover:-translate-y-1 flex items-center gap-2 active:scale-95"
-                style={{ background: `linear-gradient(135deg, ${COLORS.orange}, ${COLORS.orangeLight})` }}
-              >
-                Talk to ITO Ads on WhatsApp
-                <FiMessageSquare size={18} className="group-hover:translate-x-1.5 transition-transform" />
-              </Link>
-              <a
-                href="#packages"
-                className="px-8 py-4 border text-white font-semibold text-sm tracking-wider uppercase rounded-xl transition-all backdrop-blur-md hover:border-[#F76E01] hover:-translate-y-1"
-                style={{ 
-                  background: 'rgba(8, 26, 61, 0.6)', 
-                  borderColor: 'rgba(247, 110, 1, 0.35)' 
-                }}
-              >
-                View Packages
-              </a>
-            </motion.div>
-
-            {/* Trust Indicators */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.7 }}
-              className="mt-16 flex flex-wrap items-center justify-center gap-8 text-sm text-white/70"
-            >
-              {['No long-term contracts', 'Cancel anytime', '14-day performance review', 'Dedicated account manager'].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <FiCheck style={{ color: COLORS.orange }} size={16} />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          {/* 3D Floating Interactive HUD Metric Cards */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto" style={{ perspective: '1100px' }}>
-            {[
-              { icon: FiTrendingUp, label: 'Active Pipeline', value: '₹12Cr+' },
-              { icon: FiTarget, label: 'Avg Qualified CPL', value: '₹75' },
-              { icon: FiZap, label: 'Push Velocity', value: '< 2 Mins' },
-              { icon: FiUsers, label: 'Client Retention', value: '94%' }
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                whileHover={{ translateZ: 35, scale: 1.05, rotateX: 6, rotateY: -6 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-                className="p-4 rounded-2xl border backdrop-blur-md group text-left cursor-default"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(8, 26, 61, 0.8), rgba(4, 21, 54, 0.9))',
-                  borderColor: 'rgba(247, 110, 1, 0.25)',
-                  boxShadow: '0 15px 35px -10px rgba(0,0,0,0.6)',
-                  transformStyle: 'preserve-3d'
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-2xl font-bold font-mono text-white tracking-tight">{stat.value}</span>
-                  <div className="p-1.5 rounded-lg bg-[#F76E01]/10 text-[#F76E01]">
-                    <stat.icon size={16} />
-                  </div>
-                </div>
-                <div className="text-xs text-white/70 font-light">{stat.label}</div>
-              </motion.div>
-            ))}
+        {/* Trust Row */}
+        <div className="mt-14 pt-8 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs md:text-sm font-medium tracking-wide">
+          <div className="flex items-center justify-center gap-2 text-[#F7F6F6]">
+            <FiCheck className="text-[#F2580E]" /> Transparent Weekly Spend
           </div>
-
-          {scrollIndicator}
+          <div className="flex items-center justify-center gap-2 text-[#F7F6F6]">
+            <FiCheck className="text-[#F2580E]" /> 60s CRM-Ready Delivery
+          </div>
+          <div className="flex items-center justify-center gap-2 text-[#F7F6F6]">
+            <FiCheck className="text-[#F2580E]" /> 100% Commercial B2B Focus
+          </div>
         </div>
       </section>
 
-      {/* SERVICES SECTION */}
-      <section 
-        id="services" 
-        className="relative py-32 px-6"
-        style={{ 
-          background: `linear-gradient(180deg, ${COLORS.navy} 0%, ${COLORS.navyCard} 50%, ${COLORS.navy} 100%)` 
-        }}
-      >
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-20"
-          >
-            <span className="font-mono text-xs tracking-widest uppercase block mb-3 font-semibold" style={{ color: COLORS.orange }}>
-              What You Get
-            </span>
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight uppercase text-white mb-4">
-              Six Pillars of <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Acquisition</span>
-            </h2>
-            <p className="text-white/70 max-w-2xl mx-auto text-lg leading-relaxed font-light">
-              Every campaign is built on these six foundations — no exceptions, no shortcuts.
-            </p>
-          </motion.div>
+      {/* ====================================================================
+          SIX PILLARS (PAGE 7)
+      ==================================================================== */}
+      <section id="services" className="relative z-10 py-20 px-6 lg:px-16 max-w-[1440px] mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span style={{ color: TOKENS.brandOrange }} className="text-xs uppercase tracking-widest font-mono font-bold">
+            Services
+          </span>
+          <h2 style={{ color: TOKENS.textPrimary }} className="text-3xl md:text-4xl font-serif mt-2 uppercase tracking-wide">
+            Six Pillars of Acquisition
+          </h2>
+          <p className="mt-3 text-sm font-light">
+            Every component designed strictly to maximize verified commercial pipeline conversions.
+          </p>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ perspective: '1200px' }}>
-            {services.map((service, index) => (
-              <TiltCard3D
-                key={service.title}
-                className="rounded-2xl p-8 border group transition-all duration-300"
-                style={{ 
-                  background: 'rgba(8, 26, 61, 0.7)',
-                  borderColor: 'rgba(247, 110, 1, 0.2)',
-                  boxShadow: '0 20px 40px -15px rgba(1, 16, 45, 0.9)'
-                }}
-              >
-                <div 
-                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110"
-                  style={{ 
-                    background: 'rgba(247, 110, 1, 0.15)', 
-                    border: '1px solid rgba(247, 110, 1, 0.3)',
-                    transform: 'translateZ(30px)' 
-                  }}
-                >
-                  <service.icon size={26} style={{ color: COLORS.orange }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {pillars.map((p, idx) => {
+            const Icon = p.icon;
+            return (
+              <Card3D key={idx}>
+                <div>
+                  <div
+                    style={{ backgroundColor: 'rgba(242, 88, 14, 0.12)', color: TOKENS.brandOrange }}
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-2xl"
+                  >
+                    <Icon />
+                  </div>
+                  <h3 style={{ color: TOKENS.textPrimary }} className="text-xl font-serif font-semibold mb-3">
+                    {p.title}
+                  </h3>
+                  <p className="text-xs md:text-sm leading-relaxed mb-6 font-light">
+                    {p.desc}
+                  </p>
                 </div>
-                <h3 className="font-serif text-xl font-medium text-white mb-3" style={{ transform: 'translateZ(25px)' }}>
-                  {service.title}
-                </h3>
-                <p className="text-white/70 mb-6 leading-relaxed font-light text-sm" style={{ transform: 'translateZ(15px)' }}>
-                  {service.description}
-                </p>
-                <ul className="space-y-2.5" style={{ transform: 'translateZ(20px)' }}>
-                  {service.features.map((feature, fi) => (
-                    <li key={fi} className="flex items-center gap-2 text-sm text-white/80">
-                      <FiCheck style={{ color: COLORS.orange }} size={14} />
-                      {feature}
+                <ul className="space-y-2 border-t border-white/5 pt-4 text-xs">
+                  {p.bullets.map((b, i) => (
+                    <li key={i} className="flex items-center gap-2 text-[#C3C5CA]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#F2580E]" /> {b}
                     </li>
                   ))}
                 </ul>
-              </TiltCard3D>
-            ))}
-          </div>
+              </Card3D>
+            );
+          })}
         </div>
       </section>
 
-      {/* LEAD QUALITY SECTION */}
-      <section 
-        className="relative py-32 px-6 overflow-hidden"
-        style={{ background: COLORS.navy }}
+      {/* ====================================================================
+          LEAD QUALIFICATION PROCESS (PAGE 8)
+      ==================================================================== */}
+      <section
+        id="process"
+        style={{ backgroundColor: TOKENS.bgDeep }}
+        className="relative z-10 py-20 px-6 lg:px-16 border-y border-white/5"
       >
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <span className="font-mono text-xs tracking-widest uppercase block mb-3 font-semibold" style={{ color: COLORS.orange }}>
-              Lead Quality
+        <div className="max-w-[1440px] mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span style={{ color: TOKENS.brandOrange }} className="text-xs uppercase tracking-widest font-mono font-bold">
+              Auditable Pipeline
             </span>
-            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight uppercase text-white">
-              Not Every Form Submission Has <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Equal Value</span>
+            <h2 style={{ color: TOKENS.textPrimary }} className="text-3xl md:text-4xl font-serif mt-2 uppercase tracking-wide">
+              The Qualification Process
             </h2>
-          </motion.div>
-
-          <div className="flex flex-wrap justify-center gap-6 relative z-10" style={{ perspective: '1100px' }}>
-            {leadQualityStages.map((stage, index) => (
-              <motion.div
-                key={stage.stage}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                whileHover={{ scale: 1.1, rotateY: 10, rotateX: 6, translateZ: 40 }}
-                transition={{ delay: index * 0.08, duration: 0.4 }}
-                className="flex flex-col items-center max-w-[200px] text-center group cursor-default"
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                <div
-                  className="w-28 h-28 rounded-2xl flex items-center justify-center p-4 mb-4 border transition-all shadow-2xl backdrop-blur-md group-hover:border-[#F76E01]"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(8, 26, 61, 0.9), rgba(4, 21, 54, 0.95))',
-                    borderColor: 'rgba(247, 110, 1, 0.35)',
-                    boxShadow: '0 20px 35px -10px rgba(247, 110, 1, 0.25)',
-                    transform: 'translateZ(20px)'
-                  }}
-                >
-                  <span className="font-semibold text-sm leading-tight text-white">{stage.stage}</span>
-                </div>
-                <p className="text-xs text-white/70 font-light leading-relaxed">{stage.description}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            className="mt-16 text-center text-white/60 text-sm font-light max-w-2xl mx-auto"
-          >
-            <span className="font-medium text-white">Lead generation ≠ guaranteed sales.</span> We deliver qualified business inquiries. Conversion depends on your product, pricing, sales process, and market fit.
-          </motion.p>
-        </div>
-      </section>
-
-      {/* PACKAGES SECTION WITH INTEGRATED 3D STORM BACKGROUND */}
-      <section 
-        id="packages" 
-        className="relative py-32 px-6 overflow-hidden min-h-[950px]"
-        style={{ background: COLORS.navy }}
-      >
-        {/* 3D Storm Canvas embedded behind the packages */}
-        <SectionStormBackground />
-
-        {/* Semi-transparent Vignette Overlays for Maximum Contrast */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-[1]"
-          style={{
-            background: `radial-gradient(circle at center, transparent 30%, ${COLORS.navy} 95%), linear-gradient(180deg, ${COLORS.navy} 0%, transparent 15%, transparent 85%, ${COLORS.navy} 100%)`
-          }}
-        />
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <span className="font-mono text-xs tracking-widest uppercase block mb-3 font-semibold" style={{ color: COLORS.orange }}>
-              Transparent Pricing
-            </span>
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight uppercase text-white mb-4">
-              Choose Your <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Package</span>
-            </h2>
-            <p className="text-white/80 max-w-2xl mx-auto text-lg leading-relaxed font-light">
-              Fixed pricing. No hidden fees. Scale as you grow. All packages include campaign setup, management, optimization, and reporting.
+            <p className="mt-3 text-sm font-light">
+              From raw digital enquiry to sales-ready enterprise prospect.
             </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6" style={{ perspective: '1200px' }}>
-            {packages.map((pkg, index) => {
-              const isSelected = activePackage === index;
-              return (
-                <TiltCard3D
-                  key={pkg.name}
-                  className="rounded-2xl p-6 flex flex-col transition-all duration-300 backdrop-blur-md group"
-                  style={{
-                    background: isSelected ? 'rgba(8, 26, 61, 0.90)' : 'rgba(8, 26, 61, 0.60)',
-                    border: isSelected ? `2px solid ${COLORS.orange}` : '1px solid rgba(247, 110, 1, 0.25)',
-                    boxShadow: isSelected ? '0 25px 50px -10px rgba(247, 110, 1, 0.4)' : '0 15px 35px -10px rgba(0,0,0,0.6)',
-                    transform: isSelected ? 'translateZ(25px)' : 'none'
-                  }}
-                  onMouseEnter={() => setActivePackage(index)}
-                >
-                  {pkg.name === 'Business' && (
-                    <div 
-                      className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 font-mono text-[10px] tracking-widest uppercase rounded-full font-bold text-white shadow-lg"
-                      style={{ background: COLORS.orange, transform: 'translateZ(35px)' }}
-                    >
-                      Most Popular
-                    </div>
-                  )}
-
-                  <div className="mb-6" style={{ transform: 'translateZ(25px)' }}>
-                    <h3 className="font-serif text-2xl font-medium text-white mb-2">{pkg.name}</h3>
-                    <div className="flex items-baseline gap-1 mb-1">
-                      <span className="text-4xl font-bold text-white">{pkg.price}</span>
-                      <span className="text-white/60 font-light text-sm">/mo</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="font-semibold" style={{ color: COLORS.orange }}>{pkg.leads}</span>
-                      <span className="text-white/60 text-xs">({pkg.cpl})</span>
-                    </div>
-                  </div>
-
-                  <p className="text-white/70 text-sm mb-6 leading-relaxed font-light flex-1" style={{ transform: 'translateZ(15px)' }}>
-                    {pkg.description}
-                  </p>
-
-                  <ul className="space-y-3 mb-8 flex-1" style={{ transform: 'translateZ(20px)' }}>
-                    {pkg.features.map((feature, fi) => (
-                      <li key={fi} className="flex items-start gap-2 text-sm text-white/80">
-                        <FiCheck style={{ color: COLORS.orange }} className="mt-0.5 shrink-0" size={16} />
-                        <span className="font-light">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div style={{ transform: 'translateZ(30px)' }}>
-                    <Link
-                      to="/contact"
-                      className="block w-full py-3 px-4 rounded-xl text-center font-semibold text-sm tracking-wider uppercase transition-all duration-300 active:scale-95 shadow-xl"
-                      style={{
-                        background: isSelected ? `linear-gradient(135deg, ${COLORS.orange}, ${COLORS.orangeLight})` : 'rgba(1, 16, 45, 0.85)',
-                        color: '#ffffff',
-                        border: isSelected ? 'none' : '1px solid rgba(247, 110, 1, 0.35)'
-                      }}
-                    >
-                      {isSelected ? 'Select Package' : 'Get Started'}
-                    </Link>
-                  </div>
-                </TiltCard3D>
-              );
-            })}
           </div>
 
-          <p className="mt-12 text-center text-white/60 text-sm font-light relative z-10">
-            All prices exclusive of 18% GST. Lead counts are monthly targets based on historical performance data.
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+            {stages.map((s, idx) => (
+              <div
+                key={idx}
+                style={{ backgroundColor: TOKENS.surfaceCard }}
+                className="p-6 rounded-[18px] border border-white/10 relative flex flex-col justify-between"
+              >
+                <div>
+                  <span
+                    style={{ color: TOKENS.brandOrange }}
+                    className="font-mono text-2xl font-bold block mb-3"
+                  >
+                    {s.num}
+                  </span>
+                  <h4 style={{ color: TOKENS.textPrimary }} className="text-lg font-serif font-medium mb-2">
+                    {s.title}
+                  </h4>
+                  <p className="text-xs font-light leading-relaxed">
+                    {s.desc}
+                  </p>
+                </div>
+                {idx < 3 && (
+                  <div className="hidden md:block absolute -right-3 top-1/2 transform -translate-y-1/2 z-20 text-[#F2580E]">
+                    <FiArrowRight size={18} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Qualification Policy Accordion (Page 8 Mandate) */}
+          <div className="mt-12 max-w-3xl mx-auto border border-white/10 rounded-[14px] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsPolicyOpen(!isPolicyOpen)}
+              className="w-full p-4 flex items-center justify-between text-left text-sm font-medium hover:bg-white/5 transition-colors"
+            >
+              <span className="flex items-center gap-2 text-white">
+                <FiShield className="text-[#F2580E]" /> Commercial Lead Replacement & SLA Policy
+              </span>
+              {isPolicyOpen ? <FiChevronUp /> : <FiChevronDown />}
+            </button>
+            {isPolicyOpen && (
+              <div className="p-5 text-xs font-light border-t border-white/10 space-y-3 leading-relaxed bg-[#0A1526]">
+                <p><strong>Replacement Guarantee:</strong> Any lead found to have a disconnected telephone line, non-matching business identity, or duplicate profile reported within 7 business days is automatically credited and replaced free of charge.</p>
+                <p><strong>Delivery SLA:</strong> 100% of validated leads are transmitted via webhook/CRM integration in &lt; 60 seconds with full UTM attribution parameters attached.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          PACKAGES & COMMERCIAL CONVERSION (PAGE 9)
+      ==================================================================== */}
+      <section id="packages" className="relative z-10 py-24 px-6 lg:px-16 max-w-[1440px] mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span style={{ color: TOKENS.brandOrange }} className="text-xs uppercase tracking-widest font-mono font-bold">
+            Transparent Pricing
+          </span>
+          <h2 style={{ color: TOKENS.textPrimary }} className="text-3xl md:text-4xl font-serif mt-2 uppercase tracking-wide">
+            Acquisition Packages
+          </h2>
+          <p className="mt-2 text-xs text-[#A1A1A7]">
+            Note: Platform media spend and applicable GST are excluded and billed directly at transparent cost.
           </p>
         </div>
-      </section>
 
-      {/* PROCESS SECTION */}
-      <section id="process" className="relative py-32 px-6" style={{ background: COLORS.navy }}>
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <span className="font-mono text-xs tracking-widest uppercase block mb-3 font-semibold" style={{ color: COLORS.orange }}>
-              How It Works
-            </span>
-            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight uppercase text-white">
-              From Strategy to <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Scale</span> in 6 Steps
-            </h2>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ perspective: '1200px' }}>
-            {processSteps.map((step) => (
-              <TiltCard3D
-                key={step.num}
-                className="rounded-2xl p-8 border transition-all duration-300 group"
-                style={{
-                  background: 'rgba(8, 26, 61, 0.65)',
-                  borderColor: 'rgba(247, 110, 1, 0.2)',
-                  boxShadow: '0 15px 30px -10px rgba(0,0,0,0.5)'
-                }}
-              >
-                <div className="flex items-center gap-3 mb-4" style={{ transform: 'translateZ(25px)' }}>
-                  <span className="font-mono text-2xl font-bold" style={{ color: COLORS.orange }}>{step.num}</span>
-                  <h3 className="font-serif text-xl font-medium text-white">{step.title}</h3>
-                </div>
-                <p className="text-white/70 leading-relaxed font-light text-sm" style={{ transform: 'translateZ(15px)' }}>
-                  {step.desc}
-                </p>
-              </TiltCard3D>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* WHY CHOOSE US SECTION */}
-      <section className="relative py-32 px-6" style={{ background: `linear-gradient(180deg, ${COLORS.navy} 0%, ${COLORS.navyCard} 100%)` }}>
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <span className="font-mono text-xs tracking-widest uppercase block mb-3 font-semibold" style={{ color: COLORS.orange }}>
-              Why Choose Us
-            </span>
-            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight uppercase text-white">
-              <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Strategy</span> Before Spending
-            </h2>
-            <p className="text-white/70 max-w-2xl mx-auto mt-4 text-lg leading-relaxed font-light">
-              We audit your market, competitors, and buyers before spending a single rupee on ads.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ perspective: '1200px' }}>
-            {[
-              { icon: FiTarget, title: 'Strategy Before Spending', desc: 'We audit your market, competitors, and buyers before spending a single rupee on ads. No spray-and-pray.' },
-              { icon: FiUsers, title: 'Audience-Focused Campaigns', desc: 'Targeting built on your ideal customer profile — job titles, industries, company sizes, intent signals, and geo-data.' },
-              { icon: FiTrendingUp, title: 'Performance & Optimization', desc: 'Weekly optimization cycles. Creative rotation. Bid strategy refinement. Audience expansion. Performance compounds.' },
-              { icon: FiCpu, title: 'Technology & Data', desc: 'Server-side tracking, enhanced conversions, offline conversion import, and first-party data activation for precision.' },
-              { icon: FiDatabase, title: 'CRM-Ready Delivery', desc: 'Leads pushed to your CRM with full context — source, campaign, score, timestamp. Your sales team acts in minutes, not hours.' },
-              { icon: FiShield, title: 'Transparent Communication', desc: 'Live dashboard access. Weekly performance calls. Monthly strategy reviews. No black boxes. No surprises.' }
-            ].map((item) => (
-              <TiltCard3D
-                key={item.title}
-                className="group rounded-2xl p-8 border transition-all duration-300"
-                style={{
-                  background: 'rgba(8, 26, 61, 0.65)',
-                  borderColor: 'rgba(247, 110, 1, 0.2)',
-                  boxShadow: '0 15px 35px -10px rgba(0,0,0,0.5)'
-                }}
-              >
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"
-                  style={{ background: 'rgba(247, 110, 1, 0.15)', border: '1px solid rgba(247, 110, 1, 0.3)', transform: 'translateZ(30px)' }}
-                >
-                  <item.icon size={26} style={{ color: COLORS.orange }} />
-                </div>
-                <h3 className="font-serif text-lg font-medium text-white mb-3" style={{ transform: 'translateZ(25px)' }}>{item.title}</h3>
-                <p className="text-white/70 leading-relaxed font-light text-sm" style={{ transform: 'translateZ(15px)' }}>{item.desc}</p>
-              </TiltCard3D>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ SECTION */}
-      <section 
-        id="faq" 
-        className="relative py-32 px-6"
-        style={{ 
-          background: `linear-gradient(180deg, ${COLORS.navyCard} 0%, ${COLORS.navy} 100%)` 
-        }}
-      >
-        <div className="max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <span className="font-mono text-xs tracking-widest uppercase block mb-3 font-semibold" style={{ color: COLORS.orange }}>
-              Frequently Asked
-            </span>
-            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight uppercase text-white">
-              Questions You Should <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Ask</span>
-            </h2>
-          </motion.div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <motion.div
-                key={faq.q}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="border rounded-xl overflow-hidden backdrop-blur-md transition-all duration-300 hover:border-[#F76E01]/50"
-                style={{ 
-                  background: 'rgba(8, 26, 61, 0.6)', 
-                  borderColor: 'rgba(247, 110, 1, 0.2)' 
-                }}
-              >
-                <button
-                  onClick={() => setActiveFAQ(activeFAQ === index ? null : index)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none"
-                >
-                  <span className="font-medium text-white pr-10">{faq.q}</span>
-                  <motion.div
-                    animate={{ rotate: activeFAQ === index ? 90 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ color: COLORS.orange }}
-                    className="shrink-0"
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {packages.map((pkg, idx) => (
+            <Card3D key={idx} isPopular={pkg.popular}>
+              <div>
+                {pkg.popular && (
+                  <div
+                    style={{ backgroundColor: TOKENS.brandOrange, color: '#FFFFFF' }}
+                    className="absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider shadow-md"
                   >
-                    <FiChevronRight size={20} />
-                  </motion.div>
-                </button>
-                <AnimatePresence>
-                  {activeFAQ === index && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="px-6 pb-6 border-t"
-                      style={{ borderColor: 'rgba(247, 110, 1, 0.15)' }}
-                    >
-                      <p className="text-white/70 leading-relaxed font-light text-sm pt-4">{faq.a}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+                    Most Popular
+                  </div>
+                )}
+                <h4 style={{ color: TOKENS.textPrimary }} className="text-xl font-serif font-bold mb-1">
+                  {pkg.name}
+                </h4>
+                <p className="text-xs text-[#A1A1A7] mb-4 min-h-[32px]">
+                  {pkg.subtitle}
+                </p>
 
-      {/* CTA SECTION */}
-      <section 
-        className="relative py-32 px-6 overflow-hidden text-center"
-        style={{ 
-          background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyCard} 50%, ${COLORS.navy} 100%)`,
-          borderTop: '1px solid rgba(247, 110, 1, 0.2)'
-        }}
-      >
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight uppercase text-white mb-6">
-              Ready to Build Your <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${COLORS.orange}, #ffffff)` }}>Acquisition Engine</span>?
-            </h2>
-            <p className="text-white/80 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-              Pick a package. Share your goals. We'll have campaigns live in 7 business days.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                to="/contact"
-                className="px-10 py-4 text-white font-semibold text-sm tracking-wider uppercase rounded-xl transition-all shadow-2xl hover:shadow-orange-500/40 hover:-translate-y-1 flex items-center gap-2 active:scale-95"
-                style={{ background: `linear-gradient(135deg, ${COLORS.orange}, ${COLORS.orangeLight})` }}
+                <div className="mb-4">
+                  <span style={{ color: TOKENS.textPrimary }} className="text-3xl font-bold font-mono">
+                    {pkg.price}
+                  </span>
+                  <span className="text-xs text-[#A1A1A7]">{pkg.period}</span>
+                  <div style={{ color: TOKENS.brandOrange }} className="text-xs font-mono font-semibold mt-1">
+                    {pkg.leads} ({pkg.rate})
+                  </div>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-[#C3C5CA] border-t border-white/10 pt-4 mb-6">
+                  {pkg.features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <FiCheck className="text-[#F2580E] shrink-0 mt-0.5" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSelectPackage(pkg.name)}
+                style={{
+                  backgroundColor: pkg.popular ? TOKENS.brandOrange : 'transparent',
+                  borderColor: pkg.popular ? TOKENS.brandOrange : 'rgba(242, 88, 14, 0.4)',
+                  color: '#FFFFFF'
+                }}
+                className="w-full py-2.5 rounded-[8px] border text-xs font-semibold uppercase tracking-wider hover:brightness-110 transition-all flex items-center justify-center gap-1"
               >
-                Talk to ITO Ads on WhatsApp
-                <FiMessageSquare size={18} />
-              </Link>
-            </div>
-          </motion.div>
+                Select {pkg.name} <FiArrowRight />
+              </button>
+            </Card3D>
+          ))}
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer 
-        className="py-16 px-6 border-t"
-        style={{ 
-          background: COLORS.navy, 
-          borderColor: 'rgba(247, 110, 1, 0.2)' 
-        }}
+      {/* ====================================================================
+          FAQ SECTION
+      ==================================================================== */}
+      <section id="faq" className="relative z-10 py-16 px-6 lg:px-16 max-w-4xl mx-auto border-t border-white/5">
+        <h2 style={{ color: TOKENS.textPrimary }} className="text-2xl md:text-3xl font-serif text-center mb-8 uppercase">
+          Frequently Answered
+        </h2>
+        <div className="space-y-3">
+          {faqs.map((f, i) => (
+            <div
+              key={i}
+              style={{ backgroundColor: TOKENS.surfaceCard }}
+              className="border border-white/10 rounded-[12px] overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                className="w-full p-4 text-left text-sm font-medium flex justify-between items-center text-[#F7F6F6]"
+              >
+                <span>{f.q}</span>
+                {openFaq === i ? <FiChevronUp /> : <FiChevronDown />}
+              </button>
+              {openFaq === i && (
+                <div className="p-4 pt-0 text-xs text-[#C3C5CA] font-light leading-relaxed border-t border-white/5">
+                  {f.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ====================================================================
+          FOOTER (PAGE 14 - VERIFIED DETAILS)
+      ==================================================================== */}
+      <footer
+        style={{ backgroundColor: TOKENS.bgDeep }}
+        className="relative z-10 py-12 px-6 lg:px-16 border-t border-white/10 text-xs text-[#A1A1A7]"
       >
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-            <div className="md:col-span-2">
-              <Link to="/" className="flex items-center space-x-3 mb-6">
-              <img 
-              src="/images/web_trans_icon.jpeg" 
-              alt="ITO Ads Logo" 
-              className="w-10 h-10 rounded-xl object-cover shadow-lg transition-transform group-hover:scale-105 group-hover:rotate-3"
-            />
-                <span className="font-serif text-xl font-bold tracking-tight text-white">ITO Ads</span>
-              </Link>
-              <p className="text-white/70 max-w-md font-light leading-relaxed text-sm">
-                Paid inbound lead generation for B2B manufacturers, distributors & industrial businesses. Powered by ITC — India Trade Center.
-              </p>
+        <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <img src="/images/web_trans_icon.jpeg" alt="Logo" className="w-6 h-6 rounded" />
+              <span className="font-bold text-sm text-[#F7F6F6]">ITO ADS</span>
             </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4 tracking-wider uppercase text-xs">Quick Links</h4>
-              <nav className="space-y-2 text-sm">
-                <a href="#services" className="block text-white/70 hover:text-white transition-colors font-light">Services</a>
-                <a href="#packages" className="block text-white/70 hover:text-white transition-colors font-light">Packages</a>
-                <a href="#process" className="block text-white/70 hover:text-white transition-colors font-light">Process</a>
-                <a href="#faq" className="block text-white/70 hover:text-white transition-colors font-light">FAQ</a>
-              </nav>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4 tracking-wider uppercase text-xs">Contact</h4>
-              <address className="space-y-3 text-white/70 font-light not-italic text-sm">
-                <div className="flex items-center gap-2"><FiMapPin size={16} />Kishanganj, Siliguri, Jaigaon, Noida</div>
-                <div className="flex items-center gap-2"><FiMail size={16} />info@indiatradeoverseas.com</div>
-                <div className="flex items-center gap-2"><FiPhone size={16} />01169262028</div>
-                <div className="flex items-center gap-2"><FiClock size={16} />Mon–Sat, 9:30 AM – 6:30 PM IST</div>
-              </address>
-            </div>
-          </div>
-          <div className="pt-8 border-t flex flex-col md:flex-row items-center justify-between gap-4" style={{ borderColor: 'rgba(247, 110, 1, 0.15)' }}>
-            <p className="text-white/50 text-sm font-light">
-              © {new Date().getFullYear()} India Trade Overseas. All rights reserved.
+            <p className="font-light leading-relaxed">
+              Premium B2B Lead Generation and Pipeline Acceleration across Indian Trade Corridors.
             </p>
+          </div>
+
+          <div>
+            <h5 className="font-semibold text-[#F7F6F6] mb-3 uppercase tracking-wider">Contact</h5>
+            <p className="flex items-center gap-2 mb-1.5"><FiMail /> info@indiatradeoverseas.com</p>
+            <p className="flex items-center gap-2 mb-1.5"><FiPhone /> 01169262028</p>
+            <p className="flex items-center gap-2"><FiClock /> Mon - Sat: 9:30 AM - 6:30 PM</p>
+          </div>
+
+          <div>
+            <h5 className="font-semibold text-[#F7F6F6] mb-3 uppercase tracking-wider">Corridors</h5>
+            <p className="font-light leading-relaxed">
+              New Delhi • Noida • Siliguri • Kishanganj • Jaigaon
+            </p>
+          </div>
+
+          <div>
+            <h5 className="font-semibold text-[#F7F6F6] mb-3 uppercase tracking-wider">Governance</h5>
+            <p className="font-light leading-relaxed mb-2">
+              India Trade Overseas. All commercial representations subject to signed service contracts.
+            </p>
+            <p>© {new Date().getFullYear()} ITO Ads. All Rights Reserved.</p>
           </div>
         </div>
       </footer>
-      </div>
-    </>
+
+      {/* ====================================================================
+          CONSULTATION & ENQUIRY MODAL (PAGE 10)
+      ==================================================================== */}
+      <AnimatePresence>
+        {isConsultModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              style={{ backgroundColor: TOKENS.surfaceCard, borderColor: 'rgba(242, 88, 14, 0.3)' }}
+              className="relative w-full max-w-lg rounded-[20px] border p-6 md:p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <button
+                type="button"
+                onClick={() => setIsConsultModalOpen(false)}
+                className="absolute top-5 right-5 text-gray-400 hover:text-white"
+              >
+                <FiX size={20} />
+              </button>
+
+              <h3 style={{ color: TOKENS.textPrimary }} className="text-2xl font-serif font-bold mb-1">
+                Book Campaign Consultation
+              </h3>
+              <p className="text-xs text-[#A1A1A7] mb-6">
+                Selected Plan: <span style={{ color: TOKENS.brandOrange }} className="font-semibold">{selectedPlan}</span>
+              </p>
+
+              {formSubmitted ? (
+                <div className="py-12 text-center text-[#F7F6F6]">
+                  <FiCheck className="text-4xl text-[#F2580E] mx-auto mb-3" />
+                  <h4 className="text-lg font-bold">Enquiry Received</h4>
+                  <p className="text-xs text-[#A1A1A7] mt-1">Our commercial specialist will review and respond within 15 minutes.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleFormSubmit} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block text-[#C3C5CA] mb-1">Full Name</label>
+                    <input
+                      required
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[#C3C5CA] mb-1">Work Email</label>
+                      <input
+                        required
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#C3C5CA] mb-1">Phone Number</label>
+                      <input
+                        required
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[#C3C5CA] mb-1">Company Name</label>
+                      <input
+                        required
+                        type="text"
+                        name="company"
+                        value={formData.company}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#C3C5CA] mb-1">Target Industry</label>
+                      <input
+                        type="text"
+                        name="industry"
+                        placeholder="e.g. Coal, Rice, Stone"
+                        value={formData.industry}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[#C3C5CA] mb-1">Primary Monthly Objective</label>
+                    <textarea
+                      rows={2}
+                      name="objective"
+                      value={formData.objective}
+                      onChange={handleInputChange}
+                      placeholder="Share target geography, required lead volume, or commercial goals..."
+                      className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
+                    />
+                  </div>
+                  <div className="flex items-start gap-2 pt-2">
+                    <input
+                      type="checkbox"
+                      required
+                      name="consent"
+                      checked={formData.consent}
+                      onChange={handleInputChange}
+                      className="mt-0.5 rounded accent-[#F2580E]"
+                    />
+                    <span className="text-[10px] text-[#A1A1A7] leading-tight">
+                      I authorize India Trade Overseas to transmit campaign details and contact me regarding this B2B commercial requirement.
+                    </span>
+                  </div>
+                  <button
+                    type="submit"
+                    style={{ backgroundColor: TOKENS.brandOrange }}
+                    className="w-full mt-4 py-3 rounded-[8px] text-white font-semibold uppercase tracking-wider hover:brightness-110 transition-all text-xs"
+                  >
+                    Submit Campaign Brief
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FLOATING ACTION BUTTON (SAFE PLACEMENT) */}
+      <button
+        type="button"
+        onClick={() => handleSelectPackage('Quick Consultation')}
+        style={{ backgroundColor: TOKENS.brandOrange }}
+        className="fixed bottom-6 right-6 z-40 p-3.5 rounded-full text-white shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center border border-white/20"
+        aria-label="Quick Campaign Consultation"
+      >
+        <FiMessageSquare size={20} />
+      </button>
+    </div>
   );
 }

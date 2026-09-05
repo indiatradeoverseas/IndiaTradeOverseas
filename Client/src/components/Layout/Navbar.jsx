@@ -126,12 +126,6 @@ export default function Navbar() {
         { to: '/ito-ads', label: 'ITO ADS' },
       ]
     },
-    {
-      groupLabel: 'ADVERTISING & LEAD GEN',
-      links: [
-        { to: '/ito-ads', label: 'ITO ADS' },
-      ]
-    }
   ];
 
   const isActive = (path) => location.pathname === path;
