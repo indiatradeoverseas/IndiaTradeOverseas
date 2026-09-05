@@ -18,30 +18,39 @@ import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+
   const isAdmin =
     user?.role === 'ADMIN' ||
     user?.department === 'ADMIN' ||
     (user?.position && user.position.toLowerCase().includes('admin'));
+
   const navigate = useNavigate();
   const location = useLocation();
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isServicesDropdownOpen, setIsServicesDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
   const servicesRef = useRef(null);
 
   useEffect(() => {
     const loadNotifications = async () => {
       if (!user) return;
+
       try {
         const response = await notificationsApi.getNotifications();
+
         if (response.success) {
-          setUnreadCount(response.data.notifications.filter((n) => !n.isRead).length);
+          setUnreadCount(
+            response.data.notifications.filter((n) => !n.isRead).length
+          );
         }
       } catch (error) {
         console.error('Unable to load notification badge:', error);
       }
     };
+
     loadNotifications();
   }, [user]);
 
@@ -53,43 +62,60 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isServicesDropdownOpen) return;
+
     const handleClickOutside = (event) => {
-      if (servicesRef.current && !servicesRef.current.contains(event.target)) {
+      if (
+        servicesRef.current &&
+        !servicesRef.current.contains(event.target)
+      ) {
         setIsServicesDropdownOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isServicesDropdownOpen]);
 
   const handleLogout = () => {
     logout();
     navigate('/');
     toast.success('Logged out successfully');
+
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
   };
 
-  // Removed Products link
+  // Main navigation.
+  // Products intentionally removed.
   const navLinks = [
     { to: '/', label: 'HOME' },
     { to: '/about', label: 'ABOUT US' },
     { to: '/careers', label: 'CAREERS' },
   ];
 
-  // Grouped Services Data
+  // Services structure - major divisions with sub-divisions
   const servicesGroups = [
     {
-      groupLabel: 'PRAKRITI DIVISION',
+      groupLabel: 'PRAKRITI',
       links: [
-        { to: '/prakriti', label: 'TEA DIVISION' },
-        { to: '/prakriti/rice', label: 'RICE DIVISION' },
+        { to: '/prakriti', label: 'Tea' },
+        { to: '/prakriti/rice', label: 'Rice' },
+        { to: null, label: 'Onion' } // no page yet
       ]
     },
     {
-      groupLabel: 'BUILDING & CONSTRUCTION',
+      groupLabel: 'BUILDING, CONSTRUCTION AND MINERALS',
       links: [
-        { to: '/stone', label: 'STONE DIVISION' },
+        { to: '/stone', label: 'Stone' }
+      ]
+    },
+    {
+      groupLabel: 'INDIA TRADE CENTER',
+      links: [
+        { to: '/ito-ads', label: 'ITO ADS' }
       ]
     },
     {
@@ -103,63 +129,95 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
   const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
 
+  // State for mega menu - tracks which major division is hovered (desktop) or expanded (mobile)
+  const [hoveredDivision, setHoveredDivision] = useState(null);
+  const [expandedDivisions, setExpandedDivisions] = useState({});
+
   // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
   const mobileMenuContainer = {
     hidden: {},
     visible: {
-      transition: { staggerChildren: 0.055, delayChildren: 0.05 }
+      transition: {
+        staggerChildren: 0.055,
+        delayChildren: 0.05
+      }
     },
     exit: {
-      transition: { staggerChildren: 0.03, staggerDirection: -1 }
+      transition: {
+        staggerChildren: 0.03,
+        staggerDirection: -1
+      }
     }
   };
 
   const mobileMenuItem = {
-    hidden: { opacity: 0, y: -8, x: -6 },
+    hidden: {
+      opacity: 0,
+      y: -8,
+      x: -6
+    },
     visible: {
       opacity: 1,
       y: 0,
       x: 0,
-      transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }
+      transition: {
+        duration: 0.35,
+        ease: [0.22, 1, 0.36, 1]
+      }
     },
-    exit: { opacity: 0, x: -6, transition: { duration: 0.15, ease: 'easeIn' } }
+    exit: {
+      opacity: 0,
+      x: -6,
+      transition: {
+        duration: 0.15,
+        ease: 'easeIn'
+      }
+    }
   };
 
   return (
     <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 via-black/30 to-transparent transition-all duration-300">
+
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
-{/* MOBILE NAVIGATION BAR HEADER */}
-        <div className="flex lg:hidden justify-between items-center h-[80px] w-full">
-          <div className="flex items-center space-x-3">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="h-[40px] w-[40px] flex items-center justify-center shrink-0">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-contain"
-                  loading="eager"
+        {/* MOBILE NAVIGATION BAR HEADER */}
+        <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
+          <div className="flex items-center space-x-3 text-right">
+<div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
-
-              <div className="flex flex-col justify-center text-left leading-none">
-                <span className="font-serif font-semibold text-[18px] tracking-[0.05em] text-white whitespace-nowrap">
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="flex flex-col justify-center text-right leading-none">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap drop-shadow">
                   INDIA
                 </span>
-                <span className="font-sans font-light text-[10px] tracking-[0.18em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap drop-shadow">
                   TRADE OVERSEAS
-                </span>
-                <span className="font-sans font-medium text-[7px] tracking-[0.1em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
-                  WHERE QUALITY MEETS GLOBAL DEMAND
                 </span>
               </div>
             </Link>
+
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
+
             {user && (
-              <Link to="/crm/notifications" className="relative text-[#C5CBD3] hover:text-[#F2F4F7] p-2 mr-1 transition-colors">
+              <Link
+                to="/crm/notifications"
+                className="relative text-[#C5CBD3] hover:text-[#F2F4F7] p-2 mr-1 transition-colors"
+              >
                 <FiBell size={20} />
+
                 {unreadCount > 0 && (
                   <span className="absolute top-0.5 right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
                     {unreadCount}
@@ -167,135 +225,270 @@ export default function Navbar() {
                 )}
               </Link>
             )}
+
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none"
               aria-label="Toggle Navigation Menu"
+              aria-expanded={isMobileMenuOpen}
             >
               <AnimatePresence mode="wait" initial={false}>
+
                 <motion.span
                   key={isMobileMenuOpen ? 'close' : 'open'}
                   initial={{ rotate: -90, opacity: 0 }}
                   animate={{ rotate: 0, opacity: 1 }}
                   exit={{ rotate: 90, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  transition={{
+                    duration: 0.2,
+                    ease: 'easeInOut'
+                  }}
                   className="inline-flex"
                 >
-                  {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
+                  {isMobileMenuOpen ? (
+                    <FiX size={26} />
+                  ) : (
+                    <FiMenu size={26} />
+                  )}
                 </motion.span>
+
               </AnimatePresence>
             </button>
+
           </div>
         </div>
 
         {/* DESKTOP NAVIGATION BAR HEADER */}
-        <div className="hidden lg:flex justify-between items-center h-[80px]">
+        <div className="hidden lg:flex justify-between items-center h-[104px]">
           <div className="flex items-center shrink-0">
-            <Link to="/" className="flex items-center space-x-4 group">
-              <div className="h-[56px] w-[56px] flex items-center justify-center shrink-0">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-contain"
-                  loading="eager"
+            <Link to="/" className="flex items-center space-x-3.5 group">
+              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/30 bg-black/40 shrink-0 shadow-lg">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
 
               <div className="flex flex-col justify-center text-left">
-                <span className="font-serif font-semibold text-[20px] tracking-[0.07em] text-white leading-tight uppercase whitespace-nowrap">
-                  INDIA
+                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap drop-shadow-md">
+                  India Trade Overseas
                 </span>
-                <span className="font-sans font-light text-[16px] tracking-[0.18em] text-[#C5CBD3] uppercase mt-1 whitespace-nowrap">
-                  TRADE OVERSEAS
+                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap drop-shadow-sm">
+                  Trade. Supply. Logistics. Growth.
                 </span>
-                <span className="font-sans font-medium text-[10px] tracking-[0.1em] text-[#C5CBD3] uppercase  whitespace-nowrap">
-                  WHERE QUALITY MEETS GLOBAL DEMAND
-                </span>
+
               </div>
+
             </Link>
+
           </div>
 
+          {/* =====================================================
+              MAIN NAVIGATION
+          ===================================================== */}
           <div className="flex items-center justify-end flex-1 min-w-0 space-x-5 xl:space-x-6">
+
+            {/* HOME / ABOUT / CAREERS */}
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
                 className={`relative text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap outline-none drop-shadow-sm ${
-                  isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                  isActive(link.to)
+                    ? 'text-[#F2F4F7]'
+                    : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
                 }`}
               >
                 {link.label}
+
                 {isActive(link.to) && (
                   <span className="absolute bottom-[-10px] left-0 right-0 h-[2px] bg-[#F2F4F7]" />
                 )}
               </Link>
             ))}
 
-            {/* OUR SERVICES DROPDOWN */}
+{/* =====================================================
+                OUR SERVICES
+                Text itself is now a link to /our-services.
+                Chevron/dropdown remains available.
+            ===================================================== */}
             <div
               ref={servicesRef}
               className="relative py-2"
               onMouseEnter={() => setIsServicesDropdownOpen(true)}
-              onMouseLeave={() => setIsServicesDropdownOpen(false)}
+              onMouseLeave={() => {
+                setIsServicesDropdownOpen(false);
+                setHoveredDivision(null);
+              }}
             >
-              <button
-                className={`flex items-center space-x-1 text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none drop-shadow-sm ${
-                  isServicesActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
-                }`}
-              >
-                <span>OUR SERVICES</span>
-                <FiChevronDown size={12} className={`transition-transform duration-300 ${isServicesDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
 
+              <div className="flex items-center">
+
+                {/* OUR SERVICES PAGE LINK */}
+                <Link
+                  to="/our-services"
+                  className={`relative flex items-center text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none drop-shadow-sm ${
+                    isServicesActive
+                      ? 'text-[#F2F4F7]'
+                      : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                  }`}
+                  onClick={() => setIsServicesDropdownOpen(false)}
+                >
+                  <span>OUR SERVICES</span>
+
+                  {isServicesActive && (
+                    <span className="absolute bottom-[-12px] left-0 right-0 h-[2px] bg-[#F2F4F7]" />
+                  )}
+                </Link>
+
+                {/* DROPDOWN TRIGGER */}
+                <button
+                  type="button"
+                  aria-label="Open Our Services menu"
+                  aria-expanded={isServicesDropdownOpen}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsServicesDropdownOpen((prev) => !prev);
+                  }}
+                  className={`ml-1 flex items-center justify-center text-[11px] xl:text-[12px] outline-none ${
+                    isServicesActive
+                      ? 'text-[#F2F4F7]'
+                      : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                  }`}
+                >
+                  <FiChevronDown
+                    size={12}
+                    className={`transition-transform duration-300 ${
+                      isServicesDropdownOpen
+                        ? 'rotate-180'
+                        : ''
+                    }`}
+                  />
+                </button>
+
+              </div>
+
+              {/* =================================================
+                  DESKTOP SERVICES MEGA MENU
+              ================================================= */}
               <AnimatePresence>
+
                 {isServicesDropdownOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 5 }}
-                    transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="absolute left-0 mt-3 w-56 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
+                    initial={{
+                      opacity: 0,
+                      y: 5
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0
+                    }}
+                    exit={{
+                      opacity: 0,
+                      y: 5
+                    }}
+                    transition={{
+                      duration: 0.15,
+                      ease: 'easeOut'
+                    }}
+                    className="absolute left-0 mt-3 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
                   >
-                    {servicesGroups.map((group, gIdx) => (
-                      <div key={gIdx} className={gIdx > 0 ? "border-t border-[#C5CBD3]/15 mt-2 pt-2" : ""}>
-                        {/* Sub-heading Label */}
-                        <div className="px-4 py-1 text-[9px] font-mono font-bold tracking-widest text-[#6D7886] uppercase">
-                          {group.groupLabel}
+                    <div className="flex flex-col gap-1 px-2">
+                      {servicesGroups.map((group, gIdx) => (
+                        <div
+                          key={group.groupLabel}
+                          className="relative"
+                          onMouseEnter={() => setHoveredDivision(gIdx)}
+                          onMouseLeave={() => setHoveredDivision(null)}
+                        >
+                          {/* MAJOR DIVISION LABEL - acts as hover trigger */}
+                          <div className={`px-4 py-3 text-[9px] font-mono font-bold tracking-widest uppercase cursor-pointer transition-colors ${
+                            hoveredDivision === gIdx
+                              ? 'text-[#F2F4F7] bg-[#2B3440]/60'
+                              : 'text-[#6D7886] hover:text-[#F2F4F7] hover:bg-[#2B3440]/30'
+                          } rounded-[2px]`}>
+                            {group.groupLabel}
+                          </div>
+
+                          {/* SUB-DIVISIONS PANEL - shows on hover */}
+                          {hoveredDivision === gIdx && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.15, ease: 'easeOut' }}
+                              className="absolute left-full top-0 ml-1 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-1 z-50 rounded-[2px] min-w-[160px]"
+                            >
+                              {group.links.map((subLink) => (
+                                subLink.to ? (
+                                  <Link
+                                    key={subLink.to}
+                                    to={subLink.to}
+                                    className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
+                                      location.pathname === subLink.to
+                                        ? 'bg-[#2B3440] text-[#F2F4F7]'
+                                        : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
+                                    }`}
+                                    onClick={() => setIsServicesDropdownOpen(false)}
+                                  >
+                                    {subLink.label}
+                                  </Link>
+                                ) : (
+                                  <span
+                                    key={subLink.label}
+                                    className="block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider text-[#6D7886] cursor-default"
+                                  >
+                                    {subLink.label}
+                                  </span>
+                                )
+                              ))}
+                            </motion.div>
+                          )}
+
                         </div>
-                        {/* Group Links */}
-                        {group.links.map((subLink) => (
-                          <Link
-                            key={subLink.to}
-                            to={subLink.to}
-                            className={`block text-left px-4 py-2 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
-                              location.pathname === subLink.to 
-                                ? 'bg-[#2B3440] text-[#F2F4F7]' 
-                                : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
-                            }`}
-                          >
-                            {subLink.label}
-                          </Link>
-                        ))}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </motion.div>
                 )}
+
               </AnimatePresence>
+
             </div>
 
+            {/* CONTACT */}
             <Link
               to="/contact"
               className={`text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap drop-shadow-sm ${
-                isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                isActive('/contact')
+                  ? 'text-[#F2F4F7]'
+                  : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
               }`}
             >
               CONTACT
             </Link>
 
+            {/* =====================================================
+                AUTHENTICATED USER
+            ===================================================== */}
             {user ? (
+
               <div className="flex items-center gap-3 pl-2 border-l border-[#C5CBD3]/24 shrink-0">
-                <Link to="/crm/notifications" className="relative text-[#C5CBD3] hover:text-[#F2F4F7] transition-colors">
+
+                {/* NOTIFICATIONS */}
+                <Link
+                  to="/crm/notifications"
+                  className="relative text-[#C5CBD3] hover:text-[#F2F4F7] transition-colors"
+                  aria-label="Notifications"
+                >
                   <FiBell size={16} />
+
                   {unreadCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
                       {unreadCount}
@@ -303,61 +496,124 @@ export default function Navbar() {
                   )}
                 </Link>
 
+                {/* USER MENU */}
                 <div className="relative">
+
                   <button
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    onClick={() =>
+                      setIsUserMenuOpen(!isUserMenuOpen)
+                    }
                     className="flex items-center space-x-1 px-2.5 py-1.5 border border-[#C5CBD3]/24 bg-[#2B3440]/60 text-[#F2F4F7] hover:bg-[#2B3440]/90 text-[11px] tracking-wider uppercase transition-colors rounded-[2px]"
                   >
                     <FiUser size={13} />
-                    <span>{user?.fullName?.split(' ')[0]}</span>
+
+                    <span>
+                      {user?.fullName?.split(' ')[0]}
+                    </span>
+
                     <FiChevronDown size={12} />
                   </button>
 
                   {isUserMenuOpen && (
                     <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() =>
+                          setIsUserMenuOpen(false)
+                        }
+                      />
+
                       <div className="absolute right-0 mt-2 w-48 bg-[#0E1116] border border-[#C5CBD3]/24 shadow-2xl py-1 z-50 text-[11px] rounded-[2px]">
+
+                        {/* DASHBOARD */}
                         {!user?.employeeId?.startsWith('CL_') && (
-                          <Link to="/crm/dashboard" className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]">
-                            <FiPackage size={12} /> <span>DASHBOARD</span>
+                          <Link
+                            to="/crm/dashboard"
+                            className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]"
+                          >
+                            <FiPackage size={12} />
+                            <span>DASHBOARD</span>
                           </Link>
                         )}
+
+                        {/* ADMIN */}
                         {isAdmin && (
-                          <Link to="/crm/admin" className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]">
-                            <FiSettings size={12} /> <span>ADMIN PANEL</span>
+                          <Link
+                            to="/crm/admin"
+                            className="flex items-center space-x-2 px-4 py-2 text-[#C5CBD3] hover:bg-[#2B3440] hover:text-[#F2F4F7]"
+                          >
+                            <FiSettings size={12} />
+                            <span>ADMIN PANEL</span>
                           </Link>
                         )}
-                        <button onClick={handleLogout} className="flex items-center space-x-2 px-4 py-2 text-red-400 hover:bg-red-950/20 w-full text-left font-semibold border-t border-[#C5CBD3]/10">
-                          <FiLogOut size={12} /> <span>LOGOUT</span>
+
+                        {/* LOGOUT */}
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-2 px-4 py-2 text-red-400 hover:bg-red-950/20 w-full text-left font-semibold border-t border-[#C5CBD3]/10"
+                        >
+                          <FiLogOut size={12} />
+                          <span>LOGOUT</span>
                         </button>
+
                       </div>
                     </>
                   )}
+
                 </div>
+
               </div>
+
             ) : (
+
+              /* ===================================================
+                 GUEST ACTIONS
+              =================================================== */
               <div className="flex items-center gap-3 xl:gap-4 shrink-0 pl-1">
+
+                {/* REQUEST BULK QUOTE */}
                 <Link
                   to="/quote-request"
                   className="h-[44px] px-3 xl:px-4 flex items-center justify-center space-x-1.5 text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans text-[#F2F4F7] border border-[#C5CBD3]/40 bg-[#2B3440]/50 hover:bg-[#2B3440]/80 backdrop-blur-sm transition-all duration-200 rounded-[2px]"
                 >
                   <span>REQUEST BULK QUOTE</span>
-                  <span className="text-sm font-light">&rarr;</span>
+                  <span className="text-sm font-light">
+                    &rarr;
+                  </span>
                 </Link>
 
+                {/* LOGIN / SIGN UP */}
                 <div className="flex items-center space-x-3 xl:space-x-4 border-l border-[#C5CBD3]/24 pl-3 xl:pl-4">
-                  <Link to="/login" className="text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium text-[#C5CBD3] hover:text-[#F2F4F7]">LOGIN</Link>
-                  <Link to="/client-signup" className="h-[44px] px-3 xl:px-4 flex items-center justify-center text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] hover:bg-[#0E1116] hover:border-[#F2F4F7] rounded-[2px] transition-all duration-200">SIGN UP</Link>
+
+                  <Link
+                    to="/login"
+                    className="text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium text-[#C5CBD3] hover:text-[#F2F4F7]"
+                  >
+                    LOGIN
+                  </Link>
+
+                  <Link
+                    to="/client-signup"
+                    className="h-[44px] px-3 xl:px-4 flex items-center justify-center text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] hover:bg-[#0E1116] hover:border-[#F2F4F7] rounded-[2px] transition-all duration-200"
+                  >
+                    SIGN UP
+                  </Link>
+
                 </div>
+
               </div>
+
             )}
+
           </div>
         </div>
-
       </div>
 
-      {/* Mobile Viewport Overlay */}
+      {/* ===========================================================
+          MOBILE VIEWPORT OVERLAY
+      =========================================================== */}
       <AnimatePresence>
+
         {isMobileMenuOpen && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -366,150 +622,311 @@ export default function Navbar() {
           transition={{ duration: 0.25, ease: 'easeInOut' }}
           className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
         >
-          <div className="flex justify-between items-center h-[80px] px-4 sm:px-6">
+          <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
             <div className="flex items-center space-x-3">
-              <div className="h-[40px] w-[40px] flex items-center justify-center shrink-0">
-                <img
-                  src={CompanyLogo}
-                  alt="India Trade Overseas Logo"
-                  className="h-full w-full object-contain"
-                  loading="eager"
+              <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
+                <div
+                  className="h-full w-full"
+                  style={{
+                    backgroundImage: `url(${CompanyLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center 55%',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                  role="img"
+                  aria-label="India Trade Overseas Logo"
                 />
               </div>
               <div className="flex flex-col justify-center text-left leading-none">
-                <span className="font-serif font-semibold text-[18px] tracking-[0.05em] text-white whitespace-nowrap">
+                <span className="font-serif font-normal text-lg tracking-wide uppercase text-[#F2F4F7] whitespace-nowrap">
                   INDIA
                 </span>
-                <span className="font-sans font-light text-[10px] tracking-[0.18em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
+                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
                   TRADE OVERSEAS
-                </span>
-                <span className="font-sans font-medium text-[7px] tracking-[0.1em] uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
-                  WHERE QUALITY MEETS GLOBAL DEMAND
                 </span>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
-              aria-label="Close Navigation Menu"
-            >
-              <FiX size={26} />
-            </button>
-          </div>
-
-          <motion.div
-            variants={mobileMenuContainer}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]"
-          >
-            {navLinks.map((link) => (
-              <motion.div key={link.to} variants={mobileMenuItem}>
-                <Link
-                  to={link.to}
-                  className={`block text-base tracking-wider ${isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              </motion.div>
-            ))}
-
-            <motion.div variants={mobileMenuItem}>
-              <Link
-                to="/contact"
-                className={`block text-base tracking-wider ${isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'}`}
+              <button
                 onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-[#C5CBD3] hover:text-[#F2F4F7] focus:outline-none shrink-0"
+                aria-label="Close Navigation Menu"
               >
-                CONTACT
-              </Link>
-            </motion.div>
+                <FiX size={26} />
+              </button>
 
-            {/* OUR SERVICES MOBILE ACCORDION */}
+            </div>
+
+            {/* MOBILE MENU CONTENT */}
             <motion.div
               variants={mobileMenuContainer}
-              className="border-t border-[#C5CBD3]/10 pt-6 space-y-4"
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]"
             >
-              <motion.div variants={mobileMenuItem} className="text-[#F2F4F7] text-[11px] tracking-widest font-mono font-bold uppercase">
-                OUR SERVICES
-              </motion.div>
-              {servicesGroups.map((group, gIdx) => (
-                <motion.div key={gIdx} variants={mobileMenuContainer} className="space-y-2 pt-1">
-                  <motion.div variants={mobileMenuItem} className="text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase pl-2">
-                    {group.groupLabel}
-                  </motion.div>
-                  {group.links.map((subLink) => (
-                    <motion.div key={subLink.to} variants={mobileMenuItem}>
-                      <Link
-                        to={subLink.to}
-                        className="block pl-4 text-sm tracking-wider text-[#C5CBD3] hover:text-[#F2F4F7]"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        {subLink.label}
-                      </Link>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              ))}
-            </motion.div>
 
-            <motion.div variants={mobileMenuContainer} className="border-t border-[#C5CBD3]/24 pt-6 space-y-3">
-              <motion.div variants={mobileMenuItem}>
-                <Link
-                  to="/quote-request"
-                  className="w-full h-[52px] flex items-center justify-center bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] font-semibold text-xs tracking-widest rounded-[2px]"
-                  onClick={() => setIsMobileMenuOpen(false)}
+              {/* MAIN LINKS */}
+              {navLinks.map((link) => (
+
+                <motion.div
+                  key={link.to}
+                  variants={mobileMenuItem}
                 >
-                  REQUEST BULK QUOTE
-                </Link>
-              </motion.div>
-              {!user && (
-                <motion.div variants={mobileMenuItem} className="grid grid-cols-2 gap-3 pt-1">
-                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest">LOGIN</Link>
-                  <Link to="/client-signup" onClick={() => setIsMobileMenuOpen(false)} className="h-[48px] flex items-center justify-center bg-[#2B3440] border border-transparent text-[#F2F4F7] text-xs tracking-widest">SIGN UP</Link>
-                </motion.div>
-              )}
-
-              {user && (
-                <motion.div variants={mobileMenuContainer} className="space-y-3 pt-1">
-                  {!user?.employeeId?.startsWith('CL_') && (
-                    <motion.div variants={mobileMenuItem}>
-                      <Link
-                        to="/crm/dashboard"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                      >
-                        <FiPackage size={14} /> <span>DASHBOARD</span>
-                      </Link>
-                    </motion.div>
-                  )}
-                  {isAdmin && (
-                    <motion.div variants={mobileMenuItem}>
-                      <Link
-                        to="/crm/admin"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                      >
-                        <FiSettings size={14} /> <span>ADMIN PANEL</span>
-                      </Link>
-                    </motion.div>
-                  )}
-                  <motion.button
-                    variants={mobileMenuItem}
-                    onClick={handleLogout}
-                    className="w-full h-[48px] flex items-center justify-center space-x-2 bg-red-950/20 border border-red-400/30 text-red-400 text-xs tracking-widest font-semibold"
+                  <Link
+                    to={link.to}
+                    className={`block text-base tracking-wider ${
+                      isActive(link.to)
+                        ? 'text-[#F2F4F7]'
+                        : 'text-[#C5CBD3]'
+                    }`}
+                    onClick={() =>
+                      setIsMobileMenuOpen(false)
+                    }
                   >
-                    <FiLogOut size={14} /> <span>LOGOUT</span>
-                  </motion.button>
+                    {link.label}
+                  </Link>
                 </motion.div>
-              )}
+
+              ))}
+
+              {/* CONTACT */}
+              <motion.div variants={mobileMenuItem}>
+
+                <Link
+                  to="/contact"
+                  className={`block text-base tracking-wider ${
+                    isActive('/contact')
+                      ? 'text-[#F2F4F7]'
+                      : 'text-[#C5CBD3]'
+                  }`}
+                  onClick={() =>
+                    setIsMobileMenuOpen(false)
+                  }
+                >
+                  CONTACT
+                </Link>
+
+              </motion.div>
+
+{/* =================================================
+                  OUR SERVICES MOBILE
+              ================================================= */}
+              <motion.div
+                variants={mobileMenuContainer}
+                className="border-t border-[#C5CBD3]/10 pt-6 space-y-4"
+              >
+
+                {/* OUR SERVICES PAGE LINK */}
+                <motion.div variants={mobileMenuItem}>
+
+                  <Link
+                    to="/our-services"
+                    className={`block text-base tracking-wider ${
+                      isServicesActive
+                        ? 'text-[#F2F4F7]'
+                        : 'text-[#C5CBD3]'
+                    }`}
+                    onClick={() =>
+                      setIsMobileMenuOpen(false)
+                    }
+                  >
+                    OUR SERVICES
+                  </Link>
+
+                </motion.div>
+
+                {/* SERVICE GROUPS - Click to expand */}
+                {servicesGroups.map((group, gIdx) => (
+
+                  <motion.div
+                    key={group.groupLabel}
+                    variants={mobileMenuContainer}
+                    className="space-y-2 pt-1"
+                  >
+
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDivisions(prev => ({ ...prev, [gIdx]: !prev[gIdx] }))}
+                      className="flex items-center justify-between w-full pl-2 text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase hover:text-[#F2F4F7] transition-colors"
+                      aria-expanded={expandedDivisions[gIdx]}
+                    >
+                      <span>{group.groupLabel}</span>
+                      <FiChevronDown
+                        size={12}
+                        className={`transition-transform duration-200 ${expandedDivisions[gIdx] ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    <AnimatePresence>
+                      {expandedDivisions[gIdx] && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2, ease: 'easeOut' }}
+                          className="overflow-hidden pl-2 space-y-1"
+                        >
+                          {group.links.map((subLink) => (
+                            subLink.to ? (
+                              <Link
+                                key={subLink.to}
+                                to={subLink.to}
+                                className={`block pl-4 text-sm tracking-wider py-2 ${
+                                  location.pathname === subLink.to
+                                    ? 'text-[#F2F4F7]'
+                                    : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                                }`}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                              >
+                                {subLink.label}
+                              </Link>
+                            ) : (
+                              <span
+                                key={subLink.label}
+                                className="block pl-4 text-sm tracking-wider py-2 text-[#6D7886] cursor-default"
+                              >
+                                {subLink.label}
+                              </span>
+                            )
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                  </motion.div>
+
+                ))}
+
+              </motion.div>
+
+              {/* =================================================
+                  MOBILE CTA / AUTH
+              ================================================= */}
+              <motion.div
+                variants={mobileMenuContainer}
+                className="border-t border-[#C5CBD3]/24 pt-6 space-y-3"
+              >
+
+                {/* REQUEST BULK QUOTE */}
+                <motion.div variants={mobileMenuItem}>
+
+                  <Link
+                    to="/quote-request"
+                    className="w-full h-[52px] flex items-center justify-center bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] font-semibold text-xs tracking-widest rounded-[2px]"
+                    onClick={() =>
+                      setIsMobileMenuOpen(false)
+                    }
+                  >
+                    REQUEST BULK QUOTE
+                  </Link>
+
+                </motion.div>
+
+                {/* GUEST LOGIN / SIGNUP */}
+                {!user && (
+
+                  <motion.div
+                    variants={mobileMenuItem}
+                    className="grid grid-cols-2 gap-3 pt-1"
+                  >
+
+                    <Link
+                      to="/login"
+                      onClick={() =>
+                        setIsMobileMenuOpen(false)
+                      }
+                      className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                    >
+                      LOGIN
+                    </Link>
+
+                    <Link
+                      to="/client-signup"
+                      onClick={() =>
+                        setIsMobileMenuOpen(false)
+                      }
+                      className="h-[48px] flex items-center justify-center bg-[#2B3440] border border-transparent text-[#F2F4F7] text-xs tracking-widest"
+                    >
+                      SIGN UP
+                    </Link>
+
+                  </motion.div>
+
+                )}
+
+                {/* LOGGED-IN USER */}
+                {user && (
+
+                  <motion.div
+                    variants={mobileMenuContainer}
+                    className="space-y-3 pt-1"
+                  >
+
+                    {/* DASHBOARD */}
+                    {!user?.employeeId?.startsWith('CL_') && (
+
+                      <motion.div variants={mobileMenuItem}>
+
+                        <Link
+                          to="/crm/dashboard"
+                          onClick={() =>
+                            setIsMobileMenuOpen(false)
+                          }
+                          className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                        >
+                          <FiPackage size={14} />
+                          <span>DASHBOARD</span>
+                        </Link>
+
+                      </motion.div>
+
+                    )}
+
+                    {/* ADMIN PANEL */}
+                    {isAdmin && (
+
+                      <motion.div variants={mobileMenuItem}>
+
+                        <Link
+                          to="/crm/admin"
+                          onClick={() =>
+                            setIsMobileMenuOpen(false)
+                          }
+                          className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
+                        >
+                          <FiSettings size={14} />
+                          <span>ADMIN PANEL</span>
+                        </Link>
+
+                      </motion.div>
+
+                    )}
+
+                    {/* LOGOUT */}
+                    <motion.button
+                      variants={mobileMenuItem}
+                      onClick={handleLogout}
+                      className="w-full h-[48px] flex items-center justify-center space-x-2 bg-red-950/20 border border-red-400/30 text-red-400 text-xs tracking-widest font-semibold"
+                    >
+                      <FiLogOut size={14} />
+                      <span>LOGOUT</span>
+                    </motion.button>
+
+                  </motion.div>
+
+                )}
+
+              </motion.div>
+
             </motion.div>
+
           </motion.div>
-        </motion.div>
+
         )}
+
       </AnimatePresence>
+
     </nav>
   );
 }

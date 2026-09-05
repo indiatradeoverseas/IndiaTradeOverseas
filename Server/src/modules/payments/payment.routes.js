@@ -6,8 +6,14 @@ const {
   getPaymentsList, 
   getOutstandingPayments, 
   updateStatus, 
-  triggerReminder
+  triggerReminder,
+  createItoAdsRazorpayOrder,
+  verifyItoAdsRazorpayPayment
 } = require('./payment.controller');
+
+// Public routes for ITO Ads payments (no auth required)
+router.post('/ito-ads/create-order', createItoAdsRazorpayOrder);
+router.post('/ito-ads/verify-payment', verifyItoAdsRazorpayPayment);
 
 router.use(authenticate);
 

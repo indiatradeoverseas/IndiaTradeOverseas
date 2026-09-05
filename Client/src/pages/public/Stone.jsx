@@ -73,7 +73,7 @@ const ALTERNATING_SHOWCASE = [
     subtitle: "Heavy Roadways & Site Base Development",
     image: "/images/stone_images/40mmm.jpg",
     description: "Engineered larger aggregate primarily suited for national highway construction, site leveling, PCC foundation courses, and heavy civil drainage channels. High load resistance.",
-    specs: ["Size: 30 Nominal", "Color: Black / White", "Crusher: RIGSAR / PSB / LPSQ", "Usage: Highways & PCC"]
+    specs: ["Size: 40 Nominal", "Color: Black / White", "Crusher: RIGSAR / PSB / LPSQ", "Usage: Highways & PCC"]
   },
   {
     id: "60mm",
@@ -81,14 +81,14 @@ const ALTERNATING_SHOWCASE = [
     subtitle: "Railway Ballast & Heavy Foundations",
     image: "/images/stone_images/60mmm.jpg",
     description: "High-density crushed rock used in massive foundation mass-filling, railway track ballast layers, and heavy infrastructure sub-base preparation. Direct quarry loading.",
-    specs: ["Size: 40MM & 60MM", "Color: Black / White", "Loading Point: Pasakha / Paskha", "Usage: Rail & Mass Fill"]
+    specs: ["Size: 60 Nominal", "Color: Black / White", "Loading Point: Pasakha / Paskha", "Usage: Rail & Mass Fill"]
   },
   {
     id: "wmm",
     title: "WMM (Wet Mix Macadam)",
     subtitle: "Highway Sub-Base Construction",
     image: "/images/stone_images/Wmm.png",
-    description: "Premixed, screened aggregate blended with optimal moisture content for high-density road base layers. Guarantees high stability under heavy commercial vehicle loads.",
+    description: "Premixed, screened aggregate blended with optimal moisture content for high-density road base layers. Suitable for road sub-base applications where the specified mix and project requirements call for WMM.",
     specs: ["Type: Processed Mix", "Loading: Gomtu & Pugli", "Application: Sub-base Layer", "Dispatch: Tipper Fleets"]
   },
   {
@@ -561,10 +561,10 @@ export default function Stone() {
                   <FiCheckCircle size={11} /> ACCREDITATION: LEVEL 5 (STONE)
                 </div>
                 <h2 className="text-xl sm:text-3xl lg:text-4xl font-serif tracking-wide text-white uppercase leading-tight">
-                  Live Stone Aggregate Sourcing Terminal
+                  Stone Aggregate Sourcing Terminal
                 </h2>
                 <p className="text-xs sm:text-sm text-[#DCCCB4] font-light leading-relaxed max-w-2xl font-sans">
-                  Direct dispatch terminal connected with Phuentsholing, Gomtu, Pasakha, Samtse, Pugli, and Pakur mines. All orders require 100% advance payment.
+                  Access location-wise commercial rates for Bhutan and Pakur stone aggregates. Final availability, specification, pricing and logistics are confirmed against the buyer requirement.
                 </p>
               </div>
             </div>
@@ -915,7 +915,7 @@ export default function Stone() {
                         onClick={openRateQuoteDrawer}
                         className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] px-5 py-3 rounded-lg font-mono font-bold uppercase tracking-wider text-[10px] shadow transition-all cursor-pointer flex items-center justify-center gap-2"
                       >
-                        <FiShoppingCart size={12} /> Request Freight Quote
+                        <FiShoppingCart size={12} /> Request Bulk Quote
                       </button>
                     </>
                   )}
@@ -966,14 +966,14 @@ export default function Stone() {
                     Bhutan & Pakur Stone.
                   </h1>
                   <h2 className="text-2xl sm:text-4xl font-sans font-light text-[#C5A059]">
-                    Uncompromising Crushing Resistance.
+                    Bulk Stone Aggregates for Construction.
                   </h2>
                 </div>
 
                 <div className="w-20 h-[3px] mx-auto lg:mx-0 bg-[#C5A059]" />
 
                 <p className="max-w-xl text-[#DCCCB4] font-sans font-light text-xs sm:text-sm leading-relaxed drop-shadow">
-                  Direct bulk procurement across Bhutan loading gateways (Gomtu, Pasakha, Samtse, Phuentsholing, Pugli) and Pakur, Jharkhand basalt mines.
+                  Bulk sourcing of stone aggregates from Bhutan and Pakur for construction, roadwork, infrastructure and commercial requirements.
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
@@ -981,13 +981,13 @@ export default function Stone() {
                     onClick={handleExploreProducts}
                     className="w-full sm:w-auto text-[#37424B] text-xs font-mono font-bold uppercase tracking-widest px-8 py-4 rounded shadow-xl transition-all hover:scale-105 transform cursor-pointer bg-[#C5A059]"
                   >
-                    Explore Products
+                    View Sourcing Options
                   </button>
                   <a
                     href="#teaser-deck"
                     className="w-full sm:w-auto text-center text-[#F4F2EE] text-xs font-mono font-bold uppercase tracking-widest px-6 py-4 rounded backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all"
                   >
-                    Live Quarry Offers
+                    View Supply Options
                   </a>
                 </div>
               </div>
@@ -997,7 +997,7 @@ export default function Stone() {
                   { label: "01 • SOURCING ORIGIN", title: "Bhutan & Pakur Mines", desc: "Basalt and quartzite geological extraction." },
                   { label: "02 • NOMINAL SIZES", title: "10mm, 20mm, 30mm, 40/60mm, Dust", desc: "Mechanical crushing plant configurations." },
                   { label: "03 • LOGISTICS NETWORK", title: "Jaigaon, Pasakha, Kishanganj Fleet", desc: "Multi-axle tipper and dump truck routing." },
-                  { label: "04 • TRADE LEDGER", title: "100% Advance Rate Matrix", desc: "Direct Proforma invoice clearing pipeline." }
+                  { label: "04 • TRADE LEDGER", title: "COMMERCIAL RATE MATRIX", desc: "Quotation and order confirmation process." }
                 ].map((card, idx) => (
                   <div
                     key={idx}
@@ -1021,10 +1021,10 @@ export default function Stone() {
                 Infrastructure Aggregates Range
               </span>
               <h2 className="text-3xl sm:text-4xl font-serif text-[#37424B] mt-1 uppercase tracking-wide font-bold">
-                Calibrated Product Specifications
+                Stone Aggregates & Construction Materials
               </h2>
               <p className="text-xs sm:text-sm text-[#6D6760] font-sans font-light">
-                Explore our full line of crushed stone aggregates from Phuentsholing, Gomtu, Pasakha, and Pakur mines.
+                Explore aggregate sizes and construction materials with sourcing, commercial coordination and dispatch arranged according to project requirements.
               </p>
             </div>
 
@@ -1073,7 +1073,7 @@ export default function Stone() {
                           onClick={handleExploreProducts}
                           className="bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-[10px] uppercase tracking-wider py-2.5 px-5 rounded shadow transition-all cursor-pointer inline-flex items-center gap-2"
                         >
-                          Explore Products <FiArrowRight />
+                          View Sourcing Options <FiArrowRight />
                         </button>
                       </div>
                     </div>
@@ -1083,12 +1083,50 @@ export default function Stone() {
             </div>
           </section>
 
+          {/* ================= SOURCING PROCESS ================= */}
+          <section className="py-20 sm:py-24 bg-[#F4F2EE] px-4 sm:px-6 lg:px-8 border-t border-[#DCCCB4]">
+            <div className="max-w-7xl mx-auto">
+              <div className="max-w-3xl mb-10 text-left">
+                <span className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#C5A059]">
+                  HOW IT WORKS
+                </span>
+                <h2 className="mt-3 text-3xl sm:text-4xl font-serif text-[#37424B] uppercase tracking-wide font-bold">
+                  From requirement to dispatch
+                </h2>
+                <p className="mt-4 text-xs sm:text-sm text-[#6D6760] font-sans font-light leading-relaxed">
+                  Share the required aggregate size, quantity and delivery location.
+                  We review availability, commercial terms and logistics before confirming the supply.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[
+                  ["01", "Share Requirement", "Tell us the aggregate size, quantity and delivery location."],
+                  ["02", "Source & Verify", "We coordinate the relevant Bhutan or Pakur sourcing option."],
+                  ["03", "Confirm Commercials", "Availability, specification, pricing and delivery terms are confirmed."],
+                  ["04", "Dispatch & Logistics", "Dispatch and transport are coordinated through the agreed supply process."]
+                ].map(([number, title, desc]) => (
+                  <div key={number} className="bg-white border border-[#DCCCB4] rounded-xl p-6">
+                    <span className="font-mono text-sm font-bold text-[#C5A059]">{number}</span>
+                    <h3 className="mt-6 text-lg font-serif font-bold text-[#37424B] uppercase tracking-wide">{title}</h3>
+                    <p className="mt-3 text-xs text-[#6D6760] font-sans font-light leading-relaxed">{desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-10">
+                <button onClick={handleExploreProducts}
+                  className="w-full sm:w-auto bg-[#37424B] hover:bg-[#6D6760] text-[#F4F2EE] font-mono font-bold text-[10px] uppercase tracking-wider py-3.5 px-7 rounded shadow transition-all cursor-pointer">
+                  Request Bulk Quote
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* SOFT GATE TEASER SECTION */}
           <section id="teaser-deck" className="py-24 bg-[#37424B] text-white px-4 sm:px-6 lg:px-8 border-y border-[#C5A059]/30 relative overflow-hidden">
             <div className="max-w-7xl mx-auto space-y-12 relative z-10 text-left">
               <div className="text-center max-w-2xl mx-auto space-y-2">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#C5A059]">Active Crusher Allocations</span>
-                <h2 className="text-3xl font-serif text-white uppercase tracking-wide">Quarry Teaser Listings</h2>
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#C5A059]">AVAILABLE SOURCING CATEGORIES</span>
+                <h2 className="text-3xl font-serif text-white uppercase tracking-wide">Stone Supply Options</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1124,7 +1162,7 @@ export default function Stone() {
                         onClick={handleExploreProducts}
                         className="w-full bg-white/5 hover:bg-[#C5A059] text-white hover:text-[#37424B] text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider py-3 px-2 rounded-lg border border-white/10 transition-all text-center flex items-center justify-center"
                       >
-                        Explore Products
+                        View Sourcing Options
                       </button>
                     </div>
                   </div>
@@ -1142,7 +1180,7 @@ export default function Stone() {
                   Trusted By Buyers Worldwide
                 </span>
                 <h2 className="text-xl sm:text-3xl font-serif uppercase tracking-wide text-white drop-shadow-md leading-tight mb-4">
-                  Why Trade Partners Choose Our Stone
+                  Why Buyers Choose Our Stone Supply
                 </h2>
                 <p className="text-[#DCD3C4] text-xs sm:text-sm font-light leading-relaxed max-w-md mx-auto lg:mx-0">
                   {STONE_TRUST_PARAGRAPH}
@@ -1238,9 +1276,9 @@ export default function Stone() {
                     }}
                     onDone={() => setIsOrderDrawerOpen(false)}
                     icon={FiShoppingCart}
-                    idleLabel="Dispatch Sourcing Request"
-                    busyLabel="Dispatching..."
-                    doneLabel="Request Dispatched"
+                    idleLabel="Submit Sourcing Request"
+                    busyLabel="Submitting..."
+                    doneLabel="Request Submitted"
                     className="w-full bg-[#37424B] hover:bg-[#252c34] text-white text-xs font-mono font-bold uppercase py-3.5 rounded shadow-md cursor-pointer disabled:cursor-default disabled:opacity-90"
                   />
                 </div>
