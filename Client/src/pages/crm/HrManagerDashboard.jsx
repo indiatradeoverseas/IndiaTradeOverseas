@@ -43,6 +43,7 @@ import { leaveApi } from '../../api/leave';
 import { attendanceApi } from '../../api/attendance';
 import { taskApi } from '../../api/task';
 import { employeeSignupApi } from '../../api/employee-signup';
+import { payslipApi } from '../../api/payslip';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
 
@@ -169,10 +170,24 @@ export default function HrManagerDashboard() {
     interviewerId: '',
     date: '',
     time: '',
+    roundName: 'Round 1 - Screening',
+    totalRounds: 3,
+    customRoundName: '',
+    meetingLink: '',
     notes: ''
   });
   const [scheduledInterviews, setScheduledInterviews] = useState(() => {
     return JSON.parse(localStorage.getItem('scheduled_interviews')) || [];
+  });
+
+  // Interview Evaluation / Feedback Modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedEvaluationCandidate, setSelectedEvaluationCandidate] = useState(null);
+  const [selectedEvaluationRound, setSelectedEvaluationRound] = useState(null);
+  const [feedbackForm, setFeedbackForm] = useState({
+    rating: 5,
+    status: 'PASSED',
+    feedback: ''
   });
 
   // ERP local storage states
@@ -407,11 +422,32 @@ export default function HrManagerDashboard() {
     toast.success('Salary structure synchronized!');
   };
 
-  const handleGeneratePayslip = (emp) => {
+  const handleGeneratePayslip = async (emp) => {
     const sal = getEmployeeSalary(emp.employeeId);
     const gross = sal.basic + sal.hra + sal.allowance;
     const net = gross - (sal.pf + sal.esi);
-    toast.success(`Payslip for ${emp.fullName} for current month generated! Net salary: ₹${net.toLocaleString()}`);
+    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    try {
+      const payload = {
+        employeeId: emp._id || emp.id,
+        month: currentMonth,
+        basic: sal.basic,
+        hra: sal.hra,
+        allowance: sal.allowance,
+        pf: sal.pf,
+        esi: sal.esi,
+        netAmount: net,
+        status: 'PAID'
+      };
+      const res = await payslipApi.generatePayslip(payload);
+      if (res && res.success) {
+        toast.success(`Payslip for ${emp.fullName} (${currentMonth}) saved to MongoDB! Net salary: ₹${net.toLocaleString()}`);
+      }
+    } catch (err) {
+      console.error('Error generating payslip:', err);
+      toast.error(err.response?.data?.message || 'Failed to save payslip in MongoDB');
+    }
   };
 
   const handleTaxStatusChange = (taxId, status) => {
@@ -630,13 +666,62 @@ export default function HrManagerDashboard() {
   // Interview handlers
   const handleOpenScheduleInterview = (candidate) => {
     setSelectedCandidate(candidate);
+    const existingRoundsCount = candidate.interviews ? candidate.interviews.length : 0;
+    const candidateTotalRounds = candidate.totalRounds || 3;
+    const defaultRoundName = existingRoundsCount === 0 
+      ? 'Round 1 - Screening' 
+      : existingRoundsCount === 1 
+      ? 'Round 2 - Technical Interview' 
+      : existingRoundsCount === 2
+      ? 'Round 3 - HR Managerial'
+      : `Round ${existingRoundsCount + 1} - Final Director Round`;
+      
     setInterviewForm({
       interviewerId: '',
       date: '',
       time: '',
+      roundName: defaultRoundName,
+      totalRounds: candidateTotalRounds,
+      customRoundName: '',
+      meetingLink: '',
       notes: ''
     });
     setShowInterviewModal(true);
+  };
+
+  const handleOpenEvaluationModal = (candidate, round = null) => {
+    setSelectedEvaluationCandidate(candidate);
+    // If specific round not passed, pick the last scheduled round or default
+    const targetRound = round || (candidate.interviews && candidate.interviews.length > 0 ? candidate.interviews[candidate.interviews.length - 1] : null);
+    setSelectedEvaluationRound(targetRound);
+    setFeedbackForm({
+      rating: targetRound?.rating || 5,
+      status: targetRound?.status === 'PASSED' || targetRound?.status === 'FAILED' || targetRound?.status === 'ON_HOLD' ? targetRound.status : 'PASSED',
+      feedback: targetRound?.feedback || ''
+    });
+    setShowFeedbackModal(true);
+  };
+
+  const handleSubmitEvaluationFeedback = async (e) => {
+    e.preventDefault();
+    if (!selectedEvaluationCandidate) return;
+
+    try {
+      const res = await careersApi.submitInterviewFeedback(
+        selectedEvaluationCandidate._id,
+        selectedEvaluationRound?._id || selectedEvaluationRound?.id,
+        feedbackForm
+      );
+
+      if (res && res.success) {
+        toast.success(`Interview round evaluation recorded (${feedbackForm.status})! 🎯`);
+        setShowFeedbackModal(false);
+        fetchInitialData();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to submit interview feedback');
+    }
   };
 
   const handleViewResume = async (id) => {
@@ -656,8 +741,12 @@ export default function HrManagerDashboard() {
       return toast.error('Please complete all scheduled fields');
     }
 
-    const interviewer = employees.find(emp => emp.employeeId === interviewForm.interviewerId);
+    const interviewer = employees.find(emp => emp.employeeId === interviewForm.interviewerId || emp._id === interviewForm.interviewerId);
     if (!interviewer) return toast.error('Invalid interviewer selected');
+
+    const finalRoundName = interviewForm.roundName === 'CUSTOM' && interviewForm.customRoundName.trim()
+      ? interviewForm.customRoundName.trim()
+      : interviewForm.roundName;
 
     const newInterview = {
       id: `int_${Date.now()}`,
@@ -665,12 +754,15 @@ export default function HrManagerDashboard() {
       candidateName: selectedCandidate.fullName,
       candidateEmail: selectedCandidate.email,
       position: selectedCandidate.position,
-      interviewerId: interviewer.employeeId,
+      interviewerId: interviewer.employeeId || interviewer._id,
       interviewerName: interviewer.fullName,
       date: interviewForm.date,
       time: interviewForm.time,
+      roundName: finalRoundName,
+      totalRounds: Number(interviewForm.totalRounds || 3),
+      meetingLink: interviewForm.meetingLink ? interviewForm.meetingLink.trim() : '',
       notes: interviewForm.notes,
-      status: 'PENDING',
+      status: 'SCHEDULED',
       feedback: '',
       createdAt: new Date().toISOString()
     };
@@ -679,14 +771,18 @@ export default function HrManagerDashboard() {
       const interviewDetails = {
         date: interviewForm.date,
         time: interviewForm.time,
+        interviewerId: interviewer._id || interviewer.id,
         interviewerName: interviewer.fullName,
+        roundName: finalRoundName,
+        totalRounds: Number(interviewForm.totalRounds || 3),
+        meetingLink: interviewForm.meetingLink ? interviewForm.meetingLink.trim() : '',
         notes: interviewForm.notes
       };
 
       const res = await careersApi.updateApplicationStatus(selectedCandidate._id, 'REVIEWED', interviewDetails);
       if (res && res.success) {
         setScheduledInterviews(prev => [newInterview, ...prev]);
-        toast.success(`Interview scheduled successfully with ${interviewer.fullName} & invitation email sent! 🗓️`);
+        toast.success(`Interview scheduled successfully with ${interviewer.fullName} (${interviewForm.roundName})! 🗓️`);
         setShowInterviewModal(false);
         fetchInitialData();
       }
@@ -2291,16 +2387,16 @@ const handleTriggerReset = async () => {
                 </div>
 
                 {/* Job Applications Section */}
-                <h4 className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mt-4">Job Applications</h4>
+                <h4 className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mt-4">Job Applications & Interview Rounds</h4>
                 <div className="border rounded-sm overflow-hidden" style={CARD}>
-                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                     <table className="w-full text-left border-collapse">
                       <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
                         <tr className="text-[var(--crm-ink-faint)] text-[9px] font-mono uppercase border-b" style={{ borderColor: 'var(--crm-line)' }}>
                           <th className="py-1.5 px-3">Candidate</th>
                           <th className="py-1.5 px-3">Position</th>
-                          <th className="py-1.5 px-3 text-center">Applied On</th>
-                          <th className="py-1.5 px-3 text-center">Status</th>
+                          <th className="py-1.5 px-3">Interview Rounds & Status</th>
+                          <th className="py-1.5 px-3 text-center">App Status</th>
                           <th className="py-1.5 px-3 text-center">Actions</th>
                         </tr>
                       </thead>
@@ -2310,7 +2406,7 @@ const handleTriggerReset = async () => {
                             <tr key={i}>
                               <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
                               <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                              <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-32 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
                               <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-12 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
                               <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-20 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
                             </tr>
@@ -2318,48 +2414,118 @@ const handleTriggerReset = async () => {
                         ) : applications.length === 0 ? (
                           <tr><td colSpan="5" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No job applications</td></tr>
                         ) : (
-                          applications.map(app => (
-                            <tr key={app._id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                              <td className="py-2 px-3 text-left">
-                                <div className="font-semibold text-[var(--crm-heading)] text-[10px]">{app.fullName}</div>
-                                <div className="text-[8px] text-[var(--crm-ink-faint)] font-mono">{app.email} | {app.phone}</div>
-                              </td>
-                              <td className="py-2 px-3 font-mono uppercase text-[9px] text-[var(--crm-ink-soft)]">{app.position}</td>
-                              <td className="py-2 px-3 text-center text-[9px] text-[var(--crm-ink-faint)] font-mono">
-                                {new Date(app.createdAt).toLocaleDateString()}
-                              </td>
-                              <td className="py-2 px-3 text-center">
-                                <select
-                                  value={app.status}
-                                  onChange={(e) => handleAppStatusChangeOption(app._id, e.target.value)}
-                                  className="px-1.5 py-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[9px] font-mono rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer"
-                                >
-                                  <option value="PENDING">PENDING</option>
-                                  <option value="REVIEWED">REVIEWED</option>
-                                  <option value="ACCEPTED">ACCEPTED</option>
-                                  <option value="REJECTED">REJECTED</option>
-                                </select>
-                              </td>
-                              <td className="py-2 px-3 text-center">
-                                <div className="flex justify-center items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleViewResume(app._id)}
-                                    className="px-1.5 py-0.5 rounded-sm border border-[var(--crm-line)] bg-transparent text-[8px] font-bold font-mono hover:text-[var(--crm-heading)] hover:border-[var(--crm-heading)]/40 transition cursor-pointer"
-                                    title="View CV"
+                          applications.map(app => {
+                            const interviewRounds = app.interviews || [];
+                            return (
+                              <tr key={app._id} className="hover:bg-[var(--crm-bg-raised)]/40 align-top">
+                                <td className="py-2 px-3 text-left">
+                                  <div className="font-semibold text-[var(--crm-heading)] text-[10px]">{app.fullName}</div>
+                                  <div className="text-[8px] text-[var(--crm-ink-faint)] font-mono">{app.email} | {app.phone}</div>
+                                  <div className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5">Applied: {new Date(app.createdAt).toLocaleDateString()}</div>
+                                </td>
+                                <td className="py-2 px-3 font-mono uppercase text-[9px] text-[var(--crm-ink-soft)]">{app.position}</td>
+                                <td className="py-2 px-3">
+                                  {interviewRounds.length === 0 ? (
+                                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] italic">No rounds scheduled yet</span>
+                                  ) : (
+                                    <div className="space-y-1.5">
+                                      {interviewRounds.map((rnd, rIdx) => {
+                                        const rStatus = rnd.status || 'SCHEDULED';
+                                        const badgeStyle = rStatus === 'PASSED' 
+                                          ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/30'
+                                          : rStatus === 'FAILED'
+                                          ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/30'
+                                          : rStatus === 'ON_HOLD'
+                                          ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/30'
+                                          : 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/30';
+                                        
+                                        return (
+                                          <div key={rnd._id || rIdx} className="p-1.5 border rounded-sm bg-[var(--crm-bg-sunken)] text-[9px] font-mono space-y-0.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <span className="font-bold text-[var(--crm-heading)]">
+                                                {rnd.roundName || `Round ${rnd.roundNumber || rIdx + 1}`}
+                                                <span className="text-[7px] text-[var(--crm-ink-faint)] ml-1 font-mono font-normal">
+                                                  (Round {rnd.roundNumber || rIdx + 1} of {app.totalRounds || rnd.totalRounds || 3})
+                                                </span>
+                                              </span>
+                                              <span className={`px-1.5 py-0.2 border text-[7px] font-bold rounded-sm uppercase ${badgeStyle}`}>
+                                                {rStatus}
+                                              </span>
+                                            </div>
+                                            <div className="text-[8px] text-[var(--crm-ink-faint)] flex items-center justify-between">
+                                              <span>Interviewer: <strong className="text-[var(--crm-heading)]">{rnd.interviewerName || 'Assigned Lead'}</strong></span>
+                                              {rnd.scheduledDate && (
+                                                <span>{rnd.scheduledDate} {rnd.scheduledTime}</span>
+                                              )}
+                                            </div>
+                                            {rnd.meetingLink && (
+                                              <div className="pt-0.5">
+                                                <a
+                                                  href={rnd.meetingLink.startsWith('http') ? rnd.meetingLink : `https://${rnd.meetingLink}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-[8px] font-bold text-teal-400 hover:underline"
+                                                >
+                                                  📹 Join Meeting (Zoom/Meet)
+                                                </a>
+                                              </div>
+                                            )}
+                                            {rnd.rating && (
+                                              <div className="text-[8px] text-[var(--crm-accent)]">
+                                                Rating: {'★'.repeat(rnd.rating)}{'☆'.repeat(5 - rnd.rating)} ({rnd.rating}/5)
+                                              </div>
+                                            )}
+                                            {rnd.feedback && (
+                                              <div className="text-[8px] text-[var(--crm-ink-soft)] italic truncate max-w-[200px]" title={rnd.feedback}>
+                                                "{rnd.feedback}"
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <select
+                                    value={app.status}
+                                    onChange={(e) => handleAppStatusChangeOption(app._id, e.target.value)}
+                                    className="px-1.5 py-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[9px] font-mono rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer"
                                   >
-                                    View CV
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenScheduleInterview(app)}
-                                    className="px-1.5 py-0.5 rounded-sm border border-[var(--crm-accent)]/30 bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] text-[8px] font-bold font-mono hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition cursor-pointer"
-                                    title="Schedule Interview"
-                                  >
-                                    Schedule
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="REVIEWED">REVIEWED</option>
+                                    <option value="ACCEPTED">ACCEPTED</option>
+                                    <option value="REJECTED">REJECTED</option>
+                                  </select>
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <div className="flex flex-col justify-center items-center gap-1">
+                                    <button
+                                      onClick={() => handleViewResume(app._id)}
+                                      className="w-full px-2 py-0.5 rounded-sm border border-[var(--crm-line)] bg-transparent text-[8px] font-bold font-mono hover:text-[var(--crm-heading)] hover:border-[var(--crm-heading)]/40 transition cursor-pointer"
+                                      title="View CV"
+                                    >
+                                      View CV
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenScheduleInterview(app)}
+                                      className="w-full px-2 py-0.5 rounded-sm border border-[var(--crm-accent)]/30 bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] text-[8px] font-bold font-mono hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition cursor-pointer"
+                                      title="Schedule Round"
+                                    >
+                                      + Schedule Round
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenEvaluationModal(app)}
+                                      className="w-full px-2 py-0.5 rounded-sm border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-[8px] font-bold font-mono hover:bg-emerald-700 hover:text-white transition cursor-pointer"
+                                      title="Evaluate Candidate"
+                                    >
+                                      ★ Evaluate Round
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -2652,8 +2818,9 @@ const handleTriggerReset = async () => {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const baseUrl = 'http://localhost:5000/';
-                                  const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}${t.fileUrl}`;
+                                  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                  const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
+                                  const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}/${t.fileUrl.replace(/^\/+/, '')}`;
                                   const link = document.createElement('a');
                                   link.href = absoluteUrl;
                                   link.setAttribute('download', t.fileOriginalName);
@@ -2677,8 +2844,9 @@ const handleTriggerReset = async () => {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const baseUrl = 'http://localhost:5000/';
-                                      const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}${t.completionFileUrl}`;
+                                      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                      const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
+                                      const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}/${t.completionFileUrl.replace(/^\/+/, '')}`;
                                       const link = document.createElement('a');
                                       link.href = absoluteUrl;
                                       link.setAttribute('download', t.completionFileOriginalName);
@@ -2937,6 +3105,52 @@ const handleTriggerReset = async () => {
               <button onClick={() => setShowInterviewModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
             </div>
             <form onSubmit={handleInterviewSubmit} className="space-y-4 text-xs font-medium">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Total Planned Rounds *</label>
+                  <select
+                    required
+                    value={interviewForm.totalRounds}
+                    onChange={(e) => setInterviewForm({ ...interviewForm, totalRounds: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
+                  >
+                    <option value="1">1 Round (Single Stage Assessment)</option>
+                    <option value="2">2 Rounds (Screening + Technical)</option>
+                    <option value="3">3 Rounds (Standard HR Pipeline)</option>
+                    <option value="4">4 Rounds (Screening + Tech + HR + Director)</option>
+                    <option value="5">5 Rounds (Multi-Stage Enterprise)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Interview Round *</label>
+                  <select
+                    required
+                    value={interviewForm.roundName}
+                    onChange={(e) => setInterviewForm({ ...interviewForm, roundName: e.target.value })}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
+                  >
+                    <option value="Round 1 - Screening">Round 1 - Screening</option>
+                    <option value="Round 2 - Technical Interview">Round 2 - Technical Interview</option>
+                    <option value="Round 3 - HR Managerial">Round 3 - HR Managerial</option>
+                    <option value="Round 4 - Final Director Round">Round 4 - Final Director Round</option>
+                    <option value="CUSTOM">✏️ Custom Round Name...</option>
+                  </select>
+                </div>
+              </div>
+
+              {interviewForm.roundName === 'CUSTOM' && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Specify Custom Round Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={interviewForm.customRoundName}
+                    onChange={(e) => setInterviewForm({ ...interviewForm, customRoundName: e.target.value })}
+                    placeholder="e.g. Round 2 - System Architecture & Live Coding"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)]"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Assigned Interviewer *</label>
                 <select
@@ -2976,20 +3190,140 @@ const handleTriggerReset = async () => {
                 </div>
               </div>
               <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Meeting Link (Zoom / Google Meet)</label>
+                <input
+                  type="url"
+                  value={interviewForm.meetingLink}
+                  onChange={(e) => setInterviewForm({ ...interviewForm, meetingLink: e.target.value })}
+                  placeholder="e.g. https://meet.google.com/abc-defg-hij or Zoom URL..."
+                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] font-mono"
+                />
+              </div>
+              <div>
                 <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Additional Notes (Optional)</label>
                 <textarea
                   rows={2}
                   value={interviewForm.notes}
                   onChange={(e) => setInterviewForm({ ...interviewForm, notes: e.target.value })}
-                  placeholder="e.g. Focus on Java concepts and communications..."
+                  placeholder="e.g. Focus on technical concepts and communications..."
                   className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none resize-none text-[var(--crm-heading)] font-sans"
                 />
               </div>
               <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
                 <button type="submit" className="flex-1 py-2.5 bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-accent-soft)] rounded-sm font-bold uppercase tracking-wider transition-colors cursor-pointer">
-                  Schedule Panel
+                  Schedule Round
                 </button>
                 <button type="button" onClick={() => setShowInterviewModal(false)} className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] rounded-sm text-[var(--crm-ink-soft)] font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Interview Feedback / Evaluation Modal */}
+      {showFeedbackModal && selectedEvaluationCandidate && (
+        <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
+          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
+              <div>
+                <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Interview Evaluation Form</h2>
+                <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                  CANDIDATE: {selectedEvaluationCandidate.fullName} ({selectedEvaluationCandidate.position})
+                </p>
+              </div>
+              <button onClick={() => setShowFeedbackModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
+            </div>
+            <form onSubmit={handleSubmitEvaluationFeedback} className="space-y-4 text-xs font-medium">
+              {selectedEvaluationCandidate.interviews && selectedEvaluationCandidate.interviews.length > 1 && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Select Round to Evaluate *</label>
+                  <select
+                    value={selectedEvaluationRound?._id || selectedEvaluationRound?.id || ''}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const matchRound = selectedEvaluationCandidate.interviews.find(r => (r._id || r.id) === selectedId);
+                      if (matchRound) {
+                        setSelectedEvaluationRound(matchRound);
+                        setFeedbackForm({
+                          rating: matchRound.rating || 5,
+                          status: matchRound.status === 'PASSED' || matchRound.status === 'FAILED' || matchRound.status === 'ON_HOLD' ? matchRound.status : 'PASSED',
+                          feedback: matchRound.feedback || ''
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
+                  >
+                    {selectedEvaluationCandidate.interviews.map((r, idx) => (
+                      <option key={r._id || idx} value={r._id || r.id}>
+                        {r.roundName || `Round ${r.roundNumber || idx + 1}`} - ({r.status || 'SCHEDULED'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {selectedEvaluationRound && (
+                <div className="p-2 border rounded-sm bg-[var(--crm-bg-sunken)] space-y-1 font-mono text-[9px]">
+                  <div className="flex justify-between">
+                    <span className="text-[var(--crm-accent)] font-bold">{selectedEvaluationRound.roundName || 'Interview Round'}</span>
+                    <span className="text-[var(--crm-ink-faint)]">{selectedEvaluationRound.scheduledDate} {selectedEvaluationRound.scheduledTime}</span>
+                  </div>
+                  <div className="text-[var(--crm-ink-soft)]">
+                    Interviewer: {selectedEvaluationRound.interviewerName || 'Assigned Lead'}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Round Result *</label>
+                  <select
+                    required
+                    value={feedbackForm.status}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, status: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none cursor-pointer text-[var(--crm-heading)]"
+                  >
+                    <option value="PASSED">PASSED (Cleared Round)</option>
+                    <option value="FAILED">FAILED (Rejected)</option>
+                    <option value="ON_HOLD">ON HOLD (Pending Next Review)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Candidate Rating (1-5 Stars) *</label>
+                  <select
+                    required
+                    value={feedbackForm.rating}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, rating: Number(e.target.value) })}
+                    className="w-full px-3 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none cursor-pointer text-[var(--crm-heading)]"
+                  >
+                    <option value="5">★★★★★ (5 - Excellent)</option>
+                    <option value="4">★★★★☆ (4 - Good Candidate)</option>
+                    <option value="3">★★★☆☆ (3 - Average / Adequate)</option>
+                    <option value="2">★★☆☆☆ (2 - Below Expectations)</option>
+                    <option value="1">★☆☆☆☆ (1 - Poor Fit)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Interviewer Feedback & Comments *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={feedbackForm.feedback}
+                  onChange={(e) => setFeedbackForm({ ...feedbackForm, feedback: e.target.value })}
+                  placeholder="Record strengths, weaknesses, technical evaluation, communication skills, and final recommendations..."
+                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-xs outline-none resize-none text-[var(--crm-heading)] font-sans"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
+                <button type="submit" className="flex-1 py-2.5 bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-accent-soft)] rounded-sm font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                  Submit Feedback & Rating
+                </button>
+                <button type="button" onClick={() => setShowFeedbackModal(false)} className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] rounded-sm text-[var(--crm-ink-soft)] font-bold uppercase tracking-wider transition-colors cursor-pointer">
                   Cancel
                 </button>
               </div>

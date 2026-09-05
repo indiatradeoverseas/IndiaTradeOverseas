@@ -1,177 +1,178 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { FiNavigation, FiTruck, FiMapPin } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiNavigation, FiTruck, FiMapPin, FiActivity, FiCrosshair, FiShield, FiUser } from 'react-icons/fi';
 
-// Custom Leaflet Icons (Marker A, Marker B, Driver Truck Pin)
-const markerAIcon = L.divIcon({
-  className: 'custom-leaflet-pin',
-  html: `<div style="background:#0f172a; border:2px solid #38bdf8; color:#38bdf8; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:11px; box-shadow:0 0 10px rgba(56,189,248,0.5);">A</div>`,
-  iconSize: [26, 26],
-  iconAnchor: [13, 13]
-});
-
-const markerBIcon = L.divIcon({
-  className: 'custom-leaflet-pin',
-  html: `<div style="background:#0f172a; border:2px solid #c9a84c; color:#c9a84c; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:11px; box-shadow:0 0 10px rgba(201,168,76,0.5);">B</div>`,
-  iconSize: [26, 26],
-  iconAnchor: [13, 13]
-});
-
-const STATUS_COLORS = {
-  ON_TIME: '#16a34a',
-  APPROACHING_ETA: '#eab308',
-  OVERDUE: '#dc2626'
-};
-
-// Known Indian Cities Coordinates Lookup for automatic pin placement
+// Known Indian Cities Coordinates Lookup
 const CITY_COORDS = {
-  'Nagpur': [21.1458, 79.0882],
-  'Pune': [18.5204, 73.8567],
-  'Mumbai': [19.0760, 72.8777],
-  'Raipur': [21.2514, 81.6296],
-  'Bhilai': [21.1938, 81.3509],
-  'Bellary': [15.1394, 76.9214],
-  'Hyderabad': [17.3850, 78.4867],
-  'Gulbarga': [17.3297, 76.8343],
-  'Delhi': [28.6139, 77.2090],
-  'Kolkata': [22.5726, 88.3639],
-  'Chennai': [13.0827, 80.2707],
-  'Bangalore': [12.9716, 77.5946]
+  'Nagpur': { lat: 21.1458, long: 79.0882 },
+  'Pune': { lat: 18.5204, long: 73.8567 },
+  'Mumbai': { lat: 19.0760, long: 72.8777 },
+  'Raipur': { lat: 21.2514, long: 81.6296 },
+  'Bhilai': { lat: 21.1938, long: 81.3509 },
+  'Lucknow': { lat: 26.8467, long: 80.9462 },
+  'Delhi': { lat: 28.6139, long: 77.2090 },
+  'Delhi NCR': { lat: 28.6139, long: 77.2090 },
+  'Kolkata': { lat: 22.5726, long: 88.3639 },
+  'Chennai': { lat: 13.0827, long: 80.2707 },
+  'Bangalore': { lat: 12.9716, long: 77.5946 },
+  'Patna': { lat: 25.5941, long: 85.1376 },
+  'Ranchi': { lat: 23.3441, long: 85.3096 },
+  'Guwahati': { lat: 26.1445, long: 91.7362 }
 };
 
-export default function TransportMap({ trips = [], height = '400px', activeTripId = null, onSelectTrip }) {
-  const [selectedTrip, setSelectedTrip] = useState(null);
+export default function TransportMap({
+  trips = [],
+  activeDrivers = [],
+  height = '440px',
+  activeTripId = null,
+  onSelectTrip,
+  gpsLocation = null
+}) {
+  // Default coordinates (Lucknow/Delhi Corridor)
+  const defaultLat = 26.8467;
+  const defaultLong = 80.9462;
 
-  // Filter valid trips
-  const validTrips = trips.filter(t => t && (t.status === 'PLANNED' || t.status === 'LOADING' || t.status === 'IN_TRANSIT' || t.status === 'UNLOADING' || t.status === 'DISPATCHED' || t.status === 'COMPLETED'));
+  const [mapCenter, setMapCenter] = useState({ lat: defaultLat, long: defaultLong });
+  const [selectedDriver, setSelectedDriver] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(12);
 
-  const getCoords = (trip, type) => {
-    if (type === 'origin') {
-      if (trip.originLat && trip.originLng) return [trip.originLat, trip.originLng];
-      const city = trip.originCity || trip.origin || 'Nagpur';
-      return CITY_COORDS[city] || CITY_COORDS['Nagpur'];
+  // Sync map center whenever activeDrivers or gpsLocation prop changes
+  useEffect(() => {
+    if (gpsLocation && gpsLocation.lat && gpsLocation.long) {
+      setMapCenter({ lat: Number(gpsLocation.lat), long: Number(gpsLocation.long) });
+    } else if (activeDrivers.length > 0) {
+      const firstDrv = activeDrivers[0];
+      const drvLat = Number(firstDrv.lat || firstDrv.latitude || defaultLat);
+      const drvLong = Number(firstDrv.long || firstDrv.longitude || defaultLong);
+      setMapCenter({ lat: drvLat, long: drvLong });
+      setSelectedDriver(firstDrv);
+    }
+  }, [gpsLocation, activeDrivers]);
+
+  // Recenter handler
+  const handleRecenter = () => {
+    if (gpsLocation && gpsLocation.lat && gpsLocation.long) {
+      setMapCenter({ lat: Number(gpsLocation.lat), long: Number(gpsLocation.long) });
+    } else if (activeDrivers.length > 0) {
+      const firstDrv = activeDrivers[0];
+      const drvLat = Number(firstDrv.lat || firstDrv.latitude || defaultLat);
+      const drvLong = Number(firstDrv.long || firstDrv.longitude || defaultLong);
+      setMapCenter({ lat: drvLat, long: drvLong });
+      setSelectedDriver(firstDrv);
+    } else if (trips.length > 0) {
+      const firstTrip = trips[0];
+      const city = firstTrip.originCity || firstTrip.origin || 'Delhi';
+      const coords = CITY_COORDS[city] || CITY_COORDS['Delhi'];
+      setMapCenter(coords);
     } else {
-      if (trip.destLat && trip.destLng) return [trip.destLat, trip.destLng];
-      const city = trip.destCity || trip.destination || 'Pune';
-      return CITY_COORDS[city] || CITY_COORDS['Pune'];
+      setMapCenter({ lat: defaultLat, long: defaultLong });
     }
   };
 
-  const getTripColor = (trip) => {
-    if (trip.isOverdue || trip.status === 'OVERDUE' || trip.etaStatus === 'OVERDUE') return STATUS_COLORS.OVERDUE;
-    if (trip.etaStatus === 'APPROACHING_ETA' || trip.isApproaching) return STATUS_COLORS.APPROACHING_ETA;
-    return STATUS_COLORS.ON_TIME;
+  const handleSelectDriver = (drv) => {
+    setSelectedDriver(drv);
+    const lat = Number(drv.lat || drv.latitude || defaultLat);
+    const long = Number(drv.long || drv.longitude || defaultLong);
+    setMapCenter({ lat, long });
   };
 
-  // Center on India by default
-  const defaultCenter = [20.5937, 78.9629];
-  const defaultZoom = 5;
+  const activeDriverName = selectedDriver?.driverName || selectedDriver?.fullName || selectedDriver?.name || (activeDrivers[0]?.driverName || 'Driver Unit');
+  const activeVehicleNo = selectedDriver?.vehicleNo || selectedDriver?.vehicleNumber || (activeDrivers[0]?.vehicleNo || 'Carrier');
 
   return (
-    <div 
-      className="relative rounded-sm border overflow-hidden flex flex-col font-mono text-xs select-none"
-      style={{ 
-        height, 
-        background: '#0a192f', 
+    <div
+      className="relative rounded-sm border overflow-hidden flex flex-col font-mono text-xs select-none w-full"
+      style={{
+        height,
+        background: '#090c10',
         borderColor: 'var(--crm-line)',
-        boxShadow: 'inset 0 0 40px rgba(0,0,0,0.6)' 
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
       }}
     >
       {/* Header Bar */}
-      <div className="px-4 py-2.5 bg-[#0e223b] border-b border-[#1e3a5f] flex items-center justify-between z-[1000]">
+      <div className="px-4 py-2.5 bg-[#0d1117] border-b border-[#21262d] flex items-center justify-between z-10 shrink-0">
         <div className="flex items-center gap-2">
-          <FiNavigation className="text-[#c9a84c] animate-pulse" size={14} />
-          <span className="text-[10px] uppercase font-bold tracking-widest text-[#e2e8f0]">
-            OpenStreetMap Interactive Radar ({validTrips.length} Active Trips)
-          </span>
+          <FiNavigation className="text-sky-400 animate-pulse" size={15} />
+          <h3 className="text-xs uppercase font-serif font-bold tracking-wider text-[#f0f6fc]">
+            GOOGLE MAP LIVE TELEMETRY
+          </h3>
         </div>
-        <div className="flex items-center gap-3 text-[9px] uppercase font-bold tracking-wider">
-          <span className="flex items-center gap-1 text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" /> On Time
-          </span>
-          <span className="flex items-center gap-1 text-amber-400">
-            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Approaching
-          </span>
-          <span className="flex items-center gap-1 text-rose-400">
-            <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> Overdue
-          </span>
-        </div>
-      </div>
 
-      {/* OpenStreetMap Tile Canvas */}
-      <div className="relative flex-1 w-full overflow-hidden bg-[#071322] z-0">
-        <MapContainer 
-          center={defaultCenter} 
-          zoom={defaultZoom} 
-          scrollWheelZoom={true}
-          style={{ width: '100%', height: '100%' }}
-        >
-          {/* CartoDB Dark Matter OpenStreetMap Tile Layer (100% Free, Zero API Key required) */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          />
-
-          {validTrips.map((trip, idx) => {
-            const origin = getCoords(trip, 'origin');
-            const dest = getCoords(trip, 'dest');
-            const strokeColor = getTripColor(trip);
-
-            return (
-              <React.Fragment key={trip._id || idx}>
-                {/* Route Vector Line */}
-                <Polyline 
-                  positions={[origin, dest]} 
-                  pathOptions={{ 
-                    color: strokeColor, 
-                    weight: 3, 
-                    dashArray: trip.status === 'IN_TRANSIT' ? '6, 6' : null 
-                  }} 
-                />
-
-                {/* Marker A: Origin Pin */}
-                <Marker position={origin} icon={markerAIcon}>
-                  <Popup className="custom-leaflet-popup">
-                    <div className="p-1 font-mono text-[10px] text-slate-800">
-                      <strong>Origin (A):</strong> {trip.originCity || trip.origin || 'Origin'}<br/>
-                      <strong>Trip:</strong> {trip.tripId || trip._id}
-                    </div>
-                  </Popup>
-                </Marker>
-
-                {/* Marker B: Destination Pin */}
-                <Marker position={dest} icon={markerBIcon}>
-                  <Popup className="custom-leaflet-popup">
-                    <div className="p-1 font-mono text-[10px] text-slate-800">
-                      <strong>Destination (B):</strong> {trip.destCity || trip.destination || 'Destination'}<br/>
-                      <strong>Driver:</strong> {trip.driverName || trip.driver?.name || 'Unassigned'}<br/>
-                      <strong>Vehicle:</strong> {trip.vehicleNo || trip.truckNumber || 'N/A'}<br/>
-                      <strong>Cargo:</strong> {trip.material || trip.productName || 'Freight'}<br/>
-                      <strong>Status:</strong> <span style={{ color: strokeColor, fontWeight: 'bold' }}>{trip.status}</span>
-                    </div>
-                  </Popup>
-                </Marker>
-              </React.Fragment>
-            );
-          })}
-        </MapContainer>
-      </div>
-
-      {/* Fallback Text Placeholder (Requirement: Text placeholder "Route: [Origin] → [Destination]") */}
-      <div className="px-3 py-2 bg-[#0a182b] border-t border-[#1e3a5f] flex flex-wrap gap-2 items-center text-[9px] z-[1000]">
-        <span className="text-[#94a3b8] font-bold uppercase tracking-wider">Active Route Manifests:</span>
-        {validTrips.slice(0, 4).map((t, idx) => (
-          <span 
-            key={t._id || idx}
-            onClick={() => setSelectedTrip(t)}
-            className="px-2 py-1 bg-[#132a48] hover:bg-[#1a3860] border border-[#1e3a5f] text-[#e2e8f0] rounded cursor-pointer transition flex items-center gap-1"
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRecenter}
+            className="px-3 py-1 bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-700/60 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
           >
-            <FiMapPin size={10} className="text-[#38bdf8]" />
-            Route: {t.originCity || t.origin || 'Origin'} → {t.destCity || t.destination || 'Destination'} ({t.driverName || t.driver?.name || 'Driver'})
-          </span>
-        ))}
+            <FiCrosshair size={13} className="text-sky-400" /> Recenter GPS
+          </button>
+        </div>
+      </div>
+
+      {/* Main Google Maps Viewport */}
+      <div className="relative flex-1 w-full overflow-hidden bg-[#0d1117]">
+        <iframe
+          title="Google Map Live Radar"
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          src={`https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.long}&z=${zoomLevel}&output=embed`}
+          loading="lazy"
+          allowFullScreen
+        />
+
+        {/* Live Status Floating Badge (Top Left Overlay) */}
+        <div className="absolute top-3 left-3 border p-3 rounded bg-[#0d1117]/90 backdrop-blur-md border-[#30363d] shadow-2xl text-[10px] space-y-1 z-10 max-w-xs">
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider text-[9px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+            ● LIVE GPS TELEMETRY LOCKED
+          </div>
+          <div className="text-[#c9d1d9] font-bold font-mono">
+            {activeDriverName} <span className="text-sky-400">({activeVehicleNo})</span>
+          </div>
+          <div className="text-[#8b949e] font-mono text-[9px]">
+            GPS Pos: {mapCenter.lat.toFixed(4)}° N, {mapCenter.long.toFixed(4)}° E
+          </div>
+        </div>
+
+        {/* Driver Quick Selector Pills (Top Right Overlay) */}
+        {activeDrivers.length > 0 && (
+          <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10 max-h-[160px] overflow-y-auto custom-scrollbar">
+            {activeDrivers.slice(0, 4).map((drv, idx) => {
+              const isSelected = selectedDriver?._id === drv._id || selectedDriver?.driverId === drv.driverId || idx === 0;
+              return (
+                <button
+                  key={drv._id || drv.driverId || idx}
+                  onClick={() => handleSelectDriver(drv)}
+                  className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider border shadow transition cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600'
+                      : 'bg-[#161b22]/90 text-[#c9d1d9] border-[#30363d] hover:bg-[#21262d]'
+                  }`}
+                >
+                  <FiTruck size={10} className={isSelected ? 'text-emerald-400' : 'text-slate-400'} />
+                  <span>{drv.driverName || drv.fullName || 'Driver'}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer Manifest & Active Route Status Bar */}
+      <div className="px-3.5 py-2 bg-[#0d1117] border-t border-[#21262d] flex flex-wrap gap-2 items-center justify-between text-[9px] z-10 shrink-0">
+        <div className="flex items-center gap-2 text-[#8b949e] font-bold uppercase tracking-wider">
+          <FiActivity className="text-emerald-400" size={12} />
+          <span>Active Radar: {activeDrivers.length} Online Drivers • {trips.length} Dispatches</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {trips.slice(0, 2).map((t, idx) => (
+            <span key={t._id || idx} className="px-2 py-0.5 bg-[#161b22] border border-[#30363d] text-[#c9d1d9] rounded flex items-center gap-1 font-mono text-[9px]">
+              <FiMapPin size={9} className="text-sky-400" />
+              {t.originCity || t.origin || 'Origin'} &rarr; {t.destCity || t.destination || 'Destination'}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

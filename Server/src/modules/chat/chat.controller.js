@@ -1,5 +1,6 @@
 const ChatSession = require('./chatSession.model');
 const ChatMessage = require('./chatMessage.model');
+const TransportChat = require('./transportChat.model');
 const Lead = require('../leads/lead.model');
 const LeadActivity = require('../leads/leadActivity.model');
 const crypto = require('crypto');
@@ -256,11 +257,75 @@ async function resolveSession(req, res, next) {
   }
 }
 
+async function getTransportChats(req, res, next) {
+  try {
+    const rawChats = await TransportChat.find().sort({ createdAt: 1 }).limit(300).lean();
+    const chats = rawChats.map(c => ({
+      id: c._id.toString(),
+      _id: c._id.toString(),
+      senderId: c.senderId,
+      sender: c.senderName,
+      senderRole: c.senderRole,
+      text: c.message,
+      message: c.message,
+      channel: c.channel,
+      time: new Date(c.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: c.createdAt
+    }));
+    return ok(res, { chats }, 'Transport chats retrieved from MongoDB', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function sendTransportChat(req, res, next) {
+  try {
+    const { senderId, senderName, senderRole, vehicleNo, channel, message, text, photoUrl } = req.body;
+    const cleanMsg = (message || text || '').trim();
+    if (!cleanMsg) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'message is required');
+    }
+
+    const chat = await TransportChat.create({
+      senderId: String(senderId || req.user?._id || req.user?.employeeId || 'unknown'),
+      senderName: senderName || req.user?.fullName || req.user?.name || 'User',
+      senderRole: senderRole || req.user?.role || 'DRIVER',
+      vehicleNo: vehicleNo || '',
+      channel: channel || 'GENERAL',
+      message: cleanMsg,
+      photoUrl: photoUrl || ''
+    });
+
+    const socketService = require('../../services/socket.service');
+    const formatted = {
+      id: chat._id.toString(),
+      _id: chat._id.toString(),
+      senderId: chat.senderId,
+      sender: chat.senderName,
+      senderRole: chat.senderRole,
+      text: chat.message,
+      message: chat.message,
+      channel: chat.channel,
+      time: new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: chat.createdAt
+    };
+
+    socketService.emitToAll('transport_chat_receive', formatted);
+    socketService.emitToAll('driver_chat_message', formatted);
+
+    return ok(res, { chat: formatted }, 'Transport chat message saved to MongoDB', 201, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   initSession,
   getMessages,
   sendMessage,
   getAdminSessions,
   sendAdminReply,
-  resolveSession
+  resolveSession,
+  getTransportChats,
+  sendTransportChat
 };

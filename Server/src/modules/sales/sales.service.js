@@ -54,20 +54,51 @@ async function setTarget({ employeeId, month, year, targetValue, targetDeals, se
     const Employee = require('../employee/employee.model');
     const User = require('../users/user.model');
     
-    const emp = await Employee.findById(employeeId);
+    let emp = null;
+    if (mongoose.isValidObjectId(employeeId)) {
+      emp = await Employee.findById(employeeId);
+    } else {
+      emp = await Employee.findOne({ $or: [{ employeeId: employeeId }, { email: employeeId }] });
+    }
+
     if (emp) {
-      const user = await User.findOne({ email: emp.email });
+      let user = await User.findOne({ email: emp.email.toLowerCase() });
+      if (!user) {
+        try {
+          const { syncEmployeeToUser } = require('../employee/employee.controller');
+          if (typeof syncEmployeeToUser === 'function') {
+            await syncEmployeeToUser(emp);
+            user = await User.findOne({ email: emp.email.toLowerCase() });
+          }
+        } catch (syncErr) {
+          console.error('Error syncing employee to user during setTarget:', syncErr);
+        }
+      }
       if (user) {
         targetUserId = user._id;
+      } else {
+        targetUserId = emp._id;
       }
+    } else if (typeof employeeId === 'string' && !mongoose.isValidObjectId(employeeId)) {
+      const user = await User.findOne({ $or: [{ employeeId: employeeId }, { email: employeeId }] });
+      if (user) targetUserId = user._id;
     }
   } catch (err) {
     console.error('Error resolving User ID from Employee ID in setTarget:', err);
   }
 
+  let validSetBy = setBy;
+  if (!mongoose.isValidObjectId(validSetBy)) {
+    validSetBy = undefined;
+  }
+
   return SalesTarget.findOneAndUpdate(
-    { employeeId: targetUserId, month, year },
-    { targetValue, targetDeals, setBy },
+    { employeeId: targetUserId, month: Number(month), year: Number(year) },
+    { 
+      targetValue: Number(targetValue), 
+      targetDeals: targetDeals !== undefined && targetDeals !== null && targetDeals !== '' ? Number(targetDeals) : null, 
+      setBy: validSetBy 
+    },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   );
 }
@@ -79,11 +110,20 @@ async function getTargets({ employeeId, month, year } = {}) {
     try {
       const Employee = require('../employee/employee.model');
       const User = require('../users/user.model');
-      const emp = await Employee.findById(employeeId);
+      
+      let emp = null;
+      if (mongoose.isValidObjectId(employeeId)) {
+        emp = await Employee.findById(employeeId);
+      } else {
+        emp = await Employee.findOne({ $or: [{ employeeId: employeeId }, { email: employeeId }] });
+      }
+
       if (emp) {
-        const user = await User.findOne({ email: emp.email });
+        const user = await User.findOne({ email: emp.email.toLowerCase() });
         if (user) {
           targetUserId = user._id;
+        } else {
+          targetUserId = emp._id;
         }
       }
     } catch (err) {
@@ -91,9 +131,9 @@ async function getTargets({ employeeId, month, year } = {}) {
     }
     filter.employeeId = targetUserId;
   }
-  if (month) filter.month = month;
-  if (year) filter.year = year;
-  return SalesTarget.find(filter).populate('employeeId', 'fullName employeeId department').sort({ year: -1, month: -1 });
+  if (month) filter.month = Number(month);
+  if (year) filter.year = Number(year);
+  return SalesTarget.find(filter).populate('employeeId', 'fullName name employeeId department').sort({ year: -1, month: -1 });
 }
 
 async function getMyPerformance(user, { month, year } = {}) {

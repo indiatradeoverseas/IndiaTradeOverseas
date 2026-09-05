@@ -1,24 +1,40 @@
 const Ticket = require('./ticket.model');
 
 const CATEGORY_ROLE_MAP = {
-  IT: ['IT', 'SOFTWARE_ENGINEER'],
-  HR: ['HR'],
-  ADMIN: ['MANAGER'],
-  FINANCE: ['FINANCE', 'ACCOUNTS']
+  IT: ['IT', 'SOFTWARE_ENGINEER', 'ADMIN', 'FOUNDER'],
+  HR: ['HR', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'FOUNDER'],
+  ADMIN: ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER'],
+  FINANCE: ['FINANCE', 'ACCOUNTS', 'ADMIN', 'FOUNDER'],
+  SALES: ['SALES', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'ADMIN', 'FOUNDER'],
+  TRANSPORT: ['TRANSPORT', 'LOGISTICS', 'TRANSPORT_EXECUTIVE', 'TRANSPORT_MANAGER', 'DRIVER', 'ADMIN', 'FOUNDER']
 };
 
-const MANAGER_TIER_ROLES = ['ADMIN', 'MANAGER', 'HR', 'IT', 'FINANCE', 'ACCOUNTS', 'SOFTWARE_ENGINEER'];
+const HR_AND_FOUNDER_ROLES = [
+  'ADMIN', 
+  'FOUNDER', 
+  'CO_FOUNDER', 
+  'SUPER_ADMIN', 
+  'HR', 
+  'HR_MANAGER', 
+  'HR_EXECUTIVE', 
+  'HRMANAGE', 
+  'HREXECUTIVE',
+  'TRANSPORT_MANAGER'
+];
 
 function canManageCategory(user, category) {
-  if (user.role === 'ADMIN') return true;
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  if (['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(role)) return true;
   const allowedRoles = CATEGORY_ROLE_MAP[category] || [];
-  return allowedRoles.includes(user.role);
+  return allowedRoles.includes(role);
 }
 
 async function createTicket({ subject, description, category, priority }, user) {
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 10000);
   const ticketCode = `TCK-${timestamp}-${random}`;
+  const creatorName = user?.fullName || user?.name || user?.email || 'Employee';
 
   return Ticket.create({
     ticketCode,
@@ -26,7 +42,8 @@ async function createTicket({ subject, description, category, priority }, user) 
     description,
     category,
     priority: priority || 'MEDIUM',
-    raisedBy: user._id
+    raisedBy: user._id,
+    raisedByName: creatorName
   });
 }
 
@@ -35,37 +52,39 @@ async function listTickets(user, query = {}) {
   if (query.status) filter.status = query.status;
   if (query.category) filter.category = query.category;
 
-  if (!MANAGER_TIER_ROLES.includes(user.role)) {
+  const role = (user?.role || '').toUpperCase();
+  if (!HR_AND_FOUNDER_ROLES.includes(role)) {
     filter.raisedBy = user._id;
   }
 
   return Ticket.find(filter)
-    .populate('raisedBy', 'fullName employeeId department')
-    .populate('assignedTo', 'fullName employeeId')
+    .populate('raisedBy', 'fullName name employeeId department email')
+    .populate('assignedTo', 'fullName name employeeId')
+    .populate('resolvedBy', 'fullName name employeeId')
+    .populate('comments.authorId', 'fullName name employeeId')
     .sort({ createdAt: -1 });
 }
 
 async function getTicketById(ticketId, user) {
   const ticket = await Ticket.findById(ticketId)
-    .populate('raisedBy', 'fullName employeeId department')
-    .populate('assignedTo', 'fullName employeeId')
-    .populate('comments.authorId', 'fullName employeeId');
+    .populate('raisedBy', 'fullName name employeeId department email')
+    .populate('assignedTo', 'fullName name employeeId')
+    .populate('resolvedBy', 'fullName name employeeId')
+    .populate('comments.authorId', 'fullName name employeeId');
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
-
-  const isOwner = ticket.raisedBy._id.toString() === user._id.toString();
-  if (!isOwner && !canManageCategory(user, ticket.category)) {
-    throw new Error('OWNERSHIP_FORBIDDEN');
-  }
   return ticket;
 }
 
 async function updateStatus(ticketId, status, user) {
   const ticket = await Ticket.findById(ticketId);
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
-  if (!canManageCategory(user, ticket.category)) throw new Error('OWNERSHIP_FORBIDDEN');
 
   ticket.status = status;
-  if (status === 'RESOLVED') ticket.resolvedAt = new Date();
+  if (status === 'RESOLVED') {
+    ticket.resolvedAt = new Date();
+    ticket.resolvedBy = user._id;
+    ticket.resolvedByName = user?.fullName || user?.name || user?.email || 'HR Executive';
+  }
   if (status === 'CLOSED') ticket.closedAt = new Date();
   await ticket.save();
   return ticket;
@@ -74,7 +93,6 @@ async function updateStatus(ticketId, status, user) {
 async function assignTicket(ticketId, assignedTo, user) {
   const ticket = await Ticket.findById(ticketId);
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
-  if (!canManageCategory(user, ticket.category)) throw new Error('OWNERSHIP_FORBIDDEN');
 
   ticket.assignedTo = assignedTo;
   if (ticket.status === 'OPEN') ticket.status = 'ASSIGNED';
@@ -86,12 +104,8 @@ async function addComment(ticketId, message, user) {
   const ticket = await Ticket.findById(ticketId);
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
 
-  const isOwner = ticket.raisedBy.toString() === user._id.toString();
-  if (!isOwner && !canManageCategory(user, ticket.category)) {
-    throw new Error('OWNERSHIP_FORBIDDEN');
-  }
-
-  ticket.comments.push({ authorId: user._id, message });
+  const authorName = user?.fullName || user?.name || user?.email || 'Employee';
+  ticket.comments.push({ authorId: user._id, authorName, message });
   await ticket.save();
   return ticket;
 }

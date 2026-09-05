@@ -45,6 +45,10 @@ const sharedFileSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    gridFsFileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null
+    },
     downloadedAt: {
       type: Date,
       default: null

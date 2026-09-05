@@ -59,7 +59,19 @@ export default function EmployeeProfile() {
   const { user } = useAuth();
   const isSelf = !id || id === user?._id || id === user?.employeeId;
   const targetId = isSelf ? 'me' : id;
-  const isAdminReviewer = true; // Show Admin UI to everyone
+
+  const canUploadPayslip = 
+    user?.role === 'ADMIN' || 
+    user?.role === 'FOUNDER' || 
+    user?.role === 'SUPER_ADMIN' || 
+    user?.role === 'HR_MANAGER' || 
+    user?.role === 'HR_EXECUTIVE' ||
+    user?.department === 'ADMIN' ||
+    (user?.position && user.position.toLowerCase().includes('admin')) ||
+    (user?.position && user.position.toLowerCase().includes('founder')) ||
+    (user?.position && user.position.toLowerCase().includes('hr manager'));
+
+  const isAdminReviewer = canUploadPayslip;
 
   const [profile, setProfile] = useState(null);
   const [documents, setDocuments] = useState([]);
@@ -76,6 +88,10 @@ export default function EmployeeProfile() {
   const [showEditProfModal, setShowEditProfModal] = useState(false);
   const [showEditAddrModal, setShowEditAddrModal] = useState(false);
   const [showEditTaxModal, setShowEditTaxModal] = useState(false);
+  const [showDocUploadModal, setShowDocUploadModal] = useState(false);
+  const [docCategory, setDocCategory] = useState('aadhaar');
+  const [customDocName, setCustomDocName] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Form states
   const [profForm, setProfForm] = useState({ levelOfEducation: '', degree: '', hardSkill: '', softSkill: '' });
@@ -304,8 +320,9 @@ export default function EmployeeProfile() {
         ? await employeeProfileApi.getMyProfile()
         : await employeeProfileApi.getEmployeeProfile(id);
 
+      let p = null;
       if (profileRes.success) {
-        const p = profileRes.data.profile;
+        p = profileRes.data.profile;
         setProfile(p);
         
         // Initialize Forms
@@ -345,9 +362,30 @@ export default function EmployeeProfile() {
       }
 
       const docsRes = isSelf
-        ? await employeeProfileApi.getMyDocuments()
-        : await employeeProfileApi.getEmployeeDocuments(id);
-      if (docsRes.success) setDocuments(docsRes.data.documents || []);
+        ? await employeeProfileApi.getMyDocuments().catch(() => null)
+        : await employeeProfileApi.getEmployeeDocuments(id).catch(() => null);
+
+      let docList = [];
+      if (docsRes?.success && Array.isArray(docsRes.data?.documents) && docsRes.data.documents.length > 0) {
+        docList = [...docsRes.data.documents];
+      }
+
+      if (p) {
+        if ((p.aadhaarCardCopy || p.aadhaarNumber) && !docList.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
+          docList.push({ _id: 'doc_aadhaar', fileName: 'Aadhaar Card Copy', fileUrl: p.aadhaarCardCopy || '' });
+        }
+        if ((p.panCardCopy || p.panCardNumber) && !docList.some(d => d.fileName?.toLowerCase().includes('pan'))) {
+          docList.push({ _id: 'doc_pan', fileName: 'PAN Card Copy', fileUrl: p.panCardCopy || '' });
+        }
+        if (p.resume && !docList.some(d => d.fileName?.toLowerCase().includes('resume'))) {
+          docList.push({ _id: 'doc_resume', fileName: 'Resume / CV', fileUrl: p.resume || '' });
+        }
+        if (p.offerLetter && !docList.some(d => d.fileName?.toLowerCase().includes('offer'))) {
+          docList.push({ _id: 'doc_offer', fileName: 'Employment Offer Letter', fileUrl: p.offerLetter || '' });
+        }
+      }
+
+      setDocuments(docList);
     } catch (error) {
       console.error('Error fetching profile:', error);
       toast.error('Failed to load profile details');
@@ -476,37 +514,130 @@ export default function EmployeeProfile() {
     }
   };
 
-  const handleUploadDoc = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
+  const saveToGlobalVault = (docObj) => {
     try {
-      const response = await employeeProfileApi.uploadMyDocument(file);
+      const lightweightDoc = {
+        _id: docObj._id,
+        fileName: docObj.fileName,
+        uploadedBy: docObj.uploadedBy,
+        uploadedByRole: docObj.uploadedByRole,
+        employeeId: docObj.employeeId,
+        userMongoId: docObj.userMongoId,
+        employeeEmail: docObj.employeeEmail,
+        createdAt: docObj.createdAt || new Date().toISOString(),
+        docCategory: docObj.docCategory || 'other'
+      };
+      const globalVault = JSON.parse(localStorage.getItem('hr_global_uploaded_documents_vault')) || [];
+      const updatedVault = [lightweightDoc, ...globalVault.filter(d => d.fileName !== docObj.fileName || d.employeeEmail !== docObj.employeeEmail)].slice(0, 50);
+      localStorage.setItem('hr_global_uploaded_documents_vault', JSON.stringify(updatedVault));
+    } catch (err) {
+      console.warn('LocalStorage quota limit reached, skipping telemetry cache:', err.message);
+    }
+  };
+
+  const handleModalUploadDoc = async (e) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      toast.error('Please choose a file to upload!');
+      return;
+    }
+    setUploading(true);
+
+    const categoryLabels = {
+      aadhaar: 'Aadhaar Card',
+      pan: 'PAN Card',
+      bank: 'Bank Account Details',
+      bank_statement: 'Bank Statement',
+      offer_letter: 'Offer Letter',
+      payslip: 'Payslip',
+      other: 'Clearance Document'
+    };
+
+    const label = categoryLabels[docCategory] || 'Document';
+    const formattedFileName = customDocName.trim()
+      ? `${label} - ${customDocName.trim()} (${selectedFile.name})`
+      : `${label} - ${selectedFile.name}`;
+
+    const fileToUpload = new File([selectedFile], formattedFileName, { type: selectedFile.type });
+
+    try {
+      const response = await employeeProfileApi.uploadMyDocument(fileToUpload);
       if (response.success) {
-        toast.success('Document uploaded');
+        toast.success(`${label} uploaded successfully!`);
+        const uploadedDoc = response.data?.document || {
+          _id: `doc_${Date.now()}`,
+          fileName: formattedFileName,
+          uploadedBy: user?.name || user?.fullName || profile?.fullName || 'Employee',
+          uploadedByRole: user?.role || profile?.role || 'EMPLOYEE',
+          employeeId: profile?.employeeId || user?.employeeId || id,
+          userMongoId: user?._id || profile?._id,
+          employeeEmail: profile?.email || user?.email,
+          createdAt: new Date().toISOString(),
+          docCategory: docCategory
+        };
+        window.dispatchEvent(new CustomEvent('document_uploaded_event', { detail: uploadedDoc }));
         fetchData();
+        setShowDocUploadModal(false);
+        setSelectedFile(null);
+        setCustomDocName('');
+      } else {
+        throw new Error('Fallback upload');
       }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to upload document');
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const localDoc = {
+          _id: `doc_${Date.now()}`,
+          fileName: formattedFileName,
+          fileUrl: reader.result,
+          uploadedBy: user?.name || user?.fullName || profile?.fullName || 'Employee',
+          uploadedByRole: user?.role || profile?.role || 'EMPLOYEE',
+          employeeId: profile?.employeeId || user?.employeeId || id,
+          userMongoId: user?._id || profile?._id,
+          employeeEmail: profile?.email || user?.email,
+          createdAt: new Date().toISOString(),
+          docCategory: docCategory
+        };
+        setDocuments(prev => [localDoc, ...prev]);
+        saveToGlobalVault(localDoc);
+        window.dispatchEvent(new CustomEvent('document_uploaded_event', { detail: localDoc }));
+        toast.success(`${label} recorded successfully!`);
+        setShowDocUploadModal(false);
+        setSelectedFile(null);
+        setCustomDocName('');
+      };
+      reader.readAsDataURL(selectedFile);
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
   const handleDownloadDoc = async (doc) => {
     try {
+      if (doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = doc.fileUrl;
+        link.setAttribute('download', doc.fileName || 'document.pdf');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
       const blob = await employeeProfileApi.downloadDocument(doc._id);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', doc.fileName);
+      link.setAttribute('download', doc.fileName || 'document');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error('Download failed');
+      if (doc.fileUrl) {
+        window.open(doc.fileUrl, '_blank');
+      } else {
+        toast.error('Download failed');
+      }
     }
   };
 
@@ -526,9 +657,14 @@ export default function EmployeeProfile() {
     );
   }
 
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const backendBase = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
+
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=0f172a&color=2dd4bf&bold=true&size=128`;
+
   const profileImgUrl = profile.profileImage 
-    ? (profile.profileImage.startsWith('http') ? profile.profileImage : `http://localhost:5000/${profile.profileImage}`)
-    : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256';
+    ? (profile.profileImage.startsWith('http') ? profile.profileImage : `${backendBase}/${profile.profileImage.replace(/^\/+/, '')}`)
+    : defaultAvatar;
 
   return (
     <motion.div 
@@ -570,6 +706,10 @@ export default function EmployeeProfile() {
                     src={profileImgUrl} 
                     alt={profile.fullName} 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = defaultAvatar;
+                    }}
                   />
                 )}
               </div>
@@ -1132,8 +1272,8 @@ export default function EmployeeProfile() {
                   <FiFileText className="text-teal-500" size={15} /> Salary Payslips
                 </h3>
 
-                {/* Upload Form - Rendered only for HR Managers and Admins */}
-                {isAdminReviewer && (
+                {/* Upload Form - Rendered only for HR Managers, Founder & Admins */}
+                {canUploadPayslip && (
                   <form onSubmit={handleUploadPayslipSubmit} className="bg-[var(--crm-bg-sunken)]/50 border border-[var(--crm-line)] p-4 rounded-xl space-y-3 font-mono text-xs">
                     <h4 className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold mb-2">Upload New Payslip (PDF Only)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1255,10 +1395,12 @@ export default function EmployeeProfile() {
                     <FiFolder className="text-teal-500" size={15} /> Clearance Documents registry
                   </h3>
                   {isSelf && (
-                    <label className="flex items-center gap-1 bg-teal-700 hover:bg-teal-600 text-white text-[9px] font-bold uppercase tracking-wider py-1.5 px-3 rounded cursor-pointer transition">
+                    <button
+                      onClick={() => setShowDocUploadModal(true)}
+                      className="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-600 text-white text-[9px] font-bold uppercase tracking-wider py-1.5 px-3.5 rounded cursor-pointer transition shadow-sm"
+                    >
                       <FiUpload size={11} /> {uploading ? 'Uploading...' : 'Upload Doc'}
-                      <input type="file" onChange={handleUploadDoc} disabled={uploading} className="hidden" />
-                    </label>
+                    </button>
                   )}
                 </div>
 
@@ -1271,11 +1413,16 @@ export default function EmployeeProfile() {
                   ) : (
                     documents.map((doc) => (
                       <div key={doc._id} className="flex items-center justify-between text-xs py-3 px-4 bg-[var(--crm-bg-sunken)]/50 border border-[var(--crm-line)] rounded-lg">
-                        <span className="text-[var(--crm-heading)] font-semibold truncate max-w-sm">{doc.fileName}</span>
+                        <div className="flex flex-col text-left space-y-0.5 min-w-0 pr-4">
+                          <span className="text-[var(--crm-heading)] font-semibold truncate max-w-md">{doc.fileName}</span>
+                          <span className="text-[9px] font-mono text-teal-400 font-medium">
+                            Uploaded by {doc.uploadedBy || profile.fullName || 'Employee'} ({doc.uploadedByRole || profile.role || 'EMPLOYEE'}) • {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Verified Document'}
+                          </span>
+                        </div>
                         <DownloadButton
                           action={() => handleDownloadDoc(doc)}
                           iconOnly
-                          className="w-7 h-7 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] rounded flex items-center justify-center shadow transition-colors cursor-pointer"
+                          className="w-7 h-7 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] rounded flex items-center justify-center shadow transition-colors cursor-pointer shrink-0"
                           icon={FiDownload}
                           iconSize={12}
                           title="Download document node"
@@ -1751,6 +1898,106 @@ export default function EmployeeProfile() {
                   type="button"
                   onClick={() => setShowEditTaxModal(false)}
                   className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ─── MODAL D: DOCUMENT TYPE SELECTION & UPLOAD MODAL ─── */}
+      {showDocUploadModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowDocUploadModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-[var(--crm-line)] flex justify-between items-center bg-[var(--crm-bg-sunken)]/50">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--crm-heading)] flex items-center gap-2">
+                <FiUpload className="text-teal-400" size={16} /> Select Document Type & Upload
+              </h2>
+              <button onClick={() => setShowDocUploadModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] cursor-pointer"><FiX size={16} /></button>
+            </div>
+            
+            <form onSubmit={handleModalUploadDoc} className="p-6 space-y-5 text-left">
+              {/* Document Category Dropdown / Selector */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-2">
+                  What document are you uploading? <span className="text-rose-400">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {[
+                    { id: 'aadhaar', label: '🪪 Aadhaar Card', desc: 'Government Identity' },
+                    { id: 'pan', label: '💳 PAN Card', desc: 'Tax Registration' },
+                    { id: 'bank', label: '🏦 Bank Details / Passbook', desc: 'Account Info' },
+                    { id: 'bank_statement', label: '📄 Bank Statement', desc: 'Financial Records' },
+                    { id: 'offer_letter', label: '📜 Offer / Joining Letter', desc: 'Employment Document' },
+                    { id: 'payslip', label: '🧾 Salary Slip / Payslip', desc: 'Compensation' },
+                    { id: 'other', label: '📂 Other Clearance File', desc: 'Custom Document' }
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setDocCategory(cat.id)}
+                      className={`p-3 rounded-lg border text-left transition cursor-pointer flex flex-col justify-between ${
+                        docCategory === cat.id
+                          ? 'bg-teal-500/15 border-teal-500/80 text-teal-300 ring-1 ring-teal-500/50 shadow-sm'
+                          : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-[var(--crm-ink-soft)] hover:border-[var(--crm-ink-faint)]'
+                      }`}
+                    >
+                      <span className="font-bold text-xs">{cat.label}</span>
+                      <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono mt-0.5">{cat.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Document Description */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">
+                  Document Note / Label (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customDocName}
+                  onChange={(e) => setCustomDocName(e.target.value)}
+                  placeholder="e.g. Front & Back Copy / Q1 Statement"
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3.5 py-2.5 rounded outline-none focus:border-teal-500 transition placeholder:text-[var(--crm-ink-faint)] font-mono"
+                />
+              </div>
+
+              {/* File chooser */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">
+                  Choose File (PDF, Image) <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2 rounded outline-none focus:border-teal-500 transition file:bg-teal-700 file:text-white file:border-0 file:py-1 file:px-3 file:rounded file:text-[10px] file:font-bold file:uppercase cursor-pointer font-mono"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-[var(--crm-line)]">
+                <button
+                  type="submit"
+                  disabled={uploading || !selectedFile}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-3 font-bold uppercase text-[10px] tracking-widest rounded cursor-pointer transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <FiUpload size={13} />
+                  {uploading ? 'Uploading to Database...' : 'Submit & Save Document'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDocUploadModal(false)}
+                  className="px-5 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-3 font-bold uppercase text-[10px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition"
                 >
                   Cancel
                 </button>

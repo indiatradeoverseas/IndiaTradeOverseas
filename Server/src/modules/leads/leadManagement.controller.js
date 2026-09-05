@@ -482,7 +482,7 @@ async function streamCallRecording(req, res, next) {
       }
 
       try {
-        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {

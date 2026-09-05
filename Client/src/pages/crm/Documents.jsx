@@ -367,15 +367,6 @@ export default function Documents() {
                               <option value="MANAGER" className="bg-[var(--crm-bg)]">Manager Only</option>
                               <option value="HR" className="bg-[var(--crm-bg)]">HR Only</option>
                               <option value="SALES" className="bg-[var(--crm-bg)]">Sales Only</option>
-                              <option value="ACCOUNTS" className="bg-[var(--crm-bg)]">Accounts Only</option>
-                              <option value="FINANCE" className="bg-[var(--crm-bg)]">Finance Only</option>
-                              <option value="PROCUREMENT" className="bg-[var(--crm-bg)]">Procurement Only</option>
-                              <option value="IT" className="bg-[var(--crm-bg)]">IT Only</option>
-                              <option value="SOFTWARE_ENGINEER" className="bg-[var(--crm-bg)]">Software Engineer Only</option>
-                              <option value="STONE" className="bg-[var(--crm-bg)]">Stone Dept Only</option>
-                              <option value="COAL" className="bg-[var(--crm-bg)]">Coal Dept Only</option>
-                              <option value="TEA" className="bg-[var(--crm-bg)]">Tea Dept Only</option>
-                              <option value="RICE" className="bg-[var(--crm-bg)]">Rice Dept Only</option>
                               <option value="TRANSPORT" className="bg-[var(--crm-bg)]">Transport Dept Only</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[var(--crm-ink-faint)]">
@@ -564,15 +555,6 @@ export default function Documents() {
                       <option value="MANAGER" className="bg-[var(--crm-bg)]">Manager Only</option>
                       <option value="HR" className="bg-[var(--crm-bg)]">HR Only</option>
                       <option value="SALES" className="bg-[var(--crm-bg)]">Sales Only</option>
-                      <option value="ACCOUNTS" className="bg-[var(--crm-bg)]">Accounts Only</option>
-                      <option value="FINANCE" className="bg-[var(--crm-bg)]">Finance Only</option>
-                      <option value="PROCUREMENT" className="bg-[var(--crm-bg)]">Procurement Only</option>
-                      <option value="IT" className="bg-[var(--crm-bg)]">IT Only</option>
-                      <option value="SOFTWARE_ENGINEER" className="bg-[var(--crm-bg)]">Software Engineer Only</option>
-                      <option value="STONE" className="bg-[var(--crm-bg)]">Stone Department Only</option>
-                      <option value="COAL" className="bg-[var(--crm-bg)]">Coal Department Only</option>
-                      <option value="TEA" className="bg-[var(--crm-bg)]">Tea Department Only</option>
-                      <option value="RICE" className="bg-[var(--crm-bg)]">Rice Department Only</option>
                       <option value="TRANSPORT" className="bg-[var(--crm-bg)]">Transport Department Only</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">

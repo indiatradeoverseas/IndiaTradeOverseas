@@ -20,7 +20,8 @@ import {
   FiX,
   FiDownload,
   FiFileText,
-  FiUpload
+  FiUpload,
+  FiUser
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -44,7 +45,8 @@ export default function Tasks() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('PENDING');
+  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'WON_DELIVERED' | 'ORDER_CONFIRM' | 'NEW_LEAD' | 'CALENDAR'
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showPerformModal, setShowPerformModal] = useState(false);
   const [actionType, setActionType] = useState('STAGE_CHANGE');
@@ -52,6 +54,53 @@ export default function Tasks() {
   const [activityNote, setActivityNote] = useState('');
   const [nextFollowup, setNextFollowup] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Stage Categorization Helpers to prevent mixing up leads
+  const isWonOrDelivered = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
+  };
+
+  const isOrderConfirmedStage = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return [
+      'ORDER_CONFIRMED',
+      'PO_RECEIVED',
+      'LOI_PO_PENDING',
+      'DISPATCH_PENDING',
+      'DISPATCH_PLANNED',
+      'PAYMENT_PENDING',
+      'PAYMENT_DISCUSSION',
+      'DOCUMENT_PENDING',
+      'QUOTATION_APPROVED'
+    ].includes(s);
+  };
+
+  const isNewOrAssignedLead = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return !isWonOrDelivered(s) && !isOrderConfirmedStage(s) && !['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const isLost = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const getAssignedName = (lead) => {
+    if (!lead || !lead.assignedTo) return 'Unassigned';
+    const assigned = lead.assignedTo;
+    if (typeof assigned === 'object' && assigned !== null) {
+      return assigned.fullName || assigned.name || assigned.email || '';
+    }
+    if (typeof assigned === 'string' && assigned.trim() !== '' && assigned.toLowerCase() !== 'unassigned') {
+      return assigned;
+    }
+    return 'Unassigned';
+  };
 
   // General Action Tasks State
   const [actionTasks, setActionTasks] = useState([]);
@@ -236,6 +285,8 @@ export default function Tasks() {
       PAYMENT_PENDING: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20',
       DOCUMENT_PENDING: 'bg-violet-950/20 text-violet-400 border-violet-500/20',
       CLOSED_WON: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20 font-bold',
+      DEAL_WON: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20 font-bold',
+      DELIVERED: 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30 font-bold',
       CLOSED_LOST: 'bg-gray-950/20 text-gray-400 border-gray-500/20 opacity-60 line-through'
     };
     return colors[stage] || 'bg-slate-950/20 text-slate-400 border-slate-500/20';
@@ -247,19 +298,34 @@ export default function Tasks() {
       lead.leadCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.productCategory?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
-    const matchesTab =
-      activeTab === 'ALL' ||
-      (activeTab === 'PENDING' && !isClosed) ||
-      (activeTab === 'COMPLETED' && isClosed);
+    let matchesTab = true;
+    if (activeTab === 'ALL') {
+      matchesTab = true;
+    } else if (activeTab === 'WON_DELIVERED') {
+      matchesTab = isWonOrDelivered(lead.stage);
+    } else if (activeTab === 'ORDER_CONFIRM') {
+      matchesTab = isOrderConfirmedStage(lead.stage);
+    } else if (activeTab === 'NEW_LEAD') {
+      matchesTab = isNewOrAssignedLead(lead.stage);
+    } else if (activeTab === 'CALENDAR') {
+      matchesTab = Boolean(lead.nextFollowupAt) || Boolean(selectedDate);
+    }
+
+    if (selectedDate) {
+      const leadCreatedDate = lead.createdAt ? new Date(lead.createdAt).toISOString().split('T')[0] : '';
+      const leadFollowupDate = lead.nextFollowupAt ? new Date(lead.nextFollowupAt).toISOString().split('T')[0] : '';
+      const matchesDate = leadCreatedDate === selectedDate || leadFollowupDate === selectedDate;
+      return matchesSearch && matchesTab && matchesDate;
+    }
 
     return matchesSearch && matchesTab;
   });
 
   const totalTasks = leads.length;
-  const pendingCount = leads.filter(l => l.stage !== 'CLOSED_WON' && l.stage !== 'CLOSED_LOST').length;
-  const completedCount = leads.filter(l => l.stage === 'CLOSED_WON').length;
-  const lostCount = leads.filter(l => l.stage === 'CLOSED_LOST').length;
+  const wonDeliveredCount = leads.filter(l => isWonOrDelivered(l.stage)).length;
+  const orderConfirmCount = leads.filter(l => isOrderConfirmedStage(l.stage)).length;
+  const newLeadCount = leads.filter(l => isNewOrAssignedLead(l.stage)).length;
+  const calendarCount = leads.filter(l => Boolean(l.nextFollowupAt)).length;
 
   if (loading) {
     return (
@@ -326,9 +392,9 @@ export default function Tasks() {
             <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: "Total Tasks Allocated", val: totalTasks, icon: FiGrid, bg: "bg-[var(--crm-bg-raised)]/60", text: "text-[var(--crm-heading)]" },
-                { label: "Active Pipeline Elements", val: pendingCount, icon: FiClock, bg: "bg-[var(--crm-accent-bg)]", text: "text-[var(--crm-accent)]" },
-                { label: "Closed Contracts Won", val: completedCount, icon: FiCheckSquare, bg: "bg-[var(--crm-positive-bg)]", text: "text-[var(--crm-positive)]" },
-                { label: "Contracts Dismissed", val: lostCount, icon: FiAlertCircle, bg: "bg-[var(--crm-danger-bg)]", text: "text-[var(--crm-danger)]" }
+                { label: "Deal Won & Delivered", val: wonDeliveredCount, icon: FiCheckSquare, bg: "bg-[var(--crm-positive-bg)]", text: "text-[var(--crm-positive)]" },
+                { label: "Order Confirmed", val: orderConfirmCount, icon: FiClock, bg: "bg-[var(--crm-accent-bg)]", text: "text-[var(--crm-accent)]" },
+                { label: "New & Assigned Leads", val: newLeadCount, icon: FiAlertCircle, bg: "bg-[var(--crm-info-bg)]", text: "text-[var(--crm-info)]" }
               ].map((card, idx) => (
                 <motion.div 
                   key={idx} 
@@ -361,25 +427,59 @@ export default function Tasks() {
               </div>
 
               {/* Nav Categories tab */}
-              <div className="flex border border-[var(--crm-ink-soft)]/15 p-1 bg-[var(--crm-bg-sunken)]/60 rounded-sm shrink-0 w-full md:w-auto">
+              <div className="flex border border-[var(--crm-ink-soft)]/15 p-1 bg-[var(--crm-bg-sunken)]/60 rounded-sm shrink-0 w-full md:w-auto overflow-x-auto custom-scrollbar">
                 {[
-                  { id: 'PENDING', label: 'Pending', count: pendingCount },
-                  { id: 'COMPLETED', label: 'Closed', count: completedCount + lostCount },
-                  { id: 'ALL', label: 'All Records', count: totalTasks }
+                  { id: 'ALL', label: 'All Lead', count: totalTasks },
+                  { id: 'NEW_LEAD', label: 'Lead', count: newLeadCount },
+                  { id: 'WON_DELIVERED', label: 'Completed Lead', count: wonDeliveredCount },
+                  { id: 'ORDER_CONFIRM', label: 'order Confirm', count: orderConfirmCount }
+                  
                 ].map(tab => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 md:flex-initial px-4 py-1.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    className={`px-4 py-2 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap ${
                       activeTab === tab.id
-                        ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] shadow-md'
-                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+                        ? 'bg-teal-950/80 text-teal-300 border border-teal-500/50 shadow-md font-bold'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)] border border-transparent'
                     }`}
                   >
                     {tab.label} ({tab.count})
                   </button>
                 ))}
+              </div>
+            </motion.div>
+
+            {/* PICK DATE Calendar Filter toolbar matching Image 2 */}
+            <motion.div variants={blockVariants} className="bg-[var(--crm-bg-sunken)]/80 p-3 rounded-sm border border-teal-500/30 font-mono text-xs flex flex-wrap items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-teal-400 flex items-center gap-2 bg-teal-950/60 border border-teal-800 px-3 py-1.5 rounded-sm shadow-sm">
+                  <FiCalendar size={14} className="text-teal-400 animate-pulse" /> PICK DATE:
+                </span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-[var(--crm-bg)] border border-teal-500/30 px-3 py-1.5 text-xs text-[var(--crm-heading)] rounded outline-none font-mono cursor-pointer focus:border-teal-400"
+                />
+                {selectedDate && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate('')}
+                    className="text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider underline cursor-pointer"
+                  >
+                    Clear Filter
+                  </button>
+                )}
+              </div>
+
+              <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                {selectedDate ? (
+                  <span>Filtering Date: <strong className="text-teal-300 font-bold">{selectedDate}</strong></span>
+                ) : (
+                  <span>Select any date using <strong className="text-teal-400 font-bold">PICK DATE: dd-mm-yyyy</strong> picker to filter daily lead records</span>
+                )}
               </div>
             </motion.div>
 
@@ -393,6 +493,7 @@ export default function Tasks() {
               <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredLeads.map((lead) => {
                   const isClosed = lead.stage === 'CLOSED_WON' || lead.stage === 'CLOSED_LOST';
+                  const assignedName = getAssignedName(lead);
 
                   return (
                     <motion.div
@@ -424,6 +525,12 @@ export default function Tasks() {
 
                         {/* Specifications Metrics list */}
                         <div className="space-y-2.5 text-xs text-[var(--crm-ink-soft)] py-3 border-t border-b border-[var(--crm-line)] mb-3">
+                          {/* Assigned Representative Name */}
+                          <div className="flex items-center gap-2">
+                            <FiUser className="text-amber-400 shrink-0" size={13} />
+                            <span>Assigned To: <strong className={assignedName === 'Unassigned' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}>{assignedName}</strong></span>
+                          </div>
+
                           {lead.quantity && (
                             <div className="flex items-center gap-2">
                               <FiLayers className="text-teal-400 shrink-0" size={13} />
@@ -570,7 +677,11 @@ export default function Tasks() {
                           <div className="flex justify-between items-center pt-1 border-t border-[var(--crm-line)]/40">
                             <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Attachment:</span>
                             <a
-                              href={`http://localhost:5000/${task.fileUrl}`}
+                              href={(() => {
+                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
+                                return task.fileUrl.startsWith('http') ? task.fileUrl : `${baseUrl}/${task.fileUrl.replace(/^\/+/, '')}`;
+                              })()}
                               target="_blank"
                               rel="noreferrer"
                               className="text-xs text-teal-400 hover:underline flex items-center gap-1 font-mono text-[10px]"
@@ -588,7 +699,11 @@ export default function Tasks() {
                           <p className="text-xs text-[var(--crm-ink-soft)]/70 font-light italic">"{task.remarks}"</p>
                           {task.completionFileUrl && (
                             <a
-                              href={`http://localhost:5000/${task.completionFileUrl}`}
+                              href={(() => {
+                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
+                                return task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}/${task.completionFileUrl.replace(/^\/+/, '')}`;
+                              })()}
                               target="_blank"
                               rel="noreferrer"
                               className="text-[9px] text-teal-400 hover:underline flex items-center gap-1 font-mono mt-1.5"

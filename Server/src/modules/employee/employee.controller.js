@@ -16,6 +16,7 @@ async function syncEmployeeToUser(employee, passwordHash) {
       fullName: employee.name || employee.fullName,
       email: employee.email.toLowerCase(),
       phone: employee.phone || '',
+      profileImage: employee.profileImage || '',
       passwordHash: passwordHash || employee.password,
       role: employee.role || 'EMPLOYEE',
       department: employee.department || 'SALES',
@@ -46,6 +47,36 @@ async function syncEmployeeToUser(employee, passwordHash) {
   } catch (err) {
     console.error('Error syncing Employee to User collection:', err.message);
   }
+}
+
+function mapPositionToRole(department, position, explicitRole) {
+  if (explicitRole && explicitRole !== 'EMPLOYEE') return explicitRole;
+
+  const posLower = (position || '').toLowerCase();
+  const deptUpper = (department || '').toUpperCase();
+
+  if (deptUpper === 'HR') {
+    if (posLower.includes('manager') || posLower.includes('head') || posLower.includes('director')) {
+      return 'HR_MANAGER';
+    }
+    return 'HR_EXECUTIVE';
+  }
+
+  if (deptUpper === 'ADMIN') {
+    return 'ADMIN';
+  }
+
+  if (deptUpper === 'TRANSPORT') {
+    if (posLower.includes('driver')) return 'DRIVER';
+    if (posLower.includes('manager')) return 'MANAGER';
+    return 'EMPLOYEE';
+  }
+
+  if (posLower.includes('manager') || posLower.includes('head') || posLower.includes('director')) {
+    return 'MANAGER';
+  }
+
+  return 'EMPLOYEE';
 }
 
 function calculateAge(dob) {
@@ -141,7 +172,8 @@ async function login(req, res, next) {
       return fail(res, 400, 'BAD_REQUEST', 'Email and password are required', [], req);
     }
 
-    const employee = await Employee.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const employee = await Employee.findOne({ email: new RegExp('^' + normalizedEmail + '$', 'i') });
     if (!employee || employee.status !== 'ACTIVE') {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials or employee deactivated', [], req);
     }
@@ -344,6 +376,7 @@ async function signupEmployee(req, res, next) {
       employmentType: employmentType || 'Permanent',
       probationEndDate: employmentType === 'Probation' ? probationEndDate : undefined,
       reportingManager: reportingManager || null,
+      role: mapPositionToRole(department, position, req.body.role),
       salary: salary || 0,
       bankName,
       bankAccountNumber,
@@ -488,7 +521,7 @@ async function signupEmployeeSelfRegistration(req, res, next) {
       position,
       joiningDate: new Date(),
       employmentType: 'Permanent',
-      role: 'EMPLOYEE',
+      role: mapPositionToRole(department, position),
       status: 'PENDING_VERIFICATION',
       salary: 0,
       permissions: {
@@ -707,7 +740,7 @@ async function verifySignupOtp(req, res, next) {
       position,
       joiningDate: new Date(),
       employmentType: 'Permanent',
-      role: 'EMPLOYEE',
+      role: mapPositionToRole(department, position),
       status: 'ACTIVE',
       salary: 0,
       permissions: {

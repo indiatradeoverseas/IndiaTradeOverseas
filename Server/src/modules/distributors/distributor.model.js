@@ -138,7 +138,6 @@ const DistributorSchema = new mongoose.Schema(
     // Telemetry: Visit Tracking & History
     lastVisitedAt: {
       type: Date,
-      default: Date.now,
     },
     visitCount: {
       type: Number,

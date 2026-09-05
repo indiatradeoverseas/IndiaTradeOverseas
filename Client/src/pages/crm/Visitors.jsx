@@ -84,28 +84,44 @@ export default function Visitors() {
         }
     };
 
+    const getLocalDateStr = (dateObjOrStr) => {
+        if (!dateObjOrStr) return '';
+        try {
+            const d = new Date(dateObjOrStr);
+            if (isNaN(d.getTime())) return '';
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            return '';
+        }
+    };
+
     const getVisitorLatestDate = (v) => {
-        return v.lastVisitedAt || v.updatedAt || v.createdAt;
+        if (!v) return null;
+        if (Array.isArray(v.visitHistory) && v.visitHistory.length > 0) {
+            const lastEntry = v.visitHistory[v.visitHistory.length - 1];
+            if (lastEntry && lastEntry.visitedAt) return lastEntry.visitedAt;
+        }
+        if (v.createdAt) return v.createdAt;
+        return v.lastVisitedAt || v.updatedAt || null;
     };
 
     const isSameDay = (date1Str, date2Str) => {
-        if (!date1Str || !date2Str) return false;
-        try {
-            const d1 = new Date(date1Str).toISOString().split('T')[0];
-            const d2 = new Date(date2Str).toISOString().split('T')[0];
-            return d1 === d2;
-        } catch (e) {
-            return false;
-        }
+        const d1 = getLocalDateStr(date1Str);
+        const d2 = getLocalDateStr(date2Str);
+        if (!d1 || !d2) return false;
+        return d1 === d2;
     };
 
     const matchesDateFilter = (v) => {
         if (dateFilterMode === 'ALL') return true;
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalDateStr(new Date());
         const yest = new Date();
         yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
+        const yestStr = getLocalDateStr(yest);
 
         const targetDateStr = dateFilterMode === 'TODAY' ? todayStr
             : dateFilterMode === 'YESTERDAY' ? yestStr
@@ -134,9 +150,9 @@ export default function Visitors() {
             v.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             v.state?.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        .sort((a, b) => new Date(getVisitorLatestDate(b)) - new Date(getVisitorLatestDate(a)));
+        .sort((a, b) => new Date(getVisitorLatestDate(b) || 0) - new Date(getVisitorLatestDate(a) || 0));
 
-    const todayCount = divisionVisitors.filter(v => isSameDay(getVisitorLatestDate(v), new Date().toISOString().split('T')[0])).length;
+    const todayCount = divisionVisitors.filter(v => isSameDay(getVisitorLatestDate(v), getLocalDateStr(new Date()))).length;
     const repeatVisitorsCount = divisionVisitors.filter(v => (v.visitCount || 1) > 1).length;
 
     return (

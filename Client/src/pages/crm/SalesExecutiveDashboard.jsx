@@ -513,8 +513,9 @@ export default function SalesExecutiveDashboard() {
     if (!fileUrl) return;
     // Construct absolute URL to download the file from server static files / uploads directory
     // If it's a relative path starting with 'uploads', prepend backend base url
-    const baseUrl = 'http://localhost:5000/'; // fallback local api base
-    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${baseUrl}${fileUrl}`;
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
+    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${baseUrl}/${fileUrl.replace(/^\/+/, '')}`;
     
     const link = document.createElement('a');
     link.href = absoluteUrl;
@@ -995,7 +996,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Won vs Pending vs Lost</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={[
                             { name: 'Won', count: wonMyDeals, fill: '#10b981' },
                             { name: 'Pending', count: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f59e0b' },
@@ -1020,7 +1021,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Materials Breakdown</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'].map(cat => ({
                             name: cat,
                             leads: deals.filter(d => d.productCategory === cat).length
@@ -1601,7 +1602,7 @@ export default function SalesExecutiveDashboard() {
 
                     {/* Department Chart */}
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <BarChart data={departmentRankings} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />

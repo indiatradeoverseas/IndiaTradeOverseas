@@ -21,7 +21,7 @@ async function shareFile(req, res) {
       return fail(res, 400, 'BAD_REQUEST', 'Recipient employee ID (sentTo) is required', [], req);
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return fail(res, 400, 'BAD_REQUEST', 'A file attachment is required', [], req);
     }
 
@@ -40,12 +40,39 @@ async function shareFile(req, res) {
       }
     }
 
+    // Upload file directly into MongoDB GridFS Bucket
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
+    const ext = path.extname(req.file.originalname);
+    const storedFileName = `shared-${uniqueSuffix}${ext}`;
+
+    let gridFsFileId = null;
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: 'shared_files'
+    });
+
+    const uploadStream = bucket.openUploadStream(storedFileName, {
+      contentType: req.file.mimetype || 'application/octet-stream'
+    });
+
+    await new Promise((resolve, reject) => {
+      uploadStream.end(req.file.buffer, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    gridFsFileId = uploadStream.id;
+
+    const backendBase = process.env.BACKEND_URL || (req.protocol + '://' + req.get('host'));
+    const fullDownloadUrl = `${backendBase}/api/shared-files/gridfs/${gridFsFileId}`;
+
     const sharedFile = await SharedFile.create({
-      fileName: req.file.filename,
+      fileName: storedFileName,
       originalName: req.file.originalname,
-      fileUrl: req.file.path.replace(/\\/g, '/'),
+      fileUrl: fullDownloadUrl,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
+      gridFsFileId: gridFsFileId,
       sentBy: req.user._id,
       sentTo: recipientId,
       department: department || req.user.department || 'GENERAL',
@@ -61,9 +88,9 @@ async function shareFile(req, res) {
       file: sharedFile
     });
 
-    return ok(res, { sharedFile }, 'File shared successfully', 201, req);
+    return ok(res, { sharedFile }, 'File shared and stored in Database successfully', 201, req);
   } catch (error) {
-    console.error('Error sharing file:', error);
+    console.error('Error sharing file to GridFS:', error);
     return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
   }
 }
@@ -189,11 +216,21 @@ async function downloadFile(req, res) {
       return fail(res, 404, 'NOT_FOUND', 'Shared file not found', [], req);
     }
 
-    const isSender = String(sharedFile.sentBy) === userId;
-    const isRecipient = String(sharedFile.sentTo) === userId;
-    const isAdmin = req.user.role === 'ADMIN';
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+      (req.user.role && req.user.role.endsWith('_MANAGER')) || 
+      (req.user.role && req.user.role.toLowerCase().includes('manager'));
 
-    if (!isSender && !isRecipient && !isAdmin) {
+    const emp = await Employee.findOne({ email: req.user.email });
+    const myIds = [String(req.user._id)];
+    if (emp) myIds.push(String(emp._id));
+
+    const sentById = String(sharedFile.sentBy?._id || sharedFile.sentBy);
+    const sentToId = String(sharedFile.sentTo?._id || sharedFile.sentTo);
+
+    const isSender = myIds.includes(sentById);
+    const isRecipient = myIds.includes(sentToId);
+
+    if (!isSender && !isRecipient && !isManagerOrAdmin) {
       return fail(res, 403, 'FORBIDDEN', 'You are not authorized to download this file', [], req);
     }
 
@@ -203,14 +240,42 @@ async function downloadFile(req, res) {
       await sharedFile.save();
     }
 
-    const filePath = path.resolve(sharedFile.fileUrl);
-
-    if (!fs.existsSync(filePath)) {
-      return fail(res, 404, 'NOT_FOUND', 'File not found on server disk', [], req);
-    }
-
     res.setHeader('Content-Disposition', `attachment; filename="${sharedFile.originalName}"`);
     res.setHeader('Content-Type', sharedFile.mimeType || 'application/octet-stream');
+
+    const mongoose = require('mongoose');
+
+    // 1. Download directly from MongoDB GridFS if stored in DB
+    if (sharedFile.gridFsFileId) {
+      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'shared_files'
+      });
+      const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(sharedFile.gridFsFileId));
+      downloadStream.on('error', (err) => {
+        console.error('GridFS stream error:', err);
+        if (!res.headersSent) {
+          fail(res, 404, 'NOT_FOUND', 'File chunk not found in database', [], req);
+        }
+      });
+      return downloadStream.pipe(res);
+    }
+
+    // 2. Fallback to Disk for legacy uploaded files
+    let filePath = path.resolve(sharedFile.fileUrl);
+
+    if (!fs.existsSync(filePath)) {
+      const fileName = path.basename(sharedFile.fileUrl);
+      const uploadsFallback = path.join(__dirname, '../../../uploads/shared-files', fileName);
+      const filesFallback = path.join(process.cwd(), 'files', fileName);
+
+      if (fs.existsSync(uploadsFallback)) {
+        filePath = uploadsFallback;
+      } else if (fs.existsSync(filesFallback)) {
+        filePath = filesFallback;
+      } else {
+        return fail(res, 404, 'NOT_FOUND', 'File not found on server disk', [], req);
+      }
+    }
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
@@ -246,11 +311,27 @@ async function deleteSharedFile(req, res) {
       return fail(res, 403, 'FORBIDDEN', 'Only the sender, recipient, or manager/admin can delete shared files', [], req);
     }
 
-    // Remove file from disk
+    const mongoose = require('mongoose');
+
+    // Remove from MongoDB GridFS Bucket if present
+    if (sharedFile.gridFsFileId) {
+      try {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+          bucketName: 'shared_files'
+        });
+        await bucket.delete(new mongoose.Types.ObjectId(sharedFile.gridFsFileId));
+      } catch (gridErr) {
+        console.warn('Could not remove file from GridFS:', gridErr.message);
+      }
+    }
+
+    // Remove file from disk if legacy file exists
     try {
-      const filePath = path.resolve(sharedFile.fileUrl);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (sharedFile.fileUrl) {
+        const filePath = path.resolve(sharedFile.fileUrl);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
     } catch (e) {
       console.warn('Could not remove file from disk:', e.message);
@@ -265,9 +346,78 @@ async function deleteSharedFile(req, res) {
   }
 }
 
+/**
+ * Stream file directly from MongoDB GridFS by GridFS File ID or SharedFile Document ID
+ */
+async function downloadGridFSFileDirect(req, res) {
+  try {
+    const targetId = req.params.gridFsFileId || req.params.id;
+    const mongoose = require('mongoose');
+
+    if (!targetId || !mongoose.isValidObjectId(targetId)) {
+      return res.status(400).json({ success: false, message: 'Invalid File ID' });
+    }
+
+    const objId = new mongoose.Types.ObjectId(targetId);
+
+    // 1. Try finding by SharedFile document ID first if passed
+    const sharedFileDoc = await SharedFile.findById(objId);
+    let targetGridId = objId;
+    let originalName = sharedFileDoc?.originalName || 'downloaded-file';
+    let mimeType = sharedFileDoc?.mimeType || 'application/octet-stream';
+
+    if (sharedFileDoc && sharedFileDoc.gridFsFileId) {
+      targetGridId = new mongoose.Types.ObjectId(sharedFileDoc.gridFsFileId);
+    }
+
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: 'shared_files'
+    });
+
+    // Check if chunk exists in GridFS
+    const filesCount = await mongoose.connection.db.collection('shared_files.files').countDocuments({ _id: targetGridId });
+    if (filesCount === 0) {
+      // Fallback check for disk files
+      if (sharedFileDoc && sharedFileDoc.fileUrl) {
+        let filePath = path.resolve(sharedFileDoc.fileUrl);
+        if (!fs.existsSync(filePath)) {
+          const fileName = path.basename(sharedFileDoc.fileUrl);
+          const uploadsFallback = path.join(__dirname, '../../../uploads/shared-files', fileName);
+          const filesFallback = path.join(process.cwd(), 'files', fileName);
+          if (fs.existsSync(uploadsFallback)) filePath = uploadsFallback;
+          else if (fs.existsSync(filesFallback)) filePath = filesFallback;
+        }
+        if (fs.existsSync(filePath)) {
+          res.setHeader('Content-Disposition', `attachment; filename="${originalName}"`);
+          res.setHeader('Content-Type', mimeType);
+          return fs.createReadStream(filePath).pipe(res);
+        }
+      }
+      return res.status(404).json({ success: false, message: 'File not found in database' });
+    }
+
+    res.setHeader('Content-Disposition', `attachment; filename="${originalName}"`);
+    res.setHeader('Content-Type', mimeType);
+
+    const downloadStream = bucket.openDownloadStream(targetGridId);
+    downloadStream.on('error', (err) => {
+      console.error('GridFS stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Error streaming file from database' });
+      }
+    });
+
+    downloadStream.pipe(res);
+  } catch (error) {
+    console.error('Error downloading direct GridFS file:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   shareFile,
   getSharedFiles,
   downloadFile,
+  downloadGridFSFileDirect,
   deleteSharedFile
 };
