@@ -77,21 +77,11 @@ import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
 import Prakriti from './pages/public/Prakriti';
-import OurServices from './pages/public/OurServices';
-import ITOAds from './pages/public/ITOAds';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
 import Disclaimer from './pages/legal/Disclaimer';
 import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
 
-/* =========================
-   LEGAL PAGES
-========================= */
-
-import PrivacyPolicy from './pages/legal/PrivacyPolicy';
-import Terms from './pages/legal/Terms';
-import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
-import Disclaimer from './pages/legal/Disclaimer';
 
 
 function ProtectedRoute({ children }) {
@@ -698,11 +688,42 @@ function AppLayout() {
               }
             />
 
+            {/* Finance Routes */}
+            <Route
+              path="/crm/finance/manager"
+              element={
+                <ProtectedRoute>
+                  <FinanceManagerDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/finance/executive"
+              element={
+                <ProtectedRoute>
+                  <FinanceDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="/crm/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
+
+            {/* Transport Module Routes */}
+            <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
+            <Route path="/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
+            <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+            <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+            <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+            <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+            <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
+
             <Route
               path="*"
               element={
                 <Navigate
                   to="/crm/dashboard"
+                  replace
                 />
               }
             />
@@ -716,141 +737,6 @@ function AppLayout() {
       </VoiceAssistantProvider>
     );
   }
-
-
-  /* =========================
-     CRM WITHOUT LOGIN
-  ========================= */
-
-  if (isCRM && !user) {
-    return <Navigate to="/login" replace />;
-  }
-
-
-/* =========================
-     PUBLIC WEBSITE ROUTES
-   ========================= */
-
-  const isITOAds = location.pathname === '/ito-ads';
-
-  return (
-    <div>
-
-      <ScrollToTop />
-
-      {!isITOAds && <Navbar />}
-
-      <main>
-
-        <Routes>
-
-          {/* Home */}
-          <Route
-            path="/"
-            element={<Home />}
-          />
-
-          {/* Products */}
-          <Route
-            path="/products"
-            element={<Products />}
-          />
-
-          <Route
-            path="/products/:id"
-            element={<ProductDetail />}
-          />
-
-          {/* About */}
-          <Route
-            path="/about"
-            element={<About />}
-          />
-
-          {/* Contact */}
-          <Route
-            path="/contact"
-            element={<Contact />}
-          />
-
-          {/* Careers */}
-          <Route
-            path="/careers"
-            element={<Careers />}
-          />
-
-          {/* Quote Request */}
-          <Route
-            path="/quote-request"
-            element={<QuoteRequest />}
-          />
-
-          {/* Our Services */}
-          <Route
-            path="/our-services"
-            element={<OurServices />}
-          />
-
-          {/* Prakriti */}
-          <Route
-            path="/prakriti"
-            element={
-              <Navigate
-                to="/prakriti/tea"
-                replace
-              />
-            }
-          />
-
-          {/* Prakriti → Tea */}
-          <Route
-            path="/prakriti/tea"
-            element={<Prakriti />}
-          />
-
-          {/* Prakriti → Rice */}
-          <Route
-            path="/prakriti/rice"
-            element={<Rice />}
-          />
-
-          {/* Finance Routes */}
-          <Route
-            path="/crm/finance/manager"
-            element={
-              <ProtectedRoute>
-                <FinanceManagerDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/crm/finance/executive"
-            element={
-              <ProtectedRoute>
-                <FinanceDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="/crm/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
-
-          {/* Transport Module Routes */}
-          <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
-          <Route path="/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
-          <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
-          <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
-          <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-          <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-          <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
-
-          <Route path="*" element={<Navigate to="/crm/dashboard" replace />} />
-        </Routes>
-        <ChatWidget />
-      </PortalLayout>
-    </VoiceAssistantProvider>
-  );
-}
 
   /* =========================
      CRM WITHOUT LOGIN
@@ -894,7 +780,6 @@ function AppLayout() {
       </main>
       {!isITOAds && <Footer />}
       <ChatWidget />
-
     </div>
   );
 }

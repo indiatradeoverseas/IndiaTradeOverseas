@@ -23,7 +23,7 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import SmokeyCursor from '../../components/lightswind/smokey-cursor';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import { paymentsApi } from '../../api/payments';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 
 // ============================================================================
 // APPROVED DESIGN TOKENS (PAGE 4)
