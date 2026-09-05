@@ -392,7 +392,7 @@ export default function Navbar() {
                       duration: 0.15,
                       ease: 'easeOut'
                     }}
-                    className="absolute left-0 mt-3 w-[600px] bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-3 z-50 rounded-[2px]"
+                    className="absolute left-0 mt-3 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
                   >
                     <div className="flex flex-col gap-1 px-2">
                       {servicesGroups.map((group, gIdx) => (
@@ -418,7 +418,7 @@ export default function Navbar() {
                               animate={{ opacity: 1, x: 0 }}
                               exit={{ opacity: 0, x: -10 }}
                               transition={{ duration: 0.15, ease: 'easeOut' }}
-                              className="absolute left-full top-0 ml-1 w-48 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px] min-h-[120px]"
+                              className="absolute left-full top-0 ml-1 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-1 z-50 rounded-[2px] min-w-[160px]"
                             >
                               {group.links.map((subLink) => (
                                 subLink.to ? (
