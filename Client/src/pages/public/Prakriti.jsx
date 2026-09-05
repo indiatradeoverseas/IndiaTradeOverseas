@@ -2761,6 +2761,75 @@ export default function Prakriti() {
 
                                                     </div>
 
+                                                    {prop.status === 'approved' && (
+                                                      <button
+                                                        onClick={async () => {
+                                                          const singleAmount = prop.estimatedValue || (prop.quantity * prop.basePrice);
+                                                          const loadingToast = toast.loading(`Preparing checkout for ${prop.lotId}...`);
+
+                                                          try {
+                                                            const orderResult = await distributorApi.createRazorpayOrder({
+                                                              amount: singleAmount,
+                                                              lotId: prop.lotId,
+                                                              quantity: prop.quantity
+                                                            });
+
+                                                            if (!orderResult?.success) throw new Error(orderResult?.message || "Failed order creation.");
+
+                                                            const { orderId, keyId } = orderResult.data;
+                                                            toast.dismiss(loadingToast);
+
+                                                            const options = {
+                                                              key: keyId,
+                                                              amount: singleAmount * 100,
+                                                              currency: "INR",
+                                                              name: "Prakriti Tea Division",
+                                                              description: `Invoice Settlement - Lot ${prop.lotId}`,
+                                                              order_id: orderId,
+                                                              handler: async function (response) {
+                                                                try {
+                                                                  const verifyResult = await distributorApi.verifyRazorpayPayment({
+                                                                    razorpay_order_id: response.razorpay_order_id,
+                                                                    razorpay_payment_id: response.razorpay_payment_id,
+                                                                    razorpay_signature: response.razorpay_signature,
+                                                                    lotId: prop.lotId,
+                                                                    quantity: prop.quantity,
+                                                                    amount: singleAmount
+                                                                  });
+
+                                                                  if (verifyResult?.success) {
+                                                                    toast.success(`Payment verified for Lot ${prop.lotId}!`);
+                                                                    pushDataLayerEvent('tea_payment_success', {
+                                                                      transaction_id: response.razorpay_payment_id,
+                                                                      value: singleAmount,
+                                                                      currency: 'INR',
+                                                                      lot_id: prop.lotId,
+                                                                      quantity: prop.quantity
+                                                                    });
+                                                                    fetchMyProposals();
+                                                                  }
+                                                                } catch (verifyErr) {
+                                                                  console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
+                                                                  toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
+                                                                }
+                                                              },
+                                                              theme: { color: "#004B3B" }
+                                                            };
+
+                                                            await loadRazorpayScript();
+                                                            new window.Razorpay(options).open();
+                                                          } catch (err) {
+                                                            console.error('Razorpay create-order failed:', err.response?.data || err);
+                                                            toast.dismiss(loadingToast);
+                                                            toast.error(err.response?.data?.message || err.message || "Checkout failed.");
+                                                          }
+                                                        }}
+                                                        className="bg-[#004B3B] hover:bg-[#003627] text-white px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 mt-2"
+                                                      >
+                                                        <FiCheckCircle size={11} /> Pay Invoice
+                                                      </button>
+                                                    )}
+
                                                 </div>
 
                                             )

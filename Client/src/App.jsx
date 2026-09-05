@@ -900,21 +900,20 @@ function AppLayout() {
           {/* ITO Ads */}
           <Route
             path="/ito-ads"
-            element={<ITOAds />}
-          />
-
-          {/* =========================
-              LEGAL PAGES
-          ========================= */}
-
-          <Route
-            path="/privacy-policy"
-            element={<PrivacyPolicy />}
-          />
-
-          <Route
-            path="/terms"
-            element={<Terms />}
+            element={
+              <React.Suspense
+                fallback={
+                  <div
+                    className="min-h-screen flex items-center justify-center"
+                    style={{ background: '#01102D' }}
+                  >
+                    <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-[#F76E01]" />
+                  </div>
+                }
+              >
+                <ITOAds />
+              </React.Suspense>
+            }
           />
 
           <Route

@@ -96,46 +96,36 @@ export default function Navbar() {
     { to: '/careers', label: 'CAREERS' },
   ];
 
-  // Services structure
+  // Services structure - major divisions with sub-divisions
   const servicesGroups = [
     {
-      groupLabel: 'PRAKRITI DIVISION',
+      groupLabel: 'PRAKRITI',
       links: [
-        {
-          to: '/prakriti',
-          label: 'TEA DIVISION'
-        },
-        {
-          to: '/prakriti/rice',
-          label: 'RICE DIVISION'
-        }
+        { to: '/prakriti', label: 'Tea' },
+        { to: '/prakriti/rice', label: 'Rice' },
+        { to: null, label: 'Onion' } // no page yet
       ]
     },
     {
-      groupLabel: 'BUILDING & CONSTRUCTION',
+      groupLabel: 'BUILDING, CONSTRUCTION AND MINERALS',
       links: [
-        {
-          to: '/stone',
-          label: 'STONE DIVISION'
-        }
+        { to: '/stone', label: 'Stone' }
       ]
     },
     {
-      groupLabel: 'ADVERTISING & LEAD GEN',
+      groupLabel: 'INDIA TRADE CENTER',
       links: [
-        { to: '/ito-ads', label: 'ITO ADS' },
-      ]
-    },
-    {
-      groupLabel: 'ADVERTISING & LEAD GEN',
-      links: [
-        { to: '/ito-ads', label: 'ITO ADS' },
+        { to: '/ito-ads', label: 'ITO ADS' }
       ]
     }
   ];
 
   const isActive = (path) => location.pathname === path;
-  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone';
+  const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
+
+  // State for mega menu - tracks which major division is hovered (desktop) or expanded (mobile)
+  const [hoveredDivision, setHoveredDivision] = useState(null);
+  const [expandedDivisions, setExpandedDivisions] = useState({});
 
   // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
   const mobileMenuContainer = {
@@ -318,7 +308,7 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* =====================================================
+{/* =====================================================
                 OUR SERVICES
                 Text itself is now a link to /our-services.
                 Chevron/dropdown remains available.
@@ -327,7 +317,10 @@ export default function Navbar() {
               ref={servicesRef}
               className="relative py-2"
               onMouseEnter={() => setIsServicesDropdownOpen(true)}
-              onMouseLeave={() => setIsServicesDropdownOpen(false)}
+              onMouseLeave={() => {
+                setIsServicesDropdownOpen(false);
+                setHoveredDivision(null);
+              }}
             >
 
               <div className="flex items-center">
@@ -377,7 +370,7 @@ export default function Navbar() {
               </div>
 
               {/* =================================================
-                  DESKTOP SERVICES DROPDOWN
+                  DESKTOP SERVICES MEGA MENU
               ================================================= */}
               <AnimatePresence>
 
@@ -399,49 +392,63 @@ export default function Navbar() {
                       duration: 0.15,
                       ease: 'easeOut'
                     }}
-                    className="absolute left-0 mt-3 w-60 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
+                    className="absolute left-0 mt-3 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
                   >
+                    <div className="flex flex-col gap-1 px-2">
+                      {servicesGroups.map((group, gIdx) => (
+                        <div
+                          key={group.groupLabel}
+                          className="relative"
+                          onMouseEnter={() => setHoveredDivision(gIdx)}
+                          onMouseLeave={() => setHoveredDivision(null)}
+                        >
+                          {/* MAJOR DIVISION LABEL - acts as hover trigger */}
+                          <div className={`px-4 py-3 text-[9px] font-mono font-bold tracking-widest uppercase cursor-pointer transition-colors ${
+                            hoveredDivision === gIdx
+                              ? 'text-[#F2F4F7] bg-[#2B3440]/60'
+                              : 'text-[#6D7886] hover:text-[#F2F4F7] hover:bg-[#2B3440]/30'
+                          } rounded-[2px]`}>
+                            {group.groupLabel}
+                          </div>
 
-                    {servicesGroups.map((group, gIdx) => (
+                          {/* SUB-DIVISIONS PANEL - shows on hover */}
+                          {hoveredDivision === gIdx && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.15, ease: 'easeOut' }}
+                              className="absolute left-full top-0 ml-1 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-1 z-50 rounded-[2px] min-w-[160px]"
+                            >
+                              {group.links.map((subLink) => (
+                                subLink.to ? (
+                                  <Link
+                                    key={subLink.to}
+                                    to={subLink.to}
+                                    className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
+                                      location.pathname === subLink.to
+                                        ? 'bg-[#2B3440] text-[#F2F4F7]'
+                                        : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
+                                    }`}
+                                    onClick={() => setIsServicesDropdownOpen(false)}
+                                  >
+                                    {subLink.label}
+                                  </Link>
+                                ) : (
+                                  <span
+                                    key={subLink.label}
+                                    className="block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider text-[#6D7886] cursor-default"
+                                  >
+                                    {subLink.label}
+                                  </span>
+                                )
+                              ))}
+                            </motion.div>
+                          )}
 
-                      <div
-                        key={group.groupLabel}
-                        className={
-                          gIdx > 0
-                            ? 'border-t border-[#C5CBD3]/15 mt-2 pt-2'
-                            : ''
-                        }
-                      >
-
-                        {/* DIVISION LABEL */}
-                        <div className="px-4 py-1.5 text-[9px] font-mono font-bold tracking-widest text-[#6D7886] uppercase">
-                          {group.groupLabel}
                         </div>
-
-                        {/* DIVISION LINKS */}
-                        {group.links.map((subLink) => (
-
-                          <Link
-                            key={subLink.to}
-                            to={subLink.to}
-                            className={`block text-left px-4 py-2.5 text-[11px] font-sans font-medium tracking-wider transition-colors whitespace-nowrap ${
-                              location.pathname === subLink.to
-                                ? 'bg-[#2B3440] text-[#F2F4F7]'
-                                : 'text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7]'
-                            }`}
-                            onClick={() =>
-                              setIsServicesDropdownOpen(false)
-                            }
-                          >
-                            {subLink.label}
-                          </Link>
-
-                        ))}
-
-                      </div>
-
-                    ))}
-
+                      ))}
+                    </div>
                   </motion.div>
                 )}
 
@@ -696,7 +703,7 @@ export default function Navbar() {
 
               </motion.div>
 
-              {/* =================================================
+{/* =================================================
                   OUR SERVICES MOBILE
               ================================================= */}
               <motion.div
@@ -723,8 +730,8 @@ export default function Navbar() {
 
                 </motion.div>
 
-                {/* SERVICE GROUPS */}
-                {servicesGroups.map((group) => (
+                {/* SERVICE GROUPS - Click to expand */}
+                {servicesGroups.map((group, gIdx) => (
 
                   <motion.div
                     key={group.groupLabel}
@@ -732,37 +739,54 @@ export default function Navbar() {
                     className="space-y-2 pt-1"
                   >
 
-                    <motion.div
-                      variants={mobileMenuItem}
-                      className="text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase pl-2"
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDivisions(prev => ({ ...prev, [gIdx]: !prev[gIdx] }))}
+                      className="flex items-center justify-between w-full pl-2 text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase hover:text-[#F2F4F7] transition-colors"
+                      aria-expanded={expandedDivisions[gIdx]}
                     >
-                      {group.groupLabel}
-                    </motion.div>
+                      <span>{group.groupLabel}</span>
+                      <FiChevronDown
+                        size={12}
+                        className={`transition-transform duration-200 ${expandedDivisions[gIdx] ? 'rotate-180' : ''}`}
+                      />
+                    </button>
 
-                    {group.links.map((subLink) => (
-
-                      <motion.div
-                        key={subLink.to}
-                        variants={mobileMenuItem}
-                      >
-
-                        <Link
-                          to={subLink.to}
-                          className={`block pl-4 text-sm tracking-wider ${
-                            location.pathname === subLink.to
-                              ? 'text-[#F2F4F7]'
-                              : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
-                          }`}
-                          onClick={() =>
-                            setIsMobileMenuOpen(false)
-                          }
+                    <AnimatePresence>
+                      {expandedDivisions[gIdx] && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2, ease: 'easeOut' }}
+                          className="overflow-hidden pl-2 space-y-1"
                         >
-                          {subLink.label}
-                        </Link>
-
-                      </motion.div>
-
-                    ))}
+                          {group.links.map((subLink) => (
+                            subLink.to ? (
+                              <Link
+                                key={subLink.to}
+                                to={subLink.to}
+                                className={`block pl-4 text-sm tracking-wider py-2 ${
+                                  location.pathname === subLink.to
+                                    ? 'text-[#F2F4F7]'
+                                    : 'text-[#C5CBD3] hover:text-[#F2F4F7]'
+                                }`}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                              >
+                                {subLink.label}
+                              </Link>
+                            ) : (
+                              <span
+                                key={subLink.label}
+                                className="block pl-4 text-sm tracking-wider py-2 text-[#6D7886] cursor-default"
+                              >
+                                {subLink.label}
+                              </span>
+                            )
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                   </motion.div>
 
