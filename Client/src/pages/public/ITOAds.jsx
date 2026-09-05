@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiCheck,
@@ -15,10 +15,15 @@ import {
   FiPhone,
   FiClock,
   FiX,
-  FiMessageSquare
+  FiMessageSquare,
+  FiCreditCard,
+  FiLoader
 } from 'react-icons/fi';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import SmokeyCursor from '../../components/lightswind/smokey-cursor';
+import { loadRazorpayScript } from '../../utils/razorpay';
+import { paymentsApi } from '../../api/payments';
+import { toast } from 'sonner';
 
 // ============================================================================
 // APPROVED DESIGN TOKENS (PAGE 4)
@@ -101,6 +106,10 @@ export default function ITOAds() {
   const [isPolicyOpen, setIsPolicyOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
+  // Payment State
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentPlan, setPaymentPlan] = useState(null);
+
   // Form State
   const [formData, setFormData] = useState({
     name: '',
@@ -114,11 +123,122 @@ export default function ITOAds() {
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
 
-  // Synchronize modal selection
-  const handleSelectPackage = (packageName) => {
+  const handleSelectPackage = useCallback((packageName) => {
+    const pkg = packages.find(p => p.name === packageName);
+    if (!pkg) return;
+    
     setSelectedPlan(packageName);
     setFormData((prev) => ({ ...prev, plan: packageName }));
-    setIsConsultModalOpen(true);
+    setPaymentPlan(pkg);
+    // Start payment flow instead of directly opening modal
+    initiatePayment(pkg);
+  }, []);
+
+  const initiatePayment = async (pkg) => {
+    setIsProcessingPayment(true);
+    try {
+      // Prepare customer details from form if available
+      const customerDetails = {
+        name: formData.name || '',
+        email: formData.email || '',
+        phone: formData.phone || ''
+      };
+
+      // Extract numeric amount from price string (e.g., "₹5,000" -> 5000)
+      const amount = parseInt(pkg.price.replace(/[₹,]/g, ''), 10);
+      
+      if (isNaN(amount)) {
+        throw new Error('Invalid package price');
+      }
+
+      // Create Razorpay order
+      const orderResult = await paymentsApi.createItoAdsRazorpayOrder({
+        packageName: pkg.name,
+        amount,
+        customerDetails
+      });
+
+      if (!orderResult?.data?.orderId) {
+        throw new Error('Failed to create payment order');
+      }
+
+      // Load Razorpay script and open checkout
+      await loadRazorpayScript();
+      
+      const options = {
+        key: orderResult.data.keyId,
+        amount: orderResult.data.amount,
+        currency: 'INR',
+        name: 'ITO Ads',
+        description: `${pkg.name} Package - ${pkg.leads}`,
+        order_id: orderResult.data.orderId,
+        handler: async (response) => {
+          // Verify payment on success
+          await verifyPayment(response, pkg, amount, customerDetails);
+        },
+        prefill: {
+          name: customerDetails.name,
+          email: customerDetails.email,
+          contact: customerDetails.phone
+        },
+        notes: {
+          packageName: pkg.name,
+          leads: pkg.leads
+        },
+        theme: {
+          color: '#F2580E'
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessingPayment(false);
+            setPaymentPlan(null);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (response) => {
+        console.error('Payment failed:', response.error);
+        toast.error('Payment failed: ' + (response.error?.description || 'Please try again'));
+        setIsProcessingPayment(false);
+        setPaymentPlan(null);
+      });
+      rzp.open();
+
+    } catch (error) {
+      console.error('Payment initiation error:', error);
+      toast.error('Failed to initiate payment. Please try again.');
+      setIsProcessingPayment(false);
+      setPaymentPlan(null);
+    }
+  };
+
+  const verifyPayment = async (razorpayResponse, pkg, amount, customerDetails) => {
+    try {
+      const verifyResult = await paymentsApi.verifyItoAdsRazorpayPayment({
+        razorpay_order_id: razorpayResponse.razorpay_order_id,
+        razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+        razorpay_signature: razorpayResponse.razorpay_signature,
+        packageName: pkg.name,
+        amount,
+        customerDetails
+      });
+
+      if (verifyResult?.success) {
+        toast.success(`Payment successful! ${pkg.name} package activated.`);
+        setIsProcessingPayment(false);
+        setPaymentPlan(null);
+        // Open consultation modal after successful payment
+        setIsConsultModalOpen(true);
+      } else {
+        throw new Error('Payment verification failed');
+      }
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      toast.error('Payment verification failed. Please contact support.');
+      setIsProcessingPayment(false);
+      setPaymentPlan(null);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -314,11 +434,18 @@ export default function ITOAds() {
         <button
           type="button"
           onClick={() => handleSelectPackage('Professional')}
-          style={{ backgroundColor: TOKENS.brandOrange }}
-          className="h-9 md:h-10 px-3.5 md:px-5 rounded-[8px] text-white text-xs md:text-sm font-semibold tracking-tight md:tracking-wide whitespace-nowrap hover:brightness-110 transition-all shadow-md active:scale-95 flex items-center justify-center shrink-0"
+          disabled={isProcessingPayment && paymentPlan?.name === 'Professional'}
+          style={{ backgroundColor: TOKENS.brandOrange, opacity: isProcessingPayment && paymentPlan?.name === 'Professional' ? 0.7 : 1 }}
+          className="h-9 md:h-10 px-3.5 md:px-5 rounded-[8px] text-white text-xs md:text-sm font-semibold tracking-tight md:tracking-wide whitespace-nowrap hover:brightness-110 transition-all shadow-md active:scale-95 flex items-center justify-center shrink-0 disabled:cursor-not-allowed"
         >
-          <span className="sm:hidden">Consult</span>
-          <span className="hidden sm:inline">Book Consultation</span>
+          {isProcessingPayment && paymentPlan?.name === 'Professional' ? (
+            <FiLoader className="animate-spin" size={14} />
+          ) : (
+            <>
+              <span className="sm:hidden">Consult</span>
+              <span className="hidden sm:inline">Book Consultation</span>
+            </>
+          )}
         </button>
       </header>
 
@@ -378,15 +505,24 @@ export default function ITOAds() {
           </a>
           <button
             type="button"
-            onClick={() => handleSelectPackage('Custom')}
+            onClick={() => handleSelectPackage('Professional')}
+            disabled={isProcessingPayment && paymentPlan?.name === 'Professional'}
             style={{
               backgroundColor: TOKENS.surfaceRaised,
               borderColor: 'rgba(242, 88, 14, 0.3)',
-              color: TOKENS.textPrimary
+              color: TOKENS.textPrimary,
+              opacity: isProcessingPayment && paymentPlan?.name === 'Professional' ? 0.7 : 1
             }}
-            className="w-full sm:w-auto px-8 h-12 rounded-[10px] border text-sm font-semibold tracking-wide hover:border-[#F2580E] hover:text-white transition-all flex items-center justify-center"
+            className="w-full sm:w-auto px-8 h-12 rounded-[10px] border text-sm font-semibold tracking-wide hover:border-[#F2580E] hover:text-white transition-all flex items-center justify-center disabled:cursor-not-allowed"
           >
-            Book Consultation
+            {isProcessingPayment && paymentPlan?.name === 'Professional' ? (
+              <>
+                <FiLoader className="animate-spin" size={14} />
+                Processing...
+              </>
+            ) : (
+              'Book Consultation'
+            )}
           </button>
         </div>
 
@@ -583,14 +719,25 @@ export default function ITOAds() {
               <button
                 type="button"
                 onClick={() => handleSelectPackage(pkg.name)}
+                disabled={isProcessingPayment && paymentPlan?.name === pkg.name}
                 style={{
                   backgroundColor: pkg.popular ? TOKENS.brandOrange : 'transparent',
                   borderColor: pkg.popular ? TOKENS.brandOrange : 'rgba(242, 88, 14, 0.4)',
-                  color: '#FFFFFF'
+                  color: '#FFFFFF',
+                  opacity: isProcessingPayment && paymentPlan?.name === pkg.name ? 0.7 : 1
                 }}
-                className="w-full py-2.5 rounded-[8px] border text-xs font-semibold uppercase tracking-wider hover:brightness-110 transition-all flex items-center justify-center gap-1"
+                className="w-full py-2.5 rounded-[8px] border text-xs font-semibold uppercase tracking-wider hover:brightness-110 transition-all flex items-center justify-center gap-1 disabled:cursor-not-allowed"
               >
-                Select {pkg.name} <FiArrowRight />
+                {isProcessingPayment && paymentPlan?.name === pkg.name ? (
+                  <>
+                    <FiLoader className="animate-spin" size={14} />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Select {pkg.name} <FiArrowRight />
+                  </>
+                )}
               </button>
             </Card3D>
           ))}
@@ -807,12 +954,17 @@ export default function ITOAds() {
       {/* FLOATING ACTION BUTTON (SAFE PLACEMENT) */}
       <button
         type="button"
-        onClick={() => handleSelectPackage('Quick Consultation')}
-        style={{ backgroundColor: TOKENS.brandOrange }}
-        className="fixed bottom-6 right-6 z-40 p-3.5 rounded-full text-white shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center border border-white/20"
+        onClick={() => handleSelectPackage('Professional')}
+        disabled={isProcessingPayment && paymentPlan?.name === 'Professional'}
+        style={{ backgroundColor: TOKENS.brandOrange, opacity: isProcessingPayment && paymentPlan?.name === 'Professional' ? 0.7 : 1 }}
+        className="fixed bottom-6 right-6 z-40 p-3.5 rounded-full text-white shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center border border-white/20 disabled:cursor-not-allowed"
         aria-label="Quick Campaign Consultation"
       >
-        <FiMessageSquare size={20} />
+        {isProcessingPayment && paymentPlan?.name === 'Professional' ? (
+          <FiLoader className="animate-spin" size={20} />
+        ) : (
+          <FiMessageSquare size={20} />
+        )}
       </button>
     </div>
   );

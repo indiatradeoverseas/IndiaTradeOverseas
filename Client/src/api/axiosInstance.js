@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const API_BASE_URL = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-ito.onrender.com/api';
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -29,7 +28,9 @@ axiosInstance.interceptors.request.use(
         currentPath.includes('/prakriti') ||
         requestUrl.includes('/distributors/verify-otp') ||
         requestUrl.includes('/distributors/resend-otp') ||
-        requestUrl.includes('/distributors/status/');
+        requestUrl.includes('/distributors/status/') ||
+        requestUrl.includes('/distributors/payments/') ||
+        requestUrl.includes('/payments/ito-ads/');
     }
 
     // Safely remove context header before sending request

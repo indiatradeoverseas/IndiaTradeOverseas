@@ -884,22 +884,6 @@ function AppLayout() {
           {/* ITO Ads */}
           <Route
             path="/ito-ads"
-            element={<ITOAds />}
-          />
-
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/careers" element={<Careers />} />
-          <Route path="/quote-request" element={<QuoteRequest />} />
-          <Route path="/prakriti" element={<Prakriti />} />
-          <Route path="/prakriti/rice" element={<Rice />} />
-          <Route path="/stone" element={<Stone />} />
-
-          <Route
-            path="/ito-ads"
             element={
               <React.Suspense
                 fallback={
@@ -911,7 +895,7 @@ function AppLayout() {
                   </div>
                 }
               >
-                <ITOAds /> {/* Replace with your lazy-loaded component */}
+                <ITOAds />
               </React.Suspense>
             }
           />
