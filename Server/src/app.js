@@ -134,7 +134,7 @@ const { authenticate } = require('./middlewares/auth.middleware');
 adminFallbackRouter.patch('/leads/:leadId/assign', authenticate, rbac('ADMIN', 'MANAGER', 'HR'), require('./modules/leads/lead.controller').assignLead);
 adminFallbackRouter.get('/users', authenticate, rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), require('./modules/users/user.controller').listUsers);
 
-adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER'));
+adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'));
 adminFallbackRouter.get('/dashboard/summary', require('./modules/reports/report.controller').getAdminSummary);
 adminFallbackRouter.get('/dashboard/pipeline', require('./modules/reports/report.controller').getPipelineReport);
 adminFallbackRouter.get('/dashboard/employee-performance', require('./modules/reports/report.controller').getPerformanceReport);

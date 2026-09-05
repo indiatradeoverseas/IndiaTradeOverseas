@@ -658,7 +658,7 @@ export default function EmployeeProfile() {
   }
 
   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const backendBase = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+  const backendBase = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
 
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=0f172a&color=2dd4bf&bold=true&size=128`;
 

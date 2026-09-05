@@ -264,13 +264,21 @@ export default function Employees() {
   };
 
   const filteredUsers = users.filter(user => {
+    const name = user.fullName || user.name || '';
+    const empId = user.employeeId || '';
+    const email = user.email || '';
     const matchesSearch =
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      empId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesDept = selectedDept === 'ALL' || user.department === selectedDept;
-    const matchesRole = selectedRole === 'ALL' || user.role === selectedRole;
+    const profile = getEmployeeProfile(user.employeeId);
+    const dept = (profile.departmentOverride || user.department || user.role || '').toUpperCase();
+    const role = (profile.roleOverride || user.role || '').toUpperCase();
+    const targetDept = selectedDept.toUpperCase();
+
+    const matchesDept = selectedDept === 'ALL' || dept === targetDept || dept.includes(targetDept) || role.includes(targetDept);
+    const matchesRole = selectedRole === 'ALL' || role === selectedRole.toUpperCase() || role.includes(selectedRole.toUpperCase());
 
     return matchesSearch && matchesDept && matchesRole;
   });
@@ -346,7 +354,13 @@ export default function Employees() {
           All Clusters ({users.length})
         </button>
         {departmentOptions.map(dept => {
-          const count = users.filter(u => u.department === dept.value).length;
+          const targetDept = dept.value.toUpperCase();
+          const count = users.filter(u => {
+            const profile = getEmployeeProfile(u.employeeId);
+            const userDept = (profile.departmentOverride || u.department || u.role || '').toUpperCase();
+            const userRole = (profile.roleOverride || u.role || '').toUpperCase();
+            return userDept === targetDept || userDept.includes(targetDept) || userRole.includes(targetDept);
+          }).length;
           return (
             <button
               key={dept.value}

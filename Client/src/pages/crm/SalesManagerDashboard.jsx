@@ -1316,7 +1316,7 @@ export default function SalesManagerDashboard() {
                                           type="button"
                                           onClick={() => {
                                             const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                            const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-ito.onrender.com');
                                             const absoluteUrl = task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}/${task.completionFileUrl.replace(/^\/+/, '')}`;
                                             const link = document.createElement('a');
                                             link.href = absoluteUrl;
@@ -1651,7 +1651,7 @@ export default function SalesManagerDashboard() {
                                           key={idx}
                                           href={(() => {
                                             const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
                                             const token = localStorage.getItem('token') || '';
                                             return `${baseUrl}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(token)}`;
                                           })()}
@@ -2263,7 +2263,7 @@ export default function SalesManagerDashboard() {
                                   className="w-full h-8 rounded accent-teal-500 min-w-0"
                                   src={(() => {
                                     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
                                     return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
                                   })()}
                                 />

@@ -172,7 +172,8 @@ async function login(req, res, next) {
       return fail(res, 400, 'BAD_REQUEST', 'Email and password are required', [], req);
     }
 
-    const employee = await Employee.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const employee = await Employee.findOne({ email: new RegExp('^' + normalizedEmail + '$', 'i') });
     if (!employee || employee.status !== 'ACTIVE') {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials or employee deactivated', [], req);
     }
