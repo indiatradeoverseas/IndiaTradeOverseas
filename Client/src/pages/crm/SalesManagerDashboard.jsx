@@ -1008,10 +1008,10 @@ export default function SalesManagerDashboard() {
         <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
-            { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
+            { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
             { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
-            { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
+            { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
           ].map(tab => (
             <button
@@ -1315,8 +1315,7 @@ export default function SalesManagerDashboard() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
                                             const absoluteUrl = task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}/${task.completionFileUrl.replace(/^\/+/, '')}`;
                                             const link = document.createElement('a');
                                             link.href = absoluteUrl;
@@ -1650,8 +1649,7 @@ export default function SalesManagerDashboard() {
                                         <a
                                           key={idx}
                                           href={(() => {
-                                            const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                            const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
                                             const token = localStorage.getItem('token') || '';
                                             return `${baseUrl}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(token)}`;
                                           })()}
@@ -2014,7 +2012,33 @@ export default function SalesManagerDashboard() {
                                 <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
                                   <span>{msg.senderName} ({msg.senderRole})</span>
                                 </div>
-                                <p className="leading-relaxed break-words">{msg.content}</p>
+                                <div className="leading-relaxed break-words text-xs font-sans">
+                                  {(() => {
+                                    if (!msg.content) return null;
+                                    const parts = msg.content.split(/(\b(?:LD|LEAD)-[A-Za-z0-9-]+|\b[0-9a-fA-F]{24}\b)/g);
+                                    return (
+                                      <span>
+                                        {parts.map((part, idx) => {
+                                          const matchedLead = (allLeads || []).find(l => l.leadCode === part || String(l._id) === part);
+                                          if (matchedLead || /^(?:LD|LEAD)-/.test(part)) {
+                                            const targetId = matchedLead ? matchedLead._id : part;
+                                            return (
+                                              <Link
+                                                key={idx}
+                                                to={`/crm/leads/${targetId}`}
+                                                className="bg-teal-950/80 hover:bg-teal-900 border border-teal-700/60 text-teal-300 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded mx-0.5 inline-flex items-center gap-1 transition underline cursor-pointer"
+                                                title="Click to open Lead Manifest"
+                                              >
+                                                📄 {matchedLead ? matchedLead.leadCode : part}
+                                              </Link>
+                                            );
+                                          }
+                                          return part;
+                                        })}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                               <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5 px-1">
                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -2237,16 +2261,52 @@ export default function SalesManagerDashboard() {
                                   </span>
                                 </div>
 
-                                <div className="min-w-0">
-                                  <h4 className="text-xs font-bold font-serif text-[var(--crm-heading)] truncate">
-                                    {rec.customerName || rec.leadId?.customerName || 'Direct Call'}
-                                  </h4>
+                                <div className="min-w-0 space-y-1">
+                                  {(() => {
+                                    const leadIdStr = rec.leadId ? (typeof rec.leadId === 'object' ? rec.leadId._id : rec.leadId) : null;
+                                    return leadIdStr ? (
+                                      <Link
+                                        to={`/crm/leads/${leadIdStr}`}
+                                        className="text-xs font-bold font-serif text-[var(--crm-heading)] hover:text-teal-400 hover:underline truncate block cursor-pointer transition"
+                                      >
+                                        {rec.customerName || rec.leadId?.customerName || 'Direct Call'} 🔗
+                                      </Link>
+                                    ) : (
+                                      <h4 className="text-xs font-bold font-serif text-[var(--crm-heading)] truncate">
+                                        {rec.customerName || rec.leadId?.customerName || 'Direct Call'}
+                                      </h4>
+                                    );
+                                  })()}
+                                  {rec.mobileNumber && (
+                                    <a href={`tel:${rec.mobileNumber}`} className="text-[9px] text-[var(--crm-ink-faint)] hover:text-emerald-400 hover:underline block truncate cursor-pointer">
+                                      📱 {rec.mobileNumber} ({rec.contactRole || 'Contact'}) 📞
+                                    </a>
+                                  )}
                                   {rec.leadCode && (
-                                    <span className="text-[9px] text-[var(--crm-ink-faint)] block truncate">
-                                      Lead: {rec.leadCode}
-                                    </span>
+                                    (() => {
+                                      const leadIdStr = rec.leadId ? (typeof rec.leadId === 'object' ? rec.leadId._id : rec.leadId) : null;
+                                      return leadIdStr ? (
+                                        <Link
+                                          to={`/crm/leads/${leadIdStr}`}
+                                          className="text-[9px] font-bold text-teal-400 hover:text-teal-300 hover:underline block truncate cursor-pointer"
+                                        >
+                                          Lead: {rec.leadCode} →
+                                        </Link>
+                                      ) : (
+                                        <span className="text-[9px] text-[var(--crm-ink-faint)] block truncate">
+                                          Lead: {rec.leadCode}
+                                        </span>
+                                      );
+                                    })()
                                   )}
                                 </div>
+
+                                {(rec.material || rec.location || rec.quantity) && (
+                                  <div className="bg-[var(--crm-bg-raised)] p-2 rounded text-[9px] space-y-0.5 border border-[var(--crm-line)]/50">
+                                    {rec.material && <div>📦 Material: <strong className="text-teal-400">{rec.material}</strong> {rec.quantity ? `(${rec.quantity})` : ''}</div>}
+                                    {rec.location && <div>📍 Location: <strong className="text-amber-400">{rec.location}</strong></div>}
+                                  </div>
+                                )}
 
                                 {rec.notes && (
                                   <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] bg-[var(--crm-bg-raised)] p-2.5 rounded border border-[var(--crm-line)] italic line-clamp-3 break-words">
@@ -2260,10 +2320,10 @@ export default function SalesManagerDashboard() {
                                 <audio
                                   controls
                                   controlsList="nodownload"
+                                  preload="metadata"
                                   className="w-full h-8 rounded accent-teal-500 min-w-0"
                                   src={(() => {
-                                    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                    const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
                                     return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
                                   })()}
                                 />

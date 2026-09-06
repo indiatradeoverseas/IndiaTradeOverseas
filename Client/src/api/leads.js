@@ -91,6 +91,11 @@ export const leadsApi = {
     return response.data;
   },
 
+  async updateCallRecordingStatus(recordingId, status) {
+    const response = await axiosInstance.patch(`/leads/call-recordings/${recordingId}/status`, { status });
+    return response.data;
+  },
+
   async uploadLOIDocument(leadId, formData) {
     const response = await axiosInstance.post(`/leads/${leadId}/loi`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }

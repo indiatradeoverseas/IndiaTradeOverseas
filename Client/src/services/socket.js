@@ -12,14 +12,7 @@ export const socketService = {
     const role = user.role;
     const name = user.fullName || user.name;
 
-    const SOCKET_URL =
-      import.meta.env.VITE_BACKEND_URL ||
-      (typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.startsWith('192.168.'))
-        ? 'http://localhost:5000'
-        : 'https://indiatradeoverseas-1.onrender.com');
+    const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
 
     socket = io(SOCKET_URL, {
       query: { employeeId, role, name },

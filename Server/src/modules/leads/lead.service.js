@@ -104,9 +104,38 @@ function canAccessLead(user, lead) {
 }
 
 function getLeadDisplay(lead, user) {
-  const leadObj = lead.toObject ? lead.toObject() : lead;
+  const leadObj = lead.toObject ? lead.toObject() : { ...lead };
   const { decryptText } = require('../../utils/crypto');
 
+  if (leadObj.stage === 'NEW_LEAD' || leadObj.stage === 'ASSIGNED') {
+    leadObj.stage = 'LEAD_QUALIFICATION';
+  }
+
+  if (leadObj.assignedTo) {
+    if (typeof leadObj.assignedTo === 'object' && leadObj.assignedTo !== null) {
+      const displayName = leadObj.assignedTo.fullName || leadObj.assignedTo.name || leadObj.assignedTo.email || leadObj.assignedTo.employeeId || (leadObj.assignedTo._id ? String(leadObj.assignedTo._id) : '');
+      if (displayName && displayName.toLowerCase() !== 'unassigned') {
+        leadObj.assignedTo = {
+          ...leadObj.assignedTo,
+          fullName: displayName,
+          name: displayName
+        };
+      } else {
+        leadObj.assignedTo = null;
+      }
+    } else if (typeof leadObj.assignedTo === 'string') {
+      const s = leadObj.assignedTo.trim();
+      if (s && s.toLowerCase() !== 'unassigned' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') {
+        leadObj.assignedTo = {
+          _id: s,
+          fullName: s,
+          name: s
+        };
+      } else {
+        leadObj.assignedTo = null;
+      }
+    }
+  }
 
   const role = user ? (user.role || '') : '';
   const isManagerOrAdminUser =
@@ -117,15 +146,14 @@ function getLeadDisplay(lead, user) {
     (user && (user.department === 'ADMIN' || (user.position && user.position.toLowerCase().includes('admin'))));
 
   if (user && (isManagerOrAdminUser || role === 'HR')) {
-
-    const decryptedPhone = decryptText(leadObj.phoneEncrypted);
-    const decryptedEmail = leadObj.emailEncrypted ? decryptText(leadObj.emailEncrypted) : '';
+    const decryptedPhone = leadObj.phoneEncrypted ? decryptText(leadObj.phoneEncrypted) : leadObj.phoneMasked;
+    const decryptedEmail = leadObj.emailEncrypted ? decryptText(leadObj.emailEncrypted) : leadObj.emailMasked;
     return {
       ...leadObj,
-      phone: decryptedPhone,
-      email: decryptedEmail,
-      phoneMasked: decryptedPhone,
-      emailMasked: decryptedEmail
+      phone: decryptedPhone || leadObj.phoneMasked,
+      email: decryptedEmail || leadObj.emailMasked,
+      phoneMasked: decryptedPhone || leadObj.phoneMasked,
+      emailMasked: decryptedEmail || leadObj.emailMasked
     };
   }
 
@@ -199,68 +227,92 @@ async function listLeads(user, query = {}) {
   const rawAssignedValues = [...new Set(rawLeads.map(l => l.assignedTo ? String(l.assignedTo._id || l.assignedTo) : null).filter(Boolean))];
 
   if (rawAssignedValues.length > 0) {
-    const objectIds = [];
-    const emailStrings = [];
-
+    const allSearchValues = [];
     rawAssignedValues.forEach(v => {
-      if (v.includes('@')) {
-        emailStrings.push(v.toLowerCase());
-      }
-      if (mongoose.Types.ObjectId.isValid(v)) {
-        objectIds.push(new mongoose.Types.ObjectId(v));
-        objectIds.push(String(v));
+      const s = String(v).trim();
+      if (s) {
+        allSearchValues.push(s);
+        if (s.includes('@')) allSearchValues.push(s.toLowerCase());
+        if (mongoose.Types.ObjectId.isValid(s)) {
+          try {
+            allSearchValues.push(new mongoose.Types.ObjectId(s));
+          } catch (e) {}
+        }
       }
     });
 
     const [users, employees] = await Promise.all([
       User.find({
         $or: [
-          { _id: { $in: objectIds } },
-          { email: { $in: emailStrings } }
+          { _id: { $in: allSearchValues } },
+          { email: { $in: allSearchValues } },
+          { employeeId: { $in: allSearchValues } },
+          { employeeDbId: { $in: allSearchValues } }
         ]
-      }).select('_id fullName name email role profileImage employeeDbId').lean(),
+      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
       Employee.find({
         $or: [
-          { _id: { $in: objectIds } },
-          { email: { $in: emailStrings } }
+          { _id: { $in: allSearchValues } },
+          { email: { $in: allSearchValues } },
+          { employeeId: { $in: allSearchValues } }
         ]
-      }).select('_id fullName name email role profileImage').lean()
+      }).select('_id fullName name email role profileImage employeeId').lean()
     ]);
 
     const assigneeMap = new Map();
 
     const addToMap = (info) => {
       if (!info) return;
-      if (info._id) assigneeMap.set(String(info._id), info);
-      if (info.email) assigneeMap.set(info.email.toLowerCase(), info);
-      if (info.employeeDbId) assigneeMap.set(String(info.employeeDbId), info);
+      const displayName = info.fullName || info.name || info.email || info.employeeId || String(info._id);
+      const cleanInfo = {
+        _id: info._id,
+        fullName: displayName,
+        name: displayName,
+        email: info.email || '',
+        role: info.role || '',
+        profileImage: info.profileImage || '',
+        employeeDbId: info.employeeDbId || '',
+        employeeId: info.employeeId || ''
+      };
+
+      if (info._id) assigneeMap.set(String(info._id), cleanInfo);
+      if (info.email) assigneeMap.set(info.email.toLowerCase(), cleanInfo);
+      if (info.employeeDbId) assigneeMap.set(String(info.employeeDbId), cleanInfo);
+      if (info.employeeId) assigneeMap.set(String(info.employeeId), cleanInfo);
     };
 
-    users.forEach(u => addToMap({
-      _id: u._id,
-      fullName: u.fullName || u.name || u.email,
-      name: u.name || u.fullName || u.email,
-      email: u.email,
-      role: u.role,
-      profileImage: u.profileImage,
-      employeeDbId: u.employeeDbId
-    }));
-
-    employees.forEach(e => addToMap({
-      _id: e._id,
-      fullName: e.name || e.fullName || e.email,
-      name: e.name || e.fullName || e.email,
-      email: e.email,
-      role: e.role,
-      profileImage: e.profileImage
-    }));
+    users.forEach(u => addToMap(u));
+    employees.forEach(e => addToMap(e));
 
     rawLeads.forEach(l => {
       if (l.assignedTo) {
-        const rawVal = String(l.assignedTo._id || l.assignedTo);
-        const resolved = assigneeMap.get(rawVal) || (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null);
+        let rawVal = l.assignedTo;
+        let existingName = null;
+        if (typeof rawVal === 'object' && rawVal !== null) {
+          existingName = rawVal.fullName || rawVal.name || rawVal.email;
+          rawVal = String(rawVal._id || rawVal);
+        } else {
+          rawVal = String(rawVal);
+        }
+
+        const resolved = assigneeMap.get(rawVal) || 
+                         (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null) ||
+                         assigneeMap.get(String(rawVal));
+
         if (resolved) {
           l.assignedTo = resolved;
+        } else if (existingName && existingName.toLowerCase() !== 'unassigned') {
+          l.assignedTo = {
+            _id: rawVal,
+            fullName: existingName,
+            name: existingName
+          };
+        } else if (rawVal && rawVal.toLowerCase() !== 'unassigned') {
+          l.assignedTo = {
+            _id: rawVal,
+            fullName: rawVal,
+            name: rawVal
+          };
         } else {
           l.assignedTo = null;
         }
@@ -272,7 +324,11 @@ async function listLeads(user, query = {}) {
 }
 
 async function getLeadById(id, user) {
-  const lead = await Lead.findById(id).populate('assignedTo', 'fullName name email role profileImage');
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
+
+  // Fetch lead without populate('assignedTo') so Mongoose doesn't null out Employee IDs
+  const lead = await Lead.findById(id).populate('createdBy', 'fullName name email role profileImage');
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
   if (!canAccessLead(user, lead)) {
@@ -304,21 +360,72 @@ async function getLeadById(id, user) {
     }
   }
 
-  // Resolve mixed User/Employee populated assignee
   const leadObj = lead.toObject ? lead.toObject() : lead;
-  const rawAssignedId = (typeof lead.populated === 'function' && lead.populated('assignedTo')) || lead.assignedTo;
-  if (rawAssignedId && !lead.assignedTo) {
-    const Employee = require('../employee/employee.model');
-    const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
-    if (employee) {
-      leadObj.assignedTo = {
-        _id: employee._id,
-        fullName: employee.fullName || employee.name,
-        name: employee.name || employee.fullName,
-        email: employee.email,
-        role: employee.role,
-        profileImage: employee.profileImage
-      };
+
+  // Resolve assignedTo against User and Employee models
+  if (leadObj.assignedTo) {
+    let rawVal = leadObj.assignedTo;
+    let existingName = null;
+    if (typeof rawVal === 'object' && rawVal !== null) {
+      existingName = rawVal.fullName || rawVal.name || rawVal.email;
+      rawVal = String(rawVal._id || rawVal);
+    } else {
+      rawVal = String(rawVal);
+    }
+
+    if (rawVal) {
+      const allSearchValues = [rawVal];
+      if (rawVal.includes('@')) allSearchValues.push(rawVal.toLowerCase());
+      if (mongoose.Types.ObjectId.isValid(rawVal)) {
+        try {
+          allSearchValues.push(new mongoose.Types.ObjectId(rawVal));
+        } catch (e) {}
+      }
+
+      const [uMatch, eMatch] = await Promise.all([
+        User.findOne({
+          $or: [
+            { _id: { $in: allSearchValues } },
+            { email: { $in: allSearchValues } },
+            { employeeId: { $in: allSearchValues } },
+            { employeeDbId: { $in: allSearchValues } }
+          ]
+        }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+        Employee.findOne({
+          $or: [
+            { _id: { $in: allSearchValues } },
+            { email: { $in: allSearchValues } },
+            { employeeId: { $in: allSearchValues } }
+          ]
+        }).select('_id fullName name email role profileImage employeeId').lean()
+      ]);
+
+      const resolved = uMatch || eMatch;
+      if (resolved) {
+        const displayName = resolved.fullName || resolved.name || resolved.email || resolved.employeeId || String(resolved._id);
+        leadObj.assignedTo = {
+          _id: resolved._id,
+          fullName: displayName,
+          name: displayName,
+          email: resolved.email,
+          role: resolved.role,
+          profileImage: resolved.profileImage
+        };
+      } else if (existingName && existingName.toLowerCase() !== 'unassigned') {
+        leadObj.assignedTo = {
+          _id: rawVal,
+          fullName: existingName,
+          name: existingName
+        };
+      } else if (rawVal && rawVal.toLowerCase() !== 'unassigned') {
+        leadObj.assignedTo = {
+          _id: rawVal,
+          fullName: rawVal,
+          name: rawVal
+        };
+      } else {
+        leadObj.assignedTo = null;
+      }
     }
   }
 
@@ -521,6 +628,8 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   const Lead = require('./lead.model');
   const LeadActivity = require('./leadActivity.model');
   const Notification = require('../notifications/notification.model');
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
   const { recordAudit } = require('../security-audit/auditLog.service');
 
   const lead = await Lead.findById(leadId);
@@ -529,36 +638,74 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   const oldAssignedTo = lead.assignedTo;
   const oldAssignedDept = lead.assignedDepartment;
 
+  let targetAssignedTo = assignedTo || null;
+  let resolvedAssignee = null;
 
-  lead.assignedTo = assignedTo || null;
+  if (assignedTo) {
+    const rawVal = String(assignedTo._id || assignedTo);
+    const objectIds = [];
+    const emailStrings = [];
+    const empIdStrings = [rawVal];
+
+    if (rawVal.includes('@')) emailStrings.push(rawVal.toLowerCase());
+    if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      objectIds.push(new mongoose.Types.ObjectId(rawVal));
+      objectIds.push(rawVal);
+    }
+
+    const [uMatch, eMatch] = await Promise.all([
+      User.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } },
+          { employeeDbId: { $in: objectIds } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      Employee.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } }
+        ]
+      }).select('_id fullName name email role profileImage employeeId').lean()
+    ]);
+
+    resolvedAssignee = uMatch || eMatch;
+    if (resolvedAssignee) {
+      targetAssignedTo = resolvedAssignee._id;
+    }
+  }
+
+  lead.assignedTo = targetAssignedTo;
   lead.assignedDepartment = assignedDepartment || null;
 
-
-
-
-  if (lead.stage === 'NEW_LEAD' && (assignedTo || assignedDepartment)) {
-    lead.stage = 'ASSIGNED';
+  // Smart stage progression on lead assignment:
+  // 1. Initial stage (NEW_LEAD / ASSIGNED) -> LEAD_QUALIFICATION
+  // 2. Preserve existing stage if already in LEAD_QUALIFICATION, FOLLOW_UP, REQUIREMENT_CAPTURED, etc.
+  if (targetAssignedTo || assignedDepartment) {
+    const currentStage = String(lead.stage || '').toUpperCase();
+    if (currentStage === 'NEW_LEAD' || currentStage === 'ASSIGNED') {
+      lead.stage = 'LEAD_QUALIFICATION';
+    }
   }
 
   await lead.save();
 
-
+  const assigneeName = resolvedAssignee?.fullName || resolvedAssignee?.name || (targetAssignedTo ? 'assigned employee' : 'unassigned');
   await LeadActivity.create({
     leadId: lead._id,
     actionType: 'LEAD_ASSIGNED',
-    note: `Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}, Department: ${assignedDepartment || 'none'}`,
+    note: `Lead assignment updated. Custodian: ${assigneeName}, Department: ${assignedDepartment || 'none'}`,
     actorId: user._id
   });
 
+  if (targetAssignedTo && String(targetAssignedTo) !== String(oldAssignedTo)) {
+    const assignedUserName = assigneeName || 'team member';
 
-  if (assignedTo && String(assignedTo) !== String(oldAssignedTo)) {
-    const User = require('../users/user.model');
-    const assignedUser = await User.findById(assignedTo).select('fullName name role department');
-    const assignedUserName = assignedUser?.fullName || assignedUser?.name || 'team member';
-
-    // 1. Notify the assigned Executive or Driver
+    // 1. Notify the assigned Executive
     await Notification.create({
-      targetUserId: assignedTo,
+      targetUserId: targetAssignedTo,
       message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
       metadata: { leadId: lead._id }
@@ -567,19 +714,18 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     // 2. Also notify the Transport Manager / TRANSPORT department
     await Notification.create({
       targetDepartment: 'TRANSPORT',
-      message: `📋 Lead ${lead.leadCode || lead.customerName} assigned to ${assignedUserName} (${assignedUser?.role || 'Transport'}) by ${user.fullName || user.name}.`,
+      message: `📋 Lead ${lead.leadCode || lead.customerName} assigned to ${assignedUserName} by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
-      metadata: { leadId: lead._id, assignedTo }
+      metadata: { leadId: lead._id, assignedTo: targetAssignedTo }
     });
   } else if (assignedDepartment && assignedDepartment !== oldAssignedDept) {
     await Notification.create({
       targetDepartment: assignedDepartment,
-      message: `Lead ${lead.leadCode} has been routed to your department (${assignedDepartment}) by ${user.fullName}.`,
+      message: `Lead ${lead.leadCode || lead.customerName} has been routed to your department (${assignedDepartment}) by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
       metadata: { leadId: lead._id }
     });
   }
-
 
   await recordAudit({
     actorId: user._id,
@@ -587,10 +733,22 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     entityType: 'LEAD',
     entityId: lead._id.toString(),
     severity: 'LOW',
-    metadata: { assignedTo, assignedDepartment }
+    metadata: { assignedTo: targetAssignedTo, assignedDepartment }
   });
 
-  return getLeadDisplay(lead, user);
+  const leadObj = lead.toObject ? lead.toObject() : lead;
+  if (resolvedAssignee) {
+    leadObj.assignedTo = {
+      _id: resolvedAssignee._id,
+      fullName: resolvedAssignee.fullName || resolvedAssignee.name || resolvedAssignee.email,
+      name: resolvedAssignee.name || resolvedAssignee.fullName || resolvedAssignee.email,
+      email: resolvedAssignee.email,
+      role: resolvedAssignee.role,
+      profileImage: resolvedAssignee.profileImage
+    };
+  }
+
+  return getLeadDisplay(leadObj, user);
 }
 
 async function deleteLead(leadId, user) {
@@ -620,6 +778,8 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
   const Lead = require('./lead.model');
   const LeadActivity = require('./leadActivity.model');
   const Notification = require('../notifications/notification.model');
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
   const { recordAudit } = require('../security-audit/auditLog.service');
 
   if (!Array.isArray(leadIds) || !leadIds.length) {
@@ -628,20 +788,56 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
 
   const targetLeadIds = leadIds.map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id);
   let targetAssignedTo = null;
-  if (assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) {
-    targetAssignedTo = new mongoose.Types.ObjectId(assignedTo);
-  } else if (assignedTo) {
-    targetAssignedTo = assignedTo;
+  let resolvedAssignee = null;
+
+  if (assignedTo) {
+    const rawVal = String(assignedTo._id || assignedTo);
+    const objectIds = [];
+    const emailStrings = [];
+    const empIdStrings = [rawVal];
+
+    if (rawVal.includes('@')) emailStrings.push(rawVal.toLowerCase());
+    if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      objectIds.push(new mongoose.Types.ObjectId(rawVal));
+      objectIds.push(rawVal);
+    }
+
+    const [uMatch, eMatch] = await Promise.all([
+      User.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } },
+          { employeeDbId: { $in: objectIds } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      Employee.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } }
+        ]
+      }).select('_id fullName name email role profileImage employeeId').lean()
+    ]);
+
+    resolvedAssignee = uMatch || eMatch;
+    if (resolvedAssignee) {
+      targetAssignedTo = resolvedAssignee._id;
+    } else if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      targetAssignedTo = new mongoose.Types.ObjectId(rawVal);
+    } else {
+      targetAssignedTo = rawVal;
+    }
   }
+
+  const assigneeName = resolvedAssignee?.fullName || resolvedAssignee?.name || (targetAssignedTo ? 'assigned employee' : 'unassigned');
+
+  // Stage update on bulk assignment:
+  await Lead.updateMany({ _id: { $in: targetLeadIds }, stage: { $in: ['NEW_LEAD', 'ASSIGNED'] } }, { $set: { stage: 'LEAD_QUALIFICATION' } });
 
   const results = await Lead.updateMany(
     { _id: { $in: targetLeadIds } },
-    { 
-      $set: { 
-        assignedTo: targetAssignedTo,
-        stage: 'ASSIGNED'
-      } 
-    }
+    { $set: { assignedTo: targetAssignedTo } }
   );
 
   for (const leadId of leadIds) {
@@ -649,7 +845,7 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
       await LeadActivity.create({
         leadId,
         actionType: 'LEAD_ASSIGNED',
-        note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
+        note: `Bulk Lead assignment updated. Custodian: ${assigneeName}.`,
         actorId: user._id
       });
     } catch (actErr) {
@@ -709,12 +905,14 @@ async function bulkImportLeads(leadsArray, user) {
         customerName,
         companyName,
         phone,
+        whatsAppNumber,
         email,
         productCategory,
         quantity,
         destination,
         leadValue,
-        country
+        country,
+        targetDate
       } = row;
 
       if (!customerName || !phone || !productCategory) {
@@ -723,6 +921,7 @@ async function bulkImportLeads(leadsArray, user) {
       }
 
       const cleanPhone = String(phone).replace(/\s/g, '');
+      const cleanWhatsApp = whatsAppNumber ? String(whatsAppNumber).replace(/\s/g, '') : cleanPhone;
       const phoneHash = hashText(cleanPhone);
       const emailHash = email ? hashText(email.trim()) : '';
       const companyNameHash = companyName ? hashCompanyName(companyName) : '';
@@ -731,6 +930,14 @@ async function bulkImportLeads(leadsArray, user) {
       const duplicateQueries = [{ phoneHash }];
       if (emailHash) duplicateQueries.push({ emailHash });
       const duplicate = await Lead.findOne({ $or: duplicateQueries });
+
+      let parsedTargetDate = null;
+      if (targetDate) {
+        const d = new Date(targetDate);
+        if (!isNaN(d.getTime())) {
+          parsedTargetDate = d;
+        }
+      }
 
       // Run AI scoring
       const qtyText = String(quantity || '');
@@ -741,7 +948,8 @@ async function bulkImportLeads(leadsArray, user) {
         contactPerson: customerName,
         mobile: cleanPhone,
         email: email || '',
-        chatSummary: 'Bulk imported lead.'
+        chatSummary: 'Bulk imported lead.',
+        targetDate: parsedTargetDate
       });
 
       // Priority resolution: Explicit choice from row/import > AI priority
@@ -766,12 +974,13 @@ async function bulkImportLeads(leadsArray, user) {
         emailEncrypted: email ? encryptText(email.trim()) : '',
         emailMasked: email ? maskEmail(email.trim()) : '',
         emailHash,
-        whatsAppNumber: cleanPhone,
+        whatsAppNumber: cleanWhatsApp,
         country: country || 'India',
         productCategory,
         quantity: qtyText,
         destination: destination || '',
         leadValue: Number(leadValue || 0),
+        targetDate: parsedTargetDate,
         score,
         priority: finalPriority,
         stage: 'NEW_LEAD',

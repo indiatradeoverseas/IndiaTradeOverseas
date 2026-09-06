@@ -61,6 +61,8 @@ import Leave from './pages/crm/Leave';
 import EmployeeProfile from './pages/crm/EmployeeProfile';
 import SalesPerformance from './pages/crm/SalesPerformance';
 import SalesDashboard from './pages/crm/SalesDashboard';
+import Followup from './pages/crm/Followup';
+import TrialDashboard from './pages/crm/TrialDashboard';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
@@ -355,6 +357,24 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/followup"
+              element={
+                <ProtectedRoute>
+                  <Followup />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/trial-dashboard"
+              element={
+                <ProtectedRoute>
+                  <TrialDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/crm/distributors"
               element={
                 <Navigate
@@ -478,7 +498,19 @@ function AppLayout() {
               element={
                 (
                   isAdminUser(user) ||
-                  user?.documentPermission === true
+                  [
+                    'MANAGER',
+                    'HR_MANAGER',
+                    'HR_EXECUTIVE',
+                    'HR',
+                    'SALES_MANAGER',
+                    'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER'
+                  ].includes(user?.role) ||
+                  user?.department === 'HR' ||
+                  user?.documentPermission === true ||
+                  user?.permissions?.document === true
                 ) ? (
                   <Documents />
                 ) : (
@@ -504,10 +536,19 @@ function AppLayout() {
                     'MANAGER',
                     'SALES_MANAGER',
                     'SALES_EXECUTIVE',
-                    'SALES'
+                    'SALES',
+                    'EMPLOYEE',
+                    'USER',
+                    'HR',
+                    'HR_EXECUTIVE',
+                    'HR_MANAGER',
+                    'TRANSPORT',
+                    'FINANCE'
                   ].includes(user?.role) ||
+                  !!user?.department ||
                   user?.taskPermission === true ||
-                  user?.permissions?.task === true
+                  user?.permissions?.task === true ||
+                  !!user
                 ) ? (
                   <Tasks />
                 ) : (

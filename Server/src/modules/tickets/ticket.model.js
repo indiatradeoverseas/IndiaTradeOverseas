@@ -17,7 +17,7 @@ const ticketSchema = new mongoose.Schema(
     description: { type: String, required: true },
     category: {
       type: String,
-      enum: ['IT', 'HR', 'ADMIN', 'FINANCE', 'SALES', 'TRANSPORT'],
+      enum: ['IT', 'HR', 'ADMIN', 'FINANCE', 'SALES', 'TRANSPORT', 'GENERAL', 'OTHER'],
       required: true,
       index: true
     },

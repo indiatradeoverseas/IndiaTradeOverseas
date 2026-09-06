@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Ticket = require('./ticket.model');
 
 const CATEGORY_ROLE_MAP = {
@@ -42,7 +43,7 @@ async function createTicket({ subject, description, category, priority }, user) 
     description,
     category,
     priority: priority || 'MEDIUM',
-    raisedBy: user._id,
+    raisedBy: user?._id || user?.id || null,
     raisedByName: creatorName
   });
 }
@@ -66,23 +67,39 @@ async function listTickets(user, query = {}) {
 }
 
 async function getTicketById(ticketId, user) {
-  const ticket = await Ticket.findById(ticketId)
-    .populate('raisedBy', 'fullName name employeeId department email')
-    .populate('assignedTo', 'fullName name employeeId')
-    .populate('resolvedBy', 'fullName name employeeId')
-    .populate('comments.authorId', 'fullName name employeeId');
+  let ticket = null;
+  if (mongoose.Types.ObjectId.isValid(ticketId)) {
+    ticket = await Ticket.findById(ticketId)
+      .populate('raisedBy', 'fullName name employeeId department email')
+      .populate('assignedTo', 'fullName name employeeId')
+      .populate('resolvedBy', 'fullName name employeeId')
+      .populate('comments.authorId', 'fullName name employeeId');
+  }
+  if (!ticket) {
+    ticket = await Ticket.findOne({ ticketCode: ticketId })
+      .populate('raisedBy', 'fullName name employeeId department email')
+      .populate('assignedTo', 'fullName name employeeId')
+      .populate('resolvedBy', 'fullName name employeeId')
+      .populate('comments.authorId', 'fullName name employeeId');
+  }
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
   return ticket;
 }
 
 async function updateStatus(ticketId, status, user) {
-  const ticket = await Ticket.findById(ticketId);
+  let ticket = null;
+  if (mongoose.Types.ObjectId.isValid(ticketId)) {
+    ticket = await Ticket.findById(ticketId);
+  }
+  if (!ticket) {
+    ticket = await Ticket.findOne({ ticketCode: ticketId });
+  }
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
 
   ticket.status = status;
   if (status === 'RESOLVED') {
     ticket.resolvedAt = new Date();
-    ticket.resolvedBy = user._id;
+    ticket.resolvedBy = user?._id || user?.id || null;
     ticket.resolvedByName = user?.fullName || user?.name || user?.email || 'HR Executive';
   }
   if (status === 'CLOSED') ticket.closedAt = new Date();
@@ -91,7 +108,13 @@ async function updateStatus(ticketId, status, user) {
 }
 
 async function assignTicket(ticketId, assignedTo, user) {
-  const ticket = await Ticket.findById(ticketId);
+  let ticket = null;
+  if (mongoose.Types.ObjectId.isValid(ticketId)) {
+    ticket = await Ticket.findById(ticketId);
+  }
+  if (!ticket) {
+    ticket = await Ticket.findOne({ ticketCode: ticketId });
+  }
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
 
   ticket.assignedTo = assignedTo;
@@ -101,11 +124,17 @@ async function assignTicket(ticketId, assignedTo, user) {
 }
 
 async function addComment(ticketId, message, user) {
-  const ticket = await Ticket.findById(ticketId);
+  let ticket = null;
+  if (mongoose.Types.ObjectId.isValid(ticketId)) {
+    ticket = await Ticket.findById(ticketId);
+  }
+  if (!ticket) {
+    ticket = await Ticket.findOne({ ticketCode: ticketId });
+  }
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
 
   const authorName = user?.fullName || user?.name || user?.email || 'Employee';
-  ticket.comments.push({ authorId: user._id, authorName, message });
+  ticket.comments.push({ authorId: user?._id || user?.id || null, authorName, message });
   await ticket.save();
   return ticket;
 }

@@ -5,6 +5,7 @@ import { leadsApi } from '../../api/leads';
 import { quotationsApi } from '../../api/quotations';
 import { adminApi } from '../../api/admin';
 import { useAuth } from '../../hooks/useAuth';
+import CallRecordingModal from '../../components/crm/CallRecordingModal';
 import {
   FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign,
   FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone,
@@ -35,6 +36,8 @@ export default function LeadDetail() {
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [targetStageAfterCall, setTargetStageAfterCall] = useState(null);
   const [newActivity, setNewActivity] = useState({ note: '', actionType: 'FOLLOW_UP', nextFollowupAt: '' });
   const [quotationData, setQuotationData] = useState({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
   const [whatsAppMessage, setWhatsAppMessage] = useState('');
@@ -62,7 +65,7 @@ export default function LeadDetail() {
   const departments = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES'];
 
   const activeStages = [
-    'NEW_LEAD', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED',
+    'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED',
     'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING',
     'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING'
   ];
@@ -202,6 +205,13 @@ export default function LeadDetail() {
       return;
     }
 
+    // MANDATORY CALL RECORDING MODAL FOR FOLLOW_UP
+    if (newStage === 'FOLLOW_UP') {
+      setTargetStageAfterCall('FOLLOW_UP');
+      setShowCallModal(true);
+      return;
+    }
+
     try {
       const response = await leadsApi.updateStage(id, { newStage });
       if (response.success) {
@@ -215,6 +225,21 @@ export default function LeadDetail() {
         }
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to update stage'); }
+  };
+
+  const handleCallRecordingSuccess = async () => {
+    const nextStg = targetStageAfterCall || 'FOLLOW_UP';
+    try {
+      const response = await leadsApi.updateStage(id, { newStage: nextStg });
+      if (response.success) {
+        toast.success(`Call recording uploaded & lead updated to ${nextStg.replace(/_/g, ' ')}!`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      fetchLeadDetails();
+      setTargetStageAfterCall(null);
+    }
   };
 
   const handleAddActivity = async (e) => {
@@ -353,31 +378,34 @@ export default function LeadDetail() {
 
   const calculatePriorityScore = (l) => {
     if (!l) return 0;
-    if (typeof l.score === 'number' && l.score > 0) return l.score;
-
-    let score = 20;
     const st = String(l.stage || '').toUpperCase();
-    const wonStages = ['CLOSED_WON', 'DEAL_WON'];
-    const hotStages = ['ORDER_CONFIRMED', 'QUOTATION_APPROVED', 'NEGOTIATION', 'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'PO_RECEIVED', 'LOI_PO_PENDING', 'DISPATCH_PENDING', 'PAYMENT_PENDING'];
-    const warmStages = ['REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_SENT', 'QUOTATION_REQUIRED', 'SAMPLE_SENT', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'];
+    if (st === 'CLOSED_LOST' || st === 'DEAL_LOST') return 0;
 
-    if (wonStages.includes(st)) score = 100;
-    else if (hotStages.includes(st)) score += 45;
-    else if (warmStages.includes(st)) score += 25;
+    let score = 0;
 
-    if (l.targetDate) {
-      const diffHours = (new Date(l.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60);
-      const diffDays = Math.ceil(diffHours / 24);
-      if (diffDays <= 4) score += 50;
-      else if (diffDays <= 10) score += 30;
-      else score += 10;
-    }
+    // 1. Lead Qualification (5 pts)
+    const qualStages = ['LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (qualStages.includes(st)) score += 5;
 
-    if (l.priority === 'HOT') score = Math.max(score, 85);
-    else if (l.priority === 'WARM') score = Math.max(score, 55);
+    // 2. Follow Up (15 pts)
+    const followStages = ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (followStages.includes(st)) score += 15;
 
-    if (Array.isArray(l.loiDocuments) && l.loiDocuments.length > 0) score += 20;
-    if (l.quantity || l.value) score += 10;
+    // 3. Quotation Approved (40 pts)
+    const quoteApprovedStages = ['QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (quoteApprovedStages.includes(st) || l.quotationStatus === 'APPROVED') score += 40;
+
+    // 4. Negotiation (15 pts)
+    const negoStages = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (negoStages.includes(st)) score += 15;
+
+    // 5. LOI / PO (20 pts)
+    const loiStages = ['LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (loiStages.includes(st) || (Array.isArray(l.loiDocuments) && l.loiDocuments.length > 0)) score += 20;
+
+    // 6. Order Confirmed (5 pts)
+    const orderStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+    if (orderStages.includes(st)) score += 5;
 
     return Math.min(100, Math.max(0, score));
   };
@@ -423,7 +451,7 @@ export default function LeadDetail() {
             { label: 'Commodity Sector', val: lead.productCategory },
             { label: 'Volume / Mass', val: lead.quantity || '—' },
             { label: 'Target Timeline', val: lead.targetDate ? new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unspecified', accent: lead.targetDate ? 'text-[var(--crm-warning)]' : undefined },
-            { label: 'Assigned Custodian', val: lead.assignedTo?.fullName || lead.assignedTo || 'Unassigned', accent: 'text-[var(--crm-info)]' },
+            { label: 'Assigned Custodian', val: typeof lead.assignedTo === 'object' && lead.assignedTo !== null ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email || lead.assignedTo.employeeId || String(lead.assignedTo._id || 'Unassigned')) : (lead.assignedTo || 'Unassigned'), accent: 'text-[var(--crm-info)]' },
             { label: 'Department Router', val: lead.assignedDepartment || 'None', accent: 'text-[var(--crm-accent)]' }
           ].map((item, i) => (
             <div key={i} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
@@ -487,10 +515,8 @@ export default function LeadDetail() {
 
             <div className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 rounded-sm text-xs space-y-1">
               <span className="text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold block">Evaluation Rule Breakdown</span>
-              <p className="text-[11px] text-[var(--crm-ink-soft)]">
-                {lead.priority === 'HOT' ? '• Urgent Target Timeline / High Volume / LOI / Advance Terms. Immediate conversion focus.' :
-                 lead.priority === 'WARM' ? '• Active requirement captured. Quotation/Sample pending discussion.' :
-                 '• Inbound inquiry requiring nurturing or preliminary qualification call.'}
+              <p className="text-[10px] text-[var(--crm-ink-soft)] font-mono leading-relaxed">
+                • Qualification (+5) • Follow Up (+15) • Quote Approved (+40) • Negotiation (+15) • LOI/PO (+20) • Order Confirmed (+5) = 100 pts
               </p>
             </div>
           </div>
@@ -566,7 +592,10 @@ export default function LeadDetail() {
                   <React.Fragment key={stage}>
                     <button 
                       onClick={() => {
-                        if (stage === 'LOI_PO_PENDING' && isCurrent) {
+                        if (stage === 'FOLLOW_UP') {
+                          setTargetStageAfterCall('FOLLOW_UP');
+                          setShowCallModal(true);
+                        } else if (stage === 'LOI_PO_PENDING' && isCurrent) {
                           setShowLOIModal(true);
                         } else if (stage === 'QUOTATION_REQUIRED' && isCurrent) {
                           setShowQuotationModal(true);
@@ -574,9 +603,13 @@ export default function LeadDetail() {
                           handleStageChange(stage);
                         }
                       }} 
-                      disabled={!isClickable} 
-                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${currentStyle}`}
-                      title={stage === 'LOI_PO_PENDING' ? 'Click to open LOI Upload Form' : details.label}
+                      disabled={!isClickable && stage !== 'FOLLOW_UP'} 
+                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${
+                        stage === 'FOLLOW_UP' && !isCurrent
+                          ? "border-rose-500/50 bg-rose-950/20 text-rose-300 font-bold cursor-pointer hover:border-rose-400"
+                          : currentStyle
+                      }`}
+                      title={stage === 'FOLLOW_UP' ? 'Click to open Call Recording Form & set Follow Up' : stage === 'LOI_PO_PENDING' ? 'Click to open LOI Upload Form' : details.label}
                     >
                       <StageIcon className="w-4 h-4 mb-1" />
                       <span className="text-[9px] font-bold tracking-wide uppercase truncate max-w-full">{details.label}</span>
@@ -835,6 +868,14 @@ export default function LeadDetail() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* CALL RECORDING MODAL */}
+      <CallRecordingModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        initialLead={lead}
+        onSuccess={handleCallRecordingSuccess}
+      />
     </motion.div>
   );
 }

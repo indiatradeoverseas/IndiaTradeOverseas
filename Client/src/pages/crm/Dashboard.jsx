@@ -372,11 +372,11 @@ export default function Dashboard() {
   const stats = isAdmin ? [
     { title: 'Total Employees', value: summary?.totalEmployees || 0, icon: FiUsers, tone: 'ink' },
     { title: 'Active Leads', value: summary?.activeLeads || 0, icon: FiActivity, tone: 'info' },
-    { title: 'Pending Leads', value: summary?.pendingLeads || 0, icon: FiAlertCircle, tone: 'warning' },
+    { title: 'Completed & Delivered', value: summary?.completedLeads || 0, icon: FiCheckSquare, tone: 'positive' },
+    { title: 'Payment Received', value: summary?.paidLeads || 0, icon: FiTrendingUp, tone: 'positive' },
     { title: 'Quotations Sent', value: summary?.quotations?.sent || 0, icon: FiFileText, tone: 'ink' },
     { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, icon: FiCheckSquare, tone: 'positive' },
-    { title: 'Pending Orders', value: summary?.pendingOrders || 0, icon: FiClock, tone: 'warning' },
-    { title: 'Total Revenue', value: fmtCurrency(summary?.revenue?.totalCollected), icon: FiTrendingUp, tone: 'positive' },
+    { title: 'Total Conversion %', value: `${summary?.conversionRate || (summary?.totalLeads > 0 ? Math.round(((summary?.completedLeads || 0) / summary?.totalLeads) * 100) : 0)}%`, icon: FiTrendingUp, tone: 'positive' },
     { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), icon: FiAlertCircle, tone: 'danger' }
   ] : [
     { title: 'Assigned Pipeline Leads', value: summary?.totalLeads || 0, icon: FiUsers, tone: 'ink' },

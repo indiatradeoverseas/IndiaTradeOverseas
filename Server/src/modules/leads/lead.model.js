@@ -120,8 +120,7 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
     assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: mongoose.Schema.Types.Mixed,
       default: null,
       index: true,
     },

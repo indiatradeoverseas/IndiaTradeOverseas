@@ -637,16 +637,30 @@ async function getStrategicInsights() {
 }
 
 async function getCoachingMessages() {
-  return CoachingMessage.find().sort({ createdAt: 1 }).limit(100);
+  try {
+    return await CoachingMessage.find().sort({ createdAt: 1 }).limit(100);
+  } catch (err) {
+    console.error('getCoachingMessages error:', err);
+    return [];
+  }
 }
 
 async function sendCoachingMessage(user, content) {
-  return CoachingMessage.create({
-    senderId: user._id,
-    senderName: user.fullName || user.name || 'Anonymous',
-    senderRole: user.role,
-    content
-  });
+  try {
+    const senderId = (user && user._id && mongoose.isValidObjectId(user._id)) ? user._id : new mongoose.Types.ObjectId();
+    const senderName = (user && (user.fullName || user.name)) ? (user.fullName || user.name) : 'Management';
+    const senderRole = (user && user.role) ? user.role : 'ADMIN';
+
+    return await CoachingMessage.create({
+      senderId,
+      senderName,
+      senderRole,
+      content: String(content || '').trim()
+    });
+  } catch (err) {
+    console.error('sendCoachingMessage error:', err);
+    throw new Error('COACHING_MESSAGE_FAILED: ' + err.message);
+  }
 }
 
 module.exports = {

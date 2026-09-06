@@ -1178,8 +1178,8 @@ export default function TransportManager() {
                 </span>
               </div>
 
-              <div className="h-[210px] w-full pt-2 min-w-0 min-h-[180px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
+              <div className="w-full pt-2 min-w-0" style={{ height: 210, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={[
                       { name: 'Total Leads', count: metrics.totalLeads, fill: '#f59e0b' },
@@ -1221,8 +1221,8 @@ export default function TransportManager() {
                 <span className="text-[9px] text-teal-400 font-bold">₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
               </div>
 
-              <div className="h-[170px] w-full flex items-center justify-center min-w-0 min-h-[160px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={160}>
+              <div className="w-full flex items-center justify-center min-w-0" style={{ height: 170, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={[

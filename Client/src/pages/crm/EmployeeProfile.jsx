@@ -366,8 +366,9 @@ export default function EmployeeProfile() {
         : await employeeProfileApi.getEmployeeDocuments(id).catch(() => null);
 
       let docList = [];
-      if (docsRes?.success && Array.isArray(docsRes.data?.documents) && docsRes.data.documents.length > 0) {
-        docList = [...docsRes.data.documents];
+      const rawDocs = docsRes?.data?.documents || docsRes?.documents || (Array.isArray(docsRes?.data) ? docsRes.data : []);
+      if (Array.isArray(rawDocs) && rawDocs.length > 0) {
+        docList = [...rawDocs];
       }
 
       if (p) {
@@ -514,27 +515,6 @@ export default function EmployeeProfile() {
     }
   };
 
-  const saveToGlobalVault = (docObj) => {
-    try {
-      const lightweightDoc = {
-        _id: docObj._id,
-        fileName: docObj.fileName,
-        uploadedBy: docObj.uploadedBy,
-        uploadedByRole: docObj.uploadedByRole,
-        employeeId: docObj.employeeId,
-        userMongoId: docObj.userMongoId,
-        employeeEmail: docObj.employeeEmail,
-        createdAt: docObj.createdAt || new Date().toISOString(),
-        docCategory: docObj.docCategory || 'other'
-      };
-      const globalVault = JSON.parse(localStorage.getItem('hr_global_uploaded_documents_vault')) || [];
-      const updatedVault = [lightweightDoc, ...globalVault.filter(d => d.fileName !== docObj.fileName || d.employeeEmail !== docObj.employeeEmail)].slice(0, 50);
-      localStorage.setItem('hr_global_uploaded_documents_vault', JSON.stringify(updatedVault));
-    } catch (err) {
-      console.warn('LocalStorage quota limit reached, skipping telemetry cache:', err.message);
-    }
-  };
-
   const handleModalUploadDoc = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
@@ -549,6 +529,7 @@ export default function EmployeeProfile() {
       bank: 'Bank Account Details',
       bank_statement: 'Bank Statement',
       offer_letter: 'Offer Letter',
+      experience_letter: 'Experience Letter',
       payslip: 'Payslip',
       other: 'Clearance Document'
     };
@@ -563,7 +544,7 @@ export default function EmployeeProfile() {
     try {
       const response = await employeeProfileApi.uploadMyDocument(fileToUpload);
       if (response.success) {
-        toast.success(`${label} uploaded successfully!`);
+        toast.success(`${label} uploaded successfully to MongoDB!`);
         const uploadedDoc = response.data?.document || {
           _id: `doc_${Date.now()}`,
           fileName: formattedFileName,
@@ -575,38 +556,18 @@ export default function EmployeeProfile() {
           createdAt: new Date().toISOString(),
           docCategory: docCategory
         };
+        setDocuments(prev => [uploadedDoc, ...prev.filter(d => d._id !== uploadedDoc._id)]);
         window.dispatchEvent(new CustomEvent('document_uploaded_event', { detail: uploadedDoc }));
-        fetchData();
+        await fetchData();
         setShowDocUploadModal(false);
         setSelectedFile(null);
         setCustomDocName('');
       } else {
-        throw new Error('Fallback upload');
+        toast.error('Failed to upload document');
       }
     } catch (err) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const localDoc = {
-          _id: `doc_${Date.now()}`,
-          fileName: formattedFileName,
-          fileUrl: reader.result,
-          uploadedBy: user?.name || user?.fullName || profile?.fullName || 'Employee',
-          uploadedByRole: user?.role || profile?.role || 'EMPLOYEE',
-          employeeId: profile?.employeeId || user?.employeeId || id,
-          userMongoId: user?._id || profile?._id,
-          employeeEmail: profile?.email || user?.email,
-          createdAt: new Date().toISOString(),
-          docCategory: docCategory
-        };
-        setDocuments(prev => [localDoc, ...prev]);
-        saveToGlobalVault(localDoc);
-        window.dispatchEvent(new CustomEvent('document_uploaded_event', { detail: localDoc }));
-        toast.success(`${label} recorded successfully!`);
-        setShowDocUploadModal(false);
-        setSelectedFile(null);
-        setCustomDocName('');
-      };
-      reader.readAsDataURL(selectedFile);
+      console.error('Document upload error:', err);
+      toast.error(err.response?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -657,8 +618,7 @@ export default function EmployeeProfile() {
     );
   }
 
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const backendBase = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+  const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
 
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=0f172a&color=2dd4bf&bold=true&size=128`;
 
@@ -1937,6 +1897,7 @@ export default function EmployeeProfile() {
                     { id: 'bank', label: '🏦 Bank Details / Passbook', desc: 'Account Info' },
                     { id: 'bank_statement', label: '📄 Bank Statement', desc: 'Financial Records' },
                     { id: 'offer_letter', label: '📜 Offer / Joining Letter', desc: 'Employment Document' },
+                    { id: 'experience_letter', label: '🎖️ Experience Letter', desc: 'Previous Work Ex' },
                     { id: 'payslip', label: '🧾 Salary Slip / Payslip', desc: 'Compensation' },
                     { id: 'other', label: '📂 Other Clearance File', desc: 'Custom Document' }
                   ].map((cat) => (

@@ -135,25 +135,26 @@ export default function Tasks() {
   }, [user]);
 
   const fetchTasks = async () => {
-    if (!user?._id) return;
+    if (!user) return;
+    const userId = user._id || user.id || user.employeeDbId;
     setLoading(true);
     try {
       // 1. Fetch Pipeline Leads
       const leadsRes = await leadsApi.getLeads();
       if (leadsRes.success) {
-        setLeads(leadsRes.data.leads || []);
+        setLeads(leadsRes.data?.leads || leadsRes.leads || []);
       }
 
       // 2. Fetch General Tasks (Assigned to Me)
-      const tasksRes = await taskApi.getTasks({ employeeId: user._id });
+      const tasksRes = await taskApi.getTasks(userId ? { employeeId: userId } : {});
       if (tasksRes.success) {
-        setActionTasks(tasksRes.data.tasks || []);
+        setActionTasks(tasksRes.data?.tasks || tasksRes.tasks || []);
       }
 
       // 3. Fetch Shared Files (Received by Me)
       const filesRes = await sharedFilesApi.getSharedFiles({ direction: 'received' });
       if (filesRes.success) {
-        setSharedFiles(filesRes.files || []);
+        setSharedFiles(filesRes.data?.files || filesRes.files || []);
       }
     } catch (error) {
       console.error('Error fetching tasks data:', error);
@@ -678,8 +679,7 @@ export default function Tasks() {
                             <span className="text-[var(--crm-ink-faint)] font-mono uppercase text-[9px]">Attachment:</span>
                             <a
                               href={(() => {
-                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
                                 return task.fileUrl.startsWith('http') ? task.fileUrl : `${baseUrl}/${task.fileUrl.replace(/^\/+/, '')}`;
                               })()}
                               target="_blank"
@@ -700,8 +700,7 @@ export default function Tasks() {
                           {task.completionFileUrl && (
                             <a
                               href={(() => {
-                                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                const baseUrl = import.meta.env.VITE_BACKEND_URL || (isLocal ? 'http://localhost:5000' : 'https://indiatradeoverseas-1.onrender.com');
+                                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
                                 return task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}/${task.completionFileUrl.replace(/^\/+/, '')}`;
                               })()}
                               target="_blank"

@@ -22,7 +22,9 @@ import {
   FiHome,
   FiLayers,
   FiCreditCard,
-  FiCheckCircle
+  FiCheckCircle,
+  FiPhoneCall,
+  FiClock
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -233,8 +235,14 @@ export function getCrmMainNavItems(user) {
     // 5. Attendance — ADMIN + HR_MANAGER
     (admin || hrMgr) && { to: '/crm/attendance', label: 'Attendance', icon: FiUserCheck },
 
-    // 6. Leads — ADMIN, Sales Manager, Sales Executive, or permission-based
-    (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
+    // 6. Leads — ADMIN, Sales Manager, Sales Executive (Excluded for HR Manager & HR Executive)
+    (!hrMgr && !hrExec && (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true)) && { to: '/crm/leads', label: 'Leads', icon: FiUsers },
+
+    // Follow Up Matrix — ADMIN, Sales Manager, Sales Executive (Excluded for HR Manager & HR Executive)
+    (!hrMgr && !hrExec && (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true)) && { to: '/crm/followup', label: 'Follow Up', icon: FiPhoneCall },
+
+    // Trial Dashboard — ADMIN, Sales Manager, Sales Executive, Trial staff
+    (admin || salesMgr || salesExec || user?.role === 'TRIAL' || user?.position?.toLowerCase()?.includes('trial')) && { to: '/crm/trial-dashboard', label: 'Trial Dashboard', icon: FiClock },
 
     // 7. Distributors — ADMIN + Sales Manager
     (admin || salesMgr) && {
@@ -277,8 +285,8 @@ export function getCrmMainNavItems(user) {
     // Notifications — Common to all employees
     { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
 
-    // Leave — ADMIN + HR_MANAGER
-    (admin || hrMgr) && { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
+    // Leave — Excluded for HR Manager & HR Executive
+    (admin && !hrMgr && !hrExec) && { to: '/crm/leave', label: 'Leave', icon: FiCalendar },
 
     // Sales Performance — ADMIN only
     admin && { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
@@ -298,8 +306,8 @@ export function getCrmMainNavItems(user) {
     // Payments — Non-admin permitted payment staff only
     (!admin && (user?.permissions?.payment === true || user?.paymentPermission === true)) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
 
-    // Documents — ADMIN or permission-based
-    (admin || user?.permissions?.document === true || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder }
+    // Documents — ADMIN, HR, Managers, or permission-based
+    (admin || hrMgr || hrExec || salesMgr || ['MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR', 'SALES_MANAGER'].includes(user?.role) || user?.department === 'HR' || user?.permissions?.document === true || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder }
   ].filter(Boolean);
 }
 

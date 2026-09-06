@@ -27,7 +27,11 @@ import { leaveApi } from '../../api/leave';
 import { employeesApi } from '../../api/employees';
 import { employeeProfileApi } from '../../api/employeeProfile';
 import { adminApi } from '../../api/admin';
+import { documentsApi } from '../../api/documents';
 import { careersApi } from '../../api/careers';
+import {
+  FiDownload
+} from 'react-icons/fi';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -59,6 +63,7 @@ export default function HrExecutiveDashboard() {
   const [documentRegistry, setDocumentRegistry] = useState([]);
   const [telemetryFilter, setTelemetryFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'DATE'
   const [telemetryDate, setTelemetryDate] = useState('');
+  const [viewEmployeeDocsModal, setViewEmployeeDocsModal] = useState(null);
 
   // Helpdesk Grievance tickets
   const [ticketsList, setTicketsList] = useState([]);
@@ -293,8 +298,8 @@ export default function HrExecutiveDashboard() {
             const targetId = emp._id || emp.employeeId;
             if (!targetId) return;
             const docRes = await employeeProfileApi.getEmployeeDocuments(targetId);
-            if (docRes && docRes.success && Array.isArray(docRes.data?.documents) && docRes.data.documents.length > 0) {
-              const docArr = docRes.data.documents;
+            const docArr = docRes?.data?.documents || docRes?.documents || (Array.isArray(docRes?.data) ? docRes.data : []);
+            if (Array.isArray(docArr) && docArr.length > 0) {
               mongoDocsMap[String(targetId)] = docArr;
               if (emp.employeeId) mongoDocsMap[String(emp.employeeId)] = docArr;
               if (emp.email) mongoDocsMap[emp.email.toLowerCase()] = docArr;
@@ -310,7 +315,6 @@ export default function HrExecutiveDashboard() {
         const empMongoId = (emp._id || '').toString();
 
         const dbDocs = mongoDocsMap[empMongoId] || mongoDocsMap[empCodeLower] || mongoDocsMap[empEmailLower] || [];
-
         const myDocs = [...dbDocs];
 
         if ((emp.aadhaarCardCopy || emp.aadhaarNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
@@ -323,13 +327,25 @@ export default function HrExecutiveDashboard() {
         const realUploadedDocs = myDocs.filter(isRealUploadedFile);
         const latestDoc = realUploadedDocs.length > 0 ? realUploadedDocs[0] : null;
 
+        const hasAadhaarDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('aadhaar') || d.docCategory === 'aadhaar');
+        const hasPanDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('pan') || d.docCategory === 'pan');
+        const hasBankDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('bank') || d.docCategory === 'bank');
+        const hasStatementDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('statement') || d.docCategory === 'bank_statement');
+        const hasOfferDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('offer') || (d.fileName || '').toLowerCase().includes('joining') || d.docCategory === 'offer_letter');
+        const hasExperienceDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('experience') || (d.fileName || '').toLowerCase().includes('relieving') || d.docCategory === 'experience_letter');
+
         return {
+          _id: emp._id,
           employeeId: empId,
           fullName: emp.name || emp.fullName,
+          email: emp.email,
           department: emp.department || 'GENERAL',
-          aadhaarVerified: emp.aadhaarVerified !== undefined ? emp.aadhaarVerified : !!(emp.aadhaarNumber || emp.aadhaarCardCopy),
-          panVerified: emp.panVerified !== undefined ? emp.panVerified : !!(emp.panCardNumber || emp.panCardCopy),
-          bankVerified: emp.bankVerified !== undefined ? emp.bankVerified : !!(emp.bankAccountNumber || emp.bankName),
+          aadhaarVerified: emp.aadhaarVerified !== undefined ? emp.aadhaarVerified : hasAadhaarDoc,
+          panVerified: emp.panVerified !== undefined ? emp.panVerified : hasPanDoc,
+          bankVerified: emp.bankVerified !== undefined ? emp.bankVerified : hasBankDoc,
+          bankStatementVerified: emp.bankStatementVerified !== undefined ? emp.bankStatementVerified : hasStatementDoc,
+          offerLetterVerified: emp.offerLetterVerified !== undefined ? emp.offerLetterVerified : hasOfferDoc,
+          experienceLetterVerified: emp.experienceLetterVerified !== undefined ? emp.experienceLetterVerified : hasExperienceDoc,
           uploadedDocs: myDocs,
           latestDoc: latestDoc
         };
@@ -387,26 +403,39 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
 
   const handleVerifyDocument = async (employeeId, field) => {
     try {
-      const emp = documentRegistry.find(item => item.employeeId === employeeId);
+      const emp = documentRegistry.find(item => item.employeeId === employeeId || item._id === employeeId);
       const currentVal = emp ? emp[field] : false;
       const nextVal = !currentVal;
 
       setDocumentRegistry(prev => prev.map(item => {
-        if (item.employeeId === employeeId) {
+        if (item.employeeId === employeeId || item._id === employeeId) {
           return { ...item, [field]: nextVal };
         }
         return item;
       }));
 
-      // Update directly in MongoDB User & Employee models
-      await employeeProfileApi.updateEmployeeProfile(employeeId, { [field]: nextVal }).catch(async () => {
-        await employeesApi.updateEmployee(employeeId, { [field]: nextVal }).catch(() => null);
+      if (viewEmployeeDocsModal && (viewEmployeeDocsModal.employeeId === employeeId || viewEmployeeDocsModal._id === employeeId)) {
+        setViewEmployeeDocsModal(prev => prev ? { ...prev, [field]: nextVal } : null);
+      }
+
+      const targetId = emp ? (emp._id || emp.employeeId) : employeeId;
+      await employeeProfileApi.updateEmployeeProfile(targetId, { [field]: nextVal }).catch(async () => {
+        await employeesApi.updateEmployee(targetId, { [field]: nextVal }).catch(() => null);
       });
 
-      toast.success(`${field.replace('Verified', '').toUpperCase()} status updated in MongoDB!`);
+      const labelMap = {
+        aadhaarVerified: 'Aadhaar Card',
+        panVerified: 'PAN Card',
+        bankVerified: 'Bank Details',
+        bankStatementVerified: 'Bank Statement',
+        offerLetterVerified: 'Offer Letter',
+        experienceLetterVerified: 'Experience Letter'
+      };
+
+      toast.success(`${labelMap[field] || 'Document'} verification set to ${nextVal ? 'Verified' : 'Pending'}`);
     } catch (err) {
       console.error('Error saving document verification:', err);
-      toast.error('Failed to update verification status in MongoDB');
+      toast.error('Failed to update verification status');
     }
   };
 
@@ -700,6 +729,64 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
 
     setSelectedInterview(null);
     fetchPersonalHRData();
+  };
+
+  const handleDownloadEmployeeDoc = async (doc) => {
+    const toastId = toast.loading(`Downloading ${doc.fileName || 'document'}...`);
+    try {
+      // 1. Data URI (Base64)
+      if (doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = doc.fileUrl;
+        link.setAttribute('download', doc.fileName || 'document.pdf');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('Document downloaded!', { id: toastId });
+        return;
+      }
+
+      // 2. MongoDB Document Download via API
+      if (doc._id && !String(doc._id).startsWith('doc_')) {
+        try {
+          const blob = await documentsApi.downloadDocument(doc._id);
+          const blobUrl = window.URL.createObjectURL(new Blob([blob]));
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.setAttribute('download', doc.fileName || 'document.pdf');
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(blobUrl);
+          toast.success('Document downloaded!', { id: toastId });
+          return;
+        } catch (apiErr) {
+          console.warn('API download fallback to direct URL...', apiErr);
+        }
+      }
+
+      // 3. Absolute/Relative URL Fallback
+      if (doc.fileUrl) {
+        const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
+        const fullUrl = doc.fileUrl.startsWith('http') ? doc.fileUrl : `${baseUrl}/${doc.fileUrl.replace(/^\/+/, '')}`;
+
+        const link = document.createElement('a');
+        link.href = fullUrl;
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        link.setAttribute('download', doc.fileName || 'document');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('File opened in new window!', { id: toastId });
+        return;
+      }
+
+      toast.error('Document file URL unavailable', { id: toastId });
+    } catch (err) {
+      console.error('Failed to download document:', err);
+      toast.error('Failed to download document', { id: toastId });
+    }
   };
 
 
@@ -1051,19 +1138,22 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[10px] font-mono uppercase border-b border-[var(--crm-line)]">
-                        <th className="py-3.5 px-5">Employee Name & ID</th>
-                        <th className="py-3.5 px-5">Department</th>
-                        <th className="py-3.5 px-5">Latest Uploaded File & Date</th>
-                        <th className="py-3.5 px-5 text-center">Aadhaar Card</th>
-                        <th className="py-3.5 px-5 text-center">PAN Card</th>
-                        <th className="py-3.5 px-5 text-center">Bank Account details</th>
-                        <th className="py-3.5 px-5 text-center">Fulfillment Status</th>
+                        <th className="py-3.5 px-4">Employee Name & ID</th>
+                        <th className="py-3.5 px-4">Department</th>
+                        <th className="py-3.5 px-4">Uploaded Documents</th>
+                        <th className="py-3.5 px-3 text-center">Aadhaar</th>
+                        <th className="py-3.5 px-3 text-center">PAN Card</th>
+                        <th className="py-3.5 px-3 text-center">Bank Details</th>
+                        <th className="py-3.5 px-3 text-center">Bank Statement</th>
+                        <th className="py-3.5 px-3 text-center">Offer Letter</th>
+                        <th className="py-3.5 px-3 text-center">Experience Letter</th>
+                        <th className="py-3.5 px-4 text-center">Verification Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--crm-line)] text-xs">
                       {documentRegistry.filter((item) => isEmployeeMatchingFilter(item, telemetryFilter, telemetryDate)).length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-12 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase tracking-wider">
+                          <td colSpan={10} className="py-12 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase tracking-wider">
                             {telemetryFilter === 'TODAY'
                               ? "No document uploads recorded today yet. Click 'ALL RECORDS' to view all employee files."
                               : telemetryFilter === 'DATE'
@@ -1073,71 +1163,112 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                         </tr>
                       ) : (
                         documentRegistry.filter((item) => isEmployeeMatchingFilter(item, telemetryFilter, telemetryDate)).map((item, idx) => {
-                          const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified;
+                          const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified && item.bankStatementVerified && item.offerLetterVerified && item.experienceLetterVerified;
+                          const uploadedCount = (item.uploadedDocs || []).filter(isRealUploadedFile).length;
+
                           return (
                             <tr key={`${item.employeeId || 'emp'}_${idx}`} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                              <td className="py-4 px-5">
+                              <td className="py-3.5 px-4">
                                 <div className="font-serif text-sm font-semibold text-[var(--crm-heading)]">{item.fullName}</div>
                                 <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{item.employeeId}</div>
                               </td>
-                              <td className="py-4 px-5 font-mono uppercase font-semibold text-[var(--crm-ink-soft)]">{item.department}</td>
+                              <td className="py-3.5 px-4 font-mono uppercase font-semibold text-[var(--crm-ink-soft)]">{item.department}</td>
                               
-                              {/* Latest Uploaded File & Timestamp */}
-                              <td className="py-4 px-5">
-                                {item.latestDoc ? (
-                                  <div className="space-y-1 text-left">
-                                    <div className="font-mono text-xs font-semibold text-emerald-400 flex items-center gap-1.5 truncate max-w-[200px]" title={item.latestDoc.fileName}>
+                              {/* Uploaded Files & Repository Modal Button */}
+                              <td className="py-3.5 px-4">
+                                <div className="space-y-1 text-left">
+                                  {item.latestDoc ? (
+                                    <div className="font-mono text-xs font-semibold text-emerald-400 flex items-center gap-1 truncate max-w-[160px]" title={item.latestDoc.fileName}>
                                       <span>📄</span>
                                       <span className="truncate">{item.latestDoc.fileName}</span>
                                     </div>
-                                    <div className="text-[9px] font-mono text-[var(--crm-ink-faint)]">
-                                      {item.latestDoc.createdAt ? new Date(item.latestDoc.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently Uploaded'}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] italic">No docs uploaded</span>
-                                )}
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] italic">No docs uploaded</span>
+                                  )}
+                                  <button
+                                    onClick={() => setViewEmployeeDocsModal(item)}
+                                    className="px-2 py-0.5 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded text-[9px] font-mono font-bold uppercase transition flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>🔍 View Files ({uploadedCount})</span>
+                                  </button>
+                                </div>
                               </td>
                               
                               {/* Aadhaar */}
-                              <td className="py-4 px-5 text-center">
+                              <td className="py-3.5 px-3 text-center">
                                 <button
                                   onClick={() => handleVerifyDocument(item.employeeId, 'aadhaarVerified')}
-                                  className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                    item.aadhaarVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.aadhaarVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
                                   }`}
                                 >
-                                  {item.aadhaarVerified ? 'Verified' : 'Verify'}
+                                  {item.aadhaarVerified ? '✓ Verified' : 'Verify'}
                                 </button>
                               </td>
 
                               {/* PAN */}
-                              <td className="py-4 px-5 text-center">
+                              <td className="py-3.5 px-3 text-center">
                                 <button
                                   onClick={() => handleVerifyDocument(item.employeeId, 'panVerified')}
-                                  className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                    item.panVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.panVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
                                   }`}
                                 >
-                                  {item.panVerified ? 'Verified' : 'Verify'}
+                                  {item.panVerified ? '✓ Verified' : 'Verify'}
                                 </button>
                               </td>
 
                               {/* Bank Details */}
-                              <td className="py-4 px-5 text-center">
+                              <td className="py-3.5 px-3 text-center">
                                 <button
                                   onClick={() => handleVerifyDocument(item.employeeId, 'bankVerified')}
-                                  className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                    item.bankVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.bankVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
                                   }`}
                                 >
-                                  {item.bankVerified ? 'Verified' : 'Verify'}
+                                  {item.bankVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Bank Statement */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'bankStatementVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.bankStatementVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.bankStatementVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Offer Letter */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'offerLetterVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.offerLetterVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.offerLetterVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Experience Letter */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'experienceLetterVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.experienceLetterVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.experienceLetterVerified ? '✓ Verified' : 'Verify'}
                                 </button>
                               </td>
 
                               {/* Status badge */}
-                              <td className="py-4 px-5 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase border rounded-sm ${
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono font-bold uppercase border rounded-sm ${
                                   allVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25'
                                 }`}>
                                   {allVerified ? <FiCheckCircle size={10} /> : <FiAlertCircle size={10} />}
@@ -1480,6 +1611,95 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: VIEW ALL EMPLOYEE DOCUMENTS ─── */}
+      {viewEmployeeDocsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setViewEmployeeDocsModal(null)}>
+          <div
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-[var(--crm-line)] flex justify-between items-center bg-[var(--crm-bg-sunken)]/60">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiFileText className="text-teal-400" size={16} /> Documents Repository: {viewEmployeeDocsModal.fullName}
+                </h3>
+                <p className="text-[10px] font-mono text-[var(--crm-ink-faint)] mt-0.5">ID: {viewEmployeeDocsModal.employeeId} | Dept: {viewEmployeeDocsModal.department}</p>
+              </div>
+              <button onClick={() => setViewEmployeeDocsModal(null)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] cursor-pointer text-lg font-bold">✕</button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-left">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-[var(--crm-bg-sunken)] rounded border border-[var(--crm-line)]">
+                {[
+                  { key: 'aadhaarVerified', label: 'Aadhaar Card' },
+                  { key: 'panVerified', label: 'PAN Card' },
+                  { key: 'bankVerified', label: 'Bank Details' },
+                  { key: 'bankStatementVerified', label: 'Bank Statement' },
+                  { key: 'offerLetterVerified', label: 'Offer Letter' },
+                  { key: 'experienceLetterVerified', label: 'Experience Letter' }
+                ].map(v => (
+                  <button
+                    key={v.key}
+                    onClick={() => handleVerifyDocument(viewEmployeeDocsModal.employeeId || viewEmployeeDocsModal._id, v.key)}
+                    className={`px-2.5 py-1.5 rounded text-[10px] font-mono font-bold flex items-center justify-between border cursor-pointer transition ${
+                      viewEmployeeDocsModal[v.key]
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-[var(--crm-ink-soft)]'
+                    }`}
+                  >
+                    <span>{v.label}</span>
+                    <span>{viewEmployeeDocsModal[v.key] ? '✓ Verified' : 'Verify'}</span>
+                  </button>
+                ))}
+              </div>
+
+              <h4 className="text-xs font-mono uppercase font-bold text-[var(--crm-ink-soft)] tracking-wider pt-2">Uploaded Document Files ({(viewEmployeeDocsModal.uploadedDocs || []).filter(isRealUploadedFile).length})</h4>
+
+              {(!viewEmployeeDocsModal.uploadedDocs || viewEmployeeDocsModal.uploadedDocs.filter(isRealUploadedFile).length === 0) ? (
+                <div className="py-8 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase border border-dashed border-[var(--crm-line)] rounded">
+                  No document files uploaded by this employee yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {viewEmployeeDocsModal.uploadedDocs.filter(isRealUploadedFile).map((doc, idx) => (
+                    <div key={idx} className="p-3 bg-[var(--crm-bg-sunken)]/60 rounded border border-[var(--crm-line)] flex items-center justify-between gap-3 hover:border-teal-500/50 transition">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-8 h-8 rounded bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0 font-bold">📄</div>
+                        <div className="truncate">
+                          <div className="text-xs font-mono font-semibold text-[var(--crm-heading)] truncate" title={doc.fileName}>{doc.fileName}</div>
+                          <div className="text-[9px] font-mono text-[var(--crm-ink-faint)] flex items-center gap-2 mt-0.5">
+                            <span>Date: {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>
+                            {doc.uploadedBy && <span>• By: {doc.uploadedBy}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadEmployeeDoc(doc)}
+                        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded text-[10px] font-mono font-bold uppercase tracking-wider shrink-0 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <FiDownload size={11} />
+                        <span>Download / View</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 flex justify-end">
+              <button
+                onClick={() => setViewEmployeeDocsModal(null)}
+                className="px-5 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] rounded text-xs font-mono font-bold uppercase tracking-wider transition cursor-pointer"
+              >
+                Close Repository
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -77,7 +77,28 @@ export default function Quotations() {
     }
   };
 
-  const filteredQuotations = quotations.filter(q => {
+  // Deduplicate quotations per lead so each lead appears once with its primary / latest quotation
+  const deduplicatedQuotations = React.useMemo(() => {
+    const map = new Map();
+    for (const q of quotations) {
+      const leadKey = q.leadId?._id || q.leadId || q._id;
+      if (map.has(leadKey)) {
+        const existing = map.get(leadKey);
+        const existingHasPrice = existing.employeeRequestedPrice != null;
+        const currentHasPrice = q.employeeRequestedPrice != null;
+        if (!existingHasPrice && currentHasPrice) {
+          map.set(leadKey, q);
+        } else if (new Date(q.createdAt) > new Date(existing.createdAt) && (existingHasPrice === currentHasPrice)) {
+          map.set(leadKey, q);
+        }
+      } else {
+        map.set(leadKey, q);
+      }
+    }
+    return Array.from(map.values());
+  }, [quotations]);
+
+  const filteredQuotations = deduplicatedQuotations.filter(q => {
     if (sectorFilter === 'ALL') return true;
     const cat = (q.leadId?.productCategory || '').toUpperCase();
     return cat === sectorFilter;
@@ -312,7 +333,14 @@ export default function Quotations() {
                       </td>
 
                       <td className="py-4 px-5 font-serif text-sm text-[var(--crm-heading)]">
-                        {quotation.leadId?.customerName || 'N/A'}
+                        <div className="flex flex-col">
+                          <span className="font-bold">{quotation.leadId?.customerName || 'N/A'}</span>
+                          {quotation.leadId?.leadCode && (
+                            <span className="text-[10px] font-mono text-teal-400 font-normal">
+                              {quotation.leadId.leadCode}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Sector Badge */}
@@ -328,7 +356,7 @@ export default function Quotations() {
                       </td>
 
                       <td className="py-4 px-5 text-[var(--crm-ink-soft)]/90 font-light font-mono text-[11px]">
-                        {quotation.requestedBy?.fullName || quotation.requestedBy?.name || 'Website Buyer Inbound'}
+                        {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Ananya Patel'}
                       </td>
 
                       <td className="py-4 px-5 font-mono font-bold text-sm text-[var(--crm-heading)]">

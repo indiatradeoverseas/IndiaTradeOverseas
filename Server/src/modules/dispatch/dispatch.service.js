@@ -919,4 +919,4 @@ class DispatchService {
   }
 }
 
-module.exports = new DispatchService();
+module.exports = new DispatchService();

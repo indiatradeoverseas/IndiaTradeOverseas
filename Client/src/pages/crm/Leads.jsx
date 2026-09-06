@@ -29,11 +29,14 @@ const blockVariants = {
 const LEAD_FIELDS = [
   { value: 'customerName', label: 'Consignee Name *' },
   { value: 'phone', label: 'Phone Number *' },
+  { value: 'whatsAppNumber', label: 'WhatsApp Number' },
   { value: 'productCategory', label: 'Product Category *' },
   { value: 'companyName', label: 'Company Name' },
   { value: 'email', label: 'Email Address' },
   { value: 'leadValue', label: 'Lead Value (INR)' },
   { value: 'country', label: 'Country' },
+  { value: 'targetDate', label: 'Requirement Date / Date' },
+  { value: 'priority', label: 'Priority / Temp (HOT/WARM/COLD)' },
   { value: 'quantity', label: 'Quantity' },
   { value: 'destination', label: 'Destination' }
 ];
@@ -71,8 +74,8 @@ export default function Leads() {
     if (!lead || !lead.assignedTo) return true;
     const assigned = lead.assignedTo;
     if (typeof assigned === 'object' && assigned !== null) {
-      const name = assigned.fullName || assigned.name || assigned.email;
-      if (!name || String(name).toLowerCase() === 'unassigned') return true;
+      const name = assigned.fullName || assigned.name || assigned.email || assigned.employeeId || (assigned._id ? String(assigned._id) : '');
+      if (!name || String(name).toLowerCase() === 'unassigned' || String(name).trim() === '') return true;
       return false;
     }
     if (typeof assigned === 'string') {
@@ -108,7 +111,7 @@ export default function Leads() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [parsedRows, setParsedRows] = useState([]);
   const [columnMappings, setColumnMappings] = useState({});
-  const [importDefaultPriority, setImportDefaultPriority] = useState('WARM');
+  const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
 
   // Call Recording Modal State
@@ -418,20 +421,26 @@ export default function Leads() {
     const mappings = {};
     firstRow.forEach((val, colIdx) => {
       const cleanVal = val.toLowerCase().trim();
-      if (cleanVal.includes('name') || cleanVal.includes('customer') || cleanVal.includes('consignee')) {
+      if (cleanVal.includes('whatsapp') || cleanVal === 'wa') {
+        mappings[colIdx] = 'whatsAppNumber';
+      } else if (cleanVal.includes('company') || cleanVal.includes('enterprise')) {
+        mappings[colIdx] = 'companyName';
+      } else if (cleanVal.includes('customer') || cleanVal.includes('consignee') || cleanVal.includes('client') || cleanVal.includes('name')) {
         mappings[colIdx] = 'customerName';
-      } else if (cleanVal.includes('phone') || cleanVal.includes('mobile') || cleanVal.includes('contact') || cleanVal.includes('tel')) {
+      } else if (cleanVal.includes('phone') || cleanVal.includes('mobile') || cleanVal.includes('contact') || cleanVal.includes('tel') || cleanVal.includes('telephony')) {
         mappings[colIdx] = 'phone';
       } else if (cleanVal.includes('category') || cleanVal.includes('product') || cleanVal.includes('material') || cleanVal.includes('commodity')) {
         mappings[colIdx] = 'productCategory';
-      } else if (cleanVal.includes('company') || cleanVal.includes('enterprise')) {
-        mappings[colIdx] = 'companyName';
       } else if (cleanVal.includes('email') || cleanVal.includes('mail')) {
         mappings[colIdx] = 'email';
-      } else if (cleanVal.includes('value') || cleanVal.includes('price') || cleanVal.includes('valuation')) {
+      } else if (cleanVal.includes('value') || cleanVal.includes('price') || cleanVal.includes('valuation') || cleanVal.includes('amount')) {
         mappings[colIdx] = 'leadValue';
       } else if (cleanVal.includes('country') || cleanVal.includes('region')) {
         mappings[colIdx] = 'country';
+      } else if (cleanVal.includes('date') || cleanVal.includes('created') || cleanVal.includes('time')) {
+        mappings[colIdx] = 'targetDate';
+      } else if (cleanVal.includes('priority') || cleanVal.includes('temp') || cleanVal.includes('temperature') || cleanVal.includes('hot') || cleanVal.includes('warm') || cleanVal.includes('cold') || cleanVal.includes('quality')) {
+        mappings[colIdx] = 'priority';
       } else if (cleanVal.includes('quantity') || cleanVal.includes('mass') || cleanVal.includes('qty')) {
         mappings[colIdx] = 'quantity';
       } else if (cleanVal.includes('destination') || cleanVal.includes('discharge') || cleanVal.includes('port')) {
@@ -513,7 +522,19 @@ export default function Leads() {
         }
 
         if (!leadObj.priority && !leadObj.temperature) {
-          leadObj.priority = importDefaultPriority;
+          if (importDefaultPriority !== 'ALL') {
+            leadObj.priority = importDefaultPriority;
+          }
+        } else {
+          let p = String(leadObj.priority || leadObj.temperature || '').toUpperCase().trim();
+          if (p.includes('HOT')) p = 'HOT';
+          else if (p.includes('WARM')) p = 'WARM';
+          else if (p.includes('COLD')) p = 'COLD';
+          else if (importDefaultPriority !== 'ALL') p = importDefaultPriority;
+          else p = '';
+          
+          if (p) leadObj.priority = p;
+          else delete leadObj.priority;
         }
 
         leadsArray.push(leadObj);
@@ -672,6 +693,10 @@ export default function Leads() {
       (lead.productCategory || '').toLowerCase().includes(searchLower);
 
     return matchesSearch;
+  }).sort((a, b) => {
+    const timeA = new Date(a.targetDate || a.createdAt || a.date || 0).getTime();
+    const timeB = new Date(b.targetDate || b.createdAt || b.date || 0).getTime();
+    return timeB - timeA;
   });
 
   const executiveWorkloadSummary = useMemo(() => {
@@ -1100,11 +1125,11 @@ export default function Leads() {
               onClick={() => setFilterPriority('ALL')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${
                 filterPriority === 'ALL'
-                  ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/30'
+                  ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80 shadow-sm'
                   : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              All Temp
+              🌐 ALL LEADS (Date Wise)
             </button>
             <button
               onClick={() => setFilterPriority('HOT')}
@@ -1176,8 +1201,8 @@ export default function Leads() {
                     </tr>
                   ) : (
                     filteredLeads.map((lead) => {
-                      const execName = typeof lead.assignedTo === 'object' && lead.assignedTo
-                        ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email)
+                      const execName = typeof lead.assignedTo === 'object' && lead.assignedTo !== null
+                        ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email || lead.assignedTo.employeeId || (lead.assignedTo._id ? String(lead.assignedTo._id) : 'Unassigned'))
                         : (lead.assignedTo || 'Unassigned');
 
                       return (
@@ -1277,8 +1302,7 @@ export default function Leads() {
                                   <a
                                     key={i}
                                     href={(() => {
-                                      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                      const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-1.onrender.com/api');
+                                      const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
                                       const token = localStorage.getItem('token') || '';
                                       return `${baseUrl}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(token)}`;
                                     })()}
@@ -1349,8 +1373,8 @@ export default function Leads() {
                 </div>
               ) : (
                 filteredLeads.map((lead) => {
-                  const execName = typeof lead.assignedTo === 'object' && lead.assignedTo
-                    ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email)
+                  const execName = typeof lead.assignedTo === 'object' && lead.assignedTo !== null
+                    ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email || lead.assignedTo.employeeId || (lead.assignedTo._id ? String(lead.assignedTo._id) : 'Unassigned'))
                     : (lead.assignedTo || 'Unassigned');
 
                   return (
@@ -1753,8 +1777,9 @@ export default function Leads() {
                     <span className="font-bold text-[var(--crm-heading)] flex items-center gap-2">
                       Set Lead Temperature / Quality Tag for Import:
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {[
+                        { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80' },
                         { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-950/60 text-rose-400 border-rose-800/60' },
                         { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-950/60 text-amber-400 border-amber-800/60' },
                         { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60' }

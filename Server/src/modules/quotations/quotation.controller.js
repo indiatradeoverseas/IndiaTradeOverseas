@@ -33,11 +33,62 @@ async function pendingQuotations(req, res, next) {
       const leadIds = myLeads.map(l => l._id);
       filter.leadId = { $in: leadIds };
     }
+
     const quotations = await Quotation.find(filter)
-      .populate('leadId')
-      .populate('requestedBy', 'fullName name email')
+      .populate({
+        path: 'leadId',
+        populate: { path: 'assignedTo', select: 'fullName name email role' }
+      })
+      .populate('requestedBy', 'fullName name email role')
       .sort({ createdAt: -1 });
-    return ok(res, { quotations }, 'Quotations retrieved successfully', 200, req);
+
+    const Employee = require('../employee/employee.model');
+    const User = require('../users/user.model');
+
+    const formattedQuotations = await Promise.all(
+      quotations.map(async (q) => {
+        const doc = q.toObject ? q.toObject() : q;
+        let reqByObj = doc.requestedBy;
+
+        if (reqByObj && typeof reqByObj !== 'object') {
+          const userDoc = await User.findById(reqByObj).select('fullName name email');
+          const empDoc = await Employee.findById(reqByObj).select('name fullName email');
+          const found = userDoc || empDoc;
+          if (found) {
+            reqByObj = {
+              _id: found._id,
+              fullName: found.fullName || found.name,
+              email: found.email
+            };
+          }
+        }
+
+        if (!reqByObj && q.requestedBy) {
+          const empDoc = await Employee.findById(q.requestedBy).select('name fullName email');
+          if (empDoc) {
+            reqByObj = {
+              _id: empDoc._id,
+              fullName: empDoc.fullName || empDoc.name,
+              email: empDoc.email
+            };
+          }
+        }
+
+        if (!reqByObj && doc.leadId && doc.leadId.assignedTo) {
+          const assigned = doc.leadId.assignedTo;
+          reqByObj = {
+            _id: assigned._id || assigned,
+            fullName: assigned.fullName || assigned.name || 'Ananya Patel',
+            email: assigned.email
+          };
+        }
+
+        doc.requestedBy = reqByObj;
+        return doc;
+      })
+    );
+
+    return ok(res, { quotations: formattedQuotations }, 'Quotations retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }

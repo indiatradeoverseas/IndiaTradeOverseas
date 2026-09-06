@@ -502,7 +502,35 @@ async function uploadMyDocument(req, res, next) {
       file: req.file,
       user: req.user
     });
-    return ok(res, { document: doc }, 'Document uploaded successfully', 201, req);
+
+    // Also sync document record into Employee collection in MongoDB
+    try {
+      const Employee = require('../employee/employee.model');
+      const docRecord = {
+        fileName: req.file.originalname,
+        storagePath: req.file.path,
+        fileUrl: `/api/documents/${doc._id}/download`,
+        uploadedBy: req.user.fullName || req.user.name || 'Employee',
+        uploadedByRole: req.user.role || 'EMPLOYEE',
+        createdAt: new Date()
+      };
+
+      await Employee.findOneAndUpdate(
+        {
+          $or: [
+            { _id: req.user._id },
+            { email: { $regex: new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },
+            { employeeId: req.user.employeeId }
+          ]
+        },
+        { $push: { uploadedDocuments: docRecord } },
+        { new: true }
+      );
+    } catch (syncErr) {
+      console.warn('Sync document to Employee notice:', syncErr.message);
+    }
+
+    return ok(res, { document: doc }, 'Document uploaded successfully to MongoDB', 201, req);
   } catch (error) {
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
@@ -567,9 +595,47 @@ async function getMatchingOwnerIds(idOrUser) {
 
 async function listMyDocuments(req, res, next) {
   try {
+    const Employee = require('../employee/employee.model');
     const ownerIds = await getMatchingOwnerIds(req.user);
-    const documents = await Document.find({ ownerId: { $in: ownerIds }, isDeleted: false }).sort({ createdAt: -1 });
-    return ok(res, { documents }, 'Documents retrieved successfully', 200, req);
+
+    const emailPattern = req.user.email ? new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') : null;
+    const query = {
+      $or: [
+        { _id: req.user._id },
+        ...(req.user.employeeId ? [{ employeeId: req.user.employeeId }] : []),
+        ...(emailPattern ? [{ email: emailPattern }] : [])
+      ]
+    };
+    const empDoc = await Employee.findOne(query);
+    const empUploadedDocs = (empDoc && empDoc.uploadedDocuments) ? (empDoc.uploadedDocuments.toObject ? empDoc.uploadedDocuments.toObject() : empDoc.uploadedDocuments) : [];
+
+    const mongoDocs = await Document.find({
+      $or: [
+        { ownerId: { $in: ownerIds } },
+        { uploadedBy: { $in: ownerIds } }
+      ],
+      isDeleted: false
+    }).sort({ createdAt: -1 });
+
+    const docMap = new Map();
+    (mongoDocs || []).forEach(d => {
+      const docObj = d.toObject ? d.toObject() : d;
+      const key = String(docObj._id || docObj.fileName);
+      docMap.set(key, {
+        ...docObj,
+        fileUrl: `/api/documents/${docObj._id}/download`
+      });
+    });
+
+    (empUploadedDocs || []).forEach(d => {
+      const key = String(d._id || d.fileName);
+      if (!docMap.has(key)) {
+        docMap.set(key, d);
+      }
+    });
+
+    const combinedDocuments = Array.from(docMap.values());
+    return ok(res, { documents: combinedDocuments }, 'Documents retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -577,9 +643,52 @@ async function listMyDocuments(req, res, next) {
 
 async function listEmployeeDocuments(req, res, next) {
   try {
-    const ownerIds = await getMatchingOwnerIds(req.params.id);
-    const documents = await Document.find({ ownerId: { $in: ownerIds }, isDeleted: false }).sort({ createdAt: -1 });
-    return ok(res, { documents }, 'Documents retrieved successfully', 200, req);
+    const Employee = require('../employee/employee.model');
+    const targetId = req.params.id;
+    const ownerIds = await getMatchingOwnerIds(targetId);
+
+    const isObjId = mongoose.isValidObjectId(targetId);
+    const query = {
+      $or: [
+        ...(isObjId ? [{ _id: targetId }, { _id: new mongoose.Types.ObjectId(targetId) }] : [{ _id: targetId }]),
+        { employeeId: targetId }
+      ]
+    };
+
+    let empDoc = await Employee.findOne(query);
+    if (!empDoc && ownerIds.length > 0) {
+      empDoc = await Employee.findOne({ _id: { $in: ownerIds } });
+    }
+
+    const empUploadedDocs = (empDoc && empDoc.uploadedDocuments) ? (empDoc.uploadedDocuments.toObject ? empDoc.uploadedDocuments.toObject() : empDoc.uploadedDocuments) : [];
+
+    const mongoDocs = await Document.find({
+      $or: [
+        { ownerId: { $in: ownerIds } },
+        { uploadedBy: { $in: ownerIds } }
+      ],
+      isDeleted: false
+    }).sort({ createdAt: -1 });
+
+    const docMap = new Map();
+    (mongoDocs || []).forEach(d => {
+      const docObj = d.toObject ? d.toObject() : d;
+      const key = String(docObj._id || docObj.fileName);
+      docMap.set(key, {
+        ...docObj,
+        fileUrl: `/api/documents/${docObj._id}/download`
+      });
+    });
+
+    (empUploadedDocs || []).forEach(d => {
+      const key = String(d._id || d.fileName);
+      if (!docMap.has(key)) {
+        docMap.set(key, d);
+      }
+    });
+
+    const combinedDocuments = Array.from(docMap.values());
+    return ok(res, { documents: combinedDocuments }, 'Documents retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }

@@ -14,23 +14,28 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 function rateLimiter(req, res, next) {
-  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  // Skip rate limiting for static uploads and health check endpoints
+  if (req.originalUrl && (req.originalUrl.includes('/uploads/') || req.originalUrl.includes('/health'))) {
+    return next();
+  }
+
+  const rawIp = req.headers['x-forwarded-for'] || req.ip || req.socket?.remoteAddress || '127.0.0.1';
+  const clientIp = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : String(rawIp);
   const now = Date.now();
 
-  let record = ipCache.get(ip);
+  let record = ipCache.get(clientIp);
   if (!record || now - record.resetTime > securityConfig.rateLimiting.windowMs) {
     record = {
       hits: 0,
       resetTime: now
     };
-    ipCache.set(ip, record);
-    console.log(`[rateLimiter] new window ip=${ip} xff=${req.headers['x-forwarded-for'] || '-'} socket=${req.socket.remoteAddress || '-'} trackedIps=${ipCache.size}`);
+    ipCache.set(clientIp, record);
   }
 
   record.hits += 1;
 
   if (record.hits > securityConfig.rateLimiting.max) {
-    console.warn(`[rateLimiter] BLOCKED ip=${ip} hits=${record.hits} max=${securityConfig.rateLimiting.max} path=${req.method} ${req.originalUrl}`);
+    console.warn(`[rateLimiter] BLOCKED ip=${clientIp} hits=${record.hits} max=${securityConfig.rateLimiting.max} path=${req.method} ${req.originalUrl}`);
     return fail(
       res,
       429,

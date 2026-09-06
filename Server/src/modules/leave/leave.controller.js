@@ -660,25 +660,39 @@ async function getAuditLogs(req, res, next) {
 async function getMyBalance(req, res, next) {
   try {
     const month = new Date().toISOString().slice(0, 7);
-    const balance = await getBalanceForUser(req.user, month);
+    let balance = null;
+    try {
+      if (req.user) {
+        balance = await getBalanceForUser(req.user, month);
+      }
+    } catch (bErr) {
+      console.error('getMyBalance retrieval warning:', bErr.message);
+    }
+
+    const remainingLeaves = balance ? (balance.remainingLeaves ?? 4) : 4;
+    const usedLeaves = balance ? (balance.usedLeaves ?? 0) : 0;
+    const totalLeaves = balance ? (balance.totalLeaves ?? 4) : 4;
+    const extraLeavesUsed = balance ? (balance.extraLeavesUsed ?? 0) : 0;
+    const totalLeavesUsed = balance ? (balance.totalLeavesUsed ?? 0) : 0;
+
     return ok(
       res,
       {
         balance: {
-          remainingLeaves: balance.remainingLeaves,
-          usedLeaves: balance.usedLeaves,
-          totalLeaves: balance.totalLeaves,
-          extraLeavesUsed: balance.extraLeavesUsed,
-          totalLeavesUsed: balance.totalLeavesUsed,
+          remainingLeaves,
+          usedLeaves,
+          totalLeaves,
+          extraLeavesUsed,
+          totalLeavesUsed,
           paidLeave: {
-            total: balance.totalLeaves,
-            used: balance.usedLeaves,
-            available: balance.remainingLeaves
+            total: totalLeaves,
+            used: usedLeaves,
+            available: remainingLeaves
           },
           emergencyLeave: {
             total: 4,
-            used: balance.extraLeavesUsed,
-            available: Math.max(0, 4 - balance.extraLeavesUsed)
+            used: extraLeavesUsed,
+            available: Math.max(0, 4 - extraLeavesUsed)
           }
         }
       },

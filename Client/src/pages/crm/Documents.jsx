@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload, FiDownload, FiTrash2, FiLock, FiUnlock, FiFileText, FiX, FiCheckCircle, FiXCircle, FiRefreshCw, FiFilter } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiTrash2, FiLock, FiUnlock, FiFileText, FiX, FiCheckCircle, FiXCircle, FiRefreshCw, FiFilter, FiUser, FiFolder, FiGlobe } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { documentsApi } from '../../api/documents';
 import { useAuth } from '../../hooks/useAuth';
@@ -39,15 +39,25 @@ export default function Documents() {
   const [filterExportDocType, setFilterExportDocType] = useState('');
   const [filterApprovalStatus, setFilterApprovalStatus] = useState('');
   const [versioningId, setVersioningId] = useState(null);
+  const [activeSectionTab, setActiveSectionTab] = useState('CORPORATE'); // 'CORPORATE' | 'EMPLOYEE' | 'ALL'
 
   const isApprover = ['ADMIN', 'MANAGER'].includes(user?.role);
   const canUploadNewVersion = (doc) =>
     user?.role === 'ADMIN' || user?.role === 'MANAGER' || doc.uploadedBy === user?._id || doc.uploadedBy?._id === user?._id;
 
-  const filteredDocuments = documents.filter((d) =>
-    (!filterExportDocType || (d.exportDocType || 'OTHER') === filterExportDocType) &&
-    (!filterApprovalStatus || (d.approvalStatus || 'PENDING') === filterApprovalStatus)
-  );
+  const corporateCount = documents.filter((d) => d.ownerType !== 'USER').length;
+  const employeeCount = documents.filter((d) => d.ownerType === 'USER').length;
+  const totalCount = documents.length;
+
+  const filteredDocuments = documents.filter((d) => {
+    if (activeSectionTab === 'CORPORATE' && d.ownerType === 'USER') return false;
+    if (activeSectionTab === 'EMPLOYEE' && d.ownerType !== 'USER') return false;
+
+    const matchesExportType = !filterExportDocType || (d.exportDocType || 'OTHER') === filterExportDocType;
+    const matchesStatus = !filterApprovalStatus || (d.approvalStatus || 'PENDING') === filterApprovalStatus;
+
+    return matchesExportType && matchesStatus;
+  });
 
   useEffect(() => {
     fetchDocuments();
@@ -275,8 +285,60 @@ export default function Documents() {
         </button>
       </motion.div>
 
+      {/* Category Tabs: Corporate Trade Vault vs Employee Documents */}
+      <motion.div variants={blockVariants} className="w-full pt-4 flex flex-wrap items-center gap-2 border-b border-[var(--crm-ink-soft)]/10 pb-1">
+        <button
+          onClick={() => setActiveSectionTab('CORPORATE')}
+          className={`px-4 py-2.5 rounded-t-sm font-mono text-xs uppercase font-bold tracking-wider transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
+            activeSectionTab === 'CORPORATE'
+              ? 'border-[var(--crm-accent)] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] shadow-sm'
+              : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]/30'
+          }`}
+        >
+          <FiFolder size={14} className={activeSectionTab === 'CORPORATE' ? 'text-[var(--crm-accent)]' : ''} />
+          <span>Trade & Corporate Vault</span>
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono ${
+            activeSectionTab === 'CORPORATE' ? 'bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)] font-bold' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]'
+          }`}>
+            {corporateCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSectionTab('EMPLOYEE')}
+          className={`px-4 py-2.5 rounded-t-sm font-mono text-xs uppercase font-bold tracking-wider transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
+            activeSectionTab === 'EMPLOYEE'
+              ? 'border-purple-400 bg-purple-950/40 text-purple-200 shadow-sm'
+              : 'border-transparent text-[var(--crm-ink-faint)] hover:text-purple-300 hover:bg-[var(--crm-bg-raised)]/30'
+          }`}
+        >
+          <FiUser size={14} className={activeSectionTab === 'EMPLOYEE' ? 'text-purple-400' : ''} />
+          <span>Employee Documents (My Profile Uploads)</span>
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono ${
+            activeSectionTab === 'EMPLOYEE' ? 'bg-purple-500 text-white font-bold' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]'
+          }`}>
+            {employeeCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSectionTab('ALL')}
+          className={`px-4 py-2.5 rounded-t-sm font-mono text-xs uppercase font-bold tracking-wider transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
+            activeSectionTab === 'ALL'
+              ? 'border-[var(--crm-heading)] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] shadow-sm'
+              : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]/30'
+          }`}
+        >
+          <FiGlobe size={14} />
+          <span>All Documents</span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]">
+            {totalCount}
+          </span>
+        </button>
+      </motion.div>
+
       {/* Filter Row */}
-      <motion.div variants={blockVariants} className="w-full pt-6 flex flex-col sm:flex-row gap-3">
+      <motion.div variants={blockVariants} className="w-full pt-4 flex flex-col sm:flex-row gap-3">
         <div className="w-full sm:w-56 flex items-center gap-2">
           <FiFilter className="text-[var(--crm-ink-faint)] shrink-0" size={14} />
           <select
@@ -325,7 +387,13 @@ export default function Documents() {
                     <td colSpan="8" className="text-center py-20 bg-[var(--crm-bg-raised)]/5">
                       <div className="flex flex-col items-center justify-center opacity-40">
                         <FiFileText size={32} className="text-[var(--crm-ink-faint)] mb-3" />
-                        <p className="font-mono uppercase tracking-widest text-[10px]">No encrypted document entries mapped.</p>
+                        <p className="font-mono uppercase tracking-widest text-[10px]">
+                          {activeSectionTab === 'EMPLOYEE'
+                            ? 'No employee profile document uploads found.'
+                            : activeSectionTab === 'CORPORATE'
+                            ? 'No corporate or trade document entries mapped.'
+                            : 'No encrypted document entries mapped.'}
+                        </p>
                       </div>
                     </td>
                   </tr>
@@ -345,7 +413,11 @@ export default function Documents() {
                           {doc.ownerType}
                         </span>
                       </td>
-                      <td className="py-4 px-5 font-mono text-xs text-[var(--crm-ink-faint)] text-left">{doc.ownerId || 'System Universal'}</td>
+                      <td className="py-4 px-5 font-mono text-xs text-[var(--crm-ink-faint)] text-left">
+                        {doc.ownerType === 'USER'
+                          ? (doc.uploadedBy?.fullName || doc.ownerId?.fullName || doc.ownerId || 'Employee Account')
+                          : (doc.ownerId?.companyName || doc.ownerId?.customerName || doc.ownerId || 'System Universal')}
+                      </td>
                       <td className="py-4 px-5 text-left">
                         <span className="bg-[var(--crm-bg-sunken)]/60 text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">
                           {(doc.exportDocType || 'OTHER').replace(/_/g, ' ')}

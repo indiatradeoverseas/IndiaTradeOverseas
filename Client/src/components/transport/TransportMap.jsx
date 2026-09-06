@@ -19,6 +19,22 @@ const CITY_COORDS = {
   'Guwahati': { lat: 26.1445, long: 91.7362 }
 };
 
+const getCityFromCoords = (lat, long) => {
+  if (!lat || !long) return 'New Delhi, NCR';
+  let closestCity = 'New Delhi, NCR';
+  let minDistance = Infinity;
+
+  Object.entries(CITY_COORDS).forEach(([city, coords]) => {
+    const dist = Math.hypot(coords.lat - lat, coords.long - long);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestCity = city;
+    }
+  });
+
+  return closestCity;
+};
+
 export default function TransportMap({
   trips = [],
   activeDrivers = [],
@@ -34,6 +50,7 @@ export default function TransportMap({
   const [mapCenter, setMapCenter] = useState({ lat: defaultLat, long: defaultLong });
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(12);
+  const [showRoutePath, setShowRoutePath] = useState(false);
 
   // Sync map center whenever activeDrivers or gpsLocation prop changes
   useEffect(() => {
@@ -78,6 +95,18 @@ export default function TransportMap({
   const activeDriverName = selectedDriver?.driverName || selectedDriver?.fullName || selectedDriver?.name || (activeDrivers[0]?.driverName || 'Driver Unit');
   const activeVehicleNo = selectedDriver?.vehicleNo || selectedDriver?.vehicleNumber || (activeDrivers[0]?.vehicleNo || 'Carrier');
 
+  const activeTrip = trips.find(t => 
+    (t.driverName || '').toLowerCase().includes((activeDriverName || '').toLowerCase()) ||
+    (t.driverId && selectedDriver?._id && String(t.driverId) === String(selectedDriver._id))
+  ) || trips[0] || {};
+
+  const originCity = activeTrip.originCity || activeTrip.origin || 'Delhi';
+  const destCity = activeTrip.destCity || activeTrip.destination || 'Patna';
+
+  const embedSrc = showRoutePath
+    ? `https://maps.google.com/maps?saddr=${encodeURIComponent(originCity)}&daddr=${mapCenter.lat},${mapCenter.long}+to:${encodeURIComponent(destCity)}&output=embed`
+    : `https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.long}&z=${zoomLevel}&output=embed`;
+
   return (
     <div
       className="relative rounded-sm border overflow-hidden flex flex-col font-mono text-xs select-none w-full"
@@ -89,7 +118,7 @@ export default function TransportMap({
       }}
     >
       {/* Header Bar */}
-      <div className="px-4 py-2.5 bg-[#0d1117] border-b border-[#21262d] flex items-center justify-between z-10 shrink-0">
+      <div className="px-4 py-2.5 bg-[#0d1117] border-b border-[#21262d] flex items-center justify-between z-10 shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <FiNavigation className="text-sky-400 animate-pulse" size={15} />
           <h3 className="text-xs uppercase font-serif font-bold tracking-wider text-[#f0f6fc]">
@@ -97,13 +126,36 @@ export default function TransportMap({
           </h3>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowRoutePath(!showRoutePath)}
+            className={`px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm border ${
+              showRoutePath
+                ? 'bg-amber-950/90 text-amber-300 border-amber-600 font-black'
+                : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border-emerald-700/60'
+            }`}
+            title="Toggle Driving Route Path Trajectory line from Pickup to Delivery"
+          >
+            {showRoutePath ? '🛤️ Showing Route Line' : '🛣️ View Route Path'}
+          </button>
+
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&origin=${mapCenter.lat},${mapCenter.long}&destination=${encodeURIComponent(destCity)}&travelmode=driving`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1 bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-700/60 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
+            title="Open Turn-by-Turn Driving Navigation in Google Maps from Live GPS"
+          >
+            <FiNavigation size={12} className="text-sky-400" /> Start GPS Nav
+          </a>
+
           <button
             type="button"
             onClick={handleRecenter}
-            className="px-3 py-1 bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-700/60 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
+            className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/60 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
           >
-            <FiCrosshair size={13} className="text-sky-400" /> Recenter GPS
+            <FiCrosshair size={12} className="text-sky-400" /> Recenter GPS
           </button>
         </div>
       </div>
@@ -115,7 +167,7 @@ export default function TransportMap({
           width="100%"
           height="100%"
           style={{ border: 0 }}
-          src={`https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.long}&z=${zoomLevel}&output=embed`}
+          src={embedSrc}
           loading="lazy"
           allowFullScreen
         />
@@ -128,6 +180,9 @@ export default function TransportMap({
           </div>
           <div className="text-[#c9d1d9] font-bold font-mono">
             {activeDriverName} <span className="text-sky-400">({activeVehicleNo})</span>
+          </div>
+          <div className="text-amber-400 font-mono text-[10px] font-bold">
+            📍 Location: {getCityFromCoords(mapCenter.lat, mapCenter.long)}
           </div>
           <div className="text-[#8b949e] font-mono text-[9px]">
             GPS Pos: {mapCenter.lat.toFixed(4)}° N, {mapCenter.long.toFixed(4)}° E

@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Payslip = require('./payslip.model');
 const Employee = require('../employee/employee.model');
 const { ok, fail } = require('../../utils/response');
+const { getRelativePath } = require('../../utils/file');
 
 async function uploadPayslip(req, res) {
   try {
@@ -54,7 +55,7 @@ async function uploadPayslip(req, res) {
       const backendBase = process.env.BACKEND_URL || (req.protocol + '://' + req.get('host'));
       fileUrl = `${backendBase}/api/payslips/${gridFsFileId}/download`;
     } else {
-      fileUrl = req.file.path.replace(/\\/g, '/');
+      fileUrl = getRelativePath(req.file.path);
     }
 
     const payslip = await Payslip.create({

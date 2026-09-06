@@ -192,4 +192,4 @@ exports.getWorkUpdates = async (req, res) => {
   } catch (error) {
     return fail(res, 500, 'DISPATCH_ERROR', error.message, [], req);
   }
-};
+};
