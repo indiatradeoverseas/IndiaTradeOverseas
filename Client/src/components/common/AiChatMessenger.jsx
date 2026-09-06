@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  FiBot, FiSend, FiX, FiMinimize2, FiTrash2, FiSparkles, 
+  FiCpu, FiSend, FiX, FiMinimize2, FiTrash2, FiSparkles, 
   FiUser, FiMessageSquare, FiRefreshCw, FiHelpCircle, FiCheckCircle 
 } from 'react-icons/fi';
 import { aiApi } from '../../api/aiApi';
@@ -173,7 +173,7 @@ export default function AiChatMessenger() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
           </span>
-          <FiBot size={22} className="text-emerald-200 animate-pulse" />
+          <FiCpu size={22} className="text-emerald-200 animate-pulse" />
           <span className="font-medium text-xs tracking-wide hidden sm:inline text-white">AI Assistant</span>
           <span className="text-[9px] bg-emerald-950/80 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-700/50 font-mono hidden md:inline">
             NVIDIA
@@ -196,7 +196,7 @@ export default function AiChatMessenger() {
             <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-slate-900 via-slate-950 to-emerald-950/80 border-b border-emerald-500/20">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                  <FiBot size={18} />
+                  <FiCpu size={18} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -247,7 +247,7 @@ export default function AiChatMessenger() {
                           : 'bg-emerald-950 border border-emerald-500/40 text-emerald-400'
                       }`}
                     >
-                      {isUser ? <FiUser size={12} /> : <FiBot size={12} />}
+                      {isUser ? <FiUser size={12} /> : <FiCpu size={12} />}
                     </div>
 
                     <div
