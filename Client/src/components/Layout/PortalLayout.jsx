@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
 import NotificationDropdown from '../common/NotificationDropdown';
+import AiChatMessenger from '../common/AiChatMessenger';
 import { useAuth } from '../../hooks/useAuth';
 import { attendanceApi } from '../../api/attendance';
 import toast from 'react-hot-toast';
@@ -268,6 +269,7 @@ export default function PortalLayout({ children }) {
           </main>
         </div>
       </div>
+      <AiChatMessenger />
     </div>
   );
 }

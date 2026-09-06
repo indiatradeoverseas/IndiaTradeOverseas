@@ -29,6 +29,7 @@ const employeeRoutes = require('./modules/employee/employee.routes');
 const taskRoutes = require('./modules/task/task.routes');
 const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 const payslipRoutes = require('./modules/payslip/payslip.routes');
+const aiRoutes = require('./modules/ai/ai.routes');
 
 
 const app = express();
@@ -123,7 +124,8 @@ const apiRoutes = [
   { path: '/employees', router: employeeRoutes },
   { path: '/tasks', router: taskRoutes },
   { path: '/shared-files', router: sharedFileRoutes },
-  { path: '/payslips', router: payslipRoutes }
+  { path: '/payslips', router: payslipRoutes },
+  { path: '/ai', router: aiRoutes }
 ];
 
 apiRoutes.forEach(route => {
