@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
+import { BACKEND_URL } from '../config/env';
 
 let socket = null;
 
@@ -12,9 +13,7 @@ export const socketService = {
     const role = user.role;
     const name = user.fullName || user.name;
 
-    const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-
-    socket = io(SOCKET_URL, {
+    socket = io(BACKEND_URL, {
       query: { employeeId, role, name },
       transports: ['websocket', 'polling'],
       reconnection: true,

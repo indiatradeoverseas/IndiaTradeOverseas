@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  FiCpu, FiSend, FiX, FiMinimize2, FiTrash2, FiSparkles, 
+  FiCpu, FiSend, FiX, FiMinimize2, FiTrash2, FiZap, 
   FiUser, FiMessageSquare, FiRefreshCw, FiHelpCircle, FiCheckCircle 
 } from 'react-icons/fi';
 import { aiApi } from '../../api/aiApi';
@@ -267,7 +267,7 @@ export default function AiChatMessenger() {
 
               {loading && (
                 <div className="flex items-center gap-2 text-emerald-400/90 text-[10px] italic p-2 bg-emerald-950/30 border border-emerald-900/30 rounded-xl w-fit">
-                  <FiSparkles size={12} className="animate-spin text-emerald-400" />
+                  <FiRefreshCw size={12} className="animate-spin text-emerald-400" />
                   <span>NVIDIA Nemotron AI is thinking...</span>
                 </div>
               )}

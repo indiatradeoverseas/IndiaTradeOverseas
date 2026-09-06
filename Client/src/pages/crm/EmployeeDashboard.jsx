@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFileUrl } from '../../config/env';
 import {
   FiCheckSquare,
   FiCalendar,
@@ -571,8 +572,7 @@ export default function EmployeeDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-                                const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}/${t.fileUrl.replace(/^\/+/, '')}`;
+                                const absoluteUrl = getFileUrl(t.fileUrl);
                                 const link = document.createElement('a');
                                 link.href = absoluteUrl;
                                 link.setAttribute('download', t.fileOriginalName);
@@ -594,8 +594,7 @@ export default function EmployeeDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-                                const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}/${t.completionFileUrl.replace(/^\/+/, '')}`;
+                                const absoluteUrl = getFileUrl(t.completionFileUrl);
                                 const link = document.createElement('a');
                                 link.href = absoluteUrl;
                                 link.setAttribute('download', t.completionFileOriginalName);

@@ -11,6 +11,7 @@ import {
   FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
+import { API_URL, getFileUrl } from '../../config/env';
 import toast from 'react-hot-toast';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
@@ -1301,11 +1302,7 @@ export default function Leads() {
                                 {lead.loiDocuments.map((loi, i) => (
                                   <a
                                     key={i}
-                                    href={(() => {
-                                      const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-                                      const token = localStorage.getItem('token') || '';
-                                      return `${baseUrl}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(token)}`;
-                                    })()}
+                                    href={`${API_URL}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="block text-[9px] text-teal-400 hover:underline truncate max-w-[100px] mx-auto"

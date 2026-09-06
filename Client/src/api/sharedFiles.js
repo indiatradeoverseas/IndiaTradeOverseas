@@ -1,4 +1,5 @@
 import axiosInstance from './axiosInstance';
+import { API_URL } from '../config/env';
 
 export const sharedFilesApi = {
   async shareFile(formData) {
@@ -27,7 +28,6 @@ export const sharedFilesApi = {
   },
 
   getDownloadUrl(id) {
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-    return `${baseUrl}/shared-files/${id}/download`;
+    return `${API_URL}/shared-files/${id}/download`;
   }
 };

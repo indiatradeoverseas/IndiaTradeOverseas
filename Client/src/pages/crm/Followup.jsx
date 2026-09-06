@@ -11,6 +11,7 @@ import { leadsApi } from '../../api/leads';
 import { taskApi } from '../../api/task';
 import { employeesApi } from '../../api/employees';
 import { useAuth } from '../../hooks/useAuth';
+import { API_URL } from '../../config/env';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
 
 const containerVariants = {
@@ -303,8 +304,7 @@ export default function Followup() {
 
   const getAudioUrl = (recording) => {
     if (!recording || recording.isVirtual || !recording._id || String(recording._id).startsWith('virtual_')) return '';
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-    return `${baseUrl}/leads/call-recordings/${recording._id}/stream`;
+    return `${API_URL}/leads/call-recordings/${recording._id}/stream`;
   };
 
   // Counts

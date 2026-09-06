@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFileUrl } from '../../config/env';
 import { 
   FiUser, 
   FiShield, 
@@ -618,12 +619,10 @@ export default function EmployeeProfile() {
     );
   }
 
-  const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=0f172a&color=2dd4bf&bold=true&size=128`;
 
   const profileImgUrl = profile.profileImage 
-    ? (profile.profileImage.startsWith('http') ? profile.profileImage : `${backendBase}/${profile.profileImage.replace(/^\/+/, '')}`)
+    ? getFileUrl(profile.profileImage)
     : defaultAvatar;
 
   return (

@@ -1,11 +1,10 @@
-const axios = require('axios');
 const env = require('../../config/env');
 const { ok, fail } = require('../../utils/response');
 
 const NVIDIA_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
 /**
- * AI Chat completion controller using NVIDIA Nemotron NIM API
+ * AI Chat completion controller using NVIDIA Nemotron NIM API with native fetch
  */
 const handleAiChat = async (req, res, next) => {
   try {
@@ -57,36 +56,46 @@ Your Objective:
 
     for (const model of candidateModels) {
       try {
-        const response = await axios.post(
-          NVIDIA_API_URL,
-          {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+        const response = await fetch(NVIDIA_API_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey.trim()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
             model: model,
             messages: payloadMessages,
             temperature: 0.5,
             top_p: 0.9,
             max_tokens: 1024
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${apiKey.trim()}`,
-              'Content-Type': 'application/json'
-            },
-            timeout: 25000
-          }
-        );
+          }),
+          signal: controller.signal
+        });
 
-        if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
-          aiResponseText = response.data.choices[0].message.content;
-          break; // Success!
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            aiResponseText = data.choices[0].message.content;
+            break; // Success!
+          }
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          console.warn(`[NVIDIA AI] Model ${model} returned status ${response.status}:`, errData);
+          lastError = new Error(`HTTP ${response.status}: ${JSON.stringify(errData)}`);
         }
       } catch (err) {
-        console.warn(`[NVIDIA AI] Model ${model} failed:`, err.response?.data || err.message);
+        console.warn(`[NVIDIA AI] Model ${model} fetch failed:`, err.message);
         lastError = err;
       }
     }
 
     if (!aiResponseText) {
-      console.error('[NVIDIA AI] All models failed:', lastError?.response?.data || lastError?.message);
+      console.error('[NVIDIA AI] All candidate models failed:', lastError?.message);
       return fail(
         res,
         502,

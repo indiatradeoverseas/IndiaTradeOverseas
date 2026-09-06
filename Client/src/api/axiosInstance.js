@@ -1,13 +1,8 @@
 import axios from 'axios';
-
-const getLocalApiUrl = () => {
-  return 'https://indiatradeoverseas-1.onrender.com/api';
-};
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || getLocalApiUrl();
+import { API_URL } from '../config/env';
 
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },

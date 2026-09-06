@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL, getFileUrl } from '../../config/env';
 import { 
   FiPhone, 
   FiMail, 
@@ -569,10 +570,7 @@ export default function SalesExecutiveDashboard() {
   // Download Task File Attachment
   const handleDownloadTaskFile = (fileUrl, originalName) => {
     if (!fileUrl) return;
-    // Construct absolute URL to download the file from server static files / uploads directory
-    // If it's a relative path starting with 'uploads', prepend backend base url
-    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${baseUrl}/${fileUrl.replace(/^\/+/, '')}`;
+    const absoluteUrl = getFileUrl(fileUrl);
     
     const link = document.createElement('a');
     link.href = absoluteUrl;
@@ -1171,10 +1169,7 @@ export default function SalesExecutiveDashboard() {
                                 controlsList="nodownload"
                                 preload="metadata"
                                 className="w-full h-7 rounded accent-teal-500"
-                                src={(() => {
-                                  const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-                                  return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
-                                })()}
+                                src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
                               />
                               <div className="flex justify-between text-[8px] text-[var(--crm-ink-faint)] pt-1">
                                 <span>📅 {new Date(rec.createdAt).toLocaleDateString()}</span>
@@ -1327,11 +1322,7 @@ export default function SalesExecutiveDashboard() {
                                       {deal.loiDocuments.map((loi, i) => (
                                         <a
                                           key={i}
-                                          href={(() => {
-                                            const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-                                            const token = localStorage.getItem('token') || '';
-                                            return `${baseUrl}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(token)}`;
-                                          })()}
+                                          href={`${API_URL}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
                                           target="_blank"
                                           rel="noreferrer"
                                           className="block text-[9px] text-teal-400 hover:underline truncate max-w-[130px]"

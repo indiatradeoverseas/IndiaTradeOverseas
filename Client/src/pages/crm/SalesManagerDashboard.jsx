@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL, getFileUrl } from '../../config/env';
 import { 
   FiDollarSign, 
   FiTrendingUp, 
@@ -1315,8 +1316,7 @@ export default function SalesManagerDashboard() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-                                            const absoluteUrl = task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}/${task.completionFileUrl.replace(/^\/+/, '')}`;
+                                            const absoluteUrl = getFileUrl(task.completionFileUrl);
                                             const link = document.createElement('a');
                                             link.href = absoluteUrl;
                                             link.setAttribute('download', task.completionFileOriginalName);
@@ -1648,11 +1648,7 @@ export default function SalesManagerDashboard() {
                                       {lead.loiDocuments.map((loi, idx) => (
                                         <a
                                           key={idx}
-                                          href={(() => {
-                                            const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-                                            const token = localStorage.getItem('token') || '';
-                                            return `${baseUrl}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(token)}`;
-                                          })()}
+                                          href={`${API_URL}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
                                           target="_blank"
                                           rel="noreferrer"
                                           className="block text-[9px] text-teal-400 hover:underline truncate max-w-[140px]"
@@ -2322,10 +2318,7 @@ export default function SalesManagerDashboard() {
                                   controlsList="nodownload"
                                   preload="metadata"
                                   className="w-full h-8 rounded accent-teal-500 min-w-0"
-                                  src={(() => {
-                                    const baseUrl = import.meta.env.VITE_API_URL || 'https://indiatradeoverseas-1.onrender.com/api';
-                                    return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
-                                  })()}
+                                  src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
                                 />
 
                                 <div className="flex justify-between items-center text-[8px] text-[var(--crm-ink-faint)]">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFileUrl } from '../../config/env';
 import {
   FiCheckSquare,
   FiCalendar,
@@ -767,8 +768,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
 
       // 3. Absolute/Relative URL Fallback
       if (doc.fileUrl) {
-        const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://indiatradeoverseas-1.onrender.com';
-        const fullUrl = doc.fileUrl.startsWith('http') ? doc.fileUrl : `${baseUrl}/${doc.fileUrl.replace(/^\/+/, '')}`;
+        const fullUrl = getFileUrl(doc.fileUrl);
 
         const link = document.createElement('a');
         link.href = fullUrl;
