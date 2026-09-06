@@ -119,6 +119,7 @@ const apiRoutes = [
   { path: '/attendance', router: attendanceRoutes },
   { path: '/tickets', router: ticketRoutes },
   { path: '/leaves', router: leaveRoutes },
+  { path: '/leave', router: leaveRoutes },
   { path: '/sales', router: salesRoutes },
   { path: '/employee', router: employeeRoutes },
   { path: '/employees', router: employeeRoutes },

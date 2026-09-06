@@ -5,6 +5,52 @@ const { scoreAndClassifyLead } = require('./leadScoring.service');
 const { autoRouteLead } = require('../leadAssignment.service');
 const { recordAudit } = require('../../security-audit/auditLog.service');
 
+function parseFlexibleDate(dateInput) {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) return dateInput;
+
+  const str = String(dateInput).trim();
+  if (!str) return null;
+
+  const lower = str.toLowerCase();
+  if (lower.includes('immed') || lower.includes('urgent') || lower.includes('today') || lower.includes('asap')) {
+    return new Date();
+  }
+  if (lower.includes('tomorrow')) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  const matchDays = lower.match(/(?:within|in|under)?\s*(\d+)\s*day/i);
+  if (matchDays && matchDays[1]) {
+    const days = parseInt(matchDays[1], 10);
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+  const matchWeeks = lower.match(/(?:within|in|under)?\s*(\d+)\s*week/i);
+  if (matchWeeks && matchWeeks[1]) {
+    const weeks = parseInt(matchWeeks[1], 10);
+    const d = new Date();
+    d.setDate(d.getDate() + (weeks * 7));
+    return d;
+  }
+
+  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (ddmmyyyy) {
+    const day = parseInt(ddmmyyyy[1], 10);
+    const month = parseInt(ddmmyyyy[2], 10) - 1;
+    const year = parseInt(ddmmyyyy[3], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+
+  return null;
+}
+
 async function processAiLead(payload, actorId = null) {
   const contactPerson = payload.contactPerson || payload.customerName || payload.name || '';
   const mobile = payload.mobile || payload.phone || payload.whatsapp || '9999999999';
@@ -17,7 +63,7 @@ async function processAiLead(payload, actorId = null) {
   const quantity = String(payload.quantity || '');
   const destination = payload.destination || payload.city || '';
   const targetDateRaw = payload.targetDate || payload.requiredDate || payload.timeline || null;
-  const targetDate = targetDateRaw ? new Date(targetDateRaw) : null;
+  const targetDate = parseFlexibleDate(targetDateRaw);
   const companyName = payload.companyName || payload.company || '';
   const chatSummary = payload.chatSummary || payload.message || payload.subject || '';
   const paymentTerms = payload.paymentTerms || '';
@@ -39,7 +85,7 @@ async function processAiLead(payload, actorId = null) {
 
   const duplicate = await Lead.findOne({ $or: duplicateQueries });
 
-  const rawValuation = payload.leadValue || payload.estimatedValue || payload.valuation || payload.budget || '';
+  const rawValuation = payload.estimatedValue || payload.valuation || payload.leadValue || payload.budget || '';
   const numericValue = typeof rawValuation === 'number'
     ? rawValuation
     : (Number(String(rawValuation).replace(/[^0-9.]/g, '')) || 0);
@@ -121,4 +167,4 @@ async function processAiLead(payload, actorId = null) {
   };
 }
 
-module.exports = { processAiLead };
+module.exports = { processAiLead, parseFlexibleDate };

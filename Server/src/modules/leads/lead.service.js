@@ -106,6 +106,58 @@ function canAccessLead(user, lead) {
 function getLeadDisplay(lead, user) {
   const leadObj = lead.toObject ? lead.toObject() : { ...lead };
   const { decryptText } = require('../../utils/crypto');
+  const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
+
+  // Smart fallback for estimatedValue if empty
+  if (!leadObj.estimatedValue || String(leadObj.estimatedValue).trim() === '') {
+    if (leadObj.originalPayload?.estimatedValue || leadObj.originalPayload?.valuation || leadObj.originalPayload?.budget) {
+      leadObj.estimatedValue = String(leadObj.originalPayload.estimatedValue || leadObj.originalPayload.valuation || leadObj.originalPayload.budget).trim();
+    } else if (leadObj.leadValue && Number(leadObj.leadValue) > 0) {
+      leadObj.estimatedValue = `₹${Number(leadObj.leadValue).toLocaleString('en-IN')}`;
+    } else {
+      const txt = leadObj.chatSummary || leadObj.remarks || '';
+      if (txt) {
+        const match = txt.match(/(?:Valuation\/Budget|Valuation|Budget|Value)[^\n:]*[:—]\s*([^\n,]+)/i);
+        if (match && match[1] && match[1].trim() !== 'Not specified' && match[1].trim() !== '—') {
+          leadObj.estimatedValue = match[1].trim();
+        }
+      }
+    }
+  }
+
+  // Smart fallback for targetDate if empty
+  if (!leadObj.targetDate) {
+    const rawDate = leadObj.originalPayload?.targetDate || leadObj.originalPayload?.requiredDate || leadObj.originalPayload?.timeline;
+    if (rawDate) {
+      const parsed = parseFlexibleDate(rawDate);
+      if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;
+    } else {
+      const txt = leadObj.chatSummary || leadObj.remarks || '';
+      if (txt) {
+        const match = txt.match(/(?:Requirement Date|Target Date|Timeline)[^\n:]*[:—]\s*([^\n,]+)/i);
+        if (match && match[1] && match[1].trim() !== 'Not specified' && match[1].trim() !== '—') {
+          const parsed = parseFlexibleDate(match[1].trim());
+          if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;
+        }
+      }
+    }
+  }
+
+  if (leadObj.targetDate) {
+    const tDate = new Date(leadObj.targetDate);
+    if (!isNaN(tDate.getTime())) {
+      const now = new Date();
+      const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const diffDays = Math.ceil(diffHours / 24);
+      if (diffDays <= 3) {
+        leadObj.priority = 'HOT';
+      } else if (diffDays <= 7) {
+        leadObj.priority = 'WARM';
+      } else {
+        leadObj.priority = 'COLD';
+      }
+    }
+  }
 
   if (leadObj.stage === 'NEW_LEAD' || leadObj.stage === 'ASSIGNED') {
     leadObj.stage = 'LEAD_QUALIFICATION';

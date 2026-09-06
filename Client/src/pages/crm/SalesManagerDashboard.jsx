@@ -1547,6 +1547,8 @@ export default function SalesManagerDashboard() {
                           <th className="py-3 px-4">Date & Time</th>
                           <th className="py-3 px-4">Lead Identifier</th>
                           <th className="py-3 px-4">Customer & Entity</th>
+                          <th className="py-3 px-4 text-center">Priority / Temp</th>
+                          <th className="py-3 px-4 text-center">Target Timeline</th>
                           <th className="py-3 px-4">Contact Details</th>
                           <th className="py-3 px-4">Division / Source Origin</th>
                           <th className="py-3 px-4">Assigned Executive</th>
@@ -1560,7 +1562,7 @@ export default function SalesManagerDashboard() {
                           if (divisionLeadsList.length === 0) {
                             return (
                               <tr>
-                                <td colSpan="9" className="text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
+                                <td colSpan="11" className="text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
                                   No website form or live chat leads found for this division and selected date filter.
                                 </td>
                               </tr>
@@ -1586,6 +1588,28 @@ export default function SalesManagerDashboard() {
                               e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
                             );
 
+                            let prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                            if (lead.targetDate) {
+                              const tDate = new Date(lead.targetDate);
+                              if (!isNaN(tDate.getTime())) {
+                                const now = new Date();
+                                const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+                                const diffDays = Math.ceil(diffHours / 24);
+                                if (diffDays <= 3) {
+                                  prioInfo = { label: 'HOT 🔥', color: 'bg-rose-950/80 text-rose-400 border-rose-800/50' };
+                                } else if (diffDays <= 7) {
+                                  prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                                } else {
+                                  prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/50' };
+                                }
+                              }
+                            } else {
+                              const pUpper = (lead.priority || 'WARM').toUpperCase();
+                              if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-950/80 text-rose-400 border-rose-800/50' };
+                              else if (pUpper === 'WARM') prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                              else if (pUpper === 'COLD') prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/50' };
+                            }
+
                             return (
                               <tr key={lead._id} className={`hover:bg-[var(--crm-bg-sunken)]/60 transition ${selectedLeads.includes(lead._id) ? 'bg-teal-950/30' : ''}`}>
                                 <td className="py-3 px-3 text-center">
@@ -1607,6 +1631,20 @@ export default function SalesManagerDashboard() {
                                 <td className="py-3 px-4 space-y-0.5 min-w-[170px]">
                                   <div className="font-bold text-[var(--crm-heading)] text-sm">{lead.customerName}</div>
                                   <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono border ${prioInfo.color}`}>
+                                    {prioInfo.label}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-center font-mono text-[11px] whitespace-nowrap">
+                                  {lead.targetDate ? (
+                                    <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                                      📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-4 space-y-1 font-mono text-[11px]">
                                   <div className="text-[var(--crm-ink-soft)] flex items-center gap-1.5">

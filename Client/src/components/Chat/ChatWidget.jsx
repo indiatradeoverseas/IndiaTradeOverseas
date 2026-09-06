@@ -267,7 +267,9 @@ export default function ChatWidget() {
         quantity: finalData.quantity,
         destination: finalData.destination,
         targetDate: finalData.targetDate || undefined,
+        estimatedValue: finalData.estimatedValue || undefined,
         leadValue: numericValue,
+        source: 'AI_AGENT',
         chatSummary: chatLogsText ? `${chatLogsText}\n---\n${detailsSummary}` : detailsSummary
       });
 

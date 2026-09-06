@@ -2,7 +2,14 @@ import axiosInstance from './axiosInstance';
 
 export const leaveApi = {
   async applyForLeave(data) {
-    const response = await axiosInstance.post('/leaves', data);
+    const payload = {
+      ...data,
+      fromDate: data.fromDate || data.startDate,
+      toDate: data.toDate || data.endDate,
+      startDate: data.startDate || data.fromDate,
+      endDate: data.endDate || data.toDate
+    };
+    const response = await axiosInstance.post('/leaves', payload);
     return response.data;
   },
 

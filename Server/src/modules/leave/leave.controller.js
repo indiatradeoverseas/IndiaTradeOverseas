@@ -171,7 +171,9 @@ async function updateSettings(req, res, next) {
 // 3. Apply for Leave (Handles both regular and extra leaves)
 async function createLeave(req, res, next) {
   try {
-    const { fromDate, toDate, leaveType, reason, isExtraLeave, extraLeaveReason } = req.body;
+    const fromDate = req.body.fromDate || req.body.startDate;
+    const toDate = req.body.toDate || req.body.endDate;
+    const { leaveType, reason, isExtraLeave, extraLeaveReason } = req.body;
 
     if (!fromDate || !toDate || !leaveType || !reason) {
       return fail(res, 400, 'VALIDATION_FAILED', 'fromDate, toDate, leaveType and reason are required', [], req);
@@ -183,8 +185,8 @@ async function createLeave(req, res, next) {
       return fail(res, 400, 'INVALID_DATE_RANGE', 'Please select a valid date range', [], req);
     }
 
-    const month = fromDate.slice(0, 7); // YYYY-MM
-    const toMonth = toDate.slice(0, 7);
+    const month = typeof fromDate === 'string' ? fromDate.slice(0, 7) : start.toISOString().slice(0, 7); // YYYY-MM
+    const toMonth = typeof toDate === 'string' ? toDate.slice(0, 7) : end.toISOString().slice(0, 7);
     if (month !== toMonth) {
       return fail(res, 400, 'CROSS_MONTH_LEAVE', 'Leaves must start and end in the same calendar month', [], req);
     }
@@ -196,21 +198,33 @@ async function createLeave(req, res, next) {
 
     // Determine target employee: HR/Admin can apply on behalf of someone, otherwise it's req.user
     let targetEmployeeId = req.user._id;
-    let targetModel = req.user.constructor.modelName || (req.user.passwordHash ? 'User' : 'Employee');
-
     if (req.body.employeeId && ['ADMIN', 'HR', 'MANAGER'].includes(req.user.role)) {
       targetEmployeeId = req.body.employeeId;
-      // Determine model by database lookup
-      const existsInEmployee = await Employee.findById(targetEmployeeId);
-      targetModel = existsInEmployee ? 'Employee' : 'User';
     }
 
-    let employee;
-    if (targetModel === 'Employee') {
+    const User = require('../users/user.model');
+    let employee = await User.findById(targetEmployeeId);
+    let targetModel = 'User';
+
+    if (!employee) {
       employee = await Employee.findById(targetEmployeeId);
-    } else {
-      const User = require('../users/user.model');
-      employee = await User.findById(targetEmployeeId);
+      if (employee) {
+        targetModel = 'Employee';
+      } else {
+        employee = await User.findOne({ employeeId: targetEmployeeId }) || await Employee.findOne({ employeeId: targetEmployeeId });
+        if (employee) {
+          targetModel = employee.constructor?.modelName || (employee.passwordHash ? 'User' : 'Employee');
+          targetEmployeeId = employee._id;
+        }
+      }
+    }
+
+    if (!employee && req.user && req.user.email) {
+      employee = await User.findOne({ email: req.user.email }) || await Employee.findOne({ email: req.user.email });
+      if (employee) {
+        targetModel = employee.constructor?.modelName || (employee.passwordHash ? 'User' : 'Employee');
+        targetEmployeeId = employee._id;
+      }
     }
 
     if (!employee) {
@@ -394,15 +408,19 @@ async function reviewLeave(req, res, next) {
     }
 
     let employee;
+    const User = require('../users/user.model');
     if (leave.employeeModel === 'Employee') {
       employee = await Employee.findById(leave.employeeId);
     } else {
-      const User = require('../users/user.model');
       employee = await User.findById(leave.employeeId);
     }
 
     if (!employee) {
-      return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee/User for this leave request not found');
+      employee = await User.findById(leave.employeeId) || await Employee.findById(leave.employeeId) || await User.findOne({ employeeId: leave.employeeId }) || await Employee.findOne({ employeeId: leave.employeeId });
+    }
+
+    if (!employee) {
+      return fail(res, 404, 'EMPLOYEE_NOT_FOUND', 'Employee/User for this leave request not found', [], req);
     }
 
     // Role-based Approval Checks:

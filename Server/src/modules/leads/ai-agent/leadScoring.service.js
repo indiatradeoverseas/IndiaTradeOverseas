@@ -86,7 +86,7 @@ function scoreAndClassifyLead(leadData = {}) {
     breakdown.push({ factor: 'Advance Payment Terms Agreed', points: 20 });
   }
 
-  // 5b. Target Date Urgency Scoring (HOT <= 4 days, WARM <= 10 days, COLD > 10 days)
+  // 5b. Target Date Urgency Scoring (HOT <= 3 days, WARM <= 7 days, COLD > 7 days)
   let targetDatePriority = null;
   const targetDateVal = leadData.targetDate || leadData.timeline || null;
   if (targetDateVal) {
@@ -96,18 +96,18 @@ function scoreAndClassifyLead(leadData = {}) {
       const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
       const diffDays = Math.ceil(diffHours / 24);
 
-      if (diffDays <= 4) {
+      if (diffDays <= 3) {
         targetDatePriority = 'HOT';
         score += 50;
-        breakdown.push({ factor: 'Urgent Target Delivery (Within 4 Days)', points: 50 });
-      } else if (diffDays <= 10) {
+        breakdown.push({ factor: 'Urgent Target Delivery (Within 3 Days)', points: 50 });
+      } else if (diffDays <= 7) {
         targetDatePriority = 'WARM';
         score += 30;
-        breakdown.push({ factor: 'Near-term Target Delivery (Within 10 Days)', points: 30 });
+        breakdown.push({ factor: 'Near-term Target Delivery (Within 7 Days)', points: 30 });
       } else {
         targetDatePriority = 'COLD';
         score += 10;
-        breakdown.push({ factor: 'Far-term Target Delivery (After 10 Days)', points: 10 });
+        breakdown.push({ factor: 'Far-term Target Delivery (After 7 Days)', points: 10 });
       }
     }
   }

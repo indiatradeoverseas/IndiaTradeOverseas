@@ -6,7 +6,7 @@
  * and file download link across the entire application!
  */
 
-const FALLBACK_BACKEND = 'https://indiatradeoverseas-1.onrender.com';
+const FALLBACK_BACKEND = 'http://localhost:5000';
 
 const rawBackend = (import.meta.env.VITE_BACKEND_URL || FALLBACK_BACKEND).trim().replace(/\/+$/, '');
 const rawApi = (import.meta.env.VITE_API_URL || `${rawBackend}/api`).trim().replace(/\/+$/, '');

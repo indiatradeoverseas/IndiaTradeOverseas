@@ -44,11 +44,13 @@ Your Objective:
 
     const payloadMessages = [systemPrompt, ...sanitizedMessages];
 
-    // Array of fallback models to ensure high availability
+    // Array of active candidate models on NVIDIA NIM API
     const candidateModels = [
-      'nvidia/llama-3.1-nemotron-70b-instruct',
-      'meta/llama-3.1-70b-instruct',
-      'nvidia/nemotron-4-340b-instruct'
+      'meta/llama-3.2-11b-vision-instruct',
+      'meta/llama-3.2-90b-vision-instruct',
+      'google/gemma-3-12b-it',
+      'ibm/granite-3.0-8b-instruct',
+      'nvidia/llama-3.1-nemotron-70b-instruct'
     ];
 
     let aiResponseText = null;

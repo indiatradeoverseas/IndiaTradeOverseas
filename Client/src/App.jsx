@@ -771,8 +771,6 @@ function AppLayout() {
 
           </Routes>
 
-          <ChatWidget />
-
         </PortalLayout>
 
       </VoiceAssistantProvider>
