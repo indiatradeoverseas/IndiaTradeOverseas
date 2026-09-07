@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFileUrl } from '../../config/env';
 import {
   FiCheckSquare,
   FiCalendar,
@@ -15,7 +16,8 @@ import {
   FiShield,
   FiMessageSquare,
   FiAward,
-  FiSend
+  FiSend,
+  FiActivity
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -23,6 +25,14 @@ import { ticketsApi } from '../../api/tickets';
 import { taskApi } from '../../api/task';
 import { attendanceApi } from '../../api/attendance';
 import { leaveApi } from '../../api/leave';
+import { employeesApi } from '../../api/employees';
+import { employeeProfileApi } from '../../api/employeeProfile';
+import { adminApi } from '../../api/admin';
+import { documentsApi } from '../../api/documents';
+import { careersApi } from '../../api/careers';
+import {
+  FiDownload
+} from 'react-icons/fi';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -50,15 +60,11 @@ export default function HrExecutiveDashboard() {
   const [checklist, setChecklist] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
-  // Local state - Document Telemetry Verification (Local persistence fallback)
-  const [documentRegistry, setDocumentRegistry] = useState(() => {
-    const defaultRegistry = [
-      { employeeId: 'EMP_201', fullName: 'Vikram Aditya', department: 'SALES', aadhaarVerified: false, panVerified: false, bankVerified: false },
-      { employeeId: 'EMP_202', fullName: 'Shalini Murthy', department: 'IT', aadhaarVerified: true, panVerified: false, bankVerified: false },
-      { employeeId: 'EMP_203', fullName: 'Rajesh Yadav', department: 'TRANSPORT', aadhaarVerified: true, panVerified: true, bankVerified: true }
-    ];
-    return JSON.parse(localStorage.getItem('hr_documents_telemetry_registry')) || defaultRegistry;
-  });
+  // Local state - Documents Verification Telemetry Registry
+  const [documentRegistry, setDocumentRegistry] = useState([]);
+  const [telemetryFilter, setTelemetryFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'DATE'
+  const [telemetryDate, setTelemetryDate] = useState('');
+  const [viewEmployeeDocsModal, setViewEmployeeDocsModal] = useState(null);
 
   // Helpdesk Grievance tickets
   const [ticketsList, setTicketsList] = useState([]);
@@ -70,6 +76,18 @@ export default function HrExecutiveDashboard() {
   const [feedbackText, setFeedbackText] = useState('');
   const [candidateRating, setCandidateRating] = useState(5);
   const [interviewStatus, setInterviewStatus] = useState('PENDING');
+
+  // Schedule Interview Modal state for HR Executive
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedCandidateForSchedule, setSelectedCandidateForSchedule] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    date: '',
+    time: '11:00',
+    roundName: 'Round 1 - Screening',
+    totalRounds: 3,
+    meetingLink: '',
+    notes: ''
+  });
 
   // New Personal Attendance & Leave states for Executive Role
   const [todayAttendance, setTodayAttendance] = useState(null);
@@ -85,12 +103,13 @@ export default function HrExecutiveDashboard() {
 
   const fetchPersonalHRData = async () => {
     try {
-      const [attToday, attLogs, lvBal, lvLogs, tskList] = await Promise.all([
+      const [attToday, attLogs, lvBal, lvLogs, tskList, appsRes] = await Promise.all([
         attendanceApi.getMyToday().catch(() => null),
         attendanceApi.getMyHistory({ limit: 5 }).catch(() => null),
         leaveApi.getMyBalance().catch(() => null),
         leaveApi.getLeaves().catch(() => null),
-        taskApi.getTasks().catch(() => null)
+        taskApi.getTasks().catch(() => null),
+        careersApi.getApplications().catch(() => null)
       ]);
 
       if (attToday && attToday.success) setTodayAttendance(attToday.data.record || attToday.data.attendance);
@@ -101,7 +120,87 @@ export default function HrExecutiveDashboard() {
       } else if (Array.isArray(lvLogs)) {
         setLeaveHistory(lvLogs);
       }
-      if (tskList && tskList.success) setTasks(tskList.data.tasks || []);
+
+      let backendTasks = [];
+      if (tskList && tskList.success) {
+        backendTasks = (tskList.data.tasks || []).map(t => ({ ...t, isUserBackendTask: true }));
+      }
+
+      let candidateTasks = [];
+      let extractedInterviews = [];
+
+      if (appsRes && appsRes.success) {
+        const mongoApplications = appsRes.data.applications || [];
+        mongoApplications.forEach(app => {
+          const isCandidateAssigned = isTaskForUser({ assignedTo: app.assignedTo, assignedToName: app.assignedToName }, user);
+          
+          if (isCandidateAssigned) {
+            candidateTasks.push({
+              _id: `app_task_${app._id}`,
+              id: app._id,
+              isApplicationTask: true,
+              candidateApp: app,
+              title: `Recruitment Lead Review: ${app.fullName} (${app.position})`,
+              description: `Assigned candidate lead review & evaluation for ${app.position}. Contact: ${app.phone} | ${app.email}.`,
+              dueDate: app.assignedAt || app.appliedAt || new Date().toISOString(),
+              priority: app.status === 'PENDING' ? 'HIGH' : 'MEDIUM',
+              status: app.status === 'ACCEPTED' || app.status === 'REJECTED' ? 'COMPLETED' : 'PENDING',
+              assignedBy: { name: 'HR Manager' },
+              category: 'RECRUITMENT'
+            });
+
+            // If assigned candidate has NO interviews scheduled yet, add an unscheduled panel item for the Executive
+            if (!app.interviews || app.interviews.length === 0) {
+              extractedInterviews.push({
+                id: `unscheduled_${app._id}`,
+                isUnscheduled: true,
+                candidateApp: app,
+                candidateId: app._id,
+                candidateName: app.fullName,
+                candidateEmail: app.email,
+                position: app.position,
+                interviewerId: user?._id || user?.employeeId,
+                interviewerName: user?.fullName || user?.name,
+                assignedTo: app.assignedTo,
+                assignedToName: app.assignedToName,
+                status: 'NOT_SCHEDULED'
+              });
+            }
+          }
+
+          if (app.interviews && app.interviews.length > 0) {
+            app.interviews.forEach(rnd => {
+              const isInterviewer = isInterviewForUser({ interviewerId: rnd.interviewerId, interviewerName: rnd.interviewerName, assignedToName: app.assignedToName }, user);
+              if (isInterviewer || isCandidateAssigned) {
+                extractedInterviews.push({
+                  id: rnd._id || rnd.id,
+                  candidateId: app._id,
+                  candidateApp: app,
+                  interviewId: rnd._id || rnd.id,
+                  candidateName: app.fullName,
+                  candidateEmail: app.email,
+                  position: app.position,
+                  interviewerId: rnd.interviewerId,
+                  interviewerName: rnd.interviewerName,
+                  assignedTo: app.assignedTo,
+                  assignedToName: app.assignedToName,
+                  date: rnd.scheduledDate || 'TBD',
+                  time: rnd.scheduledTime || 'TBD',
+                  roundName: rnd.roundName || `Round ${rnd.roundNumber || 1}`,
+                  meetingLink: rnd.meetingLink || '',
+                  notes: rnd.notes || '',
+                  status: rnd.status || 'SCHEDULED',
+                  rating: rnd.rating || 5,
+                  feedback: rnd.feedback || ''
+                });
+              }
+            });
+          }
+        });
+      }
+
+      setTasks([...backendTasks, ...candidateTasks]);
+      setInterviews(extractedInterviews);
     } catch (err) {
       console.error(err);
     }
@@ -110,49 +209,247 @@ export default function HrExecutiveDashboard() {
   useEffect(() => {
     const handleSocketTask = () => {
       fetchPersonalHRData();
+      fetchRealTelemetry();
+      fetchTickets();
     };
     window.addEventListener('task_assigned_event', handleSocketTask);
     window.addEventListener('task_updated_event', handleSocketTask);
+    window.addEventListener('document_uploaded_event', handleSocketTask);
+    window.addEventListener('ticket_created_event', fetchTickets);
+    window.addEventListener('storage', handleSocketTask);
     return () => {
       window.removeEventListener('task_assigned_event', handleSocketTask);
       window.removeEventListener('task_updated_event', handleSocketTask);
+      window.removeEventListener('document_uploaded_event', handleSocketTask);
+      window.removeEventListener('ticket_created_event', fetchTickets);
+      window.removeEventListener('storage', handleSocketTask);
     };
-  }, []);
-
-  useEffect(() => {
-    // Load local storage fallback records
-    const storedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews')) || [];
-    setInterviews(storedInterviews);
-
-    // Load user-specific checklist
-    const storedChecklist = JSON.parse(localStorage.getItem(`hr_executive_checklist_${user?.employeeId}`)) || [
-      { id: 'item_1', text: 'Audit daily biometric attendance logs', completed: false },
-      { id: 'item_2', text: 'Filter new resume submissions from the Careers portal', completed: false },
-      { id: 'item_3', text: 'Contact scheduled panel candidates for verification', completed: false },
-      { id: 'item_4', text: 'Verify pending documents for newly boarded employees', completed: false },
-      { id: 'item_5', text: 'Compile daily recruitment pipeline summaries for Manager review', completed: false }
-    ];
-    setChecklist(storedChecklist);
-
-    // Load support tickets/grievances
-    fetchTickets();
-    // Load backend tasks, logs, and balances
-    fetchPersonalHRData();
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('hr_documents_telemetry_registry', JSON.stringify(documentRegistry));
-  }, [documentRegistry]);
+    // Initial checklist items
+    if (checklist.length === 0) {
+      setChecklist([
+        { id: 'item_1', text: 'Audit daily biometric attendance logs', completed: false },
+        { id: 'item_2', text: 'Filter new resume submissions from the Careers portal', completed: false },
+        { id: 'item_3', text: 'Contact scheduled panel candidates for verification', completed: false },
+        { id: 'item_4', text: 'Verify pending documents for newly boarded employees', completed: false },
+        { id: 'item_5', text: 'Compile daily recruitment pipeline summaries for Manager review', completed: false }
+      ]);
+    }
+
+    fetchTickets();
+    fetchPersonalHRData();
+    fetchRealTelemetry();
+  }, [user]);
+
+  const fetchRealTelemetry = async () => {
+    try {
+      const [empRes, userRes, myDocRes] = await Promise.all([
+        employeesApi.getEmployees().catch(() => null),
+        adminApi.getUsers().catch(() => null),
+        employeeProfileApi.getMyDocuments().catch(() => null)
+      ]);
+
+      const empList = empRes?.data?.employees || empRes?.employees || empRes?.data || (Array.isArray(empRes) ? empRes : []);
+      const userList = userRes?.data?.users || userRes?.users || userRes?.data || (Array.isArray(userRes) ? userRes : []);
+      const myDocsList = myDocRes?.data?.documents || myDocRes?.documents || (Array.isArray(myDocRes) ? myDocRes : []);
+
+      const empsMap = new Map();
+
+      if (user) {
+        const uId = String(user._id || user.id || 'me');
+        empsMap.set(uId, {
+          _id: user._id || user.id,
+          employeeId: user.employeeId || 'EMP-ME',
+          name: user.fullName || user.name || 'Current User',
+          email: user.email,
+          department: user.department || 'HR'
+        });
+      }
+
+      (Array.isArray(empList) ? empList : []).forEach(e => {
+        const key = String(e._id || e.employeeId || e.email);
+        if (key) {
+          empsMap.set(key, { ...e, name: e.name || e.fullName || 'Employee' });
+        }
+      });
+
+      (Array.isArray(userList) ? userList : []).forEach(u => {
+        const key = String(u._id || u.employeeId || u.email);
+        if (key && !empsMap.has(key)) {
+          empsMap.set(key, { ...u, name: u.fullName || u.name || 'User' });
+        }
+      });
+
+      const emps = Array.from(empsMap.values());
+
+      const mongoDocsMap = {};
+
+      if (Array.isArray(myDocsList) && myDocsList.length > 0 && user) {
+        const myKey = String(user._id || user.id);
+        mongoDocsMap[myKey] = myDocsList;
+        if (user.employeeId) mongoDocsMap[String(user.employeeId)] = myDocsList;
+        if (user.email) mongoDocsMap[user.email.toLowerCase()] = myDocsList;
+      }
+
+      await Promise.all(
+        emps.map(async (emp) => {
+          try {
+            const targetId = emp._id || emp.employeeId;
+            if (!targetId) return;
+            const docRes = await employeeProfileApi.getEmployeeDocuments(targetId);
+            const docArr = docRes?.data?.documents || docRes?.documents || (Array.isArray(docRes?.data) ? docRes.data : []);
+            if (Array.isArray(docArr) && docArr.length > 0) {
+              mongoDocsMap[String(targetId)] = docArr;
+              if (emp.employeeId) mongoDocsMap[String(emp.employeeId)] = docArr;
+              if (emp.email) mongoDocsMap[emp.email.toLowerCase()] = docArr;
+            }
+          } catch (e) {}
+        })
+      );
+
+      const realDocs = emps.map(emp => {
+        const empId = emp.employeeId || emp._id;
+        const empEmailLower = (emp.email || '').toLowerCase();
+        const empCodeLower = (emp.employeeId || '').toLowerCase();
+        const empMongoId = (emp._id || '').toString();
+
+        const dbDocs = mongoDocsMap[empMongoId] || mongoDocsMap[empCodeLower] || mongoDocsMap[empEmailLower] || [];
+        const myDocs = [...dbDocs];
+
+        if ((emp.aadhaarCardCopy || emp.aadhaarNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('aadhaar'))) {
+          myDocs.push({ _id: 'doc_aadhaar', fileName: 'Aadhaar Card Copy', createdAt: emp.updatedAt || emp.createdAt, isSynthetic: true });
+        }
+        if ((emp.panCardCopy || emp.panCardNumber) && !myDocs.some(d => d.fileName?.toLowerCase().includes('pan'))) {
+          myDocs.push({ _id: 'doc_pan', fileName: 'PAN Card Copy', createdAt: emp.updatedAt || emp.createdAt, isSynthetic: true });
+        }
+
+        const realUploadedDocs = myDocs.filter(isRealUploadedFile);
+        const latestDoc = realUploadedDocs.length > 0 ? realUploadedDocs[0] : null;
+
+        const hasAadhaarDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('aadhaar') || d.docCategory === 'aadhaar');
+        const hasPanDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('pan') || d.docCategory === 'pan');
+        const hasBankDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('bank') || d.docCategory === 'bank');
+        const hasStatementDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('statement') || d.docCategory === 'bank_statement');
+        const hasOfferDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('offer') || (d.fileName || '').toLowerCase().includes('joining') || d.docCategory === 'offer_letter');
+        const hasExperienceDoc = myDocs.some(d => (d.fileName || '').toLowerCase().includes('experience') || (d.fileName || '').toLowerCase().includes('relieving') || d.docCategory === 'experience_letter');
+
+        return {
+          _id: emp._id,
+          employeeId: empId,
+          fullName: emp.name || emp.fullName,
+          email: emp.email,
+          department: emp.department || 'GENERAL',
+          aadhaarVerified: emp.aadhaarVerified !== undefined ? emp.aadhaarVerified : hasAadhaarDoc,
+          panVerified: emp.panVerified !== undefined ? emp.panVerified : hasPanDoc,
+          bankVerified: emp.bankVerified !== undefined ? emp.bankVerified : hasBankDoc,
+          bankStatementVerified: emp.bankStatementVerified !== undefined ? emp.bankStatementVerified : hasStatementDoc,
+          offerLetterVerified: emp.offerLetterVerified !== undefined ? emp.offerLetterVerified : hasOfferDoc,
+          experienceLetterVerified: emp.experienceLetterVerified !== undefined ? emp.experienceLetterVerified : hasExperienceDoc,
+          uploadedDocs: myDocs,
+          latestDoc: latestDoc
+        };
+      });
+
+      setDocumentRegistry(realDocs);
+    } catch (err) {
+      console.error('Error fetching telemetry employees:', err);
+    }
+  };
+
+function isRealUploadedFile(d) {
+  if (!d) return false;
+  if (d.isSynthetic) return false;
+  const idStr = String(d._id || '');
+  if (idStr === 'doc_aadhaar' || idStr === 'doc_pan' || idStr === 'doc_resume' || idStr === 'doc_offer') {
+    return false;
+  }
+  if (!d.createdAt) return false;
+  return true;
+}
+
+function isSameCalendarDay(dateStr1, dateStr2) {
+  if (!dateStr1 || !dateStr2) return false;
+  const d1 = new Date(dateStr1);
+  const d2 = new Date(dateStr2);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+}
+
+function isDateMatchingPicker(dateStr, yyyyMmDd) {
+  if (!dateStr || !yyyyMmDd) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}` === yyyyMmDd;
+}
+
+function isEmployeeMatchingFilter(item, filterType, filterDate) {
+  if (!item || !item.uploadedDocs) return filterType === 'ALL';
+  const realDocs = item.uploadedDocs.filter(isRealUploadedFile);
+  if (filterType === 'TODAY') {
+    const today = new Date();
+    return realDocs.some(d => isSameCalendarDay(d.createdAt, today));
+  }
+  if (filterType === 'DATE' && filterDate) {
+    return realDocs.some(d => isDateMatchingPicker(d.createdAt, filterDate));
+  }
+  return true;
+}
+
+  const handleVerifyDocument = async (employeeId, field) => {
+    try {
+      const emp = documentRegistry.find(item => item.employeeId === employeeId || item._id === employeeId);
+      const currentVal = emp ? emp[field] : false;
+      const nextVal = !currentVal;
+
+      setDocumentRegistry(prev => prev.map(item => {
+        if (item.employeeId === employeeId || item._id === employeeId) {
+          return { ...item, [field]: nextVal };
+        }
+        return item;
+      }));
+
+      if (viewEmployeeDocsModal && (viewEmployeeDocsModal.employeeId === employeeId || viewEmployeeDocsModal._id === employeeId)) {
+        setViewEmployeeDocsModal(prev => prev ? { ...prev, [field]: nextVal } : null);
+      }
+
+      const targetId = emp ? (emp._id || emp.employeeId) : employeeId;
+      await employeeProfileApi.updateEmployeeProfile(targetId, { [field]: nextVal }).catch(async () => {
+        await employeesApi.updateEmployee(targetId, { [field]: nextVal }).catch(() => null);
+      });
+
+      const labelMap = {
+        aadhaarVerified: 'Aadhaar Card',
+        panVerified: 'PAN Card',
+        bankVerified: 'Bank Details',
+        bankStatementVerified: 'Bank Statement',
+        offerLetterVerified: 'Offer Letter',
+        experienceLetterVerified: 'Experience Letter'
+      };
+
+      toast.success(`${labelMap[field] || 'Document'} verification set to ${nextVal ? 'Verified' : 'Pending'}`);
+    } catch (err) {
+      console.error('Error saving document verification:', err);
+      toast.error('Failed to update verification status');
+    }
+  };
 
   const fetchTickets = async () => {
     try {
       const res = await ticketsApi.getTickets().catch(() => null);
-      if (res && res.success) {
-        setTicketsList(res.data.tickets || []);
+      const ticketsFromDb = res?.data?.tickets || res?.tickets || [];
+      if (Array.isArray(ticketsFromDb) && ticketsFromDb.length > 0) {
+        setTicketsList(ticketsFromDb);
       } else {
         const mockTickets = [
           { _id: 't_1', ticketCode: 'GRI-2026-09', title: 'Salary Discrepancy - Leave Deductions', description: 'My salary check for July had an extra day leave deduction though it was approved.', status: 'OPEN', priority: 'HIGH', createdBy: { fullName: 'Sunil Kumar' }, createdAt: new Date(Date.now() - 86400000).toISOString(), comments: [] },
-          { _id: 't_2', ticketCode: 'GRI-2026-10', title: 'Policy Doubt - Maternity/Paternity Leave', description: 'Seeking details on paid paternity leave durations for new fathers.', status: 'INVESTIGATING', priority: 'MEDIUM', createdBy: { fullName: 'Neha Sharma' }, createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), comments: [] }
+          { _id: 't_2', ticketCode: 'GRI-2026-10', title: 'Policy Doubt - Paternity Leave', description: 'Seeking details on paid paternity leave durations for new fathers.', status: 'OPEN', priority: 'MEDIUM', createdBy: { fullName: 'Neha Sharma' }, createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), comments: [] }
         ];
         setTicketsList(mockTickets);
       }
@@ -161,14 +458,8 @@ export default function HrExecutiveDashboard() {
     }
   };
 
-  const saveInterviews = (newInterviews) => {
-    setInterviews(newInterviews);
-    localStorage.setItem('scheduled_interviews', JSON.stringify(newInterviews));
-  };
-
   const saveChecklist = (newChecklist) => {
     setChecklist(newChecklist);
-    localStorage.setItem(`hr_executive_checklist_${user?.employeeId}`, JSON.stringify(newChecklist));
   };
 
   // Clock Actions for HR Executive
@@ -230,8 +521,76 @@ export default function HrExecutiveDashboard() {
     }
   };
 
+  // Helper matching functions for tasks & interviews
+  const isTaskForUser = (t, currentUser) => {
+    if (!currentUser || !t) return false;
+    if (t.isUserBackendTask || t.isApplicationTask) return true;
+
+    const uId = String(currentUser._id || currentUser.id || '').toLowerCase();
+    const uEmpId = String(currentUser.employeeId || '').toLowerCase();
+    const uEmail = String(currentUser.email || '').toLowerCase();
+    const uName = String(currentUser.fullName || currentUser.name || '').toLowerCase().trim();
+
+    if (t.assignedTo && typeof t.assignedTo === 'object') {
+      const objId = String(t.assignedTo._id || t.assignedTo.id || '').toLowerCase();
+      const objEmpId = String(t.assignedTo.employeeId || '').toLowerCase();
+      const objEmail = String(t.assignedTo.email || '').toLowerCase();
+      const objName = String(t.assignedTo.fullName || t.assignedTo.name || '').toLowerCase().trim();
+
+      if (objId && (objId === uId || objId === uEmpId)) return true;
+      if (objEmpId && (objEmpId === uEmpId || objEmpId === uId)) return true;
+      if (objEmail && uEmail && objEmail === uEmail) return true;
+      if (objName && uName && (objName === uName || objName.includes(uName) || uName.includes(objName))) return true;
+    }
+
+    if (t.assignedTo && typeof t.assignedTo !== 'object') {
+      const str = String(t.assignedTo).toLowerCase().trim();
+      if (str && str !== 'unassigned') {
+        if (str === uId || str === uEmpId || (uEmail && str === uEmail)) return true;
+        if (uName && (str === uName || str.includes(uName) || uName.includes(str))) return true;
+      }
+    }
+
+    if (t.assignedToName) {
+      const nameStr = String(t.assignedToName).toLowerCase().trim();
+      if (uName && (nameStr === uName || nameStr.includes(uName) || uName.includes(nameStr))) return true;
+    }
+
+    return false;
+  };
+
+  const isInterviewForUser = (i, currentUser) => {
+    if (!currentUser || !i) return false;
+    const uId = String(currentUser._id || currentUser.id || '').toLowerCase();
+    const uEmpId = String(currentUser.employeeId || '').toLowerCase();
+    const uName = String(currentUser.fullName || currentUser.name || '').toLowerCase().trim();
+
+    const intId = String(i.interviewerId || '').toLowerCase();
+    const intName = String(i.interviewerName || '').toLowerCase().trim();
+    const assName = String(i.assignedToName || '').toLowerCase().trim();
+
+    if (intId && (intId === uId || intId === uEmpId)) return true;
+    if (intName && uName && (intName === uName || intName.includes(uName) || uName.includes(intName))) return true;
+    if (assName && uName && (assName === uName || assName.includes(uName) || uName.includes(assName))) return true;
+    return false;
+  };
+
   // Complete tasks (Backend connected)
-  const handleToggleTaskStatus = async (taskId, currentStatus) => {
+  const handleToggleTaskStatus = async (taskId, currentStatus, taskObj = null) => {
+    if (taskObj && taskObj.isApplicationTask && taskObj.candidateApp) {
+      handleOpenFeedback({
+        id: taskObj.candidateApp._id,
+        candidateId: taskObj.candidateApp._id,
+        candidateName: taskObj.candidateApp.fullName,
+        position: taskObj.candidateApp.position,
+        candidateEmail: taskObj.candidateApp.email,
+        status: taskObj.candidateApp.status || 'PENDING',
+        feedback: taskObj.candidateApp.feedback || '',
+        rating: taskObj.candidateApp.rating || 5
+      });
+      return;
+    }
+
     const nextStatus = currentStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
     try {
       const res = await taskApi.updateTaskStatus(taskId, nextStatus, 'Checked from HR Executive Dashboard');
@@ -243,6 +602,10 @@ export default function HrExecutiveDashboard() {
       toast.error(err.response?.data?.message || 'Failed to update task status');
     }
   };
+
+  // Filter tasks & interviews for current logged-in employee
+  const myTasks = tasks.filter(t => isTaskForUser(t, user));
+  const myInterviews = interviews.filter(i => isInterviewForUser(i, user));
 
   // Checklist items
   const handleToggleChecklist = (id) => {
@@ -273,6 +636,62 @@ export default function HrExecutiveDashboard() {
     saveChecklist(updated);
   };
 
+  // Schedule Interview Handlers for HR Executive
+  const handleOpenScheduleModal = (candidate) => {
+    setSelectedCandidateForSchedule(candidate);
+    const existingRoundsCount = candidate.interviews ? candidate.interviews.length : 0;
+    const defaultRoundName = existingRoundsCount === 0 
+      ? 'Round 1 - Screening' 
+      : existingRoundsCount === 1 
+      ? 'Round 2 - Technical Interview' 
+      : `Round ${existingRoundsCount + 1} - Final Round`;
+      
+    setScheduleForm({
+      date: new Date().toISOString().split('T')[0],
+      time: '11:00',
+      roundName: defaultRoundName,
+      totalRounds: candidate.totalRounds || 3,
+      meetingLink: '',
+      notes: ''
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!scheduleForm.date || !scheduleForm.time) {
+      return toast.error('Please specify date and time');
+    }
+
+    try {
+      const interviewDetails = {
+        date: scheduleForm.date,
+        time: scheduleForm.time,
+        interviewerId: user?._id || user?.employeeId,
+        interviewerName: user?.fullName || user?.name || 'HR Executive',
+        roundName: scheduleForm.roundName,
+        totalRounds: Number(scheduleForm.totalRounds || 3),
+        meetingLink: scheduleForm.meetingLink ? scheduleForm.meetingLink.trim() : '',
+        notes: scheduleForm.notes
+      };
+
+      const res = await careersApi.updateApplicationStatus(
+        selectedCandidateForSchedule._id || selectedCandidateForSchedule.id,
+        'REVIEWED',
+        interviewDetails
+      );
+
+      if (res && res.success) {
+        toast.success(`Interview scheduled successfully for ${selectedCandidateForSchedule.fullName}! 🗓️`);
+        setShowScheduleModal(false);
+        fetchPersonalHRData();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to schedule interview');
+    }
+  };
+
   // Interview actions
   const handleOpenFeedback = (interview) => {
     setSelectedInterview(interview);
@@ -281,41 +700,96 @@ export default function HrExecutiveDashboard() {
     setInterviewStatus(interview.status || 'PENDING');
   };
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
     if (!feedbackText.trim()) {
       return toast.error('Please enter interview remarks');
     }
 
-    const updated = interviews.map(i => {
-      if (i.id === selectedInterview.id) {
-        return {
-          ...i,
-          status: interviewStatus,
-          rating: candidateRating,
-          feedback: `Rating: ${candidateRating}/10 | ${feedbackText}`
-        };
+    try {
+      if (selectedInterview.candidateId) {
+        const ratingNormalized = candidateRating > 5 ? Math.ceil(candidateRating / 2) : candidateRating;
+        const res = await careersApi.submitInterviewFeedback(
+          selectedInterview.candidateId,
+          selectedInterview.interviewId || selectedInterview.id,
+          {
+            rating: ratingNormalized,
+            status: interviewStatus === 'HELD' ? 'PASSED' : interviewStatus,
+            feedback: feedbackText
+          }
+        );
+        if (res && res.success) {
+          toast.success(`Interview evaluation saved to MongoDB (${interviewStatus})! 🎯`);
+          fetchPersonalHRData();
+        }
       }
-      return i;
-    });
+    } catch (err) {
+      console.error('Failed to submit interview feedback:', err);
+      toast.error(err.response?.data?.message || 'Error saving interview feedback to MongoDB');
+    }
 
-    saveInterviews(updated);
-    toast.success('Interview outcome and logs saved! 🎙️');
     setSelectedInterview(null);
+    fetchPersonalHRData();
   };
 
-  // Document Verification Telemetry toggle
-  const handleVerifyDocument = (employeeId, field) => {
-    const updated = documentRegistry.map(emp => {
-      if (emp.employeeId === employeeId) {
-        const nextVal = !emp[field];
-        toast.success(`${field.replace('Verified', '').toUpperCase()} verification toggled successfully!`);
-        return { ...emp, [field]: nextVal };
+  const handleDownloadEmployeeDoc = async (doc) => {
+    const toastId = toast.loading(`Downloading ${doc.fileName || 'document'}...`);
+    try {
+      // 1. Data URI (Base64)
+      if (doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = doc.fileUrl;
+        link.setAttribute('download', doc.fileName || 'document.pdf');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('Document downloaded!', { id: toastId });
+        return;
       }
-      return emp;
-    });
-    setDocumentRegistry(updated);
+
+      // 2. MongoDB Document Download via API
+      if (doc._id && !String(doc._id).startsWith('doc_')) {
+        try {
+          const blob = await documentsApi.downloadDocument(doc._id);
+          const blobUrl = window.URL.createObjectURL(new Blob([blob]));
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.setAttribute('download', doc.fileName || 'document.pdf');
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(blobUrl);
+          toast.success('Document downloaded!', { id: toastId });
+          return;
+        } catch (apiErr) {
+          console.warn('API download fallback to direct URL...', apiErr);
+        }
+      }
+
+      // 3. Absolute/Relative URL Fallback
+      if (doc.fileUrl) {
+        const fullUrl = getFileUrl(doc.fileUrl);
+
+        const link = document.createElement('a');
+        link.href = fullUrl;
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        link.setAttribute('download', doc.fileName || 'document');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('File opened in new window!', { id: toastId });
+        return;
+      }
+
+      toast.error('Document file URL unavailable', { id: toastId });
+    } catch (err) {
+      console.error('Failed to download document:', err);
+      toast.error('Failed to download document', { id: toastId });
+    }
   };
+
+
 
   // Support Helpdesk Grievance updates
   const handleUpdateTicketStatus = async (ticketId, status) => {
@@ -370,16 +844,9 @@ export default function HrExecutiveDashboard() {
     }
   };
 
-  // Filter tasks & interviews for current logged-in employee
-  const myTasks = tasks.filter(t => {
-    const assigneeId = typeof t.assignedTo === 'object' ? t.assignedTo?._id : t.assignedTo;
-    return String(assigneeId) === String(user?._id);
-  });
-  const myInterviews = interviews.filter(i => i.interviewerId === user?.employeeId || i.interviewerId === user?._id);
-
   // Statistics
   const pendingTasksCount = myTasks.filter(t => t.status !== 'COMPLETED').length;
-  const pendingInterviewsCount = myInterviews.filter(i => i.status === 'PENDING').length;
+  const pendingInterviewsCount = myInterviews.length;
   const checklistCompletionRate = checklist.length > 0
     ? Math.round((checklist.filter(item => item.completed).length / checklist.length) * 100)
     : 0;
@@ -400,9 +867,7 @@ export default function HrExecutiveDashboard() {
             Manage your daily tasks, scheduled candidate panels, verify onboarding documents, and resolve internal employee grievances.
           </p>
         </div>
-        <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-4 py-2 text-[10px] font-mono font-bold text-[var(--crm-heading)] tracking-widest uppercase rounded-sm select-none shrink-0">
-          Code // {user?.employeeId} (Executive)
-        </div>
+
       </motion.div>
 
       {/* Tabs navigation */}
@@ -412,11 +877,7 @@ export default function HrExecutiveDashboard() {
             { id: 'tasks', label: `My Tasks (${pendingTasksCount})`, icon: FiCheckSquare },
             { id: 'interviews', label: `Interview Board (${pendingInterviewsCount})`, icon: FiCalendar },
             { id: 'telemetry', label: 'Documents Telemetry', icon: FiShield },
-            { id: 'helpdesk', label: `Helpdesk Grievances (${ticketsList.filter(t => t.status === 'OPEN').length})`, icon: FiMessageSquare },
-            { id: 'checklist', label: `Daily Checklist (${checklistCompletionRate}%)`, icon: FiList },
-            { id: 'attendance', label: 'My Attendance', icon: FiClock },
-            { id: 'leaves', label: 'My Leaves', icon: FiCalendar },
-            { id: 'profile', label: 'My Profile', icon: FiUser }
+            { id: 'helpdesk', label: `Helpdesk Grievances (${ticketsList.filter(t => t.status === 'OPEN').length})`, icon: FiMessageSquare }
           ].map(tab => (
             <button
               key={tab.id}
@@ -460,9 +921,9 @@ export default function HrExecutiveDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {myTasks.map((t) => (
+                  {myTasks.map((t, idx) => (
                     <div
-                      key={t._id || t.id}
+                      key={`${t._id || t.id || 'task'}_${idx}`}
                       className={`bg-[var(--crm-bg-raised)]/30 border p-5 rounded-sm shadow-xl flex flex-col justify-between transition-all duration-300 ${
                         t.status === 'COMPLETED'
                           ? 'border-[var(--crm-positive)]/25 opacity-75'
@@ -495,14 +956,14 @@ export default function HrExecutiveDashboard() {
                       <div className="mt-4 pt-3 border-t border-[var(--crm-line)] flex items-center justify-between">
                         <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">BY: {t.assignedBy?.name || t.assignedBy?.fullName || 'HR Manager'}</span>
                         <button
-                          onClick={() => handleToggleTaskStatus(t._id || t.id, t.status)}
+                          onClick={() => handleToggleTaskStatus(t._id || t.id, t.status, t)}
                           className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-sm border transition duration-200 cursor-pointer ${
                             t.status === 'COMPLETED'
                               ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
                               : 'bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)]'
                           }`}
                         >
-                          {t.status === 'COMPLETED' ? 'COMPLETED' : 'MARK COMPLETED'}
+                          {t.isApplicationTask ? (t.status === 'COMPLETED' ? 'REVIEWED' : 'EVALUATE CANDIDATE') : (t.status === 'COMPLETED' ? 'COMPLETED' : 'MARK COMPLETED')}
                         </button>
                       </div>
                     </div>
@@ -526,22 +987,23 @@ export default function HrExecutiveDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {myInterviews.map((item) => (
+                  {myInterviews.map((item, idx) => (
                     <div
-                      key={item.id}
+                      key={`${item.id || 'interview'}_${idx}`}
                       className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-line)] p-5 rounded-sm shadow-xl flex flex-col justify-between hover:border-[var(--crm-accent)]/35 transition-all duration-300"
                     >
                       <div className="space-y-3 text-left">
                         <div className="flex justify-between items-center w-full">
                           <span className="text-[10px] font-mono text-[var(--crm-ink-soft)] bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-0.5 rounded-sm">
-                            {item.date} @ {item.time}
+                            {item.isUnscheduled ? 'Pending Schedule' : `${item.date} @ ${item.time}`}
                           </span>
                           <span className={`text-[9px] font-bold font-mono px-2 py-0.5 border rounded-sm ${
+                            item.isUnscheduled ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/30 font-bold' :
                             item.status === 'PASSED' || item.status === 'HELD' || item.status === 'COMPLETED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' :
                             item.status === 'FAILED' || item.status === 'CANCELLED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' :
                             'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20 animate-pulse'
                           }`}>
-                            {item.status}
+                            {item.isUnscheduled ? 'NOT SCHEDULED' : item.status}
                           </span>
                         </div>
 
@@ -554,6 +1016,20 @@ export default function HrExecutiveDashboard() {
                           </p>
                           <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">{item.candidateEmail}</p>
                         </div>
+
+                        {item.meetingLink && (
+                          <div className="bg-teal-950/40 border border-teal-800/40 p-2.5 rounded-sm text-[11px]">
+                            <span className="text-[9px] font-mono font-bold text-teal-400 uppercase block mb-1">📹 Video Conference Link:</span>
+                            <a
+                              href={item.meetingLink.startsWith('http') ? item.meetingLink : `https://${item.meetingLink}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-teal-300 underline font-mono text-[10px] font-bold break-all hover:text-white"
+                            >
+                              {item.meetingLink}
+                            </a>
+                          </div>
+                        )}
 
                         {item.notes && (
                           <div className="bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] p-2.5 rounded-sm text-[11px]">
@@ -571,21 +1047,20 @@ export default function HrExecutiveDashboard() {
                       </div>
 
                       <div className="mt-5 pt-3.5 border-t border-[var(--crm-line)]">
-                        {item.status === 'PENDING' ? (
+                        <div className="flex flex-col sm:flex-row gap-2.5">
+                          <button
+                            onClick={() => handleOpenScheduleModal(item.candidateApp || { _id: item.candidateId, fullName: item.candidateName, position: item.position })}
+                            className="flex-1 bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/50 py-2.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center flex items-center justify-center gap-1"
+                          >
+                            <span>🗓️ {item.isUnscheduled ? 'Schedule Interview' : 'Re-Schedule'}</span>
+                          </button>
                           <button
                             onClick={() => handleOpenFeedback(item)}
-                            className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center"
+                            className="flex-1 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center"
                           >
-                            Conduct & Log Outcome
+                            {item.status === 'PASSED' || item.status === 'FAILED' ? 'Update Log' : 'Conduct & Log Outcome'}
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOpenFeedback(item)}
-                            className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer text-center"
-                          >
-                            Edit Outcome & Remarks
-                          </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -597,9 +1072,64 @@ export default function HrExecutiveDashboard() {
           {/* DOCUMENTS TELEMETRY PANEL */}
           {activeTab === 'telemetry' && (
             <div className="space-y-6">
-              <div className="bg-[var(--crm-bg-raised)]/20 p-4 border border-[var(--crm-line)] rounded-sm">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Onboarding Documents Verification Telemetry</h3>
-                <p className="text-[11px] text-[var(--crm-ink-faint)] font-light mt-1">Cross-check Aadhaar, PAN, and Bank Account records for validation compliance.</p>
+              {/* Filter Bar with Today, Calendar Date Picker, and All buttons */}
+              <div className="bg-[var(--crm-bg-raised)]/20 p-4 border border-[var(--crm-line)] rounded-sm flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Onboarding Documents Verification Telemetry</h3>
+                  <p className="text-[11px] text-[var(--crm-ink-faint)] font-light mt-0.5">Cross-check Aadhaar, PAN, and Bank Account records for validation compliance.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                  {/* All Records Button */}
+                  <button
+                    onClick={() => { setTelemetryFilter('ALL'); setTelemetryDate(''); }}
+                    className={`px-3 py-1.5 rounded-sm border text-[10px] uppercase font-bold transition-all cursor-pointer ${
+                      telemetryFilter === 'ALL'
+                        ? 'bg-teal-500/20 text-teal-400 border-teal-500/50 shadow-sm'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    All Records ({documentRegistry.length})
+                  </button>
+
+                  {/* Today Button */}
+                  <button
+                    onClick={() => { setTelemetryFilter('TODAY'); setTelemetryDate(''); }}
+                    className={`px-3 py-1.5 rounded-sm border text-[10px] uppercase font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      telemetryFilter === 'TODAY'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-sm'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Today's Uploads ({documentRegistry.filter(i => isEmployeeMatchingFilter(i, 'TODAY', '')).length})
+                  </button>
+
+                  {/* Calendar Date Picker Filter */}
+                  <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-sm text-[10px]">
+                    <FiCalendar size={12} className="text-teal-400" />
+                    <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)]">Calendar:</span>
+                    <input
+                      type="date"
+                      value={telemetryDate}
+                      onChange={(e) => {
+                        setTelemetryDate(e.target.value);
+                        if (e.target.value) setTelemetryFilter('DATE');
+                        else setTelemetryFilter('ALL');
+                      }}
+                      className="bg-transparent text-[var(--crm-heading)] outline-none cursor-pointer font-mono"
+                    />
+                    {telemetryDate && (
+                      <button
+                        onClick={() => { setTelemetryDate(''); setTelemetryFilter('ALL'); }}
+                        className="text-rose-400 hover:text-rose-300 font-bold ml-1 cursor-pointer"
+                        title="Clear date filter"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Document Registry Table */}
@@ -608,73 +1138,147 @@ export default function HrExecutiveDashboard() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[10px] font-mono uppercase border-b border-[var(--crm-line)]">
-                        <th className="py-3.5 px-5">Employee Name & ID</th>
-                        <th className="py-3.5 px-5">Department</th>
-                        <th className="py-3.5 px-5 text-center">Aadhaar Card</th>
-                        <th className="py-3.5 px-5 text-center">PAN Card</th>
-                        <th className="py-3.5 px-5 text-center">Bank Account details</th>
-                        <th className="py-3.5 px-5 text-center">Fulfillment Status</th>
+                        <th className="py-3.5 px-4">Employee Name & ID</th>
+                        <th className="py-3.5 px-4">Department</th>
+                        <th className="py-3.5 px-4">Uploaded Documents</th>
+                        <th className="py-3.5 px-3 text-center">Aadhaar</th>
+                        <th className="py-3.5 px-3 text-center">PAN Card</th>
+                        <th className="py-3.5 px-3 text-center">Bank Details</th>
+                        <th className="py-3.5 px-3 text-center">Bank Statement</th>
+                        <th className="py-3.5 px-3 text-center">Offer Letter</th>
+                        <th className="py-3.5 px-3 text-center">Experience Letter</th>
+                        <th className="py-3.5 px-4 text-center">Verification Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--crm-line)] text-xs">
-                      {documentRegistry.map((item) => {
-                        const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified;
-                        return (
-                          <tr key={item.employeeId} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                            <td className="py-4 px-5">
-                              <div className="font-serif text-sm font-semibold text-[var(--crm-heading)]">{item.fullName}</div>
-                              <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{item.employeeId}</div>
-                            </td>
-                            <td className="py-4 px-5 font-mono uppercase font-semibold text-[var(--crm-ink-soft)]">{item.department}</td>
-                            
-                            {/* Aadhaar */}
-                            <td className="py-4 px-5 text-center">
-                              <button
-                                onClick={() => handleVerifyDocument(item.employeeId, 'aadhaarVerified')}
-                                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                  item.aadhaarVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
-                                }`}
-                              >
-                                {item.aadhaarVerified ? 'Verified' : 'Verify'}
-                              </button>
-                            </td>
+                      {documentRegistry.filter((item) => isEmployeeMatchingFilter(item, telemetryFilter, telemetryDate)).length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="py-12 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase tracking-wider">
+                            {telemetryFilter === 'TODAY'
+                              ? "No document uploads recorded today yet. Click 'ALL RECORDS' to view all employee files."
+                              : telemetryFilter === 'DATE'
+                              ? `No document uploads recorded for ${telemetryDate}. Click 'ALL RECORDS' to clear filter.`
+                              : "No employee document records found."}
+                          </td>
+                        </tr>
+                      ) : (
+                        documentRegistry.filter((item) => isEmployeeMatchingFilter(item, telemetryFilter, telemetryDate)).map((item, idx) => {
+                          const allVerified = item.aadhaarVerified && item.panVerified && item.bankVerified && item.bankStatementVerified && item.offerLetterVerified && item.experienceLetterVerified;
+                          const uploadedCount = (item.uploadedDocs || []).filter(isRealUploadedFile).length;
 
-                            {/* PAN */}
-                            <td className="py-4 px-5 text-center">
-                              <button
-                                onClick={() => handleVerifyDocument(item.employeeId, 'panVerified')}
-                                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                  item.panVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
-                                }`}
-                              >
-                                {item.panVerified ? 'Verified' : 'Verify'}
-                              </button>
-                            </td>
+                          return (
+                            <tr key={`${item.employeeId || 'emp'}_${idx}`} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="font-serif text-sm font-semibold text-[var(--crm-heading)]">{item.fullName}</div>
+                                <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{item.employeeId}</div>
+                              </td>
+                              <td className="py-3.5 px-4 font-mono uppercase font-semibold text-[var(--crm-ink-soft)]">{item.department}</td>
+                              
+                              {/* Uploaded Files & Repository Modal Button */}
+                              <td className="py-3.5 px-4">
+                                <div className="space-y-1 text-left">
+                                  {item.latestDoc ? (
+                                    <div className="font-mono text-xs font-semibold text-emerald-400 flex items-center gap-1 truncate max-w-[160px]" title={item.latestDoc.fileName}>
+                                      <span>📄</span>
+                                      <span className="truncate">{item.latestDoc.fileName}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] italic">No docs uploaded</span>
+                                  )}
+                                  <button
+                                    onClick={() => setViewEmployeeDocsModal(item)}
+                                    className="px-2 py-0.5 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded text-[9px] font-mono font-bold uppercase transition flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>🔍 View Files ({uploadedCount})</span>
+                                  </button>
+                                </div>
+                              </td>
+                              
+                              {/* Aadhaar */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'aadhaarVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.aadhaarVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.aadhaarVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
 
-                            {/* Bank Details */}
-                            <td className="py-4 px-5 text-center">
-                              <button
-                                onClick={() => handleVerifyDocument(item.employeeId, 'bankVerified')}
-                                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-sm border transition-all ${
-                                  item.bankVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
-                                }`}
-                              >
-                                {item.bankVerified ? 'Verified' : 'Verify'}
-                              </button>
-                            </td>
+                              {/* PAN */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'panVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.panVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.panVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
 
-                            {/* Status badge */}
-                            <td className="py-4 px-5 text-center">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase border rounded-sm ${
-                                allVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25'
-                              }`}>
-                                {allVerified ? <FiCheckCircle size={10} /> : <FiAlertCircle size={10} />}
-                                {allVerified ? 'VERIFIED' : 'PENDING'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              {/* Bank Details */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'bankVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.bankVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.bankVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Bank Statement */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'bankStatementVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.bankStatementVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.bankStatementVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Offer Letter */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'offerLetterVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.offerLetterVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.offerLetterVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Experience Letter */}
+                              <td className="py-3.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleVerifyDocument(item.employeeId, 'experienceLetterVerified')}
+                                  className={`px-2 py-1 text-[9px] font-mono font-bold rounded-sm border transition-all cursor-pointer ${
+                                    item.experienceLetterVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:text-[var(--crm-heading)]'
+                                  }`}
+                                >
+                                  {item.experienceLetterVerified ? '✓ Verified' : 'Verify'}
+                                </button>
+                              </td>
+
+                              {/* Status badge */}
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono font-bold uppercase border rounded-sm ${
+                                  allVerified ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/25' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/25'
+                                }`}>
+                                  {allVerified ? <FiCheckCircle size={10} /> : <FiAlertCircle size={10} />}
+                                  {allVerified ? 'VERIFIED' : 'PENDING'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -705,14 +1309,14 @@ export default function HrExecutiveDashboard() {
                       }`}
                     >
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-serif text-sm font-semibold truncate text-[var(--crm-heading)]">{ticket.title}</span>
+                        <span className="font-serif text-sm font-semibold truncate text-[var(--crm-heading)]">{ticket.title || ticket.subject}</span>
                         <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 border rounded-sm uppercase ${
-                          ticket.priority === 'HIGH' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                          ticket.priority === 'HIGH' || ticket.priority === 'URGENT' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20' : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
                         }`}>
                           {ticket.priority}
                         </span>
                       </div>
-                      <p className="text-[10.5px] font-mono text-[var(--crm-ink-faint)] uppercase">CODE: {ticket.ticketCode} | BY: {ticket.createdBy?.fullName || 'Employee'}</p>
+                      <p className="text-[10.5px] font-mono text-[var(--crm-ink-faint)] uppercase">CODE: {ticket.ticketCode} | BY: {ticket.createdBy?.fullName || ticket.raisedBy?.fullName || 'Vikram Rathore'}</p>
                       <p className="text-xs text-[var(--crm-ink-soft)] line-clamp-2 italic font-light">"{ticket.description}"</p>
                       <div className="flex justify-between items-center w-full mt-2 border-t border-[var(--crm-line)] pt-2 text-[9px] font-mono text-[var(--crm-ink-faint)]">
                         <span className={`px-2 py-0.5 border rounded-sm font-bold uppercase ${
@@ -734,10 +1338,10 @@ export default function HrExecutiveDashboard() {
                     <div className="bg-[var(--crm-bg-sunken)] border-b border-[var(--crm-line)] p-4 flex justify-between items-center text-left shrink-0">
                       <div>
                         <h3 className="font-serif text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">
-                          {selectedTicket.title}
+                          {selectedTicket.title || selectedTicket.subject}
                         </h3>
                         <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
-                          CODE: {selectedTicket.ticketCode} | Submitter: {selectedTicket.createdBy?.fullName || 'Employee'}
+                          CODE: {selectedTicket.ticketCode} | Submitter: {selectedTicket.createdBy?.fullName || selectedTicket.raisedBy?.fullName || 'Vikram Rathore'}
                         </p>
                       </div>
                       
@@ -810,332 +1414,6 @@ export default function HrExecutiveDashboard() {
             </div>
           )}
 
-          {/* CHECKLIST PANEL */}
-          {activeTab === 'checklist' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Daily Checklist Tracker */}
-              <div className="lg:col-span-8 border border-[var(--crm-line)] rounded-sm p-6 bg-[var(--crm-bg-raised)]/10 shadow-md">
-                <div className="flex justify-between items-center mb-4 border-b border-[var(--crm-line)] pb-2.5">
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
-                    <FiList className="text-[var(--crm-accent)]" /> Daily Operational Protocol
-                  </h3>
-                  <span className="text-[10px] font-mono text-[var(--crm-accent)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)]/20 px-2 py-0.5 rounded-sm">
-                    {checklistCompletionRate}% COMPLETED
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full h-1 bg-[var(--crm-bg-sunken)] rounded-full mb-6 overflow-hidden">
-                  <div
-                    className="h-full bg-[var(--crm-accent)] transition-all duration-300"
-                    style={{ width: `${checklistCompletionRate}%` }}
-                  />
-                </div>
-
-                {checklist.length === 0 ? (
-                  <p className="py-12 text-center text-xs text-[var(--crm-ink-faint)] font-mono uppercase">Your daily checklist is empty.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {checklist.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3.5 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-accent)]/30 transition-colors"
-                      >
-                        <label className="flex items-center gap-3 cursor-pointer select-none text-xs text-left w-full mr-2">
-                          <input
-                            type="checkbox"
-                            checked={item.completed}
-                            onChange={() => handleToggleChecklist(item.id)}
-                            className="rounded-sm border-[var(--crm-line)] text-[var(--crm-bg-raised)] w-4 h-4 cursor-pointer accent-[var(--crm-accent)] shrink-0"
-                          />
-                          <span className={`${item.completed ? 'line-through text-[var(--crm-ink-faint)]' : 'text-[var(--crm-heading)] font-light'}`}>
-                            {item.text}
-                          </span>
-                        </label>
-                        <button
-                          onClick={() => handleDeleteChecklistItem(item.id)}
-                          className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] p-1 shrink-0 transition-colors"
-                        >
-                          <FiTrash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add checklist item */}
-              <div className="lg:col-span-4 border border-[var(--crm-line)] rounded-sm p-6 bg-[var(--crm-bg-raised)]/10 shadow-md h-fit">
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--crm-ink-faint)] mb-4 font-bold border-b border-[var(--crm-line)] pb-2 flex items-center gap-1.5">
-                  <FiPlus className="text-[var(--crm-accent)]" /> Add Daily Protocol Item
-                </h3>
-                <form onSubmit={handleAddChecklistItem} className="space-y-4">
-                  <div>
-                    <label className="block text-[9px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Protocol Description *</label>
-                    <textarea
-                      required
-                      rows={3}
-                      value={newChecklistItem}
-                      onChange={(e) => setNewChecklistItem(e.target.value)}
-                      placeholder="e.g. Schedule follow-ups for junior designer candidates..."
-                      className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-xs outline-none resize-none text-[var(--crm-heading)] font-sans"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md"
-                  >
-                    Add Protocol
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* PERSONAL ATTENDANCE LOGGER */}
-          {activeTab === 'attendance' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-5 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>My Attendance marking</span>
-                  <FiClock size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 border rounded-sm" style={CARD_SUNKEN}>
-                    <span className="text-xs font-mono text-[var(--crm-ink-faint)]">Status Today:</span>
-                    <strong className={`text-xs font-mono uppercase ${
-                      todayAttendance ? 'text-[var(--crm-positive)]' : 'text-[var(--crm-danger)] animate-pulse'
-                    }`}>
-                      {todayAttendance ? (todayAttendance.clockOut ? 'Shift Completed' : 'Clocked In') : 'Absent / Not Checked In'}
-                    </strong>
-                  </div>
-
-                  {todayAttendance && (
-                    <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                      <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                        <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check In</span>
-                        <span className="text-[var(--crm-heading)] font-bold">{new Date(todayAttendance.clockIn).toLocaleTimeString()}</span>
-                      </div>
-                      <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
-                        <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check Out</span>
-                        <span className="text-[var(--crm-heading)] font-bold">
-                          {todayAttendance.clockOut ? new Date(todayAttendance.clockOut).toLocaleTimeString() : '--:--'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    {!todayAttendance && (
-                      <button
-                        onClick={handleCheckIn}
-                        className="flex-1 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)]/20 hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg-sunken)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                      >
-                        Clock In
-                      </button>
-                    )}
-                    {todayAttendance && !todayAttendance.clockOut && (
-                      <button
-                        onClick={handleCheckOut}
-                        className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/20 hover:bg-[var(--crm-danger)] hover:text-white py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer text-center"
-                      >
-                        Clock Out
-                      </button>
-                    )}
-                    {todayAttendance && todayAttendance.clockOut && (
-                      <button
-                        disabled
-                        className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] py-2.5 rounded-sm text-[10px] font-bold font-mono uppercase tracking-wider cursor-not-allowed text-center"
-                      >
-                        Shift Completed
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-7 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>Recent Clock Logs</span>
-                  <FiActivity size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar">
-                  {attendanceHistory.length === 0 ? (
-                    <div className="text-center py-6 text-xs font-mono text-[var(--crm-ink-faint)]">No recent history logs</div>
-                  ) : (
-                    attendanceHistory.map((log) => (
-                      <div key={log._id} className="flex justify-between items-center border-b pb-2 text-xs font-mono last:border-0" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="text-[var(--crm-heading)]">{new Date(log.date).toLocaleDateString()}</span>
-                        <span className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
-                          log.status === 'PRESENT' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
-                          log.status === 'LATE' ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]' :
-                          'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]'
-                        }`}>{log.status}</span>
-                        <span className="text-[var(--crm-ink-faint)]">
-                          {log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'} - {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PERSONAL LEAVES DESK */}
-          {activeTab === 'leaves' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-5 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>Leave Balances (This Month)</span>
-                  <FiCalendar size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="p-3 border rounded-sm text-center" style={CARD_SUNKEN}>
-                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mb-1">Paid Remaining</span>
-                    <strong className="text-xl font-serif text-[var(--crm-positive)]">{leaveBalance.remainingLeaves} / 4</strong>
-                  </div>
-                  <div className="p-3 border rounded-sm text-center" style={CARD_SUNKEN}>
-                    <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] block mb-1">Extra Used</span>
-                    <strong className="text-xl font-serif text-[var(--crm-warning)]">{leaveBalance.extraLeavesUsed || 0}</strong>
-                  </div>
-                </div>
-
-                <form onSubmit={handleApplyLeave} className="space-y-3 font-mono text-xs text-left">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">From Date</label>
-                      <input
-                        type="date"
-                        required
-                        value={applyFromDate}
-                        onChange={(e) => setApplyFromDate(e.target.value)}
-                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">To Date</label>
-                      <input
-                        type="date"
-                        required
-                        value={applyToDate}
-                        onChange={(e) => setApplyToDate(e.target.value)}
-                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">Leave Type</label>
-                    <select
-                      value={leaveType}
-                      onChange={(e) => setLeaveType(e.target.value)}
-                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px]"
-                    >
-                      <option value="CASUAL">Casual Leave</option>
-                      <option value="MEDICAL">Medical Leave</option>
-                      <option value="SICK">Sick Leave</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] uppercase text-[var(--crm-ink-faint)] mb-1">Reason</label>
-                    <textarea
-                      required
-                      rows={2}
-                      value={leaveReason}
-                      onChange={(e) => setLeaveReason(e.target.value)}
-                      placeholder="Specify reason..."
-                      className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2 py-1 rounded-sm text-[11px] resize-none"
-                    />
-                  </div>
-
-                  {leaveBalance.remainingLeaves === 0 && (
-                    <div className="p-2.5 border border-[var(--crm-warning)]/30 bg-[var(--crm-warning-bg)]/10 rounded-sm space-y-1">
-                      <span className="text-[8px] text-[var(--crm-warning)] font-bold uppercase block">⚠️ Paid Balance Exhausted!</span>
-                      <input
-                        type="text"
-                        required
-                        value={extraReason}
-                        onChange={(e) => setExtraReason(e.target.value)}
-                        placeholder="Provide Extra Leave remarks..."
-                        className="w-full bg-[var(--crm-bg)] border border-[var(--crm-warning)]/30 px-2 py-1 rounded-sm text-[10px]"
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={applyingLeave}
-                    className="w-full bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2 text-[10px] font-bold uppercase rounded-sm transition cursor-pointer"
-                  >
-                    File Application
-                  </button>
-                </form>
-              </div>
-
-              <div className="lg:col-span-7 border p-5 rounded-sm space-y-4" style={CARD}>
-                <h3 className="text-[10px] uppercase tracking-widest font-bold font-mono text-[var(--crm-heading)] border-b pb-2 flex justify-between items-center" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span>My Leave Ledger</span>
-                  <FiFileText size={12} className="text-[var(--crm-accent)]" />
-                </h3>
-                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
-                  {leaveHistory.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-[var(--crm-ink-faint)] font-mono">No leave requests filed</div>
-                  ) : (
-                    leaveHistory.map((item) => (
-                      <div key={item._id} className="p-3 border rounded-sm text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-[var(--crm-heading)]">
-                            {new Date(item.fromDate).toLocaleDateString()} - {new Date(item.toDate).toLocaleDateString()}
-                          </span>
-                          <span className={`text-[7px] font-bold px-1.5 py-0.5 border rounded-sm uppercase ${
-                            item.status === 'APPROVED' || item.status === 'HR_APPROVED_EXTRA' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' :
-                            item.status === 'REJECTED' ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'
-                          }`}>{item.status}</span>
-                        </div>
-                        <p className="text-[9px] text-[var(--crm-ink-soft)]">Type: {item.leaveType} {item.isExtraLeave && '(EXTRA)'} • Reason: "{item.reason}"</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MY PROFILE CARD */}
-          {activeTab === 'profile' && (
-            <div className="max-w-xl mx-auto border p-6 rounded-sm space-y-6" style={CARD}>
-              <div className="flex flex-col sm:flex-row items-center gap-5 border-b pb-6" style={{ borderColor: 'var(--crm-line)' }}>
-                <div className="w-16 h-16 bg-[var(--crm-bg-sunken)] rounded-full flex items-center justify-center text-[var(--crm-ink-faint)] overflow-hidden shrink-0 shadow-inner">
-                  {user?.profileImage ? (
-                    <img src={user.profileImage} alt="profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <FiUser size={30} />
-                  )}
-                </div>
-                <div className="text-center sm:text-left space-y-1">
-                  <h3 className="text-base font-serif text-[var(--crm-heading)]">{user?.name || user?.fullName}</h3>
-                  <p className="text-[10px] font-mono text-[var(--crm-accent)] uppercase tracking-wider">{user?.position || 'HR Executive'} • {user?.role}</p>
-                  <p className="text-[9px] font-mono text-[var(--crm-ink-faint)]">{user?.email}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-left">
-                <div>
-                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Department</span>
-                  <strong className="text-[var(--crm-heading)]">{user?.department}</strong>
-                </div>
-                <div>
-                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Joining Date</span>
-                  <strong className="text-[var(--crm-heading)]">{user?.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : '--'}</strong>
-                </div>
-                <div>
-                  <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] block">Reporting Manager</span>
-                  <strong className="text-[var(--crm-heading)]">{user?.reportingManager ? user.reportingManager.name || 'Assigned Manager' : 'HR Manager / Admin'}</strong>
-                </div>
-              </div>
-            </div>
-          )}
         </motion.div>
       </AnimatePresence>
 
@@ -1225,6 +1503,203 @@ export default function HrExecutiveDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* SCHEDULE INTERVIEW MODAL */}
+      {showScheduleModal && selectedCandidateForSchedule && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-4">
+          <div className="bg-[var(--crm-bg-raised)] rounded-xl p-6 w-full max-w-lg border border-purple-500/30 shadow-2xl text-left overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-5 pb-3 border-b border-[var(--crm-ink-soft)]/20">
+              <div>
+                <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide flex items-center gap-2">
+                  <span>🗓️ Schedule Candidate Interview</span>
+                </h2>
+                <p className="text-xs text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                  CANDIDATE: {selectedCandidateForSchedule.fullName} ({selectedCandidateForSchedule.position})
+                </p>
+              </div>
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleSubmit} className="space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                  Round Title / Stage Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={scheduleForm.roundName}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, roundName: e.target.value })}
+                  placeholder="e.g. Round 1 - Screening / Technical Round"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                    Scheduled Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={scheduleForm.date}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                    Scheduled Time *
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={scheduleForm.time}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, time: e.target.value })}
+                    className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                  Video Conference Link (Google Meet / Zoom URL)
+                </label>
+                <input
+                  type="url"
+                  value={scheduleForm.meetingLink}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, meetingLink: e.target.value })}
+                  placeholder="https://meet.google.com/abc-defg-hij or Zoom link"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
+                  Instructions / Manager Remarks
+                </label>
+                <textarea
+                  rows={3}
+                  value={scheduleForm.notes}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+                  placeholder="Additional context for candidate or panel..."
+                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-sans resize-none"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-purple-800 hover:bg-purple-700 text-white rounded font-mono font-bold uppercase tracking-wider transition cursor-pointer shadow-md"
+                >
+                  Save & Schedule Panel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleModal(false)}
+                  className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] rounded font-mono font-bold uppercase tracking-wider transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: VIEW ALL EMPLOYEE DOCUMENTS ─── */}
+      {viewEmployeeDocsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setViewEmployeeDocsModal(null)}>
+          <div
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-[var(--crm-line)] flex justify-between items-center bg-[var(--crm-bg-sunken)]/60">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiFileText className="text-teal-400" size={16} /> Documents Repository: {viewEmployeeDocsModal.fullName}
+                </h3>
+                <p className="text-[10px] font-mono text-[var(--crm-ink-faint)] mt-0.5">ID: {viewEmployeeDocsModal.employeeId} | Dept: {viewEmployeeDocsModal.department}</p>
+              </div>
+              <button onClick={() => setViewEmployeeDocsModal(null)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] cursor-pointer text-lg font-bold">✕</button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-left">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-[var(--crm-bg-sunken)] rounded border border-[var(--crm-line)]">
+                {[
+                  { key: 'aadhaarVerified', label: 'Aadhaar Card' },
+                  { key: 'panVerified', label: 'PAN Card' },
+                  { key: 'bankVerified', label: 'Bank Details' },
+                  { key: 'bankStatementVerified', label: 'Bank Statement' },
+                  { key: 'offerLetterVerified', label: 'Offer Letter' },
+                  { key: 'experienceLetterVerified', label: 'Experience Letter' }
+                ].map(v => (
+                  <button
+                    key={v.key}
+                    onClick={() => handleVerifyDocument(viewEmployeeDocsModal.employeeId || viewEmployeeDocsModal._id, v.key)}
+                    className={`px-2.5 py-1.5 rounded text-[10px] font-mono font-bold flex items-center justify-between border cursor-pointer transition ${
+                      viewEmployeeDocsModal[v.key]
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-transparent text-[var(--crm-ink-faint)] border-[var(--crm-line)] hover:border-[var(--crm-ink-soft)]'
+                    }`}
+                  >
+                    <span>{v.label}</span>
+                    <span>{viewEmployeeDocsModal[v.key] ? '✓ Verified' : 'Verify'}</span>
+                  </button>
+                ))}
+              </div>
+
+              <h4 className="text-xs font-mono uppercase font-bold text-[var(--crm-ink-soft)] tracking-wider pt-2">Uploaded Document Files ({(viewEmployeeDocsModal.uploadedDocs || []).filter(isRealUploadedFile).length})</h4>
+
+              {(!viewEmployeeDocsModal.uploadedDocs || viewEmployeeDocsModal.uploadedDocs.filter(isRealUploadedFile).length === 0) ? (
+                <div className="py-8 text-center text-xs font-mono text-[var(--crm-ink-faint)] uppercase border border-dashed border-[var(--crm-line)] rounded">
+                  No document files uploaded by this employee yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {viewEmployeeDocsModal.uploadedDocs.filter(isRealUploadedFile).map((doc, idx) => (
+                    <div key={idx} className="p-3 bg-[var(--crm-bg-sunken)]/60 rounded border border-[var(--crm-line)] flex items-center justify-between gap-3 hover:border-teal-500/50 transition">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-8 h-8 rounded bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0 font-bold">📄</div>
+                        <div className="truncate">
+                          <div className="text-xs font-mono font-semibold text-[var(--crm-heading)] truncate" title={doc.fileName}>{doc.fileName}</div>
+                          <div className="text-[9px] font-mono text-[var(--crm-ink-faint)] flex items-center gap-2 mt-0.5">
+                            <span>Date: {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>
+                            {doc.uploadedBy && <span>• By: {doc.uploadedBy}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadEmployeeDoc(doc)}
+                        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded text-[10px] font-mono font-bold uppercase tracking-wider shrink-0 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <FiDownload size={11} />
+                        <span>Download / View</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 flex justify-end">
+              <button
+                onClick={() => setViewEmployeeDocsModal(null)}
+                className="px-5 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] rounded text-xs font-mono font-bold uppercase tracking-wider transition cursor-pointer"
+              >
+                Close Repository
+              </button>
+            </div>
           </div>
         </div>
       )}

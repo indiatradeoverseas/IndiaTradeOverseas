@@ -27,8 +27,8 @@ export const leadsApi = {
     return response.data;
   },
 
-  async updatePriority(leadId, priority) {
-    const response = await axiosInstance.patch(`/leads/${leadId}/priority`, { priority });
+  async updatePriority(leadId, priority, leadValue) {
+    const response = await axiosInstance.patch(`/leads/${leadId}/priority`, { priority, leadValue });
     return response.data;
   },
 
@@ -88,6 +88,11 @@ export const leadsApi = {
 
   async updateCallRecordingRemark(recordingId, managerRemark) {
     const response = await axiosInstance.patch(`/leads/call-recordings/${recordingId}/remark`, { managerRemark });
+    return response.data;
+  },
+
+  async updateCallRecordingStatus(recordingId, status) {
+    const response = await axiosInstance.patch(`/leads/call-recordings/${recordingId}/status`, { status });
     return response.data;
   },
 

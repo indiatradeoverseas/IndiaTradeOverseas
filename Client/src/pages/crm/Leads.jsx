@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { adminApi } from '../../api/admin';
@@ -11,6 +11,7 @@ import {
   FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
+import { API_URL, getFileUrl } from '../../config/env';
 import toast from 'react-hot-toast';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
@@ -29,16 +30,20 @@ const blockVariants = {
 const LEAD_FIELDS = [
   { value: 'customerName', label: 'Consignee Name *' },
   { value: 'phone', label: 'Phone Number *' },
+  { value: 'whatsAppNumber', label: 'WhatsApp Number' },
   { value: 'productCategory', label: 'Product Category *' },
   { value: 'companyName', label: 'Company Name' },
   { value: 'email', label: 'Email Address' },
   { value: 'leadValue', label: 'Lead Value (INR)' },
   { value: 'country', label: 'Country' },
+  { value: 'targetDate', label: 'Requirement Date / Date' },
+  { value: 'priority', label: 'Priority / Temp (HOT/WARM/COLD)' },
   { value: 'quantity', label: 'Quantity' },
   { value: 'destination', label: 'Destination' }
 ];
 
 export default function Leads() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [leads, setLeads] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -67,10 +72,37 @@ export default function Leads() {
   };
 
   const isUnassigned = (lead) => {
-    if (!lead) return true;
-    if (!lead.assignedTo) return true;
-    if (typeof lead.assignedTo === 'string' && (lead.assignedTo.toLowerCase() === 'unassigned' || lead.assignedTo.trim() === '')) return true;
-    return false;
+    if (!lead || !lead.assignedTo) return true;
+    const assigned = lead.assignedTo;
+    if (typeof assigned === 'object' && assigned !== null) {
+      const name = assigned.fullName || assigned.name || assigned.email || assigned.employeeId || (assigned._id ? String(assigned._id) : '');
+      if (!name || String(name).toLowerCase() === 'unassigned' || String(name).trim() === '') return true;
+      return false;
+    }
+    if (typeof assigned === 'string') {
+      const s = assigned.trim().toLowerCase();
+      if (!s || s === 'unassigned' || s === 'null' || s === 'undefined') return true;
+      return false;
+    }
+    return true;
+  };
+
+  const getLeadValuationDisplay = (lead) => {
+    if (!lead) return '—';
+    if (lead.leadValue && Number(lead.leadValue) > 0) {
+      return `₹${Number(lead.leadValue).toLocaleString('en-IN')}`;
+    }
+    if (lead.estimatedValue && String(lead.estimatedValue).trim().length > 0) {
+      return String(lead.estimatedValue).trim();
+    }
+    const text = lead.chatSummary || lead.remarks || '';
+    if (text) {
+      const match = text.match(/(?:Valuation|Budget|Value|Valuation\/Budget)[^\n:]*[:—]\s*([^\n,]+)/i);
+      if (match && match[1] && match[1].trim() !== 'Not specified') {
+        return match[1].trim();
+      }
+    }
+    return '—';
   };
 
   // Toggle between Table and Visual Kanban Board
@@ -80,7 +112,7 @@ export default function Leads() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [parsedRows, setParsedRows] = useState([]);
   const [columnMappings, setColumnMappings] = useState({});
-  const [importDefaultPriority, setImportDefaultPriority] = useState('WARM');
+  const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
 
   // Call Recording Modal State
@@ -173,6 +205,7 @@ export default function Leads() {
     email: '',
     quantity: '',
     destination: '',
+    targetDate: '',
     leadValue: '',
     assignedTo: '',
     source: 'MANUAL'
@@ -211,6 +244,58 @@ export default function Leads() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const triggerWhatsApp = (eOrPhone, phone, lead) => {
+    let e = null;
+    let targetPhone = '';
+    let targetLead = null;
+
+    if (eOrPhone && typeof eOrPhone === 'object' && eOrPhone.stopPropagation) {
+      e = eOrPhone;
+      targetPhone = phone;
+      targetLead = lead;
+    } else {
+      targetPhone = eOrPhone;
+      targetLead = phone;
+    }
+
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    let num = (targetPhone || targetLead?.whatsAppNumber || targetLead?.phone || '').replace(/[^0-9]/g, '');
+    if (!num) {
+      return toast.error('No valid phone number available for this client');
+    }
+    if (num.length === 10) num = '91' + num;
+    const clientName = targetLead?.customerName || 'Client';
+    const message = encodeURIComponent(`Hello ${clientName},\n\nThis is regarding your inquiry with India Trade Overseas (Ref: ${targetLead?.leadCode || 'N/A'}).`);
+    window.open(`https://api.whatsapp.com/send?phone=${num}&text=${message}`, '_blank');
+  };
+
+  const triggerEmail = (eOrEmail, email, lead) => {
+    let e = null;
+    let targetEmail = '';
+    let targetLead = null;
+
+    if (eOrEmail && typeof eOrEmail === 'object' && eOrEmail.stopPropagation) {
+      e = eOrEmail;
+      targetEmail = email;
+      targetLead = lead;
+    } else {
+      targetEmail = eOrEmail;
+      targetLead = email;
+    }
+
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    const clientEmail = targetEmail || targetLead?.email || targetLead?.customerEmail || targetLead?.emailMasked || (targetLead?.customerName ? `${targetLead.customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@indiatradeoverseas.com` : '');
+    if (!clientEmail) {
+      return toast.error('No email address available for this client');
+    }
+    const subject = encodeURIComponent(`India Trade Overseas - Lead Communication (${targetLead?.leadCode || targetLead?.customerName || 'Inquiry'})`);
+    const body = encodeURIComponent(`Hello ${targetLead?.customerName || 'Client'},\n\nWe are following up regarding your inquiry (Reference: ${targetLead?.leadCode || 'N/A'})...\n\nBest regards,\nIndia Trade Overseas`);
+    
+    window.location.href = `mailto:${clientEmail}?subject=${subject}&body=${body}`;
   };
 
   const fetchReminders = async () => {
@@ -337,20 +422,26 @@ export default function Leads() {
     const mappings = {};
     firstRow.forEach((val, colIdx) => {
       const cleanVal = val.toLowerCase().trim();
-      if (cleanVal.includes('name') || cleanVal.includes('customer') || cleanVal.includes('consignee')) {
+      if (cleanVal.includes('whatsapp') || cleanVal === 'wa') {
+        mappings[colIdx] = 'whatsAppNumber';
+      } else if (cleanVal.includes('company') || cleanVal.includes('enterprise')) {
+        mappings[colIdx] = 'companyName';
+      } else if (cleanVal.includes('customer') || cleanVal.includes('consignee') || cleanVal.includes('client') || cleanVal.includes('name')) {
         mappings[colIdx] = 'customerName';
-      } else if (cleanVal.includes('phone') || cleanVal.includes('mobile') || cleanVal.includes('contact') || cleanVal.includes('tel')) {
+      } else if (cleanVal.includes('phone') || cleanVal.includes('mobile') || cleanVal.includes('contact') || cleanVal.includes('tel') || cleanVal.includes('telephony')) {
         mappings[colIdx] = 'phone';
       } else if (cleanVal.includes('category') || cleanVal.includes('product') || cleanVal.includes('material') || cleanVal.includes('commodity')) {
         mappings[colIdx] = 'productCategory';
-      } else if (cleanVal.includes('company') || cleanVal.includes('enterprise')) {
-        mappings[colIdx] = 'companyName';
       } else if (cleanVal.includes('email') || cleanVal.includes('mail')) {
         mappings[colIdx] = 'email';
-      } else if (cleanVal.includes('value') || cleanVal.includes('price') || cleanVal.includes('valuation')) {
+      } else if (cleanVal.includes('value') || cleanVal.includes('price') || cleanVal.includes('valuation') || cleanVal.includes('amount')) {
         mappings[colIdx] = 'leadValue';
       } else if (cleanVal.includes('country') || cleanVal.includes('region')) {
         mappings[colIdx] = 'country';
+      } else if (cleanVal.includes('date') || cleanVal.includes('created') || cleanVal.includes('time')) {
+        mappings[colIdx] = 'targetDate';
+      } else if (cleanVal.includes('priority') || cleanVal.includes('temp') || cleanVal.includes('temperature') || cleanVal.includes('hot') || cleanVal.includes('warm') || cleanVal.includes('cold') || cleanVal.includes('quality')) {
+        mappings[colIdx] = 'priority';
       } else if (cleanVal.includes('quantity') || cleanVal.includes('mass') || cleanVal.includes('qty')) {
         mappings[colIdx] = 'quantity';
       } else if (cleanVal.includes('destination') || cleanVal.includes('discharge') || cleanVal.includes('port')) {
@@ -432,7 +523,19 @@ export default function Leads() {
         }
 
         if (!leadObj.priority && !leadObj.temperature) {
-          leadObj.priority = importDefaultPriority;
+          if (importDefaultPriority !== 'ALL') {
+            leadObj.priority = importDefaultPriority;
+          }
+        } else {
+          let p = String(leadObj.priority || leadObj.temperature || '').toUpperCase().trim();
+          if (p.includes('HOT')) p = 'HOT';
+          else if (p.includes('WARM')) p = 'WARM';
+          else if (p.includes('COLD')) p = 'COLD';
+          else if (importDefaultPriority !== 'ALL') p = importDefaultPriority;
+          else p = '';
+          
+          if (p) leadObj.priority = p;
+          else delete leadObj.priority;
         }
 
         leadsArray.push(leadObj);
@@ -507,7 +610,41 @@ export default function Leads() {
     }
   };
 
-  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'];
+  const isWonOrDelivered = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
+  };
+
+  const isOrderConfirmedStage = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return [
+      'ORDER_CONFIRMED',
+      'PO_RECEIVED',
+      'LOI_PO_PENDING',
+      'DISPATCH_PENDING',
+      'DISPATCH_PLANNED',
+      'PAYMENT_PENDING',
+      'PAYMENT_DISCUSSION',
+      'DOCUMENT_PENDING',
+      'QUOTATION_APPROVED'
+    ].includes(s);
+  };
+
+  const isNewOrAssignedLead = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return !isWonOrDelivered(s) && !isOrderConfirmedStage(s) && !['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const isLost = (stage) => {
+    if (!stage) return false;
+    const s = String(stage).toUpperCase().replace(/\s+/g, '_');
+    return ['CLOSED_LOST', 'DEAL_LOST'].includes(s);
+  };
+
+  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED'];
 
   const activeLeads = leads.filter(l => !completedStages.includes((l.stage || '').toUpperCase()));
   const completedLeads = leads.filter(l => completedStages.includes((l.stage || '').toUpperCase()));
@@ -522,6 +659,10 @@ export default function Leads() {
 
     if (leadTab === 'ACTIVE' && isCompleted) return false;
     if (leadTab === 'COMPLETED' && !isCompleted) return false;
+    if (leadTab === 'WON_DELIVERED' && !isWonOrDelivered(lead.stage)) return false;
+    if (leadTab === 'ORDER_CONFIRM' && !isOrderConfirmedStage(lead.stage)) return false;
+    if (leadTab === 'NEW_LEAD' && !isNewOrAssignedLead(lead.stage)) return false;
+    if (leadTab === 'CALENDAR' && !lead.nextFollowupAt) return false;
 
     if (filterPriority !== 'ALL') {
       const pUpper = (lead.priority || 'WARM').toUpperCase();
@@ -553,6 +694,10 @@ export default function Leads() {
       (lead.productCategory || '').toLowerCase().includes(searchLower);
 
     return matchesSearch;
+  }).sort((a, b) => {
+    const timeA = new Date(a.targetDate || a.createdAt || a.date || 0).getTime();
+    const timeB = new Date(b.targetDate || b.createdAt || b.date || 0).getTime();
+    return timeB - timeA;
   });
 
   const executiveWorkloadSummary = useMemo(() => {
@@ -798,60 +943,74 @@ export default function Leads() {
           </motion.div>
         )}
 
-        {/* Lead Section Tab Switcher (Active Leads vs Completed Leads) */}
+        {/* Lead Section Tab Switcher */}
         <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-ink-soft)]/15 pb-2 font-mono">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setLeadTab('ACTIVE')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
-                leadTab === 'ACTIVE'
-                  ? 'bg-teal-950/80 text-teal-400 border-teal-800/80 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
-              }`}
-            >
-              <span>🔥 Active Leads Pipeline</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
-                {activeLeads.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setLeadTab('COMPLETED')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
-                leadTab === 'COMPLETED'
-                  ? 'bg-emerald-950/90 text-emerald-400 border-emerald-800/90 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
-              }`}
-            >
-              <span>🏆 Lead Complete Section</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
-                {completedLeads.length}
-              </span>
-            </button>
-
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
             <button
               onClick={() => setLeadTab('ALL')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ALL'
-                  ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/30'
+                  ? 'bg-teal-950/80 text-teal-300 border-teal-500/50 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              <span>📁 All Inquiries Registry</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20">
+              <span>All Lead</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
                 {leads.length}
               </span>
             </button>
 
             <button
+              onClick={() => setLeadTab('WON_DELIVERED')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'WON_DELIVERED'
+                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>DEAL WON, DELIVERED, CLOSED WON</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
+                {leads.filter(l => isWonOrDelivered(l.stage)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadTab('ORDER_CONFIRM')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'ORDER_CONFIRM'
+                  ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>order Confirm</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-900/60 text-cyan-200 border border-cyan-700/40">
+                {leads.filter(l => isOrderConfirmedStage(l.stage)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadTab('NEW_LEAD')}
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                leadTab === 'NEW_LEAD'
+                  ? 'bg-amber-950/90 text-amber-300 border-amber-500/50 shadow-sm'
+                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+              }`}
+            >
+              <span>New Lead</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-900/60 text-amber-200 border border-amber-700/40">
+                {leads.filter(l => isNewOrAssignedLead(l.stage)).length}
+              </span>
+            </button>
+
+            <button
               onClick={() => setLeadTab('WORKLOAD')}
-              className={`px-4 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border ${
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WORKLOAD'
                   ? 'bg-sky-950/90 text-sky-300 border-sky-800/90 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              <span>👥 Employee Workload Allocation</span>
+              <span>👥 Employee Workload</span>
               <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-900/60 text-sky-200 border border-sky-700/40">
                 {executiveWorkloadSummary.list.length} Members
               </span>
@@ -960,19 +1119,6 @@ export default function Leads() {
               className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
             />
           </div>
-          <div className="relative w-full md:w-56">
-            <select
-              value={filterStage}
-              onChange={(e) => setFilterStage(e.target.value)}
-              className="w-full px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none cursor-pointer appearance-none text-[var(--crm-heading)] font-mono"
-            >
-              <option value="" className="bg-[var(--crm-bg)]">All Pipeline Stages</option>
-              {stages.map(st => <option key={st} value={st} className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)]">{st.replace(/_/g, ' ')}</option>)}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[var(--crm-ink-faint)]">
-              <FiFilter size={12} />
-            </div>
-          </div>
 
           {/* Temperature Filters */}
           <div className="flex items-center gap-1.5 font-mono text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
@@ -980,11 +1126,11 @@ export default function Leads() {
               onClick={() => setFilterPriority('ALL')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${
                 filterPriority === 'ALL'
-                  ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/30'
+                  ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80 shadow-sm'
                   : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
               }`}
             >
-              All Temp
+              🌐 ALL LEADS (Date Wise)
             </button>
             <button
               onClick={() => setFilterPriority('HOT')}
@@ -1040,31 +1186,37 @@ export default function Leads() {
                     <th className="py-3.5 px-5">Identifier</th>
                     <th className="py-3.5 px-5">Consignee Name</th>
                     <th className="py-3.5 px-5">Category & Region</th>
+                    <th className="py-3.5 px-5 text-center">Target Timeline</th>
                     <th className="py-3.5 px-5 text-right">Valuation</th>
                     <th className="py-3.5 px-5 text-center">Pipeline Stage</th>
                     <th className="py-3.5 px-5 text-center">Executive / Owner</th>
-                    <th className="py-3.5 px-5 text-center">LOI Status</th>
-                    <th className="py-3.5 px-5 text-center">Direct Communication</th>
-                    <th className="py-3.5 px-5 text-center">Actions</th>
+                    <th className="py-3.5 px-5 text-center">LOI Status & Direct Communication</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={isManagerOrAdmin ? "10" : "9"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
+                      <td colSpan={isManagerOrAdmin ? "9" : "8"} className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">
                         No active inquiry manifests found for the selected date filter.
                       </td>
                     </tr>
                   ) : (
                     filteredLeads.map((lead) => {
-                      const execName = typeof lead.assignedTo === 'object' && lead.assignedTo
-                        ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email)
+                      const execName = typeof lead.assignedTo === 'object' && lead.assignedTo !== null
+                        ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email || lead.assignedTo.employeeId || (lead.assignedTo._id ? String(lead.assignedTo._id) : 'Unassigned'))
                         : (lead.assignedTo || 'Unassigned');
 
                       return (
-                      <tr key={lead._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                      <tr 
+                        key={lead._id} 
+                        onClick={(e) => {
+                          if (e.target.closest('input, button, a, select')) return;
+                          navigate(`/crm/leads/${lead._id}`);
+                        }}
+                        className="hover:bg-[var(--crm-bg-raised)]/60 cursor-pointer transition-colors"
+                      >
                         {isManagerOrAdmin && (
-                          <td className="py-3.5 px-4 text-center shrink-0 w-12">
+                          <td className="py-3.5 px-4 text-center shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selectedLeadIds.includes(lead._id)}
@@ -1073,10 +1225,16 @@ export default function Leads() {
                             />
                           </td>
                         )}
-                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">{lead.leadCode}</td>
+                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
+                          <Link to={`/crm/leads/${lead._id}`} className="hover:underline text-[var(--crm-heading)]">
+                            {lead.leadCode}
+                          </Link>
+                        </td>
                         <td className="py-3.5 px-5 min-w-[160px]">
                           <div className="flex items-center gap-2">
-                            <span className="font-serif text-sm text-[var(--crm-heading)]">{lead.customerName}</span>
+                            <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
+                              {lead.customerName}
+                            </Link>
                             {lead.priority === 'HOT' && (
                               <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
                             )}
@@ -1095,8 +1253,17 @@ export default function Leads() {
                           </span>
                           <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.country || 'IN'}</span>
                         </td>
+                        <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
+                          {lead.targetDate ? (
+                            <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                              📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+                          )}
+                        </td>
                         <td className="py-3.5 px-5 text-right font-mono font-bold text-[var(--crm-positive)]">
-                          {lead.leadValue ? `₹${lead.leadValue.toLocaleString('en-IN')}` : '—'}
+                          {getLeadValuationDisplay(lead)}
                         </td>
                         <td className="py-3.5 px-5 text-center">
                           {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
@@ -1124,80 +1291,67 @@ export default function Leads() {
                           )}
                         </td>
 
-                        <td className="py-3.5 px-5 text-center font-mono">
-                          {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
-                            <div className="space-y-1">
-                              <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
-                                ✓ LOI ({lead.loiDocuments.length})
-                              </span>
-                              {lead.loiDocuments.map((loi, i) => (
-                                <a
-                                  key={i}
-                                  href={(() => {
-                                    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
-                                    const token = localStorage.getItem('token') || '';
-                                    return `${baseUrl}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(token)}`;
-                                  })()}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="block text-[9px] text-teal-400 hover:underline truncate max-w-[120px] mx-auto"
-                                  title={loi.originalName}
+                        <td className="py-3.5 px-5 text-center font-mono" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-3">
+                            {/* LOI Section */}
+                            {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
+                              <div className="space-y-1 text-center">
+                                <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                  ✓ LOI ({lead.loiDocuments.length})
+                                </span>
+                                {lead.loiDocuments.map((loi, i) => (
+                                  <a
+                                    key={i}
+                                    href={`${API_URL}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block text-[9px] text-teal-400 hover:underline truncate max-w-[100px] mx-auto"
+                                    title={loi.originalName}
+                                  >
+                                    📄 {loi.originalName}
+                                  </a>
+                                ))}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLoiTargetLeadId(lead._id);
+                                    setShowLOIModal(true);
+                                  }}
+                                  className="text-[8px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-1.5 py-0.5 rounded cursor-pointer transition block mx-auto"
                                 >
-                                  📄 {loi.originalName}
-                                </a>
-                              ))}
+                                  + Add LOI
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLoiTargetLeadId(lead._id);
+                                  setShowLOIModal(true);
+                                }}
+                                className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition shadow-sm inline-flex items-center gap-1"
+                              >
+                                + LOI
+                              </button>
+                            )}
+
+                            {/* Direct Communication Icons */}
+                            <div className="flex items-center space-x-1.5">
+                              <button
+                                onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
+                                className="p-1.5 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 hover:bg-emerald-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                title="Launch WhatsApp Chat"
+                              >
+                                <FiMessageSquare size={13} />
+                              </button>
+                              <button
+                                onClick={(e) => triggerEmail(e, lead.email, lead)}
+                                className="p-1.5 bg-sky-950/80 border border-sky-800/60 text-sky-400 hover:bg-sky-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                title="Send Direct Email"
+                              >
+                                <FiMail size={13} />
+                              </button>
                             </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setLoiTargetLeadId(lead._id);
-                                setShowLOIModal(true);
-                              }}
-                              className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition"
-                            >
-                              + LOI
-                            </button>
-                          )}
-                        </td>
-
-                        <td className="py-3.5 px-5 text-center">
-                          <div className="flex items-center justify-center space-x-2">
-                            <button
-                              onClick={() => triggerWhatsApp(lead.whatsAppNumber || lead.phone)}
-                              className="p-1.5 bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/30 text-[var(--crm-positive)] hover:bg-[var(--crm-positive-bg)] transition-all rounded-sm cursor-pointer"
-                              title="Launch WhatsApp Chat"
-                            >
-                              <FiMessageSquare size={13} />
-                            </button>
-                            <button
-                              onClick={() => triggerEmail(lead.email)}
-                              className="p-1.5 bg-[var(--crm-info-bg)] border border-[var(--crm-info)]/30 text-[var(--crm-info)] hover:bg-[var(--crm-info-bg)] transition-all rounded-sm cursor-pointer"
-                              title="Send Direct Email"
-                            >
-                              <FiMail size={13} />
-                            </button>
-                          </div>
-                        </td>
-
-                        <td className="py-3.5 px-5 text-center">
-                          <div className="flex items-center justify-center space-x-1.5">
-                            <button
-                              onClick={() => {
-                                setLoiTargetLeadId(lead._id);
-                                setShowLOIModal(true);
-                              }}
-                              className="p-1.5 border border-teal-800/50 bg-teal-950/60 hover:bg-teal-900 text-teal-300 transition-all rounded-sm cursor-pointer"
-                              title="Upload LOI for Lead"
-                            >
-                              <FiFileText size={13} />
-                            </button>
-                            <Link
-                              to={`/crm/leads/${lead._id}`}
-                              className="inline-flex p-1.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition-all rounded-sm"
-                            >
-                              <FiEye size={13} />
-                            </Link>
                           </div>
                         </td>
                       </tr>
@@ -1216,12 +1370,19 @@ export default function Leads() {
                 </div>
               ) : (
                 filteredLeads.map((lead) => {
-                  const execName = typeof lead.assignedTo === 'object' && lead.assignedTo
-                    ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email)
+                  const execName = typeof lead.assignedTo === 'object' && lead.assignedTo !== null
+                    ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email || lead.assignedTo.employeeId || (lead.assignedTo._id ? String(lead.assignedTo._id) : 'Unassigned'))
                     : (lead.assignedTo || 'Unassigned');
 
                   return (
-                    <div key={lead._id} className="bg-[var(--crm-bg-raised)]/40 border border-[var(--crm-ink-soft)]/20 rounded p-3.5 space-y-3 text-left font-mono text-xs shadow-sm">
+                    <div 
+                      key={lead._id} 
+                      onClick={(e) => {
+                        if (e.target.closest('input, button, a, select')) return;
+                        navigate(`/crm/leads/${lead._id}`);
+                      }}
+                      className="bg-[var(--crm-bg-raised)]/40 border border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-heading)]/40 rounded p-3.5 space-y-3 text-left font-mono text-xs shadow-sm cursor-pointer transition-all"
+                    >
                       {/* Header: Checkbox + Lead Code + Priority Badge */}
                       <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-ink-soft)]/15 pb-2">
                         <div className="flex items-center gap-2 min-w-0">
@@ -1260,9 +1421,9 @@ export default function Leads() {
                           <span className="px-2 py-0.5 text-[9px] font-bold bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded block">
                             {lead.productCategory}
                           </span>
-                          {lead.leadValue ? (
-                            <span className="text-[11px] font-bold text-emerald-400 block mt-1">₹{lead.leadValue.toLocaleString('en-IN')}</span>
-                          ) : null}
+                          {getLeadValuationDisplay(lead) !== '—' && (
+                            <span className="text-[11px] font-bold text-emerald-400 block mt-1">{getLeadValuationDisplay(lead)}</span>
+                          )}
                         </div>
                       </div>
 
@@ -1441,7 +1602,14 @@ export default function Leads() {
                       </div>
                     ) : (
                       stageLeads.map((item) => (
-                        <div key={item._id} className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 rounded-sm space-y-2 text-left hover:border-[var(--crm-heading)]/40 transition-all">
+                        <div 
+                          key={item._id} 
+                          onClick={(e) => {
+                            if (e.target.closest('input, button, a, select')) return;
+                            navigate(`/crm/leads/${item._id}`);
+                          }}
+                          className="p-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 rounded-sm space-y-2 text-left hover:border-[var(--crm-heading)]/40 transition-all cursor-pointer"
+                        >
                           <div className="flex justify-between items-start">
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)]">{item.leadCode}</span>
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-warning)]">
@@ -1533,8 +1701,12 @@ export default function Leads() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation (INR)</label>
-                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Value" />
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Requirement Date</label>
+                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer [color-scheme:dark]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation / Budget (INR)</label>
+                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Valuation" />
                   </div>
                 </div>
 
@@ -1602,8 +1774,9 @@ export default function Leads() {
                     <span className="font-bold text-[var(--crm-heading)] flex items-center gap-2">
                       Set Lead Temperature / Quality Tag for Import:
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {[
+                        { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80' },
                         { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-950/60 text-rose-400 border-rose-800/60' },
                         { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-950/60 text-amber-400 border-amber-800/60' },
                         { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60' }

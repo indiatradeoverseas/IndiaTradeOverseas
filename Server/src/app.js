@@ -29,6 +29,7 @@ const employeeRoutes = require('./modules/employee/employee.routes');
 const taskRoutes = require('./modules/task/task.routes');
 const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 const payslipRoutes = require('./modules/payslip/payslip.routes');
+const aiRoutes = require('./modules/ai/ai.routes');
 
 
 const app = express();
@@ -47,11 +48,21 @@ app.use(morgan('dev'));
 app.use(cors());
 
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 const path = require('path');
-app.use('/uploads/profile-images', express.static(path.join(__dirname, '../uploads/profile-images')));
+app.use((req, res, next) => {
+  if (req.url && req.url.includes('uploads/')) {
+    const idx = req.url.indexOf('uploads/');
+    const cleanUrl = '/' + req.url.substring(idx);
+    if (req.url !== cleanUrl) {
+      req.url = cleanUrl;
+    }
+  }
+  next();
+});
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 
 app.use(rateLimiter);
@@ -108,12 +119,14 @@ const apiRoutes = [
   { path: '/attendance', router: attendanceRoutes },
   { path: '/tickets', router: ticketRoutes },
   { path: '/leaves', router: leaveRoutes },
+  { path: '/leave', router: leaveRoutes },
   { path: '/sales', router: salesRoutes },
   { path: '/employee', router: employeeRoutes },
   { path: '/employees', router: employeeRoutes },
   { path: '/tasks', router: taskRoutes },
   { path: '/shared-files', router: sharedFileRoutes },
-  { path: '/payslips', router: payslipRoutes }
+  { path: '/payslips', router: payslipRoutes },
+  { path: '/ai', router: aiRoutes }
 ];
 
 apiRoutes.forEach(route => {
@@ -134,7 +147,7 @@ const { authenticate } = require('./middlewares/auth.middleware');
 adminFallbackRouter.patch('/leads/:leadId/assign', authenticate, rbac('ADMIN', 'MANAGER', 'HR'), require('./modules/leads/lead.controller').assignLead);
 adminFallbackRouter.get('/users', authenticate, rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), require('./modules/users/user.controller').listUsers);
 
-adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER'));
+adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'));
 adminFallbackRouter.get('/dashboard/summary', require('./modules/reports/report.controller').getAdminSummary);
 adminFallbackRouter.get('/dashboard/pipeline', require('./modules/reports/report.controller').getPipelineReport);
 adminFallbackRouter.get('/dashboard/employee-performance', require('./modules/reports/report.controller').getPerformanceReport);

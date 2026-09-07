@@ -608,13 +608,22 @@ async function getBiometricStatus(req, res, next) {
 async function markAttendanceManually(req, res, next) {
   try {
     const isHrOrAdminOrManager = 
-      ['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'SUPER_ADMIN'].includes(req.user.role) ||
+      ['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'SUPER_ADMIN', 'FOUNDER'].includes(req.user.role) ||
       req.user.department === 'HR' ||
-      (req.user.position && req.user.position.toLowerCase().includes('hr')) ||
-      (req.user.role && req.user.role.toLowerCase().includes('hr'));
+      req.user.department === 'ADMIN' ||
+      (req.user.position && (
+        req.user.position.toLowerCase().includes('hr') ||
+        req.user.position.toLowerCase().includes('founder') ||
+        req.user.position.toLowerCase().includes('admin')
+      )) ||
+      (req.user.role && (
+        req.user.role.toLowerCase().includes('hr') ||
+        req.user.role.toLowerCase().includes('founder') ||
+        req.user.role.toLowerCase().includes('admin')
+      ));
 
     if (!isHrOrAdminOrManager) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin privilege required', [], req);
+      return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin/Founder privilege required', [], req);
     }
 
     const { employeeId, date, status, checkInTime, checkOutTime } = req.body;
@@ -629,22 +638,21 @@ async function markAttendanceManually(req, res, next) {
     }
 
     const mongoose = require('mongoose');
+    const isObjectId = mongoose.isValidObjectId(employeeId);
     let employee = await Employee.findOne({
       $or: [
-        { _id: employeeId },
+        ...(isObjectId ? [{ _id: employeeId }, { _id: new mongoose.Types.ObjectId(employeeId) }] : []),
         { employeeId: employeeId },
-        { email: employeeId },
-        ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
+        { email: employeeId }
       ]
     });
     let userDoc = null;
     if (!employee) {
       userDoc = await User.findOne({
         $or: [
-          { _id: employeeId },
+          ...(isObjectId ? [{ _id: employeeId }, { _id: new mongoose.Types.ObjectId(employeeId) }] : []),
           { employeeId: employeeId },
-          { email: employeeId },
-          ...(mongoose.isValidObjectId(employeeId) ? [{ _id: new mongoose.Types.ObjectId(employeeId) }] : [])
+          { email: employeeId }
         ]
       });
       if (userDoc) {
@@ -705,6 +713,11 @@ async function markAttendanceManually(req, res, next) {
       overtimeHours = Math.round(overtimeHours * 100) / 100;
     }
 
+    let creatorId = req.user?._id;
+    if (creatorId && mongoose.isValidObjectId(creatorId)) {
+      creatorId = new mongoose.Types.ObjectId(creatorId);
+    }
+
     if (record) {
       record.status = status;
       record.checkInTime = checkInTime || (checkInAt ? '09:00 AM' : null);
@@ -713,7 +726,7 @@ async function markAttendanceManually(req, res, next) {
       record.checkOutAt = checkOutAt;
       record.workingHours = workingHours;
       record.overtimeHours = overtimeHours;
-      record.createdBy = req.user._id;
+      record.createdBy = creatorId;
       await record.save();
     } else {
       record = await Attendance.create({
@@ -726,7 +739,7 @@ async function markAttendanceManually(req, res, next) {
         checkOutAt,
         workingHours,
         overtimeHours,
-        createdBy: req.user._id
+        createdBy: creatorId
       });
     }
 

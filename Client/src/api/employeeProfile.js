@@ -14,15 +14,27 @@ export const employeeProfileApi = {
   async uploadMyDocument(file) {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await axiosInstance.post('/users/me/documents', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return response.data;
+    try {
+      const response = await axiosInstance.post('/employee/me/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (e) {
+      const response = await axiosInstance.post('/users/me/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    }
   },
 
   async getMyDocuments() {
-    const response = await axiosInstance.get('/users/me/documents');
-    return response.data;
+    try {
+      const response = await axiosInstance.get('/employee/me/documents');
+      return response.data;
+    } catch (e) {
+      const response = await axiosInstance.get('/users/me/documents');
+      return response.data;
+    }
   },
 
   async getEmployeeProfile(id) {
@@ -46,8 +58,13 @@ export const employeeProfileApi = {
   },
 
   async getEmployeeDocuments(id) {
-    const response = await axiosInstance.get(`/users/${id}/documents`);
-    return response.data;
+    try {
+      const response = await axiosInstance.get(`/employee/${id}/documents`);
+      return response.data;
+    } catch (e) {
+      const response = await axiosInstance.get(`/users/${id}/documents`);
+      return response.data;
+    }
   },
 
   async downloadDocument(id) {

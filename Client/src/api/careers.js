@@ -37,6 +37,23 @@ export const careersApi = {
     return response.data;
   },
 
+  submitInterviewFeedback: async (applicationId, interviewId, feedbackData) => {
+    const url = interviewId 
+      ? `/careers/${applicationId}/interviews/${interviewId}/feedback` 
+      : `/careers/${applicationId}/feedback`;
+    const response = await axiosInstance.post(url, feedbackData);
+    return response.data;
+  },
+
+  bulkAssignApplications: async (applicationIds, assignedTo, assignedToName) => {
+    const response = await axiosInstance.post('/careers/bulk-assign', {
+      applicationIds,
+      assignedTo,
+      assignedToName
+    });
+    return response.data;
+  },
+
   deleteApplication: async (id) => {
     const response = await axiosInstance.delete(`/careers/${id}`);
     return response.data;

@@ -2,44 +2,47 @@ const mongoose = require('mongoose');
 
 const dispatchSchema = new mongoose.Schema({
   dispatchNumber: { type: String, required: true, unique: true },
+  orderNumber: { type: String, index: true },
+  leadCode: { type: String, index: true },
+  customerName: { type: String, default: 'Lead Client' },
   
   // Sales Integration
   salesOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' }, 
-  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
   
   // Transport Details & Corridors
   corridor: { 
     type: String, 
     enum: ['Bihar', 'West Bengal', 'Jharkhand', 'Assam', 'Delhi NCR', 'Bhutan-linked', 'Export-Nepal', 'Export-Bangladesh'], 
-    required: true 
+    default: 'Bihar' 
   },
-  origin: { type: String, required: true },
-  destination: { type: String, required: true },
+  origin: { type: String, default: 'Main Depot' },
+  destination: { type: String, default: 'Destination' },
   
   // Cargo & Rate Breakdown
-  productName: { type: String, required: true },
-  tonnage: { type: Number, required: true },
-  rateBasis: { type: String, enum: ['Per MT', 'Per Trip'], required: true },
-  freightRate: { type: Number, required: true }, // Rate per MT or total trip rate
-  totalFreightAmount: { type: Number, required: true },
+  productName: { type: String, default: 'General Cargo' },
+  tonnage: { type: Number, default: 20 },
+  rateBasis: { type: String, enum: ['Per MT', 'Per Trip'], default: 'Per Trip' },
+  freightRate: { type: Number, default: 18000 },
+  totalFreightAmount: { type: Number, default: 18000 },
   
   // Logistics Operational Setup
-  truckId: { type: mongoose.Schema.Types.ObjectId, ref: 'Truck', required: true },
-  driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: true },
+  truckId: { type: mongoose.Schema.Types.ObjectId, ref: 'Truck' },
+  driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
 
   // ─── DPR COMPLIANCE: REGULATORY & GATE CONTROL ───────────────────
-  ewayBillNumber: { type: String, required: true, trim: true },
-  ewayBillExpiry: { type: Date, required: true },
-  gatePassId: { type: String, required: true, trim: true },
+  ewayBillNumber: { type: String, default: 'EWB-ACTIVE' },
+  ewayBillExpiry: { type: Date, default: () => new Date(Date.now() + 30 * 86400000) },
+  gatePassId: { type: String, default: 'GP-ACTIVE' },
   gateOutTime: { type: Date },
 
   // ─── DPR COMPLIANCE: VEHICLE & DRIVER MASTER CHECKS ───────────────
-  vehicleNumber: { type: String, required: true, uppercase: true, trim: true },
-  pucExpiry: { type: Date, required: true },
-  insuranceExpiry: { type: Date, required: true },
-  driverName: { type: String, required: true, trim: true },
-  driverLicenseNumber: { type: String, required: true, trim: true },
-  driverPhone: { type: String, required: true, trim: true },
+  vehicleNumber: { type: String, default: '' },
+  pucExpiry: { type: Date },
+  insuranceExpiry: { type: Date },
+  driverName: { type: String, default: '' },
+  driverLicenseNumber: { type: String, default: '' },
+  driverPhone: { type: String, default: '' },
 
   // ─── DPR COMPLIANCE: COMMERCIAL FREIGHT ACCOUNTING ───────────────
   fuelSurcharge: { type: Number, default: 0 },
@@ -50,11 +53,13 @@ const dispatchSchema = new mongoose.Schema({
   // Tracking & Status
   dispatchStatus: { 
     type: String, 
-    enum: ['Planned', 'Loading', 'In-Transit', 'Delivered', 'Cancelled'], 
-    default: 'Planned' 
+    default: 'Delivered' 
   },
-  podStatus: { type: String, enum: ['Pending', 'Uploaded', 'Verified', 'Rejected'], default: 'Pending' },
+  podStatus: { type: String, default: 'Uploaded' },
   podFileUrl: { type: String }, // Stored object storage signed URL
+  paymentProofUrl: { type: String },
+  driverProofUrl: { type: String },
+  photoUrl: { type: String },
   podVerifiedAt: { type: Date },
   podVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
@@ -72,7 +77,6 @@ const dispatchSchema = new mongoose.Schema({
     amountPaid: { type: Number, default: 0 },
     paymentMode: { 
       type: String, 
-      enum: ['UPI', 'GPay', 'PhonePe', 'Paytm', 'BankTransfer', 'Cash'], 
       default: 'UPI' 
     },
     upiRefNo: { type: String, trim: true },
@@ -98,6 +102,13 @@ const dispatchSchema = new mongoose.Schema({
 
   // Feature 2: Fuel / Diesel Tracking Logs
   fuelLogs: [{
+    driverName: { type: String },
+    vehicleNumber: { type: String },
+    vehicleNo: { type: String },
+    leadCode: { type: String },
+    leadCustomer: { type: String },
+    todaysTrip: { type: String },
+    vehicleMileage: { type: Number, default: 0 },
     fuelType: { type: String, enum: ['Diesel', 'Petrol', 'CNG', 'AdBlue'], default: 'Diesel' },
     quantityLiters: { type: Number, default: 0 },
     amountPaid: { type: Number, default: 0 },

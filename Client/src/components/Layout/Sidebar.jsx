@@ -38,7 +38,7 @@ export default function Sidebar({ onClose }) {
       }
     }
     checkNotifications();
-    const interval = setInterval(checkNotifications, 5000);
+    const interval = setInterval(checkNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
 

@@ -35,11 +35,20 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
 
   const totalLeads = await Lead.countDocuments();
   const activeLeads = await Lead.countDocuments({ stage: { $nin: CLOSED_STAGES } });
+  const completedLeads = await Lead.countDocuments({ stage: { $in: ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'] } });
+  const deliveredLeads = await Lead.countDocuments({ stage: { $in: ['DELIVERED', 'COMPLETED'] } });
+  const paidLeads = await Lead.countDocuments({
+    $or: [
+      { stage: { $in: ['CLOSED_WON', 'DEAL_WON', 'COMPLETED'] } },
+      { paymentProofUrl: { $exists: true, $ne: '' } },
+      { 'paymentProof.proofImageUrl': { $exists: true, $ne: '' } }
+    ]
+  });
+  const conversionRate = totalLeads > 0 ? Math.round((completedLeads / totalLeads) * 100) : 0;
   const pendingLeads = await Lead.countDocuments({ stage: 'NEW_LEAD' });
   const todayLeads = await Lead.countDocuments({ createdAt: { $gte: todayStart } });
   const aiGeneratedLeads = await Lead.countDocuments({ source: 'AI_AGENT' });
   const hotLeads = await Lead.countDocuments({ priority: 'HOT', stage: { $nin: CLOSED_STAGES } });
-
 
   const followUpsDueToday = await Lead.countDocuments({
     nextFollowupAt: { $gte: todayStart, $lte: todayEnd },
@@ -49,7 +58,6 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
     nextFollowupAt: { $lt: now },
     stage: { $nin: CLOSED_STAGES }
   });
-
 
   const totalQuotations = await Quotation.countDocuments();
   const pendingQuotes = await Quotation.aggregate([
@@ -62,11 +70,10 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       }
     }
   ]);
-  const sentQuotations = await Quotation.countDocuments({ status: 'SENT_TO_CUSTOMER' });
+  const sentQuotations = await Quotation.countDocuments({ status: { $in: ['SENT_TO_CUSTOMER', 'APPROVED', 'SENT', 'QUOTATION_SENT'] } });
   const approvedQuotations = await Quotation.countDocuments({ status: 'APPROVED' });
 
-
-  const ordersConfirmed = await Lead.countDocuments({ stage: 'ORDER_CONFIRMED' });
+  const ordersConfirmed = await Lead.countDocuments({ stage: { $in: ['ORDER_CONFIRMED', 'PO_RECEIVED', 'CLOSED_WON', 'DEAL_WON', 'DISPATCH_PENDING', 'DELIVERED', 'COMPLETED'] } });
   const pendingOrders = await Lead.countDocuments({ stage: { $in: ORDER_PIPELINE_STAGES } });
 
 
@@ -171,6 +178,10 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       pendingLeaveRequests,
       totalLeads,
       activeLeads,
+      completedLeads,
+      deliveredLeads,
+      paidLeads,
+      conversionRate,
       pendingLeads,
       todayLeads,
       aiGeneratedLeads,

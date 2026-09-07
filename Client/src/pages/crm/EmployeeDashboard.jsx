@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFileUrl } from '../../config/env';
 import {
   FiCheckSquare,
   FiCalendar,
@@ -571,8 +572,7 @@ export default function EmployeeDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const baseUrl = 'http://localhost:5000/';
-                                const absoluteUrl = t.fileUrl.startsWith('http') ? t.fileUrl : `${baseUrl}${t.fileUrl}`;
+                                const absoluteUrl = getFileUrl(t.fileUrl);
                                 const link = document.createElement('a');
                                 link.href = absoluteUrl;
                                 link.setAttribute('download', t.fileOriginalName);
@@ -594,8 +594,7 @@ export default function EmployeeDashboard() {
                             <button
                               type="button"
                               onClick={() => {
-                                const baseUrl = 'http://localhost:5000/';
-                                const absoluteUrl = t.completionFileUrl.startsWith('http') ? t.completionFileUrl : `${baseUrl}${t.completionFileUrl}`;
+                                const absoluteUrl = getFileUrl(t.completionFileUrl);
                                 const link = document.createElement('a');
                                 link.href = absoluteUrl;
                                 link.setAttribute('download', t.completionFileOriginalName);

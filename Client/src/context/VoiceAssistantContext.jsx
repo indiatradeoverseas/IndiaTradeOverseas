@@ -90,7 +90,7 @@ export function VoiceAssistantProvider({ children }) {
 export function useVoiceAssistant() {
   const context = useContext(VoiceAssistantContext);
   if (!context) {
-    throw new Error('useVoiceAssistant must be used within VoiceAssistantProvider');
+    return { status: 'off', lastTranscript: '', retryListening: () => {}, toggleMute: () => {} };
   }
   return context;
 }

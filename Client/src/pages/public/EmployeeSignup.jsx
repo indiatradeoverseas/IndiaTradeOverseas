@@ -288,7 +288,6 @@ export default function EmployeeSignup() {
     validateField(name, value);
   };
 
-  // Designation mapping dynamically based on department
   const roleDropdownOptions = {
     SALES: ['Sales Executive', 'Sales Manager', 'Sales Director'],
     HR: ['HR Executive', 'HR Manager', 'HR Director'],
@@ -296,7 +295,8 @@ export default function EmployeeSignup() {
     ADMIN: ['Admin Executive', 'Admin Manager'],
     FINANCE: ['Accountant', 'Finance Manager', 'Finance Controller'],
     OPERATIONS: ['Operations Executive', 'Operations Manager'],
-    MARKETING: ['Marketing Executive', 'Marketing Manager']
+    MARKETING: ['Marketing Executive', 'Marketing Manager'],
+    TRANSPORT: ['Transport Manager', 'Logistics Coordinator', 'Driver', 'Fleet Executive']
   };
 
   // Step validation before moving next
@@ -690,6 +690,7 @@ export default function EmployeeSignup() {
                         <option value="FINANCE">FINANCE</option>
                         <option value="OPERATIONS">OPERATIONS</option>
                         <option value="MARKETING">MARKETING</option>
+                        <option value="TRANSPORT">TRANSPORT</option>
                       </select>
                     </div>
 

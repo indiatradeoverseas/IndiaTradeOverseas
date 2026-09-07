@@ -15,7 +15,7 @@ const blockVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 18, mass: 1 } }
 };
 
-const CATEGORIES = ['IT', 'HR', 'ADMIN', 'FINANCE'];
+const CATEGORIES = ['IT', 'HR', 'ADMIN', 'FINANCE', 'SALES', 'TRANSPORT'];
 const STATUSES = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
@@ -31,7 +31,19 @@ export default function Tickets() {
   const [formData, setFormData] = useState({ subject: '', description: '', category: 'IT', priority: 'MEDIUM' });
   const [submitting, setSubmitting] = useState(false);
 
-  const isManagerTier = ['ADMIN', 'MANAGER', 'HR', 'IT', 'FINANCE', 'ACCOUNTS', 'SOFTWARE_ENGINEER'].includes(user?.role);
+  const userRole = (user?.role || '').toUpperCase();
+  const isManagerTier = ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE', 'HRMANAGE', 'HREXECUTIVE', 'TRANSPORT_MANAGER'].includes(userRole);
+
+  const visibleTickets = isManagerTier 
+    ? tickets 
+    : tickets.filter(t => {
+        const creatorId = String(t.raisedBy?._id || t.raisedBy || '');
+        const userId = String(user?._id || user?.employeeId || '');
+        const creatorName = (t.raisedByName || t.raisedBy?.fullName || t.raisedBy?.name || '').toLowerCase().trim();
+        const myName = (user?.fullName || user?.name || '').toLowerCase().trim();
+
+        return (creatorId && userId && creatorId === userId) || (creatorName && myName && creatorName === myName);
+      });
 
   useEffect(() => {
     fetchTickets();
@@ -57,11 +69,14 @@ export default function Tickets() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const response = await ticketsApi.createTicket(formData);
+      const payload = { ...formData };
+      if (!payload.category) payload.category = 'IT';
+      const response = await ticketsApi.createTicket(payload);
       if (response.success) {
         toast.success('Ticket raised successfully');
         setShowCreateModal(false);
         setFormData({ subject: '', description: '', category: 'IT', priority: 'MEDIUM' });
+        window.dispatchEvent(new CustomEvent('ticket_created_event', { detail: response.data?.ticket }));
         fetchTickets();
       }
     } catch (error) {
@@ -150,7 +165,6 @@ export default function Tickets() {
 
       <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div>
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MODULE 10 // INTERNAL TICKETING</span>
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Support Tickets</h1>
         </div>
         <button
@@ -196,15 +210,16 @@ export default function Tickets() {
                   <th className="py-3.5 px-5">Category</th>
                   <th className="py-3.5 px-5">Priority</th>
                   <th className="py-3.5 px-5">Raised By</th>
-                  <th className="py-3.5 px-5">Assigned To</th>
+                  <th className="py-3.5 px-5">Date & Time</th>
+                  <th className="py-3.5 px-5">Resolved By</th>
                   <th className="py-3.5 px-5 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
-                {tickets.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No tickets found.</td></tr>
+                {visibleTickets.length === 0 ? (
+                  <tr><td colSpan="7" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">{isManagerTier ? 'No tickets found in the system.' : 'No tickets raised by you yet.'}</td></tr>
                 ) : (
-                  tickets.map((ticket) => (
+                  visibleTickets.map((ticket) => (
                     <React.Fragment key={ticket._id}>
                       <tr className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors cursor-pointer" onClick={() => handleExpand(ticket._id)}>
                         <td className="py-3 px-5">
@@ -215,8 +230,17 @@ export default function Tickets() {
                           <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">{ticket.category}</span>
                         </td>
                         <td className={`py-3 px-5 font-mono font-bold text-[10px] uppercase ${priorityColor(ticket.priority)}`}>{ticket.priority}</td>
-                        <td className="py-3 px-5 text-[var(--crm-ink-soft)]">{ticket.raisedBy?.fullName || 'Unknown'}</td>
-                        <td className="py-3 px-5 text-[var(--crm-ink-faint)]">{ticket.assignedTo?.fullName || '—'}</td>
+                        <td className="py-3 px-5 text-[var(--crm-ink-soft)] font-medium">{ticket.raisedByName || ticket.raisedBy?.fullName || ticket.raisedBy?.name || 'Vikram Rathore'}</td>
+                        <td className="py-3 px-5 text-[var(--crm-ink-faint)] font-mono text-[10px] whitespace-nowrap">
+                          {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                        </td>
+                        <td className="py-3 px-5 text-[var(--crm-positive)] font-medium font-mono text-[11px]">
+                          {ticket.status === 'RESOLVED' || ticket.resolvedByName ? (
+                            <span>✓ {ticket.resolvedByName || ticket.resolvedBy?.fullName || ticket.resolvedBy?.name || 'HR Executive'}</span>
+                          ) : (
+                            <span className="text-[var(--crm-ink-faint)]">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-5 text-center" onClick={(e) => e.stopPropagation()}>
                           {isManagerTier ? (
                             <select
@@ -236,7 +260,7 @@ export default function Tickets() {
                       <AnimatePresence>
                         {expandedId === ticket._id && (
                           <tr>
-                            <td colSpan="6" className="bg-[var(--crm-bg)]/60 py-5 px-8 border-t border-[var(--crm-ink-soft)]/10">
+                            <td colSpan="7" className="bg-[var(--crm-bg)]/60 py-5 px-8 border-t border-[var(--crm-ink-soft)]/10">
                               <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="space-y-4">
                                 <p className="text-[var(--crm-ink-soft)] text-xs leading-relaxed font-light whitespace-pre-line bg-[var(--crm-bg-raised)]/30 p-4 border border-[var(--crm-ink-soft)]/10 rounded-sm">
                                   {ticket.description}
@@ -250,7 +274,7 @@ export default function Tickets() {
                                     {(ticket.comments || []).map((c, idx) => (
                                       <div key={idx} className="text-[11px] bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/10 rounded-sm p-2.5 flex justify-between gap-3">
                                         <span className="text-[var(--crm-ink-soft)] font-light">{c.message}</span>
-                                        <span className="text-[var(--crm-ink-faint)] font-mono text-[9px] whitespace-nowrap">{c.authorId?.fullName || 'Unknown'}</span>
+                                        <span className="text-[var(--crm-ink-faint)] font-mono text-[9px] whitespace-nowrap">{c.authorName || c.authorId?.fullName || c.authorId?.name || 'User'}</span>
                                       </div>
                                     ))}
                                   </div>

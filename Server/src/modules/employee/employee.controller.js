@@ -16,6 +16,7 @@ async function syncEmployeeToUser(employee, passwordHash) {
       fullName: employee.name || employee.fullName,
       email: employee.email.toLowerCase(),
       phone: employee.phone || '',
+      profileImage: employee.profileImage || '',
       passwordHash: passwordHash || employee.password,
       role: employee.role || 'EMPLOYEE',
       department: employee.department || 'SALES',
@@ -46,6 +47,36 @@ async function syncEmployeeToUser(employee, passwordHash) {
   } catch (err) {
     console.error('Error syncing Employee to User collection:', err.message);
   }
+}
+
+function mapPositionToRole(department, position, explicitRole) {
+  if (explicitRole && explicitRole !== 'EMPLOYEE') return explicitRole;
+
+  const posLower = (position || '').toLowerCase();
+  const deptUpper = (department || '').toUpperCase();
+
+  if (deptUpper === 'HR') {
+    if (posLower.includes('manager') || posLower.includes('head') || posLower.includes('director')) {
+      return 'HR_MANAGER';
+    }
+    return 'HR_EXECUTIVE';
+  }
+
+  if (deptUpper === 'ADMIN') {
+    return 'ADMIN';
+  }
+
+  if (deptUpper === 'TRANSPORT') {
+    if (posLower.includes('driver')) return 'DRIVER';
+    if (posLower.includes('manager')) return 'MANAGER';
+    return 'EMPLOYEE';
+  }
+
+  if (posLower.includes('manager') || posLower.includes('head') || posLower.includes('director')) {
+    return 'MANAGER';
+  }
+
+  return 'EMPLOYEE';
 }
 
 function calculateAge(dob) {
@@ -141,7 +172,8 @@ async function login(req, res, next) {
       return fail(res, 400, 'BAD_REQUEST', 'Email and password are required', [], req);
     }
 
-    const employee = await Employee.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const employee = await Employee.findOne({ email: new RegExp('^' + normalizedEmail + '$', 'i') });
     if (!employee || employee.status !== 'ACTIVE') {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials or employee deactivated', [], req);
     }
@@ -344,6 +376,7 @@ async function signupEmployee(req, res, next) {
       employmentType: employmentType || 'Permanent',
       probationEndDate: employmentType === 'Probation' ? probationEndDate : undefined,
       reportingManager: reportingManager || null,
+      role: mapPositionToRole(department, position, req.body.role),
       salary: salary || 0,
       bankName,
       bankAccountNumber,
@@ -488,7 +521,7 @@ async function signupEmployeeSelfRegistration(req, res, next) {
       position,
       joiningDate: new Date(),
       employmentType: 'Permanent',
-      role: 'EMPLOYEE',
+      role: mapPositionToRole(department, position),
       status: 'PENDING_VERIFICATION',
       salary: 0,
       permissions: {
@@ -707,7 +740,7 @@ async function verifySignupOtp(req, res, next) {
       position,
       joiningDate: new Date(),
       employmentType: 'Permanent',
-      role: 'EMPLOYEE',
+      role: mapPositionToRole(department, position),
       status: 'ACTIVE',
       salary: 0,
       permissions: {
@@ -1166,6 +1199,216 @@ async function deleteEmployee(req, res, next) {
   }
 }
 
+async function getMatchingOwnerIds(idOrUser) {
+  const ids = new Set();
+  if (!idOrUser) return [];
+
+  const User = require('../users/user.model');
+
+  let rawId = typeof idOrUser === 'object' ? String(idOrUser._id || idOrUser.id || '') : String(idOrUser);
+  if (rawId && rawId !== 'undefined' && rawId !== 'null' && rawId !== 'me') {
+    ids.add(rawId);
+    if (mongoose.isValidObjectId(rawId)) {
+      ids.add(new mongoose.Types.ObjectId(rawId));
+    }
+  }
+
+  let email = typeof idOrUser === 'object' ? idOrUser.email : null;
+  let empCode = typeof idOrUser === 'object' ? idOrUser.employeeId : null;
+
+  if (!email && rawId && rawId !== 'me') {
+    const isObjId = mongoose.isValidObjectId(rawId);
+    const idQuery = isObjId
+      ? { $or: [{ _id: rawId }, { _id: new mongoose.Types.ObjectId(rawId) }] }
+      : { _id: rawId };
+    const userDoc = await User.findOne(idQuery);
+    const empDoc = await Employee.findOne(idQuery);
+    const matched = userDoc || empDoc;
+    if (matched) {
+      email = matched.email;
+      empCode = matched.employeeId;
+    }
+  }
+
+  if (email) {
+    const emailRegex = new RegExp('^' + email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
+    const userByEmail = await User.findOne({ email: emailRegex });
+    const empByEmail = await Employee.findOne({ email: emailRegex });
+
+    if (userByEmail && userByEmail._id) {
+      ids.add(String(userByEmail._id));
+      if (mongoose.isValidObjectId(userByEmail._id)) ids.add(new mongoose.Types.ObjectId(userByEmail._id));
+      if (userByEmail.employeeId) ids.add(userByEmail.employeeId);
+    }
+    if (empByEmail && empByEmail._id) {
+      ids.add(String(empByEmail._id));
+      if (mongoose.isValidObjectId(empByEmail._id)) ids.add(new mongoose.Types.ObjectId(empByEmail._id));
+      if (empByEmail.employeeId) ids.add(empByEmail.employeeId);
+    }
+  }
+
+  if (empCode) {
+    ids.add(empCode);
+  }
+
+  return Array.from(ids);
+}
+
+async function uploadEmployeeDocument(req, res, next) {
+  try {
+    if (!req.file) return fail(res, 400, 'VALIDATION_FAILED', 'File is required');
+    const fs = require('fs');
+    const documentService = require('../documents/document.service');
+    const doc = await documentService.uploadDoc({
+      ownerType: 'USER',
+      ownerId: req.user._id,
+      accessLevel: 'HR',
+      file: req.file,
+      user: req.user
+    });
+
+    const docRecord = {
+      _id: doc._id,
+      fileName: req.file.originalname,
+      storagePath: doc.storagePath || req.file.path,
+      fileUrl: `/api/documents/${doc._id}/download`,
+      docCategory: req.body.docCategory || 'other',
+      uploadedBy: req.user.fullName || req.user.name || 'Employee',
+      uploadedByRole: req.user.role || 'EMPLOYEE',
+      createdAt: new Date()
+    };
+
+    const emailPattern = req.user.email ? new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') : null;
+    const query = {
+      $or: [
+        { _id: req.user._id },
+        ...(req.user.employeeId ? [{ employeeId: req.user.employeeId }] : []),
+        ...(emailPattern ? [{ email: emailPattern }] : [])
+      ]
+    };
+
+    const updatedEmp = await Employee.findOneAndUpdate(
+      query,
+      { $push: { uploadedDocuments: docRecord } },
+      { new: true }
+    );
+
+    return ok(res, { document: docRecord, documents: updatedEmp ? updatedEmp.uploadedDocuments : [docRecord] }, 'Document uploaded successfully to MongoDB', 201, req);
+  } catch (error) {
+    const fs = require('fs');
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    if (error.message && (error.message.includes('BLOCKED_FILE_TYPE') || error.message.includes('LIMIT_FILE_SIZE'))) {
+      return fail(res, 400, 'VALIDATION_FAILED', error.message);
+    }
+    next(error);
+  }
+}
+
+async function getMyEmployeeDocuments(req, res, next) {
+  try {
+    const Document = require('../documents/document.model');
+    const ownerIds = await getMatchingOwnerIds(req.user);
+
+    const emailPattern = req.user.email ? new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') : null;
+    const query = {
+      $or: [
+        { _id: req.user._id },
+        ...(req.user.employeeId ? [{ employeeId: req.user.employeeId }] : []),
+        ...(emailPattern ? [{ email: emailPattern }] : [])
+      ]
+    };
+    const empDoc = await Employee.findOne(query);
+    const empUploadedDocs = (empDoc && empDoc.uploadedDocuments) ? (empDoc.uploadedDocuments.toObject ? empDoc.uploadedDocuments.toObject() : empDoc.uploadedDocuments) : [];
+
+    const mongoDocs = await Document.find({
+      $or: [
+        { ownerId: { $in: ownerIds } },
+        { uploadedBy: { $in: ownerIds } }
+      ],
+      isDeleted: false
+    }).sort({ createdAt: -1 });
+
+    const docMap = new Map();
+    (mongoDocs || []).forEach(d => {
+      const docObj = d.toObject ? d.toObject() : d;
+      const key = String(docObj._id || docObj.fileName);
+      docMap.set(key, {
+        ...docObj,
+        fileUrl: `/api/documents/${docObj._id}/download`
+      });
+    });
+
+    (empUploadedDocs || []).forEach(d => {
+      const key = String(d._id || d.fileName);
+      if (!docMap.has(key)) {
+        docMap.set(key, d);
+      }
+    });
+
+    const combinedDocuments = Array.from(docMap.values());
+
+    return ok(res, { documents: combinedDocuments }, 'Documents retrieved successfully from MongoDB', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getEmployeeDocuments(req, res, next) {
+  try {
+    const Document = require('../documents/document.model');
+    const targetId = req.params.id;
+    const ownerIds = await getMatchingOwnerIds(targetId);
+
+    const isObjId = mongoose.isValidObjectId(targetId);
+    const query = {
+      $or: [
+        ...(isObjId ? [{ _id: targetId }, { _id: new mongoose.Types.ObjectId(targetId) }] : [{ _id: targetId }]),
+        { employeeId: targetId }
+      ]
+    };
+
+    let empDoc = await Employee.findOne(query);
+    if (!empDoc && ownerIds.length > 0) {
+      empDoc = await Employee.findOne({ _id: { $in: ownerIds } });
+    }
+
+    const empUploadedDocs = (empDoc && empDoc.uploadedDocuments) ? (empDoc.uploadedDocuments.toObject ? empDoc.uploadedDocuments.toObject() : empDoc.uploadedDocuments) : [];
+
+    const mongoDocs = await Document.find({
+      $or: [
+        { ownerId: { $in: ownerIds } },
+        { uploadedBy: { $in: ownerIds } }
+      ],
+      isDeleted: false
+    }).sort({ createdAt: -1 });
+
+    const docMap = new Map();
+    (mongoDocs || []).forEach(d => {
+      const docObj = d.toObject ? d.toObject() : d;
+      const key = String(docObj._id || docObj.fileName);
+      docMap.set(key, {
+        ...docObj,
+        fileUrl: `/api/documents/${docObj._id}/download`
+      });
+    });
+
+    (empUploadedDocs || []).forEach(d => {
+      const key = String(d._id || d.fileName);
+      if (!docMap.has(key)) {
+        docMap.set(key, d);
+      }
+    });
+
+    const combinedDocuments = Array.from(docMap.values());
+
+    return ok(res, { documents: combinedDocuments }, 'Documents retrieved successfully from MongoDB', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -1186,5 +1429,8 @@ module.exports = {
   deleteEmployee,
   getPendingEmployees,
   approveEmployee,
-  rejectEmployee
+  rejectEmployee,
+  uploadEmployeeDocument,
+  getMyEmployeeDocuments,
+  getEmployeeDocuments
 };

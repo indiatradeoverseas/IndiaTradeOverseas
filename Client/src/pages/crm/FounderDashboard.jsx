@@ -24,7 +24,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import FounderTransportWidget from './transport/FounderTransportWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
 
-const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING'];
+const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT'];
 const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -216,11 +216,11 @@ function StatusBadge({ status }) {
   );
 }
 
-function SectionHeader({ icon, title, count, action, children }) {
+function SectionHeader({ icon: Icon, title, count, action, children }) {
   return (
     <div className="p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)' }}>
       <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
-        {icon && <icon size={14} style={{ color: 'var(--crm-heading)' }} />}{title}
+        {Icon && <Icon size={14} style={{ color: 'var(--crm-heading)' }} />}{title}
       </h3>
       <div className="flex flex-wrap items-center gap-2">
         {count !== undefined && (
@@ -235,19 +235,19 @@ function SectionHeader({ icon, title, count, action, children }) {
   );
 }
 
-function StatCard({ title, value, subtitle, icon, tone, trend }) {
+function StatCard({ title, value, subtitle, icon: Icon, tone, trend }) {
   return (
-    <motion.div whileHover={{ y: -4 }} className="border p-4 sm:p-5 transition-all duration-300 rounded-sm flex flex-col min-w-0" style={CARD}>
-      <div className="flex items-start justify-between gap-2 flex-wrap">
-        <span className="text-[9px] uppercase tracking-widest font-bold truncate" style={LABEL_MONO}>{title}</span>
+    <motion.div whileHover={{ y: -4 }} className="border p-4 sm:p-5 transition-all duration-300 rounded-sm flex flex-col justify-between h-full min-w-0" style={CARD}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-wider font-bold leading-tight font-mono text-[var(--crm-ink-faint)]" style={LABEL_MONO}>{title}</span>
         <div className="p-2 border rounded-sm flex-shrink-0" style={{ borderColor: 'var(--crm-line)', color: toneColor(tone), background: toneBg(tone) }}>
-          <icon size={13} />
+          {Icon && <Icon size={14} />}
         </div>
       </div>
-      <div className="flex flex-col mt-4 min-w-0">
-        <span className="text-xl sm:text-2xl font-light tracking-tight whitespace-nowrap truncate" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{value}</span>
-        {subtitle && <span className="text-[10px] mt-1 truncate" style={LABEL_MONO}>{subtitle}</span>}
-        {trend && <span className="text-[10px] mt-1 flex items-center gap-1" style={{ color: 'var(--crm-positive)' }}><FiTrendingUp size={10} />{trend}</span>}
+      <div className="flex flex-col mt-3 min-w-0">
+        <span className="text-2xl sm:text-3xl font-light tracking-tight font-serif text-[var(--crm-heading)]" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{value}</span>
+        {subtitle && <span className="text-[10px] mt-1 font-mono text-[var(--crm-ink-faint)]" style={LABEL_MONO}>{subtitle}</span>}
+        {trend && <span className="text-[10px] mt-1 flex items-center gap-1 font-mono" style={{ color: 'var(--crm-positive)' }}><FiTrendingUp size={10} />{trend}</span>}
       </div>
     </motion.div>
   );
@@ -461,14 +461,14 @@ export default function FounderDashboard() {
   const openJobs = jobs.filter((j) => j.isActive);
 
   const stats = [
-    { title: 'Total Employees', value: activeEmployees.length, subtitle: `${employees.length} total`, icon: FiUsers, tone: 'ink' },
-    { title: 'Pending Leaves', value: leaves.length, subtitle: 'Awaiting review', icon: FiCalendar, tone: leaves.length > 0 ? 'warning' : 'ink' },
-    { title: 'Open Jobs', value: openJobs.length, subtitle: 'Active requisitions', icon: FiBriefcase, tone: openJobs.length > 0 ? 'info' : 'ink' },
-    { title: 'Active Leads', value: summary?.activeLeads || 0, subtitle: 'Pipeline health', icon: FiTrendingUp, tone: 'info' },
-    { title: 'Revenue Collected', value: fmtCurrency(summary?.revenue?.totalCollected), subtitle: 'All time', icon: FiDollarSign, tone: 'positive' },
-    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), subtitle: 'Awaiting collection', icon: FiAlertCircle, tone: 'danger' },
-    { title: 'Sales Targets Set', value: summary?.targetsSet || 0, subtitle: 'This month', icon: FiTarget, tone: 'accent' },
-    { title: 'Dept. Coverage', value: Object.keys(deptCounts).length, subtitle: `${EMPLOYEE_DEPARTMENTS.length} possible`, icon: FiGrid, tone: 'info' }
+    { title: 'Total Employees', value: activeEmployees.length, subtitle: `${employees.length} total staff`, icon: FiUsers, tone: 'ink' },
+    { title: 'Active Leads', value: summary?.activeLeads || 0, subtitle: 'Pipeline in progress', icon: FiTrendingUp, tone: 'info' },
+    { title: 'Completed & Delivered', value: summary?.completedLeads || 0, subtitle: `${summary?.deliveredLeads || 0} delivered`, icon: FiCheckCircle, tone: 'positive' },
+    { title: 'Payment Received', value: summary?.paidLeads || 0, subtitle: `${fmtCurrency(summary?.revenue?.totalCollected)} total`, icon: FiCreditCard, tone: 'positive' },
+    { title: 'Quotations Sent', value: summary?.quotations?.sent || summary?.quotations?.total || 0, subtitle: `${summary?.quotations?.approved || 0} approved`, icon: FiFileText, tone: 'accent' },
+    { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, subtitle: `${summary?.pendingOrders || 0} pending pipeline`, icon: FiCheckSquare, tone: 'positive' },
+    { title: 'Total Conversion %', value: `${summary?.conversionRate || (summary?.totalLeads > 0 ? Math.round(((summary?.completedLeads || 0) / summary?.totalLeads) * 100) : 0)}%`, subtitle: `${summary?.completedLeads || 0} / ${summary?.totalLeads || 0} won`, icon: FiZap, tone: 'positive' },
+    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), subtitle: `${summary?.payments?.pendingCount || 0} invoices due`, icon: FiAlertCircle, tone: 'danger' }
   ];
 
   const deptChartData = useMemo(() => Object.entries(deptCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [deptCounts]);
@@ -504,33 +504,33 @@ export default function FounderDashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="w-full min-h-screen overflow-x-hidden" style={{ background: 'var(--crm-bg)' }}>
       {/* Header */}
-      <motion.div variants={blockVariants} className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
-        <div className="space-y-1 text-left min-w-0">
+      <motion.div variants={blockVariants} className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
+        <div className="space-y-1 text-left min-w-max">
           <span className="text-[9px] uppercase tracking-[0.25em] font-bold block" style={LABEL_MONO}>Founder Oversight</span>
-          <h1 className="text-xl sm:text-2xl font-normal tracking-tight uppercase truncate" style={HEADING}>Founder Command Center</h1>
+          <h1 className="text-xl sm:text-2xl font-normal tracking-tight uppercase whitespace-nowrap" style={HEADING}>Founder Command Center</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <motion.div whileHover={{ scale: 1.02 }} className="text-[9px] sm:text-[10px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm select-none hidden sm:block" style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
+          <motion.div whileHover={{ scale: 1.02 }} className="text-[9px] sm:text-[10px] border px-3 py-2 uppercase tracking-wide whitespace-nowrap rounded-sm select-none hidden md:block" style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
             Cross-department oversight — every action audited
           </motion.div>
-          <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
-            <FiPlus size={12} /> <span className="hidden sm:inline">Add Employee</span>
+          <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+            <FiPlus size={12} /> <span>Add Employee</span>
           </button>
-          <button onClick={fetchAll} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all" style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)', border: '1px solid', borderColor: 'var(--crm-line)' }}>
-            <FiRefreshCw size={12} /> <span className="hidden sm:inline">Refresh</span>
+          <button onClick={fetchAll} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)', border: '1px solid', borderColor: 'var(--crm-line)' }}>
+            <FiRefreshCw size={12} /> <span>Refresh</span>
           </button>
           <button
             onClick={() => handleExportReport(summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs)}
-            className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all" style={{ background: 'var(--crm-positive)', color: 'var(--crm-bg)' }}
+            className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-positive)', color: 'var(--crm-bg)' }}
           >
-            <FiDownload size={12} /> <span className="hidden sm:inline">Export Report</span>
+            <FiDownload size={12} /> <span>Export Report</span>
           </button>
         </div>
       </motion.div>
 
       <div className="w-full px-4 sm:px-6 py-4 sm:py-6 space-y-6">
-        {/* KPI Grid - Responsive: 1 col mobile, 2 tablet, 4 desktop, 8 xl */}
-        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
+        {/* KPI Grid - Responsive: 1 col mobile, 2 tablet, 4 desktop */}
+        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {stats.map((stat, i) => (
             <StatCard key={i} {...stat} />
           ))}
@@ -821,8 +821,6 @@ export default function FounderDashboard() {
                   { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 },
                   { to: '/crm/security', label: 'Security', icon: FiShield },
                   { to: '/crm/leads', label: 'Leads Management', icon: FiUsers },
-                  { to: '/crm/dispatches', label: 'Dispatches', icon: FiTruck },
-                  { to: '/crm/payments', label: 'Payments', icon: FiCreditCard },
                   { to: '/crm/documents', label: 'Documents', icon: FiFileText },
                   { to: '/crm/employees', label: 'All Employees', icon: FiUsers },
                   { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },

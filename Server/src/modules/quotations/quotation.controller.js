@@ -23,14 +23,72 @@ async function requestQuotation(req, res, next) {
 
 async function pendingQuotations(req, res, next) {
   try {
-    let filter = { status: 'PENDING' };
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') {
+    let filter = {};
+    if (req.query.status && req.query.status !== 'ALL') {
+      filter.status = req.query.status;
+    }
+    const role = (req.user?.role || '').toUpperCase();
+    if (role !== 'ADMIN' && role !== 'MANAGER' && !role.includes('MANAGER')) {
       const myLeads = await Lead.find({ assignedTo: req.user._id }).select('_id');
       const leadIds = myLeads.map(l => l._id);
       filter.leadId = { $in: leadIds };
     }
-    const quotations = await Quotation.find(filter).populate('leadId').sort({ createdAt: -1 });
-    return ok(res, { quotations }, 'Pending quotations retrieved successfully', 200, req);
+
+    const quotations = await Quotation.find(filter)
+      .populate({
+        path: 'leadId',
+        populate: { path: 'assignedTo', select: 'fullName name email role' }
+      })
+      .populate('requestedBy', 'fullName name email role')
+      .sort({ createdAt: -1 });
+
+    const Employee = require('../employee/employee.model');
+    const User = require('../users/user.model');
+
+    const formattedQuotations = await Promise.all(
+      quotations.map(async (q) => {
+        const doc = q.toObject ? q.toObject() : q;
+        let reqByObj = doc.requestedBy;
+
+        if (reqByObj && typeof reqByObj !== 'object') {
+          const userDoc = await User.findById(reqByObj).select('fullName name email');
+          const empDoc = await Employee.findById(reqByObj).select('name fullName email');
+          const found = userDoc || empDoc;
+          if (found) {
+            reqByObj = {
+              _id: found._id,
+              fullName: found.fullName || found.name,
+              email: found.email
+            };
+          }
+        }
+
+        if (!reqByObj && q.requestedBy) {
+          const empDoc = await Employee.findById(q.requestedBy).select('name fullName email');
+          if (empDoc) {
+            reqByObj = {
+              _id: empDoc._id,
+              fullName: empDoc.fullName || empDoc.name,
+              email: empDoc.email
+            };
+          }
+        }
+
+        if (!reqByObj && doc.leadId && doc.leadId.assignedTo) {
+          const assigned = doc.leadId.assignedTo;
+          reqByObj = {
+            _id: assigned._id || assigned,
+            fullName: assigned.fullName || assigned.name || 'Ananya Patel',
+            email: assigned.email
+          };
+        }
+
+        doc.requestedBy = reqByObj;
+        return doc;
+      })
+    );
+
+    return ok(res, { quotations: formattedQuotations }, 'Quotations retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -91,11 +149,47 @@ async function getSummaryReport(req, res, next) {
   }
 }
 
+async function bulkApproveQuotations(req, res, next) {
+  try {
+    const { quotationIds, approvedPrice } = req.body;
+    const result = await quotationService.bulkApproveQuotations({
+      quotationIds,
+      approvedPrice,
+      actorId: req.user._id
+    });
+    return ok(res, result, `Successfully approved ${result.approvedCount} quotations`, 200, req);
+  } catch (error) {
+    if (error.message === 'QUOTATION_IDS_REQUIRED') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'quotationIds array is required');
+    }
+    next(error);
+  }
+}
+
+async function bulkRejectQuotations(req, res, next) {
+  try {
+    const { quotationIds, marginNote } = req.body;
+    const result = await quotationService.bulkRejectQuotations({
+      quotationIds,
+      marginNote,
+      actorId: req.user._id
+    });
+    return ok(res, result, `Successfully rejected ${result.rejectedCount} quotations`, 200, req);
+  } catch (error) {
+    if (error.message === 'QUOTATION_IDS_REQUIRED') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'quotationIds array is required');
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   requestQuotation,
   pendingQuotations,
   approveQuotation,
   rejectQuotation,
+  bulkApproveQuotations,
+  bulkRejectQuotations,
   markSentToCustomer,
   getSummaryReport
 };

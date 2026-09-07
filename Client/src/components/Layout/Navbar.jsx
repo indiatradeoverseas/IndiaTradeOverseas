@@ -117,6 +117,12 @@ export default function Navbar() {
       links: [
         { to: '/ito-ads', label: 'ITO ADS' }
       ]
+    },
+    {
+      groupLabel: 'ADVERTISING & LEAD GEN',
+      links: [
+        { to: '/ito-ads', label: 'ITO ADS' },
+      ]
     }
   ];
 

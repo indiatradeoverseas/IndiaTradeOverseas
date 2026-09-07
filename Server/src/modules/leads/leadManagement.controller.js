@@ -343,7 +343,19 @@ async function uploadCallRecording(req, res, next) {
       return fail(res, 400, 'FILE_REQUIRED', 'Please select a call recording audio file.');
     }
 
-    const { leadId, notes, duration, leadPriority, customerName: inputCustomerName } = req.body;
+    const {
+      leadId,
+      notes,
+      duration,
+      leadPriority,
+      customerName: inputCustomerName,
+      mobileNumber,
+      contactRole,
+      material,
+      quantity,
+      location,
+      serialNo
+    } = req.body;
 
     let lead = null;
     let customerName = inputCustomerName || '';
@@ -362,14 +374,54 @@ async function uploadCallRecording(req, res, next) {
           uploadedBy: req.user._id,
           createdAt: new Date()
         });
+
+        if (material) lead.productCategory = material;
+        if (quantity) lead.quantity = quantity;
+        if (location) lead.destination = location;
+        if (leadPriority) lead.priority = leadPriority;
         await lead.save();
 
         await LeadActivity.create({
           leadId: lead._id,
           actionType: 'VOICE_NOTE_ADDED',
-          note: `Call recording uploaded by ${req.user.fullName || req.user.name}: "${req.file.originalname}"`,
+          note: `Call recording uploaded by ${req.user.fullName || req.user.name}: "${req.file.originalname}"${notes ? ` - ${notes}` : ''}`,
           actorId: req.user._id
         });
+      }
+    } else if (customerName || mobileNumber) {
+      // Auto-create lead in MongoDB if direct unlinked call details are provided
+      try {
+        const cleanPhone = mobileNumber ? String(mobileNumber).replace(/\s/g, '') : '';
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 10000);
+        leadCode = `LD-${timestamp}-${random}`;
+
+        lead = await Lead.create({
+          leadCode,
+          source: 'CALL_RECORDING',
+          customerName: customerName || 'Direct Customer',
+          phoneEncrypted: cleanPhone ? encryptText(cleanPhone) : '',
+          phoneMasked: cleanPhone ? maskPhone(cleanPhone) : '',
+          phoneHash: cleanPhone ? hashText(cleanPhone) : '',
+          whatsAppNumber: cleanPhone,
+          productCategory: material || 'General Inquiry',
+          quantity: quantity || '',
+          destination: location || '',
+          priority: ['HOT', 'WARM', 'COLD'].includes(leadPriority) ? leadPriority : 'WARM',
+          stage: 'NEW_LEAD',
+          assignedTo: req.user._id,
+          createdBy: req.user._id
+        });
+
+        lead.voiceNotes.push({
+          path: getRelativePath(req.file.path),
+          originalName: req.file.originalname,
+          uploadedBy: req.user._id,
+          createdAt: new Date()
+        });
+        await lead.save();
+      } catch (autoLeadErr) {
+        console.warn('Auto-create lead from call recording notice:', autoLeadErr.message);
       }
     }
 
@@ -377,8 +429,14 @@ async function uploadCallRecording(req, res, next) {
       executiveId: req.user._id,
       executiveName: req.user.fullName || req.user.name || 'Sales Executive',
       leadId: lead ? lead._id : null,
-      leadCode: leadCode,
+      leadCode: leadCode || (lead ? lead.leadCode : ''),
       customerName: customerName || 'Direct Customer',
+      mobileNumber: mobileNumber || '',
+      contactRole: contactRole || 'Customer',
+      material: material || '',
+      quantity: quantity || '',
+      location: location || '',
+      serialNo: serialNo || '',
       audioPath: getRelativePath(req.file.path),
       originalName: req.file.originalname,
       mimeType: req.file.mimetype || 'audio/mpeg',
@@ -421,9 +479,13 @@ async function getCallRecordings(req, res, next) {
     if (!isManagerOrAdmin) {
       const mongoose = require('mongoose');
       const User = require('../users/user.model');
+      const Employee = require('../employee/employee.model');
+      const Lead = require('./lead.model');
+      const Task = require('../task/task.model');
 
       const idSet = new Set();
       if (req.user._id) idSet.add(String(req.user._id));
+      if (req.user.employeeDbId) idSet.add(String(req.user.employeeDbId));
       if (req.user.email) {
         const emp = await Employee.findOne({ email: req.user.email });
         if (emp && emp._id) idSet.add(String(emp._id));
@@ -439,7 +501,20 @@ async function getCallRecordings(req, res, next) {
         }
       });
 
-      filter.executiveId = { $in: matchIds };
+      const assignedLeads = await Lead.find({ assignedTo: { $in: matchIds } }).select('_id').lean();
+      const assignedLeadIds = assignedLeads.map(l => l._id);
+
+      const assignedTasks = await Task.find({ assignedTo: { $in: matchIds }, leadId: { $ne: null } }).select('leadId').lean();
+      const taskLeadIds = assignedTasks.map(t => t.leadId).filter(Boolean);
+
+      const combinedLeadIds = [...new Set([...assignedLeadIds.map(String), ...taskLeadIds.map(String)])].map(idStr => 
+        mongoose.isValidObjectId(idStr) ? new mongoose.Types.ObjectId(idStr) : idStr
+      );
+
+      filter.$or = [
+        { executiveId: { $in: matchIds } },
+        { leadId: { $in: combinedLeadIds } }
+      ];
     } else if (executiveId) {
       filter.executiveId = executiveId;
     }
@@ -447,9 +522,89 @@ async function getCallRecordings(req, res, next) {
     if (leadId) filter.leadId = leadId;
     if (priority) filter.leadPriority = priority;
 
-    const recordings = await CallRecording.find(filter)
-      .populate('leadId', 'customerName leadCode companyName priority stage')
-      .sort({ createdAt: -1 });
+    const mongoose = require('mongoose');
+    const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+
+    const rawRecordings = await CallRecording.find(filter)
+      .populate('leadId', 'customerName leadCode companyName priority stage assignedTo assignedDepartment')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Collect all search IDs for name resolution (executiveId + lead assignedTo)
+    const searchIdsSet = new Set();
+    rawRecordings.forEach(r => {
+      if (r.executiveId) searchIdsSet.add(String(r.executiveId));
+      if (r.leadId && r.leadId.assignedTo) {
+        const a = r.leadId.assignedTo;
+        searchIdsSet.add(String(a._id || a));
+      }
+    });
+
+    const searchArray = [...searchIdsSet].filter(Boolean);
+    const objectIdArray = [];
+    const stringArray = [];
+
+    searchArray.forEach(idStr => {
+      stringArray.push(idStr);
+      if (mongoose.isValidObjectId(idStr)) {
+        try { objectIdArray.push(new mongoose.Types.ObjectId(idStr)); } catch (e) {}
+      }
+    });
+
+    let users = [];
+    let employees = [];
+
+    if (searchArray.length > 0) {
+      [users, employees] = await Promise.all([
+        User.collection.find({
+          $or: [
+            { _id: { $in: stringArray } },
+            { _id: { $in: objectIdArray } }
+          ]
+        }).toArray(),
+        Employee.collection.find({
+          $or: [
+            { _id: { $in: stringArray } },
+            { _id: { $in: objectIdArray } }
+          ]
+        }).toArray()
+      ]);
+    }
+
+    const nameMap = new Map();
+    const addToMap = (doc) => {
+      if (!doc) return;
+      const displayName = doc.fullName || doc.name || doc.email || doc.employeeId || String(doc._id);
+      nameMap.set(String(doc._id), displayName);
+    };
+
+    users.forEach(addToMap);
+    employees.forEach(addToMap);
+
+    const recordings = rawRecordings.map(r => {
+      const execIdStr = r.executiveId ? String(r.executiveId) : '';
+      const execResolvedName = nameMap.get(execIdStr) || r.executiveName || 'Executive';
+
+      let assignedCustodianName = 'Unassigned';
+      if (r.leadId && r.leadId.assignedTo) {
+        const leadAssigneeStr = String(r.leadId.assignedTo._id || r.leadId.assignedTo);
+        assignedCustodianName = nameMap.get(leadAssigneeStr) || (typeof r.leadId.assignedTo === 'object' ? (r.leadId.assignedTo.fullName || r.leadId.assignedTo.name) : r.leadId.assignedTo) || 'Unassigned';
+      } else if (r.leadId && r.leadId.assignedDepartment) {
+        assignedCustodianName = `Dept: ${r.leadId.assignedDepartment}`;
+      } else {
+        assignedCustodianName = execResolvedName;
+      }
+
+      const isDone = r.status === 'COMPLETED' || Boolean(r.managerRemark) || Boolean(r.completedAt) || (r.leadId && ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED', 'QUOTATION_REQUIRED', 'QUOTATION_SENT', 'NEGOTIATION'].includes(String(r.leadId.stage).toUpperCase()));
+
+      return {
+        ...r,
+        executiveName: execResolvedName,
+        assignedToName: assignedCustodianName,
+        status: isDone ? 'COMPLETED' : 'PENDING'
+      };
+    });
 
     return ok(res, { recordings }, 'Call recordings retrieved successfully', 200, req);
   } catch (error) {
@@ -461,6 +616,12 @@ async function getCallRecordings(req, res, next) {
 async function streamCallRecording(req, res, next) {
   try {
     const { recordingId } = req.params;
+
+    const mongoose = require('mongoose');
+    if (!recordingId || !mongoose.isValidObjectId(recordingId)) {
+      return fail(res, 404, 'NOT_FOUND', 'Invalid call recording ID.');
+    }
+
     const recording = await CallRecording.findById(recordingId);
     if (!recording || !recording.audioPath) {
       return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
@@ -482,7 +643,7 @@ async function streamCallRecording(req, res, next) {
       }
 
       try {
-        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/leads/call-recordings/${recordingId}/stream`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -677,6 +838,43 @@ async function streamLOIDocument(req, res, next) {
   }
 }
 
+// 13. Update Followup / Call Recording Status (PENDING vs COMPLETED)
+async function updateCallRecordingStatus(req, res, next) {
+  try {
+    const { recordingId } = req.params;
+    const { status } = req.body;
+
+    const targetStatus = status === 'COMPLETED' ? 'COMPLETED' : 'PENDING';
+    const recording = await CallRecording.findByIdAndUpdate(
+      recordingId,
+      {
+        status: targetStatus,
+        completedBy: targetStatus === 'COMPLETED' ? (req.user.fullName || req.user.name || 'User') : '',
+        completedAt: targetStatus === 'COMPLETED' ? new Date() : null
+      },
+      { new: true }
+    );
+
+    if (!recording) {
+      return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
+    }
+
+    // Auto advance lead stage to REQUIREMENT_CAPTURED when follow-up status is completed
+    if (targetStatus === 'COMPLETED' && recording.leadId) {
+      const leadIdStr = typeof recording.leadId === 'object' ? recording.leadId._id : recording.leadId;
+      const lead = await Lead.findById(leadIdStr);
+      if (lead && ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'].includes(String(lead.stage || '').toUpperCase())) {
+        lead.stage = 'REQUIREMENT_CAPTURED';
+        await lead.save();
+      }
+    }
+
+    return ok(res, { recording }, `Follow-up status updated to ${targetStatus}`, 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -690,6 +888,7 @@ module.exports = {
   getCallRecordings,
   streamCallRecording,
   updateCallRecordingRemark,
+  updateCallRecordingStatus,
   uploadLOIDocument,
   streamLOIDocument
 };

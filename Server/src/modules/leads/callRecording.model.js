@@ -25,6 +25,30 @@ const callRecordingSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    mobileNumber: {
+      type: String,
+      default: '',
+    },
+    contactRole: {
+      type: String,
+      default: 'Customer',
+    },
+    material: {
+      type: String,
+      default: '',
+    },
+    quantity: {
+      type: String,
+      default: '',
+    },
+    location: {
+      type: String,
+      default: '',
+    },
+    serialNo: {
+      type: String,
+      default: '',
+    },
     audioPath: {
       type: String,
       required: true,
@@ -63,6 +87,19 @@ const callRecordingSchema = new mongoose.Schema(
       default: '',
     },
     managerRemarkAt: {
+      type: Date,
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ['PENDING', 'COMPLETED'],
+      default: 'PENDING',
+    },
+    completedBy: {
+      type: String,
+      default: '',
+    },
+    completedAt: {
       type: Date,
       default: null,
     },

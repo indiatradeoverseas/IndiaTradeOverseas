@@ -21,6 +21,7 @@ const {
   getCallRecordings,
   streamCallRecording,
   updateCallRecordingRemark,
+  updateCallRecordingStatus,
   uploadLOIDocument,
   streamLOIDocument
 } = require('./leadManagement.controller');
@@ -105,6 +106,7 @@ router.post('/score', async (req, res, next) => {
 router.get('/call-recordings', getCallRecordings);
 router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
 router.patch('/call-recordings/:recordingId/remark', updateCallRecordingRemark);
+router.patch('/call-recordings/:recordingId/status', updateCallRecordingStatus);
 
 router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
   try {

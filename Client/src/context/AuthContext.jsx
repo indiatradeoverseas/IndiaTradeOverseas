@@ -16,8 +16,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       socketService.connect(user);
-    } else {
-      socketService.disconnect();
     }
     return () => {
       socketService.disconnect();

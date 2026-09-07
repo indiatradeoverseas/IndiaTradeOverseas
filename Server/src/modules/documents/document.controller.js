@@ -172,55 +172,113 @@ async function getDocumentDetails(req, res, next) {
 
 async function downloadDoc(req, res, next) {
   try {
-    const doc = await Document.findById(req.params.id).select('+fileData');
-    if (!doc || doc.isDeleted) return fail(res, 404, 'VALIDATION_FAILED', 'Document not found');
+    let doc = await Document.findById(req.params.id).select('+fileData');
+    let fileBuffer;
+    let fileName;
+    let mimeType;
 
-    let fileBuffer = doc.fileData;
-
-    if (!fileBuffer) {
-      let resolvedPath = doc.storagePath;
-      if (!fs.existsSync(resolvedPath)) {
-        const path = require('path');
-        const fileNameOnDisk = path.basename(doc.storagePath);
-        const localPath = path.join(process.cwd(), 'uploads', fileNameOnDisk);
-        if (fs.existsSync(localPath)) {
-          resolvedPath = localPath;
-        }
+    if (doc && !doc.isDeleted) {
+      const allowed = await documentService.checkAccess(req.user, doc);
+      if (!allowed) {
+        await recordAudit({
+          actorId: req.user._id,
+          actionType: 'UNAUTHORIZED_VIEW',
+          entityType: 'DOCUMENT',
+          entityId: doc._id.toString(),
+          severity: 'HIGH',
+          ipAddress: req.ip,
+          metadata: { action: 'download_file' }
+        });
+        return fail(res, 403, 'OWNERSHIP_FORBIDDEN', 'Access denied: Unauthorized to download this document');
       }
 
-      if (fs.existsSync(resolvedPath)) {
-        fileBuffer = fs.readFileSync(resolvedPath);
+      fileBuffer = doc.fileData;
+      fileName = doc.fileName;
+      mimeType = doc.mimeType;
+
+      if (!fileBuffer && doc.storagePath) {
+        let resolvedPath = doc.storagePath;
+        if (!fs.existsSync(resolvedPath)) {
+          const path = require('path');
+          const fileNameOnDisk = path.basename(doc.storagePath);
+          const localPath = path.join(process.cwd(), 'uploads', fileNameOnDisk);
+          if (fs.existsSync(localPath)) {
+            resolvedPath = localPath;
+          }
+        }
+
+        if (fs.existsSync(resolvedPath)) {
+          fileBuffer = fs.readFileSync(resolvedPath);
+        }
+      }
+    } else {
+      // Check subdocument uploadedDocuments in Employee and User collections
+      const path = require('path');
+      const Employee = require('../employee/employee.model');
+      const User = require('../users/user.model');
+
+      const isObjId = mongoose.isValidObjectId(req.params.id);
+      if (isObjId) {
+        const emp = await Employee.findOne({ 'uploadedDocuments._id': req.params.id });
+        if (emp && emp.uploadedDocuments) {
+          const subDoc = emp.uploadedDocuments.id(req.params.id);
+          if (subDoc) {
+            fileName = subDoc.fileName || 'document.pdf';
+            const diskPath = subDoc.storagePath || subDoc.fileUrl;
+            if (diskPath) {
+              let resolvedPath = diskPath;
+              if (!fs.existsSync(resolvedPath)) {
+                const fileNameOnDisk = path.basename(diskPath);
+                const localPath = path.join(process.cwd(), 'uploads', fileNameOnDisk);
+                if (fs.existsSync(localPath)) resolvedPath = localPath;
+              }
+              if (fs.existsSync(resolvedPath)) {
+                fileBuffer = fs.readFileSync(resolvedPath);
+              }
+            }
+          }
+        }
+
+        if (!fileBuffer) {
+          const uDoc = await User.findOne({ 'uploadedDocuments._id': req.params.id });
+          if (uDoc && uDoc.uploadedDocuments) {
+            const subDoc = uDoc.uploadedDocuments.id(req.params.id);
+            if (subDoc) {
+              fileName = subDoc.fileName || 'document.pdf';
+              const diskPath = subDoc.storagePath || subDoc.fileUrl;
+              if (diskPath) {
+                let resolvedPath = diskPath;
+                if (!fs.existsSync(resolvedPath)) {
+                  const fileNameOnDisk = path.basename(diskPath);
+                  const localPath = path.join(process.cwd(), 'uploads', fileNameOnDisk);
+                  if (fs.existsSync(localPath)) resolvedPath = localPath;
+                }
+                if (fs.existsSync(resolvedPath)) {
+                  fileBuffer = fs.readFileSync(resolvedPath);
+                }
+              }
+            }
+          }
+        }
       }
     }
 
     if (!fileBuffer) return fail(res, 404, 'VALIDATION_FAILED', 'Physical file missing on server');
 
-    const allowed = await documentService.checkAccess(req.user, doc);
-    if (!allowed) {
+    if (doc) {
       await recordAudit({
         actorId: req.user._id,
-        actionType: 'UNAUTHORIZED_VIEW',
+        actionType: 'DOCUMENT_DOWNLOADED',
         entityType: 'DOCUMENT',
         entityId: doc._id.toString(),
-        severity: 'HIGH',
+        severity: 'LOW',
         ipAddress: req.ip,
-        metadata: { action: 'download_file' }
+        metadata: { fileName: doc.fileName }
       });
-      return fail(res, 403, 'OWNERSHIP_FORBIDDEN', 'Access denied: Unauthorized to download this document');
     }
 
-    await recordAudit({
-      actorId: req.user._id,
-      actionType: 'DOCUMENT_DOWNLOADED',
-      entityType: 'DOCUMENT',
-      entityId: doc._id.toString(),
-      severity: 'LOW',
-      ipAddress: req.ip,
-      metadata: { fileName: doc.fileName }
-    });
-
-    res.setHeader('Content-Type', doc.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.fileName)}"`);
+    res.setHeader('Content-Type', mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName || 'document')}"`);
     return res.send(fileBuffer);
   } catch (error) {
     next(error);
