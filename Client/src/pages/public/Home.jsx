@@ -245,7 +245,7 @@ export default function Home() {
     {
       number: '02',
       icon: GiStonePile,
-      title: 'Stone & Construction',
+      title: 'Building & Construction Material',
       description:
         'Aggregates and construction materials for civil, concrete and infrastructure requirements.',
       products:
