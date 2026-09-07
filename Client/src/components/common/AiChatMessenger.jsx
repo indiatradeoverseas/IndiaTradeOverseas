@@ -4,6 +4,7 @@ import {
   FiCpu, FiSend, FiX, FiMinimize2, FiTrash2, FiZap, 
   FiUser, FiMessageSquare, FiRefreshCw, FiHelpCircle, FiCheckCircle 
 } from 'react-icons/fi';
+import { IoMdChatboxes } from 'react-icons/io';
 import { aiApi } from '../../api/aiApi';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -29,7 +30,7 @@ export default function AiChatMessenger() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: `👋 Hello ${user?.fullName || 'Team Member'}! I am **NVIDIA Nemotron AI Assistant**.\nHow can I help you with your tasks, doubts, or CRM work today?`,
+        content: `👋 Hello ${user?.fullName || 'Team Member'}! I am **India Trade Overseas AI Assistant**.\nHow can I help you with your tasks, doubts, or CRM work today?`,
         timestamp: new Date().toISOString()
       }
     ];
@@ -94,7 +95,7 @@ export default function AiChatMessenger() {
       }
     } catch (error) {
       console.error('AI Messenger Send Error:', error);
-      toast.error(error.response?.data?.message || 'Failed to connect to NVIDIA AI assistant');
+      toast.error(error.response?.data?.message || 'Failed to connect to India Trade Overseas AI assistant');
       setMessages(prev => [
         ...prev,
         {
@@ -173,11 +174,7 @@ export default function AiChatMessenger() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
           </span>
-          <FiCpu size={22} className="text-emerald-200 animate-pulse" />
-          <span className="font-medium text-xs tracking-wide hidden sm:inline text-white">AI Assistant</span>
-          <span className="text-[9px] bg-emerald-950/80 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-700/50 font-mono hidden md:inline">
-            NVIDIA
-          </span>
+          <IoMdChatboxes size={22} className="text-emerald-200 animate-pulse" />
         </motion.button>
       )}
 
@@ -196,14 +193,11 @@ export default function AiChatMessenger() {
             <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-slate-900 via-slate-950 to-emerald-950/80 border-b border-emerald-500/20">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                  <FiCpu size={18} />
+                  <IoMdChatboxes size={18} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-xs font-bold text-slate-100 tracking-wide">ITO AI Assistant</h3>
-                    <span className="text-[8px] font-mono uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-700/50 px-1.5 py-0.2 rounded">
-                      Nemotron NIM
-                    </span>
                   </div>
                   <p className="text-[10px] text-emerald-400/80 flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Ready to solve employee doubts
@@ -247,7 +241,7 @@ export default function AiChatMessenger() {
                           : 'bg-emerald-950 border border-emerald-500/40 text-emerald-400'
                       }`}
                     >
-                      {isUser ? <FiUser size={12} /> : <FiCpu size={12} />}
+                      {isUser ? <FiUser size={12} /> : <IoMdChatboxes size={12} />}
                     </div>
 
                     <div
@@ -268,7 +262,7 @@ export default function AiChatMessenger() {
               {loading && (
                 <div className="flex items-center gap-2 text-emerald-400/90 text-[10px] italic p-2 bg-emerald-950/30 border border-emerald-900/30 rounded-xl w-fit">
                   <FiRefreshCw size={12} className="animate-spin text-emerald-400" />
-                  <span>NVIDIA Nemotron AI is thinking...</span>
+                  <span>India Trade Overseas AI is thinking...</span>
                 </div>
               )}
               <div ref={messagesEndRef} />
