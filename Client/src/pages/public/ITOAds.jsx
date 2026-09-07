@@ -515,6 +515,7 @@ export default function ITOAds() {
           loop
           muted
           playsInline
+          preload="auto"
           className="w-[900px] max-w-none md:w-[1350px] object-cover select-none transform scale-110 filter blur-[0.4px]"
           style={{
             animation: 'floatX 20s ease-in-out infinite'
