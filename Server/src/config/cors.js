@@ -6,7 +6,10 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    if (env.CORS_WHITELIST.indexOf(origin) !== -1) {
+    const cleanOrigin = origin.trim().replace(/\/+$/, '');
+    const allowedOrigins = env.CORS_WHITELIST.map(o => o.trim().replace(/\/+$/, ''));
+
+    if (allowedOrigins.includes(cleanOrigin)) {
       return callback(null, true);
     }
 

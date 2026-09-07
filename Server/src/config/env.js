@@ -12,7 +12,7 @@ const env = {
   JWT_EXPIRY: process.env.JWT_EXPIRY,
   REFRESH_TOKEN_EXPIRY: '7d',
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS, 10),
-  CORS_WHITELIST: process.env.CORS_WHITELIST ? process.env.CORS_WHITELIST.split(',') : ['https://ito-7u4q.vercel.app/', 'http://localhost:3000', 'http://localhost:5173'],
+  CORS_WHITELIST: process.env.CORS_WHITELIST ? process.env.CORS_WHITELIST.split(',') : ['https://india-trade-overseas.vercel.app', 'https://ito-7u4q.vercel.app', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
   DEVICE_VERIFICATION_ENABLED: process.env.DEVICE_VERIFICATION_ENABLED,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   FRONTEND_URL: process.env.FRONTEND_URL || 'https://www.indiatradeoverseas.com',
