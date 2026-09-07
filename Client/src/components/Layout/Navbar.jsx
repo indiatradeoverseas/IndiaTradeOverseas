@@ -88,22 +88,21 @@ export default function Navbar() {
     setIsUserMenuOpen(false);
   };
 
-  // Main navigation.
-  // Products intentionally removed.
+  // Main navigation
   const navLinks = [
     { to: '/', label: 'HOME' },
     { to: '/about', label: 'ABOUT US' },
     { to: '/careers', label: 'CAREERS' },
   ];
 
-  // Services structure - major divisions with sub-divisions
+  // Services structure
   const servicesGroups = [
     {
       groupLabel: 'PRAKRITI',
       links: [
         { to: '/prakriti', label: 'Tea' },
         { to: '/prakriti/rice', label: 'Rice' },
-        { to: null, label: 'Onion' } // no page yet
+        { to: null, label: 'Onion' }
       ]
     },
     {
@@ -129,11 +128,9 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
   const isServicesActive = location.pathname.startsWith('/prakriti') || location.pathname === '/stone' || location.pathname === '/ito-ads';
 
-  // State for mega menu - tracks which major division is hovered (desktop) or expanded (mobile)
   const [hoveredDivision, setHoveredDivision] = useState(null);
   const [expandedDivisions, setExpandedDivisions] = useState({});
 
-  // Staggered cascade animation for the mobile menu (parent orchestrates children timing)
   const mobileMenuContainer = {
     hidden: {},
     visible: {
@@ -176,48 +173,48 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 via-black/30 to-transparent transition-all duration-300">
-
+    <nav className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/90 via-black/60 to-transparent transition-all duration-300">
       <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* MOBILE NAVIGATION BAR HEADER */}
+        {/* =====================================================
+            MOBILE NAVIGATION BAR HEADER
+        ===================================================== */}
         <div className="flex lg:hidden justify-between items-center h-[104px] w-full">
-          <div className="flex items-center space-x-3 text-right">
-<div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/30 shrink-0">
-                <div
-                  className="h-full w-full"
-                  style={{
-                    backgroundImage: `url(${CompanyLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'center 55%',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                  role="img"
-                  aria-label="India Trade Overseas Logo"
-                />
-              </div>
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="flex flex-col justify-center text-right leading-none">
-                <span className="font-serif font-normal text-lg tracking-wide uppercase mr-9 text-[#F2F4F7] whitespace-nowrap drop-shadow">
-                  INDIA
-                </span>
-                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap drop-shadow">
-                  TRADE OVERSEAS
-                </span>
-              </div>
-            </Link>
+          <Link to="/" className="flex items-center space-x-3 group">
+            {/* Logo Icon */}
+            <div className="h-[48px] w-[48px] flex items-center justify-center shrink-0">
+              <img
+                src={CompanyLogo}
+                alt="India Trade Overseas Logo"
+                className="h-full w-full object-contain drop-shadow"
+              />
+            </div>
 
-          </div>
+            {/* Glowing Vertical Line Divider */}
+            <div className="h-[42px] w-[1px] bg-gradient-to-b from-amber-400/80 via-white/40 to-transparent shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+
+            {/* Typography Stack */}
+            <div className="flex flex-col justify-center text-left leading-none space-y-[2px]">
+              <span className="font-serif font-black text-[20px] tracking-[0.14em] text-white uppercase whitespace-nowrap leading-none drop-shadow">
+                INDIA
+              </span>
+              <span className="font-sans font-bold text-[8.5px] tracking-[0.24em] text-gray-200 uppercase whitespace-nowrap leading-none">
+                TRADE OVERSEAS
+              </span>
+              <div className="w-full h-[1.5px] bg-gradient-to-r from-orange-500 via-amber-400 to-transparent my-[2px]"></div>
+              <span className="font-sans font-semibold text-[6.5px] tracking-[0.22em] text-gray-400 uppercase whitespace-nowrap leading-none">
+                WHERE QUALITY MEETS GLOBAL DEMAND
+              </span>
+            </div>
+          </Link>
 
           <div className="flex items-center space-x-2 shrink-0">
-
             {user && (
               <Link
                 to="/crm/notifications"
                 className="relative text-[#C5CBD3] hover:text-[#F2F4F7] p-2 mr-1 transition-colors"
               >
                 <FiBell size={20} />
-
                 {unreadCount > 0 && (
                   <span className="absolute top-0.5 right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
                     {unreadCount}
@@ -233,69 +230,60 @@ export default function Navbar() {
               aria-expanded={isMobileMenuOpen}
             >
               <AnimatePresence mode="wait" initial={false}>
-
                 <motion.span
                   key={isMobileMenuOpen ? 'close' : 'open'}
                   initial={{ rotate: -90, opacity: 0 }}
                   animate={{ rotate: 0, opacity: 1 }}
                   exit={{ rotate: 90, opacity: 0 }}
-                  transition={{
-                    duration: 0.2,
-                    ease: 'easeInOut'
-                  }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
                   className="inline-flex"
                 >
-                  {isMobileMenuOpen ? (
-                    <FiX size={26} />
-                  ) : (
-                    <FiMenu size={26} />
-                  )}
+                  {isMobileMenuOpen ? <FiX size={26} /> : <FiMenu size={26} />}
                 </motion.span>
-
               </AnimatePresence>
             </button>
-
           </div>
         </div>
 
-        {/* DESKTOP NAVIGATION BAR HEADER */}
+        {/* =====================================================
+            DESKTOP NAVIGATION BAR HEADER
+        ===================================================== */}
         <div className="hidden lg:flex justify-between items-center h-[104px]">
           <div className="flex items-center shrink-0">
-            <Link to="/" className="flex items-center space-x-3.5 group">
-              <div className="h-[64px] w-[64px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/30 bg-black/40 shrink-0 shadow-lg">
-                <div
-                  className="h-full w-full"
-                  style={{
-                    backgroundImage: `url(${CompanyLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'center 55%',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                  role="img"
-                  aria-label="India Trade Overseas Logo"
+            <Link to="/" className="flex items-center space-x-4 group">
+              {/* Logo Icon */}
+              <div className="h-[68px] w-[68px] flex items-center justify-center shrink-0">
+                <img
+                  src={CompanyLogo}
+                  alt="India Trade Overseas Logo"
+                  className="h-full w-full object-contain drop-shadow-md"
                 />
               </div>
 
-              <div className="flex flex-col justify-center text-left">
-                <span className="font-serif font-normal text-[20px] xl:text-[22px] tracking-[0.01em] text-[#F2F4F7] leading-tight uppercase whitespace-nowrap drop-shadow-md">
-                  India Trade Overseas
-                </span>
-                <span className="font-sans font-light text-[10px] xl:text-[11px] tracking-[0.12em] text-[#C5CBD3] uppercase mt-0.5 whitespace-nowrap drop-shadow-sm">
-                  Trade. Supply. Logistics. Growth.
-                </span>
+              {/* Vertical Divider with Gold/Orange Highlight Spot */}
+              <div className="h-[54px] w-[1px] bg-gradient-to-b from-amber-400/90 via-white/50 to-transparent shadow-[0_0_10px_rgba(251,191,36,0.5)]"></div>
 
+              {/* Exact Brand Typography from Image */}
+              <div className="flex flex-col justify-center text-left leading-none space-y-[3px]">
+                <span className="font-serif font-black text-[28px] xl:text-[30px] tracking-[0.12em] text-white uppercase whitespace-nowrap leading-none drop-shadow-md">
+                  INDIA
+                </span>
+                <span className="font-sans font-bold text-[11px] xl:text-[12px] tracking-[0.26em] text-gray-200 uppercase whitespace-nowrap leading-none">
+                  TRADE OVERSEAS
+                </span>
+                
+                {/* Horizontal Accent Gradient Line */}
+                <div className="w-[85%] h-[2px] bg-gradient-to-r from-orange-500 via-amber-400 to-transparent my-[2px]"></div>
+                
+                <span className="font-sans font-semibold text-[8px] xl:text-[8.5px] tracking-[0.26em] text-gray-400 uppercase whitespace-nowrap leading-none">
+                  WHERE QUALITY MEETS GLOBAL DEMAND
+                </span>
               </div>
-
             </Link>
-
           </div>
 
-          {/* =====================================================
-              MAIN NAVIGATION
-          ===================================================== */}
+          {/* MAIN NAVIGATION */}
           <div className="flex items-center justify-end flex-1 min-w-0 space-x-5 xl:space-x-6">
-
-            {/* HOME / ABOUT / CAREERS */}
             {navLinks.map((link) => (
               <Link
                 key={link.to}
@@ -307,18 +295,13 @@ export default function Navbar() {
                 }`}
               >
                 {link.label}
-
                 {isActive(link.to) && (
                   <span className="absolute bottom-[-10px] left-0 right-0 h-[2px] bg-[#F2F4F7]" />
                 )}
               </Link>
             ))}
 
-{/* =====================================================
-                OUR SERVICES
-                Text itself is now a link to /our-services.
-                Chevron/dropdown remains available.
-            ===================================================== */}
+            {/* SERVICES DROPDOWN */}
             <div
               ref={servicesRef}
               className="relative py-2"
@@ -328,10 +311,7 @@ export default function Navbar() {
                 setHoveredDivision(null);
               }}
             >
-
               <div className="flex items-center">
-
-                {/* OUR SERVICES PAGE LINK */}
                 <Link
                   to="/our-services"
                   className={`relative flex items-center text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 outline-none drop-shadow-sm ${
@@ -342,13 +322,11 @@ export default function Navbar() {
                   onClick={() => setIsServicesDropdownOpen(false)}
                 >
                   <span>OUR SERVICES</span>
-
                   {isServicesActive && (
                     <span className="absolute bottom-[-12px] left-0 right-0 h-[2px] bg-[#F2F4F7]" />
                   )}
                 </Link>
 
-                {/* DROPDOWN TRIGGER */}
                 <button
                   type="button"
                   aria-label="Open Our Services menu"
@@ -366,38 +344,20 @@ export default function Navbar() {
                   <FiChevronDown
                     size={12}
                     className={`transition-transform duration-300 ${
-                      isServicesDropdownOpen
-                        ? 'rotate-180'
-                        : ''
+                      isServicesDropdownOpen ? 'rotate-180' : ''
                     }`}
                   />
                 </button>
-
               </div>
 
-              {/* =================================================
-                  DESKTOP SERVICES MEGA MENU
-              ================================================= */}
+              {/* MEGA MENU DESKTOP */}
               <AnimatePresence>
-
                 {isServicesDropdownOpen && (
                   <motion.div
-                    initial={{
-                      opacity: 0,
-                      y: 5
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0
-                    }}
-                    exit={{
-                      opacity: 0,
-                      y: 5
-                    }}
-                    transition={{
-                      duration: 0.15,
-                      ease: 'easeOut'
-                    }}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
                     className="absolute left-0 mt-3 bg-[#0E1116]/95 border border-[#C5CBD3]/24 backdrop-blur-md shadow-2xl py-2 z-50 rounded-[2px]"
                   >
                     <div className="flex flex-col gap-1 px-2">
@@ -408,7 +368,6 @@ export default function Navbar() {
                           onMouseEnter={() => setHoveredDivision(gIdx)}
                           onMouseLeave={() => setHoveredDivision(null)}
                         >
-                          {/* MAJOR DIVISION LABEL - acts as hover trigger */}
                           <div className={`px-4 py-3 text-[9px] font-mono font-bold tracking-widest uppercase cursor-pointer transition-colors ${
                             hoveredDivision === gIdx
                               ? 'text-[#F2F4F7] bg-[#2B3440]/60'
@@ -417,7 +376,6 @@ export default function Navbar() {
                             {group.groupLabel}
                           </div>
 
-                          {/* SUB-DIVISIONS PANEL - shows on hover */}
                           {hoveredDivision === gIdx && (
                             <motion.div
                               initial={{ opacity: 0, x: -10 }}
@@ -451,18 +409,15 @@ export default function Navbar() {
                               ))}
                             </motion.div>
                           )}
-
                         </div>
                       ))}
                     </div>
                   </motion.div>
                 )}
-
               </AnimatePresence>
-
             </div>
 
-            {/* CONTACT */}
+            {/* CONTACT LINK */}
             <Link
               to="/contact"
               className={`text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium font-sans transition-all duration-200 whitespace-nowrap drop-shadow-sm ${
@@ -474,21 +429,15 @@ export default function Navbar() {
               CONTACT
             </Link>
 
-            {/* =====================================================
-                AUTHENTICATED USER
-            ===================================================== */}
+            {/* AUTH ACTIONS */}
             {user ? (
-
               <div className="flex items-center gap-3 pl-2 border-l border-[#C5CBD3]/24 shrink-0">
-
-                {/* NOTIFICATIONS */}
                 <Link
                   to="/crm/notifications"
                   className="relative text-[#C5CBD3] hover:text-[#F2F4F7] transition-colors"
                   aria-label="Notifications"
                 >
                   <FiBell size={16} />
-
                   {unreadCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
                       {unreadCount}
@@ -496,21 +445,13 @@ export default function Navbar() {
                   )}
                 </Link>
 
-                {/* USER MENU */}
                 <div className="relative">
-
                   <button
-                    onClick={() =>
-                      setIsUserMenuOpen(!isUserMenuOpen)
-                    }
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center space-x-1 px-2.5 py-1.5 border border-[#C5CBD3]/24 bg-[#2B3440]/60 text-[#F2F4F7] hover:bg-[#2B3440]/90 text-[11px] tracking-wider uppercase transition-colors rounded-[2px]"
                   >
                     <FiUser size={13} />
-
-                    <span>
-                      {user?.fullName?.split(' ')[0]}
-                    </span>
-
+                    <span>{user?.fullName?.split(' ')[0]}</span>
                     <FiChevronDown size={12} />
                   </button>
 
@@ -518,14 +459,9 @@ export default function Navbar() {
                     <>
                       <div
                         className="fixed inset-0 z-40"
-                        onClick={() =>
-                          setIsUserMenuOpen(false)
-                        }
+                        onClick={() => setIsUserMenuOpen(false)}
                       />
-
                       <div className="absolute right-0 mt-2 w-48 bg-[#0E1116] border border-[#C5CBD3]/24 shadow-2xl py-1 z-50 text-[11px] rounded-[2px]">
-
-                        {/* DASHBOARD */}
                         {!user?.employeeId?.startsWith('CL_') && (
                           <Link
                             to="/crm/dashboard"
@@ -536,7 +472,6 @@ export default function Navbar() {
                           </Link>
                         )}
 
-                        {/* ADMIN */}
                         {isAdmin && (
                           <Link
                             to="/crm/admin"
@@ -547,7 +482,6 @@ export default function Navbar() {
                           </Link>
                         )}
 
-                        {/* LOGOUT */}
                         <button
                           onClick={handleLogout}
                           className="flex items-center space-x-2 px-4 py-2 text-red-400 hover:bg-red-950/20 w-full text-left font-semibold border-t border-[#C5CBD3]/10"
@@ -555,36 +489,22 @@ export default function Navbar() {
                           <FiLogOut size={12} />
                           <span>LOGOUT</span>
                         </button>
-
                       </div>
                     </>
                   )}
-
                 </div>
-
               </div>
-
             ) : (
-
-              /* ===================================================
-                 GUEST ACTIONS
-              =================================================== */
               <div className="flex items-center gap-3 xl:gap-4 shrink-0 pl-1">
-
-                {/* REQUEST BULK QUOTE */}
                 <Link
                   to="/quote-request"
                   className="h-[44px] px-3 xl:px-4 flex items-center justify-center space-x-1.5 text-[10px] xl:text-[11px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-semibold font-sans text-[#F2F4F7] border border-[#C5CBD3]/40 bg-[#2B3440]/50 hover:bg-[#2B3440]/80 backdrop-blur-sm transition-all duration-200 rounded-[2px]"
                 >
                   <span>REQUEST BULK QUOTE</span>
-                  <span className="text-sm font-light">
-                    &rarr;
-                  </span>
+                  <span className="text-sm font-light">&rarr;</span>
                 </Link>
 
-                {/* LOGIN / SIGN UP */}
                 <div className="flex items-center space-x-3 xl:space-x-4 border-l border-[#C5CBD3]/24 pl-3 xl:pl-4">
-
                   <Link
                     to="/login"
                     className="text-[11px] xl:text-[12px] uppercase tracking-[0.1em] xl:tracking-[0.15em] font-medium text-[#C5CBD3] hover:text-[#F2F4F7]"
@@ -598,54 +518,42 @@ export default function Navbar() {
                   >
                     SIGN UP
                   </Link>
-
                 </div>
-
               </div>
-
             )}
-
           </div>
         </div>
       </div>
 
-      {/* ===========================================================
-          MOBILE VIEWPORT OVERLAY
-      =========================================================== */}
+      {/* MOBILE OVERLAY */}
       <AnimatePresence>
-
         {isMobileMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
-          className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
-        >
-          <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
-            <div className="flex items-center space-x-3">
-              <div className="h-[56px] w-[56px] flex items-center justify-center rounded-full overflow-hidden border border-[#C5CBD3]/20 bg-black/25 shrink-0">
-                <div
-                  className="h-full w-full"
-                  style={{
-                    backgroundImage: `url(${CompanyLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'center 55%',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                  role="img"
-                  aria-label="India Trade Overseas Logo"
-                />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="lg:hidden fixed inset-0 z-50 overflow-y-auto font-sans bg-[#0E1116] text-[#C5CBD3]"
+          >
+            <div className="flex justify-between items-center h-[104px] px-4 sm:px-6">
+              <div className="flex items-center space-x-3">
+                <div className="h-[42px] w-[42px] flex items-center justify-center shrink-0">
+                  <img
+                    src={CompanyLogo}
+                    alt="India Trade Overseas Logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="h-[36px] w-[1px] bg-gradient-to-b from-amber-400 via-white/40 to-transparent"></div>
+                <div className="flex flex-col justify-center text-left leading-none space-y-[2px]">
+                  <span className="font-serif font-black text-base tracking-[0.14em] uppercase text-white">
+                    INDIA
+                  </span>
+                  <span className="font-sans font-bold text-[8px] tracking-[0.24em] uppercase text-gray-200">
+                    TRADE OVERSEAS
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col justify-center text-left leading-none">
-                <span className="font-serif font-normal text-lg tracking-wide uppercase text-[#F2F4F7] whitespace-nowrap">
-                  INDIA
-                </span>
-                <span className="font-sans font-light text-[10px] tracking-widest uppercase mt-1 text-[#C5CBD3] whitespace-nowrap">
-                  TRADE OVERSEAS
-                </span>
-              </div>
-            </div>
 
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -654,7 +562,6 @@ export default function Navbar() {
               >
                 <FiX size={26} />
               </button>
-
             </div>
 
             {/* MOBILE MENU CONTENT */}
@@ -665,86 +572,55 @@ export default function Navbar() {
               exit="exit"
               className="px-6 pb-12 space-y-6 text-left uppercase font-medium tracking-[0.18em] text-[11px]"
             >
-
-              {/* MAIN LINKS */}
               {navLinks.map((link) => (
-
-                <motion.div
-                  key={link.to}
-                  variants={mobileMenuItem}
-                >
+                <motion.div key={link.to} variants={mobileMenuItem}>
                   <Link
                     to={link.to}
                     className={`block text-base tracking-wider ${
-                      isActive(link.to)
-                        ? 'text-[#F2F4F7]'
-                        : 'text-[#C5CBD3]'
+                      isActive(link.to) ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'
                     }`}
-                    onClick={() =>
-                      setIsMobileMenuOpen(false)
-                    }
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {link.label}
                   </Link>
                 </motion.div>
-
               ))}
 
-              {/* CONTACT */}
               <motion.div variants={mobileMenuItem}>
-
                 <Link
                   to="/contact"
                   className={`block text-base tracking-wider ${
-                    isActive('/contact')
-                      ? 'text-[#F2F4F7]'
-                      : 'text-[#C5CBD3]'
+                    isActive('/contact') ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'
                   }`}
-                  onClick={() =>
-                    setIsMobileMenuOpen(false)
-                  }
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   CONTACT
                 </Link>
-
               </motion.div>
 
-{/* =================================================
-                  OUR SERVICES MOBILE
-              ================================================= */}
+              {/* SERVICES SECTION MOBILE */}
               <motion.div
                 variants={mobileMenuContainer}
                 className="border-t border-[#C5CBD3]/10 pt-6 space-y-4"
               >
-
-                {/* OUR SERVICES PAGE LINK */}
                 <motion.div variants={mobileMenuItem}>
-
                   <Link
                     to="/our-services"
                     className={`block text-base tracking-wider ${
-                      isServicesActive
-                        ? 'text-[#F2F4F7]'
-                        : 'text-[#C5CBD3]'
+                      isServicesActive ? 'text-[#F2F4F7]' : 'text-[#C5CBD3]'
                     }`}
-                    onClick={() =>
-                      setIsMobileMenuOpen(false)
-                    }
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     OUR SERVICES
                   </Link>
-
                 </motion.div>
 
-                {/* SERVICE GROUPS - Click to expand */}
                 {servicesGroups.map((group, gIdx) => (
-
                   <motion.div
                     key={group.groupLabel}
                     variants={mobileMenuContainer}
                     className="space-y-2 pt-1"
                   >
-
                     <button
                       type="button"
                       onClick={() => setExpandedDivisions(prev => ({ ...prev, [gIdx]: !prev[gIdx] }))}
@@ -793,49 +669,33 @@ export default function Navbar() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-
                   </motion.div>
-
                 ))}
-
               </motion.div>
 
-              {/* =================================================
-                  MOBILE CTA / AUTH
-              ================================================= */}
+              {/* ACTION BUTTONS MOBILE */}
               <motion.div
                 variants={mobileMenuContainer}
                 className="border-t border-[#C5CBD3]/24 pt-6 space-y-3"
               >
-
-                {/* REQUEST BULK QUOTE */}
                 <motion.div variants={mobileMenuItem}>
-
                   <Link
                     to="/quote-request"
                     className="w-full h-[52px] flex items-center justify-center bg-[#2B3440] border border-[#C5CBD3]/42 text-[#F2F4F7] font-semibold text-xs tracking-widest rounded-[2px]"
-                    onClick={() =>
-                      setIsMobileMenuOpen(false)
-                    }
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     REQUEST BULK QUOTE
                   </Link>
-
                 </motion.div>
 
-                {/* GUEST LOGIN / SIGNUP */}
                 {!user && (
-
                   <motion.div
                     variants={mobileMenuItem}
                     className="grid grid-cols-2 gap-3 pt-1"
                   >
-
                     <Link
                       to="/login"
-                      onClick={() =>
-                        setIsMobileMenuOpen(false)
-                      }
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
                     >
                       LOGIN
@@ -843,90 +703,18 @@ export default function Navbar() {
 
                     <Link
                       to="/client-signup"
-                      onClick={() =>
-                        setIsMobileMenuOpen(false)
-                      }
-                      className="h-[48px] flex items-center justify-center bg-[#2B3440] border border-transparent text-[#F2F4F7] text-xs tracking-widest"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="h-[48px] flex items-center justify-center bg-[#2B3440] text-[#F2F4F7] font-semibold text-xs tracking-widest"
                     >
                       SIGN UP
                     </Link>
-
                   </motion.div>
-
                 )}
-
-                {/* LOGGED-IN USER */}
-                {user && (
-
-                  <motion.div
-                    variants={mobileMenuContainer}
-                    className="space-y-3 pt-1"
-                  >
-
-                    {/* DASHBOARD */}
-                    {!user?.employeeId?.startsWith('CL_') && (
-
-                      <motion.div variants={mobileMenuItem}>
-
-                        <Link
-                          to="/crm/dashboard"
-                          onClick={() =>
-                            setIsMobileMenuOpen(false)
-                          }
-                          className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                        >
-                          <FiPackage size={14} />
-                          <span>DASHBOARD</span>
-                        </Link>
-
-                      </motion.div>
-
-                    )}
-
-                    {/* ADMIN PANEL */}
-                    {isAdmin && (
-
-                      <motion.div variants={mobileMenuItem}>
-
-                        <Link
-                          to="/crm/admin"
-                          onClick={() =>
-                            setIsMobileMenuOpen(false)
-                          }
-                          className="h-[48px] flex items-center justify-center space-x-2 border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                        >
-                          <FiSettings size={14} />
-                          <span>ADMIN PANEL</span>
-                        </Link>
-
-                      </motion.div>
-
-                    )}
-
-                    {/* LOGOUT */}
-                    <motion.button
-                      variants={mobileMenuItem}
-                      onClick={handleLogout}
-                      className="w-full h-[48px] flex items-center justify-center space-x-2 bg-red-950/20 border border-red-400/30 text-red-400 text-xs tracking-widest font-semibold"
-                    >
-                      <FiLogOut size={14} />
-                      <span>LOGOUT</span>
-                    </motion.button>
-
-                  </motion.div>
-
-                )}
-
               </motion.div>
-
             </motion.div>
-
           </motion.div>
-
         )}
-
       </AnimatePresence>
-
     </nav>
   );
 }
