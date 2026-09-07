@@ -75,7 +75,14 @@ export const getDispatchQueue = async () => {
           photoUrl: l.photoUrl || l.proofUrl,
           paymentProof: l.paymentProof,
           deliveryImages: l.deliveryImages,
-          departureImages: l.departureImages
+          departureImages: l.departureImages,
+          createdAt: l.createdAt,
+          updatedAt: l.updatedAt,
+          actualDeliveryDate: l.actualDeliveryDate,
+          completedAt: l.completedAt,
+          podVerifiedAt: l.podVerifiedAt,
+          proofUploadedAt: l.proofUploadedAt || l.deliveryImages?.capturedAt || l.paymentProof?.receivedAt || l.updatedAt || l.createdAt,
+          podUploadedAt: l.podUploadedAt || l.updatedAt || l.createdAt
         };
       });
       return { success: true, data: { orders: dispatchLeads } };

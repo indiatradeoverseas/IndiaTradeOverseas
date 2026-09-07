@@ -197,12 +197,11 @@ export function getCrmMainNavItems(user) {
     ];
   }
 
-  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Quotations, Support Tickets, Driver Uploaded All Proof & My Profile
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Support Tickets, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
       { to: '/crm/transport/manager?tab=DASHBOARD', label: 'Transport Manager Dashboard', icon: FiTruck },
       { to: '/crm/transport/manager?tab=ASSIGN_LEADS', label: 'Lead & Trip Assignment', icon: FiCheckSquare },
-      { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/transport/manager?tab=DRIVER_PROOFS', label: 'Driver Uploaded All Proof', icon: FiFolder }
@@ -224,8 +223,8 @@ export function getCrmMainNavItems(user) {
     // 3. Sales Dashboard — ADMIN + Sales Manager + Sales Executive
     (admin || salesMgr || salesExec) && { to: '/crm/sales-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
 
-    // 4. Transport Dashboard — Transport Dept or Permitted or Admin
-    (admin || isTransportAllowed(user)) && { 
+    // 4. Transport Dashboard — Transport Dept or Permitted or Admin (Excluded for Sales Manager & Executive)
+    (!salesMgr && !salesExec && (admin || isTransportAllowed(user))) && { 
       to: getTransportDefaultPath(user), 
       label: 'Transport Dashboard', 
       icon: FiTruck,
@@ -297,17 +296,17 @@ export function getCrmMainNavItems(user) {
     // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
 
-    // Dispatches Manifest — Non-admin permitted dispatch staff only
-    (!admin && (user?.permissions?.dispatch === true || user?.dispatchPermission === true)) && { to: '/crm/dispatches', label: 'Dispatches Manifest', icon: FiFileText },
+    // Dispatches Manifest — Non-admin permitted dispatch staff only (Excluded for Sales Manager & Executive)
+    (!salesMgr && !salesExec && !admin && (user?.permissions?.dispatch === true || user?.dispatchPermission === true)) && { to: '/crm/dispatches', label: 'Dispatches Manifest', icon: FiFileText },
 
-    // Quotations — ADMIN, Sales Manager, or permission-based
-    (admin || salesMgr || user?.permissions?.quotation === true || user?.quotationPermission === true) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
+    // Quotations — ADMIN or permission-based (Excluded for Sales Manager & Executive)
+    (!salesMgr && !salesExec && (admin || user?.permissions?.quotation === true || user?.quotationPermission === true)) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
 
-    // Payments — Non-admin permitted payment staff only
-    (!admin && (user?.permissions?.payment === true || user?.paymentPermission === true)) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
+    // Payments — Non-admin permitted payment staff only (Excluded for Sales Manager & Executive)
+    (!salesMgr && !salesExec && !admin && (user?.permissions?.payment === true || user?.paymentPermission === true)) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
 
-    // Documents — ADMIN, HR, Managers, or permission-based
-    (admin || hrMgr || hrExec || salesMgr || ['MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR', 'SALES_MANAGER'].includes(user?.role) || user?.department === 'HR' || user?.permissions?.document === true || user?.documentPermission === true) && { to: '/crm/documents', label: 'Documents', icon: FiFolder }
+    // Documents — ADMIN, HR, or permission-based (Excluded for Sales Manager & Executive)
+    (!salesMgr && !salesExec && (admin || hrMgr || hrExec || ['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) || user?.department === 'HR' || user?.permissions?.document === true || user?.documentPermission === true)) && { to: '/crm/documents', label: 'Documents', icon: FiFolder }
   ].filter(Boolean);
 }
 

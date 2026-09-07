@@ -246,10 +246,14 @@ export default function DriverMobileView() {
     const paymentModeText = isCod ? 'COD' : 'Online';
     const modeLabel = isCod ? 'Cash on Delivery (COD)' : `Razorpay Online (${razorpayTxnId || 'Paid'})`;
 
+    const nowIso = new Date().toISOString();
     const proofData = {
       status: 'DELIVERED',
       dispatchStatus: 'DELIVERED',
       deliveredAt: new Date().toLocaleTimeString(),
+      actualDeliveryDate: nowIso,
+      proofUploadedAt: nowIso,
+      podUploadedAt: nowIso,
       podFileUrl: paymentProofPreview || '',
       paymentProofUrl: paymentProofPreview || '',
       paymentProofName: paymentProofFile?.name || `${paymentModeText} Receipt`,
@@ -265,11 +269,13 @@ export default function DriverMobileView() {
         amountPaid: amountNum,
         paymentMode: paymentModeText,
         razorpayPaymentId: razorpayTxnId,
-        proofImageUrl: paymentProofPreview || ''
+        proofImageUrl: paymentProofPreview || '',
+        receivedAt: nowIso
       },
       deliveryImages: {
         driverSelfieUrl: driverProofPreview || '',
-        emptyVehiclePhotoUrl: driverProofPreview || ''
+        emptyVehiclePhotoUrl: driverProofPreview || '',
+        capturedAt: nowIso
       }
     };
 

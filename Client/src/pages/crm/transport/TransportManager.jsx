@@ -114,44 +114,7 @@ export default function TransportManager() {
   const [broadcastText, setBroadcastText] = useState('');
 
   // Fuel & Maintenance Logs (Loaded dynamically from MongoDB Dispatches)
-  const [fuelMaintenanceLogs, setFuelMaintenanceLogs] = useState([
-    {
-      id: 'sample_log_1',
-      driver: 'Ramesh Driver',
-      vehicle: 'UP32KK6653',
-      leadCode: 'LD-1787658027865-8278',
-      leadCustomer: 'Sahara Stone Corp 070',
-      totalKm: 8800,
-      fromLocation: 'Delhi',
-      toLocation: 'United Kingdom',
-      fuelCost: 8664335535,
-      litres: 0,
-      punctureCost: 8,
-      otherCost: 0,
-      remarks: 'Highway Diesel Refill & Toll',
-      date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      dateStr: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      time: '11:43 PM'
-    },
-    {
-      id: 'sample_log_2',
-      driver: 'Ramesh Driver',
-      vehicle: 'UP32KK6652',
-      leadCode: 'LD-1787658027865-8278',
-      leadCustomer: 'Sahara Stone Corp 070',
-      totalKm: 8800,
-      fromLocation: 'Delhi',
-      toLocation: 'United Kingdom',
-      fuelCost: 7223322,
-      litres: 75,
-      punctureCost: 73,
-      otherCost: 0,
-      remarks: 'Regular Highway Maintenance & Tire Check',
-      date: new Date(Date.now() - 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      dateStr: new Date(Date.now() - 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      time: '11:35 AM'
-    }
-  ]);
+  const [fuelMaintenanceLogs, setFuelMaintenanceLogs] = useState([]);
 
   // Driver Uploaded Proofs List
   const [driverUploadedProofs, setDriverUploadedProofs] = useState([]);
@@ -619,6 +582,39 @@ export default function TransportManager() {
     setShowEditRevenueModal(true);
   };
 
+  const handleNotifySalesManagerForRate = async (item, e) => {
+    if (e) e.stopPropagation();
+    const code = item.orderNumber || item.dispatchNumber || item.leadCode || item._id;
+    const cust = item.customerName || item.companyName || 'Client';
+    const msg = `⚠️ URGENT FREIGHT RATE REQUIRED: Lead #${code} (${cust}, Route: ${item.origin || 'Depot'} ➔ ${item.destination || 'Destination'}) has missing freight rate. Sales Manager, please fill the rate!`;
+
+    try {
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.emit('sales_manager_rate_alert', {
+          leadId: item._id,
+          leadCode: code,
+          customerName: cust,
+          message: msg,
+          createdAt: new Date()
+        });
+      }
+
+      await dispatchesApi.createWorkUpdate({
+        driverId: String(user?._id || ''),
+        driverName: user?.name || user?.fullName || 'Transport Manager',
+        vehicleNo: 'HQ-LOGISTICS',
+        updateType: 'RATE ALERT',
+        notes: msg,
+        location: `${item.origin || 'Depot'} ➔ ${item.destination || 'Destination'}`
+      }).catch(() => {});
+
+      toast.success(`Alert notification sent to Sales Manager for Lead #${code}!`, { duration: 5000 });
+    } catch (err) {
+      toast.error('Could not send rate alert');
+    }
+  };
+
   const handleSaveFreightRevenue = async (e) => {
     e.preventDefault();
     if (!editingOrder) return;
@@ -747,8 +743,11 @@ export default function TransportManager() {
       const driver = t.driverName || t.assignedDriverName || 'Driver';
       const vehicle = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'Unassigned';
       const code = t.dispatchNumber || t.orderNumber || t.leadCode || t._id || `LD-${1000 + idx}`;
-      const dateStr = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-IN') : todayStr;
-      const ts = t.updatedAt ? new Date(t.updatedAt).getTime() : Date.now() - (idx * 3600000);
+      const rawDate = t.proofUploadedAt || t.deliveryImages?.capturedAt || t.paymentProof?.receivedAt || t.podUploadedAt || t.actualDeliveryDate || t.completedAt || t.podVerifiedAt || t.updatedAt || t.createdAt;
+      const dObj = rawDate ? new Date(rawDate) : null;
+      const validD = dObj && !isNaN(dObj.getTime()) ? dObj : null;
+      const dateStr = validD ? validD.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : todayStr;
+      const ts = validD ? validD.getTime() : Date.now() - (idx * 3600000);
 
       // Extract all proof document fields from MongoDB Dispatch Schema
       const proofSources = [
@@ -882,11 +881,12 @@ export default function TransportManager() {
       const route = `${origin} ➔ ${destination}`;
       const amount = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.leadValue || 0) || 0;
       
-      // True Date calculation from lead/dispatch timestamps (prevents fallback to today's date if driver didn't upload today)
-      const rawDate = t.proofUploadedAt || t.podUploadedAt || t.createdAt || t.updatedAt;
+      // True Date calculation from lead/dispatch timestamps (prioritizes actual driver proof upload timestamp)
+      const rawDate = t.proofUploadedAt || t.deliveryImages?.capturedAt || t.paymentProof?.receivedAt || t.podUploadedAt || t.actualDeliveryDate || t.completedAt || t.podVerifiedAt || t.updatedAt || t.createdAt;
       const dateObj = rawDate ? new Date(rawDate) : null;
-      const dateStr = dateObj ? dateObj.toLocaleDateString('en-IN') : 'Unspecified Date';
-      const ts = dateObj ? dateObj.getTime() : (Date.now() - ((idx + 1) * 86400000));
+      const validDateObj = dateObj && !isNaN(dateObj.getTime()) ? dateObj : null;
+      const dateStr = validDateObj ? validDateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unspecified Date';
+      const ts = validDateObj ? validDateObj.getTime() : (Date.now() - ((idx + 1) * 86400000));
 
       // Attendance Proof (Driver Selfie / Unloading Point Photo)
       const attendeeUrl = t.driverProofUrl || t.deliveryImages?.driverSelfieUrl || t.deliveryImages?.emptyVehiclePhotoUrl || t.departureImages?.driverSelfieUrl || t.photoUrl;
@@ -1179,7 +1179,7 @@ export default function TransportManager() {
               </div>
 
               <div className="w-full pt-2 min-w-0" style={{ height: 210, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
                     data={[
                       { name: 'Total Leads', count: metrics.totalLeads, fill: '#f59e0b' },
@@ -1222,7 +1222,7 @@ export default function TransportManager() {
               </div>
 
               <div className="w-full flex items-center justify-center min-w-0" style={{ height: 170, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <PieChart>
                     <Pie
                       data={[
@@ -1908,9 +1908,34 @@ export default function TransportManager() {
                                 </div>
                                 <div>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Freight Rev</span>
-                                  <span className="text-emerald-400 font-bold">
-                                    ₹{(item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
-                                  </span>
+                                  {Number(item.totalFreightAmount || item.freightAmount || 0) > 0 ? (
+                                    <span className="text-emerald-400 font-bold">
+                                      ₹{Number(item.totalFreightAmount || item.freightAmount).toLocaleString('en-IN')}
+                                    </span>
+                                  ) : (
+                                    <div className="flex flex-col gap-1 mt-0.5">
+                                      <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 border border-rose-800 text-[8px] font-bold rounded uppercase w-max animate-pulse">
+                                        ⚠️ RATE MISSING (₹0)
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleNotifySalesManagerForRate(item, e)}
+                                          className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[8px] font-bold rounded uppercase tracking-wider cursor-pointer shadow flex items-center gap-1"
+                                          title="Send alert notification to Sales Manager to fill this rate"
+                                        >
+                                          <FiBell size={9} /> Alert Sales Manager
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleOpenEditRevenueModal(item, e)}
+                                          className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white text-[8px] font-bold rounded uppercase cursor-pointer"
+                                        >
+                                           Fill Rate
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                                 <div>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Assigned To</span>

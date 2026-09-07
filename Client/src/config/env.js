@@ -7,7 +7,7 @@
  */
 
 const FALLBACK_BACKEND = import.meta.env.PROD 
-  ? 'https://indiatradeoverseas-1.onrender.com' 
+  ? 'https://indiatradeoverseas-ito.onrender.com' 
   : 'http://localhost:5000';
 
 const rawBackend = (import.meta.env.VITE_BACKEND_URL || FALLBACK_BACKEND).trim().replace(/\/+$/, '');

@@ -936,6 +936,72 @@ export default function SalesManagerDashboard() {
         </div>
       </motion.div>
 
+      {/* FREIGHT RATE MISSING ALERT BANNER FOR SALES MANAGER */}
+      {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length > 0 && (
+        <motion.div variants={itemVariants} className="p-4 border rounded-lg bg-rose-950/40 border-rose-800/80 space-y-3 font-mono text-left">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
+              <FiAlertCircle className="text-rose-400 animate-bounce" size={18} />
+              <span>Freight Rate Action Required ({allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length} Leads Missing Freight Rate)</span>
+            </div>
+            <span className="text-[9px] bg-rose-900 text-white px-2 py-0.5 rounded font-bold uppercase">
+              Transport Desk Alert
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).slice(0, 6).map((lead) => (
+              <div key={lead._id} className="p-3 bg-black/60 border border-rose-900/80 rounded-md space-y-2 text-xs">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] text-teal-400 font-bold block">{lead.leadCode || `LD-${lead._id?.slice(-4)}`}</span>
+                    <strong className="text-white text-xs block truncate max-w-[180px]">{lead.companyName || lead.customerName || 'Client'}</strong>
+                  </div>
+                  <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-bold uppercase rounded border border-rose-800">
+                    Rate ₹0
+                  </span>
+                </div>
+
+                <div className="text-[10px] text-slate-300">
+                  <span>Route: <strong>{lead.origin || 'Depot'} ➔ {lead.destination || 'Destination'}</strong></span>
+                </div>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const inputEl = e.target.elements[`rate-${lead._id}`];
+                    const val = Number(inputEl?.value);
+                    if (!val || val <= 0) return toast.error('Enter valid rate');
+                    
+                    try {
+                      await leadsApi.updateLead(lead._id, { leadValue: val, freightAmount: val, totalFreightAmount: val });
+                      toast.success(`🎉 Freight Rate ₹${val.toLocaleString('en-IN')} saved for lead ${lead.leadCode || lead._id}!`);
+                      loadDashboardData();
+                    } catch (err) {
+                      toast.error('Failed to save rate');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 pt-1"
+                >
+                  <input
+                    type="number"
+                    name={`rate-${lead._id}`}
+                    placeholder="Enter Rate (₹)..."
+                    className="w-full px-2 py-1 bg-slate-900 border border-slate-700 text-white rounded text-[11px] outline-none focus:border-emerald-500 font-mono"
+                  />
+                  <button
+                    type="submit"
+                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold rounded uppercase shrink-0 cursor-pointer"
+                  >
+                    💾 Save Rate
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Calendar Date Filter Bar */}
       <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
         <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">

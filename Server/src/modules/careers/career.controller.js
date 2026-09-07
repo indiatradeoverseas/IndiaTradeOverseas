@@ -226,7 +226,7 @@ const downloadResume = async (req, res, next) => {
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
       try {
-        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/careers/${req.params.id}/resume`;
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/${req.params.id}/resume`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -264,7 +264,7 @@ const downloadCoverLetter = async (req, res, next) => {
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
       try {
-        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/careers/${req.params.id}/cover-letter`;
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/${req.params.id}/cover-letter`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
@@ -509,7 +509,7 @@ const downloadJobJD = async (req, res, next) => {
     if (!filePath || !fs.existsSync(filePath)) {
       // Fallback: proxy from production in development mode
       try {
-        const prodUrl = `https://indiatradeoverseas-1.onrender.com/api/careers/jobs/${req.params.id}/jd`;
+        const prodUrl = `https://indiatradeoverseas-ito.onrender.com/api/careers/jobs/${req.params.id}/jd`;
         await proxyFromProduction(prodUrl, req.headers.authorization, res);
         return;
       } catch (proxyError) {
