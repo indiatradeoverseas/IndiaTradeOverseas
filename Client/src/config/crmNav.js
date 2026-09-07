@@ -241,8 +241,8 @@ export function getCrmMainNavItems(user) {
     // Follow Up Matrix — ADMIN, Sales Manager, Sales Executive (Excluded for HR Manager & HR Executive)
     (!hrMgr && !hrExec && (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true)) && { to: '/crm/followup', label: 'Follow Up', icon: FiPhoneCall },
 
-    // Trial Dashboard — ADMIN, Sales Manager, Sales Executive, Trial staff
-    (admin || salesMgr || salesExec || user?.role === 'TRIAL' || user?.position?.toLowerCase()?.includes('trial')) && { to: '/crm/trial-dashboard', label: 'Trial Dashboard', icon: FiClock },
+    // Trial Dashboard — ADMIN or Trial staff (Excluded for Sales Manager & Sales Executive)
+    (!salesMgr && !salesExec && (admin || user?.role === 'TRIAL' || user?.position?.toLowerCase()?.includes('trial'))) && { to: '/crm/trial-dashboard', label: 'Trial Dashboard', icon: FiClock },
 
     // 7. Distributors — ADMIN + Sales Manager
     (admin || salesMgr) && {
