@@ -1,4 +1,8 @@
 const router = require('express').Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
 const {
   register,
   login,
@@ -19,10 +23,26 @@ const {
   deleteEmployee,
   getPendingEmployees,
   approveEmployee,
-  rejectEmployee
+  rejectEmployee,
+  uploadEmployeeDocument,
+  getMyEmployeeDocuments,
+  getEmployeeDocuments
 } = require('./employee.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
+
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const safeName = `${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, safeName);
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 const adminOnly = [authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER')];
 const hrOnly = [authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR')];
@@ -45,6 +65,11 @@ router.post('/signup', signupEmployee);
 router.get('/pending', ...hrOnly, getPendingEmployees);
 router.post('/pending/:id/approve', ...hrOnly, approveEmployee);
 router.post('/pending/:id/reject', ...hrOnly, rejectEmployee);
+
+// Document Endpoints for Employee collection
+router.post('/me/documents', authenticate, upload.single('file'), uploadEmployeeDocument);
+router.get('/me/documents', authenticate, getMyEmployeeDocuments);
+router.get('/:id/documents', authenticate, getEmployeeDocuments);
 
 router.post('/', ...adminOnly, createEmployee);
 router.patch('/:id', ...adminOnly, updateEmployee);

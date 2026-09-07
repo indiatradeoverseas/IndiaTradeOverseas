@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL, getFileUrl } from '../../config/env';
 import { 
   FiDollarSign, 
   FiTrendingUp, 
@@ -777,6 +778,7 @@ export default function SalesManagerDashboard() {
         setShowFileModal(false);
         setFileForm({ sentTo: '', note: '' });
         setShareFile(null);
+        loadDashboardData();
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to share file');
@@ -934,6 +936,72 @@ export default function SalesManagerDashboard() {
         </div>
       </motion.div>
 
+      {/* FREIGHT RATE MISSING ALERT BANNER FOR SALES MANAGER */}
+      {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length > 0 && (
+        <motion.div variants={itemVariants} className="p-4 border rounded-lg bg-rose-950/40 border-rose-800/80 space-y-3 font-mono text-left">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
+              <FiAlertCircle className="text-rose-400 animate-bounce" size={18} />
+              <span>Freight Rate Action Required ({allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length} Leads Missing Freight Rate)</span>
+            </div>
+            <span className="text-[9px] bg-rose-900 text-white px-2 py-0.5 rounded font-bold uppercase">
+              Transport Desk Alert
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).slice(0, 6).map((lead) => (
+              <div key={lead._id} className="p-3 bg-black/60 border border-rose-900/80 rounded-md space-y-2 text-xs">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] text-teal-400 font-bold block">{lead.leadCode || `LD-${lead._id?.slice(-4)}`}</span>
+                    <strong className="text-white text-xs block truncate max-w-[180px]">{lead.companyName || lead.customerName || 'Client'}</strong>
+                  </div>
+                  <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-bold uppercase rounded border border-rose-800">
+                    Rate ₹0
+                  </span>
+                </div>
+
+                <div className="text-[10px] text-slate-300">
+                  <span>Route: <strong>{lead.origin || 'Depot'} ➔ {lead.destination || 'Destination'}</strong></span>
+                </div>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const inputEl = e.target.elements[`rate-${lead._id}`];
+                    const val = Number(inputEl?.value);
+                    if (!val || val <= 0) return toast.error('Enter valid rate');
+                    
+                    try {
+                      await leadsApi.updateLead(lead._id, { leadValue: val, freightAmount: val, totalFreightAmount: val });
+                      toast.success(`🎉 Freight Rate ₹${val.toLocaleString('en-IN')} saved for lead ${lead.leadCode || lead._id}!`);
+                      loadDashboardData();
+                    } catch (err) {
+                      toast.error('Failed to save rate');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 pt-1"
+                >
+                  <input
+                    type="number"
+                    name={`rate-${lead._id}`}
+                    placeholder="Enter Rate (₹)..."
+                    className="w-full px-2 py-1 bg-slate-900 border border-slate-700 text-white rounded text-[11px] outline-none focus:border-emerald-500 font-mono"
+                  />
+                  <button
+                    type="submit"
+                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold rounded uppercase shrink-0 cursor-pointer"
+                  >
+                    💾 Save Rate
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Calendar Date Filter Bar */}
       <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
         <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
@@ -1007,10 +1075,10 @@ export default function SalesManagerDashboard() {
         <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
-            { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
+            { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
             { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
-            { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
+            { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
           ].map(tab => (
             <button
@@ -1314,8 +1382,7 @@ export default function SalesManagerDashboard() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            const baseUrl = 'http://localhost:5000/';
-                                            const absoluteUrl = task.completionFileUrl.startsWith('http') ? task.completionFileUrl : `${baseUrl}${task.completionFileUrl}`;
+                                            const absoluteUrl = getFileUrl(task.completionFileUrl);
                                             const link = document.createElement('a');
                                             link.href = absoluteUrl;
                                             link.setAttribute('download', task.completionFileOriginalName);
@@ -1546,6 +1613,8 @@ export default function SalesManagerDashboard() {
                           <th className="py-3 px-4">Date & Time</th>
                           <th className="py-3 px-4">Lead Identifier</th>
                           <th className="py-3 px-4">Customer & Entity</th>
+                          <th className="py-3 px-4 text-center">Priority / Temp</th>
+                          <th className="py-3 px-4 text-center">Target Timeline</th>
                           <th className="py-3 px-4">Contact Details</th>
                           <th className="py-3 px-4">Division / Source Origin</th>
                           <th className="py-3 px-4">Assigned Executive</th>
@@ -1559,7 +1628,7 @@ export default function SalesManagerDashboard() {
                           if (divisionLeadsList.length === 0) {
                             return (
                               <tr>
-                                <td colSpan="9" className="text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
+                                <td colSpan="11" className="text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
                                   No website form or live chat leads found for this division and selected date filter.
                                 </td>
                               </tr>
@@ -1585,6 +1654,28 @@ export default function SalesManagerDashboard() {
                               e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
                             );
 
+                            let prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                            if (lead.targetDate) {
+                              const tDate = new Date(lead.targetDate);
+                              if (!isNaN(tDate.getTime())) {
+                                const now = new Date();
+                                const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+                                const diffDays = Math.ceil(diffHours / 24);
+                                if (diffDays <= 3) {
+                                  prioInfo = { label: 'HOT 🔥', color: 'bg-rose-950/80 text-rose-400 border-rose-800/50' };
+                                } else if (diffDays <= 7) {
+                                  prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                                } else {
+                                  prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/50' };
+                                }
+                              }
+                            } else {
+                              const pUpper = (lead.priority || 'WARM').toUpperCase();
+                              if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-950/80 text-rose-400 border-rose-800/50' };
+                              else if (pUpper === 'WARM') prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                              else if (pUpper === 'COLD') prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/50' };
+                            }
+
                             return (
                               <tr key={lead._id} className={`hover:bg-[var(--crm-bg-sunken)]/60 transition ${selectedLeads.includes(lead._id) ? 'bg-teal-950/30' : ''}`}>
                                 <td className="py-3 px-3 text-center">
@@ -1606,6 +1697,20 @@ export default function SalesManagerDashboard() {
                                 <td className="py-3 px-4 space-y-0.5 min-w-[170px]">
                                   <div className="font-bold text-[var(--crm-heading)] text-sm">{lead.customerName}</div>
                                   <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono border ${prioInfo.color}`}>
+                                    {prioInfo.label}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-center font-mono text-[11px] whitespace-nowrap">
+                                  {lead.targetDate ? (
+                                    <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                                      📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-4 space-y-1 font-mono text-[11px]">
                                   <div className="text-[var(--crm-ink-soft)] flex items-center gap-1.5">
@@ -1647,12 +1752,7 @@ export default function SalesManagerDashboard() {
                                       {lead.loiDocuments.map((loi, idx) => (
                                         <a
                                           key={idx}
-                                          href={(() => {
-                                            const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
-                                            const token = localStorage.getItem('token') || '';
-                                            return `${baseUrl}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(token)}`;
-                                          })()}
+                                          href={`${API_URL}/leads/${lead._id}/loi/${idx}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
                                           target="_blank"
                                           rel="noreferrer"
                                           className="block text-[9px] text-teal-400 hover:underline truncate max-w-[140px]"
@@ -2012,7 +2112,33 @@ export default function SalesManagerDashboard() {
                                 <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
                                   <span>{msg.senderName} ({msg.senderRole})</span>
                                 </div>
-                                <p className="leading-relaxed break-words">{msg.content}</p>
+                                <div className="leading-relaxed break-words text-xs font-sans">
+                                  {(() => {
+                                    if (!msg.content) return null;
+                                    const parts = msg.content.split(/(\b(?:LD|LEAD)-[A-Za-z0-9-]+|\b[0-9a-fA-F]{24}\b)/g);
+                                    return (
+                                      <span>
+                                        {parts.map((part, idx) => {
+                                          const matchedLead = (allLeads || []).find(l => l.leadCode === part || String(l._id) === part);
+                                          if (matchedLead || /^(?:LD|LEAD)-/.test(part)) {
+                                            const targetId = matchedLead ? matchedLead._id : part;
+                                            return (
+                                              <Link
+                                                key={idx}
+                                                to={`/crm/leads/${targetId}`}
+                                                className="bg-teal-950/80 hover:bg-teal-900 border border-teal-700/60 text-teal-300 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded mx-0.5 inline-flex items-center gap-1 transition underline cursor-pointer"
+                                                title="Click to open Lead Manifest"
+                                              >
+                                                📄 {matchedLead ? matchedLead.leadCode : part}
+                                              </Link>
+                                            );
+                                          }
+                                          return part;
+                                        })}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                               <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5 px-1">
                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -2235,16 +2361,52 @@ export default function SalesManagerDashboard() {
                                   </span>
                                 </div>
 
-                                <div className="min-w-0">
-                                  <h4 className="text-xs font-bold font-serif text-[var(--crm-heading)] truncate">
-                                    {rec.customerName || rec.leadId?.customerName || 'Direct Call'}
-                                  </h4>
+                                <div className="min-w-0 space-y-1">
+                                  {(() => {
+                                    const leadIdStr = rec.leadId ? (typeof rec.leadId === 'object' ? rec.leadId._id : rec.leadId) : null;
+                                    return leadIdStr ? (
+                                      <Link
+                                        to={`/crm/leads/${leadIdStr}`}
+                                        className="text-xs font-bold font-serif text-[var(--crm-heading)] hover:text-teal-400 hover:underline truncate block cursor-pointer transition"
+                                      >
+                                        {rec.customerName || rec.leadId?.customerName || 'Direct Call'} 🔗
+                                      </Link>
+                                    ) : (
+                                      <h4 className="text-xs font-bold font-serif text-[var(--crm-heading)] truncate">
+                                        {rec.customerName || rec.leadId?.customerName || 'Direct Call'}
+                                      </h4>
+                                    );
+                                  })()}
+                                  {rec.mobileNumber && (
+                                    <a href={`tel:${rec.mobileNumber}`} className="text-[9px] text-[var(--crm-ink-faint)] hover:text-emerald-400 hover:underline block truncate cursor-pointer">
+                                      📱 {rec.mobileNumber} ({rec.contactRole || 'Contact'}) 📞
+                                    </a>
+                                  )}
                                   {rec.leadCode && (
-                                    <span className="text-[9px] text-[var(--crm-ink-faint)] block truncate">
-                                      Lead: {rec.leadCode}
-                                    </span>
+                                    (() => {
+                                      const leadIdStr = rec.leadId ? (typeof rec.leadId === 'object' ? rec.leadId._id : rec.leadId) : null;
+                                      return leadIdStr ? (
+                                        <Link
+                                          to={`/crm/leads/${leadIdStr}`}
+                                          className="text-[9px] font-bold text-teal-400 hover:text-teal-300 hover:underline block truncate cursor-pointer"
+                                        >
+                                          Lead: {rec.leadCode} →
+                                        </Link>
+                                      ) : (
+                                        <span className="text-[9px] text-[var(--crm-ink-faint)] block truncate">
+                                          Lead: {rec.leadCode}
+                                        </span>
+                                      );
+                                    })()
                                   )}
                                 </div>
+
+                                {(rec.material || rec.location || rec.quantity) && (
+                                  <div className="bg-[var(--crm-bg-raised)] p-2 rounded text-[9px] space-y-0.5 border border-[var(--crm-line)]/50">
+                                    {rec.material && <div>📦 Material: <strong className="text-teal-400">{rec.material}</strong> {rec.quantity ? `(${rec.quantity})` : ''}</div>}
+                                    {rec.location && <div>📍 Location: <strong className="text-amber-400">{rec.location}</strong></div>}
+                                  </div>
+                                )}
 
                                 {rec.notes && (
                                   <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] bg-[var(--crm-bg-raised)] p-2.5 rounded border border-[var(--crm-line)] italic line-clamp-3 break-words">
@@ -2258,12 +2420,9 @@ export default function SalesManagerDashboard() {
                                 <audio
                                   controls
                                   controlsList="nodownload"
+                                  preload="metadata"
                                   className="w-full h-8 rounded accent-teal-500 min-w-0"
-                                  src={(() => {
-                                    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                    const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
-                                    return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
-                                  })()}
+                                  src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
                                 />
 
                                 <div className="flex justify-between items-center text-[8px] text-[var(--crm-ink-faint)]">

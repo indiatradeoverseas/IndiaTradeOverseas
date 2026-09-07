@@ -7,6 +7,8 @@ const {
   applyJob,
   listApplications,
   updateApplicationStatus,
+  submitInterviewFeedback,
+  bulkAssignApplications,
   downloadResume,
   downloadCoverLetter,
   submitGateLead,
@@ -19,7 +21,6 @@ const {
   deleteApplication,
   downloadJobJD
 } = require('./career.controller');
-
 
 // Configure multer storage for resumes and cover letters
 const storage = multer.diskStorage({
@@ -71,7 +72,10 @@ router.get('/jobs/:id/jd', downloadJobJD);
 // ----------------------------------------------------
 router.get('/gate-leads', authenticate, listGateLeads);
 router.get('/', authenticate, listApplications);
+router.post('/bulk-assign', authenticate, bulkAssignApplications);
 router.patch('/:id/status', authenticate, updateApplicationStatus);
+router.post('/:id/interviews/:interviewId/feedback', authenticate, submitInterviewFeedback);
+router.post('/:id/feedback', authenticate, submitInterviewFeedback);
 router.get('/:id/resume', authenticate, downloadResume);
 router.get('/:id/cover-letter', authenticate, downloadCoverLetter);
 router.delete('/:id', authenticate, deleteApplication);

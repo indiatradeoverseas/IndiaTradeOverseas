@@ -2,7 +2,19 @@ const Task = require('./task.model');
 const Employee = require('../employee/employee.model');
 const socketService = require('../../services/socket.service');
 const { ok, fail } = require('../../utils/response');
+const { getRelativePath } = require('../../utils/file');
 const mongoose = require('mongoose');
+
+function normalizeTaskFileUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const normalized = url.replace(/\\/g, '/');
+  const uploadsIndex = normalized.indexOf('uploads/');
+  if (uploadsIndex !== -1) {
+    return normalized.substring(uploadsIndex);
+  }
+  return normalized;
+}
 
 
 function isManagerUser(user) {
@@ -63,17 +75,46 @@ async function createTask(req, res) {
 
     // Handle file attachment if present
     if (req.file) {
-      taskData.fileUrl = req.file.path.replace(/\\/g, '/');
+      taskData.fileUrl = getRelativePath(req.file.path);
       taskData.fileOriginalName = req.file.originalname;
     }
 
     const task = new Task(taskData);
     await task.save();
 
+    // Auto update lead assignedTo and stage if leadId is associated with this task
+    if (leadId) {
+      try {
+        const Lead = require('../leads/lead.model');
+        const lead = await Lead.findById(leadId);
+        if (lead) {
+          lead.assignedTo = employee._id;
+          const currentStage = String(lead.stage || '').toUpperCase();
+          if (currentStage === 'NEW_LEAD' || currentStage === 'ASSIGNED') {
+            lead.stage = 'LEAD_QUALIFICATION';
+          } else if (currentStage === 'LEAD_QUALIFICATION') {
+            lead.stage = 'FOLLOW_UP';
+          } else if (currentStage === 'FOLLOW_UP') {
+            lead.stage = 'REQUIREMENT_CAPTURED';
+          }
+          await lead.save();
+        }
+      } catch (leadUpdateErr) {
+        console.warn('[TaskController] Auto update lead assignedTo failed:', leadUpdateErr.message);
+      }
+    }
+
     // Populate references for rich frontend details
     await task.populate('assignedTo', 'name email department position role');
     await task.populate('assignedBy', 'name email department position role');
     await task.populate('leadId', 'leadCode customerName companyName productCategory');
+
+    if (task.fileUrl) {
+      task.fileUrl = normalizeTaskFileUrl(task.fileUrl);
+    }
+    if (task.completionFileUrl) {
+      task.completionFileUrl = normalizeTaskFileUrl(task.completionFileUrl);
+    }
 
     // Notify employee in real-time
     socketService.emitToEmployee(assignedTo, 'task_assigned', task);
@@ -189,7 +230,37 @@ async function getTasks(req, res) {
       .populate('leadId', 'leadCode customerName companyName productCategory')
       .sort({ createdAt: -1 });
 
-    return ok(res, { tasks }, 'Tasks retrieved successfully', 200, req);
+    const normalizedTasks = tasks.map(t => {
+      const doc = t.toObject ? t.toObject() : { ...t };
+      if (doc.fileUrl) doc.fileUrl = normalizeTaskFileUrl(doc.fileUrl);
+      if (doc.completionFileUrl) doc.completionFileUrl = normalizeTaskFileUrl(doc.completionFileUrl);
+      return doc;
+    });
+
+    // Auto-clean any legacy absolute file paths in database asynchronously
+    Task.find({
+      $or: [
+        { fileUrl: { $regex: /uploads\//i } },
+        { completionFileUrl: { $regex: /uploads\//i } }
+      ]
+    }).then(tasksToFix => {
+      tasksToFix.forEach(async t => {
+        let changed = false;
+        if (t.fileUrl && (t.fileUrl.includes(':/') || t.fileUrl.includes(':\\') || t.fileUrl.match(/^[a-zA-Z]:/))) {
+          t.fileUrl = normalizeTaskFileUrl(t.fileUrl);
+          changed = true;
+        }
+        if (t.completionFileUrl && (t.completionFileUrl.includes(':/') || t.completionFileUrl.includes(':\\') || t.completionFileUrl.match(/^[a-zA-Z]:/))) {
+          t.completionFileUrl = normalizeTaskFileUrl(t.completionFileUrl);
+          changed = true;
+        }
+        if (changed) {
+          await t.save().catch(() => {});
+        }
+      });
+    }).catch(() => {});
+
+    return ok(res, { tasks: normalizedTasks }, 'Tasks retrieved successfully', 200, req);
   } catch (error) {
     console.error('Error getting tasks:', error);
     return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
@@ -244,7 +315,7 @@ async function updateTaskStatus(req, res) {
     }
 
     if (req.file) {
-      task.completionFileUrl = req.file.path.replace(/\\/g, '/');
+      task.completionFileUrl = getRelativePath(req.file.path);
       task.completionFileOriginalName = req.file.originalname;
     }
 
@@ -252,6 +323,13 @@ async function updateTaskStatus(req, res) {
 
     await task.populate('assignedTo', 'name email department position role');
     await task.populate('assignedBy', 'name email department position role');
+
+    if (task.fileUrl) {
+      task.fileUrl = normalizeTaskFileUrl(task.fileUrl);
+    }
+    if (task.completionFileUrl) {
+      task.completionFileUrl = normalizeTaskFileUrl(task.completionFileUrl);
+    }
 
     // Socket Notify managers about task completion/update
     socketService.emitToRoles(['ADMIN', 'HR_MANAGER', 'MANAGER', 'SALES_MANAGER'], 'task_updated', task);

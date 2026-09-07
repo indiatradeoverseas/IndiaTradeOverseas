@@ -3,11 +3,11 @@ const env = require('./env');
 const securityConfig = {
   rateLimiting: {
     windowMs: 15 * 60 * 1000,
-    max: env.NODE_ENV === 'development' ? 10000 : 2000,
+    max: env.NODE_ENV === 'development' ? 50000 : 20000,
     message: {
       success: false,
       errorCode: 'RATE_LIMITED',
-      message: 'Too many requests from this IP, please try again after 15 minutes',
+      message: 'Too many requests from this connection, please try again after 15 minutes',
       details: []
     }
   },

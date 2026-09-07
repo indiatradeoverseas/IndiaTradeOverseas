@@ -6,8 +6,8 @@ export const quotationsApi = {
     return response.data;
   },
 
-  async getPendingQuotations() {
-    const response = await axiosInstance.get('/quotations/pending');
+  async getPendingQuotations(params = {}) {
+    const response = await axiosInstance.get('/quotations/pending', { params });
     return response.data;
   },
 
@@ -18,6 +18,16 @@ export const quotationsApi = {
 
   async rejectQuotation(id, data) {
     const response = await axiosInstance.patch(`/quotations/${id}/reject`, data);
+    return response.data;
+  },
+
+  async bulkApproveQuotations(data) {
+    const response = await axiosInstance.patch('/quotations/bulk-approve', data);
+    return response.data;
+  },
+
+  async bulkRejectQuotations(data) {
+    const response = await axiosInstance.patch('/quotations/bulk-reject', data);
     return response.data;
   }
 };

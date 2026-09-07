@@ -61,6 +61,8 @@ import Leave from './pages/crm/Leave';
 import EmployeeProfile from './pages/crm/EmployeeProfile';
 import SalesPerformance from './pages/crm/SalesPerformance';
 import SalesDashboard from './pages/crm/SalesDashboard';
+import Followup from './pages/crm/Followup';
+import TrialDashboard from './pages/crm/TrialDashboard';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
@@ -77,15 +79,11 @@ import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
 import Prakriti from './pages/public/Prakriti';
-
-/* =========================
-   LEGAL PAGES
-========================= */
-
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
-import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
 import Disclaimer from './pages/legal/Disclaimer';
+import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
+
 
 
 function ProtectedRoute({ children }) {
@@ -359,6 +357,24 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/followup"
+              element={
+                <ProtectedRoute>
+                  <Followup />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/trial-dashboard"
+              element={
+                <ProtectedRoute>
+                  <TrialDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/crm/distributors"
               element={
                 <Navigate
@@ -482,7 +498,19 @@ function AppLayout() {
               element={
                 (
                   isAdminUser(user) ||
-                  user?.documentPermission === true
+                  [
+                    'MANAGER',
+                    'HR_MANAGER',
+                    'HR_EXECUTIVE',
+                    'HR',
+                    'SALES_MANAGER',
+                    'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER'
+                  ].includes(user?.role) ||
+                  user?.department === 'HR' ||
+                  user?.documentPermission === true ||
+                  user?.permissions?.document === true
                 ) ? (
                   <Documents />
                 ) : (
@@ -508,10 +536,19 @@ function AppLayout() {
                     'MANAGER',
                     'SALES_MANAGER',
                     'SALES_EXECUTIVE',
-                    'SALES'
+                    'SALES',
+                    'EMPLOYEE',
+                    'USER',
+                    'HR',
+                    'HR_EXECUTIVE',
+                    'HR_MANAGER',
+                    'TRANSPORT',
+                    'FINANCE'
                   ].includes(user?.role) ||
+                  !!user?.department ||
                   user?.taskPermission === true ||
-                  user?.permissions?.task === true
+                  user?.permissions?.task === true ||
+                  !!user
                 ) ? (
                   <Tasks />
                 ) : (
@@ -692,25 +729,53 @@ function AppLayout() {
               }
             />
 
+            {/* Finance Routes */}
+            <Route
+              path="/crm/finance/manager"
+              element={
+                <ProtectedRoute>
+                  <FinanceManagerDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/finance/executive"
+              element={
+                <ProtectedRoute>
+                  <FinanceDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="/crm/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
+
+            {/* Transport Module Routes */}
+            <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
+            <Route path="/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
+            <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+            <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
+            <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+            <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
+            <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
+
             <Route
               path="*"
               element={
                 <Navigate
                   to="/crm/dashboard"
+                  replace
                 />
               }
             />
 
           </Routes>
 
-          <ChatWidget />
-
         </PortalLayout>
 
       </VoiceAssistantProvider>
     );
   }
-
 
   /* =========================
      CRM WITHOUT LOGIN
@@ -720,216 +785,38 @@ function AppLayout() {
     return <Navigate to="/login" replace />;
   }
 
-
-/* =========================
+  /* =========================
      PUBLIC WEBSITE ROUTES
-   ========================= */
+  ========================= */
 
   const isITOAds = location.pathname === '/ito-ads';
 
   return (
     <div>
-
       <ScrollToTop />
-
       {!isITOAds && <Navbar />}
-
       <main>
-
         <Routes>
-
-          {/* Home */}
-          <Route
-            path="/"
-            element={<Home />}
-          />
-
-          {/* Products */}
-          <Route
-            path="/products"
-            element={<Products />}
-          />
-
-          <Route
-            path="/products/:id"
-            element={<ProductDetail />}
-          />
-
-          {/* About */}
-          <Route
-            path="/about"
-            element={<About />}
-          />
-
-          {/* Contact */}
-          <Route
-            path="/contact"
-            element={<Contact />}
-          />
-
-          {/* Careers */}
-          <Route
-            path="/careers"
-            element={<Careers />}
-          />
-
-          {/* Quote Request */}
-          <Route
-            path="/quote-request"
-            element={<QuoteRequest />}
-          />
-
-          {/* Our Services */}
-          <Route
-            path="/our-services"
-            element={<OurServices />}
-          />
-
-          {/* Prakriti */}
-          <Route
-            path="/prakriti"
-            element={
-              <Navigate
-                to="/prakriti/tea"
-                replace
-              />
-            }
-          />
-
-          {/* Prakriti → Tea */}
-          <Route
-            path="/prakriti/tea"
-            element={<Prakriti />}
-          />
-
-          {/* Prakriti → Rice */}
-          <Route
-            path="/prakriti/rice"
-            element={<Rice />}
-          />
-
-          {/* Finance Routes */}
-          <Route
-            path="/crm/finance/manager"
-            element={
-              <ProtectedRoute>
-                <FinanceManagerDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/crm/finance/executive"
-            element={
-              <ProtectedRoute>
-                <FinanceDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Transport Module Routes */}
-          <Route
-            path="/crm/transport/manager"
-            element={
-              <ProtectedRoute>
-                <TransportManager />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/transport/manager"
-            element={
-              <ProtectedRoute>
-                <TransportManager />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/crm/transport/executive"
-            element={
-              <ProtectedRoute>
-                <TransportExecutive />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/transport/executive"
-            element={
-              <ProtectedRoute>
-                <TransportExecutive />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/crm/transport/driver"
-            element={
-              <ProtectedRoute>
-                <DriverMobileView />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/transport/driver"
-            element={
-              <ProtectedRoute>
-                <DriverMobileView />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/founder"
-            element={
-              <AdminRoute>
-                <FounderDashboard />
-              </AdminRoute>
-            }
-          />
-
-          {/* Building & Construction → Stone */}
-          <Route
-            path="/stone"
-            element={<Stone />}
-          />
-
-          {/* ITO Ads */}
-          <Route
-            path="/ito-ads"
-            element={
-              <React.Suspense
-                fallback={
-                  <div
-                    className="min-h-screen flex items-center justify-center"
-                    style={{ background: '#01102D' }}
-                  >
-                    <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-[#F76E01]" />
-                  </div>
-                }
-              >
-                <ITOAds />
-              </React.Suspense>
-            }
-          />
-
-          <Route
-            path="/fraud-payment-policy"
-            element={<FraudPaymentPolicy />}
-          />
-
-          <Route
-            path="/disclaimer"
-            element={<Disclaimer />}
-          />
-
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/our-services" element={<OurServices />} />
+          <Route path="/prakriti" element={<Navigate to="/prakriti/tea" replace />} />
+          <Route path="/prakriti/tea" element={<Prakriti />} />
+          <Route path="/prakriti/rice" element={<Rice />} />
+          <Route path="/stone" element={<Stone />} />
+          <Route path="/ito-ads" element={<ITOAds />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/terms-and-conditions" element={<Terms />} />
+          <Route path="/fraud-payment-policy" element={<FraudPaymentPolicy />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
         </Routes>
-
       </main>
-
       {!isITOAds && <Footer />}
 
       {!isITOAds && <ChatWidget />}

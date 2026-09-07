@@ -158,6 +158,9 @@ const userSchema = new mongoose.Schema(
     bankAccountMasked: { type: String, default: '' },
     bankIFSC: { type: String, default: '' },
     bankName: { type: String, default: '' },
+    aadhaarVerified: { type: Boolean, default: false },
+    panVerified: { type: Boolean, default: false },
+    bankVerified: { type: Boolean, default: false },
 
     // Employee lifecycle
     employmentStatus: {

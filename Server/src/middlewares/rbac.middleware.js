@@ -8,8 +8,14 @@ function rbac(...allowedRoles) {
 
     const isAdminUser =
       req.user.role === 'ADMIN' ||
+      req.user.role === 'FOUNDER' ||
+      req.user.role === 'SUPER_ADMIN' ||
       req.user.department === 'ADMIN' ||
-      (req.user.position && req.user.position.toLowerCase().includes('admin'));
+      (req.user.position && (
+        req.user.position.toLowerCase().includes('admin') ||
+        req.user.position.toLowerCase().includes('founder')
+      )) ||
+      (req.user.role && req.user.role.toLowerCase().includes('founder'));
 
     const userRole = req.user.role || '';
     const isMatched = allowedRoles.includes('*') || 

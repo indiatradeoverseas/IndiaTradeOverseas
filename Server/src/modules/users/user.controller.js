@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const path = require('path');
 const fs = require('fs');
 const userService = require('./user.service');
 const { ok, fail } = require('../../utils/response');
@@ -407,6 +408,9 @@ async function updateEmployeeProfile(req, res, next) {
           if (req.body.pan !== undefined) empUpdates.panCardNumber = req.body.pan;
           if (req.body.aadhaar !== undefined) empUpdates.aadhaarNumber = req.body.aadhaar;
           if (req.body.bankAccount !== undefined) empUpdates.bankAccountNumber = req.body.bankAccount;
+          if (req.body.aadhaarVerified !== undefined) empUpdates.aadhaarVerified = !!req.body.aadhaarVerified;
+          if (req.body.panVerified !== undefined) empUpdates.panVerified = !!req.body.panVerified;
+          if (req.body.bankVerified !== undefined) empUpdates.bankVerified = !!req.body.bankVerified;
           
           if (Object.keys(empUpdates).length) {
             await Employee.findOneAndUpdate(empQuery, { $set: empUpdates });
@@ -498,7 +502,35 @@ async function uploadMyDocument(req, res, next) {
       file: req.file,
       user: req.user
     });
-    return ok(res, { document: doc }, 'Document uploaded successfully', 201, req);
+
+    // Also sync document record into Employee collection in MongoDB
+    try {
+      const Employee = require('../employee/employee.model');
+      const docRecord = {
+        fileName: req.file.originalname,
+        storagePath: req.file.path,
+        fileUrl: `/api/documents/${doc._id}/download`,
+        uploadedBy: req.user.fullName || req.user.name || 'Employee',
+        uploadedByRole: req.user.role || 'EMPLOYEE',
+        createdAt: new Date()
+      };
+
+      await Employee.findOneAndUpdate(
+        {
+          $or: [
+            { _id: req.user._id },
+            { email: { $regex: new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },
+            { employeeId: req.user.employeeId }
+          ]
+        },
+        { $push: { uploadedDocuments: docRecord } },
+        { new: true }
+      );
+    } catch (syncErr) {
+      console.warn('Sync document to Employee notice:', syncErr.message);
+    }
+
+    return ok(res, { document: doc }, 'Document uploaded successfully to MongoDB', 201, req);
   } catch (error) {
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
@@ -510,10 +542,100 @@ async function uploadMyDocument(req, res, next) {
   }
 }
 
+async function getMatchingOwnerIds(idOrUser) {
+  const ids = new Set();
+  if (!idOrUser) return [];
+
+  const User = require('./user.model');
+  const Employee = require('../employee/employee.model');
+
+  let rawId = typeof idOrUser === 'object' ? String(idOrUser._id || idOrUser.id || '') : String(idOrUser);
+  if (rawId && rawId !== 'undefined' && rawId !== 'null' && rawId !== 'me') {
+    ids.add(rawId);
+    if (mongoose.isValidObjectId(rawId)) {
+      ids.add(new mongoose.Types.ObjectId(rawId));
+    }
+  }
+
+  let email = typeof idOrUser === 'object' ? idOrUser.email : null;
+  let empCode = typeof idOrUser === 'object' ? idOrUser.employeeId : null;
+
+  if (!email && rawId && rawId !== 'me') {
+    const userDoc = await User.findOne(resolveIdQuery(rawId));
+    const empDoc = await Employee.findOne(resolveIdQuery(rawId));
+    const matched = userDoc || empDoc;
+    if (matched) {
+      email = matched.email;
+      empCode = matched.employeeId;
+    }
+  }
+
+  if (email) {
+    const userByEmail = await User.findOne({ email: { $regex: new RegExp('^' + email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+    const empByEmail = await Employee.findOne({ email: { $regex: new RegExp('^' + email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+
+    if (userByEmail && userByEmail._id) {
+      ids.add(String(userByEmail._id));
+      if (mongoose.isValidObjectId(userByEmail._id)) ids.add(new mongoose.Types.ObjectId(userByEmail._id));
+      if (userByEmail.employeeId) ids.add(userByEmail.employeeId);
+    }
+    if (empByEmail && empByEmail._id) {
+      ids.add(String(empByEmail._id));
+      if (mongoose.isValidObjectId(empByEmail._id)) ids.add(new mongoose.Types.ObjectId(empByEmail._id));
+      if (empByEmail.employeeId) ids.add(empByEmail.employeeId);
+    }
+  }
+
+  if (empCode) {
+    ids.add(empCode);
+  }
+
+  return Array.from(ids);
+}
+
 async function listMyDocuments(req, res, next) {
   try {
-    const documents = await Document.find({ ownerId: req.user._id, isDeleted: false }).sort({ createdAt: -1 });
-    return ok(res, { documents }, 'Documents retrieved successfully', 200, req);
+    const Employee = require('../employee/employee.model');
+    const ownerIds = await getMatchingOwnerIds(req.user);
+
+    const emailPattern = req.user.email ? new RegExp('^' + req.user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') : null;
+    const query = {
+      $or: [
+        { _id: req.user._id },
+        ...(req.user.employeeId ? [{ employeeId: req.user.employeeId }] : []),
+        ...(emailPattern ? [{ email: emailPattern }] : [])
+      ]
+    };
+    const empDoc = await Employee.findOne(query);
+    const empUploadedDocs = (empDoc && empDoc.uploadedDocuments) ? (empDoc.uploadedDocuments.toObject ? empDoc.uploadedDocuments.toObject() : empDoc.uploadedDocuments) : [];
+
+    const mongoDocs = await Document.find({
+      $or: [
+        { ownerId: { $in: ownerIds } },
+        { uploadedBy: { $in: ownerIds } }
+      ],
+      isDeleted: false
+    }).sort({ createdAt: -1 });
+
+    const docMap = new Map();
+    (mongoDocs || []).forEach(d => {
+      const docObj = d.toObject ? d.toObject() : d;
+      const key = String(docObj._id || docObj.fileName);
+      docMap.set(key, {
+        ...docObj,
+        fileUrl: `/api/documents/${docObj._id}/download`
+      });
+    });
+
+    (empUploadedDocs || []).forEach(d => {
+      const key = String(d._id || d.fileName);
+      if (!docMap.has(key)) {
+        docMap.set(key, d);
+      }
+    });
+
+    const combinedDocuments = Array.from(docMap.values());
+    return ok(res, { documents: combinedDocuments }, 'Documents retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -521,8 +643,52 @@ async function listMyDocuments(req, res, next) {
 
 async function listEmployeeDocuments(req, res, next) {
   try {
-    const documents = await Document.find({ ownerType: 'USER', ownerId: req.params.id, isDeleted: false }).sort({ createdAt: -1 });
-    return ok(res, { documents }, 'Documents retrieved successfully', 200, req);
+    const Employee = require('../employee/employee.model');
+    const targetId = req.params.id;
+    const ownerIds = await getMatchingOwnerIds(targetId);
+
+    const isObjId = mongoose.isValidObjectId(targetId);
+    const query = {
+      $or: [
+        ...(isObjId ? [{ _id: targetId }, { _id: new mongoose.Types.ObjectId(targetId) }] : [{ _id: targetId }]),
+        { employeeId: targetId }
+      ]
+    };
+
+    let empDoc = await Employee.findOne(query);
+    if (!empDoc && ownerIds.length > 0) {
+      empDoc = await Employee.findOne({ _id: { $in: ownerIds } });
+    }
+
+    const empUploadedDocs = (empDoc && empDoc.uploadedDocuments) ? (empDoc.uploadedDocuments.toObject ? empDoc.uploadedDocuments.toObject() : empDoc.uploadedDocuments) : [];
+
+    const mongoDocs = await Document.find({
+      $or: [
+        { ownerId: { $in: ownerIds } },
+        { uploadedBy: { $in: ownerIds } }
+      ],
+      isDeleted: false
+    }).sort({ createdAt: -1 });
+
+    const docMap = new Map();
+    (mongoDocs || []).forEach(d => {
+      const docObj = d.toObject ? d.toObject() : d;
+      const key = String(docObj._id || docObj.fileName);
+      docMap.set(key, {
+        ...docObj,
+        fileUrl: `/api/documents/${docObj._id}/download`
+      });
+    });
+
+    (empUploadedDocs || []).forEach(d => {
+      const key = String(d._id || d.fileName);
+      if (!docMap.has(key)) {
+        docMap.set(key, d);
+      }
+    });
+
+    const combinedDocuments = Array.from(docMap.values());
+    return ok(res, { documents: combinedDocuments }, 'Documents retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }
@@ -534,13 +700,46 @@ async function uploadMyProfileImage(req, res, next) {
       return fail(res, 400, 'VALIDATION_FAILED', 'Profile image file is required');
     }
 
-    const fileUrl = `uploads/profile-images/${req.file.filename}`;
+    let fileUrl = '';
+    let gridFsFileId = null;
+
+    if (req.file.buffer) {
+      // Store image directly into MongoDB GridFS Bucket
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
+      const ext = path.extname(req.file.originalname || '.jpg');
+      const storedFileName = `profile-${uniqueSuffix}${ext}`;
+
+      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'profile_images'
+      });
+
+      const uploadStream = bucket.openUploadStream(storedFileName, {
+        contentType: req.file.mimetype || 'image/jpeg'
+      });
+
+      await new Promise((resolve, reject) => {
+        uploadStream.end(req.file.buffer, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      gridFsFileId = uploadStream.id;
+      const backendBase = process.env.BACKEND_URL || (req.protocol + '://' + req.get('host'));
+      fileUrl = `${backendBase}/api/users/profile-image/gridfs/${gridFsFileId}`;
+    } else {
+      fileUrl = `uploads/profile-images/${req.file.filename}`;
+    }
 
     const User = require('./user.model');
     const Employee = require('../employee/employee.model');
 
     // 1. Update User document (using req.user._id)
-    const updatedUser = await User.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
+    const updatedUser = await User.findOneAndUpdate(
+      resolveIdQuery(req.user._id),
+      { profileImage: fileUrl },
+      { new: true }
+    );
 
     // 2. Update Employee document (using email match since req.user._id is user ID)
     const updatedEmployee = await Employee.findOneAndUpdate(
@@ -550,16 +749,56 @@ async function uploadMyProfileImage(req, res, next) {
     );
 
     const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin');
- 
+
     let updated = updatedUser || updatedEmployee;
     if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');
-      updated = await Admin.findOneAndUpdate(resolveIdQuery(req.user._id), { profileImage: fileUrl }, { new: true });
+      updated = await Admin.findOneAndUpdate(
+        resolveIdQuery(req.user._id),
+        { profileImage: fileUrl },
+        { new: true }
+      );
     }
 
-    return ok(res, { profile: updated }, 'Profile image uploaded successfully', 200, req);
+    return ok(res, { profile: updated, fileUrl }, 'Profile image uploaded to MongoDB successfully', 200, req);
   } catch (error) {
     next(error);
+  }
+}
+
+async function downloadProfileImageGridFS(req, res) {
+  try {
+    const { gridFsFileId } = req.params;
+    if (!gridFsFileId || !mongoose.isValidObjectId(gridFsFileId)) {
+      return res.status(400).json({ success: false, message: 'Invalid GridFS File ID' });
+    }
+
+    const targetGridId = new mongoose.Types.ObjectId(gridFsFileId);
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: 'profile_images'
+    });
+
+    const files = await mongoose.connection.db.collection('profile_images.files').find({ _id: targetGridId }).toArray();
+    if (!files || files.length === 0) {
+      return res.status(404).json({ success: false, message: 'Profile image not found in database' });
+    }
+
+    const fileDoc = files[0];
+    res.setHeader('Content-Type', fileDoc.contentType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+
+    const downloadStream = bucket.openDownloadStream(targetGridId);
+    downloadStream.on('error', (err) => {
+      console.error('Error streaming profile image from GridFS:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Error streaming image' });
+      }
+    });
+
+    downloadStream.pipe(res);
+  } catch (error) {
+    console.error('Error in downloadProfileImageGridFS:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 }
 
@@ -581,5 +820,6 @@ module.exports = {
   uploadMyDocument,
   listMyDocuments,
   listEmployeeDocuments,
-  uploadMyProfileImage
+  uploadMyProfileImage,
+  downloadProfileImageGridFS
 };

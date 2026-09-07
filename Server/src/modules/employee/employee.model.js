@@ -153,6 +153,30 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    aadhaarVerified: {
+      type: Boolean,
+      default: false
+    },
+    panVerified: {
+      type: Boolean,
+      default: false
+    },
+    bankVerified: {
+      type: Boolean,
+      default: false
+    },
+    bankStatementVerified: {
+      type: Boolean,
+      default: false
+    },
+    offerLetterVerified: {
+      type: Boolean,
+      default: false
+    },
+    experienceLetterVerified: {
+      type: Boolean,
+      default: false
+    },
     // Emergency Contact
     emergencyContactName: {
       type: String,
@@ -199,6 +223,17 @@ const employeeSchema = new mongoose.Schema(
     additionalDocs: [
       {
         type: String
+      }
+    ],
+    uploadedDocuments: [
+      {
+        fileName: { type: String },
+        storagePath: { type: String },
+        fileUrl: { type: String },
+        docCategory: { type: String, default: 'other' },
+        uploadedBy: { type: String },
+        uploadedByRole: { type: String },
+        createdAt: { type: Date, default: Date.now }
       }
     ],
     // Permissions & Access

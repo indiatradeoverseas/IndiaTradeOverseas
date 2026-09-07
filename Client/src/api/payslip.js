@@ -8,6 +8,11 @@ export const payslipApi = {
     return response.data;
   },
 
+  async generatePayslip(payslipData) {
+    const response = await axiosInstance.post('/payslips/generate', payslipData);
+    return response.data;
+  },
+
   async getEmployeePayslips(employeeId) {
     const response = await axiosInstance.get(`/payslips/employee/${employeeId}`);
     return response.data;

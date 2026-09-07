@@ -88,6 +88,72 @@ async function getNotifications(req, res, next) {
       console.warn('[Notifications] Leave query error:', leaveErr.message);
     }
 
+    // 3.5. Synthesize 1-Day Prior Follow-up Notifications
+    try {
+      const CallRecording = require('../leads/callRecording.model');
+      const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(userRole) || (userRole && (userRole.endsWith('_MANAGER') || userRole.toLowerCase().includes('manager')));
+
+      const tomorrowStart = new Date();
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      tomorrowStart.setHours(0, 0, 0, 0);
+
+      const tomorrowEnd = new Date(tomorrowStart);
+      tomorrowEnd.setHours(23, 59, 59, 999);
+
+      const followupFilter = {
+        nextFollowupDate: { $gte: tomorrowStart, $lte: tomorrowEnd }
+      };
+
+      if (!isManagerOrAdmin) {
+        followupFilter.executiveId = userId;
+      }
+
+      const upcomingCallFollowups = await CallRecording.find(followupFilter).limit(10);
+      for (const rec of upcomingCallFollowups) {
+        const dateStr = new Date(rec.nextFollowupDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        const notifId = `followup_notif_rec_${rec._id}`;
+        const exists = resultNotifications.some(n => String(n._id) === notifId);
+
+        if (!exists) {
+          resultNotifications.unshift({
+            _id: notifId,
+            message: `⏰ Follow-up Reminder: Scheduled tomorrow (${dateStr}) for ${rec.customerName} (${rec.leadCode || 'Call Record'})`,
+            type: 'FOLLOWUP_REMINDER',
+            createdAt: new Date(),
+            isRead: false,
+            metadata: { leadCode: rec.leadCode, leadId: rec.leadId }
+          });
+        }
+      }
+
+      // Also check Lead.nextFollowupAt
+      const leadFollowupFilter = {
+        nextFollowupAt: { $gte: tomorrowStart, $lte: tomorrowEnd }
+      };
+      if (!isManagerOrAdmin) {
+        leadFollowupFilter.assignedTo = userId;
+      }
+      const upcomingLeadFollowups = await Lead.find(leadFollowupFilter).select('_id leadCode customerName nextFollowupAt').limit(10);
+      for (const ld of upcomingLeadFollowups) {
+        const dateStr = new Date(ld.nextFollowupAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        const notifId = `followup_notif_ld_${ld._id}`;
+        const exists = resultNotifications.some(n => String(n._id) === notifId);
+
+        if (!exists) {
+          resultNotifications.unshift({
+            _id: notifId,
+            message: `⏰ Follow-up Reminder: Scheduled tomorrow (${dateStr}) for ${ld.customerName} (${ld.leadCode})`,
+            type: 'FOLLOWUP_REMINDER',
+            createdAt: new Date(),
+            isRead: false,
+            metadata: { leadCode: ld.leadCode, leadId: ld._id }
+          });
+        }
+      }
+    } catch (followupErr) {
+      console.warn('[Notifications] Follow-up reminder query error:', followupErr.message);
+    }
+
     // 4. Synthesize Attendance Notification for Today
     try {
       const Attendance = require('../attendance/attendance.model');

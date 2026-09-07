@@ -32,6 +32,8 @@ async function changeLeadStage(req, res, next) {
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '';
     const deviceHash = req.headers['x-device-hash'] || '';
 
+    console.log('[changeLeadStage] Request received:', { leadId: req.params.id, newStage, hasPodFileUrl: !!req.body.podFileUrl, hasPaymentProofUrl: !!req.body.paymentProofUrl, hasDriverProofUrl: !!req.body.driverProofUrl, userRole: req.user?.role });
+
     if (!newStage) {
       return fail(res, 400, 'VALIDATION_FAILED', 'Stage parameter is required');
     }
@@ -41,13 +43,21 @@ async function changeLeadStage(req, res, next) {
       newStage,
       remark,
       nextFollowupAt,
+      podFileUrl: req.body.podFileUrl,
+      paymentProofUrl: req.body.paymentProofUrl,
+      driverProofUrl: req.body.driverProofUrl,
+      photoUrl: req.body.photoUrl,
+      paymentProof: req.body.paymentProof,
+      deliveryImages: req.body.deliveryImages,
       user: req.user,
       ipAddress,
       deviceHash
     });
 
+    console.log('[changeLeadStage] Success for lead:', req.params.id);
     return ok(res, { lead }, 'Lead stage updated successfully', 200, req);
   } catch (error) {
+    console.error('[changeLeadStage] ERROR:', error.message, 'leadId:', req.params.id);
     if (error.message === 'LEAD_NOT_FOUND') {
       return fail(res, 404, 'VALIDATION_FAILED', 'Lead not found');
     }
@@ -123,16 +133,17 @@ async function bulkImportLeads(req, res, next) {
 
 async function changeLeadPriority(req, res, next) {
   try {
-    const { priority } = req.body;
-    if (!priority) {
-      return fail(res, 400, 'VALIDATION_FAILED', 'Priority parameter is required');
+    const { priority, leadValue } = req.body;
+    if (!priority && (leadValue === undefined || leadValue === null)) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Priority or leadValue parameter is required');
     }
     const lead = await leadService.updatePriority({
       leadId: req.params.id,
       priority,
+      leadValue,
       user: req.user
     });
-    return ok(res, { lead }, 'Lead priority updated successfully', 200, req);
+    return ok(res, { lead }, 'Lead priority and details updated successfully', 200, req);
   } catch (error) {
     if (error.message === 'LEAD_NOT_FOUND') {
       return fail(res, 404, 'VALIDATION_FAILED', 'Lead not found');

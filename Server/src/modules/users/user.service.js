@@ -73,7 +73,49 @@ async function createUser(data) {
 }
 
 async function listAllUsers() {
-  return User.find().select('-passwordHash').sort({ createdAt: -1 });
+  const User = require('./user.model');
+  const Employee = require('../employee/employee.model');
+  const [users, employees] = await Promise.all([
+    User.find().select('-passwordHash').lean(),
+    Employee.find().select('-password').lean()
+  ]);
+
+  const userMap = new Map();
+
+  users.forEach(u => {
+    const key = (u.email || u.employeeId || String(u._id)).toLowerCase();
+    userMap.set(key, {
+      ...u,
+      fullName: u.fullName || u.name || 'User',
+      department: (u.department || 'HQ').toUpperCase(),
+      role: (u.role || 'EMPLOYEE').toUpperCase(),
+      isActive: u.isActive !== undefined ? u.isActive : true
+    });
+  });
+
+  employees.forEach(emp => {
+    const key = (emp.email || emp.employeeId || String(emp._id)).toLowerCase();
+    if (!userMap.has(key)) {
+      userMap.set(key, {
+        _id: emp._id,
+        employeeId: emp.employeeId,
+        fullName: emp.name || emp.fullName || 'Employee',
+        email: emp.email,
+        phone: emp.phone || '',
+        department: (emp.department || emp.role || 'HQ').toUpperCase(),
+        role: (emp.role || 'EMPLOYEE').toUpperCase(),
+        isActive: emp.status === 'ACTIVE',
+        productUploadPermission: emp.permissions?.productUpload || false,
+        exportPermission: emp.permissions?.export || false,
+        jobPermission: emp.permissions?.job || false,
+        createdAt: emp.createdAt || new Date()
+      });
+    }
+  });
+
+  const merged = Array.from(userMap.values());
+  merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return merged;
 }
 
 async function getUserById(id) {
@@ -81,47 +123,149 @@ async function getUserById(id) {
 }
 
 async function activateUser(id) {
-  return User.findOneAndUpdate(resolveIdQuery(id), { isActive: true }, { new: true }).select('-passwordHash');
-}
+  const Employee = require('../employee/employee.model');
+  const user = await User.findOne(resolveIdQuery(id));
+  const emp = await Employee.findOne(resolveIdQuery(id));
+  const targetEmail = user?.email || emp?.email;
+  const targetEmpId = user?.employeeId || emp?.employeeId;
 
-async function updateUserRole(id, role, actorId = null) {
-  const existing = await User.findOne(resolveIdQuery(id));
-  if (!existing) return null;
-  const fromValue = existing.role;
-  existing.role = role;
-  if (fromValue !== role) {
-    existing.employmentHistory.push({ event: 'ROLE_CHANGED', fromValue, toValue: role, changedBy: actorId });
-  }
-  await existing.save();
-  return User.findOne(resolveIdQuery(id)).select('-passwordHash');
-}
+  const queryOr = [{ _id: id }];
+  if (mongoose.isValidObjectId(id)) queryOr.push({ _id: new mongoose.Types.ObjectId(id) });
+  if (targetEmail) queryOr.push({ email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+  if (targetEmpId) queryOr.push({ employeeId: targetEmpId });
 
-async function updateUserDepartment(id, department, actorId = null) {
-  const existing = await User.findOne(resolveIdQuery(id));
-  if (!existing) return null;
-  const fromValue = existing.department;
-  existing.department = department;
-  if (fromValue !== department) {
-    existing.employmentHistory.push({ event: 'DEPARTMENT_CHANGED', fromValue, toValue: department, changedBy: actorId });
-  }
-  await existing.save();
-  return User.findOne(resolveIdQuery(id)).select('-passwordHash');
-}
+  const [updatedUser, updatedEmp] = await Promise.all([
+    User.findOneAndUpdate({ $or: queryOr }, { isActive: true }, { new: true }).select('-passwordHash'),
+    Employee.findOneAndUpdate({ $or: queryOr }, { status: 'ACTIVE' }, { new: true }).select('-password')
+  ]);
 
-async function updateUserPermissions(id, permissions) {
-  return User.findOneAndUpdate(
-    resolveIdQuery(id),
-    permissions,
-    { new: true, runValidators: true }
-  ).select('-passwordHash');
-}
-
-async function deleteUser(id) {
-  return User.findOneAndDelete(resolveIdQuery(id)).select('-passwordHash');
+  return updatedUser || updatedEmp;
 }
 
 async function deactivateUser(id) {
-  return User.findOneAndUpdate(resolveIdQuery(id), { isActive: false }, { new: true }).select('-passwordHash');
+  const Employee = require('../employee/employee.model');
+  const user = await User.findOne(resolveIdQuery(id));
+  const emp = await Employee.findOne(resolveIdQuery(id));
+  const targetEmail = user?.email || emp?.email;
+  const targetEmpId = user?.employeeId || emp?.employeeId;
+
+  const queryOr = [{ _id: id }];
+  if (mongoose.isValidObjectId(id)) queryOr.push({ _id: new mongoose.Types.ObjectId(id) });
+  if (targetEmail) queryOr.push({ email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+  if (targetEmpId) queryOr.push({ employeeId: targetEmpId });
+
+  const [updatedUser, updatedEmp] = await Promise.all([
+    User.findOneAndUpdate({ $or: queryOr }, { isActive: false }, { new: true }).select('-passwordHash'),
+    Employee.findOneAndUpdate({ $or: queryOr }, { status: 'INACTIVE' }, { new: true }).select('-password')
+  ]);
+
+  return updatedUser || updatedEmp;
+}
+
+async function updateUserRole(id, role, actorId = null) {
+  const Employee = require('../employee/employee.model');
+  let existing = await User.findOne(resolveIdQuery(id));
+  let emp = await Employee.findOne(resolveIdQuery(id));
+  const targetEmail = existing?.email || emp?.email;
+
+  if (existing) {
+    const fromValue = existing.role;
+    existing.role = role;
+    if (fromValue !== role) {
+      existing.employmentHistory.push({ event: 'ROLE_CHANGED', fromValue, toValue: role, changedBy: actorId });
+    }
+    await existing.save();
+  }
+  if (targetEmail) {
+    await Employee.findOneAndUpdate(
+      { email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },
+      { role }
+    );
+  } else if (emp) {
+    emp.role = role;
+    await emp.save();
+  }
+  return existing || emp;
+}
+
+async function updateUserDepartment(id, department, actorId = null) {
+  const Employee = require('../employee/employee.model');
+  let existing = await User.findOne(resolveIdQuery(id));
+  let emp = await Employee.findOne(resolveIdQuery(id));
+  const targetEmail = existing?.email || emp?.email;
+
+  if (existing) {
+    const fromValue = existing.department;
+    existing.department = department;
+    if (fromValue !== department) {
+      existing.employmentHistory.push({ event: 'DEPARTMENT_CHANGED', fromValue, toValue: department, changedBy: actorId });
+    }
+    await existing.save();
+  }
+  if (targetEmail) {
+    await Employee.findOneAndUpdate(
+      { email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },
+      { department }
+    );
+  } else if (emp) {
+    emp.department = department;
+    await emp.save();
+  }
+  return existing || emp;
+}
+
+async function updateUserPermissions(id, permissions) {
+  const Employee = require('../employee/employee.model');
+  const user = await User.findOne(resolveIdQuery(id));
+  const emp = await Employee.findOne(resolveIdQuery(id));
+  const targetEmail = user?.email || emp?.email;
+
+  const queryOr = [{ _id: id }];
+  if (mongoose.isValidObjectId(id)) queryOr.push({ _id: new mongoose.Types.ObjectId(id) });
+  if (targetEmail) queryOr.push({ email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+
+  const updatedUser = await User.findOneAndUpdate({ $or: queryOr }, permissions, { new: true, runValidators: true }).select('-passwordHash');
+
+  if (targetEmail) {
+    const empUpdates = {};
+    if (permissions.productUploadPermission !== undefined) empUpdates['permissions.productUpload'] = permissions.productUploadPermission;
+    if (permissions.exportPermission !== undefined) empUpdates['permissions.export'] = permissions.exportPermission;
+    if (permissions.jobPermission !== undefined) empUpdates['permissions.job'] = permissions.jobPermission;
+    if (permissions.leadPermission !== undefined) empUpdates['permissions.lead'] = permissions.leadPermission;
+    if (permissions.documentPermission !== undefined) empUpdates['permissions.document'] = permissions.documentPermission;
+    if (permissions.taskPermission !== undefined) empUpdates['permissions.task'] = permissions.taskPermission;
+    if (permissions.dispatchPermission !== undefined) empUpdates['permissions.dispatch'] = permissions.dispatchPermission;
+    if (permissions.paymentPermission !== undefined) empUpdates['permissions.payment'] = permissions.paymentPermission;
+    if (permissions.quotationPermission !== undefined) empUpdates['permissions.quotation'] = permissions.quotationPermission;
+
+    await Employee.findOneAndUpdate(
+      { email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },
+      { $set: empUpdates }
+    );
+  }
+
+  return updatedUser || emp;
+}
+
+async function deleteUser(id) {
+  const Employee = require('../employee/employee.model');
+  const user = await User.findOne(resolveIdQuery(id));
+  const emp = await Employee.findOne(resolveIdQuery(id));
+  const targetEmail = user?.email || emp?.email;
+  const targetEmpId = user?.employeeId || emp?.employeeId;
+
+  const queryOr = [{ _id: id }];
+  if (mongoose.isValidObjectId(id)) queryOr.push({ _id: new mongoose.Types.ObjectId(id) });
+  if (targetEmail) queryOr.push({ email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+  if (targetEmpId) queryOr.push({ employeeId: targetEmpId });
+
+  const [deletedUser, deletedEmp] = await Promise.all([
+    User.findOneAndDelete({ $or: queryOr }).select('-passwordHash'),
+    Employee.findOneAndDelete({ $or: queryOr }).select('-password')
+  ]);
+
+  if (!deletedUser && !deletedEmp) return null;
+  return deletedUser || deletedEmp;
 }
 
 function serializeProfile(user, { includePlaintext = false } = {}) {

@@ -1,13 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiTruck, FiAlertCircle, FiCheckCircle, FiClock, FiArrowRight, FiActivity, FiMapPin } from 'react-icons/fi';
+import { FiTruck, FiAlertCircle, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
 
 export default function FounderTransportWidget({ summary }) {
   const activeDispatches = summary?.transport?.total || 0;
   const inTransit = summary?.transport?.inTransit || 0;
   const overdue = summary?.transport?.issueRaised || 0;
   const pendingPod = summary?.transport?.pending || 0;
+
+  const [transportChats, setTransportChats] = useState([]);
+
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const res = await fetch('/api/chat/transport');
+        const data = await res.json();
+        if (data && (data.chats || data.data?.chats)) {
+          const list = data.chats || data.data?.chats || [];
+          setTransportChats(list.slice(-5).reverse());
+        }
+      } catch (e) {}
+    };
+
+    fetchChats();
+    const interval = setInterval(fetchChats, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <motion.div 
@@ -27,12 +46,11 @@ export default function FounderTransportWidget({ summary }) {
         <div className="flex items-center gap-2">
           <FiTruck size={16} className="text-[#c9a84c]" />
           <h3 className="text-xs uppercase font-bold tracking-widest text-[var(--crm-heading)]">
-            Transport Operations Overview
+            Transport Operations & Live Driver Chat Overview
           </h3>
         </div>
-        {/* Prominent Navigation Link (Prompt Point 8) */}
         <Link
-          to="/crm/transport/manager"
+          to="/crm/transport/manager?tab=DASHBOARD"
           className="px-3 py-1.5 bg-[#0a192f] hover:bg-[#122b50] border border-[#c9a84c] text-[#c9a84c] hover:text-white rounded text-[9px] uppercase font-bold tracking-wider transition flex items-center gap-1.5 cursor-pointer"
         >
           Go to Transport Operations <FiArrowRight size={11} />
@@ -59,21 +77,32 @@ export default function FounderTransportWidget({ summary }) {
         </div>
       </div>
 
-      {/* Critical Logistics Alerts Banner */}
-      {overdue > 0 && (
-        <div className="mx-4 mb-4 p-3 bg-rose-950/30 border border-rose-800/60 rounded flex items-center justify-between text-[10px]">
-          <div className="flex items-center gap-2 text-rose-300">
-            <FiAlertCircle size={14} className="text-rose-400 shrink-0 animate-pulse" />
-            <span><strong>{overdue} Dispatches Overdue</strong> — Requires Transport Manager review.</span>
-          </div>
-          <Link 
-            to="/crm/transport/manager" 
-            className="text-rose-300 font-bold uppercase underline hover:text-white shrink-0 ml-2"
-          >
-            Review Now
-          </Link>
+      {/* Live MongoDB Transport Chat Feed for Founder */}
+      <div className="mx-4 mb-4 p-3 border rounded bg-[#090b0e] border-teal-900/60 space-y-2">
+        <div className="flex justify-between items-center border-b border-teal-900/40 pb-1.5">
+          <span className="text-[10px] uppercase font-bold text-teal-400 flex items-center gap-1.5">
+            <FiMessageSquare size={13} /> Live Driver & Transport Chat Log (MongoDB Persisted)
+          </span>
+          <span className="text-[8px] text-emerald-400 font-mono flex items-center gap-1">
+            ● LIVE MONGO DB FEED
+          </span>
         </div>
-      )}
+        <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 text-[11px] custom-scrollbar">
+          {transportChats.length === 0 ? (
+            <div className="text-[10px] text-slate-500 italic">No transport chat messages logged in database yet.</div>
+          ) : (
+            transportChats.map(c => (
+              <div key={c.id} className="p-1.5 rounded bg-slate-900/80 border border-slate-800 flex justify-between items-center text-[10px]">
+                <div>
+                  <strong className="text-teal-300 font-bold">{c.sender}: </strong>
+                  <span className="text-slate-200">{c.text || c.message}</span>
+                </div>
+                <span className="text-[8px] text-slate-500 font-mono ml-2 shrink-0">{c.time}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }

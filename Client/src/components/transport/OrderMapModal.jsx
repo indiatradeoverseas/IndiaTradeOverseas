@@ -43,7 +43,7 @@ export default function OrderMapModal({ isOpen, onClose, order, onMarkDelivered 
   const orderConfirmedBy = order.orderConfirmedBy || order.salesOwner || 'Sales Executive';
   const tripAssignedBy = order.assignedByManager || order.managerName || 'Transport Manager';
   const driverName = order.driverName || 'Assigned Driver';
-  const vehicleNo = order.vehicleNo || order.assignedVehicleNo || order.truckNumber || 'BR-01-TR-4521';
+  const vehicleNo = order.vehicleNo || order.assignedVehicleNo || order.truckNumber || 'Unassigned';
 
   // Construct Google Maps Live Navigation Link from Origin/Live to Destination
   const googleNavUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;

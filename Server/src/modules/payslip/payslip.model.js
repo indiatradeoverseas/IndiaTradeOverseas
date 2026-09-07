@@ -21,14 +21,25 @@ const payslipSchema = new mongoose.Schema(
       enum: ['PAID', 'PENDING'],
       default: 'PAID'
     },
+    gridFsFileId: {
+      type: String,
+      default: null
+    },
     fileUrl: {
       type: String,
-      required: true
+      default: ''
     },
     fileOriginalName: {
       type: String,
-      required: true
+      default: ''
     },
+    basic: { type: Number, default: 0 },
+    hra: { type: Number, default: 0 },
+    allowance: { type: Number, default: 0 },
+    pf: { type: Number, default: 0 },
+    esi: { type: Number, default: 0 },
+    grossAmount: { type: Number, default: 0 },
+    deductions: { type: Number, default: 0 },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Employee',

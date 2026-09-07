@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_URL, getFileUrl } from '../../config/env';
 import { 
   FiPhone, 
   FiMail, 
@@ -67,6 +69,7 @@ const KANBAN_STAGES = [
 
 export default function SalesExecutiveDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('daily');
   const [loading, setLoading] = useState(true);
 
@@ -130,6 +133,62 @@ export default function SalesExecutiveDashboard() {
       toast.error("Failed to submit daily work log");
     } finally {
       setSubmittingDailyLog(false);
+    }
+  };
+
+  const resolveLeadForTask = (task) => {
+    if (!task) return null;
+    // 1. Direct leadId on task
+    if (task.leadId) {
+      if (typeof task.leadId === 'object' && task.leadId._id) {
+        return { id: task.leadId._id, code: task.leadId.leadCode || task.leadId.customerName };
+      }
+      if (typeof task.leadId === 'string') {
+        const found = (deals || []).find(d => String(d._id) === task.leadId);
+        return { id: task.leadId, code: found ? found.leadCode : task.leadId };
+      }
+    }
+
+    // 2. Search title or description for leadCode or customerName
+    const combinedText = `${task.title || ''} ${task.description || ''}`;
+    
+    // Check regex pattern for Lead Code (e.g. LD-1788620082426-3684)
+    const codeMatch = combinedText.match(/\b(?:LD|LEAD)-[A-Za-z0-9-]+\b/i);
+    if (codeMatch) {
+      const codeStr = codeMatch[0];
+      const matchedByCode = (deals || []).find(d => d.leadCode && d.leadCode.toLowerCase() === codeStr.toLowerCase());
+      if (matchedByCode) {
+        return { id: matchedByCode._id, code: matchedByCode.leadCode };
+      }
+    }
+
+    // Check MongoDB ObjectId pattern
+    const idMatch = combinedText.match(/\b[0-9a-fA-F]{24}\b/);
+    if (idMatch) {
+      const matchedById = (deals || []).find(d => String(d._id) === idMatch[0]);
+      if (matchedById) {
+        return { id: matchedById._id, code: matchedById.leadCode };
+      }
+      return { id: idMatch[0], code: idMatch[0] };
+    }
+
+    // Check customer name matching in deals
+    if (deals && deals.length > 0) {
+      const matchedByName = deals.find(d => d.customerName && d.customerName.length > 2 && combinedText.toLowerCase().includes(d.customerName.toLowerCase()));
+      if (matchedByName) {
+        return { id: matchedByName._id, code: matchedByName.leadCode || matchedByName.customerName };
+      }
+    }
+
+    return null;
+  };
+
+  const handleTaskClick = (task) => {
+    const lead = resolveLeadForTask(task);
+    if (lead && lead.id) {
+      navigate(`/crm/leads/${lead.id}`);
+    } else {
+      toast.error('No lead manifest record linked to this task.');
     }
   };
 
@@ -511,10 +570,7 @@ export default function SalesExecutiveDashboard() {
   // Download Task File Attachment
   const handleDownloadTaskFile = (fileUrl, originalName) => {
     if (!fileUrl) return;
-    // Construct absolute URL to download the file from server static files / uploads directory
-    // If it's a relative path starting with 'uploads', prepend backend base url
-    const baseUrl = 'http://localhost:5000/'; // fallback local api base
-    const absoluteUrl = fileUrl.startsWith('http') ? fileUrl : `${baseUrl}${fileUrl}`;
+    const absoluteUrl = getFileUrl(fileUrl);
     
     const link = document.createElement('a');
     link.href = absoluteUrl;
@@ -767,77 +823,91 @@ export default function SalesExecutiveDashboard() {
                       </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        {managerTasks.map((task) => (
-                          <div 
-                            key={task._id} 
-                            className="p-4 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-3 flex flex-col justify-between"
-                          >
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-start gap-2">
-                                <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                                  task.priority === 'HIGH' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/30' :
-                                  task.priority === 'MEDIUM' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/30' :
-                                  'bg-slate-800/40 text-slate-400 border border-slate-700/30'
-                                }`}>
-                                  {task.priority}
-                                </span>
-                                <span className="text-[8px] text-[var(--crm-ink-faint)] font-light">
-                                  Due: {new Date(task.dueDate).toLocaleDateString('en-IN')}
-                                </span>
-                              </div>
-                              <h4 className="font-sans font-bold text-sm text-[var(--crm-heading)] pt-1">
-                                {task.title}
-                              </h4>
-                              {task.description && (
-                                <p className="font-sans text-[var(--crm-ink-soft)] text-[11px] leading-relaxed pt-1 whitespace-pre-wrap">
-                                  {task.description}
+                        {managerTasks.map((task) => {
+                          const resolvedLead = resolveLeadForTask(task);
+                          return (
+                            <div 
+                              key={task._id} 
+                              className="p-4 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-3 flex flex-col justify-between group hover:border-teal-600/50 shadow-sm"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                                    task.priority === 'HIGH' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/30' :
+                                    task.priority === 'MEDIUM' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/30' :
+                                    'bg-slate-800/40 text-slate-400 border border-slate-700/30'
+                                  }`}>
+                                    {task.priority}
+                                  </span>
+                                  <span className="text-[8px] text-[var(--crm-ink-faint)] font-light">
+                                    Due: {new Date(task.dueDate).toLocaleDateString('en-IN')}
+                                  </span>
+                                </div>
+
+                                <div 
+                                  onClick={() => handleTaskClick(task)}
+                                  className="cursor-pointer group/taskitem pt-1"
+                                  title={resolvedLead ? `Click to open lead (${resolvedLead.code})` : 'Click to open associated lead'}
+                                >
+                                  <h4 className="font-sans font-bold text-sm text-[var(--crm-heading)] group-hover/taskitem:text-teal-400 transition-colors flex items-center justify-between">
+                                    <span className="group-hover/taskitem:underline">{task.title}</span>
+                                    <span className="text-[10px] text-teal-400 font-mono font-normal opacity-80 group-hover/taskitem:opacity-100 transition-opacity flex items-center gap-0.5 ml-2 shrink-0 bg-teal-950/60 border border-teal-800/40 px-1.5 py-0.5 rounded">
+                                      View Lead ↗
+                                    </span>
+                                  </h4>
+                                  {task.description && (
+                                    <p className="font-sans text-[var(--crm-ink-soft)] text-[11px] leading-relaxed pt-1 whitespace-pre-wrap group-hover/taskitem:text-[var(--crm-heading)] transition-colors">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <p className="text-[9px] text-[var(--crm-ink-faint)] pt-1">
+                                  Assigned by: <strong className="text-[var(--crm-ink-soft)]">{task.assignedBy?.name || 'Manager'}</strong>
                                 </p>
-                              )}
-                              <p className="text-[9px] text-[var(--crm-ink-faint)] pt-1">
-                                Assigned by: <strong className="text-[var(--crm-ink-soft)]">{task.assignedBy?.name || 'Manager'}</strong>
-                              </p>
-                            </div>
+                              </div>
 
-                            <div className="flex items-center justify-between pt-2 border-t border-[var(--crm-line)]/50 mt-2">
-                              {/* File Attachment Link */}
-                              {task.fileUrl ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDownloadTaskFile(task.fileUrl, task.fileOriginalName)}
-                                  className="text-teal-400 hover:text-teal-300 font-bold text-[9px] uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-                                >
-                                  <FiPaperclip size={11} /> Attachment
-                                </button>
-                              ) : (
-                                <span className="text-[var(--crm-ink-faint)] text-[9px]">No attachment</span>
-                              )}
+                              <div className="flex items-center justify-between pt-2 border-t border-[var(--crm-line)]/50 mt-2">
+                                {/* File Attachment Link */}
+                                {task.fileUrl ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadTaskFile(task.fileUrl, task.fileOriginalName)}
+                                    className="text-teal-400 hover:text-teal-300 font-bold text-[9px] uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <FiPaperclip size={11} /> Attachment
+                                  </button>
+                                ) : (
+                                  <span className="text-[var(--crm-ink-faint)] text-[9px]">No attachment</span>
+                                )}
 
-                              {/* Status Action Selector */}
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] text-[var(--crm-ink-faint)]">Status:</span>
-                                <select
-                                  value={task.status}
-                                  disabled={updatingTaskId === task._id}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val === 'COMPLETED') {
-                                      setCompletionTaskId(task._id);
-                                      setCompletionFile(null);
-                                      setCompletionRemarks('');
-                                    } else {
-                                      handleTaskStatusUpdate(task._id, val);
-                                    }
-                                  }}
-                                  className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-[9px] px-2 py-1 rounded outline-none cursor-pointer hover:border-teal-500 transition disabled:opacity-50"
-                                >
-                                  <option value="PENDING">Pending</option>
-                                  <option value="IN_PROGRESS">In Progress</option>
-                                  <option value="COMPLETED">Completed</option>
-                                </select>
+                                {/* Status Action Selector */}
+                                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                  <span className="text-[9px] text-[var(--crm-ink-faint)]">Status:</span>
+                                  <select
+                                    value={task.status}
+                                    disabled={updatingTaskId === task._id}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === 'COMPLETED') {
+                                        setCompletionTaskId(task._id);
+                                        setCompletionFile(null);
+                                        setCompletionRemarks('');
+                                      } else {
+                                        handleTaskStatusUpdate(task._id, val);
+                                      }
+                                    }}
+                                    className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-mono text-[9px] px-2 py-1 rounded outline-none cursor-pointer hover:border-teal-500 transition disabled:opacity-50"
+                                  >
+                                    <option value="PENDING">Pending</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="COMPLETED">Completed</option>
+                                  </select>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )}
@@ -995,7 +1065,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Won vs Pending vs Lost</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={[
                             { name: 'Won', count: wonMyDeals, fill: '#10b981' },
                             { name: 'Pending', count: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f59e0b' },
@@ -1020,7 +1090,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Materials Breakdown</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'].map(cat => ({
                             name: cat,
                             leads: deals.filter(d => d.productCategory === cat).length
@@ -1061,9 +1131,16 @@ export default function SalesExecutiveDashboard() {
                         getFilteredByDate(myCallRecordings).map((rec) => (
                           <div key={rec._id} className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-md space-y-2 text-xs">
                             <div className="flex justify-between items-start">
-                              <h4 className="font-serif font-bold text-[var(--crm-heading)] truncate text-xs">
-                                {rec.customerName || 'Client Call'}
-                              </h4>
+                              <div>
+                                <h4 className="font-serif font-bold text-[var(--crm-heading)] truncate text-xs">
+                                  {rec.customerName || 'Client Call'}
+                                </h4>
+                                {rec.mobileNumber && (
+                                  <span className="text-[9px] text-[var(--crm-ink-faint)] block">
+                                    📱 {rec.mobileNumber} ({rec.contactRole || 'Contact'})
+                                  </span>
+                                )}
+                              </div>
                               <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${
                                 rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' :
                                 rec.leadPriority === 'WARM' ? 'bg-amber-950/60 text-amber-400 border-amber-800/60' :
@@ -1072,6 +1149,13 @@ export default function SalesExecutiveDashboard() {
                                 {rec.leadPriority || 'WARM'}
                               </span>
                             </div>
+
+                            {(rec.material || rec.location || rec.quantity) && (
+                              <div className="bg-[var(--crm-bg-raised)] p-2 rounded text-[9px] space-y-0.5 border border-[var(--crm-line)]/50">
+                                {rec.material && <div>📦 Material: <strong className="text-teal-400">{rec.material}</strong> {rec.quantity ? `(${rec.quantity})` : ''}</div>}
+                                {rec.location && <div>📍 Location: <strong className="text-amber-400">{rec.location}</strong></div>}
+                              </div>
+                            )}
 
                             {rec.notes && (
                               <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] italic line-clamp-2 bg-[var(--crm-bg-raised)] p-2 rounded">
@@ -1083,12 +1167,9 @@ export default function SalesExecutiveDashboard() {
                               <audio
                                 controls
                                 controlsList="nodownload"
+                                preload="metadata"
                                 className="w-full h-7 rounded accent-teal-500"
-                                src={(() => {
-                                  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                  const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
-                                  return `${baseUrl}/leads/call-recordings/${rec._id}/stream`;
-                                })()}
+                                src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
                               />
                               <div className="flex justify-between text-[8px] text-[var(--crm-ink-faint)] pt-1">
                                 <span>📅 {new Date(rec.createdAt).toLocaleDateString()}</span>
@@ -1241,12 +1322,7 @@ export default function SalesExecutiveDashboard() {
                                       {deal.loiDocuments.map((loi, i) => (
                                         <a
                                           key={i}
-                                          href={(() => {
-                                            const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                                            const baseUrl = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:5000/api' : 'https://indiatradeoverseas-ito.onrender.com/api');
-                                            const token = localStorage.getItem('token') || '';
-                                            return `${baseUrl}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(token)}`;
-                                          })()}
+                                          href={`${API_URL}/leads/${deal._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
                                           target="_blank"
                                           rel="noreferrer"
                                           className="block text-[9px] text-teal-400 hover:underline truncate max-w-[130px]"
@@ -1447,7 +1523,33 @@ export default function SalesExecutiveDashboard() {
                                 <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
                                   <span>{msg.senderName} ({msg.senderRole})</span>
                                 </div>
-                                <p className="leading-relaxed break-words">{msg.content}</p>
+                                <div className="leading-relaxed break-words text-xs font-sans">
+                                  {(() => {
+                                    if (!msg.content) return null;
+                                    const parts = msg.content.split(/(\b(?:LD|LEAD)-[A-Za-z0-9-]+|\b[0-9a-fA-F]{24}\b)/g);
+                                    return (
+                                      <span>
+                                        {parts.map((part, idx) => {
+                                          const matchedLead = (deals || []).find(l => l.leadCode === part || String(l._id) === part);
+                                          if (matchedLead || /^(?:LD|LEAD)-/.test(part)) {
+                                            const targetId = matchedLead ? matchedLead._id : part;
+                                            return (
+                                              <Link
+                                                key={idx}
+                                                to={`/crm/leads/${targetId}`}
+                                                className="bg-teal-950/80 hover:bg-teal-900 border border-teal-700/60 text-teal-300 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded mx-0.5 inline-flex items-center gap-1 transition underline cursor-pointer"
+                                                title="Click to open Lead Manifest"
+                                              >
+                                                📄 {matchedLead ? matchedLead.leadCode : part}
+                                              </Link>
+                                            );
+                                          }
+                                          return part;
+                                        })}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                               <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5 px-1">
                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1601,7 +1703,7 @@ export default function SalesExecutiveDashboard() {
 
                     {/* Department Chart */}
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <BarChart data={departmentRankings} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />

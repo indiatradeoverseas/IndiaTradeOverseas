@@ -25,9 +25,9 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
   DISPATCH_PLANNED: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
   PAYMENT_PENDING: ['DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
   DOCUMENT_PENDING: ['CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DELIVERED: ['CLOSED_WON', 'COMPLETED'],
-  COMPLETED: [],
-  CLOSED_WON: [],
+  DELIVERED: ['CLOSED_WON', 'COMPLETED', 'DEAL_WON'],
+  COMPLETED: ['DEAL_WON'],
+  CLOSED_WON: ['DEAL_WON'],
   CLOSED_LOST: [],
   
   // New pipeline transition mappings
@@ -43,17 +43,17 @@ NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_L
 
 function canAccessLead(user, lead) {
   if (!user) return false;
-  const role = user.role || '';
-  const dept = user.department || '';
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
   const isManagerOrAdmin =
     role === 'ADMIN' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
-    role.toLowerCase().includes('manager') ||
+    role.includes('MANAGER') ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS' ||
     role === 'DRIVER' ||
-    role.toLowerCase().includes('driver') ||
+    role.includes('DRIVER') ||
     dept === 'ADMIN' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
@@ -65,9 +65,17 @@ function canAccessLead(user, lead) {
     role === 'HR' ||
     role === 'ACCOUNTS' ||
     role === 'FINANCE' ||
+    role === 'SALES' ||
+    role === 'SALES_EXECUTIVE' ||
+    role === 'EMPLOYEE' ||
+    user.leadPermission === true ||
+    user.permissions?.lead === true ||
+    user.taskPermission === true ||
+    user.permissions?.task === true ||
     user.paymentPermission === true ||
     user.dispatchPermission === true ||
-    user.quotationPermission === true
+    user.quotationPermission === true ||
+    dept === 'SALES'
   ) {
     result = true;
   } else {
@@ -96,9 +104,90 @@ function canAccessLead(user, lead) {
 }
 
 function getLeadDisplay(lead, user) {
-  const leadObj = lead.toObject ? lead.toObject() : lead;
+  const leadObj = lead.toObject ? lead.toObject() : { ...lead };
   const { decryptText } = require('../../utils/crypto');
+  const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
 
+  // Smart fallback for estimatedValue if empty
+  if (!leadObj.estimatedValue || String(leadObj.estimatedValue).trim() === '') {
+    if (leadObj.originalPayload?.estimatedValue || leadObj.originalPayload?.valuation || leadObj.originalPayload?.budget) {
+      leadObj.estimatedValue = String(leadObj.originalPayload.estimatedValue || leadObj.originalPayload.valuation || leadObj.originalPayload.budget).trim();
+    } else if (leadObj.leadValue && Number(leadObj.leadValue) > 0) {
+      leadObj.estimatedValue = `₹${Number(leadObj.leadValue).toLocaleString('en-IN')}`;
+    } else {
+      const txt = leadObj.chatSummary || leadObj.remarks || '';
+      if (txt) {
+        const match = txt.match(/(?:Valuation\/Budget|Valuation|Budget|Value)[^\n:]*[:—]\s*([^\n,]+)/i);
+        if (match && match[1] && match[1].trim() !== 'Not specified' && match[1].trim() !== '—') {
+          leadObj.estimatedValue = match[1].trim();
+        }
+      }
+    }
+  }
+
+  // Smart fallback for targetDate if empty
+  if (!leadObj.targetDate) {
+    const rawDate = leadObj.originalPayload?.targetDate || leadObj.originalPayload?.requiredDate || leadObj.originalPayload?.timeline;
+    if (rawDate) {
+      const parsed = parseFlexibleDate(rawDate);
+      if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;
+    } else {
+      const txt = leadObj.chatSummary || leadObj.remarks || '';
+      if (txt) {
+        const match = txt.match(/(?:Requirement Date|Target Date|Timeline)[^\n:]*[:—]\s*([^\n,]+)/i);
+        if (match && match[1] && match[1].trim() !== 'Not specified' && match[1].trim() !== '—') {
+          const parsed = parseFlexibleDate(match[1].trim());
+          if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;
+        }
+      }
+    }
+  }
+
+  if (leadObj.targetDate) {
+    const tDate = new Date(leadObj.targetDate);
+    if (!isNaN(tDate.getTime())) {
+      const now = new Date();
+      const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const diffDays = Math.ceil(diffHours / 24);
+      if (diffDays <= 3) {
+        leadObj.priority = 'HOT';
+      } else if (diffDays <= 7) {
+        leadObj.priority = 'WARM';
+      } else {
+        leadObj.priority = 'COLD';
+      }
+    }
+  }
+
+  if (leadObj.stage === 'NEW_LEAD' || leadObj.stage === 'ASSIGNED') {
+    leadObj.stage = 'LEAD_QUALIFICATION';
+  }
+
+  if (leadObj.assignedTo) {
+    if (typeof leadObj.assignedTo === 'object' && leadObj.assignedTo !== null) {
+      const displayName = leadObj.assignedTo.fullName || leadObj.assignedTo.name || leadObj.assignedTo.email || leadObj.assignedTo.employeeId || (leadObj.assignedTo._id ? String(leadObj.assignedTo._id) : '');
+      if (displayName && displayName.toLowerCase() !== 'unassigned') {
+        leadObj.assignedTo = {
+          ...leadObj.assignedTo,
+          fullName: displayName,
+          name: displayName
+        };
+      } else {
+        leadObj.assignedTo = null;
+      }
+    } else if (typeof leadObj.assignedTo === 'string') {
+      const s = leadObj.assignedTo.trim();
+      if (s && s.toLowerCase() !== 'unassigned' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') {
+        leadObj.assignedTo = {
+          _id: s,
+          fullName: s,
+          name: s
+        };
+      } else {
+        leadObj.assignedTo = null;
+      }
+    }
+  }
 
   const role = user ? (user.role || '') : '';
   const isManagerOrAdminUser =
@@ -109,15 +198,14 @@ function getLeadDisplay(lead, user) {
     (user && (user.department === 'ADMIN' || (user.position && user.position.toLowerCase().includes('admin'))));
 
   if (user && (isManagerOrAdminUser || role === 'HR')) {
-
-    const decryptedPhone = decryptText(leadObj.phoneEncrypted);
-    const decryptedEmail = leadObj.emailEncrypted ? decryptText(leadObj.emailEncrypted) : '';
+    const decryptedPhone = leadObj.phoneEncrypted ? decryptText(leadObj.phoneEncrypted) : leadObj.phoneMasked;
+    const decryptedEmail = leadObj.emailEncrypted ? decryptText(leadObj.emailEncrypted) : leadObj.emailMasked;
     return {
       ...leadObj,
-      phone: decryptedPhone,
-      email: decryptedEmail,
-      phoneMasked: decryptedPhone,
-      emailMasked: decryptedEmail
+      phone: decryptedPhone || leadObj.phoneMasked,
+      email: decryptedEmail || leadObj.emailMasked,
+      phoneMasked: decryptedPhone || leadObj.phoneMasked,
+      emailMasked: decryptedEmail || leadObj.emailMasked
     };
   }
 
@@ -178,70 +266,238 @@ async function listLeads(user, query = {}) {
     }
     filter.assignedTo = { $in: actorIds };
   }
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
 
-  const leads = await Lead.find(filter)
-    .populate('assignedTo', 'fullName name email role profileImage')
+  // Fetch raw leads WITHOUT Mongoose populate on assignedTo so raw ObjectId is preserved
+  const rawLeads = await Lead.find(filter)
     .populate('createdBy', 'fullName name email role profileImage')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  // Resolve mixed User/Employee populated assignees
-  const populatedLeads = await Promise.all(leads.map(async (l) => {
-    const populatedL = l.toObject ? l.toObject() : l;
-    const rawAssignedId = (typeof l.populated === 'function' && l.populated('assignedTo')) || l.assignedTo;
-    if (rawAssignedId && !l.assignedTo) {
-      const Employee = require('../employee/employee.model');
-      const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
-      if (employee) {
-        populatedL.assignedTo = {
-          _id: employee._id,
-          fullName: employee.fullName || employee.name,
-          name: employee.name || employee.fullName,
-          email: employee.email,
-          role: employee.role,
-          profileImage: employee.profileImage
-        };
+  // Collect all assignedTo values (IDs, emails, or ObjectIds)
+  const rawAssignedValues = [...new Set(rawLeads.map(l => l.assignedTo ? String(l.assignedTo._id || l.assignedTo) : null).filter(Boolean))];
+
+  if (rawAssignedValues.length > 0) {
+    const allSearchValues = [];
+    rawAssignedValues.forEach(v => {
+      const s = String(v).trim();
+      if (s) {
+        allSearchValues.push(s);
+        if (s.includes('@')) allSearchValues.push(s.toLowerCase());
+        if (mongoose.Types.ObjectId.isValid(s)) {
+          try {
+            allSearchValues.push(new mongoose.Types.ObjectId(s));
+          } catch (e) {}
+        }
       }
-    }
-    return getLeadDisplay(populatedL, user);
-  }));
+    });
 
-  return populatedLeads;
+    const [users, employees] = await Promise.all([
+      User.find({
+        $or: [
+          { _id: { $in: allSearchValues } },
+          { email: { $in: allSearchValues } },
+          { employeeId: { $in: allSearchValues } },
+          { employeeDbId: { $in: allSearchValues } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      Employee.find({
+        $or: [
+          { _id: { $in: allSearchValues } },
+          { email: { $in: allSearchValues } },
+          { employeeId: { $in: allSearchValues } }
+        ]
+      }).select('_id fullName name email role profileImage employeeId').lean()
+    ]);
+
+    const assigneeMap = new Map();
+
+    const addToMap = (info) => {
+      if (!info) return;
+      const displayName = info.fullName || info.name || info.email || info.employeeId || String(info._id);
+      const cleanInfo = {
+        _id: info._id,
+        fullName: displayName,
+        name: displayName,
+        email: info.email || '',
+        role: info.role || '',
+        profileImage: info.profileImage || '',
+        employeeDbId: info.employeeDbId || '',
+        employeeId: info.employeeId || ''
+      };
+
+      if (info._id) assigneeMap.set(String(info._id), cleanInfo);
+      if (info.email) assigneeMap.set(info.email.toLowerCase(), cleanInfo);
+      if (info.employeeDbId) assigneeMap.set(String(info.employeeDbId), cleanInfo);
+      if (info.employeeId) assigneeMap.set(String(info.employeeId), cleanInfo);
+    };
+
+    users.forEach(u => addToMap(u));
+    employees.forEach(e => addToMap(e));
+
+    rawLeads.forEach(l => {
+      if (l.assignedTo) {
+        let rawVal = l.assignedTo;
+        let existingName = null;
+        if (typeof rawVal === 'object' && rawVal !== null) {
+          existingName = rawVal.fullName || rawVal.name || rawVal.email;
+          rawVal = String(rawVal._id || rawVal);
+        } else {
+          rawVal = String(rawVal);
+        }
+
+        const resolved = assigneeMap.get(rawVal) || 
+                         (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null) ||
+                         assigneeMap.get(String(rawVal));
+
+        if (resolved) {
+          l.assignedTo = resolved;
+        } else if (existingName && existingName.toLowerCase() !== 'unassigned') {
+          l.assignedTo = {
+            _id: rawVal,
+            fullName: existingName,
+            name: existingName
+          };
+        } else if (rawVal && rawVal.toLowerCase() !== 'unassigned') {
+          l.assignedTo = {
+            _id: rawVal,
+            fullName: rawVal,
+            name: rawVal
+          };
+        } else {
+          l.assignedTo = null;
+        }
+      }
+    });
+  }
+
+  return rawLeads.map(l => getLeadDisplay(l, user));
 }
 
 async function getLeadById(id, user) {
-  const lead = await Lead.findById(id).populate('assignedTo', 'fullName name email role profileImage');
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
+
+  // Fetch lead without populate('assignedTo') so Mongoose doesn't null out Employee IDs
+  const lead = await Lead.findById(id).populate('createdBy', 'fullName name email role profileImage');
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
   if (!canAccessLead(user, lead)) {
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
-  // Resolve mixed User/Employee populated assignee
+  // Auto-reevaluate priority & score if targetDate is set and lead was COLD or score uncalculated
+  if (lead.targetDate) {
+    try {
+      const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+      const { score: calcScore, priority: calcPriority } = scoreAndClassifyLead({
+        quantity: lead.quantity,
+        leadValue: lead.leadValue,
+        stage: lead.stage,
+        source: lead.source,
+        contactPerson: lead.customerName,
+        mobile: lead.phoneMasked,
+        chatSummary: lead.remarks || '',
+        targetDate: lead.targetDate
+      });
+      if (calcScore > (lead.score || 0) || (calcPriority === 'HOT' && lead.priority !== 'HOT')) {
+        lead.score = Math.max(lead.score || 0, calcScore);
+        if (calcPriority === 'HOT') lead.priority = 'HOT';
+        else if (calcPriority === 'WARM' && lead.priority === 'COLD') lead.priority = 'WARM';
+        await lead.save();
+      }
+    } catch (calcErr) {
+      console.warn('Notice re-scoring lead by targetDate:', calcErr.message);
+    }
+  }
+
   const leadObj = lead.toObject ? lead.toObject() : lead;
-  const rawAssignedId = (typeof lead.populated === 'function' && lead.populated('assignedTo')) || lead.assignedTo;
-  if (rawAssignedId && !lead.assignedTo) {
-    const Employee = require('../employee/employee.model');
-    const employee = await Employee.findById(rawAssignedId).select('fullName name email role profileImage');
-    if (employee) {
-      leadObj.assignedTo = {
-        _id: employee._id,
-        fullName: employee.fullName || employee.name,
-        name: employee.name || employee.fullName,
-        email: employee.email,
-        role: employee.role,
-        profileImage: employee.profileImage
-      };
+
+  // Resolve assignedTo against User and Employee models
+  if (leadObj.assignedTo) {
+    let rawVal = leadObj.assignedTo;
+    let existingName = null;
+    if (typeof rawVal === 'object' && rawVal !== null) {
+      existingName = rawVal.fullName || rawVal.name || rawVal.email;
+      rawVal = String(rawVal._id || rawVal);
+    } else {
+      rawVal = String(rawVal);
+    }
+
+    if (rawVal) {
+      const allSearchValues = [rawVal];
+      if (rawVal.includes('@')) allSearchValues.push(rawVal.toLowerCase());
+      if (mongoose.Types.ObjectId.isValid(rawVal)) {
+        try {
+          allSearchValues.push(new mongoose.Types.ObjectId(rawVal));
+        } catch (e) {}
+      }
+
+      const [uMatch, eMatch] = await Promise.all([
+        User.findOne({
+          $or: [
+            { _id: { $in: allSearchValues } },
+            { email: { $in: allSearchValues } },
+            { employeeId: { $in: allSearchValues } },
+            { employeeDbId: { $in: allSearchValues } }
+          ]
+        }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+        Employee.findOne({
+          $or: [
+            { _id: { $in: allSearchValues } },
+            { email: { $in: allSearchValues } },
+            { employeeId: { $in: allSearchValues } }
+          ]
+        }).select('_id fullName name email role profileImage employeeId').lean()
+      ]);
+
+      const resolved = uMatch || eMatch;
+      if (resolved) {
+        const displayName = resolved.fullName || resolved.name || resolved.email || resolved.employeeId || String(resolved._id);
+        leadObj.assignedTo = {
+          _id: resolved._id,
+          fullName: displayName,
+          name: displayName,
+          email: resolved.email,
+          role: resolved.role,
+          profileImage: resolved.profileImage
+        };
+      } else if (existingName && existingName.toLowerCase() !== 'unassigned') {
+        leadObj.assignedTo = {
+          _id: rawVal,
+          fullName: existingName,
+          name: existingName
+        };
+      } else if (rawVal && rawVal.toLowerCase() !== 'unassigned') {
+        leadObj.assignedTo = {
+          _id: rawVal,
+          fullName: rawVal,
+          name: rawVal
+        };
+      } else {
+        leadObj.assignedTo = null;
+      }
     }
   }
 
   const activities = await LeadActivity.find({ leadId: lead._id }).sort({ createdAt: -1 });
+  const latestQuotation = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
+  if (latestQuotation) {
+    leadObj.quotationStatus = latestQuotation.status;
+  }
+
   return {
     lead: getLeadDisplay(leadObj, user),
     activities
   };
 }
 
-async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, user, ipAddress, deviceHash }) {
+async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
+  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage);
+  console.log('[updateStage] Proof fields received:', { hasPodFileUrl: !!podFileUrl, hasPaymentProofUrl: !!paymentProofUrl, hasDriverProofUrl: !!driverProofUrl, hasPhotoUrl: !!photoUrl, hasPaymentProof: !!paymentProof, hasDeliveryImages: !!deliveryImages });
+  console.log('[updateStage] User role:', user?.role, 'department:', user?.department);
+
   // 1. Fetch the lead record first so `lead` exists in memory
   let lead = null;
   if (mongoose.isValidObjectId(leadId)) {
@@ -250,7 +506,11 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   if (!lead) {
     lead = await Lead.findOne({ $or: [{ leadCode: leadId }, { leadId: leadId }, { orderNumber: leadId }] });
   }
-  if (!lead) throw new Error('LEAD_NOT_FOUND');
+  if (!lead) {
+    console.log('[updateStage] LEAD_NOT_FOUND for leadId:', leadId);
+    throw new Error('LEAD_NOT_FOUND');
+  }
+  console.log('[updateStage] Found lead:', lead.leadCode, 'current stage:', lead.stage);
 
   // 2. Access control check
   if (!canAccessLead(user, lead)) {
@@ -267,7 +527,25 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     throw new Error('OWNERSHIP_FORBIDDEN');
   }
 
-  // 3. Stage transition check with Management Override
+  // 3. Strict Quotation Approval Enforcement
+  const advancedStages = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  if (advancedStages.includes(newStage)) {
+    const existingQuote = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
+    if (existingQuote && (existingQuote.status === 'PENDING' || existingQuote.status === 'REJECTED')) {
+      throw new Error(`QUOTATION_NOT_APPROVED: Cannot transition to ${newStage.replace(/_/g, ' ')}. Quotation is ${existingQuote.status}. Manager approval is required first.`);
+    }
+  }
+
+  // 3.5. Strict LOI Document Enforcement
+  const postLoiStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  if (postLoiStages.includes(newStage)) {
+    const hasLOI = Array.isArray(lead.loiDocuments) && lead.loiDocuments.length > 0;
+    if (!hasLOI) {
+      throw new Error(`LOI_DOCUMENT_REQUIRED: LOI Document must be uploaded before advancing to ${newStage.replace(/_/g, ' ')}.`);
+    }
+  }
+
+  // 4. Stage transition check with Management Override
   const previousStage = lead.stage;
   const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
   
@@ -295,6 +573,31 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+  
+  const activePodUrl = podFileUrl || paymentProofUrl || (paymentProof && paymentProof.proofImageUrl) || '';
+  const activeDriverUrl = driverProofUrl || photoUrl || (deliveryImages && deliveryImages.driverSelfieUrl) || '';
+
+  if (activePodUrl) {
+    lead.podFileUrl = activePodUrl;
+    lead.paymentProofUrl = activePodUrl;
+  }
+  if (activeDriverUrl) {
+    lead.driverProofUrl = activeDriverUrl;
+    lead.photoUrl = activeDriverUrl;
+  }
+  if (paymentProof) lead.paymentProof = paymentProof;
+  if (deliveryImages) lead.deliveryImages = deliveryImages;
+
+  console.log('[updateStage] About to save lead with proof data:', {
+    stage: lead.stage,
+    hasPodFileUrl: !!(lead.podFileUrl && lead.podFileUrl.length > 5),
+    hasPaymentProofUrl: !!(lead.paymentProofUrl && lead.paymentProofUrl.length > 5),
+    hasDriverProofUrl: !!(lead.driverProofUrl && lead.driverProofUrl.length > 5),
+    hasPhotoUrl: !!(lead.photoUrl && lead.photoUrl.length > 5),
+    podFileUrlLength: (lead.podFileUrl || '').length,
+    paymentProofUrlLength: (lead.paymentProofUrl || '').length,
+    driverProofUrlLength: (lead.driverProofUrl || '').length
+  });
 
   // Auto-recalculate lead score & priority on stage progression
   try {
@@ -317,6 +620,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   await lead.save();
+  console.log('[updateStage] Lead saved successfully! Stage:', lead.stage, 'leadCode:', lead.leadCode);
 
   // 5. Record activity log
   const activity = await LeadActivity.create({
@@ -342,6 +646,21 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     }
   }
 
+  // 6b. Automation trigger: Notify Transport Manager & Transport Department when Order is Confirmed
+  if (newStage === 'ORDER_CONFIRMED' || newStage === 'PO_RECEIVED') {
+    try {
+      const Notification = require('../notifications/notification.model');
+      await Notification.create({
+        targetDepartment: 'TRANSPORT',
+        message: `🎉 New Order Confirmed! Lead ${lead.leadCode || lead.customerName} (${lead.customerName}) is ready for transport & driver assignment.`,
+        type: 'ORDER_CONFIRMED',
+        metadata: { leadId: lead._id, leadCode: lead.leadCode }
+      });
+    } catch (notifErr) {
+      console.warn('Order confirmation notification notice:', notifErr.message);
+    }
+  }
+
   // 7. Record security audit log
   await recordAudit({
     actorId: user._id,
@@ -361,6 +680,8 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   const Lead = require('./lead.model');
   const LeadActivity = require('./leadActivity.model');
   const Notification = require('../notifications/notification.model');
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
   const { recordAudit } = require('../security-audit/auditLog.service');
 
   const lead = await Lead.findById(leadId);
@@ -369,44 +690,94 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   const oldAssignedTo = lead.assignedTo;
   const oldAssignedDept = lead.assignedDepartment;
 
+  let targetAssignedTo = assignedTo || null;
+  let resolvedAssignee = null;
 
-  lead.assignedTo = assignedTo || null;
+  if (assignedTo) {
+    const rawVal = String(assignedTo._id || assignedTo);
+    const objectIds = [];
+    const emailStrings = [];
+    const empIdStrings = [rawVal];
+
+    if (rawVal.includes('@')) emailStrings.push(rawVal.toLowerCase());
+    if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      objectIds.push(new mongoose.Types.ObjectId(rawVal));
+      objectIds.push(rawVal);
+    }
+
+    const [uMatch, eMatch] = await Promise.all([
+      User.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } },
+          { employeeDbId: { $in: objectIds } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      Employee.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } }
+        ]
+      }).select('_id fullName name email role profileImage employeeId').lean()
+    ]);
+
+    resolvedAssignee = uMatch || eMatch;
+    if (resolvedAssignee) {
+      targetAssignedTo = resolvedAssignee._id;
+    }
+  }
+
+  lead.assignedTo = targetAssignedTo;
   lead.assignedDepartment = assignedDepartment || null;
 
-
-
-
-  if (lead.stage === 'NEW_LEAD' && (assignedTo || assignedDepartment)) {
-    lead.stage = 'ASSIGNED';
+  // Smart stage progression on lead assignment:
+  // 1. Initial stage (NEW_LEAD / ASSIGNED) -> LEAD_QUALIFICATION
+  // 2. Preserve existing stage if already in LEAD_QUALIFICATION, FOLLOW_UP, REQUIREMENT_CAPTURED, etc.
+  if (targetAssignedTo || assignedDepartment) {
+    const currentStage = String(lead.stage || '').toUpperCase();
+    if (currentStage === 'NEW_LEAD' || currentStage === 'ASSIGNED') {
+      lead.stage = 'LEAD_QUALIFICATION';
+    }
   }
 
   await lead.save();
 
-
+  const assigneeName = resolvedAssignee?.fullName || resolvedAssignee?.name || (targetAssignedTo ? 'assigned employee' : 'unassigned');
   await LeadActivity.create({
     leadId: lead._id,
     actionType: 'LEAD_ASSIGNED',
-    note: `Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}, Department: ${assignedDepartment || 'none'}`,
+    note: `Lead assignment updated. Custodian: ${assigneeName}, Department: ${assignedDepartment || 'none'}`,
     actorId: user._id
   });
 
+  if (targetAssignedTo && String(targetAssignedTo) !== String(oldAssignedTo)) {
+    const assignedUserName = assigneeName || 'team member';
 
-  if (assignedTo && String(assignedTo) !== String(oldAssignedTo)) {
+    // 1. Notify the assigned Executive
     await Notification.create({
-      targetUserId: assignedTo,
-      message: `Lead ${lead.leadCode} has been assigned to you by ${user.fullName}.`,
+      targetUserId: targetAssignedTo,
+      message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
       metadata: { leadId: lead._id }
+    });
+
+    // 2. Also notify the Transport Manager / TRANSPORT department
+    await Notification.create({
+      targetDepartment: 'TRANSPORT',
+      message: `📋 Lead ${lead.leadCode || lead.customerName} assigned to ${assignedUserName} by ${user.fullName || user.name}.`,
+      type: 'TASK_ASSIGNMENT',
+      metadata: { leadId: lead._id, assignedTo: targetAssignedTo }
     });
   } else if (assignedDepartment && assignedDepartment !== oldAssignedDept) {
     await Notification.create({
       targetDepartment: assignedDepartment,
-      message: `Lead ${lead.leadCode} has been routed to your department (${assignedDepartment}) by ${user.fullName}.`,
+      message: `Lead ${lead.leadCode || lead.customerName} has been routed to your department (${assignedDepartment}) by ${user.fullName || user.name}.`,
       type: 'TASK_ASSIGNMENT',
       metadata: { leadId: lead._id }
     });
   }
-
 
   await recordAudit({
     actorId: user._id,
@@ -414,10 +785,22 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     entityType: 'LEAD',
     entityId: lead._id.toString(),
     severity: 'LOW',
-    metadata: { assignedTo, assignedDepartment }
+    metadata: { assignedTo: targetAssignedTo, assignedDepartment }
   });
 
-  return getLeadDisplay(lead, user);
+  const leadObj = lead.toObject ? lead.toObject() : lead;
+  if (resolvedAssignee) {
+    leadObj.assignedTo = {
+      _id: resolvedAssignee._id,
+      fullName: resolvedAssignee.fullName || resolvedAssignee.name || resolvedAssignee.email,
+      name: resolvedAssignee.name || resolvedAssignee.fullName || resolvedAssignee.email,
+      email: resolvedAssignee.email,
+      role: resolvedAssignee.role,
+      profileImage: resolvedAssignee.profileImage
+    };
+  }
+
+  return getLeadDisplay(leadObj, user);
 }
 
 async function deleteLead(leadId, user) {
@@ -447,50 +830,109 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
   const Lead = require('./lead.model');
   const LeadActivity = require('./leadActivity.model');
   const Notification = require('../notifications/notification.model');
+  const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
   const { recordAudit } = require('../security-audit/auditLog.service');
 
   if (!Array.isArray(leadIds) || !leadIds.length) {
     throw new Error('LEAD_IDS_REQUIRED');
   }
 
-  const results = await Lead.updateMany(
-    { _id: { $in: leadIds } },
-    { 
-      $set: { 
-        assignedTo: assignedTo || null,
-        stage: 'ASSIGNED'
-      } 
+  const targetLeadIds = leadIds.map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id);
+  let targetAssignedTo = null;
+  let resolvedAssignee = null;
+
+  if (assignedTo) {
+    const rawVal = String(assignedTo._id || assignedTo);
+    const objectIds = [];
+    const emailStrings = [];
+    const empIdStrings = [rawVal];
+
+    if (rawVal.includes('@')) emailStrings.push(rawVal.toLowerCase());
+    if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      objectIds.push(new mongoose.Types.ObjectId(rawVal));
+      objectIds.push(rawVal);
     }
+
+    const [uMatch, eMatch] = await Promise.all([
+      User.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } },
+          { employeeDbId: { $in: objectIds } }
+        ]
+      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      Employee.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { employeeId: { $in: empIdStrings } }
+        ]
+      }).select('_id fullName name email role profileImage employeeId').lean()
+    ]);
+
+    resolvedAssignee = uMatch || eMatch;
+    if (resolvedAssignee) {
+      targetAssignedTo = resolvedAssignee._id;
+    } else if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      targetAssignedTo = new mongoose.Types.ObjectId(rawVal);
+    } else {
+      targetAssignedTo = rawVal;
+    }
+  }
+
+  const assigneeName = resolvedAssignee?.fullName || resolvedAssignee?.name || (targetAssignedTo ? 'assigned employee' : 'unassigned');
+
+  // Stage update on bulk assignment:
+  await Lead.updateMany({ _id: { $in: targetLeadIds }, stage: { $in: ['NEW_LEAD', 'ASSIGNED'] } }, { $set: { stage: 'LEAD_QUALIFICATION' } });
+
+  const results = await Lead.updateMany(
+    { _id: { $in: targetLeadIds } },
+    { $set: { assignedTo: targetAssignedTo } }
   );
 
   for (const leadId of leadIds) {
-    await LeadActivity.create({
-      leadId,
-      actionType: 'LEAD_ASSIGNED',
-      note: `Bulk Lead assignment updated. Employee: ${assignedTo ? 'assigned' : 'unassigned'}.`,
-      actorId: user._id
-    });
+    try {
+      await LeadActivity.create({
+        leadId,
+        actionType: 'LEAD_ASSIGNED',
+        note: `Bulk Lead assignment updated. Custodian: ${assigneeName}.`,
+        actorId: user._id
+      });
+    } catch (actErr) {
+      console.warn('LeadActivity creation warning during bulk assign:', actErr.message);
+    }
 
     if (assignedTo) {
-      const lead = await Lead.findById(leadId);
-      if (lead) {
-        await Notification.create({
-          targetUserId: assignedTo,
-          message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName}.`,
-          type: 'TASK_ASSIGNMENT',
-          metadata: { leadId: lead._id }
-        });
+      try {
+        const lead = await Lead.findById(leadId);
+        if (lead) {
+          await Notification.create({
+            targetUserId: assignedTo,
+            message: `Lead ${lead.leadCode || lead.customerName} has been assigned to you by ${user.fullName || user.name || 'Manager'}.`,
+            type: 'TASK_ASSIGNMENT',
+            metadata: { leadId: lead._id }
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Notification creation warning during bulk assign:', notifErr.message);
       }
     }
   }
 
-  await recordAudit({
-    actorId: user._id,
-    actionType: 'LEADS_BULK_ASSIGNED',
-    entityType: 'LEAD',
-    severity: 'MEDIUM',
-    metadata: { leadIds, assignedTo }
-  });
+  try {
+    await recordAudit({
+      actorId: user._id,
+      actionType: 'LEAD_ASSIGNED',
+      entityType: 'LEAD',
+      entityId: String(leadIds[0]),
+      severity: 'MEDIUM',
+      metadata: { leadIds, assignedTo }
+    });
+  } catch (auditErr) {
+    console.warn('Audit log warning during bulk assign:', auditErr.message);
+  }
 
   return { success: true, modifiedCount: results.modifiedCount };
 }
@@ -515,12 +957,14 @@ async function bulkImportLeads(leadsArray, user) {
         customerName,
         companyName,
         phone,
+        whatsAppNumber,
         email,
         productCategory,
         quantity,
         destination,
         leadValue,
-        country
+        country,
+        targetDate
       } = row;
 
       if (!customerName || !phone || !productCategory) {
@@ -529,6 +973,7 @@ async function bulkImportLeads(leadsArray, user) {
       }
 
       const cleanPhone = String(phone).replace(/\s/g, '');
+      const cleanWhatsApp = whatsAppNumber ? String(whatsAppNumber).replace(/\s/g, '') : cleanPhone;
       const phoneHash = hashText(cleanPhone);
       const emailHash = email ? hashText(email.trim()) : '';
       const companyNameHash = companyName ? hashCompanyName(companyName) : '';
@@ -537,6 +982,14 @@ async function bulkImportLeads(leadsArray, user) {
       const duplicateQueries = [{ phoneHash }];
       if (emailHash) duplicateQueries.push({ emailHash });
       const duplicate = await Lead.findOne({ $or: duplicateQueries });
+
+      let parsedTargetDate = null;
+      if (targetDate) {
+        const d = new Date(targetDate);
+        if (!isNaN(d.getTime())) {
+          parsedTargetDate = d;
+        }
+      }
 
       // Run AI scoring
       const qtyText = String(quantity || '');
@@ -547,7 +1000,8 @@ async function bulkImportLeads(leadsArray, user) {
         contactPerson: customerName,
         mobile: cleanPhone,
         email: email || '',
-        chatSummary: 'Bulk imported lead.'
+        chatSummary: 'Bulk imported lead.',
+        targetDate: parsedTargetDate
       });
 
       // Priority resolution: Explicit choice from row/import > AI priority
@@ -572,12 +1026,13 @@ async function bulkImportLeads(leadsArray, user) {
         emailEncrypted: email ? encryptText(email.trim()) : '',
         emailMasked: email ? maskEmail(email.trim()) : '',
         emailHash,
-        whatsAppNumber: cleanPhone,
+        whatsAppNumber: cleanWhatsApp,
         country: country || 'India',
         productCategory,
         quantity: qtyText,
         destination: destination || '',
         leadValue: Number(leadValue || 0),
+        targetDate: parsedTargetDate,
         score,
         priority: finalPriority,
         stage: 'NEW_LEAD',
@@ -606,13 +1061,7 @@ async function bulkImportLeads(leadsArray, user) {
   };
 }
 
-async function updatePriority({ leadId, priority, user }) {
-  const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
-  const upperPriority = String(priority || '').toUpperCase();
-  if (!validPriorities.includes(upperPriority)) {
-    throw new Error('INVALID_PRIORITY');
-  }
-
+async function updatePriority({ leadId, priority, leadValue, user }) {
   const lead = await Lead.findById(leadId);
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
@@ -621,13 +1070,27 @@ async function updatePriority({ leadId, priority, user }) {
   }
 
   const oldPriority = lead.priority;
-  lead.priority = upperPriority;
+  if (priority) {
+    const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
+    const upperPriority = String(priority || '').toUpperCase();
+    if (validPriorities.includes(upperPriority)) {
+      lead.priority = upperPriority;
+    }
+  }
+
+  if (leadValue !== undefined && leadValue !== null && leadValue !== '') {
+    const numericVal = Number(String(leadValue).replace(/[^0-9.]/g, ''));
+    if (!isNaN(numericVal)) {
+      lead.leadValue = numericVal;
+    }
+  }
+
   await lead.save();
 
   await LeadActivity.create({
     leadId: lead._id,
     actionType: 'PRIORITY_UPDATED',
-    note: `Lead priority manually updated from ${oldPriority} to ${upperPriority} by ${user.fullName || user.name}`,
+    note: `Lead details updated (Priority: ${lead.priority}, Valuation: ₹${lead.leadValue || 0}) by ${user.fullName || user.name}`,
     actorId: user._id
   });
 

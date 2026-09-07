@@ -86,7 +86,33 @@ function scoreAndClassifyLead(leadData = {}) {
     breakdown.push({ factor: 'Advance Payment Terms Agreed', points: 20 });
   }
 
-  // 5. Lead Source Points
+  // 5b. Target Date Urgency Scoring (HOT <= 3 days, WARM <= 7 days, COLD > 7 days)
+  let targetDatePriority = null;
+  const targetDateVal = leadData.targetDate || leadData.timeline || null;
+  if (targetDateVal) {
+    const tDate = new Date(targetDateVal);
+    if (!isNaN(tDate.getTime())) {
+      const now = new Date();
+      const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const diffDays = Math.ceil(diffHours / 24);
+
+      if (diffDays <= 3) {
+        targetDatePriority = 'HOT';
+        score += 50;
+        breakdown.push({ factor: 'Urgent Target Delivery (Within 3 Days)', points: 50 });
+      } else if (diffDays <= 7) {
+        targetDatePriority = 'WARM';
+        score += 30;
+        breakdown.push({ factor: 'Near-term Target Delivery (Within 7 Days)', points: 30 });
+      } else {
+        targetDatePriority = 'COLD';
+        score += 10;
+        breakdown.push({ factor: 'Far-term Target Delivery (After 7 Days)', points: 10 });
+      }
+    }
+  }
+
+  // 5c. Lead Source Points
   const srcUpper = String(source).toUpperCase();
   if (['WEBSITE', 'WHATSAPP', 'INDIAMART', 'AI_AGENT', 'MANUAL', 'IMPORT'].includes(srcUpper)) {
     score += 15;
@@ -120,9 +146,13 @@ function scoreAndClassifyLead(leadData = {}) {
   // Cap score at 100
   score = Math.min(100, score);
 
-  // 8. Priority Classification
+  // 8. Priority Classification (Target date priority overrides standard score unless deal is won)
   let priority = 'COLD';
-  if (wonStages.includes(stageUpper) || score >= 80) {
+  if (wonStages.includes(stageUpper)) {
+    priority = 'HOT';
+  } else if (targetDatePriority) {
+    priority = targetDatePriority;
+  } else if (score >= 80) {
     priority = 'HOT';
   } else if (score >= 35) {
     priority = 'WARM';
