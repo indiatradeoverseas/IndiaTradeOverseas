@@ -22,7 +22,12 @@ export default function AiChatMessenger() {
   const [messages, setMessages] = useState(() => {
     try {
       const saved = localStorage.getItem('ito_ai_chat_history');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        return JSON.parse(saved).map(msg => ({
+          ...msg,
+          content: msg.content.replace('India Trade Overseas AI Assistant')
+        }));
+      }
     } catch (e) {
       console.error('Error loading AI chat history:', e);
     }
