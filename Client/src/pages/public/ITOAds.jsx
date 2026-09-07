@@ -17,7 +17,10 @@ import {
   FiX,
   FiMessageSquare,
   FiCreditCard,
-  FiLoader
+  FiLoader,
+  FiMessageCircle,
+  FiUser,
+  FiSend
 } from 'react-icons/fi';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import SmokeyCursor from '../../components/lightswind/smokey-cursor';
@@ -102,6 +105,7 @@ export default function ITOAds() {
   });
 
   const [selectedPlan, setSelectedPlan] = useState('Professional');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
   const [isPolicyOpen, setIsPolicyOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
@@ -123,6 +127,12 @@ export default function ITOAds() {
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
 
+  // Chat State
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState(null);
+
   const handleSelectPackage = useCallback((packageName) => {
     const pkg = packages.find(p => p.name === packageName);
     if (!pkg) return;
@@ -133,6 +143,130 @@ export default function ITOAds() {
     // Start payment flow instead of directly opening modal
     initiatePayment(pkg);
   }, []);
+
+  const handleOpenChat = useCallback(() => {
+    setIsChatOpen(true);
+  }, []);
+
+  const handleCloseChat = useCallback(() => {
+    setIsChatOpen(false);
+    setChatMessages([]);
+    setChatInput('');
+    setChatSessionId(null);
+  }, []);
+
+  const ITO_ADS_KNOWLEDGE = {
+    'what is ito ads': 'ITO Ads is a modern advertising, branding, and business‑growth platform powered by ITC – India Trade Center. We combine strategy, creativity, technology, media and performance to help businesses build strong identities, communicate with the right audiences, and convert attention into measurable commercial impact.',
+    'who we are': 'ITO Ads is a modern advertising, branding, and business‑growth platform powered by ITC – India Trade Center. Our purpose is to make professional, intelligent, performance‑focused advertising accessible while maintaining high standards of creativity, transparency, consistency, and execution.',
+    'vision': 'To become a trusted global advertising and brand‑growth platform that empowers businesses to communicate with impact, build stronger brands, and achieve sustainable growth.',
+    'mission': 'Help businesses transform ambitions into clear strategies, powerful communication and measurable market performance through strategic thinking, creative excellence, technology & data, performance focus, and continuous optimization.',
+    'values': 'Our eight core values: Creativity with Purpose, Performance, Innovation, Transparency, Client Centricity, Consistency, Accountability, Growth Mindset.',
+    'brand promise': 'THINK STRATEGICALLY. CREATE DISTINCTIVELY. EXECUTE INTELLIGENTLY. GROW MEASURABLY.',
+    'positioning': 'ITO Ads sits at the intersection of Strategic, Creative, Digital and Performance‑Driven capabilities. We connect branding, creative, advertising, media and performance into one unified growth system.',
+    'services': 'We deliver eight capability pillars: 1) Brand Strategy & Identity, 2) Digital Advertising, 3) Social Media & Content, 4) Creative & Campaign Production, 5) Performance Marketing, 6) Media Strategy & Planning, 7) Lead Generation & Growth Campaigns, 8) Technology, Data & Automation.',
+    'process': 'Our 7‑step proven process: 1) Understand Your Business, 2) Research & Analysis, 3) Strategy Development, 4) Creative Development, 5) Campaign Launch, 6) Monitor & Optimize, 7) Report & Growth.',
+    'packages': 'We offer 4 performance packages: Starter (₹5,000/mo – 50 qualified leads), Growth (₹10,000/mo – 125 leads), Professional (₹15,000/mo – 200 leads – Most Popular), Scale (₹20,000/mo – 300 leads). Platform media spend and applicable GST are extra.',
+    'how it works': 'Our 4‑stage qualification funnel: Raw Lead → Valid Lead (phone/email/business verified) → Validated Lead (commercial requirements & budget validated) → Qualified Lead (matched criteria, pushed to CRM within 60 seconds).',
+    'lead quality': 'Multistage verification: contact data verification, BANT qualification, automatic deduplication. Non‑responsive/wrong‑number/duplicate leads reported within 7 business days are credited and replaced.',
+    'pricing': 'Starter ₹5,000/mo (₹100/lead), Growth ₹10,000/mo (₹80/lead), Professional ₹15,000/mo (₹75/lead), Scale ₹20,000/mo (≈₹66.67/lead). Media spend & GST billed separately.',
+    'targeting': 'Pan‑India precision targeting: industrial zone geo‑fencing, Tier‑1 & Tier‑2 trade clusters, localized campaign messaging, and custom geography per client.',
+    'crm integration': 'Sub‑60 second webhook dispatch to your CRM, round‑robin agent routing, sales SLA escalations, instant WhatsApp & email notifications.',
+    'reporting': 'Weekly video audits, transparent spend ledgers, continuous CAC optimization, live CPQL reporting, and actionable insights for next‑step improvements.',
+    'contact': 'Phone: +91 62077 08246 / +91 99732 18366 | Email: support@itoads.com | Website: www.indiatradeoverseas.com | Address: Pardhan Nagar, Siliguri, West Bengal – 734003, India | GSTIN: 19JIMPK9981B1ZI',
+    'why partner': 'Powered by ITC corporate strength, business‑first strategy, one integrated partner (strategy → execution), transparent communication, performance‑focused thinking, technology & data driven, customized solutions, long‑term partnership mindset.',
+    'client journey': 'Discovery & Consultation → Market & Audience Research → Custom Strategy → Creative Development → Campaign Launch (Plan‑Prepare‑Verify‑Launch) → Monitoring & Optimization → Reporting & Insights → Scale & Grow.',
+    'advertising solutions': 'Social Media Advertising, Search & Digital Advertising, Lead Generation, Brand Awareness Campaigns, Creative Advertising, Performance Marketing, Local & Market Expansion Campaigns, Custom Campaign Solutions.',
+    'default': 'I can answer questions about ITO Ads – who we are, vision/mission/values, positioning, services, process, packages, pricing, lead quality, targeting, CRM integration, reporting, contact details, why partner with us, client journey, advertising solutions, and more. What would you like to know?'
+  };
+
+  const getBotResponse = (userMessage) => {
+    const msg = userMessage.toLowerCase();
+
+    if (msg.includes('package') || msg.includes('plan') || msg.includes('pricing') || msg.includes('price') || msg.includes('cost')) {
+      return ITO_ADS_KNOWLEDGE.packages;
+    }
+    if (msg.includes('how') && (msg.includes('work') || msg.includes('process') || msg.includes('qualif'))) {
+      return ITO_ADS_KNOWLEDGE['how it works'];
+    }
+    if (msg.includes('lead') && (msg.includes('quality') || msg.includes('verify') || msg.includes('valid') || msg.includes('generation'))) {
+      return ITO_ADS_KNOWLEDGE['lead quality'];
+    }
+    if (msg.includes('target') || msg.includes('geograph') || msg.includes('location') || msg.includes('where') || msg.includes('geo')) {
+      return ITO_ADS_KNOWLEDGE.targeting;
+    }
+    if (msg.includes('crm') || msg.includes('integrat') || msg.includes('webhook') || msg.includes('whatsapp')) {
+      return ITO_ADS_KNOWLEDGE['crm integration'];
+    }
+    if (msg.includes('report') || msg.includes('analytics') || msg.includes('dashboard') || msg.includes('optimiz') || msg.includes('insight')) {
+      return ITO_ADS_KNOWLEDGE.reporting;
+    }
+    if (msg.includes('contact') || msg.includes('email') || msg.includes('phone') || msg.includes('address') || msg.includes('gstin')) {
+      return ITO_ADS_KNOWLEDGE.contact;
+    }
+    if (msg.includes('who') && (msg.includes('we') || msg.includes('are') || msg.includes('ito'))) {
+      return ITO_ADS_KNOWLEDGE['who we are'];
+    }
+    if (msg.includes('vision')) {
+      return ITO_ADS_KNOWLEDGE.vision;
+    }
+    if (msg.includes('mission')) {
+      return ITO_ADS_KNOWLEDGE.mission;
+    }
+    if (msg.includes('value') || msg.includes('core value') || msg.includes('principle')) {
+      return ITO_ADS_KNOWLEDGE.values;
+    }
+    if (msg.includes('brand promise') || msg.includes('promise')) {
+      return ITO_ADS_KNOWLEDGE['brand promise'];
+    }
+    if (msg.includes('position') || msg.includes('positioning')) {
+      return ITO_ADS_KNOWLEDGE.positioning;
+    }
+    if (msg.includes('service') || msg.includes('capability') || msg.includes('what do you do') || msg.includes('offering')) {
+      return ITO_ADS_KNOWLEDGE.services;
+    }
+    if (msg.includes('process') || msg.includes('step') || msg.includes('workflow')) {
+      return ITO_ADS_KNOWLEDGE.process;
+    }
+    if (msg.includes('why') && (msg.includes('partner') || msg.includes('choose') || msg.includes('advantage'))) {
+      return ITO_ADS_KNOWLEDGE['why partner'];
+    }
+    if (msg.includes('client') && (msg.includes('journey') || msg.includes('work with') || msg.includes('partnership'))) {
+      return ITO_ADS_KNOWLEDGE['client journey'];
+    }
+    if (msg.includes('advertising') || msg.includes('solution') || msg.includes('campaign') || msg.includes('social media') || msg.includes('search') || msg.includes('creative') || msg.includes('performance marketing') || msg.includes('local') || msg.includes('custom')) {
+      return ITO_ADS_KNOWLEDGE['advertising solutions'];
+    }
+    if (msg.includes('what') && msg.includes('ito')) {
+      return ITO_ADS_KNOWLEDGE['what is ito ads'];
+    }
+
+    return ITO_ADS_KNOWLEDGE.default;
+  };
+
+  const handleSendChatMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    
+    const userMessage = chatInput;
+    setChatInput('');
+    
+    const userMsg = { sender: 'user', text: userMessage, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    setChatMessages(prev => [...prev, userMsg]);
+    
+    // Simulate bot typing
+    setChatLoading(true);
+    setTimeout(() => {
+      const botResponse = getBotResponse(userMessage);
+      const botMsg = { sender: 'bot', text: botResponse, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+      setChatMessages(prev => [...prev, botMsg]);
+      setChatLoading(false);
+    }, 800 + Math.random() * 500);
+  };
+
+  const handleQuickQuestion = (question) => {
+    setChatInput(question);
+    handleSendChatMessage({ preventDefault: () => {} });
+  };
 
   const initiatePayment = async (pkg) => {
     setIsProcessingPayment(true);
@@ -371,22 +505,35 @@ export default function ITOAds() {
       {/* 1. SMOKY CURSOR OVERLAY */}
       <SmokeyCursor />
 
-      {/* 2. PERSISTENT BACKGROUND FLOWER MOTIF (REQUIREMENT 1) */}
+      {/* 2. PERSISTENT BACKGROUND VIDEO MOTIF (REQUIREMENT 1) */}
       <div
         className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center overflow-hidden opacity-55"
         aria-hidden="true"
       >
-        <img
-          src="/images/ito_images/ito_17.jpeg"
-          alt=""
-          className="w-[900px] max-w-none md:w-[1350px] object-contain select-none transform scale-110 filter blur-[0.4px]"
-        />
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-[900px] max-w-none md:w-[1350px] object-cover select-none transform scale-110 filter blur-[0.4px]"
+          style={{
+            animation: 'floatX 20s ease-in-out infinite'
+          }}
+        >
+          <source src="/images/glass-flower.mp4" type="video/mp4" />
+        </video>
         <div
           className="absolute inset-0"
           style={{
             background: `radial-gradient(circle at center, transparent 20%, ${TOKENS.bgPrimary} 80%)`
           }}
         />
+        <style jsx global>{`
+          @keyframes floatX {
+            0%, 100% { transform: translateX(0) scale(1.1); }
+            50% { transform: translateX(30px) scale(1.1); }
+          }
+        `}</style>
       </div>
 
       {/* ====================================================================
@@ -430,21 +577,17 @@ export default function ITOAds() {
         </nav>
 
         {/* Primary Header CTA */}
-        {/* Primary Header CTA */}
         <button
           type="button"
-          onClick={() => handleSelectPackage('Professional')}
-          disabled={isProcessingPayment && paymentPlan?.name === 'Professional'}
-          style={{ backgroundColor: TOKENS.brandOrange, opacity: isProcessingPayment && paymentPlan?.name === 'Professional' ? 0.7 : 1 }}
+          onClick={handleOpenChat}
+          disabled={chatLoading}
+          style={{ backgroundColor: TOKENS.brandOrange, opacity: chatLoading ? 0.7 : 1 }}
           className="h-9 md:h-10 px-3.5 md:px-5 rounded-[8px] text-white text-xs md:text-sm font-semibold tracking-tight md:tracking-wide whitespace-nowrap hover:brightness-110 transition-all shadow-md active:scale-95 flex items-center justify-center shrink-0 disabled:cursor-not-allowed"
         >
-          {isProcessingPayment && paymentPlan?.name === 'Professional' ? (
+          {chatLoading ? (
             <FiLoader className="animate-spin" size={14} />
           ) : (
-            <>
-              <span className="sm:hidden">Consult</span>
-              <span className="hidden sm:inline">Book Consultation</span>
-            </>
+            'Connect Us'
           )}
         </button>
       </header>
@@ -505,23 +648,23 @@ export default function ITOAds() {
           </a>
           <button
             type="button"
-            onClick={() => handleSelectPackage('Professional')}
-            disabled={isProcessingPayment && paymentPlan?.name === 'Professional'}
+            onClick={handleOpenChat}
+            disabled={chatLoading}
             style={{
               backgroundColor: TOKENS.surfaceRaised,
               borderColor: 'rgba(242, 88, 14, 0.3)',
               color: TOKENS.textPrimary,
-              opacity: isProcessingPayment && paymentPlan?.name === 'Professional' ? 0.7 : 1
+              opacity: chatLoading ? 0.7 : 1
             }}
             className="w-full sm:w-auto px-8 h-12 rounded-[10px] border text-sm font-semibold tracking-wide hover:border-[#F2580E] hover:text-white transition-all flex items-center justify-center disabled:cursor-not-allowed"
           >
-            {isProcessingPayment && paymentPlan?.name === 'Professional' ? (
+            {chatLoading ? (
               <>
                 <FiLoader className="animate-spin" size={14} />
-                Processing...
+                Connecting...
               </>
             ) : (
-              'Book Consultation'
+              'Connect Us'
             )}
           </button>
         </div>
@@ -819,133 +962,139 @@ export default function ITOAds() {
       </footer>
 
       {/* ====================================================================
-          CONSULTATION & ENQUIRY MODAL (PAGE 10)
+          CHAT MODAL
       ==================================================================== */}
       <AnimatePresence>
-        {isConsultModalOpen && (
+        {isChatOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               style={{ backgroundColor: TOKENS.surfaceCard, borderColor: 'rgba(242, 88, 14, 0.3)' }}
-              className="relative w-full max-w-lg rounded-[20px] border p-6 md:p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
+              className="relative w-full max-w-lg rounded-[20px] border p-0 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <button
-                type="button"
-                onClick={() => setIsConsultModalOpen(false)}
-                className="absolute top-5 right-5 text-gray-400 hover:text-white"
-              >
-                <FiX size={20} />
-              </button>
-
-              <h3 style={{ color: TOKENS.textPrimary }} className="text-2xl font-serif font-bold mb-1">
-                Book Campaign Consultation
-              </h3>
-              <p className="text-xs text-[#A1A1A7] mb-6">
-                Selected Plan: <span style={{ color: TOKENS.brandOrange }} className="font-semibold">{selectedPlan}</span>
-              </p>
-
-              {formSubmitted ? (
-                <div className="py-12 text-center text-[#F7F6F6]">
-                  <FiCheck className="text-4xl text-[#F2580E] mx-auto mb-3" />
-                  <h4 className="text-lg font-bold">Enquiry Received</h4>
-                  <p className="text-xs text-[#A1A1A7] mt-1">Our commercial specialist will review and respond within 15 minutes.</p>
+              {/* Chat Header */}
+              <div style={{ backgroundColor: TOKENS.bgDeep, borderBottom: '1px solid rgba(242, 88, 14, 0.2)' }} className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F2580E] to-[#FF7A18] flex items-center justify-center">
+                    <FiMessageCircle size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 style={{ color: TOKENS.textPrimary }} className="text-lg font-serif font-bold">ITO Ads Assistant</h3>
+                    <p className="text-xs text-[#A1A1A7]">Ask me anything about our packages & services</p>
+                  </div>
                 </div>
-              ) : (
-                <form onSubmit={handleFormSubmit} className="space-y-3.5 text-xs">
-                  <div>
-                    <label className="block text-[#C3C5CA] mb-1">Full Name</label>
-                    <input
-                      required
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[#C3C5CA] mb-1">Work Email</label>
-                      <input
-                        required
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
-                      />
+                <button
+                  type="button"
+                  onClick={handleCloseChat}
+                  className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[500px]" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
+                {chatMessages.length === 0 && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F2580E] to-[#FF7A18] flex items-center justify-center flex-shrink-0">
+                      <FiMessageCircle size={16} className="text-white" />
                     </div>
-                    <div>
-                      <label className="block text-[#C3C5CA] mb-1">Phone Number</label>
-                      <input
-                        required
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
-                      />
+                    <div className="bg-[#07111F] border border-white/10 rounded-2xl rounded-tl-none px-4 py-3 max-w-[80%]">
+                      <p className="text-sm text-[#C3C5CA] leading-relaxed">
+                        Hi! I'm your ITO Ads assistant. I can help you with:
+                      </p>
+                      <ul className="mt-2 text-xs text-[#A1A1A7] space-y-1 pl-4">
+                        <li>• Package details & pricing</li>
+                        <li>• Lead qualification process</li>
+                        <li>• CRM integration & targeting</li>
+                        <li>• Reporting & analytics</li>
+                        <li>• Contact information</li>
+                      </ul>
+                      <p className="mt-2 text-xs text-[#A1A1A7]">What would you like to know?</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[#C3C5CA] mb-1">Company Name</label>
-                      <input
-                        required
-                        type="text"
-                        name="company"
-                        value={formData.company}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
-                      />
+                )}
+                
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} className={`flex items-start gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.sender === 'user' ? 'bg-[#F2580E]' : 'bg-gradient-to-br from-[#F2580E] to-[#FF7A18]'}`}>
+                      {msg.sender === 'user' ? (
+                        <FiUser size={16} className="text-white" />
+                      ) : (
+                        <FiMessageCircle size={16} className="text-white" />
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-[#C3C5CA] mb-1">Target Industry</label>
-                      <input
-                        type="text"
-                        name="industry"
-                        placeholder="e.g. Coal, Rice, Stone"
-                        value={formData.industry}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
-                      />
+                    <div className={`max-w-[75%] ${msg.sender === 'user' ? 'text-right' : ''}`}>
+                      <div className={`inline-block px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-[#F2580E] text-white rounded-tr-none' : 'bg-[#07111F] border border-white/10 text-[#C3C5CA] rounded-tl-none'}`}>
+                        {msg.text}
+                      </div>
+                      <p className={`text-[10px] text-[#A1A1A7] mt-1 ${msg.sender === 'user' ? 'text-right' : ''}`}>{msg.time}</p>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[#C3C5CA] mb-1">Primary Monthly Objective</label>
-                    <textarea
-                      rows={2}
-                      name="objective"
-                      value={formData.objective}
-                      onChange={handleInputChange}
-                      placeholder="Share target geography, required lead volume, or commercial goals..."
-                      className="w-full bg-[#07111F] border border-white/10 rounded-[6px] p-2.5 text-white focus:outline-none focus:border-[#F2580E]"
-                    />
+                ))}
+
+                {chatLoading && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F2580E] to-[#FF7A18] flex items-center justify-center flex-shrink-0">
+                      <FiMessageCircle size={16} className="text-white" />
+                    </div>
+                    <div className="bg-[#07111F] border border-white/10 rounded-2xl rounded-tl-none px-4 py-3">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-[#A1A1A7] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-[#A1A1A7] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-[#A1A1A7] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2 pt-2">
-                    <input
-                      type="checkbox"
-                      required
-                      name="consent"
-                      checked={formData.consent}
-                      onChange={handleInputChange}
-                      className="mt-0.5 rounded accent-[#F2580E]"
-                    />
-                    <span className="text-[10px] text-[#A1A1A7] leading-tight">
-                      I authorize India Trade Overseas to transmit campaign details and contact me regarding this B2B commercial requirement.
-                    </span>
-                  </div>
+                )}
+              </div>
+
+              {/* Quick Questions */}
+              <div className="px-4 py-3 border-t border-white/10 bg-[#07111F]/50">
+                <p className="text-xs text-[#A1A1A7] mb-2">Quick questions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'What packages do you offer?',
+                    'How does lead qualification work?',
+                    'What is the pricing?',
+                    'How does CRM integration work?'
+                  ].map((q, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleQuickQuestion(q)}
+                      disabled={chatLoading}
+                      className="px-3 py-1.5 text-xs text-[#C3C5CA] bg-[#0D1C30] border border-white/10 rounded-full hover:border-[#F2580E]/50 hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Input */}
+              <form onSubmit={handleSendChatMessage} className="p-4 border-t border-white/10">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type your question..."
+                    disabled={chatLoading}
+                    className="flex-1 bg-[#07111F] border border-white/10 rounded-full px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#F2580E]/50 placeholder-[#A1A1A7] disabled:opacity-50"
+                  />
                   <button
                     type="submit"
-                    style={{ backgroundColor: TOKENS.brandOrange }}
-                    className="w-full mt-4 py-3 rounded-[8px] text-white font-semibold uppercase tracking-wider hover:brightness-110 transition-all text-xs"
+                    disabled={!chatInput.trim() || chatLoading}
+                    className="p-2.5 bg-[#F2580E] text-white rounded-full hover:bg-[#FF7A18] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                    aria-label="Send message"
                   >
-                    Submit Campaign Brief
+                    <FiSend size={18} />
                   </button>
-                </form>
-              )}
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
@@ -954,13 +1103,13 @@ export default function ITOAds() {
       {/* FLOATING ACTION BUTTON (SAFE PLACEMENT) */}
       <button
         type="button"
-        onClick={() => handleSelectPackage('Professional')}
-        disabled={isProcessingPayment && paymentPlan?.name === 'Professional'}
-        style={{ backgroundColor: TOKENS.brandOrange, opacity: isProcessingPayment && paymentPlan?.name === 'Professional' ? 0.7 : 1 }}
+        onClick={handleOpenChat}
+        disabled={chatLoading}
+        style={{ backgroundColor: TOKENS.brandOrange, opacity: chatLoading ? 0.7 : 1 }}
         className="fixed bottom-6 right-6 z-40 p-3.5 rounded-full text-white shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center border border-white/20 disabled:cursor-not-allowed"
-        aria-label="Quick Campaign Consultation"
+        aria-label="Connect with ITO Ads Assistant"
       >
-        {isProcessingPayment && paymentPlan?.name === 'Professional' ? (
+        {chatLoading ? (
           <FiLoader className="animate-spin" size={20} />
         ) : (
           <FiMessageSquare size={20} />

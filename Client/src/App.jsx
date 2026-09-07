@@ -932,7 +932,7 @@ function AppLayout() {
 
       {!isITOAds && <Footer />}
 
-      <ChatWidget />
+      {!isITOAds && <ChatWidget />}
 
     </div>
   );
