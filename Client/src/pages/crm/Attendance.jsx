@@ -86,6 +86,17 @@ const formatElapsed = (totalSeconds) => {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 };
 
+const formatTimeDisplay = (timeStr, dateVal) => {
+  if (timeStr && typeof timeStr === 'string' && !timeStr.includes('T')) return timeStr;
+  if (dateVal) {
+    try {
+      const d = new Date(dateVal);
+      if (!isNaN(d.getTime())) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch (e) {}
+  }
+  return '—';
+};
+
 export default function Attendance() {
   const { user, logout } = useAuth();
   const [today, setToday] = useState(null);
@@ -385,15 +396,15 @@ export default function Attendance() {
               <p className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono mt-0.5">{user?.department} &bull; {user?.role} &bull; {user?.employeeId}</p>
 
               <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold font-mono block mt-4 mb-2">Today's Status</span>
-              {today?.checkInAt ? (
+              {today?.checkInAt || today?.checkInTime ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`inline-block px-2.5 py-0.5 border text-[10px] font-bold tracking-wider uppercase rounded ${statusColor(today.status)}`}>
                     {today.status.replace('_', ' ')}
                   </span>
-                  <span className="text-xs text-[var(--crm-ink-soft)] font-mono">In: {new Date(today.checkInAt).toLocaleTimeString()}</span>
-                  {today.checkOutAt ? (
+                  <span className="text-xs text-[var(--crm-ink-soft)] font-mono">In: {formatTimeDisplay(today.checkInTime, today.checkInAt)}</span>
+                  {today.checkOutAt || today.checkOutTime ? (
                     <>
-                      <span className="text-xs text-[var(--crm-ink-soft)] font-mono">Out: {new Date(today.checkOutAt).toLocaleTimeString()}</span>
+                      <span className="text-xs text-[var(--crm-ink-soft)] font-mono">Out: {formatTimeDisplay(today.checkOutTime, today.checkOutAt)}</span>
                       <span className="text-xs text-[var(--crm-positive)] font-mono">{today.workingHours}h worked</span>
                       {today.overtimeHours > 0 && (
                         <span className="text-xs text-[var(--crm-info)] font-mono">+{today.overtimeHours}h overtime</span>
@@ -595,8 +606,8 @@ export default function Attendance() {
                             </span>
                           </td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(record.date).toLocaleDateString()}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{record.checkInAt ? new Date(record.checkInAt).toLocaleTimeString() : (record.checkInTime || '—')}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{record.checkOutAt ? new Date(record.checkOutAt).toLocaleTimeString() : (record.checkOutTime || '—')}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(record.checkInTime, record.checkInAt)}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(record.checkOutTime, record.checkOutAt)}</td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{record.workingHours || 0}h</td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{record.lunchDurationMinutes ? `${record.lunchDurationMinutes}m` : '—'}</td>
                           <td className="py-3 px-5 text-center">
@@ -647,8 +658,8 @@ export default function Attendance() {
                       ) : (
                         <tr key={row.record._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
                           <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(row.record.date).toLocaleDateString()}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{row.record.checkInAt ? new Date(row.record.checkInAt).toLocaleTimeString() : '—'}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{row.record.checkOutAt ? new Date(row.record.checkOutAt).toLocaleTimeString() : '—'}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(row.record.checkInTime, row.record.checkInAt)}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(row.record.checkOutTime, row.record.checkOutAt)}</td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{row.record.workingHours || 0}h</td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{row.record.lunchDurationMinutes ? `${row.record.lunchDurationMinutes}m` : '—'}</td>
                           <td className="py-3 px-5 text-center">
