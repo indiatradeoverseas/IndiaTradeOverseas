@@ -135,11 +135,13 @@ export default function Followup() {
         const lIdStr = String(l._id);
         if (!recordingLeadIds.has(lIdStr)) {
           const isAssigned = isAssignedToMe(l);
-          const isFollowupStage = ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED'].includes(String(l.stage || '').toUpperCase());
+          const isFollowupStage = ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'QUOTATION_REQUESTED', 'QUOTATION_SHARED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'CLOSED_WON', 'DELIVERED', 'COMPLETED', 'DEAL_WON'].includes(String(l.stage || '').toUpperCase());
 
           if (isFollowupStage && (isManagerOrAdmin || isAssigned)) {
             const execName = typeof l.createdBy === 'object' && l.createdBy ? (l.createdBy.fullName || l.createdBy.name) : 'Sales Rep';
             const assigneeName = typeof l.assignedTo === 'object' && l.assignedTo ? (l.assignedTo.fullName || l.assignedTo.name) : (l.assignedTo || 'Assigned Executive');
+
+            const isDoneStage = ['REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'QUOTATION_REQUESTED', 'QUOTATION_SHARED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'CLOSED_WON', 'DELIVERED', 'COMPLETED', 'DEAL_WON'].includes(String(l.stage || '').toUpperCase());
 
             virtualAssignedRecordings.push({
               _id: `virtual_${l._id}`,
@@ -156,7 +158,7 @@ export default function Followup() {
               leadPriority: l.priority || 'WARM',
               notes: l.remarks || `Assigned Follow-up Lead (${(l.stage || 'FOLLOW_UP').replace(/_/g, ' ')})`,
               createdAt: l.createdAt || new Date().toISOString(),
-              status: 'PENDING'
+              status: isDoneStage ? 'COMPLETED' : 'PENDING'
             });
           }
         }
@@ -187,26 +189,50 @@ export default function Followup() {
     try {
       if (String(recordingId).startsWith('virtual_')) {
         const realLeadId = String(recordingId).replace('virtual_', '');
-        if (nextStatus === 'COMPLETED') {
-          await leadsApi.updateStage(realLeadId, { newStage: 'REQUIREMENT_CAPTURED' }).catch(err => {
-            console.warn('[Followup] Stage update warning:', err.message);
-          });
-        }
-        toast.success(`Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`);
-        setRecordings(prev => prev.map(r => r._id === recordingId ? { ...r, status: nextStatus, notes: 'Completed Follow-up (REQUIREMENT CAPTURED)' } : r));
+        const targetStage = nextStatus === 'COMPLETED' ? 'REQUIREMENT_CAPTURED' : 'FOLLOW_UP';
+
+        await leadsApi.updateStage(realLeadId, { newStage: targetStage }).catch(err => {
+          console.warn('[Followup] Stage update warning:', err.message);
+        });
+
+        toast.success(
+          nextStatus === 'COMPLETED'
+            ? `Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`
+            : `Follow-up re-opened! Stage updated back to FOLLOW UP 🔄`
+        );
+
+        setRecordings(prev =>
+          prev.map(r =>
+            r._id === recordingId
+              ? {
+                  ...r,
+                  status: nextStatus,
+                  notes:
+                    nextStatus === 'COMPLETED'
+                      ? 'Completed Follow-up (REQUIREMENT CAPTURED)'
+                      : 'Re-opened Follow-up (FOLLOW UP)'
+                }
+              : r
+          )
+        );
       } else {
         const res = await leadsApi.updateCallRecordingStatus(recordingId, nextStatus);
         if (res.success) {
           const recObj = res.data?.recording;
-          if (nextStatus === 'COMPLETED' && recObj) {
+          if (recObj) {
             const lId = recObj.leadId ? (typeof recObj.leadId === 'object' ? recObj.leadId._id : recObj.leadId) : null;
             if (lId) {
-              await leadsApi.updateStage(lId, { newStage: 'REQUIREMENT_CAPTURED' }).catch(err => {
+              const targetStage = nextStatus === 'COMPLETED' ? 'REQUIREMENT_CAPTURED' : 'FOLLOW_UP';
+              await leadsApi.updateStage(lId, { newStage: targetStage }).catch(err => {
                 console.warn('[Followup] Stage update warning:', err.message);
               });
             }
           }
-          toast.success(`Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`);
+          toast.success(
+            nextStatus === 'COMPLETED'
+              ? `Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`
+              : `Follow-up re-opened! Stage updated back to FOLLOW UP 🔄`
+          );
           setRecordings(prev => prev.map(r => r._id === recordingId ? { ...r, status: nextStatus } : r));
         }
       }

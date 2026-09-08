@@ -32,7 +32,8 @@ import {
   FiUserCheck,
   FiMail,
   FiPhone,
-  FiTruck
+  FiTruck,
+  FiPieChart
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -936,71 +937,7 @@ export default function SalesManagerDashboard() {
         </div>
       </motion.div>
 
-      {/* FREIGHT RATE MISSING ALERT BANNER FOR SALES MANAGER */}
-      {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length > 0 && (
-        <motion.div variants={itemVariants} className="p-4 border rounded-lg bg-rose-950/40 border-rose-800/80 space-y-3 font-mono text-left">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
-              <FiAlertCircle className="text-rose-400 animate-bounce" size={18} />
-              <span>Freight Rate Action Required ({allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length} Leads Missing Freight Rate)</span>
-            </div>
-            <span className="text-[9px] bg-rose-900 text-white px-2 py-0.5 rounded font-bold uppercase">
-              Transport Desk Alert
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).slice(0, 6).map((lead) => (
-              <div key={lead._id} className="p-3 bg-black/60 border border-rose-900/80 rounded-md space-y-2 text-xs">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[9px] text-teal-400 font-bold block">{lead.leadCode || `LD-${lead._id?.slice(-4)}`}</span>
-                    <strong className="text-white text-xs block truncate max-w-[180px]">{lead.companyName || lead.customerName || 'Client'}</strong>
-                  </div>
-                  <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-bold uppercase rounded border border-rose-800">
-                    Rate ₹0
-                  </span>
-                </div>
-
-                <div className="text-[10px] text-slate-300">
-                  <span>Route: <strong>{lead.origin || 'Depot'} ➔ {lead.destination || 'Destination'}</strong></span>
-                </div>
-
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const inputEl = e.target.elements[`rate-${lead._id}`];
-                    const val = Number(inputEl?.value);
-                    if (!val || val <= 0) return toast.error('Enter valid rate');
-                    
-                    try {
-                      await leadsApi.updateLead(lead._id, { leadValue: val, freightAmount: val, totalFreightAmount: val });
-                      toast.success(`🎉 Freight Rate ₹${val.toLocaleString('en-IN')} saved for lead ${lead.leadCode || lead._id}!`);
-                      loadDashboardData();
-                    } catch (err) {
-                      toast.error('Failed to save rate');
-                    }
-                  }}
-                  className="flex items-center gap-1.5 pt-1"
-                >
-                  <input
-                    type="number"
-                    name={`rate-${lead._id}`}
-                    placeholder="Enter Rate (₹)..."
-                    className="w-full px-2 py-1 bg-slate-900 border border-slate-700 text-white rounded text-[11px] outline-none focus:border-emerald-500 font-mono"
-                  />
-                  <button
-                    type="submit"
-                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold rounded uppercase shrink-0 cursor-pointer"
-                  >
-                    💾 Save Rate
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       {/* Calendar Date Filter Bar */}
       <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
@@ -1076,6 +1013,7 @@ export default function SalesManagerDashboard() {
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
+            { id: 'lost_analytics', label: 'Closed Lost Audit & Reasons', icon: FiAlertCircle },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
             { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
             { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
@@ -1235,7 +1173,7 @@ export default function SalesManagerDashboard() {
                       </h3>
 
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                           <FunnelChart>
                             <Tooltip 
                               contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
@@ -1938,7 +1876,7 @@ export default function SalesManagerDashboard() {
                     </h3>
                     
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                         <LineChart data={strategicInsights?.forecastHistory || []} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="month" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
@@ -2219,9 +2157,13 @@ export default function SalesManagerDashboard() {
                             // Sales Manager can approve:
                             // - Executives under his department (SALES)
                             // - Cannot approve other managers or own requests
-                            const isApplicantManager = lv.employeeId?.role === 'MANAGER';
-                            const isSelfRequest = lv.employeeId?._id === user?._id;
+                            const isApplicantManager = ['MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'HR_MANAGER', 'ADMIN', 'FOUNDER'].includes((lv.employeeId?.role || '').toUpperCase());
+                            const isSelfRequest = String(lv.employeeId?._id || lv.employeeId) === String(user?._id);
                             const canReview = !isApplicantManager && !isSelfRequest && isPending;
+
+                            const approverObj = lv.approvedBy || lv.extraApprovedBy;
+                            const approverName = approverObj ? (approverObj.fullName || approverObj.name || 'Manager') : (lv.overrideBy === 'SYSTEM' ? 'SYSTEM (Auto Policy)' : '');
+                            const approverRole = approverObj ? (approverObj.role || approverObj.department || '') : '';
 
                             const statusColors = {
                               PENDING: 'bg-amber-950/40 text-amber-400 border-amber-900/30',
@@ -2257,9 +2199,16 @@ export default function SalesManagerDashboard() {
                                   {lv.reason}
                                 </td>
                                 <td className="py-3.5 px-4">
-                                  <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColorClass}`}>
-                                    {lv.status.replace(/_/g, ' ')}
-                                  </span>
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColorClass} w-max`}>
+                                      {lv.status.replace(/_/g, ' ')}
+                                    </span>
+                                    {['APPROVED', 'HR_APPROVED_EXTRA', 'REJECTED'].includes(lv.status) && (
+                                      <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] block">
+                                        by <strong className="text-teal-400 font-bold">{approverName || 'Approver'}</strong> {approverRole ? `(${approverRole})` : ''}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="py-3.5 px-4 text-right whitespace-nowrap">
                                   {canReview ? (
@@ -2282,9 +2231,9 @@ export default function SalesManagerDashboard() {
                                   ) : (
                                     <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
                                       {isSelfRequest ? 'Own request' : isApplicantManager ? 'HR review only' : (
-                                        (lv.approvedBy || lv.extraApprovedBy) ? (
+                                        (approverName || lv.approvedBy || lv.extraApprovedBy) ? (
                                           <span className={['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                                            {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved' : '✗ Rejected'} by {(lv.approvedBy || lv.extraApprovedBy).fullName || (lv.approvedBy || lv.extraApprovedBy).name} ({(lv.approvedBy || lv.extraApprovedBy).role || (lv.approvedBy || lv.extraApprovedBy).department || 'HR'})
+                                            {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved' : '✗ Rejected'} by {approverName || 'Manager'}
                                           </span>
                                         ) : 'Reviewed'
                                       )}
@@ -2461,6 +2410,163 @@ export default function SalesManagerDashboard() {
                 </div>
               </div>
             )}
+
+            {/* TAB: CLOSED LOST AUDIT & REASON ANALYTICS */}
+            {activeTab === 'lost_analytics' && (() => {
+              const lostLeads = allLeads.filter(l => ['CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase()));
+              const totalLostValue = lostLeads.reduce((sum, l) => sum + (Number(l.leadValue) || 0), 0);
+              
+              const reasonCounts = {};
+              lostLeads.forEach(l => {
+                const r = l.lostReason || 'Other / Unspecified';
+                reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+              });
+
+              const categories = [
+                'Price', 'Freight', 'Competitor', 'Unsupported destination',
+                'Quantity too low', 'Product unavailable', 'No response',
+                'Invalid contact', 'Timing', 'Payment terms', 'Trust concern', 'Other'
+              ];
+
+              return (
+                <div className="space-y-6 text-left font-mono">
+                  {/* Top Overview Bar */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-rose-950/30 border border-rose-900/40 rounded-lg flex items-center space-x-4">
+                      <div className="p-3 bg-rose-900/60 text-rose-400 rounded-lg border border-rose-700/50">
+                        <FiAlertCircle size={22} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-rose-400 font-bold block">Total Closed Lost Leads</span>
+                        <h2 className="text-2xl font-bold text-rose-200">{lostLeads.length} Deals Lost</h2>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-950/30 border border-amber-900/40 rounded-lg flex items-center space-x-4">
+                      <div className="p-3 bg-amber-900/60 text-amber-400 rounded-lg border border-amber-700/50">
+                        <FiDollarSign size={22} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-amber-400 font-bold block">Total Valuation Lost</span>
+                        <h2 className="text-2xl font-bold text-amber-200">{currency(totalLostValue)}</h2>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-indigo-950/30 border border-indigo-900/40 rounded-lg flex items-center space-x-4">
+                      <div className="p-3 bg-indigo-900/60 text-indigo-400 rounded-lg border border-indigo-700/50">
+                        <FiPieChart size={22} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-indigo-400 font-bold block">Top Lost Root Cause</span>
+                        <h2 className="text-lg font-bold text-indigo-200 truncate max-w-[200px]">
+                          {Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None Recorded'}
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lost Reason Category Grid */}
+                  <div className="p-5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg space-y-4">
+                    <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
+                      <div>
+                        <span className="text-[9px] uppercase tracking-widest text-teal-400 font-bold block">REASON ANALYTICS</span>
+                        <h3 className="text-base font-serif text-[var(--crm-heading)]">Mandatory Lost Reason Distribution</h3>
+                      </div>
+                      <span className="text-[10px] text-[var(--crm-ink-faint)]">{categories.length} Standard Categories</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {categories.map((cat) => {
+                        const count = reasonCounts[cat] || 0;
+                        const percent = lostLeads.length > 0 ? Math.round((count / lostLeads.length) * 100) : 0;
+                        return (
+                          <div key={cat} className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-left space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-[var(--crm-heading)] truncate max-w-[130px]">{cat}</span>
+                              <span className="px-2 py-0.5 bg-rose-950/80 text-rose-400 border border-rose-800/40 text-[10px] font-bold rounded">
+                                {count} ({percent}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-[var(--crm-bg)] h-1.5 border border-[var(--crm-line)] rounded overflow-hidden">
+                              <div className="h-full bg-rose-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Detailed Lost Leads Audit Stream */}
+                  <div className="p-5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg space-y-4">
+                    <div className="border-b border-[var(--crm-line)] pb-3 flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] uppercase tracking-widest text-rose-400 font-bold block">AUDIT MANIFEST</span>
+                        <h3 className="text-base font-serif text-[var(--crm-heading)]">Closed Lost Audit & Explanation Logs</h3>
+                      </div>
+                      <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lostLeads.length} Logged Leads</span>
+                    </div>
+
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+                        <thead>
+                          <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-wider border-b border-[var(--crm-line)] font-bold">
+                            <th className="p-3">Identifier & Consignee</th>
+                            <th className="p-3">Lost Reason Category</th>
+                            <th className="p-3">Detailed Lost Explanation Note</th>
+                            <th className="p-3 text-center">Logger & Date</th>
+                            <th className="p-3 text-right">Valuation</th>
+                            <th className="p-3 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--crm-line)]">
+                          {lostLeads.length === 0 ? (
+                            <tr>
+                              <td colSpan="6" className="py-12 text-center text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                                🎉 No Closed Lost leads recorded in the system database.
+                              </td>
+                            </tr>
+                          ) : (
+                            lostLeads.map((l) => (
+                              <tr key={l._id} className="hover:bg-[var(--crm-bg-sunken)]/60 transition-colors">
+                                <td className="p-3">
+                                  <div className="font-bold text-[var(--crm-heading)]">{l.customerName}</div>
+                                  <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{l.leadCode} &bull; {l.productCategory}</div>
+                                </td>
+                                <td className="p-3">
+                                  <span className="px-2.5 py-1 bg-rose-950/80 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase rounded inline-block">
+                                    ⚠️ {l.lostReason || 'Other / Unspecified'}
+                                  </span>
+                                </td>
+                                <td className="p-3 font-sans text-xs max-w-xs">
+                                  <p className="text-[var(--crm-heading)] leading-relaxed line-clamp-2" title={l.lostReasonNotes || l.remarks}>
+                                    {l.lostReasonNotes || l.remarks || 'No detailed explanation note recorded.'}
+                                  </p>
+                                </td>
+                                <td className="p-3 text-center text-[10px] text-[var(--crm-ink-faint)]">
+                                  <div>{l.lostByName || 'Executive'}</div>
+                                  <div>{l.lostAt ? new Date(l.lostAt).toLocaleDateString() : new Date(l.updatedAt).toLocaleDateString()}</div>
+                                </td>
+                                <td className="p-3 text-right font-bold text-amber-400">
+                                  {currency(l.leadValue)}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <Link
+                                    to={`/crm/leads/${l._id}`}
+                                    className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded text-[10px] uppercase font-bold transition inline-flex items-center gap-1"
+                                  >
+                                    View Node &rarr;
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* TAB 3: SHARED FILES HUB */}
             {activeTab === 'shared_files_hub' && (

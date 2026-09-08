@@ -10,9 +10,11 @@ async function requestQuotation(req, res, next) {
       return fail(res, 400, 'VALIDATION_FAILED', 'leadId and employeeRequestedPrice are required');
     }
 
+    const actorId = req.user?.employeeDbId || req.user?._id;
+
     const quotation = await quotationService.createQuotationRequest({
       ...req.body,
-      actorId: req.user._id
+      actorId
     });
 
     return ok(res, { quotation }, 'Quotation request created successfully', 201, req);
@@ -35,55 +37,75 @@ async function pendingQuotations(req, res, next) {
     }
 
     const quotations = await Quotation.find(filter)
-      .populate({
-        path: 'leadId',
-        populate: { path: 'assignedTo', select: 'fullName name email role' }
-      })
-      .populate('requestedBy', 'fullName name email role')
+      .populate('leadId')
       .sort({ createdAt: -1 });
 
     const Employee = require('../employee/employee.model');
     const User = require('../users/user.model');
+    const Admin = require('../admin-auth/admin.model');
 
     const formattedQuotations = await Promise.all(
       quotations.map(async (q) => {
         const doc = q.toObject ? q.toObject() : q;
-        let reqByObj = doc.requestedBy;
+        const rawReqId = q.requestedBy;
+        let reqByObj = null;
 
-        if (reqByObj && typeof reqByObj !== 'object') {
-          const userDoc = await User.findById(reqByObj).select('fullName name email');
-          const empDoc = await Employee.findById(reqByObj).select('name fullName email');
+        // 1. Resolve requestedBy ID directly across User, Employee, and Admin collections
+        if (rawReqId) {
+          const reqIdStr = rawReqId._id || rawReqId;
+          const userDoc = await User.findById(reqIdStr).select('fullName name email');
+          const empDoc = await Employee.findById(reqIdStr).select('name fullName email');
+          const adminDoc = await Admin.findById(reqIdStr).select('name fullName email');
+          const found = userDoc || empDoc || adminDoc;
+          if (found) {
+            reqByObj = {
+              _id: found._id,
+              fullName: found.fullName || found.name || 'Staff Member',
+              email: found.email || ''
+            };
+          }
+        }
+
+        // 2. Fallback to Lead's assignedTo if requestedBy was missing
+        if (!reqByObj && doc.leadId && doc.leadId.assignedTo) {
+          const assigned = doc.leadId.assignedTo;
+          if (typeof assigned === 'object' && (assigned.fullName || assigned.name)) {
+            reqByObj = {
+              _id: assigned._id,
+              fullName: assigned.fullName || assigned.name,
+              email: assigned.email || ''
+            };
+          } else if (assigned) {
+            const userDoc = await User.findById(assigned).select('fullName name email');
+            const empDoc = await Employee.findById(assigned).select('name fullName email');
+            const adminDoc = await Admin.findById(assigned).select('name fullName email');
+            const found = userDoc || empDoc || adminDoc;
+            if (found) {
+              reqByObj = {
+                _id: found._id,
+                fullName: found.fullName || found.name,
+                email: found.email || ''
+              };
+            }
+          }
+        }
+
+        // 3. Fallback to Lead's createdBy if still missing
+        if (!reqByObj && doc.leadId && doc.leadId.createdBy) {
+          const cId = doc.leadId.createdBy;
+          const userDoc = await User.findById(cId).select('fullName name email');
+          const empDoc = await Employee.findById(cId).select('name fullName email');
           const found = userDoc || empDoc;
           if (found) {
             reqByObj = {
               _id: found._id,
               fullName: found.fullName || found.name,
-              email: found.email
+              email: found.email || ''
             };
           }
         }
 
-        if (!reqByObj && q.requestedBy) {
-          const empDoc = await Employee.findById(q.requestedBy).select('name fullName email');
-          if (empDoc) {
-            reqByObj = {
-              _id: empDoc._id,
-              fullName: empDoc.fullName || empDoc.name,
-              email: empDoc.email
-            };
-          }
-        }
-
-        if (!reqByObj && doc.leadId && doc.leadId.assignedTo) {
-          const assigned = doc.leadId.assignedTo;
-          reqByObj = {
-            _id: assigned._id || assigned,
-            fullName: assigned.fullName || assigned.name || 'Ananya Patel',
-            email: assigned.email
-          };
-        }
-
-        doc.requestedBy = reqByObj;
+        doc.requestedBy = reqByObj || { fullName: 'Sales Representative' };
         return doc;
       })
     );

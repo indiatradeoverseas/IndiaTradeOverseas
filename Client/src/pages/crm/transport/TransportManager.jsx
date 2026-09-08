@@ -28,6 +28,7 @@ import { dispatchesApi } from '../../../api/dispatches';
 import { leadsApi } from '../../../api/leads';
 import { chatApi } from '../../../api/chat';
 import { employeeSignupApi } from '../../../api/employee-signup';
+import { leaveApi } from '../../../api/leave';
 import TransportMap from '../../../components/transport/TransportMap';
 import DriverCalculator from '../../../components/crm/DriverCalculator';
 import { useAuth } from '../../../hooks/useAuth';
@@ -67,6 +68,10 @@ export default function TransportManager() {
   const [assignSubTab, setAssignSubTab] = useState('PENDING'); // 'PENDING' or 'COMPLETED'
   const [submittingAssign, setSubmittingAssign] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Leave Applications Desk States
+  const [teamLeaves, setTeamLeaves] = useState([]);
+  const [submittingLeaveReview, setSubmittingLeaveReview] = useState(null);
 
   // Critical Document Expiry Alerts (Loaded dynamically)
   const [expiryAlerts, setExpiryAlerts] = useState([]);
@@ -285,12 +290,19 @@ export default function TransportManager() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tripsRes, queueRes, empRes, workUpdatesRes] = await Promise.allSettled([
+      const [tripsRes, queueRes, empRes, workUpdatesRes, leavesRes] = await Promise.allSettled([
         dispatchesApi.getDispatches(),
         dispatchesApi.getDispatchQueue(),
         employeeSignupApi.getAllEmployees(),
-        dispatchesApi.getWorkUpdates()
+        dispatchesApi.getWorkUpdates(),
+        leaveApi.getLeaves({ department: 'TRANSPORT' })
       ]);
+
+      if (leavesRes.status === 'fulfilled') {
+        const val = leavesRes.value;
+        const lList = val?.data?.leaves || val?.leaves || [];
+        setTeamLeaves(lList);
+      }
 
       let fetchedTrips = [];
       if (tripsRes.status === 'fulfilled' && (tripsRes.value?.success || tripsRes.value?.data)) {
@@ -435,6 +447,24 @@ export default function TransportManager() {
       console.error('Error fetching manager data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReviewLeave = async (leaveId, status, remarks = '') => {
+    setSubmittingLeaveReview(leaveId);
+    try {
+      const res = await leaveApi.reviewLeave(leaveId, status, remarks);
+      if (res && (res.success || res.status === 200)) {
+        toast.success(`Leave request ${status.toLowerCase()} successfully!`);
+        fetchData();
+      } else {
+        toast.error(res?.message || 'Failed to update leave request');
+      }
+    } catch (err) {
+      console.error('Leave review error:', err);
+      toast.error(err.response?.data?.message || 'Failed to review leave request');
+    } finally {
+      setSubmittingLeaveReview(null);
     }
   };
 
@@ -1054,6 +1084,55 @@ export default function TransportManager() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab('DASHBOARD')}
+            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'DASHBOARD'
+                ? 'bg-emerald-700 text-white border-emerald-500 shadow'
+                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
+            }`}
+          >
+            <FiTruck size={12} /> Dashboard
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ASSIGN_LEADS')}
+            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'ASSIGN_LEADS'
+                ? 'bg-emerald-700 text-white border-emerald-500 shadow'
+                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
+            }`}
+          >
+            <FiCheckSquare size={12} /> Lead Assignment
+          </button>
+
+          <button
+            onClick={() => setActiveTab('TEAM_LEAVES')}
+            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'TEAM_LEAVES'
+                ? 'bg-teal-700 text-white border-teal-500 shadow'
+                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
+            }`}
+          >
+            <FiCalendar size={12} /> Team Leave Desk
+            {teamLeaves.filter(l => l.status === 'PENDING' || l.status === 'PENDING_HR_APPROVAL').length > 0 && (
+              <span className="px-1.5 py-0.2 bg-amber-500 text-black text-[8px] font-extrabold rounded-full animate-pulse">
+                {teamLeaves.filter(l => l.status === 'PENDING' || l.status === 'PENDING_HR_APPROVAL').length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('DRIVER_PROOFS')}
+            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'DRIVER_PROOFS'
+                ? 'bg-emerald-700 text-white border-emerald-500 shadow'
+                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
+            }`}
+          >
+            <FiFolder size={12} /> Driver Proofs
+          </button>
+
           <button
             onClick={fetchData}
             className="text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm transition-all cursor-pointer flex items-center gap-1.5"
@@ -2089,6 +2168,155 @@ export default function TransportManager() {
               </div>
             </div>
           )}
+        </div>
+      ) : null}
+
+      {/* ─────────────────────────────────────────────────────────────
+          TAB 7: TEAM LEAVE APPLICATIONS DESK (TRANSPORT DEPT)
+         ───────────────────────────────────────────────────────────── */}
+      {activeTab === 'TEAM_LEAVES' ? (
+        <div className="space-y-6 text-left font-mono">
+          <div className="border rounded-sm p-5 shadow-sm space-y-4" style={CARD}>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4" style={{ borderColor: 'var(--crm-line)' }}>
+              <div>
+                <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide flex items-center gap-2" style={HEADING}>
+                  <FiCalendar className="text-teal-400" size={18} /> Team Leave Applications Desk
+                </h3>
+                <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1 font-light">
+                  Review, approve, or reject leave requests submitted by Transport Executives and Fleet Drivers of your department.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] font-mono border px-3 py-1.5 rounded-sm" style={{ ...CARD_SUNKEN, color: 'var(--crm-ink-soft)' }}>
+                  Total Requests: <strong className="text-[var(--crm-heading)]">{teamLeaves.length}</strong>
+                </div>
+                <div className="text-[10px] font-mono border px-3 py-1.5 rounded-sm bg-amber-950/40 text-amber-300 border-amber-900/60 font-bold">
+                  Pending: <strong>{teamLeaves.filter(l => l.status === 'PENDING' || l.status === 'PENDING_HR_APPROVAL').length}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                    <th className="py-3.5 px-4">Employee / Driver</th>
+                    <th className="py-3.5 px-4">Leave Type</th>
+                    <th className="py-3.5 px-4">Dates</th>
+                    <th className="py-3.5 px-4">Days</th>
+                    <th className="py-3.5 px-4">Reason</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--crm-line)] text-xs">
+                  {teamLeaves.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
+                        NO LEAVE REQUESTS SUBMITTED BY YOUR TEAM MEMBERS.
+                      </td>
+                    </tr>
+                  ) : (
+                    teamLeaves.map((lv) => {
+                      const isPending = lv.status === 'PENDING' || lv.status === 'PENDING_HR_APPROVAL';
+                      
+                      const applicantRole = (lv.employeeId?.role || 'Executive').toUpperCase();
+                      const isApplicantManager = ['MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'HR_MANAGER', 'ADMIN', 'FOUNDER'].includes(applicantRole);
+                      const isSelfRequest = String(lv.employeeId?._id || lv.employeeId) === String(user?._id);
+                      
+                      const userRole = (user?.role || '').toUpperCase();
+                      const isHRorAdmin = ['ADMIN', 'FOUNDER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(userRole);
+                      const canReview = isPending && !isSelfRequest && (isHRorAdmin || !isApplicantManager);
+
+                      const approverObj = lv.approvedBy || lv.extraApprovedBy;
+                      const approverName = approverObj ? (approverObj.fullName || approverObj.name || 'Manager') : (lv.overrideBy === 'SYSTEM' ? 'SYSTEM (Auto Policy)' : '');
+                      const approverRole = approverObj ? (approverObj.role || approverObj.department || '') : '';
+
+                      const statusColors = {
+                        PENDING: 'bg-amber-950/60 text-amber-300 border-amber-800',
+                        PENDING_HR_APPROVAL: 'bg-orange-950/60 text-orange-300 border-orange-800',
+                        APPROVED: 'bg-emerald-950/60 text-emerald-300 border-emerald-800',
+                        HR_APPROVED_EXTRA: 'bg-teal-950/60 text-teal-300 border-teal-800',
+                        REJECTED: 'bg-rose-950/60 text-rose-300 border-rose-800',
+                      };
+                      const statusColorClass = statusColors[lv.status] || 'bg-slate-900 text-slate-400 border-slate-800';
+
+                      return (
+                        <tr key={lv._id} className="hover:bg-[var(--crm-bg-sunken)]/60 transition">
+                          <td className="py-3.5 px-4 font-semibold text-[var(--crm-heading)]">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold">{lv.employeeId?.fullName || lv.employeeId?.name || 'Transport Member'}</span>
+                              <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono uppercase">
+                                {lv.employeeId?.role || 'Executive'} &bull; {lv.employeeId?.department || 'Transport'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2 py-0.5 bg-[var(--crm-bg-sunken)] text-teal-300 font-mono text-[9px] font-bold rounded border border-[var(--crm-line)] uppercase">
+                              {lv.leaveType}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-[var(--crm-ink-soft)]">
+                            {new Date(lv.fromDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} &mdash; {new Date(lv.toDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-amber-300">
+                            {lv.numberOfDays} {lv.numberOfDays === 1 ? 'day' : 'days'}
+                          </td>
+                          <td className="py-3.5 px-4 text-[var(--crm-ink-soft)] font-light max-w-[220px] truncate" title={lv.reason}>
+                            {lv.reason}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col gap-1">
+                              <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColorClass} w-max`}>
+                                {lv.status.replace(/_/g, ' ')}
+                              </span>
+                              {['APPROVED', 'HR_APPROVED_EXTRA', 'REJECTED'].includes(lv.status) && (
+                                <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] block">
+                                  by <strong className="text-teal-300 font-bold">{approverName || 'Approver'}</strong> {approverRole ? `(${approverRole})` : ''}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            {canReview ? (
+                              <div className="inline-flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleReviewLeave(lv._id, 'APPROVED')}
+                                  disabled={submittingLeaveReview === lv._id}
+                                  className="bg-emerald-800 hover:bg-emerald-700 text-white font-bold uppercase text-[9px] tracking-wider py-1 px-3 rounded transition disabled:opacity-50 cursor-pointer shadow border border-emerald-600/50"
+                                >
+                                  {submittingLeaveReview === lv._id ? 'Processing...' : 'Approve'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReviewLeave(lv._id, 'REJECTED')}
+                                  disabled={submittingLeaveReview === lv._id}
+                                  className="bg-rose-800 hover:bg-rose-700 text-white font-bold uppercase text-[9px] tracking-wider py-1 px-3 rounded transition disabled:opacity-50 cursor-pointer shadow border border-rose-600/50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                                {isSelfRequest ? 'Own request' : isApplicantManager ? 'HR review only' : (
+                                  (approverName || lv.approvedBy || lv.extraApprovedBy) ? (
+                                    <span className={['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                                      {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved' : '✗ Rejected'} by {approverName || 'Manager'}
+                                    </span>
+                                  ) : 'Reviewed'
+                                )}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       ) : null}
 

@@ -480,7 +480,25 @@ function AppLayout() {
 
             <Route
               path="/crm/quotations"
-              element={<Quotations />}
+              element={
+                (
+                  isAdminUser(user) ||
+                  [
+                    'MANAGER',
+                    'SALES_MANAGER',
+                    'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER'
+                  ].includes(user?.role)
+                ) ? (
+                  <Quotations />
+                ) : (
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
+                )
+              }
             />
 
             <Route

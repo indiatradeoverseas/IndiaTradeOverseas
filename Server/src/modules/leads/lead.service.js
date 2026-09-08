@@ -6,13 +6,12 @@ const { recordAudit, raiseAlert } = require('../security-audit/auditLog.service'
 const { maskPhone, maskEmail } = require('../../utils/crypto');
 
 const allowedStageTransitions = {
- // Example from your lead.service.js:
-NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_LOST'],
-  ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
-  CONTACTED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'FOLLOW_UP', 'DEAL_LOST'],
-  LEAD_QUALIFICATION: ['FOLLOW_UP', 'CLOSED_LOST', 'DEAL_LOST'],
-  FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
-  REQUIREMENT_CAPTURED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'DEAL_LOST'],
+  ASSIGNED: ['CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  CONTACTED: ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  LEAD_QUALIFICATION: ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'DEAL_LOST'],
+  FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
+  REQUIREMENT_CAPTURED: ['FOLLOW_UP', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
   QUOTATION_REQUIRED: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST', 'DEAL_LOST'],
   QUOTATION_PENDING_APPROVAL: ['QUOTATION_APPROVED', 'CLOSED_LOST', 'DEAL_LOST'],
   QUOTATION_APPROVED: ['NEGOTIATION', 'CLOSED_LOST', 'DEAL_LOST'],
@@ -493,8 +492,8 @@ async function getLeadById(id, user) {
   };
 }
 
-async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
-  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage);
+async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, lostReason = '', lostReasonNotes = '', podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
+  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage, 'lostReason:', lostReason);
   console.log('[updateStage] Proof fields received:', { hasPodFileUrl: !!podFileUrl, hasPaymentProofUrl: !!paymentProofUrl, hasDriverProofUrl: !!driverProofUrl, hasPhotoUrl: !!photoUrl, hasPaymentProof: !!paymentProof, hasDeliveryImages: !!deliveryImages });
   console.log('[updateStage] User role:', user?.role, 'department:', user?.department);
 
@@ -525,6 +524,13 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
       metadata: { action: 'change_stage' }
     });
     throw new Error('OWNERSHIP_FORBIDDEN');
+  }
+
+  // 3. Mandatory Lost Reason Enforcement
+  if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
+    if (!lostReason || !lostReason.trim()) {
+      throw new Error('LOST_REASON_REQUIRED: A valid lost reason is mandatory when marking a lead as Closed Lost.');
+    }
   }
 
   // 3. Strict Quotation Approval Enforcement
@@ -573,6 +579,14 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+  
+  if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
+    lead.lostReason = lostReason;
+    lead.lostReasonNotes = lostReasonNotes || remark || '';
+    lead.lostAt = new Date();
+    lead.lostBy = user._id;
+    lead.lostByName = user.fullName || user.name || user.email || 'User';
+  }
   
   const activePodUrl = podFileUrl || paymentProofUrl || (paymentProof && paymentProof.proofImageUrl) || '';
   const activeDriverUrl = driverProofUrl || photoUrl || (deliveryImages && deliveryImages.driverSelfieUrl) || '';
@@ -623,28 +637,34 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   console.log('[updateStage] Lead saved successfully! Stage:', lead.stage, 'leadCode:', lead.leadCode);
 
   // 5. Record activity log
+  const isLostStage = newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST';
   const activity = await LeadActivity.create({
     leadId: lead._id,
-    actionType: 'LEAD_STAGE_CHANGED',
-    note: remark || `Stage transitioned from ${previousStage} to ${newStage}`,
+    actionType: isLostStage ? 'LEAD_LOST' : 'LEAD_STAGE_CHANGED',
+    note: isLostStage
+      ? `Lead marked CLOSED LOST. Reason: ${lostReason}. Explanation: ${lostReasonNotes || 'No additional note'}`
+      : remark || `Stage transitioned from ${previousStage} to ${newStage}`,
     nextFollowupAt,
     actorId: user._id,
-    metadata: { fromStage: previousStage, toStage: newStage }
+    metadata: { fromStage: previousStage, toStage: newStage, lostReason, lostReasonNotes }
   });
 
-  // 6. Automation trigger: Create Quotation request when moving to QUOTATION_REQUIRED
-  if (newStage === 'QUOTATION_REQUIRED') {
-    const existingQuotation = await Quotation.findOne({ leadId: lead._id, status: 'PENDING' });
-    if (!existingQuotation) {
-      await Quotation.create({
-        leadId: lead._id,
-        requestedBy: user._id,
-        employeeRequestedPrice: null,
-        status: 'PENDING',
-        paymentTerms: 'Pending Negotiation'
+  // 6a. Notification trigger for Sales Manager / Management on Lost Lead
+  if (isLostStage) {
+    try {
+      const Notification = require('../notifications/notification.model');
+      await Notification.create({
+        targetDepartment: 'SALES',
+        message: `⚠️ Lead Lost: ${lead.leadCode || lead.customerName} marked CLOSED LOST by ${user.fullName || user.name || 'user'}. Reason: ${lostReason}.`,
+        type: 'LEAD_LOST',
+        metadata: { leadId: lead._id, leadCode: lead.leadCode, lostReason, lostReasonNotes }
       });
+    } catch (notifErr) {
+      console.warn('Lost lead notification warning:', notifErr.message);
     }
   }
+
+  // Automatic quotation creation on QUOTATION_REQUIRED disabled so requests only get created when employee explicitly submits the form.
 
   // 6b. Automation trigger: Notify Transport Manager & Transport Department when Order is Confirmed
   if (newStage === 'ORDER_CONFIRMED' || newStage === 'PO_RECEIVED') {
