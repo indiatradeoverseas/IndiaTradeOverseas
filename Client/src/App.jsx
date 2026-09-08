@@ -818,7 +818,8 @@ function AppLayout() {
         </Routes>
       </main>
       {!isITOAds && <Footer />}
-      <ChatWidget />
+
+      {!isITOAds && <ChatWidget />}
     </div>
   );
 }
