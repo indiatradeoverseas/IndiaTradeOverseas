@@ -5,7 +5,16 @@ const fs = require('fs');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
-const { getLeadsList, getLeadDetails, changeLeadStage, changeLeadPriority, assignLead, assignLeadsBulk, bulkImportLeads } = require('./lead.controller');
+const {
+  createWebsiteLead,
+  getLeadsList,
+  getLeadDetails,
+  changeLeadStage,
+  changeLeadPriority,
+  assignLead,
+  assignLeadsBulk,
+  bulkImportLeads
+} = require('./lead.controller');
 const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
 
@@ -69,6 +78,13 @@ const upload = multer({
 // Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
 // and the public chat widget. Must stay above router.use(authenticate) below.
 router.post('/from-chat', createFromChat);
+// MASTER DPR v4.0
+// Public requirement-builder lead persistence.
+// MUST remain above router.use(authenticate).
+router.post(
+  '/website',
+  createWebsiteLead
+);
 router.get('/call-recordings/:recordingId/stream', streamCallRecording);
 
 router.use(authenticate);
