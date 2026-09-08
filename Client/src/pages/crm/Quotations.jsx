@@ -356,7 +356,7 @@ export default function Quotations() {
                       </td>
 
                       <td className="py-4 px-5 text-[var(--crm-ink-soft)]/90 font-light font-mono text-[11px]">
-                        {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Ananya Patel'}
+                        {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Sales Representative'}
                       </td>
 
                       <td className="py-4 px-5 font-mono font-bold text-sm text-[var(--crm-heading)]">

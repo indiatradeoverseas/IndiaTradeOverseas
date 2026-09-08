@@ -222,30 +222,43 @@ export default function Leave() {
                 {myLeaves.length === 0 ? (
                   <tr><td colSpan="7" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No leave requests yet.</td></tr>
                 ) : (
-                  myLeaves.map((lv) => (
-                    <tr key={lv._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                      <td className="py-3 px-5">
-                        <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">{lv.leaveType}</span>
-                      </td>
-                      <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{fmtDate(lv.startDate)} – {fmtDate(lv.endDate)}</td>
-                      <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{lv.daysCount}d</td>
-                      <td className="py-3 px-5 text-[var(--crm-ink-soft)] font-light max-w-[200px] truncate" title={lv.reason}>{lv.reason}</td>
-                      <td className="py-3 px-5 text-[var(--crm-ink-faint)] font-light max-w-[200px] truncate" title={lv.reviewNote}>{lv.reviewNote || '—'}</td>
-                      <td className="py-3 px-5 text-center">
-                        <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(lv.status)}`}>{lv.status}</span>
-                      </td>
-                      <td className="py-3 px-5 text-right">
-                        {lv.status === 'PENDING' && (
-                          <button
-                            onClick={() => handleCancel(lv._id)}
-                            className="text-[9px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  myLeaves.map((lv) => {
+                    const approverObj = lv.approvedBy || lv.extraApprovedBy;
+                    const approverName = approverObj ? (approverObj.fullName || approverObj.name || 'Manager') : (lv.overrideBy === 'SYSTEM' ? 'SYSTEM (Auto Policy)' : '');
+
+                    return (
+                      <tr key={lv._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
+                        <td className="py-3 px-5">
+                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">{lv.leaveType}</span>
+                        </td>
+                        <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{fmtDate(lv.startDate || lv.fromDate)} – {fmtDate(lv.endDate || lv.toDate)}</td>
+                        <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{lv.daysCount || lv.numberOfDays}d</td>
+                        <td className="py-3 px-5 text-[var(--crm-ink-soft)] font-light max-w-[200px] truncate" title={lv.reason}>{lv.reason}</td>
+                        <td className="py-3 px-5 text-[var(--crm-ink-faint)] font-light max-w-[200px] truncate" title={lv.reviewNote || lv.hrRemarks}>{lv.reviewNote || lv.hrRemarks || '—'}</td>
+                        <td className="py-3 px-5 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(lv.status)}`}>{lv.status}</span>
+                            {['APPROVED', 'HR_APPROVED_EXTRA', 'REJECTED'].includes(lv.status) && (
+                              <span className="text-[9px] font-mono text-teal-400 font-bold block whitespace-nowrap">
+                                {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved by ' : '✗ Rejected by '}
+                                <strong className="text-[var(--crm-heading)]">{approverName || 'Manager'}</strong>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-5 text-right">
+                          {lv.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleCancel(lv._id)}
+                              className="text-[9px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

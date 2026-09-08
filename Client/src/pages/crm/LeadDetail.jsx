@@ -6,11 +6,12 @@ import { quotationsApi } from '../../api/quotations';
 import { adminApi } from '../../api/admin';
 import { useAuth } from '../../hooks/useAuth';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
+import LostReasonModal, { LOST_REASON_OPTIONS } from '../../components/crm/LostReasonModal';
 import {
   FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign,
   FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone,
   FiCheck, FiAward, FiXCircle, FiCheckCircle, FiCompass,
-  FiMessageCircle, FiMail
+  FiMessageCircle, FiMail, FiAlertTriangle
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,8 @@ export default function LeadDetail() {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
+  const [showLostModal, setShowLostModal] = useState(false);
+  const [submittingLost, setSubmittingLost] = useState(false);
   const [targetStageAfterCall, setTargetStageAfterCall] = useState(null);
   const [newActivity, setNewActivity] = useState({ note: '', actionType: 'FOLLOW_UP', nextFollowupAt: '' });
   const [quotationData, setQuotationData] = useState({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
@@ -192,9 +195,24 @@ export default function LeadDetail() {
   };
 
   const handleStageChange = async (newStage) => {
-    const advancedList = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
-    if (advancedList.includes(newStage) && (lead?.quotationStatus === 'PENDING' || lead?.quotationStatus === 'REJECTED')) {
-      toast.error(`Quotation is ${lead.quotationStatus}. Manager approval is required before advancing to ${newStage.replace(/_/g, ' ')}.`);
+    if (newStage === 'QUOTATION_REQUIRED') {
+      setShowQuotationModal(true);
+      return;
+    }
+
+    if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
+      setShowLostModal(true);
+      return;
+    }
+
+    const advancedList = [
+      'QUOTATION_APPROVED', 'QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 
+      'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'LOI_PO_PENDING', 'PO_RECEIVED', 
+      'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 
+      'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'
+    ];
+    if (advancedList.includes(newStage) && lead?.quotationStatus !== 'APPROVED') {
+      toast.error(`⚠️ Quotation is ${lead?.quotationStatus || 'not created'}. Sales Manager approval is required before advancing to ${newStage.replace(/_/g, ' ')}.`);
       return;
     }
 
@@ -217,14 +235,31 @@ export default function LeadDetail() {
       if (response.success) {
         toast.success(`Stage updated to ${newStage.replace(/_/g, ' ')}`);
         fetchLeadDetails();
-        if (newStage === 'QUOTATION_REQUIRED') {
-          setShowQuotationModal(true);
-        }
         if (newStage === 'LOI_PO_PENDING') {
           setShowLOIModal(true);
         }
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to update stage'); }
+  };
+
+  const handleLostReasonSubmit = async ({ lostReason, lostReasonNotes }) => {
+    setSubmittingLost(true);
+    try {
+      const response = await leadsApi.updateStage(id, {
+        newStage: 'CLOSED_LOST',
+        lostReason,
+        lostReasonNotes
+      });
+      if (response.success) {
+        toast.success(`⚠️ Lead marked CLOSED LOST. Reason: ${lostReason}`);
+        setShowLostModal(false);
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record lost reason');
+    } finally {
+      setSubmittingLost(false);
+    }
   };
 
   const handleCallRecordingSuccess = async () => {
@@ -293,15 +328,22 @@ export default function LeadDetail() {
 
   const handleRequestQuotation = async (e) => {
     e.preventDefault();
+    if (!quotationData.employeeRequestedPrice) {
+      toast.error('Please specify target base price');
+      return;
+    }
     try {
       const response = await quotationsApi.requestQuotation({ leadId: id, ...quotationData });
       if (response.success) {
-        toast.success('Quotation requested successfully');
+        toast.success('Quotation request submitted to Sales Manager for approval! 🚀');
         setShowQuotationModal(false);
         setQuotationData({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
+        await leadsApi.updateStage(id, { newStage: 'QUOTATION_REQUIRED' }).catch(() => {});
         fetchLeadDetails();
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      toast.error(err.response?.data?.message || 'Failed to request quotation');
+    }
   };
 
   const handleLOISubmit = async (e) => {
@@ -465,6 +507,40 @@ export default function LeadDetail() {
             </div>
           ))}
         </motion.div>
+
+        {/* Closed Lost Audit & Reason Display */}
+        {(isClosedLost || lead.lostReason) && (
+          <motion.div variants={blockVariants} className="border border-rose-500/30 p-5 bg-rose-950/20 rounded-sm text-left font-mono">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-500/20 pb-3 mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-rose-900/50 border border-rose-500/30 text-rose-400 rounded">
+                  <FiAlertTriangle size={18} />
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase tracking-[0.25em] text-rose-400 font-bold block">
+                    MANDATORY AUDIT // CLOSED LOST REPORT
+                  </span>
+                  <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
+                    Lead Lost Reason: <span className="text-rose-400 font-bold uppercase">{lead.lostReason || 'Unspecified'}</span>
+                  </h3>
+                </div>
+              </div>
+              {lead.lostAt && (
+                <span className="text-[10px] text-[var(--crm-ink-faint)]">
+                  Logged on {new Date(lead.lostAt).toLocaleString()} {lead.lostByName ? `by ${lead.lostByName}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="p-4 bg-[var(--crm-bg)]/80 border border-rose-500/20 rounded text-xs space-y-1 font-sans">
+              <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase font-bold block">
+                Detailed Lost Explanation Note:
+              </span>
+              <p className="text-[var(--crm-heading)] leading-relaxed whitespace-pre-wrap">
+                {lead.lostReasonNotes || lead.remarks || 'No detailed explanation note recorded.'}
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Lead Classification & Temperature Control Panel */}
         <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left font-mono">
@@ -875,6 +951,15 @@ export default function LeadDetail() {
         onClose={() => setShowCallModal(false)}
         initialLead={lead}
         onSuccess={handleCallRecordingSuccess}
+      />
+
+      {/* MANDATORY LOST REASON MODAL */}
+      <LostReasonModal
+        isOpen={showLostModal}
+        onClose={() => setShowLostModal(false)}
+        onSubmit={handleLostReasonSubmit}
+        leadName={lead?.customerName}
+        loading={submittingLost}
       />
     </motion.div>
   );

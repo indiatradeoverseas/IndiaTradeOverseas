@@ -266,6 +266,42 @@ const leadSchema = new mongoose.Schema(
       type: Object,
       default: {},
     },
+    lostReason: {
+      type: String,
+      enum: [
+        "Price",
+        "Freight",
+        "Competitor",
+        "Unsupported destination",
+        "Quantity too low",
+        "Product unavailable",
+        "No response",
+        "Invalid contact",
+        "Timing",
+        "Payment terms",
+        "Trust concern",
+        "Other",
+        ""
+      ],
+      default: "",
+    },
+    lostReasonNotes: {
+      type: String,
+      default: "",
+    },
+    lostAt: {
+      type: Date,
+      default: null,
+    },
+    lostBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    lostByName: {
+      type: String,
+      default: "",
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

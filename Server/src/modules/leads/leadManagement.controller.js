@@ -596,7 +596,7 @@ async function getCallRecordings(req, res, next) {
         assignedCustodianName = execResolvedName;
       }
 
-      const isDone = r.status === 'COMPLETED' || Boolean(r.managerRemark) || Boolean(r.completedAt) || (r.leadId && ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED', 'QUOTATION_REQUIRED', 'QUOTATION_SENT', 'NEGOTIATION'].includes(String(r.leadId.stage).toUpperCase()));
+      const isDone = r.status === 'COMPLETED' || Boolean(r.managerRemark) || Boolean(r.completedAt) || (r.leadId && ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED', 'QUOTATION_REQUIRED', 'QUOTATION_SENT', 'NEGOTIATION', 'REQUIREMENT_CAPTURED'].includes(String(r.leadId.stage).toUpperCase()));
 
       return {
         ...r,

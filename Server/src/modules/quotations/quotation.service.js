@@ -16,6 +16,19 @@ async function createQuotationRequest({ leadId, employeeRequestedPrice, marginNo
     status: 'PENDING'
   });
 
+  try {
+    const Notification = require('../notifications/notification.model');
+    const priceStr = employeeRequestedPrice ? `₹${Number(employeeRequestedPrice).toLocaleString('en-IN')}` : 'Unspecified Price';
+    await Notification.create({
+      targetDepartment: 'SALES',
+      message: `📋 New Quotation Request submitted for ${lead.customerName || lead.leadCode} (${priceStr}). Awaiting Manager Approval.`,
+      type: 'QUOTATION_REQUESTED',
+      metadata: { quotationId: quotation._id, leadId }
+    });
+  } catch (notifErr) {
+    console.warn('Quotation request notification notice:', notifErr.message);
+  }
+
   await recordAudit({
     actorId,
     actionType: 'QUOTATION_REQUESTED',

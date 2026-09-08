@@ -510,9 +510,6 @@ export default function FounderDashboard() {
           <h1 className="text-xl sm:text-2xl font-normal tracking-tight uppercase whitespace-nowrap" style={HEADING}>Founder Command Center</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <motion.div whileHover={{ scale: 1.02 }} className="text-[9px] sm:text-[10px] border px-3 py-2 uppercase tracking-wide whitespace-nowrap rounded-sm select-none hidden md:block" style={{ ...LABEL_MONO, background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
-            Cross-department oversight — every action audited
-          </motion.div>
           <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
             <FiPlus size={12} /> <span>Add Employee</span>
           </button>
@@ -540,6 +537,8 @@ export default function FounderDashboard() {
         <motion.div variants={blockVariants}>
           <FounderTransportWidget summary={summary} />
         </motion.div>
+
+
 
         {/* Charts Row - Stack on mobile, side-by-side on desktop */}
         <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">

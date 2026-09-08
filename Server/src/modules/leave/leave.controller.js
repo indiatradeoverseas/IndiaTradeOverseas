@@ -315,11 +315,33 @@ async function createLeave(req, res, next) {
 
 // Helper to find all employee and user IDs within a department
 async function getDeptEmployeeIds(department) {
+  if (!department) return [];
   const Employee = require('../employee/employee.model');
   const User = require('../users/user.model');
   
-  const employees = await Employee.find({ department }, '_id');
-  const users = await User.find({ department }, '_id');
+  const deptUpper = department.toUpperCase();
+  let query = { department: new RegExp('^' + department.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+
+  if (deptUpper === 'TRANSPORT' || deptUpper === 'LOGISTICS') {
+    query = {
+      $or: [
+        { department: { $regex: /TRANSPORT|LOGISTICS/i } },
+        { role: { $regex: /DRIVER|TRANSPORT|LOGISTICS/i } },
+        { position: { $regex: /driver|transport|logistics/i } }
+      ]
+    };
+  } else if (deptUpper === 'SALES') {
+    query = {
+      $or: [
+        { department: { $regex: /SALES/i } },
+        { role: { $regex: /SALES/i } },
+        { position: { $regex: /sales/i } }
+      ]
+    };
+  }
+
+  const employees = await Employee.find(query, '_id');
+  const users = await User.find(query, '_id');
   
   return [...employees.map(e => e._id), ...users.map(u => u._id)];
 }
@@ -328,11 +350,25 @@ async function getDeptEmployeeIds(department) {
 async function listLeaves(req, res, next) {
   try {
     const filter = {};
-    
-    // Role based filtering: 
-    // If req.query.employeeId is passed, filter for that specific employee
-    // Otherwise: HR/Admin see all requests; Managers see department + own; Executives see own.
-    const isHRorAdmin = ['ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
+    const role = (req.user?.role || '').toUpperCase();
+    const dept = (req.user?.department || '').toUpperCase();
+    const isHRorAdmin = ['ADMIN', 'FOUNDER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(role);
+
+    let targetDept = req.query.department || dept;
+    if (!targetDept) {
+      if (role.includes('SALES')) targetDept = 'SALES';
+      else if (role.includes('TRANSPORT') || role.includes('LOGISTICS')) targetDept = 'TRANSPORT';
+    }
+
+    const isManagerRole =
+      role === 'MANAGER' ||
+      role.endsWith('_MANAGER') ||
+      role.includes('MANAGER') ||
+      role === 'SALES_MANAGER' ||
+      role === 'TRANSPORT_MANAGER' ||
+      role === 'LOGISTICS_MANAGER' ||
+      role === 'TRANSPORT';
+
     if (req.query.employeeId) {
       const targetIds = await getAllIdsForId(req.query.employeeId);
       filter.$or = [
@@ -340,8 +376,8 @@ async function listLeaves(req, res, next) {
         { appliedBy: { $in: targetIds } }
       ];
     } else if (!isHRorAdmin) {
-      if (req.user.role === 'MANAGER') {
-        const deptIds = await getDeptEmployeeIds(req.user.department);
+      if (isManagerRole) {
+        const deptIds = await getDeptEmployeeIds(targetDept);
         const managerIds = await getAllIdsForId(req.user._id);
         const allDeptIds = [];
         for (const dId of deptIds) {
@@ -362,6 +398,17 @@ async function listLeaves(req, res, next) {
           { appliedBy: { $in: myIds } }
         ];
       }
+    } else if (req.query.department) {
+      const deptIds = await getDeptEmployeeIds(req.query.department);
+      const allDeptIds = [];
+      for (const dId of deptIds) {
+        const ids = await getAllIdsForId(dId);
+        allDeptIds.push(...ids);
+      }
+      filter.$or = [
+        { employeeId: { $in: allDeptIds } },
+        { appliedBy: { $in: allDeptIds } }
+      ];
     }
 
     if (req.query.status) {
@@ -374,11 +421,34 @@ async function listLeaves(req, res, next) {
       filter.month = req.query.month;
     }
 
-    const leaves = await LeaveRequest.find(filter)
+    const leavesDocs = await LeaveRequest.find(filter)
       .populate('employeeId', 'fullName name email department role position phone')
       .populate('approvedBy', 'fullName name email role department position')
       .populate('extraApprovedBy', 'fullName name email role department position')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const leaves = await Promise.all(leavesDocs.map(async (lv) => {
+      if (lv.approvedBy && typeof lv.approvedBy === 'object' && (lv.approvedBy.fullName || lv.approvedBy.name)) {
+        // Already populated
+      } else if (lv.approvedBy && mongoose.Types.ObjectId.isValid(lv.approvedBy)) {
+        const User = require('../users/user.model');
+        let appDoc = await User.findById(lv.approvedBy, 'fullName name email role department position').lean() ||
+                     await Employee.findById(lv.approvedBy, 'fullName name email role department position').lean();
+        if (appDoc) lv.approvedBy = appDoc;
+      }
+
+      if (lv.extraApprovedBy && typeof lv.extraApprovedBy === 'object' && (lv.extraApprovedBy.fullName || lv.extraApprovedBy.name)) {
+        // Already populated
+      } else if (lv.extraApprovedBy && mongoose.Types.ObjectId.isValid(lv.extraApprovedBy)) {
+        const User = require('../users/user.model');
+        let appDoc = await User.findById(lv.extraApprovedBy, 'fullName name email role department position').lean() ||
+                     await Employee.findById(lv.extraApprovedBy, 'fullName name email role department position').lean();
+        if (appDoc) lv.extraApprovedBy = appDoc;
+      }
+
+      return lv;
+    }));
 
     return ok(res, { leaves }, 'Leave requests retrieved successfully', 200, req);
   } catch (error) {
@@ -389,7 +459,13 @@ async function listLeaves(req, res, next) {
 // 5. Review Leave Request (Approve/Reject)
 async function reviewLeave(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
+    const role = (req.user?.role || '').toUpperCase();
+    const isAllowedRole =
+      ['ADMIN', 'FOUNDER', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'LOGISTICS_MANAGER', 'TRANSPORT'].includes(role) ||
+      role.endsWith('_MANAGER') ||
+      role.includes('MANAGER');
+
+    if (!isAllowedRole) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin/Manager required to review leaves', [], req);
     }
 
@@ -424,17 +500,29 @@ async function reviewLeave(req, res, next) {
     }
 
     // Role-based Approval Checks:
-    // - Managers can only be reviewed by HR/Admin
-    // - Executives can be reviewed by their department manager OR HR/Admin
-    if (employee.role === 'MANAGER') {
-      if (!['HR', 'ADMIN', 'HR_MANAGER'].includes(req.user.role)) {
-        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only HR Managers or Admins can review Manager leave requests', [], req);
+    // - Managers can only be reviewed by HR/Admin/Founder
+    // - Executives/Drivers can be reviewed by their department manager OR HR/Admin/Founder
+    const empRole = (employee.role || '').toUpperCase();
+    const isApplicantManager = empRole === 'MANAGER' || empRole.endsWith('_MANAGER') || empRole.includes('MANAGER');
+
+    if (isApplicantManager) {
+      if (!['HR', 'ADMIN', 'FOUNDER', 'HR_MANAGER'].includes(role)) {
+        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only HR Managers, Admins or Founders can review Manager leave requests', [], req);
       }
     } else {
-      const isHRorAdmin = ['HR', 'ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
-      const isMyDeptManager = req.user.role === 'MANAGER' && req.user.department === employee.department;
+      const isHRorAdmin = ['HR', 'ADMIN', 'FOUNDER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(role);
+      const userDept = (req.user.department || '').toUpperCase();
+      const empDept = (employee.department || '').toUpperCase();
+
+      const isMyDeptManager = isAllowedRole && (
+        (userDept && empDept && userDept === empDept) ||
+        ((role.includes('SALES') || userDept === 'SALES') && (empDept === 'SALES' || empRole.includes('SALES'))) ||
+        ((role.includes('TRANSPORT') || role.includes('LOGISTICS') || userDept === 'TRANSPORT' || userDept === 'LOGISTICS') && 
+         (empDept === 'TRANSPORT' || empDept === 'LOGISTICS' || empRole.includes('DRIVER') || empRole.includes('TRANSPORT') || empRole.includes('LOGISTICS')))
+      );
+
       if (!isHRorAdmin && !isMyDeptManager) {
-        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only your department manager or HR/Admin can review this leave request', [], req);
+        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only your department manager or HR/Admin/Founder can review this leave request', [], req);
       }
     }
 
