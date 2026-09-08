@@ -3,18 +3,32 @@ import { createRoot } from 'react-dom/client'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import './index.css'
 import App from './App.jsx'
+import { initAnalytics } from './utils/analytics.js'
 
 // Suppress harmless [GSI_LOGGER] warnings caused by React StrictMode remounting Google Identity Services
 const ignoreGSI = (fn) => {
   return (...args) => {
-    if (args.some(arg => typeof arg === 'string' && (arg.includes('[GSI_LOGGER]') || arg.includes('GSI_LOGGER')))) {
+    if (
+      args.some(
+        (arg) =>
+          typeof arg === 'string' &&
+          (arg.includes('[GSI_LOGGER]') ||
+            arg.includes('GSI_LOGGER'))
+      )
+    ) {
       return;
     }
+
     fn(...args);
   };
 };
+
 console.warn = ignoreGSI(console.warn);
 console.error = ignoreGSI(console.error);
+
+// Initialize first-party attribution, analytics session tracking,
+// and delegated activity tracking before React renders the application.
+initAnalytics();
 
 // Prerendered pages (see scripts/prerender.mjs) ship with real static markup
 // already inside #root for crawlers/first paint, but always still get a
@@ -24,7 +38,10 @@ console.error = ignoreGSI(console.error);
 // expects to hydrate onto, so hydrateRoot reliably mismatches and falls
 // back to a full client render anyway. createRoot gets the same end
 // result without the console errors along the way.
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '118804696306-5sa5n9j6qud4mk4f036qr6epmr049th7.apps.googleusercontent.com';
+
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  '118804696306-5sa5n9j6qud4mk4f036qr6epmr049th7.apps.googleusercontent.com';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
