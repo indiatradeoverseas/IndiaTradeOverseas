@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema(
   {
-    actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    actorId: { type: mongoose.Schema.Types.Mixed, default: null },
     actionType: {
       type: String,
       required: true,

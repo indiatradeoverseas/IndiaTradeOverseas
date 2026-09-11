@@ -326,7 +326,7 @@ export default function DriverMobileView() {
       if (socket) {
         socket.emit('driver_work_update', {
           id: Date.now(),
-          driver: user?.name || user?.fullName || 'Ramesh Driver',
+          driver: user?.name || user?.fullName || 'Driver',
           vehicle: deliveringOrder.vehicleNo || profileVehicleNumber || user?.vehicleNumber || 'Unassigned',
           stage: 'DELIVERED',
           update: `✅ Cargo delivered to ${deliveringOrder.destination || 'destination'}. Payment & Driver Proofs Uploaded!`,
@@ -736,7 +736,7 @@ export default function DriverMobileView() {
         try {
           const payload = {
             driverId: user?._id || user?.employeeId,
-            driverName: user?.name || user?.fullName || 'Ramesh Driver',
+            driverName: user?.name || user?.fullName || 'Driver',
             vehicleNo: profileVehicleNumber || attendanceForm.vehicleNumber || user?.vehicleNumber || 'Unassigned',
             lat,
             long,
@@ -1002,7 +1002,7 @@ export default function DriverMobileView() {
 
     const markTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const markDate = new Date().toLocaleDateString('en-IN');
-    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const driverName = user?.name || user?.fullName || 'Driver';
 
     const attRecord = {
       id: Date.now(),
@@ -1170,7 +1170,7 @@ export default function DriverMobileView() {
     });
 
     // Post live work update to Transport Manager Feed
-    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const driverName = user?.name || user?.fullName || 'Driver';
     const feedItem = {
       id: Date.now(),
       driver: driverName,
@@ -1191,7 +1191,7 @@ export default function DriverMobileView() {
 
     setSubmittingWorkUpdate(true);
     
-    const driverName = user?.name || user?.fullName || 'Ramesh Driver';
+    const driverName = user?.name || user?.fullName || 'Driver';
     const vehicleName = profileVehicleNumber || attendanceForm.vehicleNumber || dispatchesList[0]?.vehicleNo || 'Unassigned';
 
     const payload = {
@@ -1259,7 +1259,7 @@ export default function DriverMobileView() {
     const cleanText = inputMessage.trim();
     if (!cleanText) return;
 
-    const senderName = user?.name || user?.fullName || 'Ramesh Driver';
+    const senderName = user?.name || user?.fullName || 'Driver';
     const uniqueId = `msg-driver-${Date.now()}`;
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { authApi } from '../api/auth';
 import { employeeSignupApi } from '../api/employee-signup';
+import { salesTrialApi } from '../api/salesTrialApi';
 import { socketService } from '../services/socket';
 
 export const AuthContext = createContext();
@@ -27,6 +28,12 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       try {
         const storedUser = JSON.parse(localStorage.getItem('user'));
+        if (storedUser && storedUser.role === 'SALES_TRIAL') {
+          setUser(storedUser);
+          setLoading(false);
+          return;
+        }
+
         const isEmployeeAuth = localStorage.getItem('isEmployeeAuth');
         const EMPLOYEE_ROLES = [
           'EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 
@@ -61,8 +68,7 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         const status = error?.response?.status;
         if (status === 401) {
-          // Definitive auth failure — the axios interceptor already handles redirect
-          // for auth endpoints, so just clear local state without calling logout() again
+          // Definitive auth failure — clear local state
           setUser(null);
         } else {
           // Network error, 500, or other transient issue — use stored user as fallback
@@ -95,6 +101,22 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('isEmployeeAuth', 'true');
       setUser(response.data.employee);
     }
+    return response;
+  };
+
+  const trialLogin = async (credentials) => {
+    const response = await salesTrialApi.loginTrialUser(credentials);
+    if (response.success && response.data?.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('isEmployeeAuth', 'true');
+      setUser(response.data.user);
+    }
+    return response;
+  };
+
+  const trialSignup = async (formData) => {
+    const response = await salesTrialApi.signupTrialUser(formData);
     return response;
   };
 
@@ -158,7 +180,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, employeeLogin, adminLogin, googleLogin, adminGoogleLogin, verifyOtp, register, verifyEmail, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, employeeLogin, trialLogin, trialSignup, adminLogin, googleLogin, adminGoogleLogin, verifyOtp, register, verifyEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

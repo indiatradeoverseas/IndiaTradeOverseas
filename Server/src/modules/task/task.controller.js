@@ -51,24 +51,47 @@ async function createTask(req, res) {
       return fail(res, 400, 'BAD_REQUEST', 'Missing required fields: title, assignedTo, and dueDate are mandatory', [], req);
     }
 
-    // Verify target employee exists
-    const employeeIdQuery = mongoose.isValidObjectId(assignedTo)
-      ? { $or: [{ _id: assignedTo }, { _id: new mongoose.Types.ObjectId(assignedTo) }] }
-      : { _id: assignedTo };
-    const employee = await Employee.findOne(employeeIdQuery);
-    if (!employee) {
-      return fail(res, 404, 'NOT_FOUND', 'Target assignee employee not found', [], req);
+    // Verify target employee exists in Employee or SalesTrialUser
+    let assigneeId = null;
+    let assigneeDept = department || req.user.department || 'GENERAL';
+
+    let employee = null;
+    if (mongoose.isValidObjectId(assignedTo)) {
+      employee = await Employee.findOne({
+        $or: [{ _id: assignedTo }, { _id: new mongoose.Types.ObjectId(assignedTo) }]
+      }).catch(() => null);
+    } else {
+      employee = await Employee.findOne({
+        $or: [{ employeeId: assignedTo }, { email: assignedTo }]
+      }).catch(() => null);
+    }
+    
+    if (employee) {
+      assigneeId = employee._id;
+    } else {
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      const trialUserQuery = [{ trialId: assignedTo }, { trialId: String(assignedTo).toUpperCase() }, { _id: assignedTo }];
+      if (mongoose.isValidObjectId(assignedTo)) {
+        trialUserQuery.push({ _id: new mongoose.Types.ObjectId(assignedTo) });
+      }
+      const trialUser = await SalesTrialUser.findOne({ $or: trialUserQuery }).catch(() => null);
+      if (trialUser) {
+        assigneeId = trialUser._id;
+        assigneeDept = 'SALES_TRIAL';
+      } else {
+        return fail(res, 404, 'NOT_FOUND', 'Target assignee employee or trial executive not found', [], req);
+      }
     }
 
     const taskData = {
       title,
       description,
-      assignedTo: employee._id,
+      assignedTo: assigneeId,
       assignedBy: req.user._id,
       dueDate,
       priority: priority || 'MEDIUM',
       status: 'PENDING',
-      department: department || req.user.department || 'GENERAL',
+      department: assigneeDept,
       category: category || 'GENERAL',
       leadId: leadId || null
     };
@@ -88,7 +111,7 @@ async function createTask(req, res) {
         const Lead = require('../leads/lead.model');
         const lead = await Lead.findById(leadId);
         if (lead) {
-          lead.assignedTo = employee._id;
+          lead.assignedTo = assigneeId;
           const currentStage = String(lead.stage || '').toUpperCase();
           if (currentStage === 'NEW_LEAD' || currentStage === 'ASSIGNED') {
             lead.stage = 'LEAD_QUALIFICATION';
@@ -377,7 +400,7 @@ async function getEmployeesByDepartment(req, res) {
     const { department } = req.query;
     
     let query = { status: 'ACTIVE' };
-    if (department) {
+    if (department && department.toUpperCase() !== 'SALES') {
       query.department = department;
     }
 
@@ -385,7 +408,36 @@ async function getEmployeesByDepartment(req, res) {
       .select('name email department position role employeeId')
       .sort({ name: 1 });
 
-    return ok(res, { employees }, 'Employees retrieved', 200, req);
+    const formattedEmployees = employees.map(e => (e.toObject ? e.toObject() : { ...e }));
+
+    // Include Sales Trial Users if department is SALES, SALES_TRIAL, or empty
+    if (!department || ['SALES', 'SALES_TRIAL', 'sales'].includes(department)) {
+      try {
+        const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+        const trialUsers = await SalesTrialUser.find({ status: 'ACTIVE' }).sort({ fullName: 1 });
+        trialUsers.forEach(tu => {
+          // Avoid duplication if already present
+          const exists = formattedEmployees.some(emp => String(emp._id) === String(tu._id) || emp.email === tu.email);
+          if (!exists) {
+            formattedEmployees.push({
+              _id: tu._id,
+              name: `${tu.fullName || tu.name} (Sales Trial Executive)`,
+              fullName: tu.fullName || tu.name,
+              email: tu.email,
+              department: 'SALES_TRIAL',
+              position: 'Sales Trial Executive',
+              role: 'SALES_TRIAL',
+              employeeId: tu.trialId,
+              isTrial: true
+            });
+          }
+        });
+      } catch (tErr) {
+        console.error('Error fetching trial users in getEmployeesByDepartment:', tErr);
+      }
+    }
+
+    return ok(res, { employees: formattedEmployees }, 'Employees retrieved', 200, req);
   } catch (error) {
     console.error('Error getting employees by department:', error);
     return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);

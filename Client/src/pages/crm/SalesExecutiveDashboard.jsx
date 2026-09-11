@@ -205,28 +205,43 @@ export default function SalesExecutiveDashboard() {
   const [loiNotes, setLoiNotes] = useState('');
   const [uploadingLOI, setUploadingLOI] = useState(false);
 
+  const toLocalDateStr = (d) => {
+    if (!d) return null;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getFilteredByDate = (items = []) => {
     if (dateFilterMode === 'ALL') return items;
-    return items.filter(item => {
-      const rawDate = item.createdAt || item.date || item.uploadedAt;
-      if (!rawDate) return true;
-      const itemDate = new Date(rawDate);
-      const dStr = itemDate.toISOString().split('T')[0];
 
-      if (dateFilterMode === 'TODAY') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return dStr === todayStr;
-      }
-      if (dateFilterMode === 'YESTERDAY') {
-        const yest = new Date();
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        return dStr === yestStr;
-      }
-      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
-        return dStr === selectedDate;
-      }
-      return true;
+    const todayStr = toLocalDateStr(new Date());
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yestDate);
+
+    let targetDateStr = '';
+    if (dateFilterMode === 'TODAY') targetDateStr = todayStr;
+    else if (dateFilterMode === 'YESTERDAY') targetDateStr = yesterdayStr;
+    else if (dateFilterMode === 'PICK_DATE' && selectedDate) targetDateStr = selectedDate;
+
+    if (!targetDateStr) return items;
+
+    return items.filter(item => {
+      const createdStr = toLocalDateStr(item.createdAt || item.date || item.uploadedAt);
+      const updatedStr = toLocalDateStr(item.updatedAt || item.assignedAt);
+      const targetStr = toLocalDateStr(item.targetDate);
+      const followupStr = toLocalDateStr(item.nextFollowupAt);
+
+      return (
+        createdStr === targetDateStr ||
+        updatedStr === targetDateStr ||
+        targetStr === targetDateStr ||
+        followupStr === targetDateStr
+      );
     });
   };
 

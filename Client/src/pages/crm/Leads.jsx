@@ -5,6 +5,7 @@ import { leadsApi } from '../../api/leads';
 import { adminApi } from '../../api/admin';
 import { employeesApi } from '../../api/employees';
 import { taskApi } from '../../api/task';
+import { salesTrialApi } from '../../api/salesTrialApi';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
@@ -128,28 +129,43 @@ export default function Leads() {
   const [loiNotes, setLoiNotes] = useState('');
   const [uploadingLOI, setUploadingLOI] = useState(false);
 
+  const toLocalDateStr = (d) => {
+    if (!d) return null;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getFilteredByDate = (items = []) => {
     if (dateFilterMode === 'ALL') return items;
-    return items.filter(item => {
-      const rawDate = item.createdAt || item.date || item.uploadedAt;
-      if (!rawDate) return true;
-      const itemDate = new Date(rawDate);
-      const dStr = itemDate.toISOString().split('T')[0];
 
-      if (dateFilterMode === 'TODAY') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return dStr === todayStr;
-      }
-      if (dateFilterMode === 'YESTERDAY') {
-        const yest = new Date();
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        return dStr === yestStr;
-      }
-      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
-        return dStr === selectedDate;
-      }
-      return true;
+    const todayStr = toLocalDateStr(new Date());
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yestDate);
+
+    let targetDateStr = '';
+    if (dateFilterMode === 'TODAY') targetDateStr = todayStr;
+    else if (dateFilterMode === 'YESTERDAY') targetDateStr = yesterdayStr;
+    else if (dateFilterMode === 'PICK_DATE' && selectedDate) targetDateStr = selectedDate;
+
+    if (!targetDateStr) return items;
+
+    return items.filter(item => {
+      const createdStr = toLocalDateStr(item.createdAt || item.date || item.uploadedAt);
+      const updatedStr = toLocalDateStr(item.updatedAt || item.assignedAt);
+      const targetStr = toLocalDateStr(item.targetDate);
+      const followupStr = toLocalDateStr(item.nextFollowupAt);
+
+      return (
+        createdStr === targetDateStr ||
+        updatedStr === targetDateStr ||
+        targetStr === targetDateStr ||
+        followupStr === targetDateStr
+      );
     });
   };
 
@@ -237,6 +253,9 @@ export default function Leads() {
   const fetchLeads = async () => {
     try {
       const params = filterStage ? { stage: filterStage } : {};
+      if (!isManagerOrAdmin || user?.role === 'SALES_TRIAL' || user?.role === 'SALES_EXECUTIVE') {
+        params.myLeadsOnly = 'true';
+      }
       const response = await leadsApi.getLeads(params);
       if (response.success) setLeads(response.data.leads || []);
     } catch (error) {
@@ -319,10 +338,42 @@ export default function Leads() {
           list = fallbackRes.employees;
         }
       }
-      setExecutives(list.filter(e => 
+      let filteredRegular = list.filter(e => 
         !String(e.role || '').toUpperCase().includes('MANAGER') &&
         !String(e.position || '').toUpperCase().includes('MANAGER')
-      ));
+      );
+
+      // Fetch active Sales Trial Users & merge with executives list
+      try {
+        const trialRes = await salesTrialApi.getTrialUsers();
+        if (trialRes && trialRes.success) {
+          const trialUsersList = trialRes.data?.users || [];
+          const activeTrial = trialUsersList.filter(u => u.status === 'ACTIVE' || u.isApproved);
+          
+          const seen = new Set(filteredRegular.map(e => String(e._id || e.employeeId || '')));
+          activeTrial.forEach(u => {
+            const uId = String(u._id || u.trialId || '');
+            if (uId && !seen.has(uId)) {
+              seen.add(uId);
+              filteredRegular.push({
+                _id: u._id,
+                name: `${u.fullName || u.name} (${u.trialId || 'Sales Trial'})`,
+                fullName: `${u.fullName || u.name} (${u.trialId || 'Sales Trial'})`,
+                email: u.email,
+                department: 'SALES_TRIAL',
+                position: 'Sales Trial Executive',
+                role: 'SALES_TRIAL',
+                employeeId: u.trialId,
+                isTrial: true
+              });
+            }
+          });
+        }
+      } catch (errTrial) {
+        console.warn('Trial users fetch notice in Leads:', errTrial.message);
+      }
+
+      setExecutives(filteredRegular);
     } catch (err) {
       console.error("Failed to load sales team:", err);
     }
@@ -654,6 +705,8 @@ export default function Leads() {
   const assignedCount = leads.filter(l => !isUnassigned(l)).length;
 
   const filteredLeads = getFilteredByDate(leads).filter(lead => {
+    if (!isManagerOrAdmin && !isAssignedToMe(lead)) return false;
+
     const stageUpper = (lead.stage || '').toUpperCase();
     const isCompleted = completedStages.includes(stageUpper);
 
@@ -1030,10 +1083,10 @@ export default function Leads() {
             <div className="flex items-center gap-2">
               <FiUsers className="text-sky-400" size={14} />
               <span className="text-[10px] text-[var(--crm-heading)] uppercase font-bold tracking-wider">
-                Employee Lead Distribution Summary
+                {isManagerOrAdmin ? 'Employee Lead Distribution Summary' : 'My Assigned Leads Summary'}
               </span>
               <span className="text-[9px] text-[var(--crm-ink-faint)] hidden sm:inline">
-                (Click any employee to filter their assigned leads)
+                {isManagerOrAdmin ? '(Click any employee to filter their assigned leads)' : '(Filtered for your assigned workspace)'}
               </span>
             </div>
             {filterAssignee !== 'ALL' && (
@@ -1047,21 +1100,23 @@ export default function Leads() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-            {/* Unassigned Pill */}
-            <button
-              onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
-              className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                filterAssignee === 'UNASSIGNED'
-                  ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-md ring-1 ring-amber-500'
-                  : 'bg-amber-950/30 text-amber-400/90 border-amber-800/40 hover:bg-amber-950/60'
-              }`}
-            >
-              <FiAlertCircle size={12} />
-              <span>❓ Unassigned Pool</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-900/80 text-amber-200 font-mono font-bold">
-                {executiveWorkloadSummary.unassigned.totalCount} Leads
-              </span>
-            </button>
+            {/* Unassigned Pill - Only for Sales Manager / Admin */}
+            {isManagerOrAdmin && (
+              <button
+                onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
+                className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  filterAssignee === 'UNASSIGNED'
+                    ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-md ring-1 ring-amber-500'
+                    : 'bg-amber-950/30 text-amber-400/90 border-amber-800/40 hover:bg-amber-950/60'
+                }`}
+              >
+                <FiAlertCircle size={12} />
+                <span>❓ Unassigned Pool</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-900/80 text-amber-200 font-mono font-bold">
+                  {executiveWorkloadSummary.unassigned.totalCount} Leads
+                </span>
+              </button>
+            )}
 
             {/* Logged-in User Pill */}
             <button
@@ -1079,8 +1134,8 @@ export default function Leads() {
               </span>
             </button>
 
-            {/* Team Executives Pills */}
-            {executiveWorkloadSummary.list.map(emp => {
+            {/* Team Executives Pills - Only for Sales Manager / Admin */}
+            {isManagerOrAdmin && executiveWorkloadSummary.list.map(emp => {
               const isSelected = String(filterAssignee) === String(emp.id);
               return (
                 <button
@@ -1652,47 +1707,47 @@ export default function Leads() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.97, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-xl shadow-2xl relative text-[var(--crm-ink-soft)]"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-xl shadow-2xl relative text-[var(--crm-ink-soft)] text-left"
             >
-              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-4 text-left">
+              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-line)] pb-4 text-left">
                 <div>
-                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Provision New Lead Node</h2>
-                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Automated Trade Route Sequence</p>
+                  <h2 className="text-lg font-bold text-[var(--crm-heading)]">Provision New Lead Node</h2>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] tracking-wider uppercase font-medium mt-0.5">Automated Trade Route Sequence</p>
                 </div>
-                <button type="button" onClick={() => setShowCreateModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm">
-                  <FiX size={16} />
+                <button type="button" onClick={() => setShowCreateModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 font-bold text-base cursor-pointer">
+                  ✕
                 </button>
               </div>
 
               <form onSubmit={handleCreateLead} className="space-y-4 font-sans text-xs text-left max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Consignee Legal Name *</label>
-                    <input type="text" required value={newLead.customerName} onChange={(e) => setNewLead({ ...newLead, customerName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Corporate buyer identity" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Consignee Legal Name *</label>
+                    <input type="text" required value={newLead.customerName} onChange={(e) => setNewLead({ ...newLead, customerName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Corporate buyer identity" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Company Name</label>
-                    <input type="text" value={newLead.companyName} onChange={(e) => setNewLead({ ...newLead, companyName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Legal Enterprise Designation" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Company Name</label>
+                    <input type="text" value={newLead.companyName} onChange={(e) => setNewLead({ ...newLead, companyName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Legal Enterprise Designation" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Country</label>
-                    <input type="text" value={newLead.country} onChange={(e) => setNewLead({ ...newLead, country: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Target Region Hub" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Country</label>
+                    <input type="text" value={newLead.country} onChange={(e) => setNewLead({ ...newLead, country: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Target Region Hub" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Telephony Target *</label>
-                    <input type="tel" required value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Protected telecom line" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Telephony Target *</label>
+                    <input type="tel" required value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Protected telecom line" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">WhatsApp Vector</label>
-                    <input type="tel" value={newLead.whatsAppNumber} onChange={(e) => setNewLead({ ...newLead, whatsAppNumber: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="WhatsApp Line" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">WhatsApp Vector</label>
+                    <input type="tel" value={newLead.whatsAppNumber} onChange={(e) => setNewLead({ ...newLead, whatsAppNumber: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="WhatsApp Line" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Corporate Email Coordinates</label>
-                    <input type="email" value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="procurement@node.com" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Corporate Email Coordinates</label>
+                    <input type="email" value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="procurement@node.com" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Commodity Sector *</label>
-                    <select required value={newLead.productCategory} onChange={(e) => setNewLead({ ...newLead, productCategory: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]">
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Commodity Sector *</label>
+                    <select required value={newLead.productCategory} onChange={(e) => setNewLead({ ...newLead, productCategory: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none cursor-pointer text-[var(--crm-heading)]">
                       <option value="STONE">STONE</option>
                       <option value="COAL">COAL</option>
                       <option value="TEA">TEA</option>
@@ -1701,20 +1756,20 @@ export default function Leads() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Requirement Date</label>
-                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer [color-scheme:dark]" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Requirement Date</label>
+                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none cursor-pointer text-[var(--crm-heading)]" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation / Budget (INR)</label>
-                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Valuation" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Valuation / Budget (INR)</label>
+                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Deal Valuation" />
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[var(--crm-ink-soft)]/10 mt-4">
-                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-xs font-bold py-3 uppercase rounded-sm hover:bg-[var(--crm-ink-soft)] transition-colors cursor-pointer">
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)] mt-4">
+                  <button type="submit" className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer">
                     Commit Node Record
                   </button>
-                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold py-3 rounded-sm transition-colors cursor-pointer">
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer">
                     Cancel
                   </button>
                 </div>

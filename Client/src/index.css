@@ -256,3 +256,57 @@ textarea {
   background-size: 200% 100%;
   animation: crm-shimmer-sweep 1.6s ease-in-out infinite;
 }
+
+/* ============================================================
+   Standardized Form & Modal Design System (Job Opening Form Style)
+   ============================================================ */
+
+@utility crm-form-label {
+  @apply block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1;
+}
+
+@utility crm-form-input {
+  @apply w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)] placeholder-slate-500 transition;
+}
+
+@utility crm-form-select {
+  @apply w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)] cursor-pointer transition;
+}
+
+@utility crm-form-textarea {
+  @apply w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--crm-heading)]/20 text-[var(--crm-heading)] placeholder-slate-500 resize-none font-sans transition;
+}
+
+@utility crm-btn-submit {
+  @apply py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition active:scale-95 shadow-md flex items-center justify-center gap-2;
+}
+
+@utility crm-btn-cancel {
+  @apply py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition active:scale-95 flex items-center justify-center gap-2;
+}
+
+@utility crm-modal-card {
+  @apply bg-[var(--crm-bg-raised)] rounded-2xl p-6 w-full border border-[var(--crm-line)] shadow-2xl text-[var(--crm-ink-soft)];
+}
+
+/* Fallback automatic form element styling in CRM portal */
+.crm-portal label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.crm-portal input[type="text"],
+.crm-portal input[type="email"],
+.crm-portal input[type="password"],
+.crm-portal input[type="number"],
+.crm-portal input[type="date"],
+.crm-portal input[type="time"],
+.crm-portal input[type="datetime-local"],
+.crm-portal input[type="url"],
+.crm-portal input[type="tel"],
+.crm-portal select,
+.crm-portal textarea {
+  border-radius: 0.75rem;
+}

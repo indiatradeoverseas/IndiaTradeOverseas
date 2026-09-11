@@ -41,6 +41,59 @@ export default function Documents() {
   const [versioningId, setVersioningId] = useState(null);
   const [activeSectionTab, setActiveSectionTab] = useState('CORPORATE'); // 'CORPORATE' | 'EMPLOYEE' | 'ALL'
 
+  const getOwnerDisplayName = (doc) => {
+    if (!doc) return 'N/A';
+
+    if (doc.ownerType === 'USER') {
+      if (doc.ownerId && typeof doc.ownerId === 'object') {
+        if (doc.ownerId.fullName) return doc.ownerId.fullName;
+        if (doc.ownerId.name) return doc.ownerId.name;
+        if (doc.ownerId.email) return doc.ownerId.email;
+      }
+      if (doc.uploadedBy && typeof doc.uploadedBy === 'object') {
+        if (doc.uploadedBy.fullName) return doc.uploadedBy.fullName;
+        if (doc.uploadedBy.name) return doc.uploadedBy.name;
+        if (doc.uploadedBy.email) return doc.uploadedBy.email;
+      }
+      if (typeof doc.ownerId === 'string' && doc.ownerId.trim()) {
+        const str = doc.ownerId.trim();
+        if (!/^[0-9a-fA-F]{24}$/.test(str)) {
+          return str;
+        }
+      }
+      if (doc.fileName) {
+        const cleanFileName = doc.fileName.replace(/\.[^/.]+$/, '');
+        const parts = cleanFileName.split('-').map((p) => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          const candidate = parts[parts.length - 1].replace(/\(\d+\)$/, '').trim();
+          if (candidate && candidate.length > 2 && !/^\d+$/.test(candidate) && !/pdf|doc|docx|jpg|png/i.test(candidate)) {
+            return candidate;
+          }
+        }
+      }
+      return 'Employee Account';
+    }
+
+    if (doc.ownerId && typeof doc.ownerId === 'object') {
+      if (doc.ownerId.companyName) return doc.ownerId.companyName;
+      if (doc.ownerId.customerName) return doc.ownerId.customerName;
+      if (doc.ownerId.fullName) return doc.ownerId.fullName;
+      if (doc.ownerId.name) return doc.ownerId.name;
+    }
+    if (doc.uploadedBy && typeof doc.uploadedBy === 'object') {
+      if (doc.uploadedBy.fullName) return doc.uploadedBy.fullName;
+      if (doc.uploadedBy.name) return doc.uploadedBy.name;
+    }
+    if (typeof doc.ownerId === 'string' && doc.ownerId.trim()) {
+      const str = doc.ownerId.trim();
+      if (!/^[0-9a-fA-F]{24}$/.test(str)) {
+        return str;
+      }
+    }
+
+    return 'System Universal';
+  };
+
   const isApprover = ['ADMIN', 'MANAGER'].includes(user?.role);
   const canUploadNewVersion = (doc) =>
     user?.role === 'ADMIN' || user?.role === 'MANAGER' || doc.uploadedBy === user?._id || doc.uploadedBy?._id === user?._id;
@@ -373,7 +426,7 @@ export default function Documents() {
                 <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-ink-soft)]/15">
                   <th className="py-4 px-5">File Designation</th>
                   <th className="py-4 px-5">Owner Type</th>
-                  <th className="py-4 px-5">Owner Node ID</th>
+                  <th className="py-4 px-5">Owner / Uploader Name</th>
                   <th className="py-4 px-5">Export Doc Type</th>
                   <th className="py-4 px-5">Access Level Authorization</th>
                   <th className="py-4 px-5 text-center">Approval</th>
@@ -413,10 +466,8 @@ export default function Documents() {
                           {doc.ownerType}
                         </span>
                       </td>
-                      <td className="py-4 px-5 font-mono text-xs text-[var(--crm-ink-faint)] text-left">
-                        {doc.ownerType === 'USER'
-                          ? (doc.uploadedBy?.fullName || doc.ownerId?.fullName || doc.ownerId || 'Employee Account')
-                          : (doc.ownerId?.companyName || doc.ownerId?.customerName || doc.ownerId || 'System Universal')}
+                      <td className="py-4 px-5 font-sans font-bold text-xs text-[var(--crm-heading)] text-left">
+                        {getOwnerDisplayName(doc)}
                       </td>
                       <td className="py-4 px-5 text-left">
                         <span className="bg-[var(--crm-bg-sunken)]/60 text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/10 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-wider">

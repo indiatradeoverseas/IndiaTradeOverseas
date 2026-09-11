@@ -7,9 +7,22 @@ const { ok, fail } = require('../../utils/response');
 const { resolveUploadPath, getRelativePath, proxyFromProduction } = require('../../utils/file');
 
 
+const hasHROrAdminAccess = (user) => {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+
+  if (['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(role) || dept === 'ADMIN') return true;
+  if (['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(role) || dept === 'HR' || position.includes('hr')) return true;
+  if (user.jobPermission === true) return true;
+
+  return false;
+};
+
 const hasJobPermission = (user) => {
   if (!user) return false;
-  if (['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user.role)) return true;
+  if (['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes((user.role || '').toUpperCase())) return true;
   return user.jobPermission === true;
 };
 
@@ -52,8 +65,8 @@ const applyJob = async (req, res, next) => {
 
 const listApplications = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can view applications.');
+    if (!hasHROrAdminAccess(req.user)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only HR Manager, HR Executive, and Admins can view job applications.');
     }
 
     // Excludes the resume/cover-letter binary fields - the list view only
@@ -302,8 +315,8 @@ const submitGateLead = async (req, res, next) => {
 
 const listGateLeads = async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(req.user.role)) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only Admins, Managers, and HR can view career leads.');
+    if (!hasHROrAdminAccess(req.user)) {
+      return fail(res, 403, 'FORBIDDEN', 'Access denied. Only HR Manager, HR Executive, and Admins can view career leads.');
     }
 
     const leads = await CareerLead.find().sort({ createdAt: -1 });

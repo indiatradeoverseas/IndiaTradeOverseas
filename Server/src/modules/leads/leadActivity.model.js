@@ -21,8 +21,7 @@ const leadActivitySchema = new mongoose.Schema(
       default: null,
     },
     actorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: mongoose.Schema.Types.Mixed,
       default: null,
     },
     metadata: {

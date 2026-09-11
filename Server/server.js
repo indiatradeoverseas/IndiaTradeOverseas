@@ -148,11 +148,6 @@ function startWebsiteLeadRecoveryWorker() {
   // Do not keep the Node process alive solely because
   // this retry timer exists.
   websiteLeadRetryTimer.unref?.();
-
-
-  console.log(
-    '[Website Lead Recovery] Worker enabled.'
-  );
 }
 
 

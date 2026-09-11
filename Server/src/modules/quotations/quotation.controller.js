@@ -43,6 +43,7 @@ async function pendingQuotations(req, res, next) {
     const Employee = require('../employee/employee.model');
     const User = require('../users/user.model');
     const Admin = require('../admin-auth/admin.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
     const formattedQuotations = await Promise.all(
       quotations.map(async (q) => {
@@ -50,17 +51,18 @@ async function pendingQuotations(req, res, next) {
         const rawReqId = q.requestedBy;
         let reqByObj = null;
 
-        // 1. Resolve requestedBy ID directly across User, Employee, and Admin collections
+        // 1. Resolve requestedBy ID directly across User, Employee, Admin, and SalesTrialUser collections
         if (rawReqId) {
           const reqIdStr = rawReqId._id || rawReqId;
           const userDoc = await User.findById(reqIdStr).select('fullName name email');
           const empDoc = await Employee.findById(reqIdStr).select('name fullName email');
           const adminDoc = await Admin.findById(reqIdStr).select('name fullName email');
-          const found = userDoc || empDoc || adminDoc;
+          const trialDoc = await SalesTrialUser.findById(reqIdStr).select('fullName name email');
+          const found = userDoc || empDoc || adminDoc || trialDoc;
           if (found) {
             reqByObj = {
               _id: found._id,
-              fullName: found.fullName || found.name || 'Staff Member',
+              fullName: found.fullName || found.name || 'Sales Executive',
               email: found.email || ''
             };
           }
@@ -79,7 +81,8 @@ async function pendingQuotations(req, res, next) {
             const userDoc = await User.findById(assigned).select('fullName name email');
             const empDoc = await Employee.findById(assigned).select('name fullName email');
             const adminDoc = await Admin.findById(assigned).select('name fullName email');
-            const found = userDoc || empDoc || adminDoc;
+            const trialDoc = await SalesTrialUser.findById(assigned).select('fullName name email');
+            const found = userDoc || empDoc || adminDoc || trialDoc;
             if (found) {
               reqByObj = {
                 _id: found._id,
@@ -95,7 +98,8 @@ async function pendingQuotations(req, res, next) {
           const cId = doc.leadId.createdBy;
           const userDoc = await User.findById(cId).select('fullName name email');
           const empDoc = await Employee.findById(cId).select('name fullName email');
-          const found = userDoc || empDoc;
+          const trialDoc = await SalesTrialUser.findById(cId).select('fullName name email');
+          const found = userDoc || empDoc || trialDoc;
           if (found) {
             reqByObj = {
               _id: found._id,
@@ -105,7 +109,7 @@ async function pendingQuotations(req, res, next) {
           }
         }
 
-        doc.requestedBy = reqByObj || { fullName: 'Sales Representative' };
+        doc.requestedBy = reqByObj || { fullName: 'Sales Executive' };
         return doc;
       })
     );

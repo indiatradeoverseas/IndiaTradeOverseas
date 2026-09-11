@@ -108,6 +108,12 @@ export const authApi = {
     return localStorage.getItem('token');
   },
 
+  setToken(token) {
+    if (token) {
+      localStorage.setItem('token', token);
+    }
+  },
+
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

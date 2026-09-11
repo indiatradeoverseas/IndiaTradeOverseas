@@ -6,9 +6,9 @@ const { encryptText, decryptText } = require('../../utils/crypto');
 const resolveIdQuery = (id) => {
   const idStr = String(id);
   if (mongoose.isValidObjectId(idStr)) {
-    return { $or: [{ _id: idStr }, { _id: new mongoose.Types.ObjectId(idStr) }] };
+    return { $or: [{ _id: idStr }, { _id: new mongoose.Types.ObjectId(idStr) }, { trialId: idStr }, { employeeId: idStr }] };
   }
-  return { _id: idStr };
+  return { $or: [{ _id: idStr }, { trialId: idStr }, { employeeId: idStr }] };
 };
 
 function calculateAge(dob) {
@@ -75,9 +75,11 @@ async function createUser(data) {
 async function listAllUsers() {
   const User = require('./user.model');
   const Employee = require('../employee/employee.model');
-  const [users, employees] = await Promise.all([
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+  const [users, employees, trialUsers] = await Promise.all([
     User.find().select('-passwordHash').lean(),
-    Employee.find().select('-password').lean()
+    Employee.find().select('-password').lean(),
+    SalesTrialUser.find().select('-passwordHash').lean()
   ]);
 
   const userMap = new Map();
@@ -109,6 +111,24 @@ async function listAllUsers() {
         exportPermission: emp.permissions?.export || false,
         jobPermission: emp.permissions?.job || false,
         createdAt: emp.createdAt || new Date()
+      });
+    }
+  });
+
+  (trialUsers || []).forEach(t => {
+    const key = (t.email || t.trialId || String(t._id)).toLowerCase();
+    if (!userMap.has(key)) {
+      userMap.set(key, {
+        _id: t._id,
+        employeeId: t.trialId,
+        trialId: t.trialId,
+        fullName: t.fullName || t.name || 'Sales Trial Executive',
+        email: t.email,
+        phone: t.phone || '',
+        department: (t.department || 'SALES_TRIAL').toUpperCase(),
+        role: 'SALES_TRIAL',
+        isActive: t.status === 'ACTIVE',
+        createdAt: t.createdAt || new Date()
       });
     }
   });
@@ -277,12 +297,27 @@ function serializeProfile(user, { includePlaintext = false } = {}) {
   delete obj.bankAccountEncrypted;
 
   if (includePlaintext) {
-    obj.salary = user.salaryEncrypted ? decryptText(user.salaryEncrypted) : '';
-    obj.pan = user.panEncrypted ? decryptText(user.panEncrypted) : '';
-    obj.aadhaar = user.aadhaarEncrypted ? decryptText(user.aadhaarEncrypted) : '';
-    obj.bankAccount = user.bankAccountEncrypted ? decryptText(user.bankAccountEncrypted) : '';
+    try {
+      obj.salary = user.salaryEncrypted ? decryptText(user.salaryEncrypted) : '';
+      obj.pan = user.panEncrypted ? decryptText(user.panEncrypted) : '';
+      obj.aadhaar = user.aadhaarEncrypted ? decryptText(user.aadhaarEncrypted) : '';
+      obj.bankAccount = user.bankAccountEncrypted ? decryptText(user.bankAccountEncrypted) : '';
+    } catch (e) {
+      console.warn('Crypto decryption notice in serializeProfile:', e.message);
+    }
   } else {
     obj.hasSalary = Boolean(user.salaryEncrypted);
+  }
+
+  obj.dateOfBirth = obj.dateOfBirth || obj.dob || '';
+  if (obj.dateOfBirth) {
+    try {
+      obj.age = calculateAge(obj.dateOfBirth);
+    } catch (e) {
+      obj.age = obj.age || 28;
+    }
+  } else {
+    obj.age = obj.age || 28;
   }
 
   return obj;
@@ -293,21 +328,44 @@ async function getProfile(targetId, requester) {
   if (!user) {
     const Employee = require('../employee/employee.model');
     user = await Employee.findOne(resolveIdQuery(targetId));
-    if (!user) return null;
+    if (!user) {
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      user = await SalesTrialUser.findOne(resolveIdQuery(targetId));
+      if (!user) return null;
+    }
 
     const obj = user.toObject ? user.toObject() : { ...user };
     delete obj.password;
+    delete obj.passwordHash;
 
-    obj.pan = obj.panCardNumber || '';
-    obj.aadhaar = obj.aadhaarNumber || '';
-    obj.bankAccount = obj.bankAccountNumber || '';
-    obj.bankIFSC = obj.ifscCode || '';
-    obj.address = obj.currentAddress || obj.permanentAddress || '';
-    obj.fatherName = obj.fatherHusbandName || '';
-    obj.dateOfBirth = obj.dob || '';
-    obj.dateOfJoining = obj.joiningDate || '';
+    obj.employeeId = obj.employeeId || obj.trialId || String(obj._id);
+    obj.fullName = obj.fullName || obj.name || 'Sales Trial Executive';
+    obj.pan = obj.panCardNumber || obj.pan || '';
+    obj.aadhaar = obj.aadhaarNumber || obj.aadhaar || '';
+    obj.bankAccount = obj.bankAccountNumber || obj.bankAccount || '';
+    obj.bankIFSC = obj.ifscCode || obj.bankIFSC || '';
+    obj.address = obj.currentAddress || obj.permanentAddress || obj.address || '';
+    obj.fatherName = obj.fatherHusbandName || obj.fatherName || '';
+    obj.dateOfBirth = obj.dob || obj.dateOfBirth || '';
+    if (obj.dateOfBirth) {
+      try {
+        obj.age = calculateAge(obj.dateOfBirth);
+      } catch (e) {
+        obj.age = obj.age || 28;
+      }
+    } else {
+      obj.age = obj.age || 28;
+    }
+    obj.dateOfJoining = obj.joiningDate || obj.dateOfJoining || obj.createdAt || '';
+    obj.role = obj.role || 'SALES_TRIAL';
 
-    const isSelf = requester && requester._id && requester._id.toString() === targetId.toString();
+    const reqId = requester ? String(requester._id || requester.id || '') : '';
+    const targIdStr = String(targetId);
+    const objIdStr = String(user._id);
+
+    const isSelf = Boolean(
+      reqId && (reqId === targIdStr || reqId === objIdStr || (user.trialId && reqId === user.trialId))
+    );
     const requesterRole = requester ? (requester.role || '') : '';
     const isManagerOrAdminUser =
       requesterRole === 'ADMIN' ||
@@ -329,7 +387,8 @@ async function getProfile(targetId, requester) {
 
     return obj;
   }
-  const isSelf = requester._id.toString() === targetId.toString();
+  const reqId = requester ? String(requester._id || requester.id || '') : '';
+  const isSelf = Boolean(reqId && (reqId === String(targetId) || reqId === String(user._id)));
   return serializeProfile(user, { includePlaintext: isSelf });
 }
 
@@ -339,22 +398,65 @@ async function updateOwnProfile(userId, data) {
     if (data[field] !== undefined) updates[field] = data[field];
   }
   if (updates.dateOfBirth !== undefined) {
-    updates.age = calculateAge(updates.dateOfBirth);
+    try {
+      updates.age = calculateAge(updates.dateOfBirth);
+    } catch (e) {}
   }
   if (!Object.keys(updates).length) {
     const error = new Error('NO_VALID_FIELDS');
     throw error;
   }
-  const user = await User.findOneAndUpdate(resolveIdQuery(userId), updates, { new: true, runValidators: true });
+  let user = await User.findOneAndUpdate(resolveIdQuery(userId), updates, { new: true, runValidators: true });
+  if (!user) {
+    const Employee = require('../employee/employee.model');
+    user = await Employee.findOneAndUpdate(resolveIdQuery(userId), updates, { new: true });
+  }
+  if (!user) {
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+    user = await SalesTrialUser.findOneAndUpdate(resolveIdQuery(userId), updates, { new: true });
+    if (user) {
+      return getProfile(userId, { _id: userId });
+    }
+  }
+  if (!user) return null;
   return serializeProfile(user, { includePlaintext: true });
 }
 
 async function updateEmployeeProfile(targetId, data, actor) {
+  const Employee = require('../employee/employee.model');
+  const VERIFICATION_FIELDS = ['aadhaarVerified', 'panVerified', 'bankVerified', 'bankStatementVerified', 'offerLetterVerified', 'experienceLetterVerified'];
+
   let user = await User.findOne(resolveIdQuery(targetId));
+  let employee = await Employee.findOne(resolveIdQuery(targetId));
+
+  const verifUpdates = {};
+  VERIFICATION_FIELDS.forEach(f => {
+    if (data[f] !== undefined) verifUpdates[f] = Boolean(data[f]);
+  });
+
+  if (employee && Object.keys(verifUpdates).length > 0) {
+    Object.assign(employee, verifUpdates);
+    await employee.save();
+  }
+
+  if (user && Object.keys(verifUpdates).length > 0) {
+    Object.assign(user, verifUpdates);
+    await user.save();
+  }
+
   if (!user) {
-    const Employee = require('../employee/employee.model');
-    const employee = await Employee.findOne(resolveIdQuery(targetId));
-    if (!employee) return null;
+    if (!employee) {
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      let trialUser = await SalesTrialUser.findOne(resolveIdQuery(targetId));
+      if (!trialUser) return null;
+
+      if (data.fullName || data.name) trialUser.fullName = data.fullName || data.name;
+      if (data.phone !== undefined) trialUser.phone = data.phone;
+      if (data.position !== undefined) trialUser.position = data.position;
+      Object.assign(trialUser, verifUpdates);
+      await trialUser.save();
+      return getProfile(targetId, actor);
+    }
 
     const fieldMappings = {
       address: 'currentAddress',
@@ -376,7 +478,9 @@ async function updateEmployeeProfile(targetId, data, actor) {
     if (data.aadhaar !== undefined) employee.aadhaarNumber = data.aadhaar;
     if (data.bankAccount !== undefined) employee.bankAccountNumber = data.bankAccount;
     if (data.dateOfBirth !== undefined) {
-      employee.age = calculateAge(data.dateOfBirth);
+      try {
+        employee.age = calculateAge(data.dateOfBirth);
+      } catch (e) {}
     }
 
     await employee.save();
@@ -388,7 +492,9 @@ async function updateEmployeeProfile(targetId, data, actor) {
   }
   if (data.phone !== undefined) user.phone = data.phone;
   if (data.dateOfBirth !== undefined) {
-    user.age = calculateAge(data.dateOfBirth);
+    try {
+      user.age = calculateAge(data.dateOfBirth);
+    } catch (e) {}
   }
 
   if (data.salary !== undefined) user.salaryEncrypted = data.salary ? encryptText(String(data.salary)) : '';
@@ -405,6 +511,7 @@ async function updateEmployeeProfile(targetId, data, actor) {
     user.bankAccountMasked = data.bankAccount ? maskValue(data.bankAccount) : '';
   }
 
+  if (!user.employmentHistory) user.employmentHistory = [];
   user.employmentHistory.push({
     event: 'PROFILE_UPDATED',
     note: 'Profile fields updated by admin/HR',
@@ -423,7 +530,12 @@ async function revealProfileField(targetId, field, actor) {
   if (!user) {
     const Employee = require('../employee/employee.model');
     const employee = await Employee.findOne(resolveIdQuery(targetId));
-    if (!employee) return null;
+    if (!employee) {
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      const trialUser = await SalesTrialUser.findOne(resolveIdQuery(targetId));
+      if (!trialUser) return null;
+      return { field, value: trialUser[field] || '' };
+    }
 
     const fieldMappings = {
       salary: 'salary',

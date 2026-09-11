@@ -27,6 +27,8 @@ import Login from './pages/public/Login';
 import ClientLogin from './pages/public/ClientLogin';
 import EmployeeLogin from './pages/public/EmployeeLogin';
 import AdminLogin from './pages/public/AdminLogin';
+import TrialLogin from './pages/public/TrialLogin';
+import TrialSignUp from './pages/public/TrialSignUp';
 import Signup from './pages/public/Signup';
 import ClientSignup from './pages/public/ClientSignup';
 import EmployeeSignup from './pages/public/EmployeeSignup';
@@ -72,6 +74,7 @@ import TransportManager from './pages/crm/transport/TransportManager';
 import TransportExecutive from './pages/crm/transport/TransportExecutive';
 import DriverMobileView from './pages/crm/transport/DriverMobileView';
 import FinanceDashboard from './pages/crm/FinanceDashboard';
+import ManagerChatSupport from './pages/crm/ManagerChatSupport';
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -205,6 +208,8 @@ function AppLayout() {
     '/client-login',
     '/employee-login',
     '/admin-login',
+    '/trial-login',
+    '/trial-signup',
     '/client-signup',
     '/employee-signup',
     '/device-pending',
@@ -251,6 +256,16 @@ function AppLayout() {
           <Route
             path="/admin-login"
             element={<AdminLogin />}
+          />
+
+          <Route
+            path="/trial-login"
+            element={<TrialLogin />}
+          />
+
+          <Route
+            path="/trial-signup"
+            element={<TrialSignUp />}
           />
 
           <Route
@@ -343,6 +358,15 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/manager-chat"
+              element={
+                <ProtectedRoute>
+                  <ManagerChatSupport />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/crm/sales"
               element={<SalesPerformance />}
             />
@@ -367,6 +391,15 @@ function AppLayout() {
 
             <Route
               path="/crm/trial-dashboard"
+              element={
+                <ProtectedRoute>
+                  <TrialDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/sales-trial-dashboard"
               element={
                 <ProtectedRoute>
                   <TrialDashboard />
@@ -410,12 +443,11 @@ function AppLayout() {
                 (
                   isAdminUser(user) ||
                   [
-                    'MANAGER',
-                    'SALES_MANAGER',
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
                     'HR'
-                  ].includes(user?.role)
+                  ].includes(user?.role) ||
+                  user?.department === 'HR'
                 ) ? (
                   <CareerLeads />
                 ) : (
@@ -438,7 +470,8 @@ function AppLayout() {
                     'SALES',
                     'EMPLOYEE',
                     'SALES_MANAGER',
-                    'SALES_EXECUTIVE'
+                    'SALES_EXECUTIVE',
+                    'SALES_TRIAL'
                   ].includes(user?.role) ||
                   user?.leadPermission === true
                 ) ? (
@@ -463,7 +496,8 @@ function AppLayout() {
                     'SALES',
                     'EMPLOYEE',
                     'SALES_MANAGER',
-                    'SALES_EXECUTIVE'
+                    'SALES_EXECUTIVE',
+                    'SALES_TRIAL'
                   ].includes(user?.role) ||
                   user?.leadPermission === true ||
                   user?.taskPermission === true
