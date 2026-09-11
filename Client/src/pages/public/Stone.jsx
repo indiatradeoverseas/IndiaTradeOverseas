@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useNavigate } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -9,9 +9,12 @@ import {
 } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { softLeadsApi } from '../../api/leads';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import SoftGate from '../../components/gates/SoftGate';
+import StoneRequirementBuilder from '../../components/requirements/StoneRequirementBuilder';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
@@ -111,30 +114,30 @@ const TEASER_LISTINGS = [
 // Official ITO Pakur Stone Rate List — location -> [20MM(5/8), 30MM, 40MM, 10MM] per payment term
 // Source: "ITO Pakur Stone Rate List.pdf". `null` = not available at that location/size (e.g. Malda 40MM).
 const PAKUR_RAW = [
-  ['Kolkata',      [2020, 2020, 1920, 1410], [2090, 2090, 1990, 1480], [2140, 2140, 2040, 1530]],
-  ['Siliguri',     [2330, 2330, 2230, 1755], [2400, 2400, 2300, 1825], [2450, 2450, 2350, 1875]],
-  ['Malda',        [1555, 1555, null, 905],  [1625, 1625, null, 975],  [1675, 1675, null, 1025]],
-  ['Sitamarhi',    [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
-  ['Chhapra',      [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
-  ['Madhepura',    [2455, 2455, 2305, 1855], [2525, 2525, 2375, 1925], [2575, 2575, 2425, 1975]],
-  ['Hajipur',      [2605, 2605, 2455, 2005], [2675, 2675, 2525, 2075], [2725, 2725, 2575, 2125]],
-  ['Katihar',      [2055, 2055, 1905, 1455], [2125, 2125, 1975, 1525], [2175, 2175, 2025, 1575]],
-  ['Purnia',       [2055, 2055, 1905, 1555], [2125, 2125, 1975, 1625], [2175, 2175, 2025, 1675]],
-  ['Bhagalpur',    [1880, 1880, 1830, 1280], [1950, 1950, 1900, 1350], [2000, 2000, 1950, 1400]],
+  ['Kolkata', [2020, 2020, 1920, 1410], [2090, 2090, 1990, 1480], [2140, 2140, 2040, 1530]],
+  ['Siliguri', [2330, 2330, 2230, 1755], [2400, 2400, 2300, 1825], [2450, 2450, 2350, 1875]],
+  ['Malda', [1555, 1555, null, 905], [1625, 1625, null, 975], [1675, 1675, null, 1025]],
+  ['Sitamarhi', [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
+  ['Chhapra', [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
+  ['Madhepura', [2455, 2455, 2305, 1855], [2525, 2525, 2375, 1925], [2575, 2575, 2425, 1975]],
+  ['Hajipur', [2605, 2605, 2455, 2005], [2675, 2675, 2525, 2075], [2725, 2725, 2575, 2125]],
+  ['Katihar', [2055, 2055, 1905, 1455], [2125, 2125, 1975, 1525], [2175, 2175, 2025, 1575]],
+  ['Purnia', [2055, 2055, 1905, 1555], [2125, 2125, 1975, 1625], [2175, 2175, 2025, 1675]],
+  ['Bhagalpur', [1880, 1880, 1830, 1280], [1950, 1950, 1900, 1350], [2000, 2000, 1950, 1400]],
   ['Bihar Sharif', [2380, 2380, 2230, 1780], [2450, 2450, 2300, 1850], [2500, 2500, 2350, 1900]],
-  ['Siwan',        [2730, 2730, 2580, 2130], [2800, 2800, 2650, 2200], [2850, 2850, 2700, 2250]],
-  ['Darbhanga',    [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
-  ['Araria',       [2155, 2155, 2005, 1555], [2225, 2225, 2075, 1625], [2275, 2275, 2125, 1675]],
-  ['Sheikhpura',   [2380, 2380, 2230, 1780], [2450, 2450, 2300, 1850], [2500, 2500, 2350, 1900]],
-  ['Madhubani',    [2605, 2605, 2455, 2005], [2675, 2675, 2525, 2075], [2725, 2725, 2575, 2125]],
-  ['Muzaffarpur',  [2505, 2505, 2355, 1905], [2575, 2575, 2425, 1975], [2625, 2625, 2475, 2025]],
-  ['Kahalgaon',    [1780, 1780, 1630, 1180], [1850, 1850, 1700, 1250], [1900, 1900, 1750, 1300]],
-  ['Patna',        [2480, 2480, 2330, 1880], [2550, 2550, 2400, 1950], [2600, 2600, 2450, 2000]],
-  ['Kishanganj',   [2005, 2005, 1905, 1505], [2075, 2075, 1975, 1575], [2125, 2125, 2025, 1625]],
-  ['Forbesganj',   [2205, 2205, 2055, 1705], [2275, 2275, 2125, 1775], [2325, 2325, 2175, 1825]],
-  ['Naugachia',    [2205, 2205, 2055, 1755], [2275, 2275, 2125, 1825], [2325, 2325, 2175, 1875]],
-  ['Banka',        [1780, 1780, 1630, 1180], [1850, 1850, 1700, 1250], [1900, 1900, 1750, 1300]],
-  ['Sheohar',      [2680, 2680, 2530, 2080], [2750, 2750, 2600, 2150], [2800, 2800, 2650, 2200]]
+  ['Siwan', [2730, 2730, 2580, 2130], [2800, 2800, 2650, 2200], [2850, 2850, 2700, 2250]],
+  ['Darbhanga', [2705, 2705, 2555, 2105], [2775, 2775, 2625, 2175], [2825, 2825, 2675, 2225]],
+  ['Araria', [2155, 2155, 2005, 1555], [2225, 2225, 2075, 1625], [2275, 2275, 2125, 1675]],
+  ['Sheikhpura', [2380, 2380, 2230, 1780], [2450, 2450, 2300, 1850], [2500, 2500, 2350, 1900]],
+  ['Madhubani', [2605, 2605, 2455, 2005], [2675, 2675, 2525, 2075], [2725, 2725, 2575, 2125]],
+  ['Muzaffarpur', [2505, 2505, 2355, 1905], [2575, 2575, 2425, 1975], [2625, 2625, 2475, 2025]],
+  ['Kahalgaon', [1780, 1780, 1630, 1180], [1850, 1850, 1700, 1250], [1900, 1900, 1750, 1300]],
+  ['Patna', [2480, 2480, 2330, 1880], [2550, 2550, 2400, 1950], [2600, 2600, 2450, 2000]],
+  ['Kishanganj', [2005, 2005, 1905, 1505], [2075, 2075, 1975, 1575], [2125, 2125, 2025, 1625]],
+  ['Forbesganj', [2205, 2205, 2055, 1705], [2275, 2275, 2125, 1775], [2325, 2325, 2175, 1825]],
+  ['Naugachia', [2205, 2205, 2055, 1755], [2275, 2275, 2125, 1825], [2325, 2325, 2175, 1875]],
+  ['Banka', [1780, 1780, 1630, 1180], [1850, 1850, 1700, 1250], [1900, 1900, 1750, 1300]],
+  ['Sheohar', [2680, 2680, 2530, 2080], [2750, 2750, 2600, 2150], [2800, 2800, 2650, 2200]]
 ];
 
 const PAKUR_SIZE_KEYS = ['20mm', '30mm', '40mm', '10mm'];
@@ -157,31 +160,31 @@ const PAYMENT_TERMS = [
 // Official Bhutan Stone Material Rate Card — location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
 // Source: "Bhutan Stone Rate List.pdf". Note on the card: up to Rs 100 may be negotiated off the listed rate.
 const BHUTAN_RAW = [
-  ['Jalpaiguri',      'West Bengal', [1130, 1230, 1600, 1510, 1530, 1430, 1610, 1835, 1795, 1730]],
-  ['Siliguri',        'West Bengal', [1180, 1280, 1650, 1560, 1580, 1480, 1660, 1885, 1845, 1780]],
-  ['Sonapur',         'West Bengal', [1200, 1300, 1670, 1580, 1600, 1500, 1680, 1905, 1865, 1800]],
-  ['Islampur',        'West Bengal', [1230, 1330, 1700, 1610, 1630, 1530, 1710, 1935, 1895, 1830]],
-  ['Kanki',            'West Bengal', [1300, 1400, 1770, 1680, 1700, 1600, 1780, 2005, 1965, 1900]],
-  ['Thakurganj',       'Bihar', [1230, 1330, 1700, 1610, 1630, 1530, 1710, 1935, 1895, 1830]],
-  ['Kishanganj',       'Bihar', [1280, 1380, 1750, 1660, 1680, 1580, 1760, 1985, 1945, 1880]],
-  ['Bahadurganj',      'Bihar', [1330, 1430, 1800, 1710, 1730, 1630, 1810, 2035, 1995, 1930]],
-  ['Araria',           'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
-  ['Kursakata',        'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
-  ['Bardha',           'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
-  ['Supaul',           'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
-  ['Forbisganj',       'Bihar', [1410, 1510, 1880, 1790, 1810, 1710, 1890, 2115, 2075, 2010]],
-  ['Narpatganj',       'Bihar', [1430, 1530, 1900, 1810, 1830, 1730, 1910, 2135, 2095, 2030]],
-  ['Kositool',         'Bihar', [1480, 1580, 1950, 1860, 1880, 1780, 1960, 2185, 2145, 2080]],
-  ['Birpur',           'Bihar', [1480, 1580, 1950, 1860, 1880, 1780, 1960, 2185, 2145, 2080]],
-  ['Phulparas',        'Bihar', [1530, 1630, 2000, 1910, 1930, 1830, 2010, 2235, 2195, 2130]],
-  ['Narhiya S Bihar',  'Bihar', [1530, 1630, 2000, 1910, 1930, 1830, 2010, 2235, 2195, 2130]],
-  ['Jhanjharpur',      'Bihar', [1580, 1680, 2050, 1960, 1980, 1880, 2060, 2285, 2245, 2180]],
-  ['Khutauna',         'Bihar', [1580, 1680, 2050, 1960, 1980, 1880, 2060, 2285, 2245, 2180]],
-  ['Darbhanga',        'Bihar', [1630, 1730, 2100, 2010, 2030, 1930, 2110, 2335, 2295, 2230]],
-  ['Madhubani',        'Bihar', [1630, 1730, 2100, 2010, 2030, 1930, 2110, 2335, 2295, 2230]],
-  ['Samastipur',       'Bihar', [1680, 1780, 2150, 2060, 2080, 1980, 2160, 2385, 2345, 2280]],
-  ['Sitamarhi',        'Bihar', [1740, 1840, 2210, 2120, 2140, 2040, 2220, 2445, 2405, 2340]],
-  ['Muzaffarpur',      'Bihar', [1800, 1900, 2270, 2180, 2200, 2100, 2280, 2505, 2465, 2400]]
+  ['Jalpaiguri', 'West Bengal', [1130, 1230, 1600, 1510, 1530, 1430, 1610, 1835, 1795, 1730]],
+  ['Siliguri', 'West Bengal', [1180, 1280, 1650, 1560, 1580, 1480, 1660, 1885, 1845, 1780]],
+  ['Sonapur', 'West Bengal', [1200, 1300, 1670, 1580, 1600, 1500, 1680, 1905, 1865, 1800]],
+  ['Islampur', 'West Bengal', [1230, 1330, 1700, 1610, 1630, 1530, 1710, 1935, 1895, 1830]],
+  ['Kanki', 'West Bengal', [1300, 1400, 1770, 1680, 1700, 1600, 1780, 2005, 1965, 1900]],
+  ['Thakurganj', 'Bihar', [1230, 1330, 1700, 1610, 1630, 1530, 1710, 1935, 1895, 1830]],
+  ['Kishanganj', 'Bihar', [1280, 1380, 1750, 1660, 1680, 1580, 1760, 1985, 1945, 1880]],
+  ['Bahadurganj', 'Bihar', [1330, 1430, 1800, 1710, 1730, 1630, 1810, 2035, 1995, 1930]],
+  ['Araria', 'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Kursakata', 'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Bardha', 'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Supaul', 'Bihar', [1380, 1480, 1850, 1760, 1780, 1680, 1860, 2085, 2045, 1980]],
+  ['Forbisganj', 'Bihar', [1410, 1510, 1880, 1790, 1810, 1710, 1890, 2115, 2075, 2010]],
+  ['Narpatganj', 'Bihar', [1430, 1530, 1900, 1810, 1830, 1730, 1910, 2135, 2095, 2030]],
+  ['Kositool', 'Bihar', [1480, 1580, 1950, 1860, 1880, 1780, 1960, 2185, 2145, 2080]],
+  ['Birpur', 'Bihar', [1480, 1580, 1950, 1860, 1880, 1780, 1960, 2185, 2145, 2080]],
+  ['Phulparas', 'Bihar', [1530, 1630, 2000, 1910, 1930, 1830, 2010, 2235, 2195, 2130]],
+  ['Narhiya S Bihar', 'Bihar', [1530, 1630, 2000, 1910, 1930, 1830, 2010, 2235, 2195, 2130]],
+  ['Jhanjharpur', 'Bihar', [1580, 1680, 2050, 1960, 1980, 1880, 2060, 2285, 2245, 2180]],
+  ['Khutauna', 'Bihar', [1580, 1680, 2050, 1960, 1980, 1880, 2060, 2285, 2245, 2180]],
+  ['Darbhanga', 'Bihar', [1630, 1730, 2100, 2010, 2030, 1930, 2110, 2335, 2295, 2230]],
+  ['Madhubani', 'Bihar', [1630, 1730, 2100, 2010, 2030, 1930, 2110, 2335, 2295, 2230]],
+  ['Samastipur', 'Bihar', [1680, 1780, 2150, 2060, 2080, 1980, 2160, 2385, 2345, 2280]],
+  ['Sitamarhi', 'Bihar', [1740, 1840, 2210, 2120, 2140, 2040, 2220, 2445, 2405, 2340]],
+  ['Muzaffarpur', 'Bihar', [1800, 1900, 2270, 2180, 2200, 2100, 2280, 2505, 2465, 2400]]
 ];
 
 const BHUTAN_TYPE_KEYS = ['dust', 'white10', 'white20', 'white3040', 'white30', 'white4060', 'black10', 'black20', 'black30', 'black4060'];
@@ -217,8 +220,6 @@ export default function Stone() {
   const [userAccessLayer, setUserAccessLayer] = useState(1);
   const [isSessionLoading, setIsLoadingSession] = useState(true);
   const [showEntryGate, setShowEntryGate] = useState(() => {
-    // Dev-only escape hatch (stripped out of production builds) so the storefront —
-    // including the Testimonials section — can be previewed locally without the OTP gate.
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('previewTestimonials') === '1') {
       return false;
     }
@@ -237,10 +238,16 @@ export default function Stone() {
   const [orderQuantity, setOrderQuantity] = useState('500');
 
   // Official Rate Card Selector (Layer 5 marketplace pricing)
-  const [rateDivision, setRateDivision] = useState('PAKUR'); // 'PAKUR' | 'BHUTAN'
+  const [rateDivision, setRateDivision] = useState('PAKUR');
   const [rateLocation, setRateLocation] = useState(PAKUR_RATES[0].location);
   const [rateGrade, setRateGrade] = useState(PAKUR_SIZE_KEYS[0]);
   const [ratePaymentTerm, setRatePaymentTerm] = useState('ADVANCE_100');
+
+  // New Soft Gate / Requirement Builder State
+  const [showRequirementBuilder, setShowRequirementBuilder] = useState(false);
+  const [builtRequirement, setBuiltRequirement] = useState(null);
+  const [showSoftGate, setShowSoftGate] = useState(false);
+  const [softGateLeadId, setSoftGateLeadId] = useState(null);
 
   // Global Navbar Visibility Control
   useEffect(() => {
@@ -407,10 +414,48 @@ export default function Stone() {
     const savedId = localStorage.getItem('ito_stone_buyer_id');
     const token = localStorage.getItem('distributor_token');
     if (!savedId || !token) {
-      setShowEntryGate(true);
+      setShowRequirementBuilder(true);
+      pushDataLayerEvent('view_product', { division: 'STONE' });
     } else {
       setUserAccessLayer(5);
     }
+  };
+
+  const handleRequirementComplete = (requirement) => {
+    setBuiltRequirement(requirement);
+    setShowRequirementBuilder(false);
+    setShowSoftGate(true);
+  };
+
+  const navigate = useNavigate();
+
+  const handleSoftGateSuccess = (leadId, requirement) => {
+    setSoftGateLeadId(leadId);
+    setShowSoftGate(false);
+    toast.success('Enquiry submitted! Redirecting to pricing...');
+
+    // Build query string for pricing page
+    const material = requirement.material || '';
+    const location = requirement.destination?.location || '';
+    const quantity = requirement.quantity || '';
+    const timeline = requirement.timeline || '';
+    const type = material.startsWith('PAKUR_') ? 'PAKUR' : 'BHUTAN';
+
+    const params = new URLSearchParams({
+      material,
+      location,
+      quantity,
+      timeline,
+      type,
+    }).toString();
+
+    // Navigate to pricing page
+    navigate(`/stone/pricing?${params}`);
+  };
+
+  const handleSoftGateClose = () => {
+    setShowSoftGate(false);
+    setBuiltRequirement(null);
   };
 
   // Reset location/grade whenever the division toggle changes
@@ -446,18 +491,6 @@ export default function Stone() {
     });
     setIsOrderDrawerOpen(true);
   };
-
-  if (showEntryGate) {
-    return (
-      <BuyerEntryGate
-        theme={STONE_GATE_THEME}
-        division="STONE"
-        requireOtp={true}
-        onVerified={handleGateVerified}
-        mascotSrc="/images/walking-man.png"
-      />
-    );
-  }
 
   if (isSessionLoading) {
     return (
@@ -500,11 +533,11 @@ export default function Stone() {
       {/* ================= LAYER 5: APPROVED BUYER MARKETPLACE ================= */}
       {userAccessLayer === 5 && (
         <div className="min-h-screen bg-[#F4F2EE] font-sans text-[#37424B] antialiased pt-3 sm:pt-6 pb-20 sm:pb-24">
-          
+
           {/* Header B2B Terminal Bar */}
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-4 sm:mb-8">
             <div className="bg-[#37424B] text-white rounded-xl p-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border border-[#C5A059]/30 shadow-xl">
-              
+
               <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/10 rounded flex items-center justify-center text-[#C5A059] font-serif text-base sm:text-lg font-bold border border-white/15 shrink-0">
@@ -553,7 +586,7 @@ export default function Stone() {
           </div>
 
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-8">
-            
+
             {/* Banner */}
             <div className="bg-gradient-to-br from-[#37424B] via-[#6D6760] to-[#252C34] rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[#C5A059]/30 shadow-xl text-white">
               <div className="space-y-2.5 sm:space-y-3 relative z-10 max-w-3xl text-left">
@@ -608,11 +641,10 @@ export default function Stone() {
                                 </div>
 
                                 <div className="flex items-center justify-between sm:justify-end gap-2">
-                                  <span className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                                    prop.status === 'approved' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                                  <span className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider border ${prop.status === 'approved' ? 'bg-amber-50 text-amber-800 border-amber-300' :
                                     prop.status === 'disapproved' ? 'bg-rose-50 text-rose-700 border-rose-300' :
-                                    'bg-slate-100 text-slate-700 border-slate-300'
-                                  }`}>
+                                      'bg-slate-100 text-slate-700 border-slate-300'
+                                    }`}>
                                     {prop.status === 'approved' ? 'Invoice Issued' : prop.status === 'disapproved' ? 'Rejected' : 'Under Review'}
                                   </span>
 
@@ -809,11 +841,10 @@ export default function Stone() {
                             toast.error(err.response?.data?.message || err.message || "Gateway initialization failed.");
                           }
                         }}
-                        className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md ${
-                          myProposals.filter(p => p.status === 'approved').length > 0
+                        className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md ${myProposals.filter(p => p.status === 'approved').length > 0
                           ? 'bg-[#37424B] hover:bg-[#252c34] active:scale-98 text-white cursor-pointer'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                        }`}
+                          }`}
                       >
                         <FiCheckCircle /> Proceed to Settlement
                       </button>
@@ -836,18 +867,16 @@ export default function Stone() {
                   <button
                     type="button"
                     onClick={() => setRateDivision('PAKUR')}
-                    className={`flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
-                      rateDivision === 'PAKUR' ? 'bg-[#37424B] text-white border-[#37424B]' : 'bg-[#F4F2EE] text-[#6D6760] border-[#DCCCB4]'
-                    }`}
+                    className={`flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${rateDivision === 'PAKUR' ? 'bg-[#37424B] text-white border-[#37424B]' : 'bg-[#F4F2EE] text-[#6D6760] border-[#DCCCB4]'
+                      }`}
                   >
                     Pakur Stone
                   </button>
                   <button
                     type="button"
                     onClick={() => setRateDivision('BHUTAN')}
-                    className={`flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
-                      rateDivision === 'BHUTAN' ? 'bg-[#37424B] text-white border-[#37424B]' : 'bg-[#F4F2EE] text-[#6D6760] border-[#DCCCB4]'
-                    }`}
+                    className={`flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${rateDivision === 'BHUTAN' ? 'bg-[#37424B] text-white border-[#37424B]' : 'bg-[#F4F2EE] text-[#6D6760] border-[#DCCCB4]'
+                      }`}
                   >
                     Bhutan Stone
                   </button>
@@ -1285,6 +1314,51 @@ export default function Stone() {
               </motion.div>
             </div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------- Premium Requirement Builder Modal (STONE) ---------- */}
+      <AnimatePresence>
+        {showRequirementBuilder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs"
+            onClick={() => setShowRequirementBuilder(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl
+                   bg-[#2B333A] border border-[#C5A059]/30"
+              onClick={e => e.stopPropagation()}>
+              {/* Header – brand gradient */}
+              <div className="flex items-center justify-between p-5 border-b border-[#C5A059]/30
+                        bg-gradient-to-r from-[#37424B] to-[#2B333A] rounded-t-2xl">
+                <h3 className="text-xl font-serif text-[#F4F2EE] uppercase tracking-wide">
+                  Build Your Stone Requirement
+                </h3>
+                <button onClick={() => setShowRequirementBuilder(false)}
+                  className="p-1 rounded-lg text-[#A89E8E] hover:text-[#F4F2EE] hover:bg-[#C5A059]/20 transition">
+                  <FiX size={24} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <StoneRequirementBuilder onComplete={handleRequirementComplete} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Soft Gate Modal */}
+      <AnimatePresence>
+        {showSoftGate && builtRequirement && (
+          <SoftGate
+            division="STONE"
+            requirement={builtRequirement}
+            theme={STONE_GATE_THEME}
+            onSuccess={handleSoftGateSuccess}
+            onClose={handleSoftGateClose}
+          />
         )}
       </AnimatePresence>
 

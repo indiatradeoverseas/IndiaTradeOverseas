@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useNavigate } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -29,9 +29,12 @@ import {
 } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { softLeadsApi } from '../../api/leads';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import SoftGate from '../../components/gates/SoftGate';
+import RiceRequirementBuilder from '../../components/requirements/RiceRequirementBuilder';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
@@ -482,6 +485,12 @@ export default function RicePage() {
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
 
     const [orderQuantity, setOrderQuantity] = useState('20000');
+
+    // New Soft Gate / Requirement Builder State
+    const [showRequirementBuilder, setShowRequirementBuilder] = useState(false);
+    const [builtRequirement, setBuiltRequirement] = useState(null);
+    const [showSoftGate, setShowSoftGate] = useState(false);
+    const [softGateLeadId, setSoftGateLeadId] = useState(null);
 
 
     /* =====================================================
@@ -950,13 +959,44 @@ export default function RicePage() {
             );
 
         if (!savedId || !token) {
-
-            setShowEntryGate(true);
-
+            setShowRequirementBuilder(true);
+            pushDataLayerEvent('view_product', { division: 'RICE' });
         } else {
-
             setUserAccessLayer(5);
         }
+    };
+
+    const handleRequirementComplete = (requirement) => {
+        setBuiltRequirement(requirement);
+        setShowRequirementBuilder(false);
+        setShowSoftGate(true);
+    };
+
+    const navigate = useNavigate();
+
+    const handleSoftGateSuccess = (leadId, requirement) => {
+        setSoftGateLeadId(leadId);
+        setShowSoftGate(false);
+        toast.success('Enquiry submitted! Redirecting to pricing...');
+
+        const variety = requirement.variety || '';
+        const location = requirement.destination?.location || '';
+        const quantity = requirement.quantity || '';
+        const timeline = requirement.timeline || '';
+
+        const params = new URLSearchParams({
+            variety,
+            location,
+            quantity,
+            timeline,
+        }).toString();
+
+        navigate(`/rice/pricing?${params}`);
+    };
+
+    const handleSoftGateClose = () => {
+        setShowSoftGate(false);
+        setBuiltRequirement(null);
     };
 
 
@@ -1003,7 +1043,7 @@ export default function RicePage() {
         if (
             entry &&
             entry.rates[rateProcessingType] ==
-                null
+            null
         ) {
 
             setRateProcessingType(
@@ -1042,11 +1082,11 @@ export default function RicePage() {
     const availableProcessingTypes =
         activeRiceRateEntry
             ? RICE_PROCESSING_KEYS.filter(
-                  (key) =>
-                      activeRiceRateEntry.rates[
-                          key
-                      ] != null
-              )
+                (key) =>
+                    activeRiceRateEntry.rates[
+                    key
+                    ] != null
+            )
             : [];
 
 
@@ -1065,7 +1105,7 @@ export default function RicePage() {
 
         const processingLabel =
             RICE_PROCESSING_LABELS[
-                rateProcessingType
+            rateProcessingType
             ];
 
         setActiveDrawerLot({
@@ -1106,24 +1146,6 @@ export default function RicePage() {
 
     /* =====================================================
        ENTRY GATE
-    ===================================================== */
-
-    if (showEntryGate) {
-
-        return (
-            <BuyerEntryGate
-                theme={RICE_GATE_THEME}
-                division="RICE"
-                requireOtp={true}
-                onVerified={handleGateVerified}
-                mascotSrc="/images/walking-man.png"
-            />
-        );
-    }
-
-
-    /* =====================================================
-       SESSION LOADING
     ===================================================== */
 
     if (isSessionLoading) {
@@ -1377,18 +1399,18 @@ export default function RicePage() {
                                                 'approved'
                                         ).length > 0 && (
 
-                                            <span className="absolute -top-1.5 -right-1.5 bg-[#D9B85C] text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce">
+                                                <span className="absolute -top-1.5 -right-1.5 bg-[#D9B85C] text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce">
 
-                                                {
-                                                    myProposals.filter(
-                                                        (p) =>
-                                                            p.status ===
-                                                            'approved'
-                                                    ).length
-                                                }
+                                                    {
+                                                        myProposals.filter(
+                                                            (p) =>
+                                                                p.status ===
+                                                                'approved'
+                                                        ).length
+                                                    }
 
-                                            </span>
-                                        )}
+                                                </span>
+                                            )}
 
                                     </button>
 
@@ -1549,15 +1571,14 @@ export default function RicePage() {
                                                                 key={
                                                                     prop._id
                                                                 }
-                                                                className={`p-4 rounded-lg border text-xs font-mono transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-                                                                    prop.status ===
+                                                                className={`p-4 rounded-lg border text-xs font-mono transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${prop.status ===
                                                                     'approved'
-                                                                        ? 'border-amber-200 bg-amber-50/40'
-                                                                        : prop.status ===
-                                                                          'disapproved'
+                                                                    ? 'border-amber-200 bg-amber-50/40'
+                                                                    : prop.status ===
+                                                                        'disapproved'
                                                                         ? 'border-rose-200 bg-rose-50/30'
                                                                         : 'border-slate-200 bg-slate-50/50'
-                                                                }`}
+                                                                    }`}
                                                             >
 
                                                                 <div className="space-y-1">
@@ -1632,25 +1653,24 @@ export default function RicePage() {
                                                                 <div className="shrink-0">
 
                                                                     <span
-                                                                        className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                                                                            prop.status ===
+                                                                        className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${prop.status ===
                                                                             'approved'
-                                                                                ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                                                                : prop.status ===
-                                                                                  'disapproved'
+                                                                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                                                            : prop.status ===
+                                                                                'disapproved'
                                                                                 ? 'bg-rose-100 text-rose-700 border-rose-300'
                                                                                 : 'bg-slate-100 text-slate-700 border-slate-300 animate-pulse'
-                                                                        }`}
+                                                                            }`}
                                                                     >
 
                                                                         {
                                                                             prop.status ===
-                                                                            'approved'
+                                                                                'approved'
                                                                                 ? 'Invoice Issued'
                                                                                 : prop.status ===
-                                                                                  'disapproved'
-                                                                                ? 'Rejected'
-                                                                                : 'Under Review'
+                                                                                    'disapproved'
+                                                                                    ? 'Rejected'
+                                                                                    : 'Under Review'
                                                                         }
 
                                                                     </span>
@@ -1788,7 +1808,7 @@ export default function RicePage() {
 
                                                             throw new Error(
                                                                 orderResult.message ||
-                                                                    'Failed to create payment order.'
+                                                                'Failed to create payment order.'
                                                             );
                                                         }
 
@@ -1868,7 +1888,7 @@ export default function RicePage() {
 
                                                                             throw new Error(
                                                                                 verifyResult.message ||
-                                                                                    'Payment verification failed.'
+                                                                                'Payment verification failed.'
                                                                             );
                                                                         }
 
@@ -1919,7 +1939,7 @@ export default function RicePage() {
                                                                         fetchMyProposals();
 
                                                                     } catch (
-                                                                        verifyErr
+                                                                    verifyErr
                                                                     ) {
 
                                                                         toast.dismiss(
@@ -1928,7 +1948,7 @@ export default function RicePage() {
 
                                                                         toast.error(
                                                                             verifyErr.message ||
-                                                                                'Payment verification failed.'
+                                                                            'Payment verification failed.'
                                                                         );
                                                                     }
                                                                 },
@@ -1963,7 +1983,7 @@ export default function RicePage() {
                                                         checkoutWindow.open();
 
                                                     } catch (
-                                                        err
+                                                    err
                                                     ) {
 
                                                         toast.dismiss(
@@ -1972,21 +1992,20 @@ export default function RicePage() {
 
                                                         toast.error(
                                                             err.message ||
-                                                                'Failed to initiate payment.'
+                                                            'Failed to initiate payment.'
                                                         );
                                                     }
 
                                                 }}
-                                                className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center gap-2 transition-all shadow-md ${
-                                                    myProposals.filter(
-                                                        (p) =>
-                                                            p.status ===
-                                                            'approved'
-                                                    ).length >
+                                                className={`font-mono text-xs font-bold uppercase tracking-wider py-3.5 px-6 rounded-lg flex items-center gap-2 transition-all shadow-md ${myProposals.filter(
+                                                    (p) =>
+                                                        p.status ===
+                                                        'approved'
+                                                ).length >
                                                     0
-                                                        ? 'bg-[#5A4422] hover:bg-[#3d2c16] text-white cursor-pointer'
-                                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                                }`}
+                                                    ? 'bg-[#5A4422] hover:bg-[#3d2c16] text-white cursor-pointer'
+                                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                                    }`}
                                             >
 
                                                 <FiCheckCircle />
@@ -2048,23 +2067,23 @@ export default function RicePage() {
                                         className="flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer"
                                         style={
                                             rateCompliance ===
-                                            'REGULAR'
+                                                'REGULAR'
                                                 ? {
-                                                      backgroundColor:
-                                                          '#5A4422',
-                                                      borderColor:
-                                                          '#5A4422',
-                                                      color:
-                                                          '#FFF9EC'
-                                                  }
+                                                    backgroundColor:
+                                                        '#5A4422',
+                                                    borderColor:
+                                                        '#5A4422',
+                                                    color:
+                                                        '#FFF9EC'
+                                                }
                                                 : {
-                                                      backgroundColor:
-                                                          '#FFF9EC',
-                                                      borderColor:
-                                                          '#F2E3B4',
-                                                      color:
-                                                          '#5A4422'
-                                                  }
+                                                    backgroundColor:
+                                                        '#FFF9EC',
+                                                    borderColor:
+                                                        '#F2E3B4',
+                                                    color:
+                                                        '#5A4422'
+                                                }
                                         }
                                     >
                                         Regular / Conventional
@@ -2081,23 +2100,23 @@ export default function RicePage() {
                                         className="flex-1 py-2.5 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer"
                                         style={
                                             rateCompliance ===
-                                            'COMPLIANCE'
+                                                'COMPLIANCE'
                                                 ? {
-                                                      backgroundColor:
-                                                          '#5A4422',
-                                                      borderColor:
-                                                          '#5A4422',
-                                                      color:
-                                                          '#FFF9EC'
-                                                  }
+                                                    backgroundColor:
+                                                        '#5A4422',
+                                                    borderColor:
+                                                        '#5A4422',
+                                                    color:
+                                                        '#FFF9EC'
+                                                }
                                                 : {
-                                                      backgroundColor:
-                                                          '#FFF9EC',
-                                                      borderColor:
-                                                          '#F2E3B4',
-                                                      color:
-                                                          '#5A4422'
-                                                  }
+                                                    backgroundColor:
+                                                        '#FFF9EC',
+                                                    borderColor:
+                                                        '#F2E3B4',
+                                                    color:
+                                                        '#5A4422'
+                                                }
                                         }
                                     >
                                         EU / UK / USA Compliance
@@ -2194,7 +2213,7 @@ export default function RicePage() {
                                                     >
                                                         {
                                                             RICE_PROCESSING_LABELS[
-                                                                key
+                                                            key
                                                             ]
                                                         }
                                                     </option>
@@ -2220,7 +2239,7 @@ export default function RicePage() {
                                 >
 
                                     {activeRiceRatePriceMT ==
-                                    null ? (
+                                        null ? (
 
                                         <span className="text-xs font-sans text-neutral-500 italic">
                                             Not available for this
@@ -2337,7 +2356,7 @@ export default function RicePage() {
                                     key={heroBgIndex}
                                     src={
                                         HERO_BACKGROUNDS[
-                                            heroBgIndex
+                                        heroBgIndex
                                         ]
                                     }
                                     alt="Bulk rice sourcing and supply from India"
@@ -3630,12 +3649,11 @@ export default function RicePage() {
                                                         idx
                                                     )
                                                 }
-                                                className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                                                    packageIndex ===
+                                                className={`h-1.5 rounded-full transition-all cursor-pointer ${packageIndex ===
                                                     idx
-                                                        ? 'w-5 bg-[#5A4422]'
-                                                        : 'w-1.5 bg-neutral-200'
-                                                }`}
+                                                    ? 'w-5 bg-[#5A4422]'
+                                                    : 'w-1.5 bg-neutral-200'
+                                                    }`}
                                                 aria-label={`Go to packaging ${idx + 1}`}
                                             />
 
@@ -4153,7 +4171,7 @@ export default function RicePage() {
                                                 {(
                                                     Number(
                                                         orderQuantity ||
-                                                            0
+                                                        0
                                                     ) *
                                                     Number(
                                                         activeDrawerLot.price
@@ -4174,7 +4192,7 @@ export default function RicePage() {
                                                         Number(
                                                             orderQuantity
                                                         ) <
-                                                            20000
+                                                        20000
                                                     ) {
 
                                                         toast.error(
@@ -4188,32 +4206,32 @@ export default function RicePage() {
 
 
                                                     const proposalPayload =
-                                                        {
-                                                            distributorId:
-                                                                distributorId,
+                                                    {
+                                                        distributorId:
+                                                            distributorId,
 
-                                                            division:
-                                                                'RICE',
+                                                        division:
+                                                            'RICE',
 
-                                                            lotId:
-                                                                activeDrawerLot.id,
+                                                        lotId:
+                                                            activeDrawerLot.id,
 
-                                                            region:
-                                                                activeDrawerLot.location,
+                                                        region:
+                                                            activeDrawerLot.location,
 
-                                                            grade:
-                                                                activeDrawerLot.variety,
+                                                        grade:
+                                                            activeDrawerLot.variety,
 
-                                                            quantity:
-                                                                Number(
-                                                                    orderQuantity
-                                                                ),
+                                                        quantity:
+                                                            Number(
+                                                                orderQuantity
+                                                            ),
 
-                                                            basePrice:
-                                                                Number(
-                                                                    activeDrawerLot.price
-                                                                )
-                                                        };
+                                                        basePrice:
+                                                            Number(
+                                                                activeDrawerLot.price
+                                                            )
+                                                    };
 
 
                                                     let res;
@@ -4226,7 +4244,7 @@ export default function RicePage() {
                                                             );
 
                                                     } catch (
-                                                        err
+                                                    err
                                                     ) {
 
                                                         console.error(
@@ -4237,7 +4255,7 @@ export default function RicePage() {
                                                             err.response
                                                                 ?.data
                                                                 ?.message ||
-                                                                'Failed to submit sourcing request.'
+                                                            'Failed to submit sourcing request.'
                                                         );
 
                                                         throw err;
@@ -4250,7 +4268,7 @@ export default function RicePage() {
 
                                                         toast.error(
                                                             res.message ||
-                                                                'Failed to submit sourcing request.'
+                                                            'Failed to submit sourcing request.'
                                                         );
 
                                                         throw new Error(
@@ -4281,7 +4299,7 @@ export default function RicePage() {
                                                                 ) *
                                                                 Number(
                                                                     activeDrawerLot.price ||
-                                                                        0
+                                                                    0
                                                                 ),
 
                                                             currency:
@@ -4398,6 +4416,50 @@ export default function RicePage() {
                 </div>
 
             </footer>
+
+            {/* ---------- Premium Requirement Builder Modal (RICE) ---------- */}
+            <AnimatePresence>
+                {showRequirementBuilder && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs"
+                        onClick={() => setShowRequirementBuilder(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl
+                   bg-[#4A3819] border border-[#D9B85C]/30"
+                            onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between p-5 border-b border-[#D9B85C]/30
+                        bg-gradient-to-r from-[#5A4422] to-[#4A3819] rounded-t-2xl">
+                                <h3 className="text-xl font-serif text-[#FFF9EC] uppercase tracking-wide">
+                                    Build Your Rice Requirement
+                                </h3>
+                                <button onClick={() => setShowRequirementBuilder(false)}
+                                    className="p-1 rounded-lg text-[#C9AE81] hover:text-[#FFF9EC] hover:bg-[#D9B85C]/20 transition">
+                                    <FiX size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-6">
+                                <RiceRequirementBuilder onComplete={handleRequirementComplete} />
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Soft Gate Modal */}
+            <AnimatePresence>
+                {showSoftGate && builtRequirement && (
+                    <SoftGate
+                        division="RICE"
+                        requirement={builtRequirement}
+                        theme={RICE_GATE_THEME}
+                        onSuccess={handleSoftGateSuccess}
+                        onClose={handleSoftGateClose}
+                    />
+                )}
+            </AnimatePresence>
 
         </div>
     );
