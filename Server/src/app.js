@@ -103,6 +103,7 @@ const apiRoutes = [
   { path: '/users', router: userRoutes },
   { path: '/leads', router: leadRoutes },
   { path: '/ai/leads', router: leadRoutes },
+  { path: '/soft-leads', router: softLeadRoutes },
   { path: '/quotations', router: quotationRoutes },
   { path: '/dispatches', router: dispatchRoutes },
   { path: '/dispatch', router: dispatchRoutes },
