@@ -42,6 +42,14 @@ const rolePermissions = {
     paymentPermission: true,
     dispatchPermission: true
   },
+  SALES_TRIAL: {
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    quotationPermission: true,
+    paymentPermission: true,
+    dispatchPermission: true
+  },
   ACCOUNTS: {
     paymentPermission: true,
     leadPermission: true,

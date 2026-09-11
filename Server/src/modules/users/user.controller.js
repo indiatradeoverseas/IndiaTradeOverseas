@@ -226,6 +226,28 @@ async function getMyProfile(req, res, next) {
 
 async function updateMyProfile(req, res, next) {
   try {
+    const isSalesTrial = req.user && (
+      req.user.modelName === 'SalesTrialUser' ||
+      req.user.constructor?.modelName === 'SalesTrialUser' ||
+      req.user.role === 'SALES_TRIAL'
+    );
+    if (isSalesTrial) {
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      const payload = { ...req.body };
+      const targetDob = payload.dateOfBirth || payload.dob;
+      if (targetDob) {
+        payload.dob = targetDob;
+        payload.dateOfBirth = targetDob;
+        payload.age = calculateAge(targetDob);
+      }
+      if (payload.address) {
+        payload.currentAddress = payload.address;
+        payload.permanentAddress = payload.address;
+      }
+      await SalesTrialUser.findOneAndUpdate(resolveIdQuery(req.user._id), payload, { new: true });
+      const profile = await userService.getProfile(req.user._id, req.user);
+      return ok(res, { profile }, 'Sales Trial profile updated successfully', 200, req);
+    }
     const isEmployee = req.user && (req.user.modelName === 'Employee' || req.user.constructor.modelName === 'Employee' || !req.user.passwordHash);
     const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin');
     if (isEmployee) {
@@ -548,6 +570,7 @@ async function getMatchingOwnerIds(idOrUser) {
 
   const User = require('./user.model');
   const Employee = require('../employee/employee.model');
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
   let rawId = typeof idOrUser === 'object' ? String(idOrUser._id || idOrUser.id || '') : String(idOrUser);
   if (rawId && rawId !== 'undefined' && rawId !== 'null' && rawId !== 'me') {
@@ -558,21 +581,23 @@ async function getMatchingOwnerIds(idOrUser) {
   }
 
   let email = typeof idOrUser === 'object' ? idOrUser.email : null;
-  let empCode = typeof idOrUser === 'object' ? idOrUser.employeeId : null;
+  let empCode = typeof idOrUser === 'object' ? (idOrUser.employeeId || idOrUser.trialId) : null;
 
   if (!email && rawId && rawId !== 'me') {
     const userDoc = await User.findOne(resolveIdQuery(rawId));
     const empDoc = await Employee.findOne(resolveIdQuery(rawId));
-    const matched = userDoc || empDoc;
+    const trialDoc = await SalesTrialUser.findOne(resolveIdQuery(rawId));
+    const matched = userDoc || empDoc || trialDoc;
     if (matched) {
       email = matched.email;
-      empCode = matched.employeeId;
+      empCode = matched.employeeId || matched.trialId;
     }
   }
 
   if (email) {
     const userByEmail = await User.findOne({ email: { $regex: new RegExp('^' + email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
     const empByEmail = await Employee.findOne({ email: { $regex: new RegExp('^' + email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+    const trialByEmail = await SalesTrialUser.findOne({ email: { $regex: new RegExp('^' + email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
 
     if (userByEmail && userByEmail._id) {
       ids.add(String(userByEmail._id));
@@ -583,6 +608,11 @@ async function getMatchingOwnerIds(idOrUser) {
       ids.add(String(empByEmail._id));
       if (mongoose.isValidObjectId(empByEmail._id)) ids.add(new mongoose.Types.ObjectId(empByEmail._id));
       if (empByEmail.employeeId) ids.add(empByEmail.employeeId);
+    }
+    if (trialByEmail && trialByEmail._id) {
+      ids.add(String(trialByEmail._id));
+      if (mongoose.isValidObjectId(trialByEmail._id)) ids.add(new mongoose.Types.ObjectId(trialByEmail._id));
+      if (trialByEmail.trialId) ids.add(trialByEmail.trialId);
     }
   }
 
@@ -733,6 +763,7 @@ async function uploadMyProfileImage(req, res, next) {
 
     const User = require('./user.model');
     const Employee = require('../employee/employee.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
     // 1. Update User document (using req.user._id)
     const updatedUser = await User.findOneAndUpdate(
@@ -748,9 +779,16 @@ async function uploadMyProfileImage(req, res, next) {
       { new: true }
     );
 
+    // 3. Update SalesTrialUser document
+    const updatedTrialUser = await SalesTrialUser.findOneAndUpdate(
+      resolveIdQuery(req.user._id),
+      { profileImage: fileUrl },
+      { new: true }
+    );
+
     const isAdmin = req.user && (req.user.modelName === 'Admin' || req.user.constructor.modelName === 'Admin');
 
-    let updated = updatedUser || updatedEmployee;
+    let updated = updatedUser || updatedEmployee || updatedTrialUser;
     if (isAdmin) {
       const Admin = require('../admin-auth/admin.model');
       updated = await Admin.findOneAndUpdate(

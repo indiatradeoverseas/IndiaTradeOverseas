@@ -123,15 +123,12 @@ async function createNewVersion({ originalId, file, user }) {
 async function checkAccess(user, doc) {
   if (!user) return false;
 
-  
   if (user.role === 'ADMIN' || user.role === 'MANAGER') return true;
 
-  
   if (doc.accessLevel === 'PUBLIC') {
     return true;
   }
 
-  
   if (doc.accessLevel === 'ADMIN') {
     return user.role === 'ADMIN';
   }
@@ -145,18 +142,22 @@ async function checkAccess(user, doc) {
     return user.role === 'ACCOUNTS';
   }
 
-  
   const { canAccessLead } = require('../leads/lead.service');
+  const mongoose = require('mongoose');
 
   if (doc.ownerType === 'LEAD') {
-    const lead = await Lead.findById(doc.ownerId);
+    const ownerIdVal = doc.ownerId ? (doc.ownerId._id || doc.ownerId) : null;
+    if (!ownerIdVal || !mongoose.Types.ObjectId.isValid(ownerIdVal)) return false;
+    const lead = await Lead.findById(ownerIdVal);
     if (!lead) return false;
     return canAccessLead(user, lead);
   }
 
   if (doc.ownerType === 'QUOTATION') {
+    const ownerIdVal = doc.ownerId ? (doc.ownerId._id || doc.ownerId) : null;
+    if (!ownerIdVal || !mongoose.Types.ObjectId.isValid(ownerIdVal)) return false;
     const Quotation = require('../quotations/quotation.model');
-    const quotation = await Quotation.findById(doc.ownerId);
+    const quotation = await Quotation.findById(ownerIdVal);
     if (!quotation) return false;
     const lead = await Lead.findById(quotation.leadId);
     if (!lead) return false;
@@ -164,8 +165,10 @@ async function checkAccess(user, doc) {
   }
 
   if (doc.ownerType === 'DISPATCH') {
+    const ownerIdVal = doc.ownerId ? (doc.ownerId._id || doc.ownerId) : null;
+    if (!ownerIdVal || !mongoose.Types.ObjectId.isValid(ownerIdVal)) return false;
     const Dispatch = require('../dispatch/dispatch.model');
-    const dispatch = await Dispatch.findById(doc.ownerId);
+    const dispatch = await Dispatch.findById(ownerIdVal);
     if (!dispatch) return false;
     const lead = await Lead.findById(dispatch.leadId);
     if (!lead) return false;
@@ -173,17 +176,166 @@ async function checkAccess(user, doc) {
   }
 
   if (doc.ownerType === 'USER') {
-    return doc.ownerId.toString() === user._id.toString();
+    if (!doc.ownerId || !user?._id) return false;
+    const ownerIdStr = String(doc.ownerId._id || doc.ownerId);
+    const userIdStr = String(user._id);
+    const empDbIdStr = user.employeeDbId ? String(user.employeeDbId) : '';
+    return ownerIdStr === userIdStr || (empDbIdStr && ownerIdStr === empDbIdStr);
   }
 
   return true;
 }
 
 async function getDocumentsForUser(user) {
+  const mongoose = require('mongoose');
   const docs = await Document.find({ isDeleted: false })
-    .populate('uploadedBy', 'fullName')
-    .populate({ path: 'ownerId', model: 'Lead', select: 'customerName companyName leadCode' })
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // 1. Collect LEAD owner IDs
+  const leadIds = docs
+    .filter(d => d.ownerType === 'LEAD' && d.ownerId)
+    .map(d => String(d.ownerId._id || d.ownerId))
+    .filter(Boolean);
+
+  let leadMap = new Map();
+  if (leadIds.length > 0) {
+    const validLeadObjIds = leadIds.filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
+    const leads = await Lead.find({
+      $or: [
+        { _id: { $in: validLeadObjIds } },
+        { _id: { $in: leadIds } }
+      ]
+    }).select('_id customerName companyName leadCode').lean();
+    leads.forEach(l => {
+      leadMap.set(String(l._id), l);
+    });
+  }
+
+  // 2. Collect ALL potential user/employee person IDs (from ownerId and uploadedBy)
+  const personQueryIds = new Set();
+  const personQueryStrings = new Set();
+
+  docs.forEach(d => {
+    // Collect from ownerId
+    if (d.ownerId) {
+      const val = typeof d.ownerId === 'object' ? String(d.ownerId._id || '') : String(d.ownerId);
+      if (val && val !== 'null' && val !== 'undefined') {
+        personQueryStrings.add(val);
+        if (mongoose.Types.ObjectId.isValid(val)) {
+          personQueryIds.add(new mongoose.Types.ObjectId(val));
+        }
+      }
+    }
+    // Collect from uploadedBy
+    if (d.uploadedBy) {
+      const val = typeof d.uploadedBy === 'object' ? String(d.uploadedBy._id || '') : String(d.uploadedBy);
+      if (val && val !== 'null' && val !== 'undefined') {
+        personQueryStrings.add(val);
+        if (mongoose.Types.ObjectId.isValid(val)) {
+          personQueryIds.add(new mongoose.Types.ObjectId(val));
+        }
+      }
+    }
+  });
+
+  let personMap = new Map();
+  if (personQueryStrings.size > 0) {
+    try {
+      const User = require('../users/user.model');
+      const Employee = require('../employee/employee.model');
+
+      const objIdArray = Array.from(personQueryIds);
+      const strArray = Array.from(personQueryStrings);
+
+      const orConditions = [
+        { _id: { $in: strArray } },
+        { employeeId: { $in: strArray } },
+        { email: { $in: strArray } }
+      ];
+      if (objIdArray.length > 0) {
+        orConditions.push({ _id: { $in: objIdArray } });
+      }
+
+      const [usersFound, empsFound] = await Promise.all([
+        User.find({ $or: orConditions }).select('_id employeeId fullName name email role').lean(),
+        Employee.find({ $or: orConditions }).select('_id employeeId fullName name email role position').lean()
+      ]);
+
+      const addPersonToMap = (p) => {
+        const personObj = {
+          _id: p._id,
+          fullName: p.fullName || p.name || 'Employee Account',
+          name: p.fullName || p.name || 'Employee Account',
+          email: p.email || '',
+          role: p.role || p.position || ''
+        };
+        if (p._id) {
+          personMap.set(String(p._id), personObj);
+        }
+        if (p.employeeId) {
+          personMap.set(String(p.employeeId), personObj);
+        }
+        if (p.email) {
+          personMap.set(String(p.email).toLowerCase(), personObj);
+        }
+      };
+
+      usersFound.forEach(addPersonToMap);
+      empsFound.forEach(addPersonToMap);
+    } catch (err) {
+      console.error('Error populating document user/employee owner names:', err);
+    }
+  }
+
+  // Helper to extract employee name from fileName if database person lookup yields nothing
+  const extractNameFromFileName = (fileName) => {
+    if (!fileName) return null;
+    const base = fileName.replace(/\.[^/.]+$/, '');
+    const parts = base.split('-').map(s => s.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const candidate = parts[parts.length - 1].replace(/\(\d+\)$/, '').trim();
+      if (candidate && candidate.length > 2 && !/^\d+$/.test(candidate) && !/pdf|doc|docx|jpg|png/i.test(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  };
+
+  // 3. Attach populated objects back to docs
+  docs.forEach(doc => {
+    // Populate uploadedBy
+    if (doc.uploadedBy) {
+      const idStr = typeof doc.uploadedBy === 'object' ? String(doc.uploadedBy._id || '') : String(doc.uploadedBy);
+      if (personMap.has(idStr)) {
+        doc.uploadedBy = personMap.get(idStr);
+      } else if (personMap.has(idStr.toLowerCase())) {
+        doc.uploadedBy = personMap.get(idStr.toLowerCase());
+      }
+    }
+
+    // Populate ownerId
+    if (doc.ownerType === 'LEAD' && doc.ownerId) {
+      const idStr = typeof doc.ownerId === 'object' ? String(doc.ownerId._id || '') : String(doc.ownerId);
+      if (leadMap.has(idStr)) {
+        doc.ownerId = leadMap.get(idStr);
+      }
+    } else if (doc.ownerType === 'USER' && doc.ownerId) {
+      const idStr = typeof doc.ownerId === 'object' ? String(doc.ownerId._id || '') : String(doc.ownerId);
+      if (personMap.has(idStr)) {
+        doc.ownerId = personMap.get(idStr);
+      } else if (personMap.has(idStr.toLowerCase())) {
+        doc.ownerId = personMap.get(idStr.toLowerCase());
+      } else if (doc.uploadedBy && typeof doc.uploadedBy === 'object' && (doc.uploadedBy.fullName || doc.uploadedBy.name)) {
+        doc.ownerId = doc.uploadedBy;
+      } else {
+        const extracted = extractNameFromFileName(doc.fileName);
+        if (extracted) {
+          doc.ownerId = { fullName: extracted, name: extracted };
+        }
+      }
+    }
+  });
 
   if (!user) {
     return docs.filter((doc) => doc.accessLevel === 'PUBLIC');
@@ -209,3 +361,4 @@ module.exports = {
   checkAccess,
   getDocumentsForUser
 };
+

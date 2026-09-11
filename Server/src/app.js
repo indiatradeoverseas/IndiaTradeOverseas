@@ -30,8 +30,7 @@ const taskRoutes = require('./modules/task/task.routes');
 const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 const payslipRoutes = require('./modules/payslip/payslip.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
-const softLeadRoutes = require('./modules/leads/softLead.routes');
-
+const salesTrialRoutes = require('./modules/sales-trial/salesTrial.routes');
 
 const app = express();
 
@@ -128,7 +127,8 @@ const apiRoutes = [
   { path: '/tasks', router: taskRoutes },
   { path: '/shared-files', router: sharedFileRoutes },
   { path: '/payslips', router: payslipRoutes },
-  { path: '/ai', router: aiRoutes }
+  { path: '/ai', router: aiRoutes },
+  { path: '/sales-trial', router: salesTrialRoutes }
 ];
 
 apiRoutes.forEach(route => {

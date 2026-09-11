@@ -34,7 +34,8 @@ import {
   FiGrid,
   FiMessageSquare,
   FiMoreHorizontal,
-  FiUserPlus
+  FiUserPlus,
+  FiZap
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -44,6 +45,7 @@ import { leaveApi } from '../../api/leave';
 import { attendanceApi } from '../../api/attendance';
 import { taskApi } from '../../api/task';
 import { employeeSignupApi } from '../../api/employee-signup';
+import { salesTrialApi } from '../../api/salesTrialApi';
 import { payslipApi } from '../../api/payslip';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
@@ -118,6 +120,7 @@ export default function HrManagerDashboard() {
 
   // Pending employee registrations state
   const [pendingEmployees, setPendingEmployees] = useState([]);
+  const [pendingTrialUsers, setPendingTrialUsers] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
 
   // New Attendance & Leave dashboard state variables
@@ -313,13 +316,14 @@ export default function HrManagerDashboard() {
     setLoading(true);
     setPendingLoading(true);
     try {
-      const [usersRes, jobsRes, appsRes, leavesRes, attendanceRes, pendingRes] = await Promise.all([
+      const [usersRes, jobsRes, appsRes, leavesRes, attendanceRes, pendingRes, trialUsersRes] = await Promise.all([
         adminApi.getUsers().catch(() => ({ success: false, data: { users: [] } })),
         careersApi.getAllJobs().catch(() => ({ success: false, data: { jobs: [] } })),
         careersApi.getApplications().catch(() => ({ success: false, data: { applications: [] } })),
         leaveApi.getLeaves().catch(() => ({ success: false, data: [] })),
         attendanceApi.getReport().catch(() => ({ success: false })),
-        employeeSignupApi.getPendingEmployees().catch(() => ({ success: false, data: { employees: [] } }))
+        employeeSignupApi.getPendingEmployees().catch(() => ({ success: false, data: { employees: [] } })),
+        salesTrialApi.getTrialUsers().catch(() => ({ success: false, data: { users: [] } }))
       ]);
 
       if (usersRes.success) setEmployees(usersRes.data.users || []);
@@ -342,6 +346,14 @@ export default function HrManagerDashboard() {
 
       if (pendingRes.success) {
         setPendingEmployees(pendingRes.data.employees || []);
+      }
+
+      if (trialUsersRes && trialUsersRes.success) {
+        const trialList = trialUsersRes.data?.users || [];
+        const pendingTrialList = trialList.filter(
+          u => (u.status === 'PENDING_APPROVAL' || !u.isApproved) && u.isOtpVerified !== false
+        );
+        setPendingTrialUsers(pendingTrialList);
       }
 
       await fetchAttendanceLeaveDetails();
@@ -923,6 +935,32 @@ const handleTriggerReset = async () => {
     }
   };
 
+  // Pending Sales Trial registration handlers
+  const handleApprovePendingTrialUser = async (trialId) => {
+    try {
+      const res = await salesTrialApi.approveTrialUser(trialId);
+      if (res && res.success) {
+        toast.success('Sales Trial Executive account approved and activated! 🎉');
+        fetchInitialData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to approve Sales Trial Executive');
+    }
+  };
+
+  const handleRejectPendingTrialUser = async (trialId) => {
+    if (!window.confirm('Reject and deactivate this Sales Trial account?')) return;
+    try {
+      const res = await salesTrialApi.rejectTrialUser(trialId);
+      if (res && res.success) {
+        toast.success('Sales Trial Executive account rejected');
+        fetchInitialData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reject Sales Trial Executive');
+    }
+  };
+
 
   // Filters calculations
   const filteredEmployees = employees.filter(emp => {
@@ -1146,94 +1184,197 @@ const handleTriggerReset = async () => {
 
             {/* TAB 2: PENDING REGISTRATIONS */}
             {activeTab === 'pending_registrations' && (
-              <div className="space-y-4 pb-4">
-                <div className="border p-3 rounded-sm flex flex-col sm:flex-row gap-3 items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-sm bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]">
-                      <FiAlertCircle size={16} />
+              <div className="space-y-6 pb-4 text-left">
+                {/* SECTION 1: SALES TRIAL PENDING APPROVALS */}
+                <div className="space-y-3">
+                  <div className="border p-3.5 rounded-sm flex flex-col sm:flex-row gap-3 items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-sm bg-amber-950/60 border border-amber-700/60 text-amber-400">
+                        <FiZap size={18} className="animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Sales Trial Pending Approvals</h3>
+                          <span className="bg-amber-950 text-amber-400 border border-amber-800 text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase">
+                            {pendingTrialUsers.length} Pending Request{pendingTrialUsers.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-light mt-0.5">
+                          Candidate self-registrations submitted via Sales Trial Portal requiring HR Manager authorization before login.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Pending Employee Registrations</h3>
-                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-light">
-                        {pendingEmployees.length} request{pendingEmployees.length !== 1 ? 's' : ''} awaiting verification
+                    <button
+                      onClick={fetchInitialData}
+                      disabled={pendingLoading}
+                      className="text-[9px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer font-mono"
+                      style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+                    >
+                      {pendingLoading ? 'Refreshing...' : 'Refresh Catalog'}
+                    </button>
+                  </div>
+
+                  {pendingTrialUsers.length === 0 ? (
+                    <div className="border p-6 rounded-sm text-center font-mono" style={CARD}>
+                      <div className="p-2.5 rounded-full w-fit mx-auto mb-2 bg-[var(--crm-bg-sunken)]">
+                        <FiCheckCircle className="text-[var(--crm-positive)]" size={24} />
+                      </div>
+                      <h4 className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider">No Pending Sales Trial Registrations</h4>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-light mt-1">
+                        All candidate self-registration requests for Sales Trial Desk have been reviewed.
                       </p>
                     </div>
-                  </div>
-                  <button
-                    onClick={fetchInitialData}
-                    disabled={pendingLoading}
-                    className="text-[9px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer"
-                    style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
-                  >
-                    {pendingLoading ? 'Refreshing...' : 'Refresh'}
-                  </button>
+                  ) : (
+                    <div className="border rounded-sm overflow-hidden" style={CARD}>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs font-mono">
+                          <thead>
+                            <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
+                              <th className="p-3">Trial ID</th>
+                              <th className="p-3">Candidate Name</th>
+                              <th className="p-3">Email Address</th>
+                              <th className="p-3">Department</th>
+                              <th className="p-3">Position</th>
+                              <th className="p-3">Phone</th>
+                              <th className="p-3">Requested Date</th>
+                              <th className="p-3 text-center">Status</th>
+                              <th className="p-3 text-center">HR Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pendingTrialUsers.map((u) => (
+                              <tr key={u._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
+                                <td className="p-3 font-bold text-amber-400 font-mono">
+                                  <span className="bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded text-[9px]">
+                                    {u.trialId || 'TRL'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-[var(--crm-heading)] font-semibold font-sans">{u.fullName || u.name}</td>
+                                <td className="p-3 text-[var(--crm-ink-soft)]">{u.email}</td>
+                                <td className="p-3">
+                                  <span className="px-2 py-0.5 text-[8px] font-mono rounded bg-teal-950/60 text-teal-300 border border-teal-800 uppercase font-bold">
+                                    SALES_TRIAL
+                                  </span>
+                                </td>
+                                <td className="p-3 text-[var(--crm-ink-soft)]">{u.position || 'Sales Trial Executive'}</td>
+                                <td className="p-3 font-mono text-[10px]">{u.phone || '—'}</td>
+                                <td className="p-3 text-[var(--crm-ink-faint)] text-[9px]">
+                                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="bg-amber-950/90 text-amber-300 border border-amber-700 text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
+                                    PENDING HR APPROVAL
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => handleApprovePendingTrialUser(u._id || u.trialId)}
+                                      className="px-3 py-1.5 text-[9px] font-bold uppercase rounded bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-800 transition cursor-pointer flex items-center gap-1 shadow-sm"
+                                      title="Approve & Activate Sales Trial Login"
+                                    >
+                                      <FiCheckCircle size={12} /> Approve Account
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectPendingTrialUser(u._id || u.trialId)}
+                                      className="px-2.5 py-1.5 text-[9px] font-bold uppercase rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 transition cursor-pointer flex items-center gap-1"
+                                      title="Reject Request"
+                                    >
+                                      <FiXCircle size={12} /> Reject
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {pendingEmployees.length === 0 ? (
-                  <div className="border p-8 rounded-sm text-center" style={CARD}>
-                    <div className="p-3 rounded-full w-fit mx-auto mb-3 bg-[var(--crm-bg-sunken)]">
-                      <FiCheckCircle className="text-[var(--crm-positive)]" size={32} />
+                {/* SECTION 2: PENDING EMPLOYEE REGISTRATIONS */}
+                <div className="space-y-3 pt-4 border-t border-[var(--crm-line)]">
+                  <div className="border p-3.5 rounded-sm flex flex-col sm:flex-row gap-3 items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-sm bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]">
+                        <FiAlertCircle size={16} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Pending Corporate Employee Registrations</h3>
+                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-light">
+                          {pendingEmployees.length} regular staff request{pendingEmployees.length !== 1 ? 's' : ''} awaiting verification
+                        </p>
+                      </div>
                     </div>
-                    <h4 className="text-lg font-medium text-[var(--crm-heading)] mb-1">No Pending Registrations</h4>
-                    <p className="text-xs text-[var(--crm-ink-faint)] font-light">
-                      All employee registration requests have been reviewed.
-                    </p>
                   </div>
-                ) : (
-                  <div className="border rounded-sm overflow-hidden" style={CARD}>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
-                            <th className="p-3">Employee ID</th>
-                            <th className="p-3">Name</th>
-                            <th className="p-3">Email</th>
-                            <th className="p-3">Department</th>
-                            <th className="p-3">Position</th>
-                            <th className="p-3">Phone</th>
-                            <th className="p-3">Requested On</th>
-                            <th className="p-3 text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pendingEmployees.map((emp) => (
-                            <tr key={emp._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
-                              <td className="p-3 font-mono text-[9px] font-bold text-[var(--crm-accent)]">{emp.employeeId}</td>
-                              <td className="p-3 text-[var(--crm-heading)] font-medium">{emp.name}</td>
-                              <td className="p-3 text-[var(--crm-ink-soft)]">{emp.email}</td>
-                              <td className="p-3">
-                                <span className="px-2 py-0.5 text-[8px] font-mono rounded-sm bg-[var(--crm-bg)] border border-[var(--crm-line)]">{emp.department}</span>
-                              </td>
-                              <td className="p-3 text-[var(--crm-ink-soft)]">{emp.position}</td>
-                              <td className="p-3 font-mono text-[9px]">{emp.phone || '—'}</td>
-                              <td className="p-3 text-[var(--crm-ink-faint)] font-mono text-[9px]">
-                                {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                              </td>
-                              <td className="p-3 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                    onClick={() => handleApprovePending(emp._id)}
-                                    className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-white transition-all"
-                                    title="Approve & Activate"
-                                  >
-                                    <FiCheckCircle size={11} className="inline-block mr-1" /> Approve
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectPending(emp._id)}
-                                    className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)] hover:bg-[var(--crm-danger)] hover:text-white transition-all"
-                                    title="Reject"
-                                  >
-                                    <FiXCircle size={11} className="inline-block mr-1" /> Reject
-                                  </button>
-                                </div>
-                              </td>
+
+                  {pendingEmployees.length === 0 ? (
+                    <div className="border p-8 rounded-sm text-center" style={CARD}>
+                      <div className="p-3 rounded-full w-fit mx-auto mb-3 bg-[var(--crm-bg-sunken)]">
+                        <FiCheckCircle className="text-[var(--crm-positive)]" size={32} />
+                      </div>
+                      <h4 className="text-lg font-medium text-[var(--crm-heading)] mb-1">No Pending Employee Registrations</h4>
+                      <p className="text-xs text-[var(--crm-ink-faint)] font-light">
+                        All employee registration requests have been reviewed.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-sm overflow-hidden" style={CARD}>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
+                              <th className="p-3">Employee ID</th>
+                              <th className="p-3">Name</th>
+                              <th className="p-3">Email</th>
+                              <th className="p-3">Department</th>
+                              <th className="p-3">Position</th>
+                              <th className="p-3">Phone</th>
+                              <th className="p-3">Requested On</th>
+                              <th className="p-3 text-center">Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {pendingEmployees.map((emp) => (
+                              <tr key={emp._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
+                                <td className="p-3 font-mono text-[9px] font-bold text-[var(--crm-accent)]">{emp.employeeId}</td>
+                                <td className="p-3 text-[var(--crm-heading)] font-medium">{emp.name}</td>
+                                <td className="p-3 text-[var(--crm-ink-soft)]">{emp.email}</td>
+                                <td className="p-3">
+                                  <span className="px-2 py-0.5 text-[8px] font-mono rounded-sm bg-[var(--crm-bg)] border border-[var(--crm-line)]">{emp.department}</span>
+                                </td>
+                                <td className="p-3 text-[var(--crm-ink-soft)]">{emp.position}</td>
+                                <td className="p-3 font-mono text-[9px]">{emp.phone || '—'}</td>
+                                <td className="p-3 text-[var(--crm-ink-faint)] font-mono text-[9px]">
+                                  {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => handleApprovePending(emp._id)}
+                                      className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-white transition-all"
+                                      title="Approve & Activate"
+                                    >
+                                      <FiCheckCircle size={11} className="inline-block mr-1" /> Approve
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectPending(emp._id)}
+                                      className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)] hover:bg-[var(--crm-danger)] hover:text-white transition-all"
+                                      title="Reject"
+                                    >
+                                      <FiXCircle size={11} className="inline-block mr-1" /> Reject
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
 
@@ -2271,6 +2412,7 @@ const handleTriggerReset = async () => {
                               <tr key={bal._id} className="hover:bg-[var(--crm-bg-raised)]/30">
                                 <td className="p-2 text-[var(--crm-heading)] font-sans font-semibold">
                                   {bal.employeeId?.fullName || bal.employeeId?.name || 'Employee'}
+                                  {bal.employeeId?.position && <span className="text-[9px] font-normal text-[var(--crm-ink-soft)] ml-1">({bal.employeeId.position})</span>}
                                   <span className="block text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase">{bal.employeeId?.department}</span>
                                 </td>
                                 <td className="p-2 text-center text-[var(--crm-positive)] font-bold">{bal.remainingLeaves} / 4</td>
@@ -2893,67 +3035,67 @@ const handleTriggerReset = async () => {
       {/* Job Modal */}
       {showJobModal && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[var(--crm-line)] shadow-2xl text-left">
+          <div className="bg-[var(--crm-bg-raised)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[var(--crm-line)] shadow-2xl text-left">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
-              <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">
+              <h2 className="text-lg font-bold text-[var(--crm-heading)]">
                 {editingJob ? 'Edit Vacancy Posting' : 'Create Job Vacancy'}
               </h2>
               <button onClick={() => setShowJobModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
             </div>
             <form onSubmit={handleJobSubmit} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Job Title *</label>
+                <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Job Title *</label>
                 <input
                   type="text"
                   required
                   value={jobForm.title}
                   onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })}
                   placeholder="e.g. Talent Acquisition Executive"
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)]"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Department *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Department *</label>
                   <input
                     type="text"
                     required
                     value={jobForm.department}
                     onChange={(e) => setJobForm({ ...jobForm, department: e.target.value })}
                     placeholder="e.g. HR, Sales"
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Experience Required *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Experience Required *</label>
                   <input
                     type="text"
                     required
                     value={jobForm.experience}
                     onChange={(e) => setJobForm({ ...jobForm, experience: e.target.value })}
                     placeholder="e.g. 1-3 Years"
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Location *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Location *</label>
                   <input
                     type="text"
                     required
                     value={jobForm.location}
                     onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })}
                     placeholder="e.g. Kishanganj Office"
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Type *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Type *</label>
                   <select
                     value={jobForm.type}
                     onChange={(e) => setJobForm({ ...jobForm, type: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none cursor-pointer text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)]"
                   >
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
@@ -2963,24 +3105,24 @@ const handleTriggerReset = async () => {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Description *</label>
+                <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Description *</label>
                 <textarea
                   required
                   rows={3}
                   value={jobForm.description}
                   onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
                   placeholder="Summarize core roles and operational responsibilities..."
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none resize-none text-[var(--crm-heading)] font-sans"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none text-[var(--crm-heading)] font-sans placeholder-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Requirements (one per line)</label>
+                <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Requirements (one per line)</label>
                 <textarea
                   rows={3}
                   value={jobForm.requirements}
                   onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })}
                   placeholder="e.g. Excellent communications&#10;MS Office literacy"
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none resize-none text-[var(--crm-heading)] font-sans"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none text-[var(--crm-heading)] font-sans placeholder-slate-500"
                 />
               </div>
               <div className="flex items-center gap-2 py-1">
@@ -2989,15 +3131,15 @@ const handleTriggerReset = async () => {
                   id="jobActiveCheckbox"
                   checked={jobForm.isActive}
                   onChange={(e) => setJobForm({ ...jobForm, isActive: e.target.checked })}
-                  className="rounded-sm border-[var(--crm-line)] w-4 h-4 cursor-pointer accent-[var(--crm-accent)]"
+                  className="rounded border-[var(--crm-line)] w-4 h-4 cursor-pointer accent-[var(--crm-heading)]"
                 />
                 <label htmlFor="jobActiveCheckbox" className="text-[var(--crm-ink-soft)] cursor-pointer select-none">Make this posting active on candidate site</label>
               </div>
-              <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
-                <button type="submit" className="flex-1 py-2.5 bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-accent-soft)] rounded-sm font-bold uppercase tracking-wider transition-colors cursor-pointer">
+              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
+                <button type="submit" className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer">
                   {editingJob ? 'Update Listing' : 'Publish Vacancy'}
                 </button>
-                <button type="button" onClick={() => setShowJobModal(false)} className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] rounded-sm text-[var(--crm-ink-soft)] font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                <button type="button" onClick={() => setShowJobModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer">
                   Cancel
                 </button>
               </div>
@@ -3009,19 +3151,19 @@ const handleTriggerReset = async () => {
       {/* Task Allocation Modal */}
       {showTaskModal && (
         <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
+          <div className="bg-[var(--crm-bg-raised)] rounded-2xl p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
-              <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide">Assign Operations Task</h2>
+              <h2 className="text-lg font-bold text-[var(--crm-heading)]">Assign Operations Task</h2>
               <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
             </div>
             <form onSubmit={handleTaskSubmit} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Assign Employee *</label>
+                <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Assign Employee *</label>
                 <select
                   required
                   value={taskForm.assignedTo}
                   onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
                 >
                   <option value="" disabled>Select Team Member</option>
                   {employees.map((emp) => (
@@ -3032,34 +3174,34 @@ const handleTriggerReset = async () => {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Task Title *</label>
+                <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Task Title *</label>
                 <input
                   type="text"
                   required
                   value={taskForm.title}
                   onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
                   placeholder="e.g. Pre-Screening Call & resume sorting"
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)]"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Task Description *</label>
+                <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Task Description *</label>
                 <textarea
                   required
                   rows={3}
                   value={taskForm.description}
                   onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
                   placeholder="Describe task actions, follow-up specifications, and target parameters..."
-                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none resize-none text-[var(--crm-heading)] font-sans"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none text-[var(--crm-heading)] font-sans placeholder-slate-500"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Priority *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Priority *</label>
                   <select
                     value={taskForm.priority}
                     onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none cursor-pointer text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)]"
                   >
                     <option value="HIGH">HIGH</option>
                     <option value="MEDIUM">MEDIUM</option>
@@ -3067,21 +3209,21 @@ const handleTriggerReset = async () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Due Date *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Due Date *</label>
                   <input
                     type="date"
                     required
                     value={taskForm.dueDate}
                     onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)]/55 rounded-sm text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] cursor-pointer"
                   />
                 </div>
               </div>
-              <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
-                <button type="submit" className="flex-1 py-2.5 bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-accent-soft)] rounded-sm font-bold uppercase tracking-wider transition-colors cursor-pointer">
+              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
+                <button type="submit" className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer">
                   Assign Task
                 </button>
-                <button type="button" onClick={() => setShowTaskModal(false)} className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] rounded-sm text-[var(--crm-ink-soft)] font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                <button type="button" onClick={() => setShowTaskModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer">
                   Cancel
                 </button>
               </div>

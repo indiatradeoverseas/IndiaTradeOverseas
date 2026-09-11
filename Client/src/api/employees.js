@@ -17,6 +17,11 @@ export const employeesApi = {
     return response.data;
   },
 
+  async updateEmployee(id, data) {
+    const response = await axiosInstance.patch(`/users/${id}/profile`, data);
+    return response.data;
+  },
+
   async getEmployeesCount(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     const response = await axiosInstance.get(`/employees/count${queryString ? `?${queryString}` : ''}`);

@@ -24,7 +24,8 @@ import {
   FiCreditCard,
   FiCheckCircle,
   FiPhoneCall,
-  FiClock
+  FiClock,
+  FiMessageSquare
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -171,11 +172,32 @@ function isDriverRole(user) {
   return role === 'DRIVER' || pos.includes('driver');
 }
 
+function isSalesTrialExecutive(user) {
+  return (
+    user?.role === 'SALES_TRIAL' ||
+    user?.department === 'SALES_TRIAL' ||
+    user?.position?.toLowerCase()?.includes('trial')
+  );
+}
+
 // ─────────────────────────────────────────────
 // Main sidebar navigation items
 // ─────────────────────────────────────────────
 export function getCrmMainNavItems(user) {
   const admin = isAdminUser(user);
+
+  // 0. SALES TRIAL EXECUTIVE: Sales Dashboard, Leads, Follow Up, My Profile, Notifications, Support Tickets, My Tasks
+  if (!admin && isSalesTrialExecutive(user)) {
+    return [
+      { to: '/crm/trial-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
+      { to: '/crm/leads', label: 'Leads', icon: FiUsers },
+      { to: '/crm/followup', label: 'Follow Up', icon: FiPhoneCall },
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+      { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
+      { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+      { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare }
+    ];
+  }
 
   // 1. DRIVER: Driver Dashboard, Completed & Delivered Loads, Payment Proof, Support Tickets & My Profile
   if (!admin && isDriverRole(user)) {
@@ -296,6 +318,13 @@ export function getCrmMainNavItems(user) {
 
     // Support Tickets — Available to all employees for raising tickets/grievances
     { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+
+    // Executive Manager Chat Support — Available for all CRM users
+    {
+      to: '/crm/manager-chat',
+      label: 'Executive Chat Support',
+      icon: FiMessageSquare
+    },
 
     // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },

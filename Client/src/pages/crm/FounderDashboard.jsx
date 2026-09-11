@@ -76,7 +76,7 @@ const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
 const fmtNumber = (val) => (val || 0).toLocaleString('en-IN');
 const formatDate = (d) => d.toISOString().slice(0, 10);
 
-const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs) => {
+const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs, perfPeriod = 'monthly') => {
   if (!summary) {
     toast.error('No data to export. Please refresh the dashboard.');
     return;
@@ -162,7 +162,7 @@ const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptC
     ['LEAVE REQUESTS PENDING'],
     ['Employee', 'Department', 'Type', 'From', 'To', 'Days', 'Reason'],
     ...leaves.map(lv => [
-      lv.employeeId?.name || 'Unknown',
+      lv.employeeName || lv.employeeId?.fullName || lv.employeeId?.name || (typeof lv.employeeId === 'object' ? (lv.employeeId?.email || lv.employeeId?.employeeId || lv.employeeId?._id) : lv.employeeId) || 'Employee',
       lv.employeeId?.department || '—',
       lv.leaveType?.replace('_', ' ') || '—',
       new Date(lv.fromDate).toLocaleDateString(),
@@ -175,13 +175,18 @@ const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptC
     ['Title', 'Department', 'Location'],
     ...openJobs.map(job => [job.title, job.department, job.location]),
     [''],
-    ['SALES LEADERBOARD (THIS MONTH)'],
-    ['Rank', 'Name', 'Deals Won', 'Revenue (₹)'],
+    [`EMPLOYEE PERFORMANCE TELEMETRY (${perfPeriod.toUpperCase()})`],
+    ['Rank', 'Name', 'Department', 'Deals Won', 'Total Leads', 'Revenue (₹)', 'Activities', 'Completed Tasks', 'Target Status'],
     ...leaderboard.map((row, idx) => [
       idx + 1,
       row.fullName,
+      row.department || 'SALES',
       row.dealsWon,
-      fmtCurrency(row.revenue)
+      row.totalLeads || 0,
+      fmtCurrency(row.revenue),
+      row.activityCount || 0,
+      row.completedTasksCount || 0,
+      row.targetValue > 0 ? (row.isTargetAchieved ? 'Target Achieved' : `Target: ${fmtCurrency(row.targetValue)}`) : 'No Target Set'
     ]),
     [''],
     ['SECURITY'],
@@ -262,6 +267,9 @@ export default function FounderDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [perfPeriod, setPerfPeriod] = useState('monthly');
+  const [perfLoading, setPerfLoading] = useState(false);
+
   const [reviewingLeaveId, setReviewingLeaveId] = useState(null);
   const [submittingTarget, setSubmittingTarget] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -290,6 +298,26 @@ export default function FounderDashboard() {
 
   useEffect(() => { fetchAll(); }, []);
 
+  const fetchLeaderboard = async (period) => {
+    setPerfLoading(true);
+    try {
+      const res = await salesApi.getLeaderboard({ period });
+      if (res && res.success) {
+        setLeaderboard(res.data.leaderboard || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch performance leaderboard:', err);
+      toast.error('Failed to load performance period data');
+    } finally {
+      setPerfLoading(false);
+    }
+  };
+
+  const handlePeriodChange = (period) => {
+    setPerfPeriod(period);
+    fetchLeaderboard(period);
+  };
+
   const fetchAll = async () => {
     setLoading(true);
     setError(null);
@@ -299,7 +327,7 @@ export default function FounderDashboard() {
         leaveApi.getLeaves({ status: 'PENDING' }),
         employeeSignupApi.getAllEmployees(),
         careersApi.getAllJobs(),
-        salesApi.getLeaderboard({ period: 'monthly' })
+        salesApi.getLeaderboard({ period: perfPeriod })
       ]);
       if (summaryRes.success) setSummary(summaryRes.data.summary);
       if (leavesRes.success) setLeaves(leavesRes.data.leaves || []);
@@ -510,6 +538,9 @@ export default function FounderDashboard() {
           <h1 className="text-xl sm:text-2xl font-normal tracking-tight uppercase whitespace-nowrap" style={HEADING}>Founder Command Center</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link to="/crm/manager-chat" className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30">
+            <FiMessageSquare size={12} /> <span>Executive Chat</span>
+          </Link>
           <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
             <FiPlus size={12} /> <span>Add Employee</span>
           </button>
@@ -517,7 +548,7 @@ export default function FounderDashboard() {
             <FiRefreshCw size={12} /> <span>Refresh</span>
           </button>
           <button
-            onClick={() => handleExportReport(summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs)}
+            onClick={() => handleExportReport(summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs, perfPeriod)}
             className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-positive)', color: 'var(--crm-bg)' }}
           >
             <FiDownload size={12} /> <span>Export Report</span>
@@ -593,8 +624,12 @@ export default function FounderDashboard() {
                   <div key={lv._id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={CARD_SUNKEN}>
                     <div className="space-y-1.5 text-xs sm:text-sm min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate" style={{ color: 'var(--crm-heading)' }}>{lv.employeeId?.fullName || lv.employeeId?.name || 'Employee'}</span>
-                        <span className="text-[9px] sm:text-[10px] whitespace-nowrap" style={LABEL_MONO}>({lv.employeeId?.department || '—'})</span>
+                        <span className="font-medium truncate" style={{ color: 'var(--crm-heading)' }}>
+                          {lv.employeeName || lv.employeeId?.fullName || lv.employeeId?.name || (typeof lv.employeeId === 'object' ? (lv.employeeId?.email || lv.employeeId?.employeeId || lv.employeeId?._id) : lv.employeeId) || 'Employee'}
+                        </span>
+                        {lv.employeeId?.department && (
+                          <span className="text-[9px] sm:text-[10px] whitespace-nowrap" style={LABEL_MONO}>({lv.employeeId.department})</span>
+                        )}
                       </div>
                       <p className="text-[10px] sm:text-[11px]" style={LABEL_MONO}>
                         {new Date(lv.fromDate).toLocaleDateString()} – {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} day{lv.numberOfDays === 1 ? '' : 's'}) · {lv.leaveType.replace('_', ' ')}
@@ -764,21 +799,87 @@ export default function FounderDashboard() {
             </motion.div>
 
             <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <SectionHeader icon={FiAward} title="This Month's Leaderboard" />
+              <SectionHeader 
+                icon={FiAward} 
+                title={`Employee Performance — ${perfPeriod.toUpperCase()}`}
+                action={
+                  <div className="flex items-center gap-1 bg-[var(--crm-bg-sunken)] p-1 rounded-sm border border-[var(--crm-line)] font-mono text-[9px] uppercase font-bold">
+                    <button
+                      onClick={() => handlePeriodChange('daily')}
+                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer ${
+                        perfPeriod === 'daily' 
+                          ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]' 
+                          : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                      }`}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      onClick={() => handlePeriodChange('weekly')}
+                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer ${
+                        perfPeriod === 'weekly' 
+                          ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]' 
+                          : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                      }`}
+                    >
+                      Weekly
+                    </button>
+                    <button
+                      onClick={() => handlePeriodChange('monthly')}
+                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer ${
+                        perfPeriod === 'monthly' 
+                          ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]' 
+                          : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                  </div>
+                }
+              />
               <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-                {leaderboard.length === 0 ? (
-                  <EmptyState title="No sales activity yet" description="Rankings appear once deals are logged." className="p-6 sm:p-8" />
+                {perfLoading ? (
+                  <div className="p-8 text-center font-mono text-xs text-[var(--crm-ink-faint)] animate-pulse">
+                    Calculating {perfPeriod} employee performance metrics...
+                  </div>
+                ) : leaderboard.length === 0 ? (
+                  <EmptyState title={`No sales activity (${perfPeriod})`} description="Performance metrics appear once deals or activities are logged for this period." className="p-6 sm:p-8" />
                 ) : (
                   leaderboard.map((row, idx) => (
-                    <div key={row.employeeId} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2" style={idx % 2 === 0 ? CARD_SUNKEN : {}}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[9px] sm:text-[10px] font-mono w-5" style={LABEL_MONO}>#{idx + 1}</span>
+                    <div key={row.employeeId} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-[var(--crm-bg-sunken)]/40" style={idx % 2 === 0 ? CARD_SUNKEN : {}}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-[10px] font-mono font-bold w-6 h-6 rounded-full bg-[var(--crm-bg)] border border-[var(--crm-line)] flex items-center justify-center shrink-0" style={{ color: 'var(--crm-heading)' }}>
+                          #{idx + 1}
+                        </span>
                         <div className="min-w-0">
-                          <div className="truncate" style={{ color: 'var(--crm-heading)' }}>{row.fullName}</div>
-                          <div className="text-[8px] sm:text-[9px]" style={LABEL_MONO}>{row.dealsWon} deal{row.dealsWon === 1 ? '' : 's'} won</div>
+                          <div className="font-medium text-xs sm:text-sm truncate flex items-center gap-2" style={{ color: 'var(--crm-heading)' }}>
+                            <span>{row.fullName}</span>
+                            <span className="px-1.5 py-0.5 rounded-sm text-[8px] font-mono font-bold uppercase border bg-[var(--crm-bg)] text-[var(--crm-ink-faint)]" style={{ borderColor: 'var(--crm-line)' }}>
+                              {row.department || 'SALES'}
+                            </span>
+                          </div>
+                          <div className="text-[9px] sm:text-[10px] flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5" style={LABEL_MONO}>
+                            <span>ID: {row.employeeCode || row.employeeId}</span>
+                            <span>• {row.dealsWon} Won / {row.totalLeads} Leads</span>
+                            <span>• {row.activityCount || 0} Activities</span>
+                            <span>• {row.completedTasksCount || 0} Tasks</span>
+                          </div>
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-[10px] sm:text-sm whitespace-nowrap" style={{ color: 'var(--crm-positive)' }}>{fmtCurrency(row.revenue)}</span>
+                      <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 shrink-0 font-mono">
+                        <span className="font-bold text-xs sm:text-sm" style={{ color: 'var(--crm-positive)' }}>
+                          {fmtCurrency(row.revenue)}
+                        </span>
+                        {row.targetValue > 0 && (
+                          <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-sm border ${
+                            row.isTargetAchieved 
+                              ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive-bg)]' 
+                              : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning-bg)]'
+                          }`}>
+                            {row.isTargetAchieved ? 'Target Achieved' : `Target: ${fmtCurrency(row.targetValue)}`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}

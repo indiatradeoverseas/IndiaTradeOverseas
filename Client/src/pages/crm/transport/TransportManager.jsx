@@ -394,7 +394,7 @@ export default function TransportManager() {
           const avgMileage = driverLogs.find(l => l.vehicleMileage > 0)?.vehicleMileage || (totalLitres > 0 && totalKm > 0 ? Number((totalKm / totalLitres).toFixed(1)) : 4.1);
 
           return {
-            driver: d.name || d.fullName || 'Ramesh Driver',
+            driver: d.name || d.fullName || 'Unassigned Driver',
             vehicle: d.vehicleNumber || d.truckNumber || driverLogs[0]?.vehicle || 'Assigned Carrier',
             tripsCount: driverLogs.length || driverTrips.length || 4,
             totalKm: totalKm,
@@ -903,7 +903,7 @@ export default function TransportManager() {
       const code = t.dispatchNumber || t.orderNumber || t.leadCode || t._id || `LD-${1000 + idx}`;
       if (!code) return;
 
-      const driverName = t.driverName || t.assignedDriverName || 'Ramesh Driver';
+      const driverName = t.driverName || t.assignedDriverName || 'Unassigned Driver';
       const vehicleNo = t.vehicleNo || t.vehicleNumber || t.truckNumber || 'Unassigned';
       const customer = t.customerName || t.companyName || 'Lead Customer Cargo';
       const origin = t.origin || t.originCity || 'Depot';
@@ -1085,76 +1085,11 @@ export default function TransportManager() {
 
         <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
           <button
-            onClick={() => setActiveTab('DASHBOARD')}
-            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'DASHBOARD'
-                ? 'bg-emerald-700 text-white border-emerald-500 shadow'
-                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
-            }`}
-          >
-            <FiTruck size={12} /> Dashboard
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ASSIGN_LEADS')}
-            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'ASSIGN_LEADS'
-                ? 'bg-emerald-700 text-white border-emerald-500 shadow'
-                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
-            }`}
-          >
-            <FiCheckSquare size={12} /> Lead Assignment
-          </button>
-
-          <button
-            onClick={() => setActiveTab('TEAM_LEAVES')}
-            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'TEAM_LEAVES'
-                ? 'bg-teal-700 text-white border-teal-500 shadow'
-                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
-            }`}
-          >
-            <FiCalendar size={12} /> Team Leave Desk
-            {teamLeaves.filter(l => l.status === 'PENDING' || l.status === 'PENDING_HR_APPROVAL').length > 0 && (
-              <span className="px-1.5 py-0.2 bg-amber-500 text-black text-[8px] font-extrabold rounded-full animate-pulse">
-                {teamLeaves.filter(l => l.status === 'PENDING' || l.status === 'PENDING_HR_APPROVAL').length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('DRIVER_PROOFS')}
-            className={`text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'DRIVER_PROOFS'
-                ? 'bg-emerald-700 text-white border-emerald-500 shadow'
-                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]'
-            }`}
-          >
-            <FiFolder size={12} /> Driver Proofs
-          </button>
-
-          <button
             onClick={fetchData}
             className="text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm transition-all cursor-pointer flex items-center gap-1.5"
             style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)' }}
           >
             <FiRefreshCw size={12} className={loading ? 'animate-spin text-[var(--crm-accent)]' : ''} /> Sync Data
-          </button>
-
-          <button
-            onClick={() => setShowCreateTripModal(true)}
-            className="text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)' }}
-          >
-            <FiPlus size={13} /> Create & Assign Trip
-          </button>
-
-          <button
-            onClick={() => setShowBroadcastModal(true)}
-            className="text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm transition-all cursor-pointer flex items-center gap-1.5"
-            style={{ borderColor: 'rgba(244, 63, 94, 0.4)', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}
-          >
-            <FiVolume2 size={13} className="animate-pulse" /> Driver Broadcast
           </button>
 
           <Link
@@ -1581,7 +1516,7 @@ export default function TransportManager() {
                       </div>
 
                       <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-[var(--crm-line)] font-mono">
-                        <span className="text-[var(--crm-ink-faint)]">Driver: <strong className="text-[var(--crm-heading)]">{t.driverName || t.assignedDriverName || 'Ramesh Driver'}</strong></span>
+                        <span className="text-[var(--crm-ink-faint)]">Driver: <strong className="text-[var(--crm-heading)]">{t.driverName || t.assignedDriverName || 'Unassigned Driver'}</strong></span>
                         
                         {!isPodVerified ? (
                           <button
@@ -2130,7 +2065,7 @@ export default function TransportManager() {
                                 <div>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Driver</span>
                                   <span className="text-emerald-300 font-bold truncate block">
-                                    {item.driverName || item.assignedDriverName || 'Ramesh Driver'}
+                                    {item.driverName || item.assignedDriverName || 'Unassigned Driver'}
                                   </span>
                                 </div>
                                 <div>

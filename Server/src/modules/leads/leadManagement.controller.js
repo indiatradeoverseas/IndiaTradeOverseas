@@ -224,7 +224,11 @@ async function addActivity(req, res, next) {
       actionType,
       note,
       nextFollowupAt: nextFollowupAt || null,
-      actorId: req.user._id
+      actorId: req.user._id,
+      metadata: {
+        performedByName: req.user.fullName || req.user.name || req.user.email || 'User',
+        performedByRole: req.user.role || 'USER'
+      }
     });
 
     return ok(res, { activity }, 'Activity logged successfully', 201, req);
@@ -525,6 +529,7 @@ async function getCallRecordings(req, res, next) {
     const mongoose = require('mongoose');
     const User = require('../users/user.model');
     const Employee = require('../employee/employee.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
     const rawRecordings = await CallRecording.find(filter)
       .populate('leadId', 'customerName leadCode companyName priority stage assignedTo assignedDepartment')
@@ -554,19 +559,29 @@ async function getCallRecordings(req, res, next) {
 
     let users = [];
     let employees = [];
+    let trialUsers = [];
 
     if (searchArray.length > 0) {
-      [users, employees] = await Promise.all([
+      [users, employees, trialUsers] = await Promise.all([
         User.collection.find({
           $or: [
             { _id: { $in: stringArray } },
-            { _id: { $in: objectIdArray } }
+            { _id: { $in: objectIdArray } },
+            { employeeId: { $in: stringArray } }
           ]
         }).toArray(),
         Employee.collection.find({
           $or: [
             { _id: { $in: stringArray } },
-            { _id: { $in: objectIdArray } }
+            { _id: { $in: objectIdArray } },
+            { employeeId: { $in: stringArray } }
+          ]
+        }).toArray(),
+        SalesTrialUser.collection.find({
+          $or: [
+            { _id: { $in: stringArray } },
+            { _id: { $in: objectIdArray } },
+            { trialId: { $in: stringArray } }
           ]
         }).toArray()
       ]);
@@ -575,12 +590,15 @@ async function getCallRecordings(req, res, next) {
     const nameMap = new Map();
     const addToMap = (doc) => {
       if (!doc) return;
-      const displayName = doc.fullName || doc.name || doc.email || doc.employeeId || String(doc._id);
+      const displayName = doc.fullName || doc.name || doc.email || doc.employeeId || doc.trialId || String(doc._id);
       nameMap.set(String(doc._id), displayName);
+      if (doc.employeeId) nameMap.set(String(doc.employeeId), displayName);
+      if (doc.trialId) nameMap.set(String(doc.trialId), displayName);
     };
 
     users.forEach(addToMap);
     employees.forEach(addToMap);
+    trialUsers.forEach(addToMap);
 
     const recordings = rawRecordings.map(r => {
       const execIdStr = r.executiveId ? String(r.executiveId) : '';
@@ -596,7 +614,7 @@ async function getCallRecordings(req, res, next) {
         assignedCustodianName = execResolvedName;
       }
 
-      const isDone = r.status === 'COMPLETED' || Boolean(r.managerRemark) || Boolean(r.completedAt) || (r.leadId && ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED', 'QUOTATION_REQUIRED', 'QUOTATION_SENT', 'NEGOTIATION', 'REQUIREMENT_CAPTURED'].includes(String(r.leadId.stage).toUpperCase()));
+      const isDone = r.status ? (r.status === 'COMPLETED') : (Boolean(r.completedAt) || (r.leadId && ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED', 'QUOTATION_REQUIRED', 'QUOTATION_SENT', 'NEGOTIATION', 'REQUIREMENT_CAPTURED'].includes(String(r.leadId.stage).toUpperCase())));
 
       return {
         ...r,
@@ -859,13 +877,18 @@ async function updateCallRecordingStatus(req, res, next) {
       return fail(res, 404, 'NOT_FOUND', 'Call recording not found.');
     }
 
-    // Auto advance lead stage to REQUIREMENT_CAPTURED when follow-up status is completed
-    if (targetStatus === 'COMPLETED' && recording.leadId) {
+    // Auto advance or revert lead stage when follow-up status is updated
+    if (recording.leadId) {
       const leadIdStr = typeof recording.leadId === 'object' ? recording.leadId._id : recording.leadId;
       const lead = await Lead.findById(leadIdStr);
-      if (lead && ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'].includes(String(lead.stage || '').toUpperCase())) {
-        lead.stage = 'REQUIREMENT_CAPTURED';
-        await lead.save();
+      if (lead) {
+        if (targetStatus === 'COMPLETED' && ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'].includes(String(lead.stage || '').toUpperCase())) {
+          lead.stage = 'REQUIREMENT_CAPTURED';
+          await lead.save();
+        } else if (targetStatus === 'PENDING' && String(lead.stage || '').toUpperCase() === 'REQUIREMENT_CAPTURED') {
+          lead.stage = 'FOLLOW_UP';
+          await lead.save();
+        }
       }
     }
 

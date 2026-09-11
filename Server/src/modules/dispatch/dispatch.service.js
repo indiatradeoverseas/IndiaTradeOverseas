@@ -289,17 +289,7 @@ class DispatchService {
   async updatePOD(dispatchId, podFileUrl, userId) {
     let dispatch = await this._findDispatchByIdOrCode(dispatchId);
     if (!dispatch) {
-      // Auto-create dispatch for lead code if not pre-existing
-      const count = await Dispatch.countDocuments();
-      dispatch = new Dispatch({
-        dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
-        orderNumber: String(dispatchId),
-        customerName: 'Lead Customer Cargo',
-        origin: 'Main Freight Depot',
-        destination: 'Destination Hub',
-        dispatchStatus: 'Delivered',
-        podStatus: 'Uploaded'
-      });
+      throw new Error('Dispatch record not found');
     }
 
     dispatch.podFileUrl = podFileUrl;
@@ -317,14 +307,7 @@ class DispatchService {
   async completeDispatch(dispatchId, payload = {}) {
     let dispatch = await this._findDispatchByIdOrCode(dispatchId);
     if (!dispatch) {
-      const count = await Dispatch.countDocuments();
-      dispatch = new Dispatch({
-        dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
-        orderNumber: String(dispatchId),
-        customerName: 'Lead Customer Cargo',
-        origin: 'Main Freight Depot',
-        destination: 'Destination Hub'
-      });
+      throw new Error('Dispatch record not found');
     }
 
     const podUrl = payload.podFileUrl || dispatch.podFileUrl || 'POD_VERIFIED_DOCUMENT';
@@ -425,22 +408,10 @@ class DispatchService {
    */
   async updateDispatch(dispatchId, updateData) {
     let dispatch = await this._findDispatchByIdOrCode(dispatchId);
-    
     if (!dispatch) {
-      const count = await Dispatch.countDocuments();
-      dispatch = new Dispatch({
-        dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
-        orderNumber: String(dispatchId),
-        customerName: updateData.customerName || 'Lead Cargo Customer',
-        origin: updateData.origin || 'Depot',
-        destination: updateData.destination || 'Destination Hub',
-        dispatchStatus: updateData.status || updateData.dispatchStatus || 'Delivered',
-        podStatus: 'Verified',
-        ...updateData
-      });
-    } else {
-      Object.assign(dispatch, updateData);
+      throw new Error('Dispatch record not found');
     }
+    Object.assign(dispatch, updateData);
     
     await dispatch.save();
     return dispatch;
@@ -564,16 +535,7 @@ class DispatchService {
   async submitPaymentProof(dispatchId, payload, user) {
     let dispatch = await this._findDispatchByIdOrCode(dispatchId);
     if (!dispatch) {
-      const count = await Dispatch.countDocuments();
-      dispatch = new Dispatch({
-        dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
-        orderNumber: String(dispatchId),
-        customerName: 'Lead Customer Cargo',
-        origin: 'Main Freight Depot',
-        destination: 'Destination Hub',
-        dispatchStatus: 'Delivered',
-        podStatus: 'Verified'
-      });
+      throw new Error('Dispatch record not found');
     }
 
     const { amountPaid, paymentMode, upiRefNo, proofImageUrl } = payload;
@@ -692,14 +654,7 @@ class DispatchService {
       dispatch = await Dispatch.findOne().sort({ createdAt: -1 });
     }
     if (!dispatch) {
-      const count = await Dispatch.countDocuments();
-      dispatch = new Dispatch({
-        dispatchNumber: `DPR-${String(count + 1).padStart(6, '0')}`,
-        orderNumber: payload.leadCode || `ORD-${Date.now()}`,
-        customerName: payload.leadCustomer || 'Lead Cargo Customer',
-        vehicleNumber: payload.vehicleNumber || payload.vehicleNo || '',
-        driverName: payload.driverName || user?.fullName || user?.name || 'Driver'
-      });
+      throw new Error('Dispatch record not found for fuel log');
     }
 
     const {

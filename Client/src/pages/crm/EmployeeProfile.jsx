@@ -771,7 +771,24 @@ export default function EmployeeProfile() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase block leading-none mb-0.5">Age</span>
-                    <span className="text-[var(--crm-ink-soft)] font-medium">{profile.age || 28} Years</span>
+                    <span className="text-[var(--crm-ink-soft)] font-medium">
+                      {(() => {
+                        const dobVal = profile?.dateOfBirth || profile?.dob;
+                        if (dobVal) {
+                          const bd = new Date(dobVal);
+                          if (!isNaN(bd.getTime())) {
+                            const today = new Date();
+                            let calculated = today.getFullYear() - bd.getFullYear();
+                            const m = today.getMonth() - bd.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+                              calculated--;
+                            }
+                            if (calculated > 0) return calculated;
+                          }
+                        }
+                        return profile?.age || 28;
+                      })()} Years
+                    </span>
                   </div>
                 </div>
 
