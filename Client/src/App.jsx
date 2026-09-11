@@ -38,6 +38,7 @@ const ITOAds = React.lazy(() => import('./pages/public/ITOAds'));
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
 import Stone from './pages/public/Stone';
+import StonePricing from './pages/public/StonePricing';
 import LeadDetail from './pages/crm/LeadDetail';
 import Quotations from './pages/crm/Quotations';
 import Dispatches from './pages/crm/Dispatches';
@@ -83,6 +84,7 @@ import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
 import Disclaimer from './pages/legal/Disclaimer';
 import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
+import Onion from './pages/public/Onion';
 
 
 
@@ -790,11 +792,12 @@ function AppLayout() {
   ========================= */
 
   const isITOAds = location.pathname === '/ito-ads';
+  const isOnion = location.pathname === '/nashik-onion';
 
   return (
     <div>
       <ScrollToTop />
-      {!isITOAds && <Navbar />}
+      {!isITOAds && !isOnion && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -809,17 +812,19 @@ function AppLayout() {
           <Route path="/prakriti/tea" element={<Prakriti />} />
           <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
+          <Route path="/stone/pricing" element={<StonePricing />} />
           <Route path="/ito-ads" element={<ITOAds />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/terms-and-conditions" element={<Terms />} />
           <Route path="/fraud-payment-policy" element={<FraudPaymentPolicy />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
+          <Route path="/nashik-onion" element={<Onion />} />
         </Routes>
       </main>
-      {!isITOAds && <Footer />}
+      {!isITOAds && !isOnion && <Footer />}
 
-      {!isITOAds && <ChatWidget />}
+      {!isITOAds && !isOnion && <ChatWidget />}
     </div>
   );
 }
