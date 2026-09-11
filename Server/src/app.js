@@ -31,7 +31,7 @@ const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 const payslipRoutes = require('./modules/payslip/payslip.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
 const salesTrialRoutes = require('./modules/sales-trial/salesTrial.routes');
-const softLeadRoutes = require('./modules/soft-lead/softLead.routes');
+
 
 const app = express();
 
