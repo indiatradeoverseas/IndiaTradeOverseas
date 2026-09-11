@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
 const Quotation = require('../quotations/quotation.model');
-const { recordAudit, raiseAlert } = require('../security-audit/auditLog.service');
-const { maskPhone, maskEmail } = require('../../utils/crypto');
+const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
+const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
 
 const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str.trim());
 
@@ -1269,8 +1269,8 @@ async function bulkImportLeads(leadsArray, user) {
 
       let parsedTargetDate = null;
       if (targetDate) {
-        const d = new Date(targetDate);
-        if (!isNaN(d.getTime())) {
+        const d = parseFlexibleDate(targetDate);
+        if (d && !isNaN(d.getTime())) {
           parsedTargetDate = d;
         }
       }

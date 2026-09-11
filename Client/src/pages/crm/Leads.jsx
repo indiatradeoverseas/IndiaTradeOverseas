@@ -9,7 +9,7 @@ import { salesTrialApi } from '../../api/salesTrialApi';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
-  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar
+  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { API_URL, getFileUrl } from '../../config/env';
@@ -661,6 +661,48 @@ export default function Leads() {
     }
   };
 
+  const [deleteConfirmLead, setDeleteConfirmLead] = useState(null); // single lead object or 'BULK'
+  const [deletingLead, setDeletingLead] = useState(false);
+
+  const handleDeleteSingleLead = (leadId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const targetLead = leads.find(l => l._id === leadId);
+    setDeleteConfirmLead(targetLead || leadId);
+  };
+
+  const confirmDeleteLeadAction = async () => {
+    if (!deleteConfirmLead) return;
+    setDeletingLead(true);
+    try {
+      if (deleteConfirmLead === 'BULK') {
+        let successCount = 0;
+        for (const id of selectedLeadIds) {
+          try {
+            await leadsApi.deleteLead(id);
+            successCount++;
+          } catch (err) {
+            console.error('Failed to delete lead:', id, err);
+          }
+        }
+        toast.success(`Successfully deleted ${successCount} leads!`);
+        setSelectedLeadIds([]);
+      } else {
+        const leadId = typeof deleteConfirmLead === 'object' ? deleteConfirmLead._id : deleteConfirmLead;
+        const res = await leadsApi.deleteLead(leadId);
+        if (res?.success || res) {
+          toast.success('Lead deleted successfully!');
+        }
+      }
+      setDeleteConfirmLead(null);
+      fetchLeads();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete lead.');
+    } finally {
+      setDeletingLead(false);
+    }
+  };
+
   const isWonOrDelivered = (stage) => {
     if (!stage) return false;
     const s = String(stage).toUpperCase().replace(/\s+/g, '_');
@@ -1221,6 +1263,40 @@ export default function Leads() {
         </motion.div>
 
         {/* MODE 1: DATA TABLE VIEW */}
+        {selectedLeadIds.length > 0 && isManagerOrAdmin && (
+          <motion.div variants={blockVariants} className="bg-amber-950/90 border border-amber-600/50 p-3 rounded-sm font-mono text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider">{selectedLeadIds.length} Leads Selected</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="bg-black/60 border border-amber-500/40 text-amber-100 text-xs px-2.5 py-1 rounded outline-none"
+              >
+                <option value="">Assign To...</option>
+                {executives.map(e => (
+                  <option key={e._id || e.employeeId} value={e._id || e.employeeId}>{e.fullName || e.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkAssign}
+                disabled={assigningBulk}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase text-[10px] rounded transition cursor-pointer"
+              >
+                {assigningBulk ? 'Assigning...' : 'Bulk Assign'}
+              </button>
+              <button
+                onClick={() => setDeleteConfirmLead('BULK')}
+                className="px-3 py-1 bg-rose-800 hover:bg-rose-700 text-white font-bold uppercase text-[10px] rounded transition cursor-pointer flex items-center gap-1 shadow-sm"
+              >
+                <FiTrash2 size={11} />
+                <span>Delete Selected ({selectedLeadIds.length})</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {viewMode === 'TABLE' ? (
           <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 overflow-hidden w-full bg-[var(--crm-bg-raised)]/10 rounded-sm shadow-2xl">
             {/* Desktop Table View */}
@@ -1390,7 +1466,7 @@ export default function Leads() {
                               </button>
                             )}
 
-                            {/* Direct Communication Icons */}
+                            {/* Direct Communication & Actions */}
                             <div className="flex items-center space-x-1.5">
                               <button
                                 onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
@@ -1406,6 +1482,15 @@ export default function Leads() {
                               >
                                 <FiMail size={13} />
                               </button>
+                              {isManagerOrAdmin && (
+                                <button
+                                  onClick={(e) => handleDeleteSingleLead(lead._id, e)}
+                                  className="p-1.5 bg-rose-950/80 border border-rose-800/60 text-rose-400 hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  title="Delete Lead Node"
+                                >
+                                  <FiTrash2 size={13} />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -2081,6 +2166,40 @@ export default function Leads() {
               </div>
             </form>
           </motion.div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteConfirmLead && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--crm-bg-raised)] border border-rose-800/60 p-6 rounded-sm max-w-md w-full font-mono space-y-4 shadow-2xl">
+            <div className="flex items-center space-x-3 text-rose-400">
+              <FiAlertCircle size={24} />
+              <h3 className="text-lg font-serif font-normal uppercase text-[var(--crm-heading)]">Confirm Delete Lead</h3>
+            </div>
+            <p className="text-xs text-[var(--crm-ink-soft)] leading-relaxed">
+              {deleteConfirmLead === 'BULK'
+                ? `Are you sure you want to permanently delete ${selectedLeadIds.length} selected lead records? This action cannot be undone.`
+                : `Are you sure you want to permanently delete lead "${typeof deleteConfirmLead === 'object' ? (deleteConfirmLead.leadCode || deleteConfirmLead.customerName) : deleteConfirmLead}"?`}
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-[var(--crm-ink-soft)]/15">
+              <button
+                onClick={() => setDeleteConfirmLead(null)}
+                disabled={deletingLead}
+                className="px-4 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-xs font-bold uppercase text-[var(--crm-heading)] rounded cursor-pointer hover:bg-[var(--crm-bg)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteLeadAction}
+                disabled={deletingLead}
+                className="px-4 py-2 bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold uppercase rounded cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <FiTrash2 size={13} />
+                <span>{deletingLead ? 'Deleting...' : 'Delete Permanently'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </motion.div>
