@@ -38,10 +38,14 @@ export const leadsApi = {
   },
 
   async deleteLead(leadId) {
-    const response = await axiosInstance.delete(`/admin/leads/${leadId}`);
-    return response.data;
-  }
-  ,
+    try {
+      const response = await axiosInstance.delete(`/leads/${leadId}`);
+      return response.data;
+    } catch (err) {
+      const response = await axiosInstance.delete(`/admin/leads/${leadId}`);
+      return response.data;
+    }
+  },
   async getDueReminders(){
     const response = await axiosInstance.get('/leads/reminders/due');
     return response.data;

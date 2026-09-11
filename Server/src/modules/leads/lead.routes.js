@@ -13,7 +13,8 @@ const {
   changeLeadPriority,
   assignLead,
   assignLeadsBulk,
-  bulkImportLeads
+  bulkImportLeads,
+  deleteLead
 } = require('./lead.controller');
 const {getSalesMetrics} = require('./leadManagement.controller.js');
 const { createFromChat } = require('./ai-agent/aiLead.controller');
@@ -174,5 +175,6 @@ router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentP
 router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
 router.patch('/:id/priority', checkPermission('leadPermission', 'taskPermission'), changeLeadPriority);
 router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);  
+router.delete('/:id', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), deleteLead);
 
 module.exports = router;
