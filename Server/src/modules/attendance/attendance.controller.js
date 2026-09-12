@@ -14,16 +14,21 @@ function getStartOfDay(dateStr) {
 // Helper: Parse string time (e.g. "09:15 AM") into a Date object on a given base date
 function parseTimeToDate(dateVal, timeStr) {
   if (!timeStr) return null;
-  const baseDate = new Date(dateVal);
   const match = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
-  if (!match) return baseDate;
+  if (!match) return dateVal ? new Date(dateVal) : null;
   let [_, hours, minutes, ampm] = match;
   hours = parseInt(hours, 10);
   minutes = parseInt(minutes, 10);
   if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
   if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
-  baseDate.setHours(hours, minutes, 0, 0);
-  return baseDate;
+
+  const dateStr = typeof dateVal === 'string'
+    ? dateVal.slice(0, 10)
+    : (dateVal instanceof Date ? dateVal.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+
+  const pad = (n) => String(n).padStart(2, '0');
+  // IST timezone offset is +05:30
+  return new Date(`${dateStr}T${pad(hours)}:${pad(minutes)}:00.000+05:30`);
 }
 
 function getAttendanceIdFilter(empId, userId) {
@@ -48,14 +53,18 @@ function getAttendanceIdFilter(empId, userId) {
 function formatAttendance(record) {
   if (!record) return null;
   const obj = typeof record.toObject === 'function' ? record.toObject() : record;
+  const checkInTime = obj.checkInTime || (obj.checkInAt ? new Date(obj.checkInAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : null);
+  const checkOutTime = obj.checkOutTime || (obj.checkOutAt ? new Date(obj.checkOutAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : null);
   const checkInAt = obj.checkInAt || (obj.checkInTime ? parseTimeToDate(obj.date, obj.checkInTime) : null);
   const checkOutAt = obj.checkOutAt || (obj.checkOutTime ? parseTimeToDate(obj.date, obj.checkOutTime) : null);
   return {
     ...obj,
+    checkInTime,
+    checkOutTime,
     checkInAt,
     checkOutAt,
-    clockIn: checkInAt || obj.checkInTime,
-    clockOut: checkOutAt || obj.checkOutTime
+    clockIn: checkInTime || checkInAt,
+    clockOut: checkOutTime || checkOutAt
   };
 }
 

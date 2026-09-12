@@ -24,7 +24,8 @@ import {
   FiCreditCard,
   FiCheckCircle,
   FiPhoneCall,
-  FiClock
+  FiClock,
+  FiMessageSquare
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -171,11 +172,32 @@ function isDriverRole(user) {
   return role === 'DRIVER' || pos.includes('driver');
 }
 
+function isSalesTrialExecutive(user) {
+  return (
+    user?.role === 'SALES_TRIAL' ||
+    user?.department === 'SALES_TRIAL' ||
+    user?.position?.toLowerCase()?.includes('trial')
+  );
+}
+
 // ─────────────────────────────────────────────
 // Main sidebar navigation items
 // ─────────────────────────────────────────────
 export function getCrmMainNavItems(user) {
   const admin = isAdminUser(user);
+
+  // 0. SALES TRIAL EXECUTIVE: Sales Dashboard, Leads, Follow Up, My Profile, Notifications, Support Tickets, My Tasks
+  if (!admin && isSalesTrialExecutive(user)) {
+    return [
+      { to: '/crm/trial-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
+      { to: '/crm/leads', label: 'Leads', icon: FiUsers },
+      { to: '/crm/followup', label: 'Follow Up', icon: FiPhoneCall },
+      { to: '/crm/profile', label: 'My Profile', icon: FiUser },
+      { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
+      { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+      { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare }
+    ];
+  }
 
   // 1. DRIVER: Driver Dashboard, Completed & Delivered Loads, Payment Proof, Support Tickets & My Profile
   if (!admin && isDriverRole(user)) {
@@ -197,11 +219,12 @@ export function getCrmMainNavItems(user) {
     ];
   }
 
-  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Support Tickets, Driver Uploaded All Proof & My Profile
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Team Leave Requests, Support Tickets, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
       { to: '/crm/transport/manager?tab=DASHBOARD', label: 'Transport Manager Dashboard', icon: FiTruck },
       { to: '/crm/transport/manager?tab=ASSIGN_LEADS', label: 'Lead & Trip Assignment', icon: FiCheckSquare },
+      { to: '/crm/transport/manager?tab=TEAM_LEAVES', label: 'Team Leave Requests', icon: FiCalendar },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/transport/manager?tab=DRIVER_PROOFS', label: 'Driver Uploaded All Proof', icon: FiFolder }
@@ -239,6 +262,9 @@ export function getCrmMainNavItems(user) {
 
     // Follow Up Matrix — ADMIN, Sales Manager, Sales Executive (Excluded for HR Manager & HR Executive)
     (!hrMgr && !hrExec && (admin || salesMgr || salesExec || user?.permissions?.lead === true || user?.leadPermission === true)) && { to: '/crm/followup', label: 'Follow Up', icon: FiPhoneCall },
+
+    // Quotations — ADMIN (Founder) & Sales Manager
+    (admin || salesMgr) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
 
     // Trial Dashboard — ADMIN or Trial staff (Excluded for Sales Manager & Sales Executive)
     (!salesMgr && !salesExec && (admin || user?.role === 'TRIAL' || user?.position?.toLowerCase()?.includes('trial'))) && { to: '/crm/trial-dashboard', label: 'Trial Dashboard', icon: FiClock },
@@ -293,14 +319,18 @@ export function getCrmMainNavItems(user) {
     // Support Tickets — Available to all employees for raising tickets/grievances
     { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
 
+    // Executive Manager Chat Support — Available for all CRM users
+    {
+      to: '/crm/manager-chat',
+      label: 'Executive Chat Support',
+      icon: FiMessageSquare
+    },
+
     // My Tasks — ADMIN, Sales Manager, Sales Executive, or permission-based
     (admin || salesMgr || salesExec || user?.permissions?.task === true || user?.taskPermission === true) && { to: '/crm/tasks', label: 'My Tasks', icon: FiCheckSquare },
 
     // Dispatches Manifest — Non-admin permitted dispatch staff only (Excluded for Sales Manager & Executive)
     (!salesMgr && !salesExec && !admin && (user?.permissions?.dispatch === true || user?.dispatchPermission === true)) && { to: '/crm/dispatches', label: 'Dispatches Manifest', icon: FiFileText },
-
-    // Quotations — ADMIN or permission-based (Excluded for Sales Manager & Executive)
-    (!salesMgr && !salesExec && (admin || user?.permissions?.quotation === true || user?.quotationPermission === true)) && { to: '/crm/quotations', label: 'Quotations', icon: FiFileText },
 
     // Payments — Non-admin permitted payment staff only (Excluded for Sales Manager & Executive)
     (!salesMgr && !salesExec && !admin && (user?.permissions?.payment === true || user?.paymentPermission === true)) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },

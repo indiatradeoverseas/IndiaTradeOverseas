@@ -156,42 +156,42 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4 my-8 max-h-[90vh] flex flex-col"
+          className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4 my-8 max-h-[90vh] flex flex-col"
         >
-          {/* Header Bar matching Assign Task Modal */}
+          {/* Header Bar */}
           <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 shrink-0">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
-                <FiMic className="text-teal-400 animate-pulse" size={16} /> Upload Call Recording & Details
+              <h3 className="text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
+                <FiMic className="text-teal-400 animate-pulse" size={18} /> Upload Call Recording & Details
               </h3>
-              <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] uppercase block mt-0.5">
+              <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase block mt-0.5 font-medium">
                 Executive: <strong className="text-[var(--crm-heading)]">{user?.fullName || user?.name || 'Sales Executive'}</strong>
               </span>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer"
+              className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer"
             >
               ✕
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3.5 text-xs font-mono overflow-y-auto pr-1 custom-scrollbar flex-1">
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium overflow-y-auto pr-1 custom-scrollbar flex-1">
             
             {/* Active Lead Banner */}
             {activeLead && (
-              <div className="p-3 bg-[var(--crm-bg-sunken)] border border-teal-900/60 rounded flex items-center justify-between text-left shrink-0">
+              <div className="p-3 bg-[var(--crm-bg-sunken)] border border-teal-900/60 rounded-xl flex items-center justify-between text-left shrink-0">
                 <div className="flex items-center gap-2.5">
                   <FiUserCheck size={16} className="text-teal-400 shrink-0" />
                   <div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-teal-400 block font-mono">ACTIVE TARGET LEAD</span>
-                    <h4 className="text-xs font-bold text-[var(--crm-heading)] font-mono">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-teal-400 block">ACTIVE TARGET LEAD</span>
+                    <h4 className="text-xs font-bold text-[var(--crm-heading)]">
                       {activeLead.customerName} {activeLead.leadCode && <span className="text-teal-300">({activeLead.leadCode})</span>}
                     </h4>
                   </div>
                 </div>
-                <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded border font-mono ${
+                <span className={`px-2.5 py-0.5 text-[9px] font-bold uppercase rounded-md border ${
                   (activeLead.priority || leadPriority) === 'HOT' ? 'bg-rose-950/60 border-rose-800/60 text-rose-400' :
                   (activeLead.priority || leadPriority) === 'WARM' ? 'bg-amber-950/60 border-amber-800/60 text-amber-400' :
                   'bg-cyan-950/60 border-cyan-800/60 text-cyan-400'
@@ -203,14 +203,14 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
 
             {/* Select Lead */}
             <div>
-              <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Select Lead (Follow-Up Target) *
               </label>
               <select
                 required
                 value={selectedLeadId}
                 onChange={handleLeadSelect}
-                className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none cursor-pointer font-mono text-xs focus:border-teal-600 transition"
+                className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
               >
                 <option value="">-- Direct / Unlinked Call --</option>
                 {combinedLeads.map(l => {
@@ -228,7 +228,7 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
             {/* Customer Name + Role */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                   Customer Name / Inquiry Person *
                 </label>
                 <input
@@ -237,24 +237,27 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                   placeholder="e.g. Vijay / Ramesh Kumar"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none font-mono text-xs focus:border-teal-600 transition"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                   Role / Person Type *
                 </label>
                 <select
                   required
                   value={contactRole}
                   onChange={(e) => setContactRole(e.target.value)}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none cursor-pointer font-mono text-xs focus:border-teal-600 transition"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                 >
                   <option value="Supplier">Supplier</option>
                   <option value="Buyer">Buyer</option>
                   <option value="Customer">Customer</option>
                   <option value="Follow up lead">Follow up lead</option>
                   <option value="Transporter">Transporter</option>
+                  <option value="Hardware Shop">Hardware Shop</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Contractor">Contractor</option>
                 </select>
               </div>
             </div>
@@ -262,7 +265,7 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
             {/* Mobile + Location */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                   Mobile / WhatsApp No *
                 </label>
                 <input
@@ -271,11 +274,11 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                   placeholder="e.g. +919709586173"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none font-mono text-xs focus:border-teal-600 transition"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                   Location / City *
                 </label>
                 <input
@@ -284,7 +287,7 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                   placeholder="e.g. Siwan / Pakur"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none font-mono text-xs focus:border-teal-600 transition"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                 />
               </div>
             </div>
@@ -292,7 +295,7 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
             {/* Material + Quantity */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                   Material / Stone Type *
                 </label>
                 <input
@@ -301,11 +304,11 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                   placeholder="e.g. 20 mm / Pakur / Bhutan Black Stone"
                   value={material}
                   onChange={(e) => setMaterial(e.target.value)}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none font-mono text-xs focus:border-teal-600 transition"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                   Quantity *
                 </label>
                 <input
@@ -314,17 +317,17 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                   placeholder="e.g. 65 gari / 100 Tons"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none font-mono text-xs focus:border-teal-600 transition"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                 />
               </div>
             </div>
 
             {/* Lead Quality / Temperature */}
             <div>
-              <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Lead Quality / Temperature *
               </label>
-              <div className="grid grid-cols-3 gap-2 font-mono">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { value: 'HOT', label: 'HOT 🔥', activeColor: 'bg-rose-950 border-rose-600 text-rose-400 font-bold' },
                   { value: 'WARM', label: 'WARM ⚡', activeColor: 'bg-amber-950 border-amber-500 text-amber-300 font-bold' },
@@ -334,10 +337,10 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                     key={item.value}
                     type="button"
                     onClick={() => setLeadPriority(item.value)}
-                    className={`py-2 px-3 border rounded text-[10px] font-bold uppercase transition cursor-pointer font-mono ${
+                    className={`py-2 px-3 border rounded-xl text-xs font-semibold uppercase transition cursor-pointer ${
                       leadPriority === item.value
                         ? `${item.activeColor} shadow-sm`
-                        : 'bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
+                        : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                     }`}
                   >
                     {item.label}
@@ -348,7 +351,7 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
 
             {/* Call Duration */}
             <div>
-              <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Call Duration (e.g. 03:45) *
               </label>
               <input
@@ -357,13 +360,13 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                 placeholder="e.g. 04m 12s"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none font-mono text-xs focus:border-teal-600 transition"
+                className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
               />
             </div>
 
             {/* Call Audio File */}
             <div>
-              <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Call Audio File * (MP3, WAV, M4A, WEBM)
               </label>
               <input
@@ -371,13 +374,13 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                 accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm"
                 required
                 onChange={(e) => setAudioFile(e.target.files[0] || null)}
-                className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2 rounded text-[10px] font-mono cursor-pointer"
+                className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer"
               />
             </div>
 
             {/* Notes / Summary */}
             <div>
-              <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Instructions / Call Notes & Talk Summary *
               </label>
               <textarea
@@ -386,23 +389,23 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                 placeholder="Follow up notes, client discussion points, requirement details..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none resize-none font-sans text-xs focus:border-teal-600 transition"
+                className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
               />
             </div>
 
-            {/* Footer Action Buttons matching Assign Task Modal */}
-            <div className="flex gap-2 pt-2 border-t border-[var(--crm-line)] shrink-0 font-mono">
+            {/* Footer Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)] shrink-0">
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                className="flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer disabled:opacity-50"
               >
                 {submitting ? 'Saving Call Recording...' : 'Save Call Recording'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer hover:text-white"
+                className="py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer"
               >
                 Cancel
               </button>

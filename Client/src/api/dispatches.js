@@ -51,11 +51,25 @@ export const getDispatchQueue = async () => {
         const currentStageUpper = (l.stage || '').toUpperCase();
         const computedStatus = ['DELIVERED', 'COMPLETED'].includes(currentStageUpper) ? 'DELIVERED' : (l.status || 'ORDER_CONFIRMED');
 
+        let drvName = l.driverName || l.assignedDriverName || l.driver || '';
+        if (!drvName && typeof l.driverId === 'object' && l.driverId) {
+          drvName = l.driverId.fullName || l.driverId.name || '';
+        }
+        if (!drvName && typeof l.assignedDriver === 'object' && l.assignedDriver) {
+          drvName = l.assignedDriver.fullName || l.assignedDriver.name || '';
+        }
+        if (!drvName && typeof l.assignedTo === 'object' && l.assignedTo && ((l.assignedTo.role || '').toUpperCase().includes('DRIVER') || (l.assignedTo.fullName || l.assignedTo.name || '').toLowerCase().includes('driver'))) {
+          drvName = l.assignedTo.fullName || l.assignedTo.name || '';
+        }
+
         return {
           _id: l._id,
           orderNumber: l.leadCode || l.leadId || `ORD-${l._id?.slice(-4)}`,
           customerName: l.customerName || l.companyName || l.contactPerson || 'Confirmed Client',
           companyName: l.companyName || l.customerName || '',
+          driverName: drvName,
+          assignedDriverName: drvName,
+          vehicleNo: l.vehicleNo || l.vehicleNumber || l.truckNumber || l.vehicle || '',
           material: l.productCategory || l.product || 'Cargo Goods',
           weightTons: l.quantity || '—',
           origin: l.origin || l.originCity || l.pickupAddress || '—',

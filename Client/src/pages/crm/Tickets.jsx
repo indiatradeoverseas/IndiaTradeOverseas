@@ -317,43 +317,43 @@ export default function Tickets() {
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] rounded-sm p-6 w-full max-w-md border border-[var(--crm-ink-soft)]/20 shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-[var(--crm-bg-raised)] rounded-2xl p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center mb-6 border-b border-[var(--crm-ink-soft)]/10 pb-3">
-                <h2 className="text-base font-serif text-[var(--crm-heading)] tracking-wide uppercase flex items-center gap-2"><FiLifeBuoy size={16} /> Raise Support Ticket</h2>
-                <button onClick={() => setShowCreateModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)] font-light text-xl">&times;</button>
+              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-line)] pb-3">
+                <h2 className="text-lg font-bold text-[var(--crm-heading)] flex items-center gap-2"><FiLifeBuoy size={18} /> Raise Support Ticket</h2>
+                <button onClick={() => setShowCreateModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)] font-bold text-lg">&times;</button>
               </div>
 
-              <form onSubmit={handleCreate} className="space-y-4">
+              <form onSubmit={handleCreate} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5">Subject *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Subject *</label>
                   <input
                     type="text"
                     required
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     placeholder="Brief summary of the issue"
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-sm rounded-sm outline-none text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5">Category *</label>
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Category *</label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-sm rounded-sm outline-none cursor-pointer text-[var(--crm-heading)]"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none cursor-pointer text-[var(--crm-heading)]"
                     >
                       {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5">Priority</label>
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Priority</label>
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-sm rounded-sm outline-none cursor-pointer text-[var(--crm-heading)]"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none cursor-pointer text-[var(--crm-heading)]"
                     >
                       {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
@@ -361,29 +361,29 @@ export default function Tickets() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5">Description *</label>
+                  <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Description *</label>
                   <textarea
                     required
                     rows={4}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe the issue in detail..."
-                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 focus:border-[var(--crm-heading)]/40 text-sm rounded-sm outline-none resize-none text-[var(--crm-heading)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none resize-none text-[var(--crm-heading)] font-sans placeholder-slate-500"
                   />
                 </div>
 
-                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-ink-soft)]/10">
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-3 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] rounded-sm text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50"
+                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {submitting ? 'Submitting...' : 'Raise Ticket'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="flex-1 py-3 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] rounded-sm text-xs font-bold uppercase tracking-wider transition-all"
+                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition-all cursor-pointer"
                   >
                     Cancel
                   </button>

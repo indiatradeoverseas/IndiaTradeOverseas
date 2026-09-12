@@ -6,11 +6,12 @@ import { quotationsApi } from '../../api/quotations';
 import { adminApi } from '../../api/admin';
 import { useAuth } from '../../hooks/useAuth';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
+import LostReasonModal, { LOST_REASON_OPTIONS } from '../../components/crm/LostReasonModal';
 import {
   FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign,
   FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone,
   FiCheck, FiAward, FiXCircle, FiCheckCircle, FiCompass,
-  FiMessageCircle, FiMail
+  FiMessageCircle, FiMail, FiAlertTriangle, FiPlus, FiClock
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,8 @@ export default function LeadDetail() {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
+  const [showLostModal, setShowLostModal] = useState(false);
+  const [submittingLost, setSubmittingLost] = useState(false);
   const [targetStageAfterCall, setTargetStageAfterCall] = useState(null);
   const [newActivity, setNewActivity] = useState({ note: '', actionType: 'FOLLOW_UP', nextFollowupAt: '' });
   const [quotationData, setQuotationData] = useState({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
@@ -192,9 +195,24 @@ export default function LeadDetail() {
   };
 
   const handleStageChange = async (newStage) => {
-    const advancedList = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
-    if (advancedList.includes(newStage) && (lead?.quotationStatus === 'PENDING' || lead?.quotationStatus === 'REJECTED')) {
-      toast.error(`Quotation is ${lead.quotationStatus}. Manager approval is required before advancing to ${newStage.replace(/_/g, ' ')}.`);
+    if (newStage === 'QUOTATION_REQUIRED') {
+      setShowQuotationModal(true);
+      return;
+    }
+
+    if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
+      setShowLostModal(true);
+      return;
+    }
+
+    const advancedList = [
+      'QUOTATION_APPROVED', 'QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 
+      'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'LOI_PO_PENDING', 'PO_RECEIVED', 
+      'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 
+      'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'
+    ];
+    if (advancedList.includes(newStage) && lead?.quotationStatus !== 'APPROVED') {
+      toast.error(`⚠️ Quotation is ${lead?.quotationStatus || 'not created'}. Sales Manager approval is required before advancing to ${newStage.replace(/_/g, ' ')}.`);
       return;
     }
 
@@ -217,14 +235,31 @@ export default function LeadDetail() {
       if (response.success) {
         toast.success(`Stage updated to ${newStage.replace(/_/g, ' ')}`);
         fetchLeadDetails();
-        if (newStage === 'QUOTATION_REQUIRED') {
-          setShowQuotationModal(true);
-        }
         if (newStage === 'LOI_PO_PENDING') {
           setShowLOIModal(true);
         }
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to update stage'); }
+  };
+
+  const handleLostReasonSubmit = async ({ lostReason, lostReasonNotes }) => {
+    setSubmittingLost(true);
+    try {
+      const response = await leadsApi.updateStage(id, {
+        newStage: 'CLOSED_LOST',
+        lostReason,
+        lostReasonNotes
+      });
+      if (response.success) {
+        toast.success(`⚠️ Lead marked CLOSED LOST. Reason: ${lostReason}`);
+        setShowLostModal(false);
+        fetchLeadDetails();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record lost reason');
+    } finally {
+      setSubmittingLost(false);
+    }
   };
 
   const handleCallRecordingSuccess = async () => {
@@ -293,15 +328,22 @@ export default function LeadDetail() {
 
   const handleRequestQuotation = async (e) => {
     e.preventDefault();
+    if (!quotationData.employeeRequestedPrice) {
+      toast.error('Please specify target base price');
+      return;
+    }
     try {
       const response = await quotationsApi.requestQuotation({ leadId: id, ...quotationData });
       if (response.success) {
-        toast.success('Quotation requested successfully');
+        toast.success('Quotation request submitted to Sales Manager for approval! 🚀');
         setShowQuotationModal(false);
         setQuotationData({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
+        await leadsApi.updateStage(id, { newStage: 'QUOTATION_REQUIRED' }).catch(() => {});
         fetchLeadDetails();
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      toast.error(err.response?.data?.message || 'Failed to request quotation');
+    }
   };
 
   const handleLOISubmit = async (e) => {
@@ -465,6 +507,40 @@ export default function LeadDetail() {
             </div>
           ))}
         </motion.div>
+
+        {/* Closed Lost Audit & Reason Display */}
+        {(isClosedLost || lead.lostReason) && (
+          <motion.div variants={blockVariants} className="border border-rose-500/30 p-5 bg-rose-950/20 rounded-sm text-left font-mono">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-500/20 pb-3 mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-rose-900/50 border border-rose-500/30 text-rose-400 rounded">
+                  <FiAlertTriangle size={18} />
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase tracking-[0.25em] text-rose-400 font-bold block">
+                    MANDATORY AUDIT // CLOSED LOST REPORT
+                  </span>
+                  <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
+                    Lead Lost Reason: <span className="text-rose-400 font-bold uppercase">{lead.lostReason || 'Unspecified'}</span>
+                  </h3>
+                </div>
+              </div>
+              {lead.lostAt && (
+                <span className="text-[10px] text-[var(--crm-ink-faint)]">
+                  Logged on {new Date(lead.lostAt).toLocaleString()} {lead.lostByName ? `by ${lead.lostByName}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="p-4 bg-[var(--crm-bg)]/80 border border-rose-500/20 rounded text-xs space-y-1 font-sans">
+              <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] uppercase font-bold block">
+                Detailed Lost Explanation Note:
+              </span>
+              <p className="text-[var(--crm-heading)] leading-relaxed whitespace-pre-wrap">
+                {lead.lostReasonNotes || lead.remarks || 'No detailed explanation note recorded.'}
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Lead Classification & Temperature Control Panel */}
         <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left font-mono">
@@ -656,29 +732,76 @@ export default function LeadDetail() {
 
         {/* Activity Timeline Records */}
         <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left">
-          <div className="mb-4 flex items-center justify-between border-b border-[var(--crm-ink-soft)]/10 pb-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--crm-ink-soft)]/10 pb-3">
             <div>
               <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">AUDIT TRAIL</span>
               <h3 className="text-base font-serif font-normal text-[var(--crm-heading)]">Activity Timeline Stream</h3>
             </div>
-            <FiCompass className="text-[var(--crm-ink-faint)]" size={15} />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowActivityModal(true)}
+                className="bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-sm flex items-center gap-1.5 transition cursor-pointer shadow-sm font-mono"
+              >
+                <FiPlus size={12} />
+                <span>+ Log Manual Report / Activity</span>
+              </button>
+              <FiCompass className="text-[var(--crm-ink-faint)]" size={15} />
+            </div>
           </div>
-          <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-3.5 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
             {activities.length === 0 ? (
               <p className="text-xs tracking-wide text-center py-8 text-[var(--crm-ink-faint)] font-mono uppercase">No activity records mapped inside this lead node.</p>
             ) : (
-              activities.map((act) => (
-                <div key={act._id} className="border-l border-[var(--crm-ink-soft)]/20 pl-4 py-1 text-left font-mono">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                    <span className="font-bold uppercase tracking-wider text-[var(--crm-heading)] text-xs">{act.actionType.replace(/_/g, ' ')}</span>
-                    <span className="text-[10px] text-[var(--crm-ink-faint)]">{new Date(act.createdAt).toLocaleString()}</span>
+              activities.map((act) => {
+                const isHexId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str.trim());
+                const isTrialContext = user?.role === 'SALES_TRIAL' || user?.department === 'SALES_TRIAL' || (window.location.pathname && window.location.pathname.includes('trial'));
+
+                const rawName = act.performer?.name || act.actorId?.fullName || act.actorId?.name || act.actorId?.email || act.metadata?.performedByName || act.metadata?.actorName;
+                const cleanRawName = (rawName && !isHexId(rawName) && !rawName.includes('System / Automated')) ? rawName : null;
+
+                const leadAssigneeName = typeof lead?.assignedTo === 'object' 
+                  ? (lead?.assignedTo?.fullName || lead?.assignedTo?.name || lead?.assignedTo?.email) 
+                  : (typeof lead?.assignedTo === 'string' && lead?.assignedTo.length > 1 && !isHexId(lead?.assignedTo) ? lead?.assignedTo : null);
+
+                const userDisplayName = (user?.fullName || user?.name || user?.email) && !isHexId(user?.fullName || user?.name || user?.email)
+                  ? (user?.fullName || user?.name || user?.email)
+                  : null;
+
+                const performerName = cleanRawName || leadAssigneeName || userDisplayName || (isTrialContext ? 'Sales Trial Executive' : 'Sales Executive');
+
+                const rawRole = act.performer?.role || act.actorId?.role || act.metadata?.performedByRole;
+                let performerRole = (rawRole && rawRole !== 'SYSTEM' && rawRole !== 'USER') ? rawRole : null;
+
+                if (!performerRole || (isTrialContext && performerRole === 'SALES_EXECUTIVE')) {
+                  performerRole = isTrialContext ? 'SALES_TRIAL' : (user?.position || user?.role || 'SALES_EXECUTIVE');
+                }
+                return (
+                  <div key={act._id} className="border-l-2 border-teal-500/50 pl-4 py-2 text-left font-mono bg-[var(--crm-bg-sunken)]/50 rounded-r-sm p-3.5 border-y border-r border-[var(--crm-ink-soft)]/10 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                      <span className="font-bold uppercase tracking-wider text-teal-400 text-xs flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                        {act.actionType.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[10px] text-[var(--crm-ink-faint)] font-bold">{new Date(act.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-[var(--crm-heading)] leading-relaxed font-sans mt-1 whitespace-pre-wrap">{act.note}</p>
+                    
+                    {/* Performer / Task Executor Badge */}
+                    <div className="flex flex-wrap items-center gap-3 mt-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10 text-[10px]">
+                      <div className="flex items-center gap-1 text-sky-400 font-bold bg-sky-950/60 border border-sky-800/40 px-2 py-0.5 rounded-sm">
+                        <FiUser size={11} className="text-sky-400" />
+                        <span>Executed By: <strong className="text-sky-300">{performerName}</strong> {performerRole ? `(${performerRole.replace(/_/g, ' ')})` : ''}</span>
+                      </div>
+
+                      {act.nextFollowupAt && (
+                        <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wide flex items-center gap-1 bg-amber-950/40 border border-amber-800/30 px-2 py-0.5 rounded-sm">
+                          <FiClock size={11} /> Next Scheduled: {new Date(act.nextFollowupAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-[var(--crm-ink-soft)] leading-relaxed font-sans">{act.note}</p>
-                  {act.nextFollowupAt && (
-                    <p className="text-[10px] text-[var(--crm-warning)] font-bold uppercase tracking-wide mt-1">Next Scheduled Interface: {new Date(act.nextFollowupAt).toLocaleDateString()}</p>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </motion.div>
@@ -689,29 +812,31 @@ export default function LeadDetail() {
         {/* 1. Add Activity Modal */}
         {showActivityModal && (
           <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left">
-              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Log Activity Action</h3>
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-md relative text-[var(--crm-ink-soft)] text-left shadow-lg">
+              <h3 className="text-base font-serif mb-4 uppercase tracking-wide border-b border-[var(--crm-ink-soft)]/10 pb-3 text-[var(--crm-heading)]">Log Activity / Manual Report</h3>
               <form onSubmit={handleAddActivity} className="space-y-4 text-xs font-mono">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Action Type</label>
-                  <select value={newActivity.actionType} onChange={(e) => setNewActivity({ ...newActivity, actionType: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none cursor-pointer">
-                    <option value="FOLLOW_UP" className="bg-[var(--crm-bg)]">Follow Up</option>
-                    <option value="CALL" className="bg-[var(--crm-bg)]">Call</option>
-                    <option value="EMAIL" className="bg-[var(--crm-bg)]">Email</option>
-                    <option value="MEETING" className="bg-[var(--crm-bg)]">Meeting</option>
-                    <option value="NOTE" className="bg-[var(--crm-bg)]">Note</option>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Action / Report Type *</label>
+                  <select value={newActivity.actionType} onChange={(e) => setNewActivity({ ...newActivity, actionType: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none cursor-pointer font-mono">
+                    <option value="MANUAL_REPORT" className="bg-[var(--crm-bg)]">📝 Manual Activity Report</option>
+                    <option value="FOLLOW_UP" className="bg-[var(--crm-bg)]">📞 Follow Up</option>
+                    <option value="CALL" className="bg-[var(--crm-bg)]">🎧 Call Log / Interaction</option>
+                    <option value="MEETING" className="bg-[var(--crm-bg)]">🤝 Client Meeting</option>
+                    <option value="EMAIL" className="bg-[var(--crm-bg)]">✉️ Email Communication</option>
+                    <option value="SITE_VISIT" className="bg-[var(--crm-bg)]">📍 Field / Site Visit</option>
+                    <option value="NOTE" className="bg-[var(--crm-bg)]">📌 General Note / Remark</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Operational Summary Note</label>
-                  <textarea required rows="3" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Log interaction specifics..."/>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Operational Summary Note / Report *</label>
+                  <textarea required rows="4" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Type report details, client response, meeting minutes, or action summary..."/>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Next Interface Schedule</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Next Follow-up Schedule (Optional)</label>
                   <input type="datetime-local" value={newActivity.nextFollowupAt} onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Commit</button>
+                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Commit Report</button>
                   <button type="button" onClick={() => setShowActivityModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-bg-raised)] transition-colors">Cancel</button>
                 </div>
               </form>
@@ -875,6 +1000,15 @@ export default function LeadDetail() {
         onClose={() => setShowCallModal(false)}
         initialLead={lead}
         onSuccess={handleCallRecordingSuccess}
+      />
+
+      {/* MANDATORY LOST REASON MODAL */}
+      <LostReasonModal
+        isOpen={showLostModal}
+        onClose={() => setShowLostModal(false)}
+        onSubmit={handleLostReasonSubmit}
+        leadName={lead?.customerName}
+        loading={submittingLost}
       />
     </motion.div>
   );

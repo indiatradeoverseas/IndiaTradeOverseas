@@ -194,6 +194,10 @@ const AdminLogin = () => {
               <Link to="/login" className="font-medium text-[#C5CBD3] hover:text-[#F2F4F7] hover:underline">
                 Client login
               </Link>
+              {' / '}
+              <Link to="/trial-login" className="font-medium text-[#60A5FA] hover:text-[#93C5FD] hover:underline">
+                Trial login
+              </Link>
             </p>
           </motion.div>
         </div>

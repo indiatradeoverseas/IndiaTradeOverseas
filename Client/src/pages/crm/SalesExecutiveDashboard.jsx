@@ -205,28 +205,43 @@ export default function SalesExecutiveDashboard() {
   const [loiNotes, setLoiNotes] = useState('');
   const [uploadingLOI, setUploadingLOI] = useState(false);
 
+  const toLocalDateStr = (d) => {
+    if (!d) return null;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getFilteredByDate = (items = []) => {
     if (dateFilterMode === 'ALL') return items;
-    return items.filter(item => {
-      const rawDate = item.createdAt || item.date || item.uploadedAt;
-      if (!rawDate) return true;
-      const itemDate = new Date(rawDate);
-      const dStr = itemDate.toISOString().split('T')[0];
 
-      if (dateFilterMode === 'TODAY') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return dStr === todayStr;
-      }
-      if (dateFilterMode === 'YESTERDAY') {
-        const yest = new Date();
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        return dStr === yestStr;
-      }
-      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
-        return dStr === selectedDate;
-      }
-      return true;
+    const todayStr = toLocalDateStr(new Date());
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yestDate);
+
+    let targetDateStr = '';
+    if (dateFilterMode === 'TODAY') targetDateStr = todayStr;
+    else if (dateFilterMode === 'YESTERDAY') targetDateStr = yesterdayStr;
+    else if (dateFilterMode === 'PICK_DATE' && selectedDate) targetDateStr = selectedDate;
+
+    if (!targetDateStr) return items;
+
+    return items.filter(item => {
+      const createdStr = toLocalDateStr(item.createdAt || item.date || item.uploadedAt);
+      const updatedStr = toLocalDateStr(item.updatedAt || item.assignedAt);
+      const targetStr = toLocalDateStr(item.targetDate);
+      const followupStr = toLocalDateStr(item.nextFollowupAt);
+
+      return (
+        createdStr === targetDateStr ||
+        updatedStr === targetDateStr ||
+        targetStr === targetDateStr ||
+        followupStr === targetDateStr
+      );
     });
   };
 
@@ -1065,7 +1080,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Won vs Pending vs Lost</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                           <BarChart data={[
                             { name: 'Won', count: wonMyDeals, fill: '#10b981' },
                             { name: 'Pending', count: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, fill: '#f59e0b' },
@@ -1090,7 +1105,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] font-bold">Materials Breakdown</span>
                       </h3>
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                           <BarChart data={['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'].map(cat => ({
                             name: cat,
                             leads: deals.filter(d => d.productCategory === cat).length
@@ -1703,7 +1718,7 @@ export default function SalesExecutiveDashboard() {
 
                     {/* Department Chart */}
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                         <BarChart data={departmentRankings} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />

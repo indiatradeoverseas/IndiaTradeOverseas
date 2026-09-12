@@ -45,8 +45,11 @@ export default function Quotations() {
     }
   };
 
-  const handleApprove = async (id, approvedPrice) => {
-    const price = prompt('Enter approved price:', approvedPrice);
+  const handleApprove = async (id, approvedPrice, paymentTerms) => {
+    const promptMsg = paymentTerms
+      ? `Payment Protocol: ${paymentTerms}\n\nEnter approved price:`
+      : 'Enter approved price:';
+    const price = prompt(promptMsg, approvedPrice);
     if (price) {
       try {
         const response = await quotationsApi.approveQuotation(id, { approvedPrice: parseFloat(price) });
@@ -299,6 +302,7 @@ export default function Quotations() {
                   </th>
                   <th className="py-4 px-5">Lead / Client Name</th>
                   <th className="py-4 px-5">Commodity Sector</th>
+                  <th className="py-4 px-5">Payment Protocol</th>
                   <th className="py-4 px-5">Requested By</th>
                   <th className="py-4 px-5">Proposed Base Price</th>
                   <th className="py-4 px-5">Approved Price</th>
@@ -309,7 +313,7 @@ export default function Quotations() {
               <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                 {filteredQuotations.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center py-20 bg-[var(--crm-bg-raised)]/5">
+                    <td colSpan="9" className="text-center py-20 bg-[var(--crm-bg-raised)]/5">
                       <div className="flex flex-col items-center justify-center opacity-40">
                         <FiCheck className="text-[var(--crm-ink-faint)] mb-3" size={32} />
                         <p className="font-mono uppercase tracking-widest text-[10px]">No pricing requests mapped for selected filter.</p>
@@ -355,8 +359,15 @@ export default function Quotations() {
                         </span>
                       </td>
 
+                      {/* Payment Protocol Badge */}
+                      <td className="py-4 px-5 font-mono">
+                        <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded border bg-teal-950/60 text-teal-300 border-teal-800/60 shadow-sm inline-block font-mono">
+                          {quotation.paymentTerms}
+                        </span>
+                      </td>
+
                       <td className="py-4 px-5 text-[var(--crm-ink-soft)]/90 font-light font-mono text-[11px]">
-                        {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Ananya Patel'}
+                        {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Sales Representative'}
                       </td>
 
                       <td className="py-4 px-5 font-mono font-bold text-sm text-[var(--crm-heading)]">
@@ -404,7 +415,7 @@ export default function Quotations() {
                               <motion.button 
                                 whileHover={{ scale: 1.08 }}
                                 whileTap={{ scale: 0.92 }}
-                                onClick={() => handleApprove(quotation._id, quotation.employeeRequestedPrice)} 
+                                onClick={() => handleApprove(quotation._id, quotation.employeeRequestedPrice, quotation.paymentTerms)} 
                                 className="w-8 h-8 rounded-sm bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/20 text-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md" 
                                 title="Approve Quote"
                               >

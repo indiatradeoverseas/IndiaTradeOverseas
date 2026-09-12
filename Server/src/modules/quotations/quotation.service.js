@@ -1,6 +1,25 @@
 const Quotation = require('./quotation.model');
 const Lead = require('../leads/lead.model');
-const { recordAudit } = require('../security-audit/auditLog.service');
+
+let recordAudit;
+try {
+  recordAudit = require('../security-audit/auditLog.service').recordAudit;
+} catch (e) {}
+
+const safeRecordAudit = async (data) => {
+  try {
+    let fn = recordAudit;
+    if (typeof fn !== 'function') {
+      const mod = require('../security-audit/auditLog.service');
+      fn = mod ? mod.recordAudit : null;
+    }
+    if (typeof fn === 'function') {
+      await fn(data);
+    }
+  } catch (err) {
+    console.warn('[Quotation Audit Notice]:', err.message);
+  }
+};
 
 async function createQuotationRequest({ leadId, employeeRequestedPrice, marginNote, paymentTerms, validityDays, actorId }) {
   const lead = await Lead.findById(leadId);
@@ -16,7 +35,20 @@ async function createQuotationRequest({ leadId, employeeRequestedPrice, marginNo
     status: 'PENDING'
   });
 
-  await recordAudit({
+  try {
+    const Notification = require('../notifications/notification.model');
+    const priceStr = employeeRequestedPrice ? `₹${Number(employeeRequestedPrice).toLocaleString('en-IN')}` : 'Unspecified Price';
+    await Notification.create({
+      targetDepartment: 'SALES',
+      message: `📋 New Quotation Request submitted for ${lead.customerName || lead.leadCode} (${priceStr}). Awaiting Manager Approval.`,
+      type: 'QUOTATION_REQUESTED',
+      metadata: { quotationId: quotation._id, leadId }
+    });
+  } catch (notifErr) {
+    console.warn('Quotation request notification notice:', notifErr.message);
+  }
+
+  await safeRecordAudit({
     actorId,
     actionType: 'QUOTATION_REQUESTED',
     entityType: 'QUOTATION',
@@ -57,7 +89,7 @@ async function approveQuotation({ id, approvedPrice, actorId }) {
     console.warn('Quotation approval notification notice:', notifErr.message);
   }
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId,
     actionType: 'QUOTATION_APPROVED',
     entityType: 'QUOTATION',
@@ -94,7 +126,7 @@ async function rejectQuotation({ id, marginNote, actorId }) {
     console.warn('Quotation rejection notification notice:', notifErr.message);
   }
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId,
     actionType: 'QUOTATION_REJECTED',
     entityType: 'QUOTATION',
@@ -115,7 +147,7 @@ async function sendToCustomer(id, actorId) {
 
   await Lead.findByIdAndUpdate(quotation.leadId, { stage: 'NEGOTIATION' });
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId,
     actionType: 'LEAD_STAGE_CHANGED',
     entityType: 'QUOTATION',

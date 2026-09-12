@@ -34,7 +34,7 @@ async function getSettingsDoc() {
   return settings;
 }
 
-// Helper to find all DB IDs (User and Employee) associated with a given ID's email (returns String & ObjectId formats)
+// Helper to find all DB IDs (User, Employee, SalesTrialUser) associated with a given ID's email (returns String & ObjectId formats)
 async function getAllIdsForId(id) {
   if (!id) return [];
   const rawIdStr = id.toString();
@@ -42,6 +42,7 @@ async function getAllIdsForId(id) {
 
   const User = require('../users/user.model');
   const Employee = require('../employee/employee.model');
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
   const isObj = mongoose.Types.ObjectId.isValid(id);
   const user = isObj ? await User.findById(id) : await User.findOne({ $or: [{ _id: id }, { employeeId: id }, { email: id }] });
@@ -50,6 +51,11 @@ async function getAllIdsForId(id) {
   if (!email) {
     const emp = isObj ? await Employee.findById(id) : await Employee.findOne({ $or: [{ _id: id }, { employeeId: id }, { email: id }] });
     if (emp) email = emp.email;
+  }
+
+  if (!email) {
+    const trial = isObj ? await SalesTrialUser.findById(id) : await SalesTrialUser.findOne({ $or: [{ _id: id }, { trialId: id }, { email: id }] });
+    if (trial) email = trial.email;
   }
 
   const idSet = new Set();
@@ -74,6 +80,7 @@ async function getAllIdsForId(id) {
 
   const users = await User.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id employeeId');
   const emps = await Employee.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id employeeId');
+  const trials = await SalesTrialUser.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id trialId');
 
   users.forEach(u => {
     addId(u._id);
@@ -82,6 +89,10 @@ async function getAllIdsForId(id) {
   emps.forEach(e => {
     addId(e._id);
     if (e.employeeId) addId(e.employeeId);
+  });
+  trials.forEach(t => {
+    addId(t._id);
+    if (t.trialId) addId(t.trialId);
   });
 
   return result;
@@ -93,7 +104,7 @@ async function getBalanceForUser(employeeOrUser, month) {
   if (!email) {
     let balance = await MonthlyLeaveBalance.findOne({ employeeId: employeeOrUser._id, month });
     if (!balance) {
-      const modelName = employeeOrUser.constructor.modelName || (employeeOrUser.passwordHash ? 'User' : 'Employee');
+      const modelName = employeeOrUser.constructor?.modelName || (employeeOrUser.trialId ? 'SalesTrialUser' : (employeeOrUser.passwordHash ? 'User' : 'Employee'));
       balance = await MonthlyLeaveBalance.create({
         employeeId: employeeOrUser._id,
         employeeModel: modelName,
@@ -109,18 +120,27 @@ async function getBalanceForUser(employeeOrUser, month) {
   }
 
   const User = require('../users/user.model');
+  const Employee = require('../employee/employee.model');
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
   const users = await User.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
   const emps = await Employee.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
+  const trials = await SalesTrialUser.find({ email: { $regex: new RegExp(`^${email}$`, 'i') } }, '_id');
   
   const allIds = [
     ...users.map(u => u._id),
-    ...emps.map(e => e._id)
+    ...emps.map(e => e._id),
+    ...trials.map(t => t._id)
   ];
 
   let balance = await MonthlyLeaveBalance.findOne({ employeeId: { $in: allIds }, month });
   if (!balance) {
-    const preferredEmployee = emps[0] || users[0] || employeeOrUser;
-    const preferredModel = emps[0] ? 'Employee' : (users[0] ? 'User' : (employeeOrUser.constructor?.modelName || (employeeOrUser.passwordHash ? 'User' : 'Employee')));
+    const preferredEmployee = emps[0] || users[0] || trials[0] || employeeOrUser;
+    let preferredModel = 'User';
+    if (emps[0]) preferredModel = 'Employee';
+    else if (users[0]) preferredModel = 'User';
+    else if (trials[0]) preferredModel = 'SalesTrialUser';
+    else preferredModel = employeeOrUser.constructor?.modelName || (employeeOrUser.trialId ? 'SalesTrialUser' : (employeeOrUser.passwordHash ? 'User' : 'Employee'));
     
     balance = await MonthlyLeaveBalance.create({
       employeeId: preferredEmployee._id,
@@ -203,6 +223,9 @@ async function createLeave(req, res, next) {
     }
 
     const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
     let employee = await User.findById(targetEmployeeId);
     let targetModel = 'User';
 
@@ -210,19 +233,32 @@ async function createLeave(req, res, next) {
       employee = await Employee.findById(targetEmployeeId);
       if (employee) {
         targetModel = 'Employee';
-      } else {
-        employee = await User.findOne({ employeeId: targetEmployeeId }) || await Employee.findOne({ employeeId: targetEmployeeId });
-        if (employee) {
-          targetModel = employee.constructor?.modelName || (employee.passwordHash ? 'User' : 'Employee');
-          targetEmployeeId = employee._id;
-        }
+      }
+    }
+
+    if (!employee) {
+      employee = await SalesTrialUser.findById(targetEmployeeId);
+      if (employee) {
+        targetModel = 'SalesTrialUser';
+      }
+    }
+
+    if (!employee) {
+      employee = await User.findOne({ $or: [{ employeeId: targetEmployeeId }, { email: targetEmployeeId }] }) ||
+                 await Employee.findOne({ $or: [{ employeeId: targetEmployeeId }, { email: targetEmployeeId }] }) ||
+                 await SalesTrialUser.findOne({ $or: [{ trialId: targetEmployeeId }, { email: targetEmployeeId }] });
+      if (employee) {
+        targetModel = employee.constructor?.modelName || (employee.trialId ? 'SalesTrialUser' : (employee.passwordHash ? 'User' : 'Employee'));
+        targetEmployeeId = employee._id;
       }
     }
 
     if (!employee && req.user && req.user.email) {
-      employee = await User.findOne({ email: req.user.email }) || await Employee.findOne({ email: req.user.email });
+      employee = await User.findOne({ email: req.user.email }) ||
+                 await Employee.findOne({ email: req.user.email }) ||
+                 await SalesTrialUser.findOne({ email: req.user.email });
       if (employee) {
-        targetModel = employee.constructor?.modelName || (employee.passwordHash ? 'User' : 'Employee');
+        targetModel = employee.constructor?.modelName || (employee.trialId ? 'SalesTrialUser' : (employee.passwordHash ? 'User' : 'Employee'));
         targetEmployeeId = employee._id;
       }
     }
@@ -315,11 +351,33 @@ async function createLeave(req, res, next) {
 
 // Helper to find all employee and user IDs within a department
 async function getDeptEmployeeIds(department) {
+  if (!department) return [];
   const Employee = require('../employee/employee.model');
   const User = require('../users/user.model');
   
-  const employees = await Employee.find({ department }, '_id');
-  const users = await User.find({ department }, '_id');
+  const deptUpper = department.toUpperCase();
+  let query = { department: new RegExp('^' + department.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+
+  if (deptUpper === 'TRANSPORT' || deptUpper === 'LOGISTICS') {
+    query = {
+      $or: [
+        { department: { $regex: /TRANSPORT|LOGISTICS/i } },
+        { role: { $regex: /DRIVER|TRANSPORT|LOGISTICS/i } },
+        { position: { $regex: /driver|transport|logistics/i } }
+      ]
+    };
+  } else if (deptUpper === 'SALES') {
+    query = {
+      $or: [
+        { department: { $regex: /SALES/i } },
+        { role: { $regex: /SALES/i } },
+        { position: { $regex: /sales/i } }
+      ]
+    };
+  }
+
+  const employees = await Employee.find(query, '_id');
+  const users = await User.find(query, '_id');
   
   return [...employees.map(e => e._id), ...users.map(u => u._id)];
 }
@@ -328,11 +386,25 @@ async function getDeptEmployeeIds(department) {
 async function listLeaves(req, res, next) {
   try {
     const filter = {};
-    
-    // Role based filtering: 
-    // If req.query.employeeId is passed, filter for that specific employee
-    // Otherwise: HR/Admin see all requests; Managers see department + own; Executives see own.
-    const isHRorAdmin = ['ADMIN', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
+    const role = (req.user?.role || '').toUpperCase();
+    const dept = (req.user?.department || '').toUpperCase();
+    const isHRorAdmin = ['ADMIN', 'FOUNDER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(role);
+
+    let targetDept = req.query.department || dept;
+    if (!targetDept) {
+      if (role.includes('SALES')) targetDept = 'SALES';
+      else if (role.includes('TRANSPORT') || role.includes('LOGISTICS')) targetDept = 'TRANSPORT';
+    }
+
+    const isManagerRole =
+      role === 'MANAGER' ||
+      role.endsWith('_MANAGER') ||
+      role.includes('MANAGER') ||
+      role === 'SALES_MANAGER' ||
+      role === 'TRANSPORT_MANAGER' ||
+      role === 'LOGISTICS_MANAGER' ||
+      role === 'TRANSPORT';
+
     if (req.query.employeeId) {
       const targetIds = await getAllIdsForId(req.query.employeeId);
       filter.$or = [
@@ -340,8 +412,8 @@ async function listLeaves(req, res, next) {
         { appliedBy: { $in: targetIds } }
       ];
     } else if (!isHRorAdmin) {
-      if (req.user.role === 'MANAGER') {
-        const deptIds = await getDeptEmployeeIds(req.user.department);
+      if (isManagerRole) {
+        const deptIds = await getDeptEmployeeIds(targetDept);
         const managerIds = await getAllIdsForId(req.user._id);
         const allDeptIds = [];
         for (const dId of deptIds) {
@@ -362,6 +434,17 @@ async function listLeaves(req, res, next) {
           { appliedBy: { $in: myIds } }
         ];
       }
+    } else if (req.query.department) {
+      const deptIds = await getDeptEmployeeIds(req.query.department);
+      const allDeptIds = [];
+      for (const dId of deptIds) {
+        const ids = await getAllIdsForId(dId);
+        allDeptIds.push(...ids);
+      }
+      filter.$or = [
+        { employeeId: { $in: allDeptIds } },
+        { appliedBy: { $in: allDeptIds } }
+      ];
     }
 
     if (req.query.status) {
@@ -374,11 +457,62 @@ async function listLeaves(req, res, next) {
       filter.month = req.query.month;
     }
 
-    const leaves = await LeaveRequest.find(filter)
+    const leavesDocs = await LeaveRequest.find(filter)
       .populate('employeeId', 'fullName name email department role position phone')
       .populate('approvedBy', 'fullName name email role department position')
       .populate('extraApprovedBy', 'fullName name email role department position')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const leaves = await Promise.all(leavesDocs.map(async (lv) => {
+      // Resolve employeeId document if population returned null or incomplete document
+      if (!lv.employeeId || typeof lv.employeeId !== 'object' || (!lv.employeeId.fullName && !lv.employeeId.name)) {
+        const User = require('../users/user.model');
+        const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+        const rawEmpId = lv.employeeId ? (lv.employeeId._id || lv.employeeId) : null;
+        if (rawEmpId) {
+          const isObj = mongoose.Types.ObjectId.isValid(rawEmpId);
+          let empDoc = isObj ? await User.findById(rawEmpId, 'fullName name email department role position phone').lean() : null;
+          if (!empDoc && isObj) empDoc = await Employee.findById(rawEmpId, 'fullName name email department role position phone').lean();
+          if (!empDoc && isObj) empDoc = await SalesTrialUser.findById(rawEmpId, 'fullName name email department role position phone').lean();
+          if (!empDoc) {
+            empDoc = await User.findOne({ $or: [{ _id: rawEmpId }, { employeeId: rawEmpId }, { email: rawEmpId }] }, 'fullName name email department role position phone').lean() ||
+                     await Employee.findOne({ $or: [{ _id: rawEmpId }, { employeeId: rawEmpId }, { email: rawEmpId }] }, 'fullName name email department role position phone').lean() ||
+                     await SalesTrialUser.findOne({ $or: [{ _id: rawEmpId }, { trialId: rawEmpId }, { email: rawEmpId }] }, 'fullName name email department role position phone').lean();
+          }
+          if (empDoc) {
+            lv.employeeId = empDoc;
+          }
+        }
+      }
+
+      // Ensure lv.employeeName is set as explicit string field
+      if (typeof lv.employeeId === 'object' && lv.employeeId) {
+        lv.employeeName = lv.employeeId.fullName || lv.employeeId.name || lv.employeeId.email || (lv.employeeId._id ? String(lv.employeeId._id) : 'Employee');
+      } else if (typeof lv.employeeId === 'string' && lv.employeeId) {
+        lv.employeeName = lv.employeeId;
+      }
+
+      if (lv.approvedBy && typeof lv.approvedBy === 'object' && (lv.approvedBy.fullName || lv.approvedBy.name)) {
+        // Already populated
+      } else if (lv.approvedBy && mongoose.Types.ObjectId.isValid(lv.approvedBy)) {
+        const User = require('../users/user.model');
+        let appDoc = await User.findById(lv.approvedBy, 'fullName name email role department position').lean() ||
+                     await Employee.findById(lv.approvedBy, 'fullName name email role department position').lean();
+        if (appDoc) lv.approvedBy = appDoc;
+      }
+
+      if (lv.extraApprovedBy && typeof lv.extraApprovedBy === 'object' && (lv.extraApprovedBy.fullName || lv.extraApprovedBy.name)) {
+        // Already populated
+      } else if (lv.extraApprovedBy && mongoose.Types.ObjectId.isValid(lv.extraApprovedBy)) {
+        const User = require('../users/user.model');
+        let appDoc = await User.findById(lv.extraApprovedBy, 'fullName name email role department position').lean() ||
+                     await Employee.findById(lv.extraApprovedBy, 'fullName name email role department position').lean();
+        if (appDoc) lv.extraApprovedBy = appDoc;
+      }
+
+      return lv;
+    }));
 
     return ok(res, { leaves }, 'Leave requests retrieved successfully', 200, req);
   } catch (error) {
@@ -389,7 +523,13 @@ async function listLeaves(req, res, next) {
 // 5. Review Leave Request (Approve/Reject)
 async function reviewLeave(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
+    const role = (req.user?.role || '').toUpperCase();
+    const isAllowedRole =
+      ['ADMIN', 'FOUNDER', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'LOGISTICS_MANAGER', 'TRANSPORT'].includes(role) ||
+      role.endsWith('_MANAGER') ||
+      role.includes('MANAGER');
+
+    if (!isAllowedRole) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin/Manager required to review leaves', [], req);
     }
 
@@ -409,14 +549,24 @@ async function reviewLeave(req, res, next) {
 
     let employee;
     const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
     if (leave.employeeModel === 'Employee') {
       employee = await Employee.findById(leave.employeeId);
+    } else if (leave.employeeModel === 'SalesTrialUser') {
+      employee = await SalesTrialUser.findById(leave.employeeId);
     } else {
       employee = await User.findById(leave.employeeId);
     }
 
     if (!employee) {
-      employee = await User.findById(leave.employeeId) || await Employee.findById(leave.employeeId) || await User.findOne({ employeeId: leave.employeeId }) || await Employee.findOne({ employeeId: leave.employeeId });
+      employee = await User.findById(leave.employeeId) ||
+                 await Employee.findById(leave.employeeId) ||
+                 await SalesTrialUser.findById(leave.employeeId) ||
+                 await User.findOne({ employeeId: leave.employeeId }) ||
+                 await Employee.findOne({ employeeId: leave.employeeId }) ||
+                 await SalesTrialUser.findOne({ trialId: leave.employeeId });
     }
 
     if (!employee) {
@@ -424,17 +574,29 @@ async function reviewLeave(req, res, next) {
     }
 
     // Role-based Approval Checks:
-    // - Managers can only be reviewed by HR/Admin
-    // - Executives can be reviewed by their department manager OR HR/Admin
-    if (employee.role === 'MANAGER') {
-      if (!['HR', 'ADMIN', 'HR_MANAGER'].includes(req.user.role)) {
-        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only HR Managers or Admins can review Manager leave requests', [], req);
+    // - Managers can only be reviewed by HR/Admin/Founder
+    // - Executives/Drivers can be reviewed by their department manager OR HR/Admin/Founder
+    const empRole = (employee.role || '').toUpperCase();
+    const isApplicantManager = empRole === 'MANAGER' || empRole.endsWith('_MANAGER') || empRole.includes('MANAGER');
+
+    if (isApplicantManager) {
+      if (!['HR', 'ADMIN', 'FOUNDER', 'HR_MANAGER'].includes(role)) {
+        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only HR Managers, Admins or Founders can review Manager leave requests', [], req);
       }
     } else {
-      const isHRorAdmin = ['HR', 'ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role);
-      const isMyDeptManager = req.user.role === 'MANAGER' && req.user.department === employee.department;
+      const isHRorAdmin = ['HR', 'ADMIN', 'FOUNDER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(role);
+      const userDept = (req.user.department || '').toUpperCase();
+      const empDept = (employee.department || '').toUpperCase();
+
+      const isMyDeptManager = isAllowedRole && (
+        (userDept && empDept && userDept === empDept) ||
+        ((role.includes('SALES') || userDept === 'SALES') && (empDept === 'SALES' || empRole.includes('SALES'))) ||
+        ((role.includes('TRANSPORT') || role.includes('LOGISTICS') || userDept === 'TRANSPORT' || userDept === 'LOGISTICS') && 
+         (empDept === 'TRANSPORT' || empDept === 'LOGISTICS' || empRole.includes('DRIVER') || empRole.includes('TRANSPORT') || empRole.includes('LOGISTICS')))
+      );
+
       if (!isHRorAdmin && !isMyDeptManager) {
-        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only your department manager or HR/Admin can review this leave request', [], req);
+        return fail(res, 403, 'FORBIDDEN', 'Access denied: Only your department manager or HR/Admin/Founder can review this leave request', [], req);
       }
     }
 
@@ -648,9 +810,53 @@ async function getAllBalances(req, res, next) {
     }
 
     const month = req.query.month || new Date().toISOString().slice(0, 7);
-    const balances = await MonthlyLeaveBalance.find({ month }).populate('employeeId', 'name email department role');
+    const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
-    return ok(res, { balances }, 'Leave balances list retrieved successfully', 200, req);
+    const [allEmps, allUsers, allTrials] = await Promise.all([
+      Employee.find({ status: { $ne: 'INACTIVE' } }).select('_id fullName name email department role position employeeId').lean(),
+      User.find({ status: { $ne: 'INACTIVE' } }).select('_id fullName name email department role position employeeId').lean(),
+      SalesTrialUser.find({ status: { $ne: 'INACTIVE' } }).select('_id fullName name email department role position trialId').lean()
+    ]);
+
+    const staffMap = new Map();
+    [...allEmps, ...allUsers, ...allTrials].forEach(person => {
+      const emailKey = (person.email || '').toLowerCase().trim();
+      if (!emailKey) return;
+      if (!staffMap.has(emailKey)) {
+        staffMap.set(emailKey, {
+          _id: person._id,
+          fullName: person.fullName || person.name || person.email,
+          name: person.name || person.fullName || person.email,
+          email: person.email,
+          department: person.department || 'GENERAL',
+          role: person.role || 'EMPLOYEE',
+          position: person.position || '',
+          modelName: person.employeeId ? 'Employee' : (person.trialId ? 'SalesTrialUser' : 'User')
+        });
+      }
+    });
+
+    const activeStaff = Array.from(staffMap.values());
+    const finalBalances = [];
+
+    for (const staff of activeStaff) {
+      const balance = await getBalanceForUser(staff, month);
+      const balObj = balance.toObject ? balance.toObject() : balance;
+      balObj.employeeId = {
+        _id: staff._id,
+        fullName: staff.fullName,
+        name: staff.name,
+        email: staff.email,
+        department: staff.department,
+        role: staff.role,
+        position: staff.position
+      };
+      finalBalances.push(balObj);
+    }
+
+    return ok(res, { balances: finalBalances }, 'Leave balances list retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }

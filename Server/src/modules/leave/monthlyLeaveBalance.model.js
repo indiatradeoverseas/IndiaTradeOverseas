@@ -11,7 +11,7 @@ const monthlyLeaveBalanceSchema = new mongoose.Schema(
     employeeModel: {
       type: String,
       required: true,
-      enum: ['Employee', 'User'],
+      enum: ['Employee', 'User', 'SalesTrialUser'],
       default: 'Employee'
     },
     month: {

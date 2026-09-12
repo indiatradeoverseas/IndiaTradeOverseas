@@ -5,7 +5,7 @@ import { adminApi } from '../../api/admin';
 import { dashboardApi } from '../../api/dashboard';
 import { notificationsApi } from '../../api/notifications';
 import { useAuth } from '../../hooks/useAuth';
-import { FiUsers, FiAlertCircle, FiFileText, FiCheckSquare, FiClock, FiActivity, FiBell, FiArrowRight, FiTruck, FiTrendingUp, FiUserCheck, FiLifeBuoy, FiAward, FiDownload, FiCalendar } from 'react-icons/fi';
+import { FiUsers, FiAlertCircle, FiFileText, FiCheckSquare, FiClock, FiActivity, FiBell, FiArrowRight, FiTruck, FiTrendingUp, FiUserCheck, FiLifeBuoy, FiAward, FiDownload, FiCalendar, FiMessageSquare } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SkeletonStatGrid, SkeletonChartCard, SkeletonListCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
@@ -418,6 +418,12 @@ export default function Dashboard() {
           <h1 className="text-2xl sm:text-3xl font-normal tracking-tight uppercase" style={HEADING}>Global Ledger Base</h1>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
+          <Link
+            to="/crm/manager-chat"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] uppercase font-bold tracking-wider rounded font-mono transition cursor-pointer"
+          >
+            <FiMessageSquare size={13} /> <span>Executive Chat</span>
+          </Link>
           {isAdmin && (
             <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 text-[9px] uppercase font-bold tracking-wider rounded font-mono">
               <span className="text-[var(--crm-ink-faint)]">View Role:</span>

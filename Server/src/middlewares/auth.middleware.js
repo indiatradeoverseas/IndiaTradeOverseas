@@ -40,7 +40,13 @@ async function authenticate(req, res, next) {
     }
 
     if (!user) {
-      console.error(`[AUTH FAIL] No user/admin/employee found for sub: ${decoded.sub}`);
+      const SalesTrialUser = require('../modules/sales-trial/salesTrialUser.model');
+      user = await SalesTrialUser.findOne(idQuery);
+      if (user) foundIn = 'SalesTrialUser';
+    }
+
+    if (!user) {
+      console.error(`[AUTH FAIL] No user/admin/employee/salesTrialUser found for sub: ${decoded.sub}`);
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'User/Employee is deactivated or invalid', [], req);
     }
 

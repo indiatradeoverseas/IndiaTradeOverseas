@@ -167,6 +167,53 @@ function init(server) {
       io.emit('dispatch_assigned', data);
     });
 
+    // Sales Trial Chat Real-Time Broadcast Handler
+    socket.on('sales_trial_chat_send', (chatData) => {
+      io.emit('sales_trial_chat_receive', chatData);
+    });
+
+    // Executive Manager & Founder Chat Handler
+    socket.on('manager_chat_send', async (chatMsg) => {
+      try {
+        if (!chatMsg || (!chatMsg.text && !chatMsg.message)) return;
+        const cleanMsg = (chatMsg.text || chatMsg.message || '').trim();
+        if (!cleanMsg) return;
+
+        const ManagerChat = require('../modules/chat/managerChat.model');
+        const dbDoc = await ManagerChat.create({
+          senderId: String(chatMsg.senderId || employeeId || 'unknown'),
+          senderName: chatMsg.senderName || name || 'User',
+          senderRole: chatMsg.senderRole || role || 'MANAGER',
+          senderDepartment: chatMsg.senderDepartment || 'GENERAL',
+          recipientId: String(chatMsg.recipientId || 'GENERAL'),
+          recipientName: chatMsg.recipientName || 'General Leadership Hub',
+          message: cleanMsg,
+          attachmentUrl: chatMsg.attachmentUrl || '',
+          leadCode: chatMsg.leadCode || ''
+        });
+
+        const formatted = {
+          _id: dbDoc._id.toString(),
+          id: dbDoc._id.toString(),
+          senderId: dbDoc.senderId,
+          senderName: dbDoc.senderName,
+          senderRole: dbDoc.senderRole,
+          senderDepartment: dbDoc.senderDepartment,
+          recipientId: dbDoc.recipientId,
+          recipientName: dbDoc.recipientName,
+          message: dbDoc.message,
+          attachmentUrl: dbDoc.attachmentUrl,
+          leadCode: dbDoc.leadCode,
+          createdAt: dbDoc.createdAt,
+          time: new Date(dbDoc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        io.emit('manager_chat_receive', formatted);
+      } catch (err) {
+        console.error('Error handling manager chat over socket:', err);
+      }
+    });
+
     socket.on('disconnect', () => {
       if (employeeId && connectedEmployees.has(employeeId)) {
         const sockets = connectedEmployees.get(employeeId);

@@ -65,13 +65,20 @@ async function autoRouteLead(lead) {
       metadata: { leadId: lead._id }
     });
 
-    await recordAudit({
-      actionType: 'LEAD_ASSIGNED',
-      entityType: 'LEAD',
-      entityId: lead._id.toString(),
-      severity: 'LOW',
-      metadata: { assignedTo, assignedDepartment }
-    });
+    try {
+      const auditFn = recordAudit || require('../security-audit/auditLog.service').recordAudit;
+      if (typeof auditFn === 'function') {
+        await auditFn({
+          actionType: 'LEAD_ASSIGNED',
+          entityType: 'LEAD',
+          entityId: lead._id.toString(),
+          severity: 'LOW',
+          metadata: { assignedTo, assignedDepartment }
+        });
+      }
+    } catch (auditErr) {
+      console.warn('[LeadAssignment Audit Notice]:', auditErr.message);
+    }
   }
 
   return {

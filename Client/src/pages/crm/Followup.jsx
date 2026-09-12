@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { leadsApi } from '../../api/leads';
 import { taskApi } from '../../api/task';
 import { employeesApi } from '../../api/employees';
+import { salesTrialApi } from '../../api/salesTrialApi';
 import { useAuth } from '../../hooks/useAuth';
 import { API_URL } from '../../config/env';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
@@ -122,6 +123,42 @@ export default function Followup() {
         ? fetchedRecordings
         : fetchedRecordings.filter(r => isAssignedToMe(r));
 
+      let empList = [];
+      if (empRes.success && empRes.data?.employees) {
+        empList = empRes.data.employees;
+      } else {
+        const fallbackRes = await taskApi.getEmployeesByDepartment('SALES').catch(() => ({ success: false }));
+        if (fallbackRes.success && fallbackRes.data?.employees) {
+          empList = fallbackRes.data.employees;
+        }
+      }
+
+      try {
+        const trialRes = await salesTrialApi.getTrialUsers().catch(() => null);
+        if (trialRes && trialRes.success) {
+          const trialUsersList = trialRes.data?.users || [];
+          const activeTrial = trialUsersList.filter(u => u.status === 'ACTIVE' || u.isApproved);
+          const seen = new Set(empList.map(e => String(e._id || e.employeeId || '')));
+          activeTrial.forEach(u => {
+            const uId = String(u._id || u.trialId || '');
+            if (uId && !seen.has(uId)) {
+              seen.add(uId);
+              empList.push({
+                _id: u._id,
+                name: `${u.fullName || u.name} (${u.trialId || 'Sales Trial'})`,
+                fullName: `${u.fullName || u.name} (${u.trialId || 'Sales Trial'})`,
+                email: u.email,
+                role: 'SALES_TRIAL',
+                employeeId: u.trialId,
+                isTrial: true
+              });
+            }
+          });
+        }
+      } catch (errTrial) {
+        console.warn('Trial users fetch notice in Followup:', errTrial.message);
+      }
+
       // Collect lead IDs that already have call recordings
       const recordingLeadIds = new Set(
         visibleRecordings
@@ -135,11 +172,38 @@ export default function Followup() {
         const lIdStr = String(l._id);
         if (!recordingLeadIds.has(lIdStr)) {
           const isAssigned = isAssignedToMe(l);
-          const isFollowupStage = ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED'].includes(String(l.stage || '').toUpperCase());
+          const isFollowupStage = ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'QUOTATION_REQUESTED', 'QUOTATION_SHARED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'CLOSED_WON', 'DELIVERED', 'COMPLETED', 'DEAL_WON'].includes(String(l.stage || '').toUpperCase());
 
           if (isFollowupStage && (isManagerOrAdmin || isAssigned)) {
-            const execName = typeof l.createdBy === 'object' && l.createdBy ? (l.createdBy.fullName || l.createdBy.name) : 'Sales Rep';
-            const assigneeName = typeof l.assignedTo === 'object' && l.assignedTo ? (l.assignedTo.fullName || l.assignedTo.name) : (l.assignedTo || 'Assigned Executive');
+            let execName = typeof l.createdBy === 'object' && l.createdBy ? (l.createdBy.fullName || l.createdBy.name) : '';
+            let assigneeName = typeof l.assignedTo === 'object' && l.assignedTo ? (l.assignedTo.fullName || l.assignedTo.name) : '';
+
+            if (!execName && l.createdBy) {
+              const match = empList.find(e => String(e._id) === String(l.createdBy) || String(e.employeeId) === String(l.createdBy) || String(e.trialId) === String(l.createdBy));
+              if (match) execName = match.fullName || match.name;
+            }
+            if (!assigneeName && l.assignedTo) {
+              const match = empList.find(e => String(e._id) === String(l.assignedTo) || String(e.employeeId) === String(l.assignedTo) || String(e.trialId) === String(l.assignedTo));
+              if (match) assigneeName = match.fullName || match.name;
+            }
+
+            if (!assigneeName && l.assignedDepartment) {
+              assigneeName = `Dept: ${l.assignedDepartment}`;
+            }
+
+            if (!assigneeName && execName) {
+              assigneeName = execName;
+            } else if (!assigneeName) {
+              assigneeName = 'Unassigned';
+            }
+
+            if (!execName && assigneeName && !assigneeName.startsWith('Dept:')) {
+              execName = assigneeName;
+            } else if (!execName) {
+              execName = 'Unassigned';
+            }
+
+            const isDoneStage = ['REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'QUOTATION_REQUESTED', 'QUOTATION_SHARED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'CLOSED_WON', 'DELIVERED', 'COMPLETED', 'DEAL_WON'].includes(String(l.stage || '').toUpperCase());
 
             virtualAssignedRecordings.push({
               _id: `virtual_${l._id}`,
@@ -156,7 +220,7 @@ export default function Followup() {
               leadPriority: l.priority || 'WARM',
               notes: l.remarks || `Assigned Follow-up Lead (${(l.stage || 'FOLLOW_UP').replace(/_/g, ' ')})`,
               createdAt: l.createdAt || new Date().toISOString(),
-              status: 'PENDING'
+              status: isDoneStage ? 'COMPLETED' : 'PENDING'
             });
           }
         }
@@ -164,15 +228,7 @@ export default function Followup() {
 
       setRecordings([...visibleRecordings, ...virtualAssignedRecordings]);
       setLeads(fetchedLeads);
-
-      if (empRes.success && empRes.data?.employees) {
-        setEmployees(empRes.data.employees);
-      } else {
-        const fallbackRes = await taskApi.getEmployeesByDepartment('SALES').catch(() => ({ success: false }));
-        if (fallbackRes.success && fallbackRes.data?.employees) {
-          setEmployees(fallbackRes.data.employees);
-        }
-      }
+      setEmployees(empList);
     } catch (err) {
       console.error('Followup data load error:', err);
       toast.error('Failed to load follow-up records');
@@ -187,32 +243,46 @@ export default function Followup() {
     try {
       if (String(recordingId).startsWith('virtual_')) {
         const realLeadId = String(recordingId).replace('virtual_', '');
-        if (nextStatus === 'COMPLETED') {
-          await leadsApi.updateStage(realLeadId, { newStage: 'REQUIREMENT_CAPTURED' }).catch(err => {
-            console.warn('[Followup] Stage update warning:', err.message);
-          });
+        const targetStage = nextStatus === 'COMPLETED' ? 'REQUIREMENT_CAPTURED' : 'FOLLOW_UP';
+
+        const res = await leadsApi.updateStage(realLeadId, { newStage: targetStage });
+        if (res && res.success) {
+          toast.success(
+            nextStatus === 'COMPLETED'
+              ? `Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`
+              : `Follow-up re-opened! Stage updated back to FOLLOW UP 🔄`
+          );
+        } else {
+          throw new Error(res?.message || 'Failed to update lead stage');
         }
-        toast.success(`Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`);
-        setRecordings(prev => prev.map(r => r._id === recordingId ? { ...r, status: nextStatus, notes: 'Completed Follow-up (REQUIREMENT CAPTURED)' } : r));
       } else {
         const res = await leadsApi.updateCallRecordingStatus(recordingId, nextStatus);
-        if (res.success) {
+        if (res && res.success) {
           const recObj = res.data?.recording;
-          if (nextStatus === 'COMPLETED' && recObj) {
+          if (recObj) {
             const lId = recObj.leadId ? (typeof recObj.leadId === 'object' ? recObj.leadId._id : recObj.leadId) : null;
             if (lId) {
-              await leadsApi.updateStage(lId, { newStage: 'REQUIREMENT_CAPTURED' }).catch(err => {
-                console.warn('[Followup] Stage update warning:', err.message);
+              const targetStage = nextStatus === 'COMPLETED' ? 'REQUIREMENT_CAPTURED' : 'FOLLOW_UP';
+              await leadsApi.updateStage(lId, { newStage: targetStage }).catch(err => {
+                console.warn('[Followup] Stage update notice:', err.message);
               });
             }
           }
-          toast.success(`Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED 🎉`);
-          setRecordings(prev => prev.map(r => r._id === recordingId ? { ...r, status: nextStatus } : r));
+          toast.success(
+            nextStatus === 'COMPLETED'
+              ? `Follow-up marked as COMPLETE! Stage updated to REQUIREMENT CAPTURED`
+              : `Follow-up re-opened! Stage updated back to FOLLOW UP`
+          );
+        } else {
+          throw new Error(res?.message || 'Failed to update call recording status');
         }
       }
+
+      // Reload fresh data from backend to ensure 100% state sync on refresh
+      await loadData();
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to update follow-up status');
+      console.error('[Followup] Status update error:', err);
+      toast.error(err.response?.data?.message || err.message || 'Failed to update follow-up status');
     } finally {
       setTogglingStatusId(null);
     }
@@ -572,7 +642,7 @@ export default function Followup() {
                         👤 FOLLOW-UP DONE BY:
                       </span>
                       <strong className="text-teal-400 text-xs font-bold block truncate">
-                        {rec.executiveName || 'Executive'}
+                        {rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
 
@@ -731,34 +801,34 @@ export default function Followup() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4"
             >
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
-                  <FiCheckSquare className="text-teal-400" size={16} /> Assign Task to Executive
+                <h3 className="text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiCheckSquare className="text-teal-400" size={18} /> Assign Task to Executive
                 </h3>
-                <button onClick={() => setShowTaskModal(false)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
+                <button onClick={() => setShowTaskModal(false)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
               </div>
 
-              <form onSubmit={handleTaskSubmit} className="space-y-3.5 text-xs">
+              <form onSubmit={handleTaskSubmit} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Task Title *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Task Title *</label>
                   <input
                     type="text"
                     required
                     value={taskForm.title}
                     onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Assign to Sales Executive *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Assign to Sales Executive *</label>
                   <select
                     required
                     value={taskForm.assignedTo}
                     onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                   >
                     <option value="">-- Select Executive --</option>
                     {employees.map(e => (
@@ -769,24 +839,24 @@ export default function Followup() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Due Date *</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Due Date *</label>
                     <input
                       type="date"
                       required
                       value={taskForm.dueDate}
                       onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                      className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none cursor-pointer"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Priority</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Priority</label>
                     <select
                       value={taskForm.priority}
                       onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
-                      className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none cursor-pointer"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                     >
                       <option value="HIGH">HIGH 🔥</option>
                       <option value="MEDIUM">MEDIUM ⚡</option>
@@ -796,36 +866,36 @@ export default function Followup() {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Instructions / Description</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Instructions / Description</label>
                   <textarea
                     rows={3}
                     value={taskForm.description}
                     onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none resize-none font-sans"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Attach File (Optional)</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Attach File (Optional)</label>
                   <input
                     type="file"
                     onChange={(e) => setTaskFile(e.target.files[0])}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2 rounded text-[10px]"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer"
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
                   <button
                     type="submit"
                     disabled={submittingTask}
-                    className="flex-1 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                    className="flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition active:scale-95 cursor-pointer disabled:opacity-50"
                   >
                     {submittingTask ? 'Assigning Task...' : 'Confirm Assign Task'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowTaskModal(false)}
-                    className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer"
+                    className="flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition active:scale-95 cursor-pointer"
                   >
                     Cancel
                   </button>

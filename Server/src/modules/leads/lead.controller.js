@@ -1,5 +1,9 @@
 const leadService = require('./lead.service');
 const { ok, fail } = require('../../utils/response');
+const {
+  createWebsiteLeadRecord,
+  scheduleWebsiteLeadAutomation
+} = require('./websiteLead.service');
 
 async function getLeadsList(req, res, next) {
   try {
@@ -28,11 +32,11 @@ async function getLeadDetails(req, res, next) {
 async function changeLeadStage(req, res, next) {
   try {
     const newStage = req.body.newStage || req.body.stage; // Handle both keys
-    const { remark, nextFollowupAt } = req.body;
+    const { remark, nextFollowupAt, lostReason, lostReasonNotes } = req.body;
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '';
     const deviceHash = req.headers['x-device-hash'] || '';
 
-    console.log('[changeLeadStage] Request received:', { leadId: req.params.id, newStage, hasPodFileUrl: !!req.body.podFileUrl, hasPaymentProofUrl: !!req.body.paymentProofUrl, hasDriverProofUrl: !!req.body.driverProofUrl, userRole: req.user?.role });
+    console.log('[changeLeadStage] Request received:', { leadId: req.params.id, newStage, lostReason, hasPodFileUrl: !!req.body.podFileUrl, hasPaymentProofUrl: !!req.body.paymentProofUrl, hasDriverProofUrl: !!req.body.driverProofUrl, userRole: req.user?.role });
 
     if (!newStage) {
       return fail(res, 400, 'VALIDATION_FAILED', 'Stage parameter is required');
@@ -43,6 +47,8 @@ async function changeLeadStage(req, res, next) {
       newStage,
       remark,
       nextFollowupAt,
+      lostReason,
+      lostReasonNotes,
       podFileUrl: req.body.podFileUrl,
       paymentProofUrl: req.body.paymentProofUrl,
       driverProofUrl: req.body.driverProofUrl,
@@ -64,7 +70,12 @@ async function changeLeadStage(req, res, next) {
     if (error.message === 'OWNERSHIP_FORBIDDEN') {
       return fail(res, 403, 'OWNERSHIP_FORBIDDEN', 'Access denied: You do not have permissions for this lead');
     }
-    if (error.message.includes('INVALID_STAGE_TRANSITION')) {
+    if (
+      error.message.includes('INVALID_STAGE_TRANSITION') ||
+      error.message.includes('QUOTATION_NOT_APPROVED') ||
+      error.message.includes('LOI_DOCUMENT_REQUIRED') ||
+      error.message.includes('LOST_REASON_REQUIRED')
+    ) {
       return fail(res, 400, 'VALIDATION_FAILED', error.message);
     }
     next(error);
@@ -158,7 +169,80 @@ async function changeLeadPriority(req, res, next) {
   }
 }
 
+async function createWebsiteLead(
+  req,
+  res,
+  next
+) {
+  try {
+    const {
+      lead,
+      reused
+    } =
+      await createWebsiteLeadRecord(
+        req.body
+      );
+
+
+    const response =
+      ok(
+        res,
+        {
+          leadId:
+            lead._id.toString(),
+
+          leadCode:
+            lead.leadCode,
+
+          persisted:
+            true,
+
+          reused:
+            !!reused,
+
+          eligibilityStatus:
+            lead.eligibilityStatus
+        },
+
+        reused
+          ? 'Lead already persisted successfully'
+          : 'Requirement submitted successfully',
+
+        reused
+          ? 200
+          : 201,
+
+        req
+      );
+
+
+    // This is deliberately AFTER the
+    // persistent Lead record exists.
+    scheduleWebsiteLeadAutomation(
+      lead._id.toString()
+    );
+
+
+    return response;
+  } catch (error) {
+    if (
+      error.code ===
+      'VALIDATION_FAILED'
+    ) {
+      return fail(
+        res,
+        400,
+        'VALIDATION_FAILED',
+        error.message
+      );
+    }
+
+    next(error);
+  }
+}
+
 module.exports = {
+  createWebsiteLead,
   getLeadsList,
   getLeadDetails,
   changeLeadStage,

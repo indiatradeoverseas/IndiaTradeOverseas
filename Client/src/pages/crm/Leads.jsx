@@ -5,10 +5,11 @@ import { leadsApi } from '../../api/leads';
 import { adminApi } from '../../api/admin';
 import { employeesApi } from '../../api/employees';
 import { taskApi } from '../../api/task';
+import { salesTrialApi } from '../../api/salesTrialApi';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
-  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar
+  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { API_URL, getFileUrl } from '../../config/env';
@@ -128,28 +129,43 @@ export default function Leads() {
   const [loiNotes, setLoiNotes] = useState('');
   const [uploadingLOI, setUploadingLOI] = useState(false);
 
+  const toLocalDateStr = (d) => {
+    if (!d) return null;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getFilteredByDate = (items = []) => {
     if (dateFilterMode === 'ALL') return items;
-    return items.filter(item => {
-      const rawDate = item.createdAt || item.date || item.uploadedAt;
-      if (!rawDate) return true;
-      const itemDate = new Date(rawDate);
-      const dStr = itemDate.toISOString().split('T')[0];
 
-      if (dateFilterMode === 'TODAY') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return dStr === todayStr;
-      }
-      if (dateFilterMode === 'YESTERDAY') {
-        const yest = new Date();
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        return dStr === yestStr;
-      }
-      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
-        return dStr === selectedDate;
-      }
-      return true;
+    const todayStr = toLocalDateStr(new Date());
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yestDate);
+
+    let targetDateStr = '';
+    if (dateFilterMode === 'TODAY') targetDateStr = todayStr;
+    else if (dateFilterMode === 'YESTERDAY') targetDateStr = yesterdayStr;
+    else if (dateFilterMode === 'PICK_DATE' && selectedDate) targetDateStr = selectedDate;
+
+    if (!targetDateStr) return items;
+
+    return items.filter(item => {
+      const createdStr = toLocalDateStr(item.createdAt || item.date || item.uploadedAt);
+      const updatedStr = toLocalDateStr(item.updatedAt || item.assignedAt);
+      const targetStr = toLocalDateStr(item.targetDate);
+      const followupStr = toLocalDateStr(item.nextFollowupAt);
+
+      return (
+        createdStr === targetDateStr ||
+        updatedStr === targetDateStr ||
+        targetStr === targetDateStr ||
+        followupStr === targetDateStr
+      );
     });
   };
 
@@ -237,6 +253,9 @@ export default function Leads() {
   const fetchLeads = async () => {
     try {
       const params = filterStage ? { stage: filterStage } : {};
+      if (!isManagerOrAdmin || user?.role === 'SALES_TRIAL' || user?.role === 'SALES_EXECUTIVE') {
+        params.myLeadsOnly = 'true';
+      }
       const response = await leadsApi.getLeads(params);
       if (response.success) setLeads(response.data.leads || []);
     } catch (error) {
@@ -319,10 +338,42 @@ export default function Leads() {
           list = fallbackRes.employees;
         }
       }
-      setExecutives(list.filter(e => 
+      let filteredRegular = list.filter(e => 
         !String(e.role || '').toUpperCase().includes('MANAGER') &&
         !String(e.position || '').toUpperCase().includes('MANAGER')
-      ));
+      );
+
+      // Fetch active Sales Trial Users & merge with executives list
+      try {
+        const trialRes = await salesTrialApi.getTrialUsers();
+        if (trialRes && trialRes.success) {
+          const trialUsersList = trialRes.data?.users || [];
+          const activeTrial = trialUsersList.filter(u => u.status === 'ACTIVE' || u.isApproved);
+          
+          const seen = new Set(filteredRegular.map(e => String(e._id || e.employeeId || '')));
+          activeTrial.forEach(u => {
+            const uId = String(u._id || u.trialId || '');
+            if (uId && !seen.has(uId)) {
+              seen.add(uId);
+              filteredRegular.push({
+                _id: u._id,
+                name: `${u.fullName || u.name} (${u.trialId || 'Sales Trial'})`,
+                fullName: `${u.fullName || u.name} (${u.trialId || 'Sales Trial'})`,
+                email: u.email,
+                department: 'SALES_TRIAL',
+                position: 'Sales Trial Executive',
+                role: 'SALES_TRIAL',
+                employeeId: u.trialId,
+                isTrial: true
+              });
+            }
+          });
+        }
+      } catch (errTrial) {
+        console.warn('Trial users fetch notice in Leads:', errTrial.message);
+      }
+
+      setExecutives(filteredRegular);
     } catch (err) {
       console.error("Failed to load sales team:", err);
     }
@@ -610,6 +661,48 @@ export default function Leads() {
     }
   };
 
+  const [deleteConfirmLead, setDeleteConfirmLead] = useState(null); // single lead object or 'BULK'
+  const [deletingLead, setDeletingLead] = useState(false);
+
+  const handleDeleteSingleLead = (leadId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const targetLead = leads.find(l => l._id === leadId);
+    setDeleteConfirmLead(targetLead || leadId);
+  };
+
+  const confirmDeleteLeadAction = async () => {
+    if (!deleteConfirmLead) return;
+    setDeletingLead(true);
+    try {
+      if (deleteConfirmLead === 'BULK') {
+        let successCount = 0;
+        for (const id of selectedLeadIds) {
+          try {
+            await leadsApi.deleteLead(id);
+            successCount++;
+          } catch (err) {
+            console.error('Failed to delete lead:', id, err);
+          }
+        }
+        toast.success(`Successfully deleted ${successCount} leads!`);
+        setSelectedLeadIds([]);
+      } else {
+        const leadId = typeof deleteConfirmLead === 'object' ? deleteConfirmLead._id : deleteConfirmLead;
+        const res = await leadsApi.deleteLead(leadId);
+        if (res?.success || res) {
+          toast.success('Lead deleted successfully!');
+        }
+      }
+      setDeleteConfirmLead(null);
+      fetchLeads();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete lead.');
+    } finally {
+      setDeletingLead(false);
+    }
+  };
+
   const isWonOrDelivered = (stage) => {
     if (!stage) return false;
     const s = String(stage).toUpperCase().replace(/\s+/g, '_');
@@ -654,6 +747,8 @@ export default function Leads() {
   const assignedCount = leads.filter(l => !isUnassigned(l)).length;
 
   const filteredLeads = getFilteredByDate(leads).filter(lead => {
+    if (!isManagerOrAdmin && !isAssignedToMe(lead)) return false;
+
     const stageUpper = (lead.stage || '').toUpperCase();
     const isCompleted = completedStages.includes(stageUpper);
 
@@ -1030,10 +1125,10 @@ export default function Leads() {
             <div className="flex items-center gap-2">
               <FiUsers className="text-sky-400" size={14} />
               <span className="text-[10px] text-[var(--crm-heading)] uppercase font-bold tracking-wider">
-                Employee Lead Distribution Summary
+                {isManagerOrAdmin ? 'Employee Lead Distribution Summary' : 'My Assigned Leads Summary'}
               </span>
               <span className="text-[9px] text-[var(--crm-ink-faint)] hidden sm:inline">
-                (Click any employee to filter their assigned leads)
+                {isManagerOrAdmin ? '(Click any employee to filter their assigned leads)' : '(Filtered for your assigned workspace)'}
               </span>
             </div>
             {filterAssignee !== 'ALL' && (
@@ -1047,21 +1142,23 @@ export default function Leads() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-            {/* Unassigned Pill */}
-            <button
-              onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
-              className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                filterAssignee === 'UNASSIGNED'
-                  ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-md ring-1 ring-amber-500'
-                  : 'bg-amber-950/30 text-amber-400/90 border-amber-800/40 hover:bg-amber-950/60'
-              }`}
-            >
-              <FiAlertCircle size={12} />
-              <span>❓ Unassigned Pool</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-900/80 text-amber-200 font-mono font-bold">
-                {executiveWorkloadSummary.unassigned.totalCount} Leads
-              </span>
-            </button>
+            {/* Unassigned Pill - Only for Sales Manager / Admin */}
+            {isManagerOrAdmin && (
+              <button
+                onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
+                className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  filterAssignee === 'UNASSIGNED'
+                    ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-md ring-1 ring-amber-500'
+                    : 'bg-amber-950/30 text-amber-400/90 border-amber-800/40 hover:bg-amber-950/60'
+                }`}
+              >
+                <FiAlertCircle size={12} />
+                <span>❓ Unassigned Pool</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-900/80 text-amber-200 font-mono font-bold">
+                  {executiveWorkloadSummary.unassigned.totalCount} Leads
+                </span>
+              </button>
+            )}
 
             {/* Logged-in User Pill */}
             <button
@@ -1079,8 +1176,8 @@ export default function Leads() {
               </span>
             </button>
 
-            {/* Team Executives Pills */}
-            {executiveWorkloadSummary.list.map(emp => {
+            {/* Team Executives Pills - Only for Sales Manager / Admin */}
+            {isManagerOrAdmin && executiveWorkloadSummary.list.map(emp => {
               const isSelected = String(filterAssignee) === String(emp.id);
               return (
                 <button
@@ -1166,6 +1263,40 @@ export default function Leads() {
         </motion.div>
 
         {/* MODE 1: DATA TABLE VIEW */}
+        {selectedLeadIds.length > 0 && isManagerOrAdmin && (
+          <motion.div variants={blockVariants} className="bg-amber-950/90 border border-amber-600/50 p-3 rounded-sm font-mono text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider">{selectedLeadIds.length} Leads Selected</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="bg-black/60 border border-amber-500/40 text-amber-100 text-xs px-2.5 py-1 rounded outline-none"
+              >
+                <option value="">Assign To...</option>
+                {executives.map(e => (
+                  <option key={e._id || e.employeeId} value={e._id || e.employeeId}>{e.fullName || e.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkAssign}
+                disabled={assigningBulk}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase text-[10px] rounded transition cursor-pointer"
+              >
+                {assigningBulk ? 'Assigning...' : 'Bulk Assign'}
+              </button>
+              <button
+                onClick={() => setDeleteConfirmLead('BULK')}
+                className="px-3 py-1 bg-rose-800 hover:bg-rose-700 text-white font-bold uppercase text-[10px] rounded transition cursor-pointer flex items-center gap-1 shadow-sm"
+              >
+                <FiTrash2 size={11} />
+                <span>Delete Selected ({selectedLeadIds.length})</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {viewMode === 'TABLE' ? (
           <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 overflow-hidden w-full bg-[var(--crm-bg-raised)]/10 rounded-sm shadow-2xl">
             {/* Desktop Table View */}
@@ -1335,7 +1466,7 @@ export default function Leads() {
                               </button>
                             )}
 
-                            {/* Direct Communication Icons */}
+                            {/* Direct Communication & Actions */}
                             <div className="flex items-center space-x-1.5">
                               <button
                                 onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
@@ -1351,6 +1482,15 @@ export default function Leads() {
                               >
                                 <FiMail size={13} />
                               </button>
+                              {isManagerOrAdmin && (
+                                <button
+                                  onClick={(e) => handleDeleteSingleLead(lead._id, e)}
+                                  className="p-1.5 bg-rose-950/80 border border-rose-800/60 text-rose-400 hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  title="Delete Lead Node"
+                                >
+                                  <FiTrash2 size={13} />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -1652,47 +1792,47 @@ export default function Leads() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.97, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-xl shadow-2xl relative text-[var(--crm-ink-soft)]"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-xl shadow-2xl relative text-[var(--crm-ink-soft)] text-left"
             >
-              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-4 text-left">
+              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-line)] pb-4 text-left">
                 <div>
-                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Provision New Lead Node</h2>
-                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Automated Trade Route Sequence</p>
+                  <h2 className="text-lg font-bold text-[var(--crm-heading)]">Provision New Lead Node</h2>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] tracking-wider uppercase font-medium mt-0.5">Automated Trade Route Sequence</p>
                 </div>
-                <button type="button" onClick={() => setShowCreateModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm">
-                  <FiX size={16} />
+                <button type="button" onClick={() => setShowCreateModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 font-bold text-base cursor-pointer">
+                  ✕
                 </button>
               </div>
 
               <form onSubmit={handleCreateLead} className="space-y-4 font-sans text-xs text-left max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Consignee Legal Name *</label>
-                    <input type="text" required value={newLead.customerName} onChange={(e) => setNewLead({ ...newLead, customerName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Corporate buyer identity" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Consignee Legal Name *</label>
+                    <input type="text" required value={newLead.customerName} onChange={(e) => setNewLead({ ...newLead, customerName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Corporate buyer identity" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Company Name</label>
-                    <input type="text" value={newLead.companyName} onChange={(e) => setNewLead({ ...newLead, companyName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Legal Enterprise Designation" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Company Name</label>
+                    <input type="text" value={newLead.companyName} onChange={(e) => setNewLead({ ...newLead, companyName: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Legal Enterprise Designation" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Country</label>
-                    <input type="text" value={newLead.country} onChange={(e) => setNewLead({ ...newLead, country: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Target Region Hub" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Country</label>
+                    <input type="text" value={newLead.country} onChange={(e) => setNewLead({ ...newLead, country: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Target Region Hub" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Telephony Target *</label>
-                    <input type="tel" required value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Protected telecom line" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Telephony Target *</label>
+                    <input type="tel" required value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Protected telecom line" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">WhatsApp Vector</label>
-                    <input type="tel" value={newLead.whatsAppNumber} onChange={(e) => setNewLead({ ...newLead, whatsAppNumber: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="WhatsApp Line" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">WhatsApp Vector</label>
+                    <input type="tel" value={newLead.whatsAppNumber} onChange={(e) => setNewLead({ ...newLead, whatsAppNumber: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="WhatsApp Line" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Corporate Email Coordinates</label>
-                    <input type="email" value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="procurement@node.com" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Corporate Email Coordinates</label>
+                    <input type="email" value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="procurement@node.com" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Commodity Sector *</label>
-                    <select required value={newLead.productCategory} onChange={(e) => setNewLead({ ...newLead, productCategory: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]">
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Commodity Sector *</label>
+                    <select required value={newLead.productCategory} onChange={(e) => setNewLead({ ...newLead, productCategory: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none cursor-pointer text-[var(--crm-heading)]">
                       <option value="STONE">STONE</option>
                       <option value="COAL">COAL</option>
                       <option value="TEA">TEA</option>
@@ -1701,20 +1841,20 @@ export default function Leads() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Requirement Date</label>
-                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)] cursor-pointer [color-scheme:dark]" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Requirement Date</label>
+                    <input type="date" value={newLead.targetDate} onChange={(e) => setNewLead({ ...newLead, targetDate: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none cursor-pointer text-[var(--crm-heading)]" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1.5 font-mono">Valuation / Budget (INR)</label>
-                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-xs rounded-sm outline-none text-[var(--crm-heading)]" placeholder="Deal Valuation" />
+                    <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Valuation / Budget (INR)</label>
+                    <input type="number" value={newLead.leadValue} onChange={(e) => setNewLead({ ...newLead, leadValue: e.target.value })} className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 text-sm rounded-xl outline-none text-[var(--crm-heading)] placeholder-slate-500" placeholder="Deal Valuation" />
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[var(--crm-ink-soft)]/10 mt-4">
-                  <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-xs font-bold py-3 uppercase rounded-sm hover:bg-[var(--crm-ink-soft)] transition-colors cursor-pointer">
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)] mt-4">
+                  <button type="submit" className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer">
                     Commit Node Record
                   </button>
-                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold py-3 rounded-sm transition-colors cursor-pointer">
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer">
                     Cancel
                   </button>
                 </div>
@@ -2026,6 +2166,40 @@ export default function Leads() {
               </div>
             </form>
           </motion.div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteConfirmLead && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--crm-bg-raised)] border border-rose-800/60 p-6 rounded-sm max-w-md w-full font-mono space-y-4 shadow-2xl">
+            <div className="flex items-center space-x-3 text-rose-400">
+              <FiAlertCircle size={24} />
+              <h3 className="text-lg font-serif font-normal uppercase text-[var(--crm-heading)]">Confirm Delete Lead</h3>
+            </div>
+            <p className="text-xs text-[var(--crm-ink-soft)] leading-relaxed">
+              {deleteConfirmLead === 'BULK'
+                ? `Are you sure you want to permanently delete ${selectedLeadIds.length} selected lead records? This action cannot be undone.`
+                : `Are you sure you want to permanently delete lead "${typeof deleteConfirmLead === 'object' ? (deleteConfirmLead.leadCode || deleteConfirmLead.customerName) : deleteConfirmLead}"?`}
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-[var(--crm-ink-soft)]/15">
+              <button
+                onClick={() => setDeleteConfirmLead(null)}
+                disabled={deletingLead}
+                className="px-4 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-xs font-bold uppercase text-[var(--crm-heading)] rounded cursor-pointer hover:bg-[var(--crm-bg)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteLeadAction}
+                disabled={deletingLead}
+                className="px-4 py-2 bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold uppercase rounded cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <FiTrash2 size={13} />
+                <span>{deletingLead ? 'Deleting...' : 'Delete Permanently'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </motion.div>

@@ -2,43 +2,64 @@ const mongoose = require('mongoose');
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
 const Quotation = require('../quotations/quotation.model');
-const { recordAudit, raiseAlert } = require('../security-audit/auditLog.service');
-const { maskPhone, maskEmail } = require('../../utils/crypto');
+const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
+const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
+
+let recordAudit;
+try {
+  recordAudit = require('../security-audit/auditLog.service').recordAudit;
+} catch (e) {}
+
+const safeRecordAudit = async (data) => {
+  try {
+    let fn = recordAudit;
+    if (typeof fn !== 'function') {
+      const mod = require('../security-audit/auditLog.service');
+      fn = mod ? mod.recordAudit : null;
+    }
+    if (typeof fn === 'function') {
+      await fn(data);
+    }
+  } catch (err) {
+    console.warn('[Audit Log Notice]:', err.message);
+  }
+};
+
+const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str.trim());
 
 const allowedStageTransitions = {
- // Example from your lead.service.js:
-NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_LOST'],
-  ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
-  CONTACTED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'FOLLOW_UP', 'DEAL_LOST'],
-  LEAD_QUALIFICATION: ['FOLLOW_UP', 'CLOSED_LOST', 'DEAL_LOST'],
-  FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
-  REQUIREMENT_CAPTURED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
-  QUOTATION_REQUIRED: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST', 'DEAL_LOST'],
-  QUOTATION_PENDING_APPROVAL: ['QUOTATION_APPROVED', 'CLOSED_LOST', 'DEAL_LOST'],
-  QUOTATION_APPROVED: ['NEGOTIATION', 'CLOSED_LOST', 'DEAL_LOST'],
-  QUOTATION_REQUESTED: ['QUOTATION_SHARED', 'CLOSED_LOST', 'DEAL_LOST'],
-  QUOTATION_SHARED: ['DISPATCH_PLANNED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  NEGOTIATION: ['LOI_PO_PENDING', 'CLOSED_LOST', 'SAMPLE_SENT', 'DEAL_WON', 'DEAL_LOST'],
-  LOI_PO_PENDING: ['ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  ORDER_CONFIRMED: ['DISPATCH_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DISPATCH_PENDING: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
-  DISPATCH_PLANNED: ['PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
-  PAYMENT_PENDING: ['DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DOCUMENT_PENDING: ['CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
-  DELIVERED: ['CLOSED_WON', 'COMPLETED', 'DEAL_WON'],
-  COMPLETED: ['DEAL_WON'],
-  CLOSED_WON: ['DEAL_WON'],
-  CLOSED_LOST: [],
+  NEW_LEAD: ['NEW_LEAD', 'ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'DEAL_LOST'],
+  ASSIGNED: ['ASSIGNED', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  CONTACTED: ['CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  LEAD_QUALIFICATION: ['LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'DEAL_LOST'],
+  FOLLOW_UP: ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
+  REQUIREMENT_CAPTURED: ['REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  QUOTATION_REQUIRED: ['QUOTATION_REQUIRED', 'REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST', 'DEAL_LOST'],
+  QUOTATION_PENDING_APPROVAL: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'CLOSED_LOST', 'DEAL_LOST'],
+  QUOTATION_APPROVED: ['QUOTATION_APPROVED', 'NEGOTIATION', 'CLOSED_LOST', 'DEAL_LOST'],
+  QUOTATION_REQUESTED: ['QUOTATION_REQUESTED', 'QUOTATION_SHARED', 'CLOSED_LOST', 'DEAL_LOST'],
+  QUOTATION_SHARED: ['QUOTATION_SHARED', 'DISPATCH_PLANNED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  NEGOTIATION: ['NEGOTIATION', 'LOI_PO_PENDING', 'CLOSED_LOST', 'SAMPLE_SENT', 'DEAL_WON', 'DEAL_LOST'],
+  LOI_PO_PENDING: ['LOI_PO_PENDING', 'ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  ORDER_CONFIRMED: ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DISPATCH_PENDING: ['DISPATCH_PENDING', 'PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
+  DISPATCH_PLANNED: ['DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_LOST'],
+  PAYMENT_PENDING: ['PAYMENT_PENDING', 'DOCUMENT_PENDING', 'DELIVERED', 'COMPLETED', 'CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DOCUMENT_PENDING: ['DOCUMENT_PENDING', 'CLOSED_WON', 'DELIVERED', 'COMPLETED', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'],
+  DELIVERED: ['DELIVERED', 'CLOSED_WON', 'COMPLETED', 'DEAL_WON'],
+  COMPLETED: ['COMPLETED', 'DEAL_WON'],
+  CLOSED_WON: ['CLOSED_WON', 'DEAL_WON'],
+  CLOSED_LOST: ['CLOSED_LOST'],
   
   // New pipeline transition mappings
-  REQUIREMENT_RECEIVED: ['QUOTATION_SENT', 'DEAL_WON', 'DEAL_LOST'],
-  QUOTATION_SENT: ['NEGOTIATION', 'DEAL_WON', 'DEAL_LOST'],
-  SAMPLE_SENT: ['PRICE_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
-  PRICE_DISCUSSION: ['PAYMENT_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
-  PAYMENT_DISCUSSION: ['PO_RECEIVED', 'DEAL_WON', 'DEAL_LOST'],
-  PO_RECEIVED: ['ORDER_CONFIRMED', 'DEAL_WON', 'DEAL_LOST'],
-  DEAL_WON: [],
-  DEAL_LOST: []
+  REQUIREMENT_RECEIVED: ['REQUIREMENT_RECEIVED', 'QUOTATION_SENT', 'DEAL_WON', 'DEAL_LOST'],
+  QUOTATION_SENT: ['QUOTATION_SENT', 'NEGOTIATION', 'DEAL_WON', 'DEAL_LOST'],
+  SAMPLE_SENT: ['SAMPLE_SENT', 'PRICE_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
+  PRICE_DISCUSSION: ['PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'DEAL_WON', 'DEAL_LOST'],
+  PAYMENT_DISCUSSION: ['PAYMENT_DISCUSSION', 'PO_RECEIVED', 'DEAL_WON', 'DEAL_LOST'],
+  PO_RECEIVED: ['PO_RECEIVED', 'ORDER_CONFIRMED', 'DEAL_WON', 'DEAL_LOST'],
+  DEAL_WON: ['DEAL_WON'],
+  DEAL_LOST: ['DEAL_LOST']
 };
 
 function canAccessLead(user, lead) {
@@ -67,6 +88,7 @@ function canAccessLead(user, lead) {
     role === 'FINANCE' ||
     role === 'SALES' ||
     role === 'SALES_EXECUTIVE' ||
+    role === 'SALES_TRIAL' ||
     role === 'EMPLOYEE' ||
     user.leadPermission === true ||
     user.permissions?.lead === true ||
@@ -220,6 +242,11 @@ async function listLeads(user, query = {}) {
   const filter = {};
   if (query.stage) filter.stage = query.stage;
   if (query.priority) filter.priority = String(query.priority).toUpperCase();
+  if (query.productCategory) {
+    filter.productCategory = query.productCategory;
+  } else if (query.includeCareers !== 'true') {
+    filter.productCategory = { $nin: ['CAREERS', 'Careers', 'careers'] };
+  }
 
   const role = user.role || '';
   const dept = user.department || '';
@@ -249,25 +276,66 @@ async function listLeads(user, query = {}) {
 
   if (shouldFilterMyLeadsOnly) {
     const actorIds = [user._id];
-    if (user.employeeDbId) {
-      actorIds.push(user.employeeDbId);
+    if (user._id) actorIds.push(String(user._id));
+    if (user.employeeDbId) actorIds.push(user.employeeDbId);
+    if (user.trialId) actorIds.push(user.trialId);
+    if (user.employeeId) actorIds.push(user.employeeId);
+    if (user.email) {
+      actorIds.push(user.email);
+      actorIds.push(user.email.toLowerCase());
     }
+
     try {
       const Employee = require('../employee/employee.model');
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
+      const promises = [];
       if (user.email) {
         const emailRegex = { $regex: new RegExp('^' + user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
-        const emp = await Employee.findOne({ email: emailRegex });
-        if (emp && !actorIds.map(String).includes(emp._id.toString())) {
-          actorIds.push(emp._id);
-        }
+        promises.push(Employee.findOne({ email: emailRegex }));
+        promises.push(SalesTrialUser.findOne({ email: emailRegex }));
       }
+      if (user.trialId) {
+        promises.push(SalesTrialUser.findOne({ trialId: user.trialId }));
+      } else if (user._id) {
+        promises.push(SalesTrialUser.findById(user._id));
+      }
+
+      const results = await Promise.all(promises);
+      results.forEach(resItem => {
+        if (resItem) {
+          if (resItem._id) {
+            actorIds.push(resItem._id);
+            actorIds.push(String(resItem._id));
+          }
+          if (resItem.trialId) actorIds.push(resItem.trialId);
+          if (resItem.employeeId) actorIds.push(resItem.employeeId);
+          if (resItem.email) actorIds.push(resItem.email);
+        }
+      });
     } catch (err) {
-      console.error('Error resolving Employee ID in listLeads:', err);
+      console.error('Error resolving Employee / SalesTrialUser ID in listLeads:', err);
     }
-    filter.assignedTo = { $in: actorIds };
+
+    const queryIds = [];
+    actorIds.forEach(id => {
+      if (!id) return;
+      queryIds.push(id);
+      const str = String(id);
+      queryIds.push(str);
+      if (str.includes('@')) queryIds.push(str.toLowerCase());
+      if (mongoose.Types.ObjectId.isValid(str)) {
+        try {
+          queryIds.push(new mongoose.Types.ObjectId(str));
+        } catch (e) {}
+      }
+    });
+
+    filter.assignedTo = { $in: queryIds };
   }
   const User = require('../users/user.model');
   const Employee = require('../employee/employee.model');
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
   // Fetch raw leads WITHOUT Mongoose populate on assignedTo so raw ObjectId is preserved
   const rawLeads = await Lead.find(filter)
@@ -293,7 +361,7 @@ async function listLeads(user, query = {}) {
       }
     });
 
-    const [users, employees] = await Promise.all([
+    const [users, employees, trialUsers] = await Promise.all([
       User.find({
         $or: [
           { _id: { $in: allSearchValues } },
@@ -308,33 +376,42 @@ async function listLeads(user, query = {}) {
           { email: { $in: allSearchValues } },
           { employeeId: { $in: allSearchValues } }
         ]
-      }).select('_id fullName name email role profileImage employeeId').lean()
+      }).select('_id fullName name email role profileImage employeeId').lean(),
+      SalesTrialUser.find({
+        $or: [
+          { _id: { $in: allSearchValues } },
+          { email: { $in: allSearchValues } },
+          { trialId: { $in: allSearchValues } }
+        ]
+      }).select('_id fullName name email role profileImage trialId').lean()
     ]);
 
     const assigneeMap = new Map();
 
     const addToMap = (info) => {
       if (!info) return;
-      const displayName = info.fullName || info.name || info.email || info.employeeId || String(info._id);
+      const displayName = info.fullName || info.name || info.email || info.trialId || info.employeeId || String(info._id);
       const cleanInfo = {
         _id: info._id,
         fullName: displayName,
         name: displayName,
         email: info.email || '',
-        role: info.role || '',
+        role: info.role || 'SALES_TRIAL',
         profileImage: info.profileImage || '',
         employeeDbId: info.employeeDbId || '',
-        employeeId: info.employeeId || ''
+        employeeId: info.employeeId || info.trialId || ''
       };
 
       if (info._id) assigneeMap.set(String(info._id), cleanInfo);
       if (info.email) assigneeMap.set(info.email.toLowerCase(), cleanInfo);
       if (info.employeeDbId) assigneeMap.set(String(info.employeeDbId), cleanInfo);
       if (info.employeeId) assigneeMap.set(String(info.employeeId), cleanInfo);
+      if (info.trialId) assigneeMap.set(String(info.trialId), cleanInfo);
     };
 
     users.forEach(u => addToMap(u));
     employees.forEach(e => addToMap(e));
+    trialUsers.forEach(t => addToMap(t));
 
     rawLeads.forEach(l => {
       if (l.assignedTo) {
@@ -379,8 +456,24 @@ async function getLeadById(id, user) {
   const User = require('../users/user.model');
   const Employee = require('../employee/employee.model');
 
-  // Fetch lead without populate('assignedTo') so Mongoose doesn't null out Employee IDs
-  const lead = await Lead.findById(id).populate('createdBy', 'fullName name email role profileImage');
+  const isHexId = isHexObjectId(id);
+  const leadQueries = [{ leadCode: id }];
+  if (isHexId) {
+    try {
+      leadQueries.push({ _id: new mongoose.Types.ObjectId(id) });
+      leadQueries.push({ _id: id });
+    } catch (e) {}
+  } else if (id) {
+    leadQueries.push({ _id: id });
+  }
+
+  let lead = null;
+  try {
+    lead = await Lead.findOne({ $or: leadQueries }).populate('createdBy', 'fullName name email role profileImage');
+  } catch (err) {
+    console.warn('Notice querying lead by ID/code:', err.message);
+  }
+
   if (!lead) throw new Error('LEAD_NOT_FOUND');
 
   if (!canAccessLead(user, lead)) {
@@ -414,7 +507,7 @@ async function getLeadById(id, user) {
 
   const leadObj = lead.toObject ? lead.toObject() : lead;
 
-  // Resolve assignedTo against User and Employee models
+  // Resolve assignedTo against User and Employee models safely
   if (leadObj.assignedTo) {
     let rawVal = leadObj.assignedTo;
     let existingName = null;
@@ -426,31 +519,38 @@ async function getLeadById(id, user) {
     }
 
     if (rawVal) {
-      const allSearchValues = [rawVal];
-      if (rawVal.includes('@')) allSearchValues.push(rawVal.toLowerCase());
-      if (mongoose.Types.ObjectId.isValid(rawVal)) {
+      const isHex = isHexObjectId(rawVal);
+      const idQueries = [];
+      const stringQueries = [rawVal];
+      if (rawVal.includes('@')) stringQueries.push(rawVal.toLowerCase());
+      if (isHex) {
         try {
-          allSearchValues.push(new mongoose.Types.ObjectId(rawVal));
+          idQueries.push(new mongoose.Types.ObjectId(rawVal));
+          idQueries.push(rawVal);
         } catch (e) {}
       }
 
-      const [uMatch, eMatch] = await Promise.all([
-        User.findOne({
-          $or: [
-            { _id: { $in: allSearchValues } },
-            { email: { $in: allSearchValues } },
-            { employeeId: { $in: allSearchValues } },
-            { employeeDbId: { $in: allSearchValues } }
-          ]
-        }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
-        Employee.findOne({
-          $or: [
-            { _id: { $in: allSearchValues } },
-            { email: { $in: allSearchValues } },
-            { employeeId: { $in: allSearchValues } }
-          ]
-        }).select('_id fullName name email role profileImage employeeId').lean()
-      ]);
+      const userOr = [];
+      const empOr = [];
+      if (idQueries.length > 0) {
+        userOr.push({ _id: { $in: idQueries } });
+        empOr.push({ _id: { $in: idQueries } });
+      }
+      userOr.push({ email: { $in: stringQueries } });
+      userOr.push({ employeeId: { $in: stringQueries } });
+      empOr.push({ email: { $in: stringQueries } });
+      empOr.push({ employeeId: { $in: stringQueries } });
+
+      let uMatch = null;
+      let eMatch = null;
+      try {
+        [uMatch, eMatch] = await Promise.all([
+          User.findOne({ $or: userOr }).select('_id fullName name email role profileImage employeeId').lean(),
+          Employee.findOne({ $or: empOr }).select('_id fullName name email role profileImage employeeId').lean()
+        ]);
+      } catch (err) {
+        console.warn('Notice resolving assignedTo user/employee:', err.message);
+      }
 
       const resolved = uMatch || eMatch;
       if (resolved) {
@@ -463,13 +563,13 @@ async function getLeadById(id, user) {
           role: resolved.role,
           profileImage: resolved.profileImage
         };
-      } else if (existingName && existingName.toLowerCase() !== 'unassigned') {
+      } else if (existingName && existingName.toLowerCase() !== 'unassigned' && !isHex) {
         leadObj.assignedTo = {
           _id: rawVal,
           fullName: existingName,
           name: existingName
         };
-      } else if (rawVal && rawVal.toLowerCase() !== 'unassigned') {
+      } else if (rawVal && rawVal.toLowerCase() !== 'unassigned' && !isHex) {
         leadObj.assignedTo = {
           _id: rawVal,
           fullName: rawVal,
@@ -481,7 +581,163 @@ async function getLeadById(id, user) {
     }
   }
 
-  const activities = await LeadActivity.find({ leadId: lead._id }).sort({ createdAt: -1 });
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
+  let rawActivities = [];
+  try {
+    rawActivities = await LeadActivity.find({ leadId: lead._id })
+      .populate('actorId', 'fullName name email role profileImage')
+      .sort({ createdAt: -1 })
+      .lean();
+  } catch (actErr) {
+    console.error('Error fetching lead activities:', actErr.message);
+  }
+
+  const searchActorIds = [...new Set(rawActivities.map(a => {
+    if (!a.actorId) return null;
+    return typeof a.actorId === 'object' ? String(a.actorId._id || '') : String(a.actorId);
+  }).filter(Boolean))];
+
+  const validObjectIds = [];
+  const stringIds = [];
+
+  searchActorIds.forEach(idStr => {
+    if (!idStr) return;
+    if (isHexObjectId(idStr)) {
+      try {
+        validObjectIds.push(new mongoose.Types.ObjectId(idStr));
+        validObjectIds.push(idStr);
+      } catch (e) {}
+    } else {
+      stringIds.push(idStr);
+    }
+  });
+
+  const actorMap = new Map();
+  if (validObjectIds.length > 0 || stringIds.length > 0) {
+    const userOr = [];
+    const empOr = [];
+    const trialOr = [];
+
+    if (validObjectIds.length > 0) {
+      userOr.push({ _id: { $in: validObjectIds } });
+      empOr.push({ _id: { $in: validObjectIds } });
+      trialOr.push({ _id: { $in: validObjectIds } });
+    }
+    if (stringIds.length > 0) {
+      userOr.push({ employeeId: { $in: stringIds } });
+      userOr.push({ email: { $in: stringIds } });
+      empOr.push({ employeeId: { $in: stringIds } });
+      empOr.push({ email: { $in: stringIds } });
+      trialOr.push({ trialId: { $in: stringIds } });
+      trialOr.push({ email: { $in: stringIds } });
+      trialOr.push({ _id: { $in: stringIds } });
+    }
+
+    try {
+      const [users, employees, trialUsers] = await Promise.all([
+        userOr.length > 0 ? User.find({ $or: userOr }).select('_id fullName name email role department position profileImage employeeId').lean() : [],
+        empOr.length > 0 ? Employee.find({ $or: empOr }).select('_id fullName name email role department position profileImage employeeId').lean() : [],
+        trialOr.length > 0 ? SalesTrialUser.find({ $or: trialOr }).select('_id fullName name email role department position profileImage trialId').lean() : []
+      ]);
+
+      const addToMap = (info, defaultRole = null) => {
+        if (!info) return;
+        let rawName = info.fullName || info.name || info.email || info.trialId || info.employeeId;
+        if (rawName && isHexObjectId(rawName)) {
+          rawName = info.trialId || info.employeeId || null;
+        }
+        const isTrial = defaultRole === 'SALES_TRIAL' || info.department === 'SALES_TRIAL' || info.role === 'SALES_TRIAL' || !!info.trialId;
+        const cleanInfo = {
+          _id: info._id,
+          name: rawName || (isTrial ? 'Sales Trial Executive' : 'Sales Executive'),
+          role: isTrial ? 'SALES_TRIAL' : (info.role || info.position || info.department || 'SALES_EXECUTIVE'),
+          email: info.email || ''
+        };
+        if (info._id) actorMap.set(String(info._id), cleanInfo);
+        if (info.employeeId) actorMap.set(String(info.employeeId), cleanInfo);
+        if (info.trialId) actorMap.set(String(info.trialId), cleanInfo);
+      };
+
+      users.forEach(u => addToMap(u));
+      employees.forEach(e => addToMap(e));
+      trialUsers.forEach(t => addToMap(t, 'SALES_TRIAL'));
+    } catch (queryErr) {
+      console.error('Error querying actors for lead activities:', queryErr.message);
+    }
+  }
+
+  const isUserTrial = user && (user.role === 'SALES_TRIAL' || user.department === 'SALES_TRIAL' || user.modelName === 'SalesTrialUser');
+
+  let defaultCustodian = null;
+  if (leadObj.assignedTo && typeof leadObj.assignedTo === 'object' && leadObj.assignedTo.fullName && !isHexObjectId(leadObj.assignedTo.fullName)) {
+    defaultCustodian = {
+      name: leadObj.assignedTo.fullName || leadObj.assignedTo.name || leadObj.assignedTo.email || 'Assigned Executive',
+      role: (leadObj.assignedTo.role && leadObj.assignedTo.role !== 'USER') ? leadObj.assignedTo.role : (isUserTrial ? 'SALES_TRIAL' : 'SALES_EXECUTIVE')
+    };
+  } else if (leadObj.createdBy && typeof leadObj.createdBy === 'object' && leadObj.createdBy.fullName && !isHexObjectId(leadObj.createdBy.fullName)) {
+    defaultCustodian = {
+      name: leadObj.createdBy.fullName || leadObj.createdBy.name || leadObj.createdBy.email || 'Lead Creator',
+      role: leadObj.createdBy.role || 'USER'
+    };
+  } else if (user) {
+    const rawUserName = user.fullName || user.name || user.email;
+    defaultCustodian = {
+      name: (rawUserName && !isHexObjectId(rawUserName)) ? rawUserName : (isUserTrial ? 'Sales Trial Executive' : 'Sales Executive'),
+      role: isUserTrial ? 'SALES_TRIAL' : (user.role || user.position || 'SALES_EXECUTIVE')
+    };
+  }
+
+  const activities = rawActivities.map(act => {
+    let performer = null;
+    if (act.actorId && typeof act.actorId === 'object' && (act.actorId.fullName || act.actorId.name)) {
+      const pName = act.actorId.fullName || act.actorId.name || act.actorId.email;
+      if (pName && !isHexObjectId(pName)) {
+        performer = {
+          _id: act.actorId._id,
+          name: pName,
+          role: act.actorId.role || (isUserTrial ? 'SALES_TRIAL' : 'SALES_EXECUTIVE'),
+          email: act.actorId.email || ''
+        };
+      }
+    }
+    
+    if (!performer && act.actorId) {
+      const idStr = String(act.actorId._id || act.actorId);
+      const resolved = actorMap.get(idStr);
+      if (resolved) {
+        performer = resolved;
+      }
+    }
+
+    if (!performer && act.metadata) {
+      const metaName = act.metadata.performedByName || act.metadata.actorName || act.metadata.userName || act.metadata.createdBy;
+      if (metaName && metaName !== 'System' && !isHexObjectId(metaName)) {
+        performer = {
+          name: metaName,
+          role: act.metadata.performedByRole || act.metadata.role || (isUserTrial ? 'SALES_TRIAL' : 'SALES_EXECUTIVE')
+        };
+      }
+    }
+
+    if (!performer && act.note && act.note.includes('AI Agent')) {
+      performer = { name: 'AI Agent System', role: 'WEBSITE_AI' };
+    }
+
+    const finalPerformer = performer || defaultCustodian || { name: isUserTrial ? 'Sales Trial Executive' : 'Sales Executive', role: isUserTrial ? 'SALES_TRIAL' : 'SALES_EXECUTIVE' };
+    if (finalPerformer && isHexObjectId(finalPerformer.name)) {
+      finalPerformer.name = isUserTrial ? 'Sales Trial Executive' : 'Sales Executive';
+    }
+    if (finalPerformer && isUserTrial && (!finalPerformer.role || finalPerformer.role === 'SALES_EXECUTIVE')) {
+      finalPerformer.role = 'SALES_TRIAL';
+    }
+
+    return {
+      ...act,
+      performer: finalPerformer
+    };
+  });
+
   const latestQuotation = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
   if (latestQuotation) {
     leadObj.quotationStatus = latestQuotation.status;
@@ -493,8 +749,8 @@ async function getLeadById(id, user) {
   };
 }
 
-async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
-  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage);
+async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, lostReason = '', lostReasonNotes = '', podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
+  console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage, 'lostReason:', lostReason);
   console.log('[updateStage] Proof fields received:', { hasPodFileUrl: !!podFileUrl, hasPaymentProofUrl: !!paymentProofUrl, hasDriverProofUrl: !!driverProofUrl, hasPhotoUrl: !!photoUrl, hasPaymentProof: !!paymentProof, hasDeliveryImages: !!deliveryImages });
   console.log('[updateStage] User role:', user?.role, 'department:', user?.department);
 
@@ -514,7 +770,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
 
   // 2. Access control check
   if (!canAccessLead(user, lead)) {
-    await recordAudit({
+    await safeRecordAudit({
       actorId: user._id,
       actionType: 'UNAUTHORIZED_VIEW',
       entityType: 'LEAD',
@@ -525,6 +781,13 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
       metadata: { action: 'change_stage' }
     });
     throw new Error('OWNERSHIP_FORBIDDEN');
+  }
+
+  // 3. Mandatory Lost Reason Enforcement
+  if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
+    if (!lostReason || !lostReason.trim()) {
+      throw new Error('LOST_REASON_REQUIRED: A valid lost reason is mandatory when marking a lead as Closed Lost.');
+    }
   }
 
   // 3. Strict Quotation Approval Enforcement
@@ -547,7 +810,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
 
   // 4. Stage transition check with Management Override
   const previousStage = lead.stage;
-  const isAllowed = allowedStageTransitions[previousStage]?.includes(newStage);
+  const isAllowed = previousStage === newStage || allowedStageTransitions[previousStage]?.includes(newStage);
   
   // Allow ADMIN, MANAGER, and DRIVER roles to override pipeline rules
   const role = user.role || '';
@@ -573,6 +836,14 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
+  
+  if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
+    lead.lostReason = lostReason;
+    lead.lostReasonNotes = lostReasonNotes || remark || '';
+    lead.lostAt = new Date();
+    lead.lostBy = user._id;
+    lead.lostByName = user.fullName || user.name || user.email || 'User';
+  }
   
   const activePodUrl = podFileUrl || paymentProofUrl || (paymentProof && paymentProof.proofImageUrl) || '';
   const activeDriverUrl = driverProofUrl || photoUrl || (deliveryImages && deliveryImages.driverSelfieUrl) || '';
@@ -623,28 +894,45 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   console.log('[updateStage] Lead saved successfully! Stage:', lead.stage, 'leadCode:', lead.leadCode);
 
   // 5. Record activity log
+  const isLostStage = newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST';
   const activity = await LeadActivity.create({
     leadId: lead._id,
-    actionType: 'LEAD_STAGE_CHANGED',
-    note: remark || `Stage transitioned from ${previousStage} to ${newStage}`,
+    actionType: isLostStage ? 'LEAD_LOST' : 'LEAD_STAGE_CHANGED',
+    note: isLostStage
+      ? `Lead marked CLOSED LOST. Reason: ${lostReason}. Explanation: ${lostReasonNotes || 'No additional note'}`
+      : remark || `Stage transitioned from ${previousStage} to ${newStage}`,
     nextFollowupAt,
     actorId: user._id,
-    metadata: { fromStage: previousStage, toStage: newStage }
+    metadata: {
+      fromStage: previousStage,
+      toStage: newStage,
+      lostReason,
+      lostReasonNotes,
+      performedByName: ((user?.fullName || user?.name || user?.email) && !isHexObjectId(user?.fullName || user?.name || user?.email)) 
+        ? (user.fullName || user.name || user.email) 
+        : (user?.role === 'SALES_TRIAL' || user?.department === 'SALES_TRIAL' || user?.modelName === 'SalesTrialUser' ? 'Sales Trial Executive' : 'Sales Executive'),
+      performedByRole: (user?.role === 'SALES_TRIAL' || user?.department === 'SALES_TRIAL' || user?.modelName === 'SalesTrialUser') 
+        ? 'SALES_TRIAL' 
+        : (user?.role || user?.position || 'SALES_EXECUTIVE')
+    }
   });
 
-  // 6. Automation trigger: Create Quotation request when moving to QUOTATION_REQUIRED
-  if (newStage === 'QUOTATION_REQUIRED') {
-    const existingQuotation = await Quotation.findOne({ leadId: lead._id, status: 'PENDING' });
-    if (!existingQuotation) {
-      await Quotation.create({
-        leadId: lead._id,
-        requestedBy: user._id,
-        employeeRequestedPrice: null,
-        status: 'PENDING',
-        paymentTerms: 'Pending Negotiation'
+  // 6a. Notification trigger for Sales Manager / Management on Lost Lead
+  if (isLostStage) {
+    try {
+      const Notification = require('../notifications/notification.model');
+      await Notification.create({
+        targetDepartment: 'SALES',
+        message: `⚠️ Lead Lost: ${lead.leadCode || lead.customerName} marked CLOSED LOST by ${user.fullName || user.name || 'user'}. Reason: ${lostReason}.`,
+        type: 'LEAD_LOST',
+        metadata: { leadId: lead._id, leadCode: lead.leadCode, lostReason, lostReasonNotes }
       });
+    } catch (notifErr) {
+      console.warn('Lost lead notification warning:', notifErr.message);
     }
   }
+
+  // Automatic quotation creation on QUOTATION_REQUIRED disabled so requests only get created when employee explicitly submits the form.
 
   // 6b. Automation trigger: Notify Transport Manager & Transport Department when Order is Confirmed
   if (newStage === 'ORDER_CONFIRMED' || newStage === 'PO_RECEIVED') {
@@ -662,7 +950,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   // 7. Record security audit log
-  await recordAudit({
+  await safeRecordAudit({
     actorId: user._id,
     actionType: 'LEAD_STAGE_CHANGED',
     entityType: 'LEAD',
@@ -682,6 +970,7 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   const Notification = require('../notifications/notification.model');
   const User = require('../users/user.model');
   const Employee = require('../employee/employee.model');
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
   const { recordAudit } = require('../security-audit/auditLog.service');
 
   const lead = await Lead.findById(leadId);
@@ -705,7 +994,7 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
       objectIds.push(rawVal);
     }
 
-    const [uMatch, eMatch] = await Promise.all([
+    const [uMatch, eMatch, tMatch] = await Promise.all([
       User.findOne({
         $or: [
           { _id: { $in: objectIds } },
@@ -720,10 +1009,17 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
           { email: { $in: emailStrings } },
           { employeeId: { $in: empIdStrings } }
         ]
-      }).select('_id fullName name email role profileImage employeeId').lean()
+      }).select('_id fullName name email role profileImage employeeId').lean(),
+      SalesTrialUser.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { trialId: { $in: empIdStrings } }
+        ]
+      }).select('_id fullName name email role profileImage trialId').lean()
     ]);
 
-    resolvedAssignee = uMatch || eMatch;
+    resolvedAssignee = uMatch || eMatch || tMatch;
     if (resolvedAssignee) {
       targetAssignedTo = resolvedAssignee._id;
     }
@@ -749,7 +1045,11 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     leadId: lead._id,
     actionType: 'LEAD_ASSIGNED',
     note: `Lead assignment updated. Custodian: ${assigneeName}, Department: ${assignedDepartment || 'none'}`,
-    actorId: user._id
+    actorId: user._id,
+    metadata: {
+      performedByName: user.fullName || user.name || user.email || 'User',
+      performedByRole: user.role || 'USER'
+    }
   });
 
   if (targetAssignedTo && String(targetAssignedTo) !== String(oldAssignedTo)) {
@@ -779,7 +1079,7 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     });
   }
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId: user._id,
     actionType: 'LEAD_ASSIGNED',
     entityType: 'LEAD',
@@ -814,7 +1114,7 @@ async function deleteLead(leadId, user) {
   await Lead.findByIdAndDelete(leadId);
   await LeadActivity.deleteMany({ leadId });
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId: user._id,
     actionType: 'LEAD_DELETED',
     entityType: 'LEAD',
@@ -898,7 +1198,11 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
         leadId,
         actionType: 'LEAD_ASSIGNED',
         note: `Bulk Lead assignment updated. Custodian: ${assigneeName}.`,
-        actorId: user._id
+        actorId: user._id,
+        metadata: {
+          performedByName: user.fullName || user.name || user.email || 'User',
+          performedByRole: user.role || 'USER'
+        }
       });
     } catch (actErr) {
       console.warn('LeadActivity creation warning during bulk assign:', actErr.message);
@@ -922,7 +1226,7 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
   }
 
   try {
-    await recordAudit({
+    await safeRecordAudit({
       actorId: user._id,
       actionType: 'LEAD_ASSIGNED',
       entityType: 'LEAD',
@@ -985,8 +1289,8 @@ async function bulkImportLeads(leadsArray, user) {
 
       let parsedTargetDate = null;
       if (targetDate) {
-        const d = new Date(targetDate);
-        if (!isNaN(d.getTime())) {
+        const d = parseFlexibleDate(targetDate);
+        if (d && !isNaN(d.getTime())) {
           parsedTargetDate = d;
         }
       }
@@ -1092,6 +1396,15 @@ async function updatePriority({ leadId, priority, leadValue, user }) {
     actionType: 'PRIORITY_UPDATED',
     note: `Lead details updated (Priority: ${lead.priority}, Valuation: ₹${lead.leadValue || 0}) by ${user.fullName || user.name}`,
     actorId: user._id
+  });
+
+  await safeRecordAudit({
+    actorId: user._id,
+    actionType: 'LEAD_PRIORITY_UPDATED',
+    entityType: 'LEAD',
+    entityId: lead._id.toString(),
+    severity: 'LOW',
+    metadata: { oldPriority, newPriority: lead.priority, leadValue: lead.leadValue }
   });
 
   return getLeadDisplay(lead, user);

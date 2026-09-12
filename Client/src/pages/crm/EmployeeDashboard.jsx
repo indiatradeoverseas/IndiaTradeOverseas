@@ -39,6 +39,16 @@ const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-
 const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' };
 const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
+const formatTimeDisplay = (val) => {
+  if (!val) return '--:--';
+  if (typeof val === 'string' && !val.includes('T')) return val;
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {}
+  return String(val);
+};
+
 export default function EmployeeDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
@@ -371,12 +381,12 @@ export default function EmployeeDashboard() {
                         <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check In</span>
-                            <span className="text-[var(--crm-heading)] font-bold">{new Date(todayAttendance.clockIn).toLocaleTimeString()}</span>
+                            <span className="text-[var(--crm-heading)] font-bold">{formatTimeDisplay(todayAttendance.checkInTime || todayAttendance.clockIn)}</span>
                           </div>
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block">Check Out</span>
                             <span className="text-[var(--crm-heading)] font-bold">
-                              {todayAttendance.clockOut ? new Date(todayAttendance.clockOut).toLocaleTimeString() : '--:--'}
+                              {formatTimeDisplay(todayAttendance.checkOutTime || todayAttendance.clockOut)}
                             </span>
                           </div>
                         </div>
@@ -494,7 +504,7 @@ export default function EmployeeDashboard() {
                             'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]'
                           }`}>{log.status}</span>
                           <span className="text-[var(--crm-ink-faint)]">
-                            {log.clockIn ? new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'} - {log.clockOut ? new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
+                            {formatTimeDisplay(log.checkInTime || log.clockIn)} - {formatTimeDisplay(log.checkOutTime || log.clockOut)}
                           </span>
                         </div>
                       ))

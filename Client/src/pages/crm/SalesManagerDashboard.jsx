@@ -32,7 +32,10 @@ import {
   FiUserCheck,
   FiMail,
   FiPhone,
-  FiTruck
+  FiTruck,
+  FiPieChart,
+  FiZap,
+  FiMessageSquare
 } from 'react-icons/fi';
 import { 
   ResponsiveContainer, 
@@ -57,6 +60,7 @@ import { sharedFilesApi } from '../../api/sharedFiles';
 import { leaveApi } from '../../api/leave';
 import { dashboardApi } from '../../api/dashboard';
 import { employeesApi } from '../../api/employees';
+import { salesTrialApi } from '../../api/salesTrialApi';
 import { socketService } from '../../services/socket';
 
 // Framer motion variants
@@ -124,6 +128,199 @@ export default function SalesManagerDashboard() {
   const [selectedExecPerLead, setSelectedExecPerLead] = useState({});
   const [assigningSingleLeadId, setAssigningSingleLeadId] = useState(null);
 
+  // Sales Trial Hub & Chat States
+  const [trialUsers, setTrialUsers] = useState([]);
+  const [selectedTrialUserId, setSelectedTrialUserId] = useState('');
+  const [selectedTrialUserName, setSelectedTrialUserName] = useState('');
+  const [trialChatMessages, setTrialChatMessages] = useState([]);
+  const [trialChatInput, setTrialChatInput] = useState('');
+  const [sendingTrialChat, setSendingTrialChat] = useState(false);
+  const [showCreateTrialModal, setShowCreateTrialModal] = useState(false);
+  const [createTrialForm, setCreateTrialForm] = useState({ fullName: '', email: '', password: '', phone: '' });
+  const [nextTrialIdPreview, setNextTrialIdPreview] = useState('TRL001');
+  const [submittingTrialUser, setSubmittingTrialUser] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'sales_trial_hub') {
+      fetchTrialUsers();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const skt = socketService.connect(user);
+    if (skt) {
+      const handleTrialMsg = (msg) => {
+        if (msg) {
+          setTrialChatMessages(prev => {
+            if (prev.some(m => m._id === msg._id)) return prev;
+            return [...prev, msg];
+          });
+        }
+      };
+      skt.on('sales_trial_chat_receive', handleTrialMsg);
+      return () => {
+        skt.off('sales_trial_chat_receive', handleTrialMsg);
+      };
+    }
+  }, [user]);
+
+  const fetchTrialUsers = async () => {
+    try {
+      const res = await salesTrialApi.getTrialUsers();
+      if (res && res.success) {
+        const usersList = res.data?.users || [];
+        setTrialUsers(usersList);
+
+        // Merge active trial users into teamEmployees for executive dropdowns with 100% unique IDs
+        const activeTrialUsers = usersList.filter(u => u.status === 'ACTIVE' || u.isApproved);
+        setTeamEmployees(prev => {
+          const seen = new Set();
+          const uniqueList = [];
+
+          for (const e of prev) {
+            const idStr = String(e._id || e.employeeId || '');
+            const emailStr = String(e.email || '').toLowerCase();
+            if (idStr && !seen.has(idStr)) {
+              seen.add(idStr);
+              if (emailStr) seen.add(emailStr);
+              uniqueList.push(e);
+            }
+          }
+
+          for (const u of activeTrialUsers) {
+            const uIdStr = String(u._id || u.trialId || '');
+            const uTrialStr = String(u.trialId || '');
+            const uEmailStr = String(u.email || '').toLowerCase();
+            if (!seen.has(uIdStr) && !seen.has(uTrialStr) && (!uEmailStr || !seen.has(uEmailStr))) {
+              seen.add(uIdStr);
+              if (uTrialStr) seen.add(uTrialStr);
+              if (uEmailStr) seen.add(uEmailStr);
+              uniqueList.push({
+                _id: u._id,
+                name: `${u.fullName || u.name} (${u.trialId || 'Trial Executive'})`,
+                fullName: u.fullName || u.name,
+                email: u.email,
+                department: 'SALES_TRIAL',
+                position: 'Sales Trial Executive',
+                role: 'SALES_TRIAL',
+                employeeId: u.trialId,
+                isTrial: true
+              });
+            }
+          }
+          return uniqueList;
+        });
+
+        if (usersList.length > 0 && !selectedTrialUserId) {
+          const first = usersList[0];
+          const tId = first.trialId || first._id;
+          setSelectedTrialUserId(tId);
+          setSelectedTrialUserName(first.fullName || first.name);
+          fetchTrialChat(tId);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch trial users:', err);
+    }
+  };
+
+  const fetchTrialChat = async (trialId) => {
+    try {
+      const res = await salesTrialApi.getTrialChatHistory(trialId);
+      if (res && res.success) {
+        setTrialChatMessages(res.data?.messages || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch trial chat:', err);
+    }
+  };
+
+  const handleSelectTrialUser = (u) => {
+    const tId = u.trialId || u._id;
+    setSelectedTrialUserId(tId);
+    setSelectedTrialUserName(u.fullName || u.name);
+    fetchTrialChat(tId);
+  };
+
+  const handleSendTrialChat = async (e) => {
+    e.preventDefault();
+    if (!trialChatInput.trim() || !selectedTrialUserId) return;
+    setSendingTrialChat(true);
+    try {
+      const text = trialChatInput.trim();
+      const leadMatch = text.match(/\b(?:LD|LEAD)-[A-Za-z0-9-]+\b/i);
+      const leadCode = leadMatch ? leadMatch[0] : '';
+
+      const payload = {
+        trialUserId: selectedTrialUserId,
+        managerId: String(user?._id || user?.id),
+        message: text,
+        leadCode
+      };
+
+      const res = await salesTrialApi.sendTrialChatMessage(payload);
+      if (res && res.success) {
+        const chatDoc = res.data?.chat || {
+          _id: `msg_${Date.now()}`,
+          senderId: String(user?._id || user?.id),
+          senderName: user?.fullName || user?.name || 'Sales Manager',
+          senderRole: 'SALES_MANAGER',
+          message: text,
+          createdAt: new Date()
+        };
+
+        setTrialChatMessages(prev => {
+          const msgIdStr = String(chatDoc._id || chatDoc.id || '');
+          const msgText = (chatDoc.message || '').trim();
+          const isDuplicate = prev.some(m => {
+            const mIdStr = String(m._id || m.id || '');
+            if (msgIdStr && mIdStr === msgIdStr) return true;
+            return (m.message || '').trim() === msgText && Math.abs(new Date(m.createdAt) - new Date(chatDoc.createdAt)) < 5000;
+          });
+          if (isDuplicate) return prev;
+          return [...prev, chatDoc];
+        });
+        setTrialChatInput('');
+      }
+    } catch (err) {
+      toast.error('Failed to send message to Trial Executive');
+    } finally {
+      setSendingTrialChat(false);
+    }
+  };
+
+  const handleOpenCreateTrialModal = async () => {
+    try {
+      const res = await salesTrialApi.getNextTrialId();
+      if (res && res.success) {
+        setNextTrialIdPreview(res.data?.nextTrialId || 'TRL001');
+      }
+    } catch (e) {}
+    setShowCreateTrialModal(true);
+  };
+
+  const handleCreateTrialUserSubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingTrialUser(true);
+    try {
+      const res = await salesTrialApi.createTrialUser({
+        ...createTrialForm,
+        trialId: nextTrialIdPreview,
+        assignedManagerName: user?.fullName || user?.name || 'Sales Manager'
+      });
+      if (res && res.success) {
+        toast.success(`Sales Trial Executive created with ID: ${nextTrialIdPreview}! 🎉`);
+        setShowCreateTrialModal(false);
+        setCreateTrialForm({ fullName: '', email: '', password: '', phone: '' });
+        fetchTrialUsers();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create Sales Trial Executive account');
+    } finally {
+      setSubmittingTrialUser(false);
+    }
+  };
+
   const handleAssignSingleLead = async (leadId) => {
     const execId = selectedExecPerLead[leadId];
     if (!execId) {
@@ -158,28 +355,43 @@ export default function SalesManagerDashboard() {
   const [selectedDate, setSelectedDate] = useState('');
   const [attendanceFilter, setAttendanceFilter] = useState('ALL'); // 'ALL' | 'PRESENT' | 'ABSENT'
 
+  const toLocalDateStr = (d) => {
+    if (!d) return null;
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getFilteredByDate = (items = []) => {
     if (dateFilterMode === 'ALL') return items;
-    return items.filter(item => {
-      const rawDate = item.createdAt || item.date || item.uploadedAt;
-      if (!rawDate) return true;
-      const itemDate = new Date(rawDate);
-      const dStr = itemDate.toISOString().split('T')[0];
 
-      if (dateFilterMode === 'TODAY') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return dStr === todayStr;
-      }
-      if (dateFilterMode === 'YESTERDAY') {
-        const yest = new Date();
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = yest.toISOString().split('T')[0];
-        return dStr === yestStr;
-      }
-      if (dateFilterMode === 'PICK_DATE' && selectedDate) {
-        return dStr === selectedDate;
-      }
-      return true;
+    const todayStr = toLocalDateStr(new Date());
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yestDate);
+
+    let targetDateStr = '';
+    if (dateFilterMode === 'TODAY') targetDateStr = todayStr;
+    else if (dateFilterMode === 'YESTERDAY') targetDateStr = yesterdayStr;
+    else if (dateFilterMode === 'PICK_DATE' && selectedDate) targetDateStr = selectedDate;
+
+    if (!targetDateStr) return items;
+
+    return items.filter(item => {
+      const createdStr = toLocalDateStr(item.createdAt || item.date || item.uploadedAt);
+      const updatedStr = toLocalDateStr(item.updatedAt || item.assignedAt);
+      const targetStr = toLocalDateStr(item.targetDate);
+      const followupStr = toLocalDateStr(item.nextFollowupAt);
+
+      return (
+        createdStr === targetDateStr ||
+        updatedStr === targetDateStr ||
+        targetStr === targetDateStr ||
+        followupStr === targetDateStr
+      );
     });
   };
 
@@ -247,12 +459,41 @@ export default function SalesManagerDashboard() {
         }
       };
       
+      const handleTrialChatReceive = (msg) => {
+        if (msg) {
+          setTrialChatMessages(prev => {
+            const msgIdStr = String(msg._id || msg.id || '');
+            const msgText = (msg.message || msg.content || '').trim();
+            const isDuplicate = prev.some(m => {
+              const mIdStr = String(m._id || m.id || '');
+              if (msgIdStr && mIdStr === msgIdStr) return true;
+              const mText = (m.message || m.content || '').trim();
+              const mSender = String(m.senderId || '');
+              const msgSender = String(msg.senderId || '');
+              return mText === msgText && mSender === msgSender && Math.abs(new Date(m.createdAt || Date.now()) - new Date(msg.createdAt || Date.now())) < 5000;
+            });
+            if (isDuplicate) return prev;
+            return [...prev, msg];
+          });
+        }
+      };
+
+      const handleWorkLogSubmitted = (log) => {
+        if (log) {
+          setDailyWorkLogs(prev => [log, ...prev.filter(l => String(l._id || l.id) !== String(log._id || log.id))]);
+        }
+      };
+
       skt.on('employee_status_updated', handleStatusUpdate);
       skt.on('attendance_updated', handleAttendanceUpdate);
+      skt.on('sales_trial_chat_receive', handleTrialChatReceive);
+      skt.on('work_log_submitted', handleWorkLogSubmitted);
       
       return () => {
         skt.off('employee_status_updated', handleStatusUpdate);
         skt.off('attendance_updated', handleAttendanceUpdate);
+        skt.off('sales_trial_chat_receive', handleTrialChatReceive);
+        skt.off('work_log_submitted', handleWorkLogSubmitted);
       };
     }
   }, [user]);
@@ -392,6 +633,9 @@ export default function SalesManagerDashboard() {
           console.error('Fallback employees fetch error:', err);
         }
       }
+
+      // Fetch Sales Trial Users and merge into teamEmployees list
+      fetchTrialUsers();
 
       // 6. Fetch Team Leaves list
       try {
@@ -936,71 +1180,7 @@ export default function SalesManagerDashboard() {
         </div>
       </motion.div>
 
-      {/* FREIGHT RATE MISSING ALERT BANNER FOR SALES MANAGER */}
-      {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length > 0 && (
-        <motion.div variants={itemVariants} className="p-4 border rounded-lg bg-rose-950/40 border-rose-800/80 space-y-3 font-mono text-left">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
-              <FiAlertCircle className="text-rose-400 animate-bounce" size={18} />
-              <span>Freight Rate Action Required ({allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).length} Leads Missing Freight Rate)</span>
-            </div>
-            <span className="text-[9px] bg-rose-900 text-white px-2 py-0.5 rounded font-bold uppercase">
-              Transport Desk Alert
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {allLeads.filter(l => Number(l.leadValue || l.freightAmount || l.totalFreightAmount || 0) === 0).slice(0, 6).map((lead) => (
-              <div key={lead._id} className="p-3 bg-black/60 border border-rose-900/80 rounded-md space-y-2 text-xs">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[9px] text-teal-400 font-bold block">{lead.leadCode || `LD-${lead._id?.slice(-4)}`}</span>
-                    <strong className="text-white text-xs block truncate max-w-[180px]">{lead.companyName || lead.customerName || 'Client'}</strong>
-                  </div>
-                  <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-bold uppercase rounded border border-rose-800">
-                    Rate ₹0
-                  </span>
-                </div>
-
-                <div className="text-[10px] text-slate-300">
-                  <span>Route: <strong>{lead.origin || 'Depot'} ➔ {lead.destination || 'Destination'}</strong></span>
-                </div>
-
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const inputEl = e.target.elements[`rate-${lead._id}`];
-                    const val = Number(inputEl?.value);
-                    if (!val || val <= 0) return toast.error('Enter valid rate');
-                    
-                    try {
-                      await leadsApi.updateLead(lead._id, { leadValue: val, freightAmount: val, totalFreightAmount: val });
-                      toast.success(`🎉 Freight Rate ₹${val.toLocaleString('en-IN')} saved for lead ${lead.leadCode || lead._id}!`);
-                      loadDashboardData();
-                    } catch (err) {
-                      toast.error('Failed to save rate');
-                    }
-                  }}
-                  className="flex items-center gap-1.5 pt-1"
-                >
-                  <input
-                    type="number"
-                    name={`rate-${lead._id}`}
-                    placeholder="Enter Rate (₹)..."
-                    className="w-full px-2 py-1 bg-slate-900 border border-slate-700 text-white rounded text-[11px] outline-none focus:border-emerald-500 font-mono"
-                  />
-                  <button
-                    type="submit"
-                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold rounded uppercase shrink-0 cursor-pointer"
-                  >
-                    💾 Save Rate
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       {/* Calendar Date Filter Bar */}
       <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
@@ -1076,8 +1256,10 @@ export default function SalesManagerDashboard() {
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
+            { id: 'lost_analytics', label: 'Closed Lost Audit & Reasons', icon: FiAlertCircle },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
             { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
+            { id: 'sales_trial_hub', label: 'Sales Trial Hub & Chat', icon: FiZap },
             { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
           ].map(tab => (
@@ -1235,7 +1417,7 @@ export default function SalesManagerDashboard() {
                       </h3>
 
                       <div className="h-64 mt-6">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                           <FunnelChart>
                             <Tooltip 
                               contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
@@ -1938,7 +2120,7 @@ export default function SalesManagerDashboard() {
                     </h3>
                     
                     <div className="h-64 mt-6">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                         <LineChart data={strategicInsights?.forecastHistory || []} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="month" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
@@ -2219,9 +2401,13 @@ export default function SalesManagerDashboard() {
                             // Sales Manager can approve:
                             // - Executives under his department (SALES)
                             // - Cannot approve other managers or own requests
-                            const isApplicantManager = lv.employeeId?.role === 'MANAGER';
-                            const isSelfRequest = lv.employeeId?._id === user?._id;
+                            const isApplicantManager = ['MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'HR_MANAGER', 'ADMIN', 'FOUNDER'].includes((lv.employeeId?.role || '').toUpperCase());
+                            const isSelfRequest = String(lv.employeeId?._id || lv.employeeId) === String(user?._id);
                             const canReview = !isApplicantManager && !isSelfRequest && isPending;
+
+                            const approverObj = lv.approvedBy || lv.extraApprovedBy;
+                            const approverName = approverObj ? (approverObj.fullName || approverObj.name || 'Manager') : (lv.overrideBy === 'SYSTEM' ? 'SYSTEM (Auto Policy)' : '');
+                            const approverRole = approverObj ? (approverObj.role || approverObj.department || '') : '';
 
                             const statusColors = {
                               PENDING: 'bg-amber-950/40 text-amber-400 border-amber-900/30',
@@ -2257,9 +2443,16 @@ export default function SalesManagerDashboard() {
                                   {lv.reason}
                                 </td>
                                 <td className="py-3.5 px-4">
-                                  <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColorClass}`}>
-                                    {lv.status.replace(/_/g, ' ')}
-                                  </span>
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColorClass} w-max`}>
+                                      {lv.status.replace(/_/g, ' ')}
+                                    </span>
+                                    {['APPROVED', 'HR_APPROVED_EXTRA', 'REJECTED'].includes(lv.status) && (
+                                      <span className="text-[9px] font-mono text-[var(--crm-ink-faint)] block">
+                                        by <strong className="text-teal-400 font-bold">{approverName || 'Approver'}</strong> {approverRole ? `(${approverRole})` : ''}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="py-3.5 px-4 text-right whitespace-nowrap">
                                   {canReview ? (
@@ -2282,9 +2475,9 @@ export default function SalesManagerDashboard() {
                                   ) : (
                                     <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
                                       {isSelfRequest ? 'Own request' : isApplicantManager ? 'HR review only' : (
-                                        (lv.approvedBy || lv.extraApprovedBy) ? (
+                                        (approverName || lv.approvedBy || lv.extraApprovedBy) ? (
                                           <span className={['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                                            {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved' : '✗ Rejected'} by {(lv.approvedBy || lv.extraApprovedBy).fullName || (lv.approvedBy || lv.extraApprovedBy).name} ({(lv.approvedBy || lv.extraApprovedBy).role || (lv.approvedBy || lv.extraApprovedBy).department || 'HR'})
+                                            {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved' : '✗ Rejected'} by {approverName || 'Manager'}
                                           </span>
                                         ) : 'Reviewed'
                                       )}
@@ -2462,6 +2655,163 @@ export default function SalesManagerDashboard() {
               </div>
             )}
 
+            {/* TAB: CLOSED LOST AUDIT & REASON ANALYTICS */}
+            {activeTab === 'lost_analytics' && (() => {
+              const lostLeads = allLeads.filter(l => ['CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase()));
+              const totalLostValue = lostLeads.reduce((sum, l) => sum + (Number(l.leadValue) || 0), 0);
+              
+              const reasonCounts = {};
+              lostLeads.forEach(l => {
+                const r = l.lostReason || 'Other / Unspecified';
+                reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+              });
+
+              const categories = [
+                'Price', 'Freight', 'Competitor', 'Unsupported destination',
+                'Quantity too low', 'Product unavailable', 'No response',
+                'Invalid contact', 'Timing', 'Payment terms', 'Trust concern', 'Other'
+              ];
+
+              return (
+                <div className="space-y-6 text-left font-mono">
+                  {/* Top Overview Bar */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-rose-950/30 border border-rose-900/40 rounded-lg flex items-center space-x-4">
+                      <div className="p-3 bg-rose-900/60 text-rose-400 rounded-lg border border-rose-700/50">
+                        <FiAlertCircle size={22} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-rose-400 font-bold block">Total Closed Lost Leads</span>
+                        <h2 className="text-2xl font-bold text-rose-200">{lostLeads.length} Deals Lost</h2>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-950/30 border border-amber-900/40 rounded-lg flex items-center space-x-4">
+                      <div className="p-3 bg-amber-900/60 text-amber-400 rounded-lg border border-amber-700/50">
+                        <FiDollarSign size={22} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-amber-400 font-bold block">Total Valuation Lost</span>
+                        <h2 className="text-2xl font-bold text-amber-200">{currency(totalLostValue)}</h2>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-indigo-950/30 border border-indigo-900/40 rounded-lg flex items-center space-x-4">
+                      <div className="p-3 bg-indigo-900/60 text-indigo-400 rounded-lg border border-indigo-700/50">
+                        <FiPieChart size={22} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-indigo-400 font-bold block">Top Lost Root Cause</span>
+                        <h2 className="text-lg font-bold text-indigo-200 truncate max-w-[200px]">
+                          {Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None Recorded'}
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lost Reason Category Grid */}
+                  <div className="p-5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg space-y-4">
+                    <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
+                      <div>
+                        <span className="text-[9px] uppercase tracking-widest text-teal-400 font-bold block">REASON ANALYTICS</span>
+                        <h3 className="text-base font-serif text-[var(--crm-heading)]">Mandatory Lost Reason Distribution</h3>
+                      </div>
+                      <span className="text-[10px] text-[var(--crm-ink-faint)]">{categories.length} Standard Categories</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {categories.map((cat) => {
+                        const count = reasonCounts[cat] || 0;
+                        const percent = lostLeads.length > 0 ? Math.round((count / lostLeads.length) * 100) : 0;
+                        return (
+                          <div key={cat} className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-left space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-[var(--crm-heading)] truncate max-w-[130px]">{cat}</span>
+                              <span className="px-2 py-0.5 bg-rose-950/80 text-rose-400 border border-rose-800/40 text-[10px] font-bold rounded">
+                                {count} ({percent}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-[var(--crm-bg)] h-1.5 border border-[var(--crm-line)] rounded overflow-hidden">
+                              <div className="h-full bg-rose-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Detailed Lost Leads Audit Stream */}
+                  <div className="p-5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg space-y-4">
+                    <div className="border-b border-[var(--crm-line)] pb-3 flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] uppercase tracking-widest text-rose-400 font-bold block">AUDIT MANIFEST</span>
+                        <h3 className="text-base font-serif text-[var(--crm-heading)]">Closed Lost Audit & Explanation Logs</h3>
+                      </div>
+                      <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lostLeads.length} Logged Leads</span>
+                    </div>
+
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+                        <thead>
+                          <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-wider border-b border-[var(--crm-line)] font-bold">
+                            <th className="p-3">Identifier & Consignee</th>
+                            <th className="p-3">Lost Reason Category</th>
+                            <th className="p-3">Detailed Lost Explanation Note</th>
+                            <th className="p-3 text-center">Logger & Date</th>
+                            <th className="p-3 text-right">Valuation</th>
+                            <th className="p-3 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--crm-line)]">
+                          {lostLeads.length === 0 ? (
+                            <tr>
+                              <td colSpan="6" className="py-12 text-center text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                                🎉 No Closed Lost leads recorded in the system database.
+                              </td>
+                            </tr>
+                          ) : (
+                            lostLeads.map((l) => (
+                              <tr key={l._id} className="hover:bg-[var(--crm-bg-sunken)]/60 transition-colors">
+                                <td className="p-3">
+                                  <div className="font-bold text-[var(--crm-heading)]">{l.customerName}</div>
+                                  <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{l.leadCode} &bull; {l.productCategory}</div>
+                                </td>
+                                <td className="p-3">
+                                  <span className="px-2.5 py-1 bg-rose-950/80 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase rounded inline-block">
+                                    ⚠️ {l.lostReason || 'Other / Unspecified'}
+                                  </span>
+                                </td>
+                                <td className="p-3 font-sans text-xs max-w-xs">
+                                  <p className="text-[var(--crm-heading)] leading-relaxed line-clamp-2" title={l.lostReasonNotes || l.remarks}>
+                                    {l.lostReasonNotes || l.remarks || 'No detailed explanation note recorded.'}
+                                  </p>
+                                </td>
+                                <td className="p-3 text-center text-[10px] text-[var(--crm-ink-faint)]">
+                                  <div>{l.lostByName || 'Executive'}</div>
+                                  <div>{l.lostAt ? new Date(l.lostAt).toLocaleDateString() : new Date(l.updatedAt).toLocaleDateString()}</div>
+                                </td>
+                                <td className="p-3 text-right font-bold text-amber-400">
+                                  {currency(l.leadValue)}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <Link
+                                    to={`/crm/leads/${l._id}`}
+                                    className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded text-[10px] uppercase font-bold transition inline-flex items-center gap-1"
+                                  >
+                                    View Node &rarr;
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* TAB 3: SHARED FILES HUB */}
             {activeTab === 'shared_files_hub' && (
               <div className="space-y-6">
@@ -2582,6 +2932,209 @@ export default function SalesManagerDashboard() {
                 </div>
               </div>
             )}
+
+            {/* TAB: SALES TRIAL HUB & CHAT */}
+            {activeTab === 'sales_trial_hub' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
+                  
+                  {/* Left Column: Trial Employees Roster */}
+                  <div className="lg:col-span-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm font-mono text-xs space-y-4">
+                    <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-1.5">
+                          <FiZap className="text-amber-400" size={15} /> Trial Executives Roster
+                        </h3>
+                        <p className="text-[9px] text-[var(--crm-ink-faint)] mt-0.5">Manage trial accounts & assign directives.</p>
+                      </div>
+                      <button
+                        onClick={handleOpenCreateTrialModal}
+                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[9px] uppercase px-2.5 py-1.5 rounded transition cursor-pointer"
+                      >
+                        + Create Account
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                      {trialUsers.length === 0 ? (
+                        <div className="py-16 text-center text-[var(--crm-ink-faint)] uppercase text-[10px] border border-dashed border-[var(--crm-line)] rounded">
+                          No Sales Trial Executives created yet. Click "+ Create Account" above.
+                        </div>
+                      ) : (
+                        trialUsers.map((u, uIdx) => {
+                          const tId = u.trialId || u._id;
+                          const isSelected = selectedTrialUserId === tId;
+                          const isPending = u.status === 'PENDING_APPROVAL' || !u.isApproved;
+
+                          return (
+                            <div
+                              key={u._id || u.trialId || `trial_user_${uIdx}`}
+                              onClick={() => handleSelectTrialUser(u)}
+                              className={`p-3 border rounded-md cursor-pointer transition flex items-center justify-between gap-2 ${
+                                isSelected
+                                  ? 'bg-teal-950/60 border-teal-500 text-white'
+                                  : isPending
+                                    ? 'bg-amber-950/20 border-amber-800/60 hover:border-amber-600'
+                                    : 'bg-[var(--crm-bg-sunken)]/40 border-[var(--crm-line)] hover:border-teal-700/50'
+                              }`}
+                            >
+                              <div className="space-y-0.5 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="font-bold text-[var(--crm-heading)] text-xs truncate max-w-[140px]">{u.fullName || u.name}</span>
+                                  <span className="bg-amber-950/80 text-amber-400 text-[8px] px-1.5 py-0.5 rounded font-bold border border-amber-800">
+                                    {u.trialId || 'TRL'}
+                                  </span>
+                                  {isPending && (
+                                    <span className="bg-amber-900/90 text-amber-300 text-[7px] px-1 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse border border-amber-600">
+                                      Pending HR Approval
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[9px] text-[var(--crm-ink-faint)] truncate">{u.email}</p>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                {isPending ? (
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        const res = await salesTrialApi.approveTrialUser(u._id || u.trialId);
+                                        if (res && res.success) {
+                                          toast.success(`Approved Sales Trial account for ${u.fullName || u.name}! 🎉`);
+                                          fetchTrialUsers();
+                                        }
+                                      } catch (err) {
+                                        toast.error('Failed to approve account');
+                                      }
+                                    }}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[8px] uppercase px-2.5 py-1 rounded transition shrink-0 cursor-pointer shadow-sm"
+                                  >
+                                    ✓ Approve
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectTrialUser(u);
+                                      setTaskForm({
+                                        title: '',
+                                        description: '',
+                                        assignedTo: u._id || u.trialId,
+                                        dueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+                                        priority: 'HIGH',
+                                        category: 'SALES_TRIAL',
+                                        leadId: ''
+                                      });
+                                      setShowTaskModal(true);
+                                    }}
+                                    className="bg-teal-900 hover:bg-teal-800 text-teal-200 font-bold text-[8px] uppercase px-2 py-1 rounded transition shrink-0 cursor-pointer"
+                                  >
+                                    + Task
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: 1-on-1 Real-time Chat Hub with Selected Trial Executive */}
+                  <div className="lg:col-span-8 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm flex flex-col h-[580px]">
+                    <div className="border-b border-[var(--crm-line)] pb-3 flex justify-between items-center shrink-0 font-mono">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-2">
+                          <FiMessageSquare className="text-teal-400" size={15} /> 
+                          {selectedTrialUserName ? `Chatting with: ${selectedTrialUserName} (${selectedTrialUserId})` : 'Select a Sales Trial Executive'}
+                        </h3>
+                        <p className="text-[9px] text-[var(--crm-ink-faint)]">1-on-1 direct coaching line & lead query channel.</p>
+                      </div>
+
+                      {selectedTrialUserId && (
+                        <button
+                          onClick={() => {
+                            setTaskForm({
+                              title: '',
+                              description: '',
+                              assignedTo: selectedTrialUserId,
+                              dueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+                              priority: 'HIGH',
+                              category: 'SALES_TRIAL',
+                              leadId: ''
+                            });
+                            setShowTaskModal(true);
+                          }}
+                          className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[9px] uppercase px-3 py-1.5 rounded transition cursor-pointer flex items-center gap-1"
+                        >
+                          <FiCheckSquare size={12} /> Assign Task
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="flex-1 overflow-y-auto my-3 pr-2 space-y-3 custom-scrollbar text-xs font-sans">
+                      {!selectedTrialUserId ? (
+                        <div className="h-full flex items-center justify-center text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[9px]">
+                          Select a Trial Executive from the left panel to begin chat.
+                        </div>
+                      ) : trialChatMessages.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[9px]">
+                          No message history yet. Send a message to {selectedTrialUserName}!
+                        </div>
+                      ) : (
+                        trialChatMessages.map((msg, msgIdx) => {
+                          const isMe = msg.senderId === String(user?._id || user?.id) || msg.senderRole === 'SALES_MANAGER';
+
+                          return (
+                            <div key={msg._id || `msg_${msgIdx}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                              <div className={`max-w-[80%] rounded-lg p-3 space-y-1 shadow-sm ${
+                                isMe 
+                                  ? 'bg-teal-600 text-white' 
+                                  : 'bg-indigo-950/90 border border-indigo-800 text-[var(--crm-heading)]'
+                              }`}>
+                                <div className="flex justify-between items-center gap-4 text-[9px] font-mono font-bold opacity-80 border-b border-white/10 pb-1">
+                                  <span>{msg.senderName} ({msg.senderRole})</span>
+                                </div>
+                                <div className="leading-relaxed break-words font-sans text-xs pt-1">
+                                  {msg.message || msg.content}
+                                </div>
+                              </div>
+                              <span className="text-[8px] text-[var(--crm-ink-faint)] font-mono mt-0.5 px-1">
+                                {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Chat Input */}
+                    {selectedTrialUserId && (
+                      <form onSubmit={handleSendTrialChat} className="flex gap-2 shrink-0 border-t border-[var(--crm-line)] pt-3 font-mono">
+                        <input
+                          type="text"
+                          value={trialChatInput}
+                          onChange={(e) => setTrialChatInput(e.target.value)}
+                          placeholder={`Type message to ${selectedTrialUserName}...`}
+                          className="flex-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3.5 py-2.5 rounded outline-none focus:border-teal-500 transition font-sans"
+                        />
+                        <button
+                          type="submit"
+                          disabled={sendingTrialChat || !trialChatInput.trim()}
+                          className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-mono font-bold text-xs px-4 py-2.5 rounded transition flex items-center justify-center cursor-pointer"
+                        >
+                          <FiSend size={14} />
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -2652,51 +3205,52 @@ export default function SalesManagerDashboard() {
 
       {/* ─── ASSIGN TASK MODAL ─── */}
       {showTaskModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowTaskModal(false)}>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowTaskModal(false)}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl shadow-xl w-full max-w-lg"
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 shadow-2xl w-full max-w-lg text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-[var(--crm-line)]">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--crm-heading)] flex items-center gap-2">
-                <FiCheckSquare className="text-teal-500" size={16} /> Assign Task to Executive
+            <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 mb-4">
+              <h2 className="text-lg font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                <FiCheckSquare className="text-teal-400" size={18} /> Assign Task to Executive
               </h2>
+              <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-base cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleTaskSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleTaskSubmit} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Task Title *</label>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Task Title *</label>
                 <input
                   type="text"
                   value={taskForm.title}
                   onChange={(e) => setTaskForm(prev => ({...prev, title: e.target.value}))}
                   placeholder="e.g. Follow up with ABC Buyer"
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Description</label>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Description</label>
                 <textarea
                   value={taskForm.description}
                   onChange={(e) => setTaskForm(prev => ({...prev, description: e.target.value}))}
                   placeholder="Task details..."
                   rows={3}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition resize-none placeholder:text-[var(--crm-ink-faint)]"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 resize-none font-sans transition"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Assign To *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Assign To *</label>
                   <select
                     value={taskForm.assignedTo}
                     onChange={(e) => setTaskForm(prev => ({...prev, assignedTo: e.target.value}))}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                     required
                   >
                     <option value="">Select Executive</option>
@@ -2706,12 +3260,12 @@ export default function SalesManagerDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Due Date *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Due Date *</label>
                   <input
                     type="date"
                     value={taskForm.dueDate}
                     onChange={(e) => setTaskForm(prev => ({...prev, dueDate: e.target.value}))}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                     required
                   />
                 </div>
@@ -2719,11 +3273,11 @@ export default function SalesManagerDashboard() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Priority</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Priority</label>
                   <select
                     value={taskForm.priority}
                     onChange={(e) => setTaskForm(prev => ({...prev, priority: e.target.value}))}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                   >
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
@@ -2731,11 +3285,11 @@ export default function SalesManagerDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Category</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Category</label>
                   <select
                     value={taskForm.category}
                     onChange={(e) => setTaskForm(prev => ({...prev, category: e.target.value}))}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                   >
                     <option value="GENERAL">General</option>
                     <option value="FOLLOW_UP">Follow Up</option>
@@ -2747,11 +3301,11 @@ export default function SalesManagerDashboard() {
               </div>
 
               <div>
-                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Link to Lead (Optional)</label>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Link to Lead (Optional)</label>
                 <select
                   value={taskForm.leadId}
                   onChange={(e) => setTaskForm(prev => ({...prev, leadId: e.target.value}))}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                 >
                   <option value="">None / General Task</option>
                   {allLeads.map(lead => (
@@ -2763,27 +3317,27 @@ export default function SalesManagerDashboard() {
               </div>
 
               <div>
-                <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Attach File (Optional)</label>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Attach File (Optional)</label>
                 <input
                   type="file"
                   onChange={(e) => setTaskFile(e.target.files[0])}
-                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] text-xs px-4 py-2 rounded file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-[9px] file:font-bold file:uppercase file:bg-teal-800 file:text-white cursor-pointer"
+                  className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png"
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
                 <button
                   type="submit"
                   disabled={submittingTask}
-                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {submittingTask ? 'Assigning...' : <><FiSend size={11} /> Assign Task</>}
+                  {submittingTask ? 'Assigning...' : <><FiSend size={13} /> Assign Task</>}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowTaskModal(false)}
-                  className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition"
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition active:scale-95 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2948,6 +3502,93 @@ export default function SalesManagerDashboard() {
                   type="button"
                   onClick={() => setShowTargetModal(false)}
                   className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition font-mono"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* CREATE SALES TRIAL EXECUTIVE ACCOUNT MODAL */}
+      {showCreateTrialModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-md relative text-left shadow-2xl space-y-4"
+          >
+            <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 font-mono">
+              <div>
+                <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiZap className="text-amber-400" size={16} /> Create Sales Trial Executive Account
+                </h3>
+                <span className="text-[9px] text-amber-400 font-bold">Auto ID: {nextTrialIdPreview}</span>
+              </div>
+              <button onClick={() => setShowCreateTrialModal(false)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateTrialUserSubmit} className="space-y-4 text-xs font-mono">
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rahul Sharma"
+                  value={createTrialForm.fullName}
+                  onChange={(e) => setCreateTrialForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none focus:border-teal-500 font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Work Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="rahul.trial@indiatradeoverseas.com"
+                  value={createTrialForm.email}
+                  onChange={(e) => setCreateTrialForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none focus:border-teal-500 font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={createTrialForm.password}
+                  onChange={(e) => setCreateTrialForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none focus:border-teal-500 font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Phone Number (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 9876543210"
+                  value={createTrialForm.phone}
+                  onChange={(e) => setCreateTrialForm(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none focus:border-teal-500 font-sans"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingTrialUser}
+                  className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                >
+                  {submittingTrialUser ? 'Creating...' : `Create Account (${nextTrialIdPreview})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateTrialModal(false)}
+                  className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer"
                 >
                   Cancel
                 </button>

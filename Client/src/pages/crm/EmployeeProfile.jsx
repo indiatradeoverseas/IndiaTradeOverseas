@@ -771,7 +771,24 @@ export default function EmployeeProfile() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase block leading-none mb-0.5">Age</span>
-                    <span className="text-[var(--crm-ink-soft)] font-medium">{profile.age || 28} Years</span>
+                    <span className="text-[var(--crm-ink-soft)] font-medium">
+                      {(() => {
+                        const dobVal = profile?.dateOfBirth || profile?.dob;
+                        if (dobVal) {
+                          const bd = new Date(dobVal);
+                          if (!isNaN(bd.getTime())) {
+                            const today = new Date();
+                            let calculated = today.getFullYear() - bd.getFullYear();
+                            const m = today.getMonth() - bd.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) {
+                              calculated--;
+                            }
+                            if (calculated > 0) return calculated;
+                          }
+                        }
+                        return profile?.age || 28;
+                      })()} Years
+                    </span>
                   </div>
                 </div>
 
@@ -1596,6 +1613,10 @@ export default function EmployeeProfile() {
                           </tr>
                         ) : (
                           leaveHistory.map((lv) => {
+                            const approverObj = lv.approvedBy || lv.extraApprovedBy;
+                            const approverName = approverObj ? (approverObj.fullName || approverObj.name || 'Manager') : (lv.overrideBy === 'SYSTEM' ? 'SYSTEM (Auto Policy)' : '');
+                            const approverRole = approverObj ? (approverObj.role || approverObj.department || '') : '';
+
                             const statusColors = {
                               PENDING: 'text-amber-400 bg-amber-950/30 border-amber-900/30',
                               PENDING_HR_APPROVAL: 'text-orange-400 bg-orange-950/30 border-orange-900/30',
@@ -1619,9 +1640,17 @@ export default function EmployeeProfile() {
                                 <td className="py-3 px-4 text-[var(--crm-ink-soft)] font-light max-w-[150px] truncate" title={lv.reason}>{lv.reason}</td>
                                 <td className="py-3 px-4 text-[var(--crm-ink-faint)] font-light max-w-[150px] truncate" title={lv.hrRemarks}>{lv.hrRemarks || '—'}</td>
                                 <td className="py-3 px-4 text-center">
-                                  <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColor}`}>
-                                    {lv.status.replace(/_/g, ' ')}
-                                  </span>
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border uppercase ${statusColor}`}>
+                                      {lv.status.replace(/_/g, ' ')}
+                                    </span>
+                                    {['APPROVED', 'HR_APPROVED_EXTRA', 'REJECTED'].includes(lv.status) && (
+                                      <span className="text-[9px] font-mono text-teal-400 font-bold block whitespace-nowrap">
+                                        {['APPROVED', 'HR_APPROVED_EXTRA'].includes(lv.status) ? '✓ Approved by ' : '✗ Rejected by '}
+                                        <strong className="text-[var(--crm-heading)]">{approverName || 'Manager'}</strong> {approverRole ? `(${approverRole})` : ''}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
