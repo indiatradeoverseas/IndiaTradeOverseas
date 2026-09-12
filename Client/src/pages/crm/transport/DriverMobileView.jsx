@@ -837,7 +837,7 @@ export default function DriverMobileView() {
           ''
         ).toLowerCase().trim();
         
-        const tripDriverName = (t.driverName || t.salesOwner || '').toLowerCase().trim();
+        const tripDriverName = (t.driverName || t.assignedDriverName || t.driver || t.salesOwner || '').toLowerCase().trim();
 
         return (
           (itemAssignedToId && (itemAssignedToId === targetUserIdStr || itemAssignedToId === String(user?._id) || itemAssignedToId === String(user?.employeeId))) ||
@@ -897,7 +897,7 @@ export default function DriverMobileView() {
 
       // ─── LOAD FUEL EXPENSE LOGS 100% FROM MONGODB DISPATCHES & WORK UPDATES ─────
       const allFuelLogs = [];
-      const dispatchesToScan = (dispatchesRes.status === 'fulfilled' && (dispatchesRes.value?.data?.dispatches || dispatchesRes.value?.dispatches)) || matchedDispatches || [];
+      const dispatchesToScan = (tripRes.status === 'fulfilled' && (tripRes.value?.data?.dispatches || tripRes.value?.dispatches)) || matchedDispatches || [];
       (Array.isArray(dispatchesToScan) ? dispatchesToScan : []).forEach(d => {
         if (d.fuelLogs && Array.isArray(d.fuelLogs)) {
           d.fuelLogs.forEach(fl => {
@@ -986,22 +986,34 @@ export default function DriverMobileView() {
       }
 
       // Compute Dynamic Metrics
-      const totalDispCount = matchedDispatches.length;
-      const totalRev = matchedDispatches.reduce((acc, t) => acc + (Number(t.totalFreightAmount) || Number(t.freightAmount) || Number(t.freightRate) || 0), 0);
-      const completedCount = matchedDispatches.filter(t => 
+      const dispatchesForMetrics = matchedDispatches.length > 0 ? matchedDispatches : processedCombinedList;
+      const totalDispCount = dispatchesForMetrics.length;
+      
+      const totalRev = dispatchesForMetrics.reduce((acc, t) => {
+        const amt = Number(t.totalFreightAmount) || 
+                    Number(t.freightAmount) || 
+                    Number(t.freightRate) || 
+                    Number(t.totalAmount) || 
+                    Number(t.amount) || 
+                    Number(t.value) || 
+                    Number(t.rate) || 0;
+        return acc + amt;
+      }, 0);
+
+      const completedCount = dispatchesForMetrics.filter(t => 
         isItemDelivered(t) ||
         deliveredSet.has(t._id) || deliveredSet.has(t.orderNumber) || deliveredSet.has(t.dispatchNumber) || deliveredSet.has(t.leadCode)
       ).length;
 
-      const totalPaidFromOrders = matchedDispatches
+      const totalPaidFromOrders = dispatchesForMetrics
         .filter(t => isItemDelivered(t) || deliveredSet.has(t._id) || deliveredSet.has(t.orderNumber) || deliveredSet.has(t.dispatchNumber) || deliveredSet.has(t.leadCode))
         .reduce((sum, t) => sum + (Number(t.amountCollected || t.totalFreightAmount || t.freightAmount || t.freightRate || 0) || 0), 0);
 
       const totalPaidFromProofs = paymentProofsList.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
       const finalTotalPayment = Math.max(totalPaidFromOrders, totalPaidFromProofs);
 
-      // Active / Pending Assigned Tasks = Total Tasks - Completed Tasks
-      const activePendingAssignedCount = Math.max(0, totalDispCount - completedCount);
+      // Active / Pending Assigned Tasks = Total Tasks or Dispatches - Completed Tasks
+      const activePendingAssignedCount = Math.max(0, (tasks.length > 0 ? tasks.length : totalDispCount) - completedCount);
 
       setMetrics({
         totalDispatch: totalDispCount,
