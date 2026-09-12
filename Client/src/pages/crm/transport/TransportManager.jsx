@@ -219,7 +219,7 @@ export default function TransportManager() {
     const clean = inputMessage.trim();
     if (!clean) return;
 
-    const senderName = `${user?.name || user?.fullName || 'Vikram Singh'} (MANAGER)`;
+    const senderName = `${user?.name || user?.fullName || 'Transport Manager'} (MANAGER)`;
     const newMsg = {
       senderId: String(user?._id || user?.employeeId || 'manager'),
       senderName,
@@ -328,7 +328,7 @@ export default function TransportManager() {
               fromLocation: fl.fromLocation || t.origin || 'Depot',
               toLocation: fl.toLocation || t.destination || 'Patna',
               fuelCost: Number(fl.amountPaid || fl.fuelCost) || 0,
-              litres: Number(fl.quantityLiters) || 0,
+              litres: Number(fl.quantityLiters || fl.litres) || 0,
               punctureCost: Number(fl.punctureCost) || 0,
               otherCost: Number(fl.otherCost) || 0,
               remarks: fl.remarks || '',
@@ -339,15 +339,6 @@ export default function TransportManager() {
         }
       });
 
-      if (dbFuelLogs.length > 0) {
-        setFuelMaintenanceLogs(prev => {
-          const combined = [...dbFuelLogs, ...prev];
-          const map = new Map();
-          combined.forEach(item => map.set(item.id, item));
-          return Array.from(map.values());
-        });
-      }
-
       let fetchedQueue = [];
       if (queueRes.status === 'fulfilled') {
         const val = queueRes.value;
@@ -356,7 +347,7 @@ export default function TransportManager() {
 
       setDispatchQueue(fetchedQueue);
 
-      // Load Driver Work Updates from MongoDB
+      // Load Driver Work Updates & Fuel Stop logs from MongoDB
       if (workUpdatesRes.status === 'fulfilled') {
         const wuData = workUpdatesRes.value?.data?.workUpdates || workUpdatesRes.value?.workUpdates || [];
         if (wuData.length > 0) {
@@ -371,8 +362,56 @@ export default function TransportManager() {
             time: u.time || (u.createdAt ? new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
           }));
           setDriverWorkUpdates(formattedUpdates);
+
+          wuData.forEach(u => {
+            if (u.updateType === 'Fuel Stop' || (u.notes && u.notes.includes('Trip & Vehicle Log'))) {
+              const driveMatch = u.notes ? u.notes.match(/Drive\s+(\d+)\s*KM/i) : null;
+              const fuelMatch = u.notes ? u.notes.match(/Fuel:\s*₹?\s*(\d+)/i) : null;
+              const mileageMatch = u.notes ? u.notes.match(/Mileage:\s*([\d.]+)/i) : null;
+              const otherMatch = u.notes ? u.notes.match(/Other:\s*₹?\s*(\d+)/i) : null;
+
+              const parsedKm = Number(u.kmDriven) || (driveMatch ? Number(driveMatch[1]) : 0);
+              const parsedFuel = Number(u.fuelCost) || (fuelMatch ? Number(fuelMatch[1]) : 0);
+              const parsedMileage = Number(u.vehicleMileage) || (mileageMatch ? Number(mileageMatch[1]) : 0);
+              const parsedOther = Number(u.otherCost) || (otherMatch ? Number(otherMatch[1]) : 0);
+
+              let fromLoc = u.fromLocation || '';
+              let toLoc = u.toLocation || '';
+              if ((!fromLoc || !toLoc) && u.location && u.location.includes('->')) {
+                const parts = u.location.split('->');
+                fromLoc = fromLoc || parts[0]?.trim();
+                toLoc = toLoc || parts[1]?.trim();
+              }
+
+              dbFuelLogs.push({
+                id: u.id || u._id,
+                driver: u.driverName || u.driver || 'Driver',
+                vehicle: u.vehicleNo || u.vehicle || 'Truck',
+                leadCode: u.leadCode || 'Daily Log',
+                leadCustomer: u.leadCustomer || '',
+                totalKm: parsedKm,
+                todaysTrip: 'Trip Logged',
+                vehicleMileage: parsedMileage,
+                fromLocation: fromLoc || 'Delhi',
+                toLocation: toLoc || 'Patna',
+                fuelCost: parsedFuel,
+                otherCost: parsedOther,
+                punctureCost: Number(u.punctureCost) || 0,
+                remarks: u.notes || u.update || '',
+                time: u.time || (u.createdAt ? new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+                date: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : 'Today'
+              });
+            }
+          });
         }
       }
+
+      const map = new Map();
+      dbFuelLogs.forEach(item => {
+        const key = item.id || `${item.vehicle}-${item.date}-${item.time}-${item.fuelCost}`;
+        map.set(key, item);
+      });
+      setFuelMaintenanceLogs(Array.from(map.values()));
 
       let fetchedDrivers = [];
       if (empRes.status === 'fulfilled' && (empRes.value?.success || empRes.value?.data)) {
@@ -926,6 +965,12 @@ export default function TransportManager() {
 
       const hasAttendee = isValidMediaUrl(attendeeUrl);
       const hasPayment = isValidMediaUrl(paymentUrl);
+      const isDeliveredOrCompleted = ['DELIVERED', 'COMPLETED', 'DEAL_WON', 'CLOSED_WON'].includes((t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase());
+
+      // Only display in "Driver Uploaded All Proof Records" if driver actually uploaded proof or delivery is completed
+      if (!hasAttendee && !hasPayment && !isDeliveredOrCompleted) {
+        return;
+      }
 
       const existing = mapByCode.get(code);
 
@@ -945,7 +990,7 @@ export default function TransportManager() {
           paymentUrl: hasPayment ? paymentUrl : (existing?.paymentUrl || ''),
           paymentFileType: hasPayment ? detectFileType(paymentUrl) : (existing?.paymentFileType || ''),
           paymentMode: t.paymentMode || t.paymentProof?.paymentMode || 'Online',
-          status: ['DELIVERED', 'COMPLETED', 'DEAL_WON'].includes((t.status || t.dispatchStatus || t.stage || t.rawStage || '').toUpperCase()) ? 'POD VERIFIED ✓' : 'DOC SUBMITTED ✓'
+          status: isDeliveredOrCompleted ? 'POD VERIFIED ✓' : 'DOC SUBMITTED ✓'
         });
       }
     });
@@ -1423,7 +1468,7 @@ export default function TransportManager() {
                   </div>
                 ) : (
                   chatMessages.map((msg, index) => {
-                    const isManager = msg.sender?.toLowerCase().includes('manager') || msg.sender?.includes(user?.name || user?.fullName || 'Vikram');
+                    const isManager = msg.sender?.toLowerCase().includes('manager') || msg.sender?.includes(user?.name || user?.fullName || 'Manager');
                     return (
                       <div
                         key={msg.id || index}
@@ -1437,7 +1482,7 @@ export default function TransportManager() {
                           }`}
                         >
                           <span className={`text-[9px] font-bold block ${isManager ? 'text-teal-100' : 'text-slate-400'}`}>
-                            {msg.sender || (isManager ? `${user?.name || 'Vikram Singh'} (MANAGER)` : 'Driver')}
+                            {msg.sender || (isManager ? `${user?.name || user?.fullName || 'Transport Manager'} (MANAGER)` : 'Driver')}
                           </span>
                           <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
                             {msg.text}

@@ -176,11 +176,17 @@ async function checkAccess(user, doc) {
   }
 
   if (doc.ownerType === 'USER') {
-    if (!doc.ownerId || !user?._id) return false;
+    if (!doc.ownerId || !user?._id) return true;
     const ownerIdStr = String(doc.ownerId._id || doc.ownerId);
     const userIdStr = String(user._id);
     const empDbIdStr = user.employeeDbId ? String(user.employeeDbId) : '';
-    return ownerIdStr === userIdStr || (empDbIdStr && ownerIdStr === empDbIdStr);
+    if (ownerIdStr === userIdStr || (empDbIdStr && ownerIdStr === empDbIdStr)) return true;
+
+    const userRole = (user.role || '').toUpperCase();
+    const userDept = (user.department || '').toUpperCase();
+    if (['ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'TRANSPORT', 'SALES'].includes(userRole) || userDept === 'HR') {
+      return true;
+    }
   }
 
   return true;
@@ -336,6 +342,95 @@ async function getDocumentsForUser(user) {
       }
     }
   });
+
+  // 4. Merge Employee uploadedDocuments from Employee collection
+  try {
+    const Employee = require('../employee/employee.model');
+    const empsWithDocs = await Employee.find({ 'uploadedDocuments.0': { $exists: true } }).lean();
+    
+    const existingDocKeys = new Set(docs.map(d => String(d._id || d.fileName)));
+    
+    empsWithDocs.forEach(emp => {
+      if (emp.uploadedDocuments && Array.isArray(emp.uploadedDocuments)) {
+        emp.uploadedDocuments.forEach(empDoc => {
+          const key = String(empDoc._id || empDoc.fileName);
+          if (!existingDocKeys.has(key)) {
+            existingDocKeys.add(key);
+            docs.push({
+              _id: empDoc._id || `emp_doc_${Date.now()}_${Math.random()}`,
+              fileName: empDoc.fileName || 'Employee Document.pdf',
+              ownerType: 'USER',
+              ownerId: {
+                _id: emp._id,
+                fullName: emp.name || emp.fullName || 'Employee Account',
+                name: emp.name || emp.fullName || 'Employee Account',
+                email: emp.email || ''
+              },
+              uploadedBy: {
+                _id: emp._id,
+                fullName: emp.name || emp.fullName || 'Employee Account',
+                name: emp.name || emp.fullName || 'Employee Account'
+              },
+              accessLevel: 'HR',
+              exportDocType: 'OTHER',
+              approvalStatus: empDoc.approvalStatus || 'PENDING',
+              createdAt: empDoc.createdAt || emp.updatedAt || new Date()
+            });
+          }
+        });
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching Employee uploadedDocuments for registry:', err);
+  }
+
+  // 5. Merge Dispatch Proof Documents (PODs / Driver Proofs) from Dispatch collection
+  try {
+    const Dispatch = require('../dispatch/dispatch.model');
+    const dispatchesWithProofs = await Dispatch.find({
+      $or: [
+        { podFileUrl: { $exists: true, $ne: '' } },
+        { driverProofUrl: { $exists: true, $ne: '' } },
+        { paymentProofUrl: { $exists: true, $ne: '' } },
+        { 'paymentProof.proofImageUrl': { $exists: true, $ne: '' } }
+      ]
+    }).lean();
+
+    const existingDocKeys = new Set(docs.map(d => String(d._id || d.fileName)));
+
+    dispatchesWithProofs.forEach(disp => {
+      const proofUrl = disp.podFileUrl || disp.driverProofUrl || disp.paymentProofUrl || disp.paymentProof?.proofImageUrl;
+      if (proofUrl) {
+        const docName = disp.driverProofName || disp.paymentProofName || `Driver_Proof_${disp.dispatchNumber || disp.orderNumber || 'Log'}.pdf`;
+        const key = `disp_proof_${disp._id}_${docName}`;
+        if (!existingDocKeys.has(key)) {
+          existingDocKeys.add(key);
+          docs.push({
+            _id: key,
+            fileName: docName,
+            ownerType: 'USER',
+            ownerId: {
+              fullName: disp.driverName || 'Driver Account',
+              name: disp.driverName || 'Driver Account'
+            },
+            uploadedBy: {
+              fullName: disp.driverName || 'Driver Account',
+              name: disp.driverName || 'Driver Account'
+            },
+            accessLevel: 'TRANSPORT',
+            exportDocType: 'OTHER',
+            approvalStatus: 'PENDING',
+            createdAt: disp.actualDeliveryDate || disp.updatedAt || disp.createdAt || new Date()
+          });
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching Dispatch proofs for document registry:', err);
+  }
+
+  // Sort newest first
+  docs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   if (!user) {
     return docs.filter((doc) => doc.accessLevel === 'PUBLIC');

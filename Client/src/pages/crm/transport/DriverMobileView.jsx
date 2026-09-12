@@ -837,7 +837,7 @@ export default function DriverMobileView() {
           ''
         ).toLowerCase().trim();
         
-        const tripDriverName = (t.driverName || t.salesOwner || '').toLowerCase().trim();
+        const tripDriverName = (t.driverName || t.assignedDriverName || t.driver || t.salesOwner || '').toLowerCase().trim();
 
         return (
           (itemAssignedToId && (itemAssignedToId === targetUserIdStr || itemAssignedToId === String(user?._id) || itemAssignedToId === String(user?.employeeId))) ||
@@ -895,22 +895,25 @@ export default function DriverMobileView() {
         }));
       }
 
-      // ─── LOAD FUEL EXPENSE LOGS FROM DISPATCH fuelLogs (MongoDB) ─────────
+      // ─── LOAD FUEL EXPENSE LOGS 100% FROM MONGODB DISPATCHES & WORK UPDATES ─────
       const allFuelLogs = [];
-      matchedDispatches.forEach(d => {
+      const dispatchesToScan = (tripRes.status === 'fulfilled' && (tripRes.value?.data?.dispatches || tripRes.value?.dispatches)) || matchedDispatches || [];
+      (Array.isArray(dispatchesToScan) ? dispatchesToScan : []).forEach(d => {
         if (d.fuelLogs && Array.isArray(d.fuelLogs)) {
           d.fuelLogs.forEach(fl => {
             allFuelLogs.push({
-              id: fl._id || `fl-${Date.now()}-${Math.random()}`,
-              driver: d.driverName || driverNameStr || 'Driver',
-              vehicle: d.vehicleNumber || d.vehicleNo || '',
-              leadCode: d.orderNumber || d.dispatchNumber || d.leadCode || '',
-              leadCustomer: d.customerName || '',
+              id: fl._id || `fl-${fl.loggedAt || Date.now()}`,
+              driver: fl.driverName || d.driverName || driverNameStr || 'Driver',
+              vehicle: fl.vehicleNumber || fl.vehicleNo || d.vehicleNumber || d.vehicleNo || '',
+              leadCode: fl.leadCode || d.orderNumber || d.dispatchNumber || d.leadCode || '',
+              leadCustomer: fl.leadCustomer || d.customerName || '',
               totalKm: Number(fl.kmDriven) || 0,
+              todaysTrip: fl.todaysTrip || 'Trip 1',
+              vehicleMileage: Number(fl.vehicleMileage) || 0,
               fromLocation: fl.fromLocation || d.origin || '',
               toLocation: fl.toLocation || d.destination || '',
-              fuelCost: Number(fl.amountPaid) || 0,
-              litres: Number(fl.quantityLiters) || 0,
+              fuelCost: Number(fl.amountPaid || fl.fuelCost) || 0,
+              litres: Number(fl.quantityLiters || fl.litres) || 0,
               punctureCost: Number(fl.punctureCost) || 0,
               otherCost: Number(fl.otherCost) || 0,
               remarks: fl.remarks || 'Trip Mileage & Expense Log',
@@ -920,17 +923,61 @@ export default function DriverMobileView() {
           });
         }
       });
-      if (allFuelLogs.length > 0) {
-        setFuelExpenseLogs(allFuelLogs);
-      }
 
-      // ─── LOAD WORK UPDATE LOGS FROM MongoDB ─────────────────────────────
+      // Also parse Fuel Stop updates from MongoDB DriverWorkUpdates
       if (workUpdatesRes.status === 'fulfilled') {
         const wuData = workUpdatesRes.value?.data?.workUpdates || workUpdatesRes.value?.workUpdates || [];
         if (wuData.length > 0) {
           setWorkUpdateLogs(wuData);
+          wuData.forEach(u => {
+            if (u.updateType === 'Fuel Stop' || (u.notes && u.notes.includes('Trip & Vehicle Log'))) {
+              const driveMatch = u.notes ? u.notes.match(/Drive\s+(\d+)\s*KM/i) : null;
+              const fuelMatch = u.notes ? u.notes.match(/Fuel:\s*₹?\s*(\d+)/i) : null;
+              const mileageMatch = u.notes ? u.notes.match(/Mileage:\s*([\d.]+)/i) : null;
+              const otherMatch = u.notes ? u.notes.match(/Other:\s*₹?\s*(\d+)/i) : null;
+
+              const parsedKm = Number(u.kmDriven) || (driveMatch ? Number(driveMatch[1]) : 0);
+              const parsedFuel = Number(u.fuelCost) || (fuelMatch ? Number(fuelMatch[1]) : 0);
+              const parsedMileage = Number(u.vehicleMileage) || (mileageMatch ? Number(mileageMatch[1]) : 0);
+              const parsedOther = Number(u.otherCost) || (otherMatch ? Number(otherMatch[1]) : 0);
+
+              let fromLoc = u.fromLocation || '';
+              let toLoc = u.toLocation || '';
+              if ((!fromLoc || !toLoc) && u.location && u.location.includes('->')) {
+                const parts = u.location.split('->');
+                fromLoc = fromLoc || parts[0]?.trim();
+                toLoc = toLoc || parts[1]?.trim();
+              }
+
+              allFuelLogs.push({
+                id: u.id || u._id,
+                driver: u.driverName || u.driver || driverNameStr || 'Driver',
+                vehicle: u.vehicleNo || u.vehicle || '',
+                leadCode: u.leadCode || 'Daily Log',
+                leadCustomer: u.leadCustomer || '',
+                totalKm: parsedKm,
+                todaysTrip: 'Trip Logged',
+                vehicleMileage: parsedMileage,
+                fromLocation: fromLoc || 'Delhi',
+                toLocation: toLoc || 'Patna',
+                fuelCost: parsedFuel,
+                otherCost: parsedOther,
+                punctureCost: Number(u.punctureCost) || 0,
+                remarks: u.notes || u.update || '',
+                time: u.time || (u.createdAt ? new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+                date: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : 'Today'
+              });
+            }
+          });
         }
       }
+
+      const logMap = new Map();
+      allFuelLogs.forEach(item => {
+        const key = item.id || `${item.vehicle}-${item.date}-${item.time}-${item.fuelCost}`;
+        logMap.set(key, item);
+      });
+      setFuelExpenseLogs(Array.from(logMap.values()));
 
       let tasks = [];
       if (taskRes.status === 'fulfilled' && (taskRes.value?.success || taskRes.value?.data)) {
@@ -939,22 +986,34 @@ export default function DriverMobileView() {
       }
 
       // Compute Dynamic Metrics
-      const totalDispCount = matchedDispatches.length;
-      const totalRev = matchedDispatches.reduce((acc, t) => acc + (Number(t.totalFreightAmount) || Number(t.freightAmount) || Number(t.freightRate) || 0), 0);
-      const completedCount = matchedDispatches.filter(t => 
+      const dispatchesForMetrics = matchedDispatches.length > 0 ? matchedDispatches : processedCombinedList;
+      const totalDispCount = dispatchesForMetrics.length;
+      
+      const totalRev = dispatchesForMetrics.reduce((acc, t) => {
+        const amt = Number(t.totalFreightAmount) || 
+                    Number(t.freightAmount) || 
+                    Number(t.freightRate) || 
+                    Number(t.totalAmount) || 
+                    Number(t.amount) || 
+                    Number(t.value) || 
+                    Number(t.rate) || 0;
+        return acc + amt;
+      }, 0);
+
+      const completedCount = dispatchesForMetrics.filter(t => 
         isItemDelivered(t) ||
         deliveredSet.has(t._id) || deliveredSet.has(t.orderNumber) || deliveredSet.has(t.dispatchNumber) || deliveredSet.has(t.leadCode)
       ).length;
 
-      const totalPaidFromOrders = matchedDispatches
+      const totalPaidFromOrders = dispatchesForMetrics
         .filter(t => isItemDelivered(t) || deliveredSet.has(t._id) || deliveredSet.has(t.orderNumber) || deliveredSet.has(t.dispatchNumber) || deliveredSet.has(t.leadCode))
         .reduce((sum, t) => sum + (Number(t.amountCollected || t.totalFreightAmount || t.freightAmount || t.freightRate || 0) || 0), 0);
 
       const totalPaidFromProofs = paymentProofsList.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
       const finalTotalPayment = Math.max(totalPaidFromOrders, totalPaidFromProofs);
 
-      // Active / Pending Assigned Tasks = Total Tasks - Completed Tasks
-      const activePendingAssignedCount = Math.max(0, totalDispCount - completedCount);
+      // Active / Pending Assigned Tasks = Total Tasks or Dispatches - Completed Tasks
+      const activePendingAssignedCount = Math.max(0, (tasks.length > 0 ? tasks.length : totalDispCount) - completedCount);
 
       setMetrics({
         totalDispatch: totalDispCount,

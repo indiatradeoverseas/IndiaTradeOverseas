@@ -100,6 +100,12 @@ async function updatePaymentStatus({ id, paymentStatus, advanceAmount, balanceAm
     metadata: { paymentStatus, balanceAmount: payment.balanceAmount }
   });
 
+  try {
+    const { emitEvent } = require('../../services/socket.service');
+    emitEvent('payment_updated', { payment });
+    emitEvent('lead_updated', { action: 'payment_update', leadId: payment.leadId });
+  } catch (e) {}
+
   return payment;
 }
 

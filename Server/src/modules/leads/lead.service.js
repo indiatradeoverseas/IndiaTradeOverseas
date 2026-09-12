@@ -961,7 +961,15 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     metadata: { previousStage, newStage, activityId: activity._id }
   });
 
-  // 8. Return formatted lead payload
+  // 8. Live Socket Broadcast to connected clients
+  try {
+    const { emitEvent } = require('../../services/socket.service');
+    emitEvent('lead_updated', { action: 'stage_change', leadId: lead._id, stage: newStage });
+  } catch (socketErr) {
+    console.warn('Socket broadcast notice in updateStage:', socketErr.message);
+  }
+
+  // 9. Return formatted lead payload
   return getLeadDisplay(lead, user);
 }
 async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
@@ -1087,6 +1095,11 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     severity: 'LOW',
     metadata: { assignedTo: targetAssignedTo, assignedDepartment }
   });
+
+  try {
+    const { emitEvent } = require('../../services/socket.service');
+    emitEvent('lead_updated', { action: 'assign', leadId: lead._id });
+  } catch (socketErr) {}
 
   const leadObj = lead.toObject ? lead.toObject() : lead;
   if (resolvedAssignee) {
@@ -1406,6 +1419,11 @@ async function updatePriority({ leadId, priority, leadValue, user }) {
     severity: 'LOW',
     metadata: { oldPriority, newPriority: lead.priority, leadValue: lead.leadValue }
   });
+
+  try {
+    const { emitEvent } = require('../../services/socket.service');
+    emitEvent('lead_updated', { action: 'priority_update', leadId: lead._id, priority: lead.priority });
+  } catch (socketErr) {}
 
   return getLeadDisplay(lead, user);
 }

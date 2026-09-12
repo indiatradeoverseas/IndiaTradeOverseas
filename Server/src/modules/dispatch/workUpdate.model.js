@@ -12,7 +12,16 @@ const driverWorkUpdateSchema = new mongoose.Schema(
     notes: { type: String, required: true },
     location: { type: String, default: '' },
     photoUrl: { type: String, default: '' },
-    dispatchId: { type: String, default: '' }
+    dispatchId: { type: String, default: '' },
+    kmDriven: { type: Number, default: 0 },
+    fuelCost: { type: Number, default: 0 },
+    otherCost: { type: Number, default: 0 },
+    punctureCost: { type: Number, default: 0 },
+    vehicleMileage: { type: Number, default: 0 },
+    fromLocation: { type: String, default: '' },
+    toLocation: { type: String, default: '' },
+    leadCode: { type: String, default: '' },
+    leadCustomer: { type: String, default: '' }
   },
   { timestamps: true }
 );
