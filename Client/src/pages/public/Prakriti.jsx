@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
@@ -26,9 +27,12 @@ import {
 import { Link } from 'react-router-dom';
 
 import { distributorApi } from '../../api/distributor';
+import { softLeadsApi } from '../../api/leads';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import SoftGate from '../../components/gates/SoftGate';
+import TeaRequirementBuilder from '../../components/requirements/TeaRequirementBuilder';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
@@ -380,11 +384,11 @@ function GiAward({ size = 18, className = '' }) {
 
 export default function Prakriti() {
     useDocumentMeta({
-    title: 'Prakriti Premium Indian Tea | Bulk Supply & Private Label',
-    description:
-        'Prakriti by India Trade Overseas supplies premium Indian tea from Assam, Darjeeling, Dooars and the Siliguri corridor for retail, trade, hospitality, distribution and private-label buyers.',
-    canonicalPath: '/prakriti/tea',
-});
+        title: 'Prakriti Premium Indian Tea | Bulk Supply & Private Label',
+        description:
+            'Prakriti by India Trade Overseas supplies premium Indian tea from Assam, Darjeeling, Dooars and the Siliguri corridor for retail, trade, hospitality, distribution and private-label buyers.',
+        canonicalPath: '/prakriti/tea',
+    });
 
 
     /* =====================================================
@@ -424,6 +428,12 @@ export default function Prakriti() {
     const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
     const [orderQuantity, setOrderQuantity] = useState('500');
+
+    // New Soft Gate / Requirement Builder State
+    const [showRequirementBuilder, setShowRequirementBuilder] = useState(false);
+    const [builtRequirement, setBuiltRequirement] = useState(null);
+    const [showSoftGate, setShowSoftGate] = useState(false);
+    const [softGateLeadId, setSoftGateLeadId] = useState(null);
 
 
     /* =====================================================
@@ -774,7 +784,8 @@ export default function Prakriti() {
             localStorage.getItem('distributor_token');
 
         if (!savedId || !token) {
-            setShowEntryGate(true);
+            setShowRequirementBuilder(true);
+            pushDataLayerEvent('view_product', { division: 'TEA' });
         } else {
             setUserAccessLayer(5);
             window.scrollTo({
@@ -782,6 +793,39 @@ export default function Prakriti() {
                 behavior: 'smooth',
             });
         }
+    };
+
+    const handleRequirementComplete = (requirement) => {
+        setBuiltRequirement(requirement);
+        setShowRequirementBuilder(false);
+        setShowSoftGate(true);
+    };
+
+    const navigate = useNavigate();
+
+    const handleSoftGateSuccess = (leadId, requirement) => {
+        setSoftGateLeadId(leadId);
+        setShowSoftGate(false);
+        toast.success('Enquiry submitted! Redirecting to pricing...');
+
+        const teaType = requirement.teaType || '';
+        const location = requirement.destination?.location || '';
+        const quantity = requirement.quantity || '';
+        const timeline = requirement.timeline || '';
+
+        const params = new URLSearchParams({
+            teaType,
+            location,
+            quantity,
+            timeline,
+        }).toString();
+
+        navigate(`/tea/pricing?${params}`);
+    };
+
+    const handleSoftGateClose = () => {
+        setShowSoftGate(false);
+        setBuiltRequirement(null);
     };
 
 
@@ -802,17 +846,6 @@ export default function Prakriti() {
        PUBLIC ENTRY GATE
     ===================================================== */
 
-    if (showEntryGate) {
-        return (
-            <BuyerEntryGate
-                theme={PRAKRITI_GATE_THEME}
-                division="TEA"
-                requireOtp={true}
-                onVerified={handleGateVerified}
-                mascotSrc="/images/walking-man.png"
-            />
-        );
-    }
 
 
     /* =====================================================
@@ -982,16 +1015,16 @@ export default function Prakriti() {
                                             p.status ===
                                             'approved'
                                     ).length > 0 && (
-                                        <span className="bg-amber-500 text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce ml-0.5">
-                                            {
-                                                myProposals.filter(
-                                                    (p) =>
-                                                        p.status ===
-                                                        'approved'
-                                                ).length
-                                            }
-                                        </span>
-                                    )}
+                                            <span className="bg-amber-500 text-slate-900 w-4 h-4 rounded-full flex items-center justify-center font-sans font-extrabold text-[9px] animate-bounce ml-0.5">
+                                                {
+                                                    myProposals.filter(
+                                                        (p) =>
+                                                            p.status ===
+                                                            'approved'
+                                                    ).length
+                                                }
+                                            </span>
+                                        )}
                                 </button>
 
 
@@ -1062,12 +1095,11 @@ export default function Prakriti() {
                                                 cat
                                             )
                                         }
-                                        className={`px-3.5 py-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider rounded-lg transition-all font-bold cursor-pointer whitespace-nowrap shrink-0 ${
-                                            selectedMarketCategory ===
-                                            cat
+                                        className={`px-3.5 py-2 text-[10px] sm:text-xs font-mono uppercase tracking-wider rounded-lg transition-all font-bold cursor-pointer whitespace-nowrap shrink-0 ${selectedMarketCategory ===
+                                                cat
                                                 ? 'bg-[#004B3B] text-[#50C878] shadow-sm border border-[#004B3B]'
                                                 : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-                                        }`}
+                                            }`}
                                     >
                                         {cat}
                                     </button>
@@ -1378,7 +1410,7 @@ export default function Prakriti() {
                                     key={heroBgIndex}
                                     src={
                                         HERO_BACKGROUNDS[
-                                            heroBgIndex
+                                        heroBgIndex
                                         ]
                                     }
                                     alt="Prakriti premium Indian tea sourcing"
@@ -2023,16 +2055,16 @@ export default function Prakriti() {
                                             {CAROUSEL_IMAGES[
                                                 carouselIndex
                                             ] && (
-                                                <img
-                                                    src={
-                                                        CAROUSEL_IMAGES[
-                                                            carouselIndex
-                                                        ].image
-                                                    }
-                                                    alt={`Prakriti ${CAROUSEL_IMAGES[carouselIndex].size} tea pack`}
-                                                    className="w-full h-full object-contain"
-                                                />
-                                            )}
+                                                    <img
+                                                        src={
+                                                            CAROUSEL_IMAGES[
+                                                                carouselIndex
+                                                            ].image
+                                                        }
+                                                        alt={`Prakriti ${CAROUSEL_IMAGES[carouselIndex].size} tea pack`}
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                )}
 
                                             <div className="absolute bottom-2 left-2 bg-[#004B3B] text-[#50C878] text-[9px] sm:text-[10px] font-mono px-2 py-0.5 rounded font-bold">
                                                 {
@@ -2091,15 +2123,13 @@ export default function Prakriti() {
                                                         idx
                                                     )
                                                 }
-                                                className={`h-1.5 transition-all rounded-full ${
-                                                    carouselIndex ===
-                                                    idx
+                                                className={`h-1.5 transition-all rounded-full ${carouselIndex ===
+                                                        idx
                                                         ? 'bg-[#004B3B] w-6'
                                                         : 'bg-slate-200 w-1.5'
-                                                }`}
-                                                aria-label={`Go to slide ${
-                                                    idx + 1
-                                                }`}
+                                                    }`}
+                                                aria-label={`Go to slide ${idx + 1
+                                                    }`}
                                             />
 
                                         )
@@ -2656,15 +2686,14 @@ export default function Prakriti() {
                                                     key={
                                                         prop._id
                                                     }
-                                                    className={`p-3.5 sm:p-4 rounded-xl border text-xs transition-all space-y-3 ${
-                                                        prop.status ===
-                                                        'approved'
+                                                    className={`p-3.5 sm:p-4 rounded-xl border text-xs transition-all space-y-3 ${prop.status ===
+                                                            'approved'
                                                             ? 'border-emerald-300/80 bg-white shadow-sm'
                                                             : prop.status ===
-                                                              'disapproved'
-                                                            ? 'border-rose-200 bg-rose-50/20'
-                                                            : 'border-slate-200 bg-white'
-                                                    }`}
+                                                                'disapproved'
+                                                                ? 'border-rose-200 bg-rose-50/20'
+                                                                : 'border-slate-200 bg-white'
+                                                        }`}
                                                 >
 
                                                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
@@ -2702,24 +2731,23 @@ export default function Prakriti() {
 
 
                                                         <span
-                                                            className={`px-2.5 py-1 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border ${
-                                                                prop.status ===
-                                                                'approved'
+                                                            className={`px-2.5 py-1 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border ${prop.status ===
+                                                                    'approved'
                                                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                                                                     : prop.status ===
-                                                                      'disapproved'
-                                                                    ? 'bg-rose-50 text-rose-700 border-rose-300'
-                                                                    : 'bg-amber-50 text-amber-700 border-amber-300'
-                                                            }`}
+                                                                        'disapproved'
+                                                                        ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                                                        : 'bg-amber-50 text-amber-700 border-amber-300'
+                                                                }`}
                                                         >
                                                             {
                                                                 prop.status ===
-                                                                'approved'
+                                                                    'approved'
                                                                     ? 'Approved'
                                                                     : prop.status ===
-                                                                      'disapproved'
-                                                                    ? 'Rejected'
-                                                                    : 'Under Review'
+                                                                        'disapproved'
+                                                                        ? 'Rejected'
+                                                                        : 'Under Review'
                                                             }
                                                         </span>
 
@@ -2753,7 +2781,7 @@ export default function Prakriti() {
                                                                 {(
                                                                     prop.estimatedValue ||
                                                                     prop.quantity *
-                                                                        prop.basePrice
+                                                                    prop.basePrice
                                                                 )?.toLocaleString()}
                                                             </span>
 
@@ -2762,72 +2790,72 @@ export default function Prakriti() {
                                                     </div>
 
                                                     {prop.status === 'approved' && (
-                                                      <button
-                                                        onClick={async () => {
-                                                          const singleAmount = prop.estimatedValue || (prop.quantity * prop.basePrice);
-                                                          const loadingToast = toast.loading(`Preparing checkout for ${prop.lotId}...`);
+                                                        <button
+                                                            onClick={async () => {
+                                                                const singleAmount = prop.estimatedValue || (prop.quantity * prop.basePrice);
+                                                                const loadingToast = toast.loading(`Preparing checkout for ${prop.lotId}...`);
 
-                                                          try {
-                                                            const orderResult = await distributorApi.createRazorpayOrder({
-                                                              amount: singleAmount,
-                                                              lotId: prop.lotId,
-                                                              quantity: prop.quantity
-                                                            });
-
-                                                            if (!orderResult?.success) throw new Error(orderResult?.message || "Failed order creation.");
-
-                                                            const { orderId, keyId } = orderResult.data;
-                                                            toast.dismiss(loadingToast);
-
-                                                            const options = {
-                                                              key: keyId,
-                                                              amount: singleAmount * 100,
-                                                              currency: "INR",
-                                                              name: "Prakriti Tea Division",
-                                                              description: `Invoice Settlement - Lot ${prop.lotId}`,
-                                                              order_id: orderId,
-                                                              handler: async function (response) {
                                                                 try {
-                                                                  const verifyResult = await distributorApi.verifyRazorpayPayment({
-                                                                    razorpay_order_id: response.razorpay_order_id,
-                                                                    razorpay_payment_id: response.razorpay_payment_id,
-                                                                    razorpay_signature: response.razorpay_signature,
-                                                                    lotId: prop.lotId,
-                                                                    quantity: prop.quantity,
-                                                                    amount: singleAmount
-                                                                  });
-
-                                                                  if (verifyResult?.success) {
-                                                                    toast.success(`Payment verified for Lot ${prop.lotId}!`);
-                                                                    pushDataLayerEvent('tea_payment_success', {
-                                                                      transaction_id: response.razorpay_payment_id,
-                                                                      value: singleAmount,
-                                                                      currency: 'INR',
-                                                                      lot_id: prop.lotId,
-                                                                      quantity: prop.quantity
+                                                                    const orderResult = await distributorApi.createRazorpayOrder({
+                                                                        amount: singleAmount,
+                                                                        lotId: prop.lotId,
+                                                                        quantity: prop.quantity
                                                                     });
-                                                                    fetchMyProposals();
-                                                                  }
-                                                                } catch (verifyErr) {
-                                                                  console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
-                                                                  toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
-                                                                }
-                                                              },
-                                                              theme: { color: "#004B3B" }
-                                                            };
 
-                                                            await loadRazorpayScript();
-                                                            new window.Razorpay(options).open();
-                                                          } catch (err) {
-                                                            console.error('Razorpay create-order failed:', err.response?.data || err);
-                                                            toast.dismiss(loadingToast);
-                                                            toast.error(err.response?.data?.message || err.message || "Checkout failed.");
-                                                          }
-                                                        }}
-                                                        className="bg-[#004B3B] hover:bg-[#003627] text-white px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 mt-2"
-                                                      >
-                                                        <FiCheckCircle size={11} /> Pay Invoice
-                                                      </button>
+                                                                    if (!orderResult?.success) throw new Error(orderResult?.message || "Failed order creation.");
+
+                                                                    const { orderId, keyId } = orderResult.data;
+                                                                    toast.dismiss(loadingToast);
+
+                                                                    const options = {
+                                                                        key: keyId,
+                                                                        amount: singleAmount * 100,
+                                                                        currency: "INR",
+                                                                        name: "Prakriti Tea Division",
+                                                                        description: `Invoice Settlement - Lot ${prop.lotId}`,
+                                                                        order_id: orderId,
+                                                                        handler: async function (response) {
+                                                                            try {
+                                                                                const verifyResult = await distributorApi.verifyRazorpayPayment({
+                                                                                    razorpay_order_id: response.razorpay_order_id,
+                                                                                    razorpay_payment_id: response.razorpay_payment_id,
+                                                                                    razorpay_signature: response.razorpay_signature,
+                                                                                    lotId: prop.lotId,
+                                                                                    quantity: prop.quantity,
+                                                                                    amount: singleAmount
+                                                                                });
+
+                                                                                if (verifyResult?.success) {
+                                                                                    toast.success(`Payment verified for Lot ${prop.lotId}!`);
+                                                                                    pushDataLayerEvent('tea_payment_success', {
+                                                                                        transaction_id: response.razorpay_payment_id,
+                                                                                        value: singleAmount,
+                                                                                        currency: 'INR',
+                                                                                        lot_id: prop.lotId,
+                                                                                        quantity: prop.quantity
+                                                                                    });
+                                                                                    fetchMyProposals();
+                                                                                }
+                                                                            } catch (verifyErr) {
+                                                                                console.error('Razorpay verify-payment failed:', verifyErr.response?.data || verifyErr);
+                                                                                toast.error(verifyErr.response?.data?.message || verifyErr.message || "Payment verification failed.");
+                                                                            }
+                                                                        },
+                                                                        theme: { color: "#004B3B" }
+                                                                    };
+
+                                                                    await loadRazorpayScript();
+                                                                    new window.Razorpay(options).open();
+                                                                } catch (err) {
+                                                                    console.error('Razorpay create-order failed:', err.response?.data || err);
+                                                                    toast.dismiss(loadingToast);
+                                                                    toast.error(err.response?.data?.message || err.message || "Checkout failed.");
+                                                                }
+                                                            }}
+                                                            className="bg-[#004B3B] hover:bg-[#003627] text-white px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 mt-2"
+                                                        >
+                                                            <FiCheckCircle size={11} /> Pay Invoice
+                                                        </button>
                                                     )}
 
                                                 </div>
@@ -3030,7 +3058,7 @@ export default function Prakriti() {
                                                 {(
                                                     Number(
                                                         orderQuantity ||
-                                                            0
+                                                        0
                                                     ) *
                                                     Number(
                                                         activeDrawerLot.price
@@ -3061,26 +3089,26 @@ export default function Prakriti() {
 
 
                                                 const proposalPayload =
-                                                    {
-                                                        distributorId:
-                                                            distributorId,
-                                                        division:
-                                                            'TEA',
-                                                        lotId:
-                                                            activeDrawerLot.id,
-                                                        region:
-                                                            activeDrawerLot.region,
-                                                        grade:
-                                                            activeDrawerLot.grade,
-                                                        quantity:
-                                                            Number(
-                                                                orderQuantity
-                                                            ),
-                                                        basePrice:
-                                                            Number(
-                                                                activeDrawerLot.price
-                                                            ),
-                                                    };
+                                                {
+                                                    distributorId:
+                                                        distributorId,
+                                                    division:
+                                                        'TEA',
+                                                    lotId:
+                                                        activeDrawerLot.id,
+                                                    region:
+                                                        activeDrawerLot.region,
+                                                    grade:
+                                                        activeDrawerLot.grade,
+                                                    quantity:
+                                                        Number(
+                                                            orderQuantity
+                                                        ),
+                                                    basePrice:
+                                                        Number(
+                                                            activeDrawerLot.price
+                                                        ),
+                                                };
 
 
                                                 let res;
@@ -3091,7 +3119,7 @@ export default function Prakriti() {
                                                             proposalPayload
                                                         );
                                                 } catch (
-                                                    err
+                                                err
                                                 ) {
                                                     console.error(
                                                         err
@@ -3102,7 +3130,7 @@ export default function Prakriti() {
                                                             .response
                                                             ?.data
                                                             ?.message ||
-                                                            'Failed to submit sourcing request.'
+                                                        'Failed to submit sourcing request.'
                                                     );
 
                                                     throw err;
@@ -3114,7 +3142,7 @@ export default function Prakriti() {
                                                 ) {
                                                     toast.error(
                                                         res.message ||
-                                                            'Failed to submit sourcing request.'
+                                                        'Failed to submit sourcing request.'
                                                     );
 
                                                     throw new Error(
@@ -3143,7 +3171,7 @@ export default function Prakriti() {
                                                             ) *
                                                             Number(
                                                                 activeDrawerLot.price ||
-                                                                    0
+                                                                0
                                                             ),
                                                         currency:
                                                             'INR',
@@ -3207,6 +3235,51 @@ export default function Prakriti() {
                 }
 
             `}</style>
+
+            {/* Requirement Builder Modal */}
+            {/* ---------- Premium Requirement Builder Modal (TEA) ---------- */}
+            <AnimatePresence>
+                {showRequirementBuilder && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs"
+                        onClick={() => setShowRequirementBuilder(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl
+                   bg-[#0F2E24] border border-[#50C878]/30"
+                            onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between p-5 border-b border-[#50C878]/30
+                        bg-gradient-to-r from-[#0B3D2E] to-[#0F2E24] rounded-t-2xl">
+                                <h3 className="text-xl font-serif text-[#FAF9F5] uppercase tracking-wide">
+                                    Build Your Tea Requirement
+                                </h3>
+                                <button onClick={() => setShowRequirementBuilder(false)}
+                                    className="p-1 rounded-lg text-[#8FB5A3] hover:text-[#FAF9F5] hover:bg-[#50C878]/20 transition">
+                                    <FiX size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-6">
+                                <TeaRequirementBuilder onComplete={handleRequirementComplete} />
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Soft Gate Modal */}
+            <AnimatePresence>
+                {showSoftGate && builtRequirement && (
+                    <SoftGate
+                        division="TEA"
+                        requirement={builtRequirement}
+                        theme={PRAKRITI_GATE_THEME}
+                        onSuccess={handleSoftGateSuccess}
+                        onClose={handleSoftGateClose}
+                    />
+                )}
+            </AnimatePresence>
 
         </div>
     );
