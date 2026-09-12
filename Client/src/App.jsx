@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -13,6 +13,7 @@ import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop';
 import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
+import { isPricingRoute } from './utils/routeHelpers';
 
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
@@ -33,12 +34,11 @@ import EmployeeSignup from './pages/public/EmployeeSignup';
 import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
-const ITOAds = React.lazy(() => import('./pages/public/ITOAds'));
+const ITOAds = lazy(() => import('./pages/public/ITOAds'));
 
 import Dashboard from './pages/crm/Dashboard';
 import Leads from './pages/crm/Leads';
 import Stone from './pages/public/Stone';
-import StonePricing from './pages/public/StonePricing';
 import LeadDetail from './pages/crm/LeadDetail';
 import Quotations from './pages/crm/Quotations';
 import Dispatches from './pages/crm/Dispatches';
@@ -85,6 +85,10 @@ import Terms from './pages/legal/Terms';
 import Disclaimer from './pages/legal/Disclaimer';
 import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
 import Onion from './pages/public/Onion';
+
+import StonePricing from './pages/public/StonePricing';
+import RicePricing from './pages/public/RicePricing';
+import TeaPricing from './pages/public/TeaPricing';
 
 
 
@@ -797,7 +801,7 @@ function AppLayout() {
   return (
     <div>
       <ScrollToTop />
-      {!isITOAds && !isOnion && <Navbar />}
+      {!isITOAds && !isOnion && !isPricingRoute(location.pathname) && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -813,6 +817,8 @@ function AppLayout() {
           <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
           <Route path="/stone/pricing" element={<StonePricing />} />
+          <Route path="/rice/pricing" element={<RicePricing />} />
+          <Route path="/tea/pricing" element={<TeaPricing />} />
           <Route path="/ito-ads" element={<ITOAds />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
@@ -822,7 +828,7 @@ function AppLayout() {
           <Route path="/nashik-onion" element={<Onion />} />
         </Routes>
       </main>
-      {!isITOAds && !isOnion && <Footer />}
+      {!isITOAds && !isOnion && !isPricingRoute(location.pathname) && <Footer />}
 
       {!isITOAds && !isOnion && <ChatWidget />}
     </div>
