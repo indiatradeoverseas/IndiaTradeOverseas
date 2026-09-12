@@ -230,7 +230,7 @@ export default function Tickets() {
                           <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">{ticket.category}</span>
                         </td>
                         <td className={`py-3 px-5 font-mono font-bold text-[10px] uppercase ${priorityColor(ticket.priority)}`}>{ticket.priority}</td>
-                        <td className="py-3 px-5 text-[var(--crm-ink-soft)] font-medium">{ticket.raisedByName || ticket.raisedBy?.fullName || ticket.raisedBy?.name || 'Vikram Rathore'}</td>
+                        <td className="py-3 px-5 text-[var(--crm-ink-soft)] font-medium">{ticket.raisedByName || ticket.raisedBy?.fullName || ticket.raisedBy?.name || ticket.createdBy?.fullName || ticket.createdBy?.name || 'Employee'}</td>
                         <td className="py-3 px-5 text-[var(--crm-ink-faint)] font-mono text-[10px] whitespace-nowrap">
                           {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
                         </td>

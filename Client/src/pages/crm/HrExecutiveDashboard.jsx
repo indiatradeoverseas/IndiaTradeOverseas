@@ -1316,7 +1316,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                           {ticket.priority}
                         </span>
                       </div>
-                      <p className="text-[10.5px] font-mono text-[var(--crm-ink-faint)] uppercase">CODE: {ticket.ticketCode} | BY: {ticket.createdBy?.fullName || ticket.raisedBy?.fullName || 'Vikram Rathore'}</p>
+                      <p className="text-[10.5px] font-mono text-[var(--crm-ink-faint)] uppercase">CODE: {ticket.ticketCode} | BY: {ticket.raisedByName || ticket.createdBy?.fullName || ticket.raisedBy?.fullName || ticket.raisedBy?.name || 'Employee'}</p>
                       <p className="text-xs text-[var(--crm-ink-soft)] line-clamp-2 italic font-light">"{ticket.description}"</p>
                       <div className="flex justify-between items-center w-full mt-2 border-t border-[var(--crm-line)] pt-2 text-[9px] font-mono text-[var(--crm-ink-faint)]">
                         <span className={`px-2 py-0.5 border rounded-sm font-bold uppercase ${
@@ -1341,7 +1341,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                           {selectedTicket.title || selectedTicket.subject}
                         </h3>
                         <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
-                          CODE: {selectedTicket.ticketCode} | Submitter: {selectedTicket.createdBy?.fullName || selectedTicket.raisedBy?.fullName || 'Vikram Rathore'}
+                          CODE: {selectedTicket.ticketCode} | Submitter: {selectedTicket.raisedByName || selectedTicket.createdBy?.fullName || selectedTicket.raisedBy?.fullName || selectedTicket.raisedBy?.name || selectedTicket.createdBy?.name || 'Employee'}
                         </p>
                       </div>
                       

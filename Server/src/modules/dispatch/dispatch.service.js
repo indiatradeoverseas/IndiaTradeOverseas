@@ -654,7 +654,14 @@ class DispatchService {
       dispatch = await Dispatch.findOne().sort({ createdAt: -1 });
     }
     if (!dispatch) {
-      throw new Error('Dispatch record not found for fuel log');
+      dispatch = await Dispatch.create({
+        dispatchNumber: `DPR-LOG-${Date.now().toString().slice(-6)}`,
+        orderNumber: payload.leadCode || 'DAILY-TRIP-LOG',
+        customerName: payload.leadCustomer || 'Daily Logistics',
+        driverName: payload.driverName || user?.fullName || user?.name || 'Driver',
+        vehicleNumber: payload.vehicleNumber || payload.vehicleNo || 'UP32KL5420',
+        dispatchStatus: 'In-Transit'
+      });
     }
 
     const {
@@ -815,7 +822,10 @@ class DispatchService {
    */
   async createWorkUpdate(payload) {
     const DriverWorkUpdate = require('./workUpdate.model');
-    const { driverId, driverName, vehicleNo, updateType, notes, location, photoUrl, dispatchId } = payload;
+    const { 
+      driverId, driverName, vehicleNo, updateType, notes, location, photoUrl, dispatchId,
+      kmDriven, fuelCost, otherCost, punctureCost, vehicleMileage, fromLocation, toLocation, leadCode, leadCustomer
+    } = payload;
 
     if (!notes || !notes.trim()) {
       throw new Error('Work update notes are required');
@@ -829,7 +839,16 @@ class DispatchService {
       notes: notes.trim(),
       location: location || '',
       photoUrl: photoUrl || '',
-      dispatchId: String(dispatchId || '')
+      dispatchId: String(dispatchId || ''),
+      kmDriven: Number(kmDriven) || 0,
+      fuelCost: Number(fuelCost) || 0,
+      otherCost: Number(otherCost) || 0,
+      punctureCost: Number(punctureCost) || 0,
+      vehicleMileage: Number(vehicleMileage) || 0,
+      fromLocation: fromLocation || '',
+      toLocation: toLocation || '',
+      leadCode: leadCode || '',
+      leadCustomer: leadCustomer || ''
     });
 
     return workUpdate;
@@ -868,6 +887,15 @@ class DispatchService {
       notes: u.notes,
       location: u.location,
       photoUrl: u.photoUrl,
+      kmDriven: u.kmDriven || 0,
+      fuelCost: u.fuelCost || 0,
+      otherCost: u.otherCost || 0,
+      punctureCost: u.punctureCost || 0,
+      vehicleMileage: u.vehicleMileage || 0,
+      fromLocation: u.fromLocation || '',
+      toLocation: u.toLocation || '',
+      leadCode: u.leadCode || '',
+      leadCustomer: u.leadCustomer || '',
       time: new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       createdAt: u.createdAt
     }));

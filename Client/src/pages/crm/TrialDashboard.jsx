@@ -432,13 +432,39 @@ export default function TrialDashboard() {
       skt.on('sales_trial_chat_receive', handleBroadcast);
       skt.on('sales_chat_message', handleBroadcast);
       skt.on('work_log_submitted', handleWorkLogSubmitted);
+      skt.on('lead_updated', () => loadTrialDashboardData());
+      skt.on('quotation_updated', () => loadTrialDashboardData());
+      skt.on('payment_updated', () => loadTrialDashboardData());
       return () => {
         skt.off('sales_trial_chat_receive', handleBroadcast);
         skt.off('sales_chat_message', handleBroadcast);
         skt.off('work_log_submitted', handleWorkLogSubmitted);
+        skt.off('lead_updated');
+        skt.off('quotation_updated');
+        skt.off('payment_updated');
       };
     }
   }, [user]);
+
+  useEffect(() => {
+    const handleLiveSync = () => {
+      loadTrialDashboardData();
+    };
+
+    window.addEventListener('lead_updated_event', handleLiveSync);
+    window.addEventListener('quotation_updated_event', handleLiveSync);
+    window.addEventListener('payment_updated_event', handleLiveSync);
+    window.addEventListener('task_updated_event', handleLiveSync);
+    window.addEventListener('task_assigned_event', handleLiveSync);
+
+    return () => {
+      window.removeEventListener('lead_updated_event', handleLiveSync);
+      window.removeEventListener('quotation_updated_event', handleLiveSync);
+      window.removeEventListener('payment_updated_event', handleLiveSync);
+      window.removeEventListener('task_updated_event', handleLiveSync);
+      window.removeEventListener('task_assigned_event', handleLiveSync);
+    };
+  }, []);
 
   const loadTrialDashboardData = async () => {
     setLoading(true);

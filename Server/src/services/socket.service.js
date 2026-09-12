@@ -50,8 +50,13 @@ function init(server) {
   io = socketIO(server, {
     cors: {
       origin: '*',
-      methods: ['GET', 'POST']
-    }
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
   });
 
   io.on('connection', (socket) => {
@@ -279,8 +284,21 @@ function emitToRoles(roles, event, data) {
  * Emit to everyone
  */
 function emitToAll(event, data) {
-  if (!io) return;
-  io.emit(event, data);
+  try {
+    if (!io) return;
+    io.emit(event, data);
+  } catch (err) {
+    console.warn(`[Socket Emit Notice - ${event}]:`, err.message);
+  }
+}
+
+function emitEvent(event, data) {
+  try {
+    if (!io) return;
+    io.emit(event, data);
+  } catch (err) {
+    console.warn(`[Socket Emit Notice - ${event}]:`, err.message);
+  }
 }
 
 module.exports = {
@@ -288,6 +306,7 @@ module.exports = {
   getIO,
   emitToEmployee,
   emitToRoles,
-  emitToAll
+  emitToAll,
+  emitEvent
 };
 

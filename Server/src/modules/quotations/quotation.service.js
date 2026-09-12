@@ -57,6 +57,12 @@ async function createQuotationRequest({ leadId, employeeRequestedPrice, marginNo
     metadata: { leadId }
   });
 
+  try {
+    const { emitEvent } = require('../../services/socket.service');
+    emitEvent('quotation_updated', { action: 'requested', quotation });
+    emitEvent('lead_updated', { action: 'quotation_requested', leadId });
+  } catch (e) {}
+
   return quotation;
 }
 
@@ -97,6 +103,12 @@ async function approveQuotation({ id, approvedPrice, actorId }) {
     severity: 'MEDIUM',
     metadata: { approvedPrice }
   });
+
+  try {
+    const { emitEvent } = require('../../services/socket.service');
+    emitEvent('quotation_updated', { action: 'approved', quotation });
+    emitEvent('lead_updated', { action: 'quotation_approved', leadId: quotation.leadId });
+  } catch (e) {}
 
   return quotation;
 }
