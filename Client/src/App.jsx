@@ -90,7 +90,7 @@ import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
 import Onion from './pages/public/Onion';
 
 import StonePricing from './pages/public/StonePricing';
-import RicePricing from './pages/public/RicePricing';
+// import RicePricing from './pages/public/RicePricing';
 import TeaPricing from './pages/public/TeaPricing';
 
 
@@ -869,7 +869,7 @@ function AppLayout() {
           <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
           <Route path="/stone/pricing" element={<StonePricing />} />
-          <Route path="/rice/pricing" element={<RicePricing />} />
+          {/* <Route path="/rice/pricing" element={<RicePricing />} /> */}
           <Route path="/tea/pricing" element={<TeaPricing />} />
           <Route path="/ito-ads" element={<ITOAds />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
