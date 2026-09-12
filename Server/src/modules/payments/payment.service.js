@@ -1,6 +1,25 @@
 const Payment = require('./payment.model');
 const Lead = require('../leads/lead.model');
-const { recordAudit } = require('../security-audit/auditLog.service');
+
+let recordAudit;
+try {
+  recordAudit = require('../security-audit/auditLog.service').recordAudit;
+} catch (e) {}
+
+const safeRecordAudit = async (data) => {
+  try {
+    let fn = recordAudit;
+    if (typeof fn !== 'function') {
+      const mod = require('../security-audit/auditLog.service');
+      fn = mod ? mod.recordAudit : null;
+    }
+    if (typeof fn === 'function') {
+      await fn(data);
+    }
+  } catch (err) {
+    console.warn('[Payment Audit Notice]:', err.message);
+  }
+};
 
 
 async function createPayment({ leadId, dispatchId, totalAmount, advanceAmount, dueDate, paymentStatus, actorId }) {
@@ -72,7 +91,7 @@ async function updatePaymentStatus({ id, paymentStatus, advanceAmount, balanceAm
     }
   }
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId,
     actionType: 'LEAD_STAGE_CHANGED',
     entityType: 'PAYMENT',
@@ -95,7 +114,7 @@ async function triggerPaymentReminder(id, actorId) {
   
   console.log(`[MOCK WHATSAPP REMINDER SENT] Client: ${payment.leadId.customerName}, Outstanding Amount: ${payment.balanceAmount}`);
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId,
     actionType: 'LEAD_STAGE_CHANGED',
     entityType: 'PAYMENT',

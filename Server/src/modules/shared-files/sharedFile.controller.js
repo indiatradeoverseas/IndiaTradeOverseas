@@ -10,7 +10,7 @@ const { ok, fail } = require('../../utils/response');
  */
 async function shareFile(req, res) {
   try {
-    const allowedRoles = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 'HR', 'EMPLOYEE'];
+    const allowedRoles = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 'HR', 'EMPLOYEE', 'SALES_TRIAL'];
     if (!allowedRoles.includes(req.user.role)) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied to share files', [], req);
     }

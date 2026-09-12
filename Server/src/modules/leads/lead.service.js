@@ -5,6 +5,26 @@ const Quotation = require('../quotations/quotation.model');
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
 
+let recordAudit;
+try {
+  recordAudit = require('../security-audit/auditLog.service').recordAudit;
+} catch (e) {}
+
+const safeRecordAudit = async (data) => {
+  try {
+    let fn = recordAudit;
+    if (typeof fn !== 'function') {
+      const mod = require('../security-audit/auditLog.service');
+      fn = mod ? mod.recordAudit : null;
+    }
+    if (typeof fn === 'function') {
+      await fn(data);
+    }
+  } catch (err) {
+    console.warn('[Audit Log Notice]:', err.message);
+  }
+};
+
 const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str.trim());
 
 const allowedStageTransitions = {
@@ -750,7 +770,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
 
   // 2. Access control check
   if (!canAccessLead(user, lead)) {
-    await recordAudit({
+    await safeRecordAudit({
       actorId: user._id,
       actionType: 'UNAUTHORIZED_VIEW',
       entityType: 'LEAD',
@@ -930,7 +950,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   // 7. Record security audit log
-  await recordAudit({
+  await safeRecordAudit({
     actorId: user._id,
     actionType: 'LEAD_STAGE_CHANGED',
     entityType: 'LEAD',
@@ -1059,7 +1079,7 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     });
   }
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId: user._id,
     actionType: 'LEAD_ASSIGNED',
     entityType: 'LEAD',
@@ -1094,7 +1114,7 @@ async function deleteLead(leadId, user) {
   await Lead.findByIdAndDelete(leadId);
   await LeadActivity.deleteMany({ leadId });
 
-  await recordAudit({
+  await safeRecordAudit({
     actorId: user._id,
     actionType: 'LEAD_DELETED',
     entityType: 'LEAD',
@@ -1206,7 +1226,7 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
   }
 
   try {
-    await recordAudit({
+    await safeRecordAudit({
       actorId: user._id,
       actionType: 'LEAD_ASSIGNED',
       entityType: 'LEAD',
@@ -1376,6 +1396,15 @@ async function updatePriority({ leadId, priority, leadValue, user }) {
     actionType: 'PRIORITY_UPDATED',
     note: `Lead details updated (Priority: ${lead.priority}, Valuation: ₹${lead.leadValue || 0}) by ${user.fullName || user.name}`,
     actorId: user._id
+  });
+
+  await safeRecordAudit({
+    actorId: user._id,
+    actionType: 'LEAD_PRIORITY_UPDATED',
+    entityType: 'LEAD',
+    entityId: lead._id.toString(),
+    severity: 'LOW',
+    metadata: { oldPriority, newPriority: lead.priority, leadValue: lead.leadValue }
   });
 
   return getLeadDisplay(lead, user);

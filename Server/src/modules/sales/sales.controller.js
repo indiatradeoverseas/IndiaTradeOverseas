@@ -109,21 +109,66 @@ async function submitDailyWorkLog(req, res, next) {
     const { numberOfCalls, numberOfConversions, numberOfSales, note } = req.body;
     const DailyWorkLog = require('./dailyWorkLog.model');
     const Employee = require('../employee/employee.model');
+    const socketService = require('../../services/socket.service');
 
     const emp = await Employee.findOne({ email: req.user.email });
-    const empName = req.user.name || req.user.fullName || (emp ? emp.name : 'Sales Executive');
+    const empName = req.user.fullName || req.user.name || (emp ? (emp.fullName || emp.name) : 'Sales Executive');
+    const userRole = req.user.role || (req.user.department === 'SALES_TRIAL' ? 'SALES_TRIAL' : 'SALES_EXECUTIVE');
+    const userDept = req.user.department || (userRole === 'SALES_TRIAL' || req.user.modelName === 'SalesTrialUser' ? 'SALES_TRIAL' : 'SALES');
 
     const log = await DailyWorkLog.create({
       employeeId: req.user._id,
       employeeName: empName,
-      department: req.user.department || (emp ? emp.department : 'SALES'),
+      department: userDept,
       numberOfCalls: Number(numberOfCalls || 0),
       numberOfConversions: Number(numberOfConversions || 0),
       numberOfSales: Number(numberOfSales || 0),
       note: note || ''
     });
 
-    return ok(res, { log }, 'Daily work log submitted successfully', 201, req);
+    const logObj = log.toObject ? log.toObject() : log;
+
+    // Broadcast live work log to connected dashboards
+    socketService.emitToAll('work_log_submitted', logObj);
+
+    // Format & broadcast real-time activity card to Sales Trial Chat & Manager Chat
+    const chatMessageText = `📊 Daily Work Activity Logged:\n• Calls: ${log.numberOfCalls}\n• Conversions: ${log.numberOfConversions}\n• Sales: ${log.numberOfSales}${log.note ? `\n• Notes: "${log.note}"` : ''}`;
+    
+    const formattedChatMsg = {
+      _id: `log_msg_${log._id}`,
+      id: `log_msg_${log._id}`,
+      senderId: String(req.user._id),
+      senderName: empName,
+      senderRole: userRole,
+      senderDepartment: userDept,
+      trialUserId: String(req.user._id),
+      message: chatMessageText,
+      content: chatMessageText,
+      createdAt: log.createdAt || new Date(),
+      time: new Date(log.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSystemLog: true
+    };
+
+    socketService.emitToAll('sales_trial_chat_receive', formattedChatMsg);
+    socketService.emitToAll('manager_chat_receive', formattedChatMsg);
+
+    // Persist to ManagerChat so it stays in history
+    try {
+      const ManagerChat = require('../chat/managerChat.model');
+      await ManagerChat.create({
+        senderId: String(req.user._id),
+        senderName: empName,
+        senderRole: userRole,
+        senderDepartment: userDept,
+        recipientId: 'GENERAL',
+        recipientName: 'General Leadership Hub',
+        message: chatMessageText
+      });
+    } catch (chatErr) {
+      console.warn('Notice persisting work log chat message:', chatErr.message);
+    }
+
+    return ok(res, { log: logObj }, 'Daily work log submitted successfully', 201, req);
   } catch (error) {
     next(error);
   }

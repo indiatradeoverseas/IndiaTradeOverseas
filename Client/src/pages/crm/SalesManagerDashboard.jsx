@@ -478,14 +478,22 @@ export default function SalesManagerDashboard() {
         }
       };
 
+      const handleWorkLogSubmitted = (log) => {
+        if (log) {
+          setDailyWorkLogs(prev => [log, ...prev.filter(l => String(l._id || l.id) !== String(log._id || log.id))]);
+        }
+      };
+
       skt.on('employee_status_updated', handleStatusUpdate);
       skt.on('attendance_updated', handleAttendanceUpdate);
       skt.on('sales_trial_chat_receive', handleTrialChatReceive);
+      skt.on('work_log_submitted', handleWorkLogSubmitted);
       
       return () => {
         skt.off('employee_status_updated', handleStatusUpdate);
         skt.off('attendance_updated', handleAttendanceUpdate);
         skt.off('sales_trial_chat_receive', handleTrialChatReceive);
+        skt.off('work_log_submitted', handleWorkLogSubmitted);
       };
     }
   }, [user]);

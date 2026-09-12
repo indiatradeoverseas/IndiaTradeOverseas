@@ -72,9 +72,14 @@ export default function ManagerChatSupport() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   };
 
   useEffect(() => {
@@ -412,7 +417,7 @@ export default function ManagerChatSupport() {
           </div>
 
           {/* Message Stream Body */}
-          <div className="flex-1 overflow-y-auto my-3 pr-2 space-y-3 custom-scrollbar text-xs font-sans">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto my-3 pr-2 space-y-3 custom-scrollbar text-xs font-sans">
             {loading ? (
               <div className="h-full flex items-center justify-center text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[9px] animate-pulse">
                 Loading executive chat history...

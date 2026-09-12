@@ -615,34 +615,25 @@ async function processWebsiteLeadAutomation(
     }
 
 
-    await recordAudit({
-      actorId: null,
-
-      actionType:
-        'WEBSITE_LEAD_CREATED',
-
-      entityType:
-        'LEAD',
-
-      entityId:
-        lead._id.toString(),
-
-      severity:
-        lead.duplicateOf
-          ? 'MEDIUM'
-          : 'LOW',
-
-      metadata: {
-        leadCode:
-          lead.leadCode,
-
-        duplicateDetected:
-          !!lead.duplicateOf,
-
-        productCategory:
-          'STONE'
+    try {
+      const auditFn = recordAudit || require('../security-audit/auditLog.service').recordAudit;
+      if (typeof auditFn === 'function') {
+        await auditFn({
+          actorId: null,
+          actionType: 'WEBSITE_LEAD_CREATED',
+          entityType: 'LEAD',
+          entityId: lead._id.toString(),
+          severity: lead.duplicateOf ? 'MEDIUM' : 'LOW',
+          metadata: {
+            leadCode: lead.leadCode,
+            duplicateDetected: !!lead.duplicateOf,
+            productCategory: 'STONE'
+          }
+        });
       }
-    });
+    } catch (auditErr) {
+      console.warn('[WebsiteLead Audit Notice]:', auditErr.message);
+    }
 
 
     if (!lead.assignedTo) {
