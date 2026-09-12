@@ -32,6 +32,7 @@ const payslipRoutes = require('./modules/payslip/payslip.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
 const salesTrialRoutes = require('./modules/sales-trial/salesTrial.routes');
 
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -103,6 +104,7 @@ const apiRoutes = [
   { path: '/users', router: userRoutes },
   { path: '/leads', router: leadRoutes },
   { path: '/ai/leads', router: leadRoutes },
+  // { path: '/soft-leads', router: softLeadRoutes },
   { path: '/quotations', router: quotationRoutes },
   { path: '/dispatches', router: dispatchRoutes },
   { path: '/dispatch', router: dispatchRoutes },
