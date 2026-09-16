@@ -107,3 +107,30 @@ export const leadsApi = {
     return response.data;
   }
 };
+
+export const softLeadsApi = {
+  createSoftLead: async (payload) => {
+    const response = await axiosInstance.post('/soft-leads', payload);
+    return response.data;
+  },
+
+  updateSoftLeadDetails: async (leadId, details) => {
+    const response = await axiosInstance.patch(`/soft-leads/${leadId}/details`, details);
+    return response.data;
+  },
+
+  getSoftLead: async (leadId) => {
+    const response = await axiosInstance.get(`/soft-leads/${leadId}`);
+    return response.data;
+  },
+
+  listSoftLeads: async (params = {}) => {
+    const response = await axiosInstance.get('/soft-leads', { params });
+    return response.data;
+  },
+
+  retryCrmSync: async (leadId) => {
+    const response = await axiosInstance.post(`/soft-leads/${leadId}/retry-crm`);
+    return response.data;
+  },
+};

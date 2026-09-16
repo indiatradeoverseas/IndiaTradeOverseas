@@ -24,6 +24,7 @@ import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Careers from './pages/public/Careers';
 import QuoteRequest from './pages/public/QuoteRequest';
+import Coal from './pages/public/Coal';
 import Login from './pages/public/Login';
 import ClientLogin from './pages/public/ClientLogin';
 import EmployeeLogin from './pages/public/EmployeeLogin';
@@ -89,9 +90,9 @@ import Disclaimer from './pages/legal/Disclaimer';
 import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
 import Onion from './pages/public/Onion';
 
-// import StonePricing from './pages/public/StonePricing';
-// import RicePricing from './pages/public/RicePricing';
-// import TeaPricing from './pages/public/TeaPricing';
+import StonePricing from './pages/public/StonePricing';
+import RicePricing from './pages/public/RicePricing';
+import TeaPricing from './pages/public/TeaPricing';
 
 
 
@@ -864,13 +865,14 @@ function AppLayout() {
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
           <Route path="/our-services" element={<OurServices />} />
+          <Route path="/coal" element={<Coal />} />
           <Route path="/prakriti" element={<Navigate to="/prakriti/tea" replace />} />
           <Route path="/prakriti/tea" element={<Prakriti />} />
           <Route path="/prakriti/rice" element={<Rice />} />
           <Route path="/stone" element={<Stone />} />
-          {/* <Route path="/stone/pricing" element={<StonePricing />} /> */}
-          {/* <Route path="/rice/pricing" element={<RicePricing />} /> */}
-          {/* <Route path="/tea/pricing" element={<TeaPricing />} /> */}
+<Route path="/stone/pricing" element={<StonePricing />} />
+          <Route path="/rice/pricing" element={<RicePricing />} />
+          <Route path="/tea/pricing" element={<TeaPricing />} />
           <Route path="/ito-ads" element={<ITOAds />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />

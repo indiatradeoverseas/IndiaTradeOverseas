@@ -201,6 +201,21 @@ const PAYMENT_TERMS = [
   { key: 'COD', label: 'Cash on Delivery', priceField: 'cod' }
 ];
 
+const BHUTAN_TYPE_KEYS = [
+  'dust',
+  'white10',
+  'white20',
+  'white3040',
+  'white30',
+  'white4060',
+  'black10',
+  'black20',
+  'black30',
+  'black4060'
+];
+
+
+
 // Official Bhutan Stone Material Rate Card — location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
 // Source: "Bhutan Stone Rate List.pdf". Note on the card: up to Rs 100 may be negotiated off the listed rate.
 const BHUTAN_RAW = [
@@ -230,20 +245,7 @@ const BHUTAN_RAW = [
   ['Sitamarhi', 'Bihar', [1740, 1840, 2210, 2120, 2140, 2040, 2220, 2445, 2405, 2340]],
   ['Muzaffarpur', 'Bihar', [1800, 1900, 2270, 2180, 2200, 2100, 2280, 2505, 2465, 2400]]
 ];
-
-const BHUTAN_TYPE_LABELS = {
-  dust: 'Stone Dust',
-  white10: '10 MM White',
-  white20: '20 MM White',
-  white3040: '30/40 White',
-  white30: '30 MM White',
-  white4060: '40/60 White',
-  black10: '10 MM Black Kamji',
-  black20: '20 MM Black Kamji',
-  black30: '30 MM Black Kamji',
-  black4060: '40/60 Black Kamji'
-};
-
+ 
 const BHUTAN_RATES = BHUTAN_RAW.map(([location, state, values]) => ({
   location,
   state,
