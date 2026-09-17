@@ -783,7 +783,7 @@ export default function About() {
               <div className="flex-1 flex flex-col items-center md:items-start w-full">
 
                 <h3 className="text-lg font-serif font-medium text-[#F2F4F7] mb-1 group-hover:text-white transition-colors">
-                  Jashwinder Singh Chopra
+                  Jasvinder Singh Chopra
                 </h3>
 
                 <p className="text-[10px] uppercase tracking-widest font-semibold text-[#6D7886] mb-3">
