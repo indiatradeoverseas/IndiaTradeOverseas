@@ -1,0 +1,674 @@
+--- Page 1 ---
+INDIA TRADE OVERSEAS
+NASHIK ONION
+VERTICAL
+Final Detailed Project Report, Website Blueprint and
+Sales-Conversion System
+Domestic India | International Export | Bulk B2B Trade
+Prepared for India Trade Overseas
+Founder & Proprietor: Md Ramiz Raza Khan
+Where Quality Meets Global Demand
+www.indiatradeoverseas.com
+
+--- Page 2 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+DOCUMENT CONTROL
+Purpose, Scope and Approval Status
+This DPR is the implementation-ready blueprint for the Nashik Onion vertical of India Trade Overseas. It
+combines business positioning, product architecture, domestic and export workflows, website copy, conversion
+design, CRM rules, analytics, compliance and launch acceptance criteria.
+Field Approved Direction
+Business vertical Nashik Onion
+Audience Domestic bulk buyers and verified international importers
+Primary objective Generate complete, commercially usable B2B enquiries
+Brand style Minimalist, cinematic, premium and trustworthy
+Primary channel Website RFQ, WhatsApp, telephone and CRM follow-up
+Official spelling Nashik Onion
+Brand owner India Trade Overseas
+Founder Md Ramiz Raza Khan
+CONTENTS
+01 Executive direction and commercial objectives
+02 Market, customer and value proposition
+03 Product, crop, size, grade and packaging specifications
+04 Domestic supply and international export operating models
+05 Quality, storage, logistics and documentation controls
+06 Minimalist cinematic design system and colour palette
+07 Complete conversion-led website content
+08 RFQ, lead qualification, CRM and automation
+09 SEO, analytics, performance, security and accessibility
+10 Compliance, implementation, launch criteria and KPIs
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 2
+
+--- Page 3 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART I - BUSINESS STRATEGY
+Executive Summary
+India Trade Overseas will develop a dedicated Nashik Onion vertical as a complete B2B sales and
+lead-qualification system. The page will support domestic truckload supply and international container-based
+export enquiries while presenting transparent product specifications and operational responsibilities.
+The Five-Second Message
+India Trade Overseas supplies specification-based Nashik red onions to
+domestic and international B2B buyers with grading, packaging, inspection,
+documentation and logistics coordination.
+Project vision
+To establish India Trade Overseas as a trusted and professionally managed B2B sourcing partner for Nashik
+onions in domestic and international markets.
+Mission
+● Source suitable onion lots from Nashik and approved nearby producing regions.
+● Supply against buyer-confirmed size, grade, quality tolerance and packaging.
+● Coordinate sorting, grading, packing, inspection, storage and dispatch.
+● Provide transparent quotations, documentation and shipment updates.
+● Separate commercially ready buyers from incomplete rate enquiries.
+● Create a measurable lead-to-order system connected with the company CRM.
+● Develop trial orders into structured recurring domestic and export supply relationships.
+Primary business objectives
+Objective Desired Outcome
+Qualified enquiries Capture quantity, grade, size, packaging, destination and timeline before quotation.
+Sales conversion Move verified buyers from RFQ to quotation, purchase order and repeat supply.
+Buyer trust Show real processes, applicable documents and verified operational evidence.
+Operational clarity Define responsibilities and commercial inclusions before procurement.
+Measurement Track advertisement, landing page, enquiry, quotation and order outcomes.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 3
+
+--- Page 4 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART II - MARKET
+Target Customers and Buyer Intent
+The page must split domestic and international visitors immediately because their buying questions, commercial
+terms, documentation and logistics are materially different.
+Domestic buyer segments
+● Onion wholesalers, mandi traders, commission agents and vegetable distributors.
+● Retail-chain and supermarket procurement companies.
+● Hotels, restaurants, caterers and institutional procurement companies.
+● Food processors, dehydrated onion manufacturers and pickle or seasoning units.
+● Exporters requiring Nashik-origin stock and buyers requiring recurring truckloads.
+International buyer segments
+● Licensed onion importers and overseas wholesalers.
+● Fresh-produce, supermarket and food-service distributors.
+● Vegetable-processing and private-label packing companies.
+● Re-exporters and qualified container-based buyers.
+Priority market direction
+Potential markets may include Sri Lanka, Bangladesh, Nepal, Bhutan, the United Arab Emirates, Oman, Qatar,
+Bahrain, Kuwait, Saudi Arabia, Maldives, Malaysia, Singapore, Vietnam and Mauritius. Every transaction remains
+subject to current Indian export policy, destination-country rules, banking compliance and logistics feasibility.
+Buyer personas and calls to action
+Buyer Primary Need Conversion CTA
+Domestic wholesaler Fast truckload supply and delivered pricing Get Domestic Delivered Rate
+Food processor Recurring volume and agreed tolerance Discuss Monthly Supply
+International importer Container supply, documents and execution Request Export SCO
+Supermarket distributor Consistent grading and presentation Request Premium Packing Offer
+Trial buyer Execution confidence before a contract Plan a Trial Order
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 4
+
+--- Page 5 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART III - PRODUCT ARCHITECTURE
+Nashik Red Onion Portfolio
+Fresh red onions will be sourced from Nashik and approved nearby producing regions of Maharashtra. Each
+commercial offer must identify the crop, lot, grade, size, packaging and destination requirements.
+Seasonal crop categories
+Kharif Onion
+Supply is subject to checking maturity, skin, moisture, firmness and suitability for the proposed transit.
+Late Kharif Onion
+Available according to seasonal arrivals and buyer-approved quality requirements.
+Rabi or Summer Onion
+Suitable lots may support longer storage and distribution cycles when curing and condition are appropriate.
+Size classification
+Category Indicative Diameter Typical Application
+Small 25-35 mm Processing and selected institutional markets
+Medium 35-45 mm General wholesale and consumption
+Large 45-55 mm Premium wholesale and common export requirements
+Extra Large 55 mm and above Buyer-specific premium markets
+Mixed Grade Buyer-defined ratio General trading or price-sensitive requirements
+Commercial references may also be displayed as 25 mm+, 35 mm+, 40 mm+, 45 mm+, 50 mm+ and 55 mm+. Final tolerance
+and mixed-size percentage must be written into the commercial document.
+Quality grades
+Grade Positioning Control Level
+Commercial Price-sensitive domestic or approved Standard sorting; buyer-agreed visible-defect and
+bulk requirements mixed-size tolerance
+Standard Export International wholesale distribution Mature bulbs, suitable curing, buyer-approved size,
+export packing and controlled defects
+Premium Export Premium wholesale and retail channels Tighter size, appearance and visible-defect control
+with enhanced sorting
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 5
+
+--- Page 6 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART III - SPECIFICATIONS
+Master Product Specification
+Every quotation or order must confirm the following fields. Website content is indicative; the signed commercial
+document is authoritative.
+Parameter Required Confirmation
+Product Nashik Red Onion
+Origin Nashik or approved nearby producing region, Maharashtra, India
+Crop Kharif, Late Kharif or Rabi
+Grade Commercial, Standard Export or Premium Export
+Size 25+, 35+, 40+, 45+, 50+, 55+ mm or customized
+Colour Red or pink-red, subject to crop and approved lot
+Condition Fresh, mature and commercially sound
+Skin and neck Buyer-approved outer skin and dryness
+Defect tolerance Written tolerance for sprouting, decay, cuts, doubles and damage
+Foreign matter Within mutually agreed tolerance
+Packing Mesh, jute, private-label or customized
+Quantity Metric tons, truckload or container load
+Inspection Internal, buyer representative or approved third party
+Trade term Ex-Warehouse, FOR, FCA, FOB, CFR, CIF or agreed structure
+Payment As stated in accepted commercial documents
+Dispatch Subject to procurement, payment, logistics and regulatory confirmation
+Mandatory quality rule
+The website must never claim zero defects or guarantee a universal shelf
+life. Crop performance depends on season, curing, weather, handling,
+storage, temperature, humidity and transit conditions.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 6
+
+--- Page 7 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART III - PACKAGING
+Domestic and International Packaging
+Packaging must protect ventilation, maintain presentation and match the buyer's distribution model. Final net
+weight, bag tolerance, artwork and shipping marks must be confirmed before production.
+Market Standard Options Customization
+Domestic 20 KG, 25 KG, 40 KG and 50 KG mesh or jute Buyer-branded bags and institutional pack
+bags sizes
+International 5 KG, 8 KG, 9 KG, 10 KG, 20 KG and 25 KG Private label, product labels, barcodes and
+ventilated mesh bags destination shipping marks
+Packaging control checklist
+● Correct net-weight target and written weight tolerance.
+● Adequate ventilation and appropriate bag strength.
+● Secure closure or stitching and accurate bag count.
+● Product, lot and country-of-origin identification where required.
+● Buyer-approved artwork before printing private-label material.
+● Destination-specific markings verified before dispatch.
+Product disclaimer
+Colour, skin, firmness, pungency, moisture, shelf life and storage performance vary by crop, season, weather,
+producing area, curing, storage and individual lot. Final supply is governed by the written specification.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 7
+
+--- Page 8 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART IV - DOMESTIC TRADE
+Domestic Supply Operating Model
+Domestic orders can be offered under an Ex-Warehouse, FOR or delivered-to-destination structure, or through a
+recurring weekly or monthly supply programme.
+Domestic workflow
+● Receive and verify the buyer's company details and requirement.
+● Confirm size, grade, tolerance, packaging, quantity and destination.
+● Check suitable lots and share applicable photographs, video or inspection information.
+● Issue a formal quotation or Proforma Invoice with validity and exclusions.
+● Secure written acceptance and agreed payment terms.
+● Complete procurement, grading, packing and vehicle coordination.
+● Issue dispatch documents, track transit and collect delivery acknowledgement.
+● Schedule the next requirement for recurring buyers.
+Required domestic quotation breakdown
+Cost Component Quotation Requirement
+Material Base onion rate against grade and size
+Processing Sorting, grading and labour
+Packing Bag type, weight and printing
+Handling Warehouse and loading, where applicable
+Transport Vehicle, route and destination freight
+Tax and insurance Applicable taxes and optional insurance
+Commercial total Total basis, validity and dispatch window
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 8
+
+--- Page 9 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART IV - INTERNATIONAL TRADE
+Export Operating Model
+Export quotations may be structured under EXW, FCA, FOB, CFR or CIF, subject to destination feasibility and
+mutual agreement. The named place or port, included costs, risk point, document responsibility and applicable
+Incoterms version must be stated.
+Export workflow
+Stage Control
+1. RFQ Capture importer identity, destination, specification, quantity, timeline and payment
+instrument.
+2. Feasibility Review crop, destination rules, documentation, logistics and commercial viability.
+3. Offer Issue quotation or SCO; receive Purchase Order; issue Proforma Invoice.
+4. Security Complete payment security and written commercial confirmation before procurement.
+5. Preparation Procure, sort, grade, pack and inspect the approved product.
+6. Shipment Coordinate container, vessel, customs, loading, seal and documents.
+7. Follow-up Share shipment updates, record arrival feedback and schedule repeat supply.
+Export documentation
+● Commercial Invoice and Packing List.
+● Shipping Bill and Bill of Lading.
+● Certificate of Origin and Phytosanitary Certificate.
+● Fumigation, inspection, weight or quality certificate where applicable and agreed.
+● Insurance Certificate for applicable CIF transactions.
+● Container, seal and loading records.
+● Other documents required by the destination and contract.
+No document should be promised unless it is applicable, obtainable,
+contractually included and compatible with the destination-country
+requirement.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 9
+
+--- Page 10 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART V - OPERATIONS
+Quality Assurance, Storage and Logistics
+The operating system must protect the buyer-approved specification at each handoff - lot selection, grading,
+packing, loading, transport and documentation.
+Five-stage quality protocol
+Stage Checks
+Supplier and lot Identity, origin, crop, availability, preliminary size, quality and transit suitability
+Pre-packing Colour, firmness, skin, neck, size, sprouting, decay, cuts, doubles and foreign matter
+Sorting and packing Removal of unsuitable bulbs, size segregation, weight, count, labels and packing
+strength
+Pre-dispatch Quantity, bag count, vehicle or container condition, ventilation, loading and seal
+Independent inspection Buyer representative or approved third party when mutually agreed
+Storage and handling
+● Use dry, clean and ventilated storage protected from rain and standing water.
+● Avoid excessive stacking pressure and unnecessary handling.
+● Separate wet, damaged or decayed bulbs and monitor stock condition.
+● Apply first-in, first-out movement and plan dispatch against crop condition.
+● Assess storage suitability against curing, humidity, temperature and expected holding period.
+Logistics controls
+● Domestic: truck selection, freight, route, loading point, driver details, tracking and proof of delivery.
+● Export: container availability and condition, vessel cutoff, customs, loading pattern, seal, Bill of Lading and
+arrival updates.
+● Do not guarantee a fixed payload before confirming bag size, product density, container type, legal payload
+and carrier rules.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 10
+
+--- Page 11 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VI - VISUAL IDENTITY
+Minimalist Cinematic Colour Palette
+The design should feel premium, earthy and internationally credible. Colour is used with restraint: ivory provides
+breathing room, burgundy carries the brand, olive signals agriculture, charcoal anchors legibility and gold
+highlights trust.
+Colour HEX Use
+Deep Burgundy #4A101C Hero background, major section bands, premium brand moments
+Nashik Onion Red #7A2332 Primary CTA, active states, key numbers and product accents
+Harvest Wine #8E3347 Subtle gradients, hover states and secondary highlights
+Muted Olive #566044 Agriculture, quality markers and process indicators
+Warm Ivory #F7F3EA Main background and cinematic negative space
+Natural Sand #DED1BC Dividers, cards, tables and packaging references
+Soft Gold #B5965A Trust accents, fine rules and premium micro-details
+Charcoal #22211F Headlines, body text and footer contrast
+Recommended colour ratio
+Share Colour Role Purpose
+60% Warm Ivory Open background and premium negative space
+20% Burgundy and Onion Red Brand authority, hero and conversion
+10% Charcoal Readable hierarchy and body text
+7% Muted Olive and Sand Agriculture, cards and visual balance
+3% Soft Gold Restrained premium accents only
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 11
+
+--- Page 12 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VI - DESIGN RULES
+Cinematic Application Guidelines
+Hero treatment
+● Use one wide, high-quality visual of real red onions, a Nashik field, grading or loading activity.
+● Apply a deep burgundy-to-transparent overlay to protect headline readability.
+● Keep the headline within two lines on desktop and three lines on mobile.
+● Use one primary red CTA and one quiet outlined secondary CTA.
+● Avoid crowded collages, oversized certificates and artificial product imagery.
+Section system
+Component Visual Rule
+Page background Warm Ivory; alternate with white or a very light sand tint
+Headlines Deep Burgundy or Charcoal; generous spacing
+Primary button Nashik Onion Red with ivory text; darker burgundy hover
+Secondary button Transparent with burgundy border and text
+Cards White or ivory, thin sand border, low shadow, 12-16 px radius
+Quality indicators Muted Olive icons or labels; never neon green
+Trust accents Soft Gold rules and small highlights; never large gold panels
+Forms White fields, charcoal labels, burgundy focus state, clear validation
+Typography and imagery
+Use an elegant serif for cinematic headlines and a modern sans-serif for body copy, forms and tables.
+Photography should show natural texture, realistic crop condition and real operational context. Every image
+must be original, licensed or properly sourced.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 12
+
+--- Page 13 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VII - WEBSITE
+Complete Conversion-Led Page Structure
+The website must offer immediate domestic or export routing, answer commercial objections and repeat the
+correct CTA at decision points without making the page feel crowded.
+Hero copy
+DOMESTIC SUPPLY | INTERNATIONAL EXPORT
+Nashik Onions, Supplied to Your Specification
+India Trade Overseas coordinates bulk Nashik red onion sourcing, grading, packaging, inspection,
+documentation and delivery for domestic and international B2B buyers.
+Primary CTA: Request Today's Quotation | Secondary CTA: Discuss Bulk
+Requirement
+Trust line
+Buyer-Defined Grades | Flexible Packaging | Documented Loading | Logistics Coordination
+Market split
+Domestic Supply International Export
+Bulk truckload supply for wholesalers, distributors, Container-based supply for verified importers,
+processors, institutional buyers and retail-chain suppliers wholesalers, distributors and food-service companies.
+across India.
+CTA: Get Domestic Delivered Rate CTA: Request Export SCO
+Core value section
+One Point of Coordination from Nashik to Destination
+Bulk onion procurement involves more than finding a market rate. Size consistency, crop condition, packing
+strength, bag weight, loading, documentation and transit planning can directly affect the buyer's outcome. India
+Trade Overseas coordinates these stages under one structured order process.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 13
+
+--- Page 14 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VII - WEBSITE
+Product, Market and Trust Sections
+Select the Grade Your Market Requires
+Commercial Grade Standard Export Grade Premium Export Grade
+For price-sensitive domestic trading, For international wholesale For buyers requiring tighter size
+processing and approved bulk distribution requiring suitable sorting, consistency and enhanced
+requirements. packing and documentation. visible-quality selection.
+Packaging for Domestic and Export Markets
+Domestic: 20 KG, 25 KG, 40 KG and 50 KG mesh or jute bags. Export: 5 KG, 8 KG, 9 KG, 10 KG, 20 KG and 25 KG
+ventilated mesh bags. Private labels and custom markings may be arranged for eligible quantities.
+Domestic section
+India Trade Overseas supports wholesalers, distributors, processors, retail suppliers and institutional buyers
+requiring truckload quantities of Nashik onions. Quotations may be prepared on an Ex-Warehouse, FOR or
+delivered-to-destination basis.
+CTA: Get Domestic Delivered Rate
+International section
+Every export requirement is assessed against destination regulations, transit time, crop condition, packaging,
+buyer specifications and the selected Incoterm. Eligible orders are coordinated from product preparation and
+container loading to documentation and shipment updates.
+CTA: Request Export SCO
+Transparency section
+Before final confirmation, India Trade Overseas establishes origin, crop, grade, size, tolerance, packaging,
+quantity, destination, inspection, delivery term, documents, payment, validity and dispatch window.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 14
+
+--- Page 15 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VII - WEBSITE
+Process, Long-Term Supply and Final
+Conversion
+A Clear Process from Enquiry to Delivery
+01 Submit requirement
+02 Complete buyer verification
+03 Confirm size, grade and packing
+04 Check lot and logistics availability
+05 Receive formal quotation
+06 Confirm Purchase Order and payment
+07 Begin procurement and grading
+08 Complete inspection and packing
+09 Load and document dispatch
+10 Track delivery and plan repeat supply
+Long-term supply programme
+Qualified buyers requiring weekly, monthly or seasonal supply can request a structured programme covering
+volume forecasts, specifications, packing, delivery calendar, price review, documentation and performance
+review.
+Market-price notice
+Onion prices can change according to crop arrivals, quality, size, weather, demand, packaging, labour, transport,
+port charges, freight and government regulations. Every quotation carries a defined validity period. An enquiry
+does not lock price or confirm stock.
+Final CTA
+Share Your Requirement. Receive a
+Commercial Supply Plan.
+Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability,
+logistics and applicable terms before preparing the offer.
+Request Domestic Rate | Request Export SCO | Chat on WhatsApp
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 15
+
+--- Page 16 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VII - WEBSITE
+Buyer Questions and Objection Handling
+Do you supply across India?
+Yes. Supply may be coordinated according to quantity, destination, vehicle availability and agreed commercial
+terms.
+Do you export Nashik onions?
+Yes, subject to Indian export policy, destination requirements, product availability, logistics and mutually
+accepted payment terms.
+What is the minimum order?
+It depends on destination, packing and delivery structure. Domestic transactions are generally commercial
+truckloads; export orders are generally container-based.
+Can the buyer select size?
+Yes. Requirements such as 25+, 35+, 40+, 45+, 50+ or 55+ mm may be considered according to lot
+availability.
+Can the buyer inspect before dispatch?
+Yes. A buyer representative or approved third party may inspect when mutually agreed in advance.
+Can loading evidence be shared?
+Photographs, videos, bag counts, sample-weight checks and seal details may be shared according to the
+confirmed process.
+Are CIF quotations available?
+EXW, FCA, FOB, CFR and CIF may be considered according to transaction and destination feasibility.
+Can shelf life be guaranteed?
+No universal shelf life should be guaranteed because performance depends on crop, curing, handling, storage,
+humidity and transit.
+Can an annual fixed price be offered?
+Recurring supply can be discussed, but a market-linked agricultural product normally requires a defined
+price-review mechanism.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 16
+
+--- Page 17 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VIII - CONVERSION SYSTEM
+Smart RFQ and Buyer Qualification
+The form must be short enough to begin, but detailed enough to prevent unusable enquiries. Use a four-step
+mobile-friendly form with progress indication and save-in-progress behavior.
+Step Required Fields
+1. Buyer Name, designation, company, country, city, mobile, WhatsApp, official email, website, buyer type
+and applicable registration
+2. Product Market, crop, grade, size, tolerance, quantity, monthly volume, packing, private label and required
+date
+3. Delivery City or destination port, Incoterm, transport, inspection and document requirements
+4. Commercial Target price optional, currency, payment method, PO readiness, trial or recurring requirement,
+notes and upload
+Form confirmation
+Thank you for submitting your Nashik Onion requirement. Our commercial
+team will verify the specification, current availability, logistics and pricing
+before issuing a formal offer. Submission does not constitute order
+acceptance or price confirmation.
+Lead classification
+Class Definition
+Hot Verified company, complete requirement, destination, near-term purchase, acceptable payment
+and PO readiness
+Warm Genuine business requirement within 31-90 days; specification or internal approval incomplete
+Cold Unverified identity, no quantity or timeline, casual rate enquiry or unrealistic terms
+Lead-scoring model
+Factor Points
+Verified company 20
+Complete requirement 20
+Confirmed quantity 15
+Purchase timeline 15
+Payment readiness 15
+Destination clarity 10
+PO readiness 5
+Hot: 75-100 | Warm: 45-74 | Cold: below 45
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 17
+
+--- Page 18 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART VIII - SALES OPERATIONS
+CRM Pipeline and Automation
+CRM stages
+01. New enquiry 02. Verification pending 03. Buyer contacted
+04. Requirement qualified 05. Specification confirmed 06. Quotation preparation
+07. Quotation submitted 08. Negotiation 09. Sample or inspection
+10. Purchase Order awaited 11. Proforma Invoice issued 12. Payment security pending
+13. Procurement started 14. Sorting and packing 15. Inspection completed
+16. Dispatch planned 17. Dispatched 18. Delivered
+19. Repeat-order follow-up 20. Closed won 21. Closed lost
+Mandatory CRM fields
+Lead owner, source, buyer category, grade, quantity, destination, expected order date, last contact, next
+follow-up, quotation value, payment status, PO status, call recording, documents, internal notes and lost reason.
+Automated WhatsApp acknowledgement
+Welcome to India Trade Overseas. Thank you for contacting us regarding
+Nashik onions. Please share whether the requirement is domestic or
+international, your company, quantity, size, grade, packaging, destination,
+required date, preferred trade term and payment method. Our team will
+verify current availability, logistics and pricing before sharing the applicable
+offer.
+Internal response standard
+● Create the CRM lead immediately after a valid submission.
+● Notify the assigned salesperson with all captured fields and attribution.
+● Acknowledge the buyer automatically without promising price or availability.
+● Set a next-action date on every open lead.
+● Escalate hot leads and overdue commercial commitments.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 18
+
+--- Page 19 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART IX - DISCOVERABILITY
+SEO and Content Architecture
+Recommended metadata
+Element Recommendation
+SEO title Nashik Onion Supplier & Exporter from India | India Trade Overseas
+Meta description India Trade Overseas supplies bulk Nashik red onions for domestic and international buyers
+with custom grading, packaging, inspection, documentation and logistics coordination.
+Primary URL www.indiatradeoverseas.com/nashik-onion
+Schema Organization, Product, Service, FAQ, Breadcrumb and ContactPoint
+Keyword direction
+Nashik onion supplier; Nashik red onion exporter; onion exporter from India; bulk onion supplier India; Nashik
+onion wholesale supplier; fresh red onion exporter; Nashik onion container supplier; bulk onion delivered rate;
+Indian onion export company.
+Supporting content
+● /nashik-onion/domestic-supply
+● /nashik-onion/international-export
+● /nashik-onion/specifications
+● /nashik-onion/packaging
+● /nashik-onion/quality-process
+● /nashik-onion/request-quote
+SEO quality rule
+Do not create thin, duplicate pages for every city or country. A destination page should only be published when
+it contains genuinely unique buyer, documentation, transit and logistics information.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 19
+
+--- Page 20 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART IX - MEASUREMENT
+Analytics and Lead Attribution
+Events to track
+● Page view, scroll depth and returning visitor.
+● Domestic or international market selection.
+● Grade, specification, packaging and quality-section views.
+● Domestic rate, export SCO, WhatsApp, call and email clicks.
+● RFQ started, each step completed, abandonment and submission.
+● Document upload, qualified lead, quotation, PO, PI, order and repeat order.
+Required attribution
+Store first-touch source, last-touch source, campaign, ad set, advertisement, keyword, landing page, UTM
+values, first visit date, conversion date, device, country and returning-visitor status in the CRM.
+Tracking stack
+Layer Purpose
+Google Tag Manager Controlled implementation and versioning of events
+GA4 Page, funnel and campaign measurement
+Meta Pixel Browser-side advertising events
+Conversions API Server-side event resilience and improved matching
+First-party session Persist UTM and source data through the enquiry journey
+CRM Connect lead source to quotation, PO and revenue outcome
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 20
+
+--- Page 21 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART IX - TECHNOLOGY
+Performance, Security and Accessibility
+Performance
+● Mobile-first responsive development and fast initial rendering.
+● WebP or AVIF images, responsive sizes and lazy loading below the fold.
+● Minimal scripts, optimized fonts and stable layout.
+● Forms tested on low-speed mobile connections.
+Security
+● HTTPS, server-side validation, spam protection and rate limiting.
+● Restricted file types, upload-size limits and malware scanning.
+● Role-based CRM access, audit logs, secure credential storage and backups.
+● Privacy notice, cookie controls and consent records where required.
+Accessibility
+● Readable contrast, alt text, keyboard navigation and visible focus states.
+● Proper labels, clear validation errors and sufficiently large touch targets.
+● Captions for important videos and no colour-only status communication.
+Trust controls
+Display legal name, business status, offices, GST, IEC, APEDA or other registration, memberships, shipment
+records and testimonials only after verification. Mask sensitive details in public document samples.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 21
+
+--- Page 22 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART X - GOVERNANCE
+Commercial and Legal Safeguards
+All website information is indicative and intended for preliminary B2B
+discussion. Final quality, tolerance, quantity, packaging, price, payment,
+delivery term, dispatch schedule and documentation are governed only by
+the mutually accepted quotation, SCO, Proforma Invoice, Purchase Order,
+contract or written confirmation.
+International supply remains subject to
+● Prevailing Government of India policy and customs requirements.
+● Phytosanitary and destination-country import rules.
+● Banking, KYC and payment-security compliance.
+● Shipping-line acceptance, container and vessel availability.
+● Port operations, document timelines and force majeure.
+Prohibited claims
+● Guaranteed universal shelf life or zero defects.
+● Permanent prices or stock reservation without written confirmation.
+● Guaranteed dispatch or vessel dates before operational confirmation.
+● Unverified certificates, shipment counts, customer logos or testimonials.
+● A fixed container payload before confirming operational limits.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 22
+
+--- Page 23 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART X - DELIVERY
+Implementation Plan
+Phase Deliverables
+1. Commercial approval Specifications, grades, packaging, market model, RFQ fields and verified credentials
+2. Design Desktop and mobile wireframes, cinematic hero, product tables, process and RFQ journey
+3. Development Responsive build, forms, CRM, WhatsApp, analytics, SEO, schema and spam protection
+4. Quality assurance Device, form, CRM, messaging, analytics, speed, security, accessibility and copy testing
+5. Launch Publication, indexing, campaign activation, real-lead testing and conversion review
+Launch acceptance criteria
+● Domestic and export journeys are clearly separated.
+● Every CTA, form, file upload, WhatsApp and call action works.
+● Every valid submission reaches the CRM with lead attribution.
+● Internal and buyer notifications are delivered correctly.
+● Mobile layout, tables, forms and error messages are usable.
+● Analytics and conversion events are verified in test mode.
+● No false claim, broken link, exposed credential or missing disclaimer remains.
+● Page speed, security, privacy and spam controls pass final review.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 23
+
+--- Page 24 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+PART X - PERFORMANCE
+Success KPIs and Management Dashboard
+Area KPIs
+Website Engagement, CTA rate, RFQ start, RFQ completion, abandonment, WhatsApp conversion and
+mobile conversion
+Lead quality Verified enquiries, hot leads, complete specifications and valid buyer identities
+Sales SCOs, quotations, POs, order conversion, average quantity, response time and repeat orders
+Operations Procurement time, packing time, dispatch delay, weight variance, claim rate and document
+errors
+Learning Best market, most requested size, best packaging, highest-converting campaign and lost
+reasons
+Management principle
+Traffic is not the primary success measure. The DPR succeeds when the company can trace a verified buyer
+from campaign source through qualification, quotation, Purchase Order, delivery and repeat business.
+Recommended first 30-day review
+● Review form abandonment by step and device.
+● Compare domestic and export lead quality separately.
+● Audit response time and next-action compliance.
+● Identify campaigns producing quotations rather than clicks alone.
+● Revise weak copy or fields only after evidence from real user behavior.
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 24
+
+--- Page 25 ---
+INDIA TRADE OVERSEAS NASHIK ONION VERTICAL | FINAL DPR
+FINAL APPROVAL
+Approved Brand and Conversion Direction
+FINAL HERO
+Nashik Onions for Domestic and Global
+Markets
+Sourced with Precision. Graded to Specification. Delivered with
+Coordination.
+Bulk Nashik red onion supply supported by customized grading, flexible packaging, quality inspection,
+commercial documentation and logistics coordination.
+Request Today's Quotation | Domestic Supply | International Export
+INDIA TRADE OVERSEAS
+Where Quality Meets Global Demand
+Domestic Supply | International Export | Bulk Procurement | Quality Coordination | Logistics Support
+www.indiatradeoverseas.com
+Approval
+Prepared for India Trade Overseas
+Founder & Proprietor Md Ramiz Raza Khan
+Project Nashik Onion Vertical - Domestic and International
+Status Final DPR for design and development implementation
+Founder Approval IT / Development Approval
+Signature: ____________________ Date: Signature: ____________________ Date:
+_________________________ _________________________
+Where Quality Meets Global Demand www.indiatradeoverseas.com Page 25
+
