@@ -10,9 +10,33 @@ const Employee = require('../src/modules/employee/employee.model');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ito_db';
 
-const UNIFIED_PASSWORD = 'ItoPass123!';
+const UNIFIED_PASSWORD = 'Ramiz2024@@';
 
 const testAccounts = [
+  {
+    employeeId: 'EMP-FND-001',
+    fullName: 'Md Ramiz Raza Khan',
+    name: 'Md Ramiz Raza Khan',
+    email: 'info@indiatradeoverseas.com',
+    password: UNIFIED_PASSWORD,
+    role: 'FOUNDER',
+    department: 'ADMIN',
+    position: 'Founder & Managing Director',
+    phone: '+91 9876543210',
+    permissions: { productUpload: true, lead: true, export: true, document: true, task: true, dispatch: true, payment: true, quotation: true, job: true }
+  },
+  {
+    employeeId: 'EMP-CEO-001',
+    fullName: 'Jasvinder Singh Chopra',
+    name: 'Jasvinder Singh Chopra',
+    email: 'ceo@indiatradeoverseas.com',
+    password: UNIFIED_PASSWORD,
+    role: 'CEO',
+    department: 'MANAGEMENT',
+    position: 'Chief Executive Officer',
+    phone: '+91 9876543211',
+    permissions: { productUpload: true, lead: true, export: true, document: true, task: true, dispatch: true, payment: true, quotation: true, job: true }
+  },
   {
     employeeId: 'EMP-ADM-001',
     fullName: 'System Admin',

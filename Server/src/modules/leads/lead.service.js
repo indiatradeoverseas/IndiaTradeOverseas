@@ -68,6 +68,10 @@ function canAccessLead(user, lead) {
   const dept = (user.department || '').toUpperCase();
   const isManagerOrAdmin =
     role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CEO' ||
+    role === 'SUPER_ADMIN' ||
+    role === 'CO_FOUNDER' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.includes('MANAGER') ||
@@ -76,9 +80,15 @@ function canAccessLead(user, lead) {
     role === 'DRIVER' ||
     role.includes('DRIVER') ||
     dept === 'ADMIN' ||
+    dept === 'MANAGEMENT' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
-    (user.position && user.position.toLowerCase().includes('admin'));
+    (user.position && (
+      user.position.toLowerCase().includes('admin') ||
+      user.position.toLowerCase().includes('manager') ||
+      user.position.toLowerCase().includes('founder') ||
+      user.position.toLowerCase().includes('ceo')
+    ));
 
   let result = false;
   if (
@@ -211,13 +221,18 @@ function getLeadDisplay(lead, user) {
     }
   }
 
-  const role = user ? (user.role || '') : '';
+  const role = user ? (user.role || '').toUpperCase() : '';
+  const position = user ? (user.position || '').toLowerCase() : '';
   const isManagerOrAdminUser =
     role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CEO' ||
+    role === 'SUPER_ADMIN' ||
+    role === 'CO_FOUNDER' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
-    role.toLowerCase().includes('manager') ||
-    (user && (user.department === 'ADMIN' || (user.position && user.position.toLowerCase().includes('admin'))));
+    role.includes('MANAGER') ||
+    (user && (user.department === 'ADMIN' || user.department === 'MANAGEMENT' || position.includes('admin') || position.includes('manager') || position.includes('founder') || position.includes('ceo')));
 
   if (user && (isManagerOrAdminUser || role === 'HR')) {
     const decryptedPhone = leadObj.phoneEncrypted ? decryptText(leadObj.phoneEncrypted) : leadObj.phoneMasked;
@@ -248,23 +263,32 @@ async function listLeads(user, query = {}) {
     filter.productCategory = { $nin: ['CAREERS', 'Careers', 'careers'] };
   }
 
-  const role = user.role || '';
-  const dept = user.department || '';
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
   const isManagerOrAdminUser =
     role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CEO' ||
+    role === 'SUPER_ADMIN' ||
+    role === 'CO_FOUNDER' ||
     role === 'MANAGER' ||
     role.endsWith('_MANAGER') ||
-    role.toLowerCase().includes('manager') ||
+    role.includes('MANAGER') ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS' ||
     role === 'TRANSPORT_MANAGER' ||
     role === 'LOGISTICS_MANAGER' ||
     dept === 'ADMIN' ||
+    dept === 'MANAGEMENT' ||
     dept === 'TRANSPORT' ||
     dept === 'LOGISTICS' ||
     user.dispatchPermission === true ||
     user.permissions?.dispatch === true ||
-    (user.position && user.position.toLowerCase().includes('admin'));
+    position.includes('admin') ||
+    position.includes('manager') ||
+    position.includes('founder') ||
+    position.includes('ceo');
 
   const shouldFilterMyLeadsOnly = query.myLeadsOnly === 'true' || (
     !isManagerOrAdminUser &&
@@ -456,15 +480,17 @@ async function getLeadById(id, user) {
   const User = require('../users/user.model');
   const Employee = require('../employee/employee.model');
 
-  const isHexId = isHexObjectId(id);
-  const leadQueries = [{ leadCode: id }];
+  const cleanId = String(id || '').trim();
+  const isHexId = isHexObjectId(cleanId);
+  const leadQueries = [
+    { leadCode: cleanId },
+    { leadCode: new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+  ];
   if (isHexId) {
     try {
-      leadQueries.push({ _id: new mongoose.Types.ObjectId(id) });
-      leadQueries.push({ _id: id });
+      leadQueries.push({ _id: new mongoose.Types.ObjectId(cleanId) });
+      leadQueries.push({ _id: cleanId });
     } catch (e) {}
-  } else if (id) {
-    leadQueries.push({ _id: id });
   }
 
   let lead = null;

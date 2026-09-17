@@ -6,20 +6,22 @@ function rbac(...allowedRoles) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Unauthorized: Authentication required', [], req);
     }
 
+    const roleUpper = (req.user.role || '').toUpperCase();
+    const positionLower = (req.user.position || '').toLowerCase();
+
     const isAdminUser =
-      req.user.role === 'ADMIN' ||
-      req.user.role === 'FOUNDER' ||
-      req.user.role === 'SUPER_ADMIN' ||
+      ['ADMIN', 'CEO', 'FOUNDER', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(roleUpper) ||
       req.user.department === 'ADMIN' ||
-      (req.user.position && (
-        req.user.position.toLowerCase().includes('admin') ||
-        req.user.position.toLowerCase().includes('founder')
-      )) ||
-      (req.user.role && req.user.role.toLowerCase().includes('founder'));
+      positionLower.includes('admin') ||
+      positionLower.includes('founder') ||
+      positionLower.includes('ceo') ||
+      roleUpper.includes('FOUNDER') ||
+      roleUpper.includes('CEO');
 
     const userRole = req.user.role || '';
     const isMatched = allowedRoles.includes('*') || 
                       allowedRoles.includes(userRole) ||
+                      allowedRoles.includes(roleUpper) ||
                       (allowedRoles.includes('MANAGER') && (userRole === 'MANAGER' || userRole.endsWith('_MANAGER') || userRole.toLowerCase().includes('manager')));
 
     if (isAdminUser || isMatched) {

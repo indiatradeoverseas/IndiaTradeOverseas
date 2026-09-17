@@ -123,7 +123,7 @@ export default function LeadDetail() {
 
   useEffect(() => {
     fetchLeadDetails();
-    if (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') {
+    if (['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'HR'].includes((user?.role || '').toUpperCase()) || user?.department === 'ADMIN' || user?.department === 'MANAGEMENT') {
       fetchUsers();
     }
   }, [id, user]);
@@ -221,6 +221,20 @@ export default function LeadDetail() {
       toast.error(`LOI Document Required! Please upload the LOI document before advancing to ${newStage.replace(/_/g, ' ')}.`);
       setShowLOIModal(true);
       return;
+    }
+
+    const isTransportOrSalesManager = 
+      ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((user?.role || '').toUpperCase()) ||
+      user?.department === 'TRANSPORT' || user?.department === 'LOGISTICS' || user?.department === 'ADMIN' || user?.department === 'MANAGEMENT' ||
+      (user?.role && (user.role.toUpperCase().includes('TRANSPORT') || user.role.toUpperCase().includes('MANAGER') || user.role.toUpperCase().includes('CEO')));
+
+    const postOrderStages = ['DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+
+    if (['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING'].includes(lead?.stage) && postOrderStages.includes(newStage)) {
+      if (!isTransportOrSalesManager) {
+        toast.error('🚚 Sales Hand-off Complete! Further dispatch & settlement stages are managed by Transport Manager and Sales Manager.');
+        return;
+      }
     }
 
     // MANDATORY CALL RECORDING MODAL FOR FOLLOW_UP
@@ -413,10 +427,11 @@ export default function LeadDetail() {
   );
 
   const currentStage = lead.stage;
-  const isClosedWon = currentStage === 'CLOSED_WON' || currentStage === 'DEAL_WON';
+  const isOrderConfirmedOrBeyond = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((currentStage || '').toUpperCase());
+  const isClosedWon = isOrderConfirmedOrBeyond;
   const isClosedLost = currentStage === 'CLOSED_LOST' || currentStage === 'DEAL_LOST';
-  const currentStepIndex = activeStages.includes(currentStage) ? activeStages.indexOf(currentStage) : (isClosedWon || isClosedLost ? activeStages.length : 0);
-  const progressPercent = Math.min(100, Math.max(0, (currentStepIndex / activeStages.length) * 100));
+  const currentStepIndex = isOrderConfirmedOrBeyond ? activeStages.length : (activeStages.includes(currentStage) ? activeStages.indexOf(currentStage) : 0);
+  const progressPercent = isOrderConfirmedOrBeyond ? 100 : Math.min(100, Math.max(0, (currentStepIndex / activeStages.length) * 100));
 
   const calculatePriorityScore = (l) => {
     if (!l) return 0;
@@ -499,7 +514,7 @@ export default function LeadDetail() {
             <div key={i} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
               <div className="flex justify-between items-start gap-1">
                 <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">{item.label}</span>
-                {item.revealTarget && !(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
+                {item.revealTarget && !['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'HR'].includes((user?.role || '').toUpperCase()) && (
                   <button onClick={() => handleUnmaskClick(item.revealTarget)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition-colors cursor-pointer"><FiEye size={12} /></button>
                 )}
               </div>
@@ -599,7 +614,7 @@ export default function LeadDetail() {
         </motion.div>
 
         {/* Task Management Router Pane */}
-        {(user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'HR') && (
+        {['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'HR'].includes((user?.role || '').toUpperCase()) && (
           <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 p-5 bg-[var(--crm-bg-raised)]/20 rounded-sm text-left">
             <div className="mb-4">
               <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5 font-mono">ROUTING CORE</span>

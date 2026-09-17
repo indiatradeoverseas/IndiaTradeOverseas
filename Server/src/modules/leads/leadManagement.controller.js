@@ -231,6 +231,13 @@ async function addActivity(req, res, next) {
       }
     });
 
+    // Record Genuine Employee Activity in background
+    try {
+      const employeeActivityService = require('../employee-activity/employeeActivity.service');
+      const actionCat = (actionType === 'CALL_LOGGED' || actionType === 'CALL') ? 'CALL_LOGGED' : (nextFollowupAt ? 'FOLLOWUP_COMPLETED' : 'NOTE_ADDED');
+      employeeActivityService.recordCrmAction(req.user, actionCat, note).catch(() => {});
+    } catch (e) {}
+
     return ok(res, { activity }, 'Activity logged successfully', 201, req);
   } catch (error) {
     next(error);
@@ -464,6 +471,12 @@ async function uploadCallRecording(req, res, next) {
     } catch (driveErr) {
       console.warn('[CallRecording] Google Drive upload notice:', driveErr.message);
     }
+
+    // Record Genuine Employee Activity
+    try {
+      const employeeActivityService = require('../employee-activity/employeeActivity.service');
+      employeeActivityService.recordCrmAction(req.user, 'RECORDING_UPLOADED', `Uploaded call recording: ${req.file.originalname}`).catch(() => {});
+    } catch (e) {}
 
     return ok(res, { callRecording }, 'Call recording uploaded and saved to Google Drive & Server successfully', 201, req);
   } catch (error) {

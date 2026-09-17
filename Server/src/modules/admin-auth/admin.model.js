@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+const ADMIN_ROLES = Object.freeze({
+  ADMIN: 'ADMIN',
+  CEO: 'CEO',
+  FOUNDER: 'FOUNDER',
+  CO_FOUNDER: 'CO_FOUNDER',
+  SUPER_ADMIN: 'SUPER_ADMIN'
+});
+
 const adminSchema = new mongoose.Schema(
   {
     _id: { type: mongoose.Schema.Types.Mixed },
@@ -23,14 +31,22 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true
     },
-    // System role used by RBAC checks across the CRM (kept aligned with the User model's 'ADMIN' role
-    // so an Admin account sees exactly what an ADMIN-role employee sees).
+    // System role used by RBAC checks across the CRM
     role: {
       type: String,
-      enum: ['ADMIN'],
+      enum: Object.values(ADMIN_ROLES),
+      default: ADMIN_ROLES.ADMIN
+    },
+    department: {
+      type: String,
+      enum: ['ADMIN', 'MANAGEMENT', 'EXECUTIVE', 'HR', 'SALES', 'IT', 'FINANCE', 'OPERATIONS', 'TRANSPORT'],
       default: 'ADMIN'
     },
-    // Free-text display title, e.g. "Founder", "Co-founder", "Managing Director".
+    position: {
+      type: String,
+      default: 'Administrator'
+    },
+    // Free-text display title, e.g. "Founder", "Co-founder", "CEO", "Managing Director".
     designation: {
       type: String,
       default: 'Administrator'
@@ -95,4 +111,7 @@ const adminSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Admin', adminSchema);
+const Admin = mongoose.model('Admin', adminSchema);
+Admin.ADMIN_ROLES = ADMIN_ROLES;
+module.exports = Admin;
+module.exports.ADMIN_ROLES = ADMIN_ROLES;

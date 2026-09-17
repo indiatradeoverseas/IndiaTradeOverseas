@@ -271,10 +271,46 @@ async function downloadDoc(req, res, next) {
         actionType: 'DOCUMENT_DOWNLOADED',
         entityType: 'DOCUMENT',
         entityId: doc._id.toString(),
-        severity: 'LOW',
+        severity: req.user.role === 'ADMIN' ? 'LOW' : 'HIGH',
         ipAddress: req.ip,
-        metadata: { fileName: doc.fileName }
+        metadata: { fileName: doc.fileName, downloadedBy: req.user.fullName || req.user.name, role: req.user.role }
       });
+    }
+
+    // Notify Admin/Founder if a non-admin/non-founder downloads a file
+    const isManagementRole = ['ADMIN', 'FOUNDER', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((req.user.role || '').toUpperCase());
+    if (!isManagementRole) {
+      try {
+        const Notification = require('../notifications/notification.model');
+        const socketService = require('../../services/socket.service');
+        const downloadedFileName = fileName || doc?.fileName || 'Document';
+        const alertMsg = `🚨 Security Alert: ${req.user.fullName || req.user.name || 'User'} (${req.user.role}) downloaded document "${downloadedFileName}"`;
+        
+        await Notification.create({
+          targetRole: 'ADMIN',
+          message: alertMsg,
+          type: 'SECURITY_ALERT',
+          metadata: {
+            downloadedBy: req.user._id,
+            userName: req.user.fullName || req.user.name,
+            userRole: req.user.role,
+            fileName: downloadedFileName,
+            ipAddress: req.ip
+          }
+        });
+
+        if (socketService.io) {
+          socketService.io.emit('security_alert', {
+            message: alertMsg,
+            type: 'SECURITY_ALERT',
+            downloadedBy: req.user.fullName || req.user.name,
+            fileName: downloadedFileName,
+            createdAt: new Date()
+          });
+        }
+      } catch (notifErr) {
+        console.error('Error creating download notification:', notifErr.message);
+      }
     }
 
     res.setHeader('Content-Type', mimeType || 'application/octet-stream');

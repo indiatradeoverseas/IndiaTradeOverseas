@@ -34,11 +34,12 @@ import DriverCalculator from '../../../components/crm/DriverCalculator';
 import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
 import OrderMapModal from '../../../components/transport/map';
+import FileSharingWidget from '../../../components/crm/FileSharingWidget';
 
 // HR Manager Design System Tokens
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
-const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' };
+const LABEL_MONO = { fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)' };
 const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
 export default function TransportManager() {
@@ -452,8 +453,18 @@ export default function TransportManager() {
         return sum + amt;
       }, 0);
 
+      const isTodayDate = (dateVal) => {
+        if (!dateVal) return false;
+        const d = new Date(dateVal);
+        if (isNaN(d.getTime())) return false;
+        return d.toDateString() === new Date().toDateString();
+      };
+
       const todayRev = combinedAll
-        .filter(t => new Date(t.createdAt || Date.now()).toDateString() === new Date().toDateString())
+        .filter(t => {
+          const itemDate = t.createdAt || t.updatedAt || t.completedAt || t.actualDeliveryDate || t.proofUploadedAt || t.date;
+          return isTodayDate(itemDate);
+        })
         .reduce((sum, t) => {
           return sum + (Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || 0) || 0);
         }, 0);
@@ -1108,30 +1119,30 @@ export default function TransportManager() {
     } catch (err) {}
   };
 
-  return (
-    <div className="w-full space-y-6 text-left font-mono text-xs" style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}>
+    return (
+      <div className="w-full space-y-6 text-left font-sans antialiased text-xs p-3 md:p-6 min-h-screen" style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}>
       
       {/* Page Header */}
       <div 
-        className="p-5 border-b rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
-        style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+        className="p-5 border border-[var(--crm-line)] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans"
+        style={{ background: 'var(--crm-bg-raised)' }}
       >
-        <div className="space-y-0.5 text-left">
-          <span className="text-[9px] uppercase tracking-[0.25em] font-bold block" style={LABEL_MONO}>
+        <div className="space-y-0.5 text-left font-sans">
+          <span className="text-[10px] uppercase tracking-wider font-bold block" style={LABEL_MONO}>
             Logistics & Transport Control Center
           </span>
-          <h1 className="text-xl sm:text-2xl font-normal tracking-tight uppercase flex items-center gap-2" style={HEADING}>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight uppercase flex items-center gap-2 font-sans" style={HEADING}>
             <FiTruck className="text-[var(--crm-accent)]" size={22} /> Transport Manager Dashboard
           </h1>
-          <p className="text-[10px] text-[var(--crm-ink-faint)] font-light max-w-2xl hidden sm:block">
+          <p className="text-[11px] text-[var(--crm-ink-faint)] font-medium max-w-2xl hidden sm:block font-sans">
             Manager: <strong className="text-[var(--crm-heading)]">{user?.name || user?.fullName || 'Transport Head'}</strong> &bull; Active Fleet Captains: <strong className="text-emerald-400">{metrics.numDrivers}</strong>
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-2 flex-shrink-0 font-sans">
           <button
             onClick={fetchData}
-            className="text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm transition-all cursor-pointer flex items-center gap-1.5"
+            className="text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans"
             style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)' }}
           >
             <FiRefreshCw size={12} className={loading ? 'animate-spin text-[var(--crm-accent)]' : ''} /> Sync Data
@@ -1139,88 +1150,105 @@ export default function TransportManager() {
 
           <Link
             to="/crm/tickets"
-            className="text-[9px] border px-3 py-1.5 uppercase tracking-wide rounded-sm font-bold transition-all cursor-pointer flex items-center gap-1.5"
+            className="text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans"
             style={{ borderColor: 'rgba(56, 189, 248, 0.4)', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}
           >
             <FiLifeBuoy size={13} /> Support Tickets
           </Link>
+
+          <button
+            onClick={() => setActiveTab(activeTab === 'SHARED_FILES' ? 'DASHBOARD' : 'SHARED_FILES')}
+            className={`text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans ${
+              activeTab === 'SHARED_FILES' ? 'bg-cyan-600 text-white' : ''
+            }`}
+            style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)' }}
+          >
+            <FiFolder size={12} /> Shared Files
+          </button>
         </div>
       </div>
+
+      {/* SHARED FILES TAB VIEW */}
+      {activeTab === 'SHARED_FILES' && (
+        <div className="space-y-4 font-sans">
+          <FileSharingWidget initialTab="RECEIVED" />
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────
           TAB 1: OVERVIEW DASHBOARD VIEW
          ───────────────────────────────────────────────────────────── */}
       {activeTab === 'DASHBOARD' ? (
-        <div className="space-y-4">
+        <div className="space-y-4 font-sans">
           
           {/* CRITICAL ALERT TICKER BANNER */}
           {expiryAlerts.length > 0 && (
-            <div className="p-3.5 border rounded-sm flex items-center justify-between font-mono text-xs" style={{ borderColor: 'rgba(244, 63, 94, 0.4)', background: 'rgba(244, 63, 94, 0.08)' }}>
-              <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="p-3.5 border rounded-xl flex items-center justify-between font-sans text-xs" style={{ borderColor: 'rgba(244, 63, 94, 0.4)', background: 'rgba(244, 63, 94, 0.08)' }}>
+              <div className="flex items-center gap-2.5 overflow-hidden font-sans">
                 <FiAlertTriangle size={16} className="text-rose-400 animate-bounce shrink-0" />
-                <span className="font-bold text-rose-300 uppercase tracking-wider shrink-0">Critical Expiry Ticker:</span>
-                <div className="truncate text-rose-200">
+                <span className="font-bold text-rose-300 uppercase tracking-wider shrink-0 font-sans">Critical Expiry Ticker:</span>
+                <div className="truncate text-rose-200 font-sans">
                   {expiryAlerts.map(a => `${a.type}: Vehicle #${a.vehicle} (${a.driver}) expires in ${a.daysLeft} days!`).join(' | ')}
                 </div>
               </div>
-              <span className="text-[9px] bg-rose-900 text-white px-2 py-0.5 rounded-sm font-bold uppercase shrink-0">7-Day Notice</span>
+              <span className="text-[9px] bg-rose-900 text-white px-2 py-0.5 rounded-md font-bold uppercase shrink-0 font-sans">7-Day Notice</span>
             </div>
           )}
 
           {/* 6 TOP STAT CARDS ROW */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-            <div className="p-4 border rounded-sm" style={CARD}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-sans">
+            <div className="p-4 border rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
-                <span className="text-[9px] uppercase tracking-wider font-bold" style={LABEL_MONO}>Total Dispatch</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Total Dispatch</span>
                 <FiTruck size={16} className="text-[var(--crm-accent)]" />
               </div>
-              <span className="text-2xl font-light mt-2 block font-mono" style={HEADING}>{metrics.totalDispatch}</span>
-              <span className="text-[9px] block mt-1" style={LABEL_MONO}>{metrics.activeTripsOnRoad} On Road</span>
+              <span className="text-2xl font-bold mt-2 block font-mono text-[var(--crm-heading)]">{metrics.totalDispatch}</span>
+              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>{metrics.activeTripsOnRoad} On Road</span>
             </div>
 
-            <div className="p-4 border rounded-sm" style={CARD}>
+            <div className="p-4 border rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-emerald-400">Total Revenue</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Total Revenue</span>
                 <FiDollarSign size={16} className="text-emerald-400" />
               </div>
-              <span className="text-2xl font-light text-emerald-400 mt-2 block font-mono">₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
-              <span className="text-[9px] block mt-1 text-emerald-500/80">Today: ₹{metrics.collectedToday.toLocaleString('en-IN')}</span>
+              <span className="text-2xl font-bold text-emerald-400 mt-2 block font-mono">₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
+              <span className="text-[10px] font-sans block mt-1 text-emerald-500/80">Today Earning: ₹{metrics.collectedToday.toLocaleString('en-IN')}</span>
             </div>
 
-            <div className="p-4 border rounded-sm" style={CARD}>
+            <div className="p-4 border rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-teal-400">Total Delivery Done</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">Total Delivery Done</span>
                 <FiCheckCircle size={16} className="text-teal-400" />
               </div>
-              <span className="text-2xl font-light text-teal-400 mt-2 block font-mono">{metrics.completedTrips}</span>
-              <span className="text-[9px] block mt-1 text-teal-500/80">Verified PODs</span>
+              <span className="text-2xl font-bold text-teal-400 mt-2 block font-mono">{metrics.completedTrips}</span>
+              <span className="text-[10px] font-sans block mt-1 text-teal-500/80">Verified PODs</span>
             </div>
 
-            <div className="p-4 border rounded-sm" style={CARD}>
+            <div className="p-4 border rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-amber-400">Lead</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">Lead</span>
                 <FiBriefcase size={16} className="text-amber-400" />
               </div>
-              <span className="text-2xl font-light text-amber-400 mt-2 block font-mono">{metrics.totalLeads}</span>
-              <span className="text-[9px] block mt-1" style={LABEL_MONO}>Freight Orders</span>
+              <span className="text-2xl font-bold text-amber-400 mt-2 block font-mono">{metrics.totalLeads}</span>
+              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Freight Orders</span>
             </div>
 
-            <div className="p-4 border rounded-sm" style={CARD}>
+            <div className="p-4 border rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-purple-400">Pending Lead</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">Pending Lead</span>
                 <FiClock size={16} className="text-purple-400" />
               </div>
-              <span className="text-2xl font-light text-purple-300 mt-2 block font-mono">{metrics.pendingLeads}</span>
-              <span className="text-[9px] block mt-1" style={LABEL_MONO}>Unassigned Queue</span>
+              <span className="text-2xl font-bold text-purple-300 mt-2 block font-mono">{metrics.pendingLeads}</span>
+              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Unassigned Queue</span>
             </div>
 
-            <div className="p-4 border rounded-sm" style={CARD}>
+            <div className="p-4 border rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-sky-400">Num of Drivers</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">Num of Drivers</span>
                 <FiUsers size={16} className="text-sky-400" />
               </div>
-              <span className="text-2xl font-light text-sky-400 mt-2 block font-mono">{metrics.numDrivers}</span>
-              <span className="text-[9px] block mt-1" style={LABEL_MONO}>Active Captains</span>
+              <span className="text-2xl font-bold text-sky-400 mt-2 block font-mono">{metrics.numDrivers}</span>
+              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Active Captains</span>
             </div>
           </div>
 
@@ -1311,6 +1339,21 @@ export default function TransportManager() {
                 <span>Done: <strong className="text-teal-400">{metrics.completedTrips}</strong></span>
               </div>
             </div>
+          </div>
+
+          {/* ─────────────────────────────────────────────────────────────
+              SECTION 3: ENTERPRISE FILE SHARING CENTER
+             ───────────────────────────────────────────────────────────── */}
+          <div className="space-y-2 font-sans border-2 border-teal-800/40 rounded-xl p-4 bg-[var(--crm-bg-raised)] shadow-lg" style={CARD}>
+            <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
+              <h2 className="text-xs uppercase font-bold tracking-wider text-teal-400 font-mono flex items-center gap-2">
+                <FiBriefcase size={16} className="text-teal-400" />ENTERPRISE FILE SHARING CENTER
+              </h2>
+              <span className="text-[10px] text-teal-300 font-bold bg-teal-950/80 border border-teal-800/60 px-2.5 py-0.5 rounded">
+                Secure Operational File Distribution
+              </span>
+            </div>
+            <FileSharingWidget initialTab="RECEIVED" />
           </div>
 
           {/* MIDDLE ROW 1: DRIVER WORKUPDATE LIVE FEED & LEAD ASSIGNMENT DISTRIBUTION */}
@@ -1517,127 +1560,60 @@ export default function TransportManager() {
             </div>
           </div>
 
-          {/* DEDICATED SECTION: COMPLETED & DELIVERED FREIGHT TRIPS */}
-          <div className="border rounded-sm p-4 space-y-3 font-mono" style={CARD}>
-            <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-              <h3 className="text-xs uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
-                <FiCheckCircle size={16} /> COMPLETED & DELIVERED FREIGHT TRIPS SECTION (POD VERIFIED)
-              </h3>
-              <span className="text-[10px] text-emerald-400 font-bold">
-                {[...trips, ...dispatchQueue].filter(t => (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('DELIVER') || (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('COMPLET')).length} Delivered Trips
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1 text-xs custom-scrollbar">
-              {[...trips, ...dispatchQueue].filter(t => (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('DELIVER') || (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('COMPLET')).length === 0 ? (
-                <div className="col-span-2 p-6 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-sm">
-                  No trips marked as delivered yet. When drivers click "Mark Delivered", completed trips will appear in this section for manager verification.
-                </div>
-              ) : (
-                [...trips, ...dispatchQueue].filter(t => (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('DELIVER') || (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('COMPLET')).map((t) => {
-                  const isPodVerified = verifiedPodIds.includes(t._id) || verifiedPodIds.includes(t.orderNumber) || verifiedPodIds.includes(t.dispatchNumber) || t.podStatus === 'VERIFIED' || t.stage === 'COMPLETED' || t.status === 'COMPLETED';
-
-                  return (
-                    <div key={t._id || t.orderNumber} className="p-3.5 border border-emerald-900/50 rounded-sm space-y-2.5 bg-emerald-950/20 shadow-md">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-[9px] text-emerald-400 font-mono font-bold block">Lead Code: {t.dispatchNumber || t.orderNumber || t._id}</span>
-                          <strong className="text-[var(--crm-heading)] text-sm block font-bold">{t.customerName || 'Client'}</strong>
-                          <span className="text-emerald-300 text-[10px] block font-mono">Material: {t.material || t.productName || 'Goods Cargo'}</span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="px-2 py-0.5 border text-[9px] font-bold rounded-sm uppercase text-emerald-400 border-emerald-700 bg-emerald-950/90 shadow-sm flex items-center gap-1">
-                            <FiCheckCircle size={10} className="text-emerald-400" />
-                            {isPodVerified ? 'DEAL WON (FINAL COMPLETED) ✓' : 'DEAL WON (DELIVERED) ✓'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center text-[11px] p-2 rounded-sm bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] font-mono">
-                        <span className="text-[var(--crm-heading)]">📍 {t.origin || 'Delhi'} &rarr; 🚩 {t.destination || 'Destination'}</span>
-                        <span className="text-emerald-400 font-bold font-mono text-xs">
-                          Final Freight Revenue: ₹{Number(t.totalFreightAmount || t.freightAmount || 0).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-[var(--crm-line)] font-mono">
-                        <span className="text-[var(--crm-ink-faint)]">Driver: <strong className="text-[var(--crm-heading)]">{t.driverName || t.assignedDriverName || 'Unassigned Driver'}</strong></span>
-                        
-                        {!isPodVerified ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleVerifyPODAndComplete(t, e)}
-                            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider rounded-sm shadow cursor-pointer transition flex items-center gap-1.5"
-                          >
-                            <FiCheckCircle size={12} /> Verify POD & Complete
-                          </button>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-emerald-950/80 text-emerald-300 text-[9px] font-bold rounded border border-emerald-700 flex items-center gap-1">
-                            <FiCheckCircle size={11} /> POD Verified & Completed ✓
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
           {/* LOWER SECTION: DRIVER SCORECARD & FUEL / MAINTENANCE Tracker */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 font-mono">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 font-sans">
             <DriverCalculator />
 
-            <div className="border rounded-sm p-4 space-y-3" style={CARD}>
+            <div className="border border-[var(--crm-line)] rounded-xl p-4 space-y-3 font-sans shadow-md bg-[var(--crm-bg-raised)]" style={CARD}>
               <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
+                <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2 font-sans text-[var(--crm-heading)]" style={HEADING}>
                   <FiTool className="text-emerald-400" size={15} /> Fuel & Vehicle Maintenance Expenses (Driver Logs)
                 </h3>
-                <span className="text-[9px]" style={LABEL_MONO}>Diesel, Toll, Garage Bills</span>
+                <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-medium">Diesel, Toll, Garage Bills</span>
               </div>
 
-              <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1 text-xs custom-scrollbar">
+              <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1 text-xs custom-scrollbar font-sans">
                 {fuelMaintenanceLogs.length === 0 ? (
-                  <div className="p-6 text-center text-[var(--crm-ink-faint)] text-xs">No fuel or maintenance expense logs recorded yet.</div>
+                  <div className="p-6 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-sans">No fuel or maintenance expense logs recorded yet.</div>
                 ) : (
                   fuelMaintenanceLogs.map((log) => (
-                    <div key={log.id} className="p-3 border rounded-sm space-y-2 font-mono" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
-                      <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-1.5" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                        <span className="text-[var(--crm-heading)] font-bold text-xs flex items-center gap-1.5">
+                    <div key={log.id} className="p-3 border border-[var(--crm-line)] rounded-xl space-y-2 font-sans bg-[var(--crm-bg-sunken)] shadow-sm" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
+                      <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-1.5 font-sans" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
+                        <span className="text-[var(--crm-heading)] font-bold text-xs flex items-center gap-1.5 font-sans">
                           <FiUser className="text-emerald-400" size={12} /> {log.driver} <span className="text-[var(--crm-ink-faint)]">({log.vehicle})</span>
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1">
+                        <div className="flex items-center gap-2 font-sans">
+                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1">
                             <FiCalendar size={11} className="text-teal-400" /> {log.date || log.dateStr || 'Today'} {log.time ? `• ${log.time}` : ''}
                           </span>
-                          <span className="text-[10px] text-teal-300 font-bold bg-teal-950/50 border border-teal-800/60 px-2 py-0.5 rounded-sm flex items-center gap-1">
-                            <FiPackage size={11} /> Log Ref: <strong className="underline text-teal-200">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
+                          <span className="text-[10px] text-teal-300 font-bold bg-teal-950/50 border border-teal-800/60 px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
+                            <FiPackage size={11} /> Log Ref: <strong className="underline text-teal-200 font-mono">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
                           </span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-0.5">
-                        <div className="text-[var(--crm-ink-soft)]">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase">Route Vector</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-0.5 font-sans">
+                        <div className="text-[var(--crm-ink-soft)] font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Route Vector</span>
                           <strong className="text-[var(--crm-heading)] font-bold">📍 {log.fromLocation || 'Delhi'} &rarr; 🚩 {log.toLocation || 'Patna'} ({log.totalKm || 0} KM)</strong>
                         </div>
-                        <div className="text-[var(--crm-ink-soft)]">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase">Fuel Cost</span>
-                          <strong className="text-emerald-400 font-bold">₹{Number(log.fuelCost || 0).toLocaleString('en-IN')} ({log.litres || 0}L)</strong>
+                        <div className="text-[var(--crm-ink-soft)] font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Fuel Cost</span>
+                          <strong className="text-emerald-400 font-bold font-mono">₹{Number(log.fuelCost || 0).toLocaleString('en-IN')} ({log.litres || 0}L)</strong>
                         </div>
-                        <div className="text-[var(--crm-ink-soft)]">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase">Tire & Toll</span>
-                          <strong className="text-sky-300 font-bold">₹{(Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
+                        <div className="text-[var(--crm-ink-soft)] font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Tire & Toll</span>
+                          <strong className="text-sky-300 font-bold font-mono">₹{(Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
                         </div>
-                        <div className="text-right">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase">Trip Expense</span>
-                          <strong className="text-emerald-400 font-bold text-xs">₹{(Number(log.fuelCost || 0) + Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
+                        <div className="text-right font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Trip Expense</span>
+                          <strong className="text-emerald-400 font-bold text-xs font-mono">₹{(Number(log.fuelCost || 0) + Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
                         </div>
                       </div>
 
                       {log.remarks && (
-                        <div className="text-[10px] text-[var(--crm-ink-soft)] pt-1 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-                          <span className="text-[var(--crm-ink-faint)]">Remarks:</span> {log.remarks}
+                        <div className="text-[10px] text-[var(--crm-ink-soft)] pt-1 border-t font-sans" style={{ borderColor: 'rgba(255, 255, 255, 0.05)' }}>
+                          <span className="text-[var(--crm-ink-faint)] font-bold">Remarks:</span> {log.remarks}
                         </div>
                       )}
                     </div>
@@ -2132,14 +2108,6 @@ export default function TransportManager() {
                               <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-1">
                                 <FiCheckCircle size={11} /> Order Finalized & Delivered
                               </span>
-                              {(item.podFileUrl || item.paymentProofUrl) && (
-                                <button
-                                  onClick={() => handleViewPdf(item.podFileUrl || item.paymentProofUrl, `POD_${item.orderNumber}.pdf`)}
-                                  className="text-[9px] px-2 py-1 bg-emerald-900 hover:bg-emerald-800 text-emerald-100 font-bold rounded cursor-pointer"
-                                >
-                                  📄 View POD
-                                </button>
-                              )}
                             </div>
                           </div>
                         );

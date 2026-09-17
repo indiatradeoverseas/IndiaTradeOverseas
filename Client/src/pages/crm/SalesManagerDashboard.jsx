@@ -37,6 +37,7 @@ import {
   FiZap,
   FiMessageSquare
 } from 'react-icons/fi';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 import { 
   ResponsiveContainer, 
   FunnelChart, 
@@ -62,6 +63,7 @@ import { dashboardApi } from '../../api/dashboard';
 import { employeesApi } from '../../api/employees';
 import { salesTrialApi } from '../../api/salesTrialApi';
 import { socketService } from '../../services/socket';
+import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 
 // Framer motion variants
 const containerVariants = {
@@ -587,8 +589,8 @@ export default function SalesManagerDashboard() {
       // 2. Fetch All Leads to compile pipeline funnel and stats
       try {
         const leadsRes = await leadsApi.getLeads({ limit: 500 });
-        if (leadsRes.success) {
-          setAllLeads(leadsRes.data.leads || []);
+        if (leadsRes && (leadsRes.success || leadsRes.leads)) {
+          setAllLeads(leadsRes.data?.leads || leadsRes.leads || []);
         }
       } catch (e) { console.error('Leads fetch error:', e); }
 
@@ -1255,6 +1257,7 @@ export default function SalesManagerDashboard() {
         <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
+            { id: 'sales_activity_monitor', label: 'Sales Activity & Hours', icon: FiClock },
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'lost_analytics', label: 'Closed Lost Audit & Reasons', icon: FiAlertCircle },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
@@ -1295,6 +1298,11 @@ export default function SalesManagerDashboard() {
             transition={{ duration: 0.2 }}
             className="px-0 sm:px-2 space-y-6 w-full min-w-0"
           >
+            {/* TAB: SALES ACTIVITY & WORKING HOURS MONITOR */}
+            {activeTab === 'sales_activity_monitor' && (
+              <EmployeeActivityMonitor scopeDepartment="SALES" showLunchTiming={true} title="Sales Department Employee Activity & Hours Monitor" />
+            )}
+
             {/* TAB 1: TEAM COMMAND CENTER */}
             {activeTab === 'command' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -2652,6 +2660,13 @@ export default function SalesManagerDashboard() {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB: SHARED FILES HUB */}
+            {activeTab === 'shared_files_hub' && (
+              <div className="space-y-6">
+                <FileSharingWidget initialTab="RECEIVED" />
               </div>
             )}
 

@@ -35,10 +35,12 @@ import {
   FiMessageSquare,
   FiMoreHorizontal,
   FiUserPlus,
-  FiZap
+  FiZap,
+  FiPaperclip
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 import { careersApi } from '../../api/careers';
 import { adminApi } from '../../api/admin';
 import { leaveApi } from '../../api/leave';
@@ -49,6 +51,7 @@ import { salesTrialApi } from '../../api/salesTrialApi';
 import { payslipApi } from '../../api/payslip';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
+import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -1039,6 +1042,8 @@ const handleTriggerReset = async () => {
         <nav className="flex space-x-4 min-w-max">
           {[
             { id: 'overview', label: 'Overview', icon: FiList },
+            { id: 'shared_files', label: 'Shared Files', icon: FiPaperclip },
+            { id: 'activity_monitor', label: 'Activity & Working Hours', icon: FiActivity },
             { id: 'directory', label: 'Employees', icon: FiUsers },
             { id: 'pending_registrations', label: 'Pending Registrations', icon: FiUserPlus },
             { id: 'attendance_leave', label: 'Attendance & Leave', icon: FiCalendar },
@@ -1375,6 +1380,20 @@ const handleTriggerReset = async () => {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* TAB: SHARED FILES */}
+            {activeTab === 'shared_files' && (
+              <div className="space-y-4 pb-4">
+                <FileSharingWidget initialTab="RECEIVED" />
+              </div>
+            )}
+
+            {/* TAB 1B: EMPLOYEE ACTIVITY & WORKING HOURS MONITOR */}
+            {activeTab === 'activity_monitor' && (
+              <div className="space-y-4 pb-4">
+                <EmployeeActivityMonitor showLunchTiming={true} title="HR Employee Activity & Working Hours Monitoring Center" />
               </div>
             )}
 

@@ -18,18 +18,36 @@ const AdminLogin = () => {
   const { adminLogin } = useAuth();
   const navigate = useNavigate();
 
+  const handleRedirect = (userObj) => {
+    const role = (userObj?.role || '').toUpperCase();
+    const position = (userObj?.position || '').toLowerCase();
+    const email = (userObj?.email || formData.email || '').toLowerCase();
+    const empId = (userObj?.employeeId || '').toUpperCase();
+
+    const isCEO = role === 'CEO' || position.includes('chief executive') || position === 'ceo' || empId.includes('CEO') || email.startsWith('ceo@');
+    const isFounder = !isCEO && (role === 'FOUNDER' || role === 'CO_FOUNDER' || position.includes('founder') || empId.includes('FOUNDER') || email.startsWith('founder@'));
+
+    if (isFounder) {
+      navigate('/crm/founder');
+    } else if (isCEO) {
+      navigate('/crm/ceo');
+    } else {
+      navigate('/crm/dashboard');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const response = await adminLogin(formData);
       if (response.success) {
-        toast.success('Welcome back, Admin!', {
+        toast.success('Welcome back!', {
           icon: '🛡️',
           style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' }
         });
         pushDataLayerEvent('login', { method: 'admin' });
-        navigate('/crm/dashboard');
+        handleRedirect(response.data?.user);
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Login failed. Please check your credentials.';
@@ -41,10 +59,10 @@ const AdminLogin = () => {
     }
   };
 
-  const handleGoogleSuccess = () => {
-    toast.success('Welcome back, Admin!', { icon: '🛡️', style: toastStyle });
+  const handleGoogleSuccess = (response) => {
+    toast.success('Welcome back!', { icon: '🛡️', style: toastStyle });
     pushDataLayerEvent('login', { method: 'google_admin' });
-    navigate('/crm/dashboard');
+    handleRedirect(response?.data?.user);
   };
 
   const handleGoogleError = (message) => {
@@ -92,11 +110,9 @@ const AdminLogin = () => {
             className="space-y-2 mb-8"
           >
             <h2 className="text-3xl font-serif text-[#F2F4F7] font-light tracking-tight">
-              Admin Login
+              Founder &amp; Admin Login
             </h2>
-            <p className="text-xs text-[#bcc2ca] font-light leading-relaxed">
-              Restricted access. Authenticate via terminal to manage the full CRM, security, and operations.
-            </p>
+
           </motion.div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

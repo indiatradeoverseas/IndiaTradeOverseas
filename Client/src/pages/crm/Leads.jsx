@@ -236,11 +236,18 @@ export default function Leads() {
   ];
 
   const isManagerOrAdmin = 
-    user?.role === 'ADMIN' ||
-    user?.role === 'MANAGER' ||
-    user?.role === 'SALES_MANAGER' ||
+    ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((user?.role || '').toUpperCase()) ||
+    (user?.role && user.role.toUpperCase().endsWith('_MANAGER')) ||
+    (user?.role && user.role.toLowerCase().includes('manager')) ||
+    (user?.role && user.role.toUpperCase().includes('CEO')) ||
     user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'));
+    user?.department === 'MANAGEMENT' ||
+    (user?.position && (
+      user.position.toLowerCase().includes('admin') ||
+      user.position.toLowerCase().includes('manager') ||
+      user.position.toLowerCase().includes('founder') ||
+      user.position.toLowerCase().includes('ceo')
+    ));
 
   useEffect(() => {
     fetchLeads();
@@ -404,6 +411,19 @@ export default function Leads() {
   };
 
   const handleExportLeads = async () => {
+    const role = (user?.role || '').toUpperCase();
+    const isFounderOrAdmin =
+      ['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) ||
+      user?.department === 'ADMIN' ||
+      user?.department === 'MANAGEMENT' ||
+      (user?.position && (user.position.toLowerCase().includes('admin') || user.position.toLowerCase().includes('founder') || user.position.toLowerCase().includes('ceo')));
+    const canExport = isFounderOrAdmin || user?.exportPermission === true;
+
+    if (!canExport) {
+      toast.error("Export Restricted: Managers cannot export database unless granted permission by Founder!");
+      return;
+    }
+
     try {
       const deviceHash = localStorage.getItem('deviceHash') || 'dev-device-hash';
 
@@ -706,7 +726,7 @@ export default function Leads() {
   const isWonOrDelivered = (stage) => {
     if (!stage) return false;
     const s = String(stage).toUpperCase().replace(/\s+/g, '_');
-    return ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
+    return ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
   };
 
   const isOrderConfirmedStage = (stage) => {
@@ -737,7 +757,10 @@ export default function Leads() {
     return ['CLOSED_LOST', 'DEAL_LOST'].includes(s);
   };
 
-  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED'];
+  const completedStages = [
+    'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED',
+    'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'
+  ];
 
   const activeLeads = leads.filter(l => !completedStages.includes((l.stage || '').toUpperCase()));
   const completedLeads = leads.filter(l => completedStages.includes((l.stage || '').toUpperCase()));
@@ -766,7 +789,12 @@ export default function Leads() {
 
     if (filterCategory !== 'ALL') {
       const catUpper = String(lead.productCategory || '').toUpperCase();
-      if (!catUpper.includes(filterCategory)) return false;
+      const mainCategories = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'];
+      if (filterCategory === 'OTHERS') {
+        if (mainCategories.some(c => catUpper.includes(c))) return false;
+      } else {
+        if (!catUpper.includes(filterCategory)) return false;
+      }
     }
 
     if (filterAssignee === 'MY') {
@@ -1023,7 +1051,7 @@ export default function Leads() {
           <div>
             <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Conversion Rate</span>
             <span className="text-base font-bold text-[var(--crm-info)]">
-              {leads.length > 0 ? Math.round((leads.filter(l => ['CLOSED_WON', 'DEAL_WON'].includes(l.stage)).length / leads.length) * 100) : 0}%
+              {leads.length > 0 ? Math.round((leads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((l.stage || '').toUpperCase())).length / leads.length) * 100) : 0}%
             </span>
           </div>
         </motion.div>
@@ -1131,12 +1159,12 @@ export default function Leads() {
                 {isManagerOrAdmin ? '(Click any employee to filter their assigned leads)' : '(Filtered for your assigned workspace)'}
               </span>
             </div>
-            {filterAssignee !== 'ALL' && (
+            {(filterAssignee !== 'ALL' || filterCategory !== 'ALL') && (
               <button
-                onClick={() => setFilterAssignee('ALL')}
+                onClick={() => { setFilterAssignee('ALL'); setFilterCategory('ALL'); }}
                 className="text-[9px] text-rose-400 hover:underline uppercase font-bold cursor-pointer"
               >
-                Clear Filter (Show All)
+                Clear Filters (Show All)
               </button>
             )}
           </div>
@@ -1206,15 +1234,38 @@ export default function Leads() {
 
         {/* Search & Filter Controls */}
         <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm flex flex-col md:flex-row gap-4 items-center">
-          <div className="flex-1 w-full relative">
-            <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
-            <input
-              type="text"
-              placeholder="Search leads by customer, code, or company..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
-            />
+          <div className="flex-1 w-full flex flex-col sm:flex-row gap-3 items-center">
+            <div className="relative flex-1 w-full">
+              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
+              <input
+                type="text"
+                placeholder="Search leads by customer, code, or company..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+              />
+            </div>
+
+            {/* Category Filter Dropdown */}
+            <div className="w-full sm:w-auto shrink-0 flex items-center gap-2">
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className={`w-full sm:w-auto px-3.5 py-2.5 text-xs font-mono font-bold rounded-sm border outline-none cursor-pointer transition shadow-sm ${
+                  filterCategory !== 'ALL'
+                    ? 'bg-amber-950/80 text-amber-300 border-amber-600 ring-1 ring-amber-500/50'
+                    : 'bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-ink-soft)]/40'
+                }`}
+              >
+                <option value="ALL" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]">All Categories</option>
+                <option value="STONE" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Stone</option>
+                <option value="COAL" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Coal</option>
+                <option value="TEA" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Tea</option>
+                <option value="RICE" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Rice</option>
+                <option value="TRANSPORT" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Transport</option>
+                <option value="OTHERS" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Others</option>
+              </select>
+            </div>
           </div>
 
           {/* Temperature Filters */}
@@ -1397,9 +1448,9 @@ export default function Leads() {
                           {getLeadValuationDisplay(lead)}
                         </td>
                         <td className="py-3.5 px-5 text-center">
-                          {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
+                          {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
                             <span className="px-2.5 py-1 border text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-950/80 border-emerald-800 text-emerald-400 rounded shadow-sm">
-                              🏆 CLOSED WON
+                              ✓ {lead.stage?.replace(/_/g, ' ')}
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[var(--crm-bg-sunken)]/60 border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
@@ -1408,12 +1459,12 @@ export default function Leads() {
                           )}
                         </td>
                         <td className="py-3.5 px-5 text-center font-mono text-[11px]">
-                          {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
+                          {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
                             <div className="space-y-0.5">
                               <span className="text-emerald-400 font-bold block">
                                 ✓ {execName}
                               </span>
-                              <span className="text-[8px] text-emerald-500/80 uppercase font-mono block">Completed Deal Owner</span>
+                              <span className="text-[8px] text-emerald-500/80 uppercase font-mono block">Completed Sales Owner</span>
                             </div>
                           ) : (
                             <span className="text-[var(--crm-heading)] font-semibold">

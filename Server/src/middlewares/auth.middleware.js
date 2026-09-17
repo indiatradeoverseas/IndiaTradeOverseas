@@ -61,6 +61,11 @@ async function authenticate(req, res, next) {
           { _id: user._id },
           { $set: { isOnline: true, lastActiveAt: new Date() } }
         );
+        // Trigger Employee Activity heartbeat asynchronously
+        const employeeActivityService = require('../modules/employee-activity/employeeActivity.service');
+        employeeActivityService.recordHeartbeat(user).catch(err => {
+          console.error('Asynchronous heartbeat error:', err);
+        });
       } catch (err) {
         console.error('Error updating user active status in middleware:', err);
       }
@@ -80,6 +85,18 @@ async function authenticate(req, res, next) {
         user = user.toObject();
       }
       user.employeeDbId = user._id;
+
+      // Trigger Employee Activity heartbeat for Employee/Admin model logins too
+      if (foundIn === 'Employee') {
+        try {
+          const employeeActivityService = require('../modules/employee-activity/employeeActivity.service');
+          employeeActivityService.recordHeartbeat(user).catch(err => {
+            console.error('Asynchronous heartbeat error (Employee):', err);
+          });
+        } catch (err) {
+          console.error('Error recording heartbeat for Employee login:', err);
+        }
+      }
     }
 
     user.modelName = foundIn;
@@ -137,13 +154,16 @@ async function authenticateDistributor(req, res, next) {
   }
 }
 
+const TOP_EXECUTIVE_ROLES = ['FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN'];
+
 function authorize(allowedRoles = []) {
   return (req, res, next) => {
     if (!req.user) {
       return fail(res, 401, 'AUTH_UNAUTHORIZED', 'User not authenticated', [], req);
     }
     const userRole = req.user.role;
-    if (allowedRoles.length && !allowedRoles.includes(userRole)) {
+    const isExecutive = TOP_EXECUTIVE_ROLES.includes((userRole || '').toUpperCase());
+    if (allowedRoles.length && !allowedRoles.includes(userRole) && !isExecutive) {
       return fail(res, 403, 'AUTH_FORBIDDEN', 'You do not have permission to access this resource', [], req);
     }
     next();

@@ -24,6 +24,8 @@ import { employeesApi } from '../../api/employees';
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../services/socket';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
+import AiAssistantWidget from '../../components/crm/AiAssistantWidget';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -652,14 +654,14 @@ export default function TrialDashboard() {
   // Target Metrics Calculations (Sales Executive Style)
   const targetVal = performance?.target?.targetValue || 2500000; // Default ₹25 Lakhs
   const wonRevenue = myLeads
-    .filter(d => ['CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase()))
+    .filter(d => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase()))
     .reduce((sum, d) => sum + (Number(d.leadValue) || 0), 0);
   const achievedVal = performance?.revenue || wonRevenue || 0;
   const remainingVal = Math.max(0, targetVal - achievedVal);
   const targetProgressPercent = Math.min(100, Math.round((achievedVal / targetVal) * 100));
 
   const totalMyLeads = myLeads.length;
-  const wonMyDeals = myLeads.filter(d => ['CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase())).length;
+  const wonMyDeals = myLeads.filter(d => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase())).length;
   const conversionRate = totalMyLeads > 0 ? Math.round((wonMyDeals / totalMyLeads) * 100) : 0;
 
   const radius = 50;
@@ -672,7 +674,7 @@ export default function TrialDashboard() {
 
   // Filtering Metrics
   const newLeadsCount = myLeads.filter(l => ['NEW', 'QUALIFICATION', 'UNCONTACTED', 'LEAD_QUALIFICATION'].includes((l.stage || '').toUpperCase())).length;
-  const pendingLeadsCount = myLeads.filter(l => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase())).length;
+  const pendingLeadsCount = myLeads.filter(l => !['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase())).length;
   const lostLeadsCount = myLeads.filter(l => ['CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase())).length;
   const pendingTasksCount = myTasks.filter(t => t.status !== 'COMPLETED').length;
   const completedTasksCount = myTasks.filter(t => t.status === 'COMPLETED').length;
@@ -1280,6 +1282,18 @@ export default function TrialDashboard() {
                   </div>
                 </div>
 
+                {/* Shared Files Widget directly on Dashboard */}
+                <div className="mt-6">
+                  <FileSharingWidget initialTab="RECEIVED" />
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB: SHARED FILES */}
+            {activeTab === 'shared_files' && (
+              <div className="space-y-6">
+                <FileSharingWidget initialTab="RECEIVED" />
               </div>
             )}
 
@@ -1506,6 +1520,16 @@ export default function TrialDashboard() {
                             <div className="flex justify-between items-center gap-4 text-[9px] font-mono font-bold opacity-80 border-b border-white/10 pb-1">
                               <span>{msg.senderName} ({msg.senderRole || 'Executive'})</span>
                             </div>
+                            {msg.leadCode && (
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/crm/leads/${msg.leadCode}`)}
+                                className="mb-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/40 text-amber-300 hover:text-amber-100 border border-amber-500/40 font-mono text-[9px] font-bold cursor-pointer transition shadow-xs"
+                                title={`Click to open lead ${msg.leadCode}`}
+                              >
+                                🏷️ Lead: <strong className="underline">{msg.leadCode} ↗</strong>
+                              </button>
+                            )}
                             <div className="leading-relaxed break-words font-sans text-xs pt-1">
                               {renderMessageContent(msg.message || msg.content, myLeads)}
                             </div>
@@ -2034,6 +2058,9 @@ export default function TrialDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* GLOBAL NVIDIA AI VOICE & TEXT COMMAND WIDGET */}
+      <AiAssistantWidget />
 
     </motion.div>
   );

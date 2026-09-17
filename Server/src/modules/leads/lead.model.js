@@ -437,6 +437,16 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
+    assignedBy: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+
+    assignedByName: {
+      type: String,
+      default: "",
+    },
+
     assignedDepartment: {
       type: String,
       enum: [

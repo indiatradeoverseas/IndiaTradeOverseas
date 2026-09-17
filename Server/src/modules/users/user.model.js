@@ -41,13 +41,23 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['ADMIN', 'MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'IT', 'FINANCE', 'SOFTWARE_ENGINEER', 'SYSTEM', 'AI', 'TRANSPORT', 'LOGISTICS', 'DRIVER'],
+      enum: [
+        'ADMIN', 'MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'IT', 
+        'FINANCE', 'SOFTWARE_ENGINEER', 'SYSTEM', 'AI', 'TRANSPORT', 'LOGISTICS', 
+        'DRIVER', 'FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN', 'SALES_MANAGER', 
+        'SALES_EXECUTIVE', 'HR_MANAGER', 'HR_EXECUTIVE', 'FINANCE_MANAGER', 
+        'TRANSPORT_MANAGER', 'TRANSPORT_EXECUTIVE'
+      ],
       required: true,
       default: ''
     },
     department: {
       type: String,
-      enum: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'LOGISTICS', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES', 'CRM', 'FINANCE'],
+      enum: [
+        'STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'LOGISTICS', 'ADMIN', 'IT', 
+        'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES', 'CRM', 'FINANCE', 'MANAGEMENT', 
+        'EXECUTIVE'
+      ],
       required: true,
       default: ''
     },
@@ -113,6 +123,10 @@ const userSchema = new mongoose.Schema(
       default: false
     },
     jobPermission: {
+      type: Boolean,
+      default: false
+    },
+    importPermission: {
       type: Boolean,
       default: false
     },

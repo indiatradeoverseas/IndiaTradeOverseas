@@ -62,6 +62,16 @@ export const adminApi = {
     return response.data;
   },
 
+  async updatePermissions(userId, permissions) {
+    const response = await axiosInstance.patch(`/admin/users/${userId}/permissions`, permissions);
+    return response.data;
+  },
+
+  async updateImportPermission(userId, importPermission) {
+    const response = await axiosInstance.patch(`/admin/users/${userId}/import-permission`, { importPermission });
+    return response.data;
+  },
+
   async updateExportPermission(userId, exportPermission) {
     const response = await axiosInstance.patch(`/admin/users/${userId}/export-permission`, { exportPermission });
     return response.data;

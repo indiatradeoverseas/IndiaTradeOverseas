@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiBell, FiCheckCircle, FiClock, FiUserCheck, FiCalendar, 
-  FiAlertCircle, FiCheck, FiX, FiTrash2 
+  FiAlertCircle, FiCheck, FiX, FiTrash2, FiFileText, FiFolder 
 } from 'react-icons/fi';
 import { notificationsApi } from '../../api/notifications';
 import { 
@@ -13,6 +14,7 @@ import {
 } from '../../utils/notificationStorage';
 
 export default function NotificationDropdown({ compact = false }) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -47,14 +49,28 @@ export default function NotificationDropdown({ compact = false }) {
     }
   };
 
-  const handleMarkRead = async (id, e) => {
+  const handleNotificationClick = async (notif, e) => {
     if (e) e.stopPropagation();
-    saveReadNotificationId(id);
-    setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-    try {
-      await notificationsApi.markRead(id);
-    } catch (err) {
-      console.warn(err);
+    saveReadNotificationId(notif._id);
+    setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, isRead: true } : n));
+    setIsOpen(false);
+
+    if (!notif.isRead) {
+      notificationsApi.markRead(notif._id).catch(() => {});
+    }
+
+    if (
+      notif.type === 'FILE_SHARED' || 
+      notif.type === 'SHARED_FILE' || 
+      notif.metadata?.sharedFileId || 
+      notif.metadata?.link === '/crm/shared-files' ||
+      (notif.message && notif.message.toLowerCase().includes('shared a file'))
+    ) {
+      navigate('/crm/shared-files');
+    } else if (notif.type === 'TASK_ASSIGNMENT' && notif.metadata?.leadId) {
+      navigate(`/crm/leads/${notif.metadata.leadId}`);
+    } else if (notif.type === 'SECURITY_ALERT') {
+      navigate('/crm/security');
     }
   };
 
@@ -179,7 +195,7 @@ export default function NotificationDropdown({ compact = false }) {
                 notifications.map((notif) => (
                   <div
                     key={notif._id}
-                    onClick={(e) => handleMarkRead(notif._id, e)}
+                    onClick={(e) => handleNotificationClick(notif, e)}
                     className={`p-3.5 flex items-start gap-3 transition cursor-pointer group ${
                       notif.isRead 
                         ? 'opacity-70 hover:bg-[var(--crm-bg-sunken)]/50' 

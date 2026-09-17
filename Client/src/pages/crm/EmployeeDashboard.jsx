@@ -22,6 +22,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { attendanceApi } from '../../api/attendance';
 import { leaveApi } from '../../api/leave';
 import { taskApi } from '../../api/task';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 // Animation variants matching CRM portal design system
 const containerVariants = {
@@ -319,6 +320,7 @@ export default function EmployeeDashboard() {
         <nav className="flex space-x-6 min-w-max">
           {[
             { id: 'overview', label: 'Dashboard Overview', icon: FiActivity },
+            { id: 'shared-files', label: 'Received Shared Files', icon: FiPaperclip },
             { id: 'tasks', label: `My Tasks (${tasks.filter(t => t.status !== 'COMPLETED').length})`, icon: FiCheckSquare },
             { id: 'leaves', label: 'Leaves Desk', icon: FiCalendar },
             { id: 'profile', label: 'My Profile Card', icon: FiUser }
@@ -514,6 +516,18 @@ export default function EmployeeDashboard() {
 
               </div>
 
+              {/* Shared Files Widget Section directly on Dashboard Overview */}
+              <div className="lg:col-span-12">
+                <FileSharingWidget initialTab="RECEIVED" />
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB: SHARED FILES */}
+          {activeTab === 'shared-files' && (
+            <div className="space-y-6">
+              <FileSharingWidget initialTab="RECEIVED" />
             </div>
           )}
 

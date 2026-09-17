@@ -12,5 +12,24 @@ export const aiApi = {
       userContext
     });
     return response.data;
+  },
+
+  /**
+   * Send voice or text command for intent parsing & RBAC authorization
+   * @param {string} userCommand 
+   */
+  async sendVoiceOrTextCommand(userCommand) {
+    const response = await axiosInstance.post('/ai/command', {
+      userCommand
+    });
+    return response.data;
+  },
+
+  /**
+   * Get dynamic role-based greeting for logged in user
+   */
+  async getRoleGreeting() {
+    const response = await axiosInstance.get('/ai/greeting');
+    return response.data;
   }
 };

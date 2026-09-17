@@ -173,16 +173,36 @@ async function login(req, res, next) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const employee = await Employee.findOne({ email: new RegExp('^' + normalizedEmail + '$', 'i') });
-    if (!employee || employee.status !== 'ACTIVE') {
+    let employee = await Employee.findOne({ email: new RegExp('^' + normalizedEmail + '$', 'i') });
+    let isUserDoc = false;
+
+    if (!employee) {
+      const user = await User.findOne({ email: new RegExp('^' + normalizedEmail + '$', 'i') });
+      if (user) {
+        employee = user;
+        isUserDoc = true;
+      }
+    }
+
+    if (!employee) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials or employee deactivated', [], req);
     }
 
-    if (!employee.password) {
+    const role = (employee.role || '').toUpperCase();
+    const position = (employee.position || '').toLowerCase();
+    const isFounder = ['FOUNDER', 'CO_FOUNDER'].includes(role) || position.includes('founder');
+
+    // Reject Founder from logging in via Employee Login portal
+    if (isFounder) {
+      return fail(res, 403, 'ACCESS_DENIED', 'Founder accounts must log in via Admin Login portal.');
+    }
+
+    const passwordField = isUserDoc ? (employee.passwordHash || employee.password) : employee.password;
+    if (!passwordField) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials', [], req);
     }
 
-    const isMatch = await bcrypt.compare(password, employee.password);
+    const isMatch = await bcrypt.compare(password, passwordField);
     if (!isMatch) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid credentials', [], req);
     }
@@ -191,14 +211,14 @@ async function login(req, res, next) {
 
     const employeeResponse = {
       _id: employee._id,
-      employeeId: employee.employeeId,
-      name: employee.name,
+      employeeId: employee.employeeId || 'EMP_ADMIN',
+      name: employee.name || employee.fullName,
       email: employee.email,
       role: employee.role,
-      department: employee.department,
-      position: employee.position,
+      department: employee.department || 'ADMIN',
+      position: employee.position || employee.role,
       joiningDate: employee.joiningDate,
-      status: employee.status,
+      status: employee.status || 'ACTIVE',
       phone: employee.phone,
       address: employee.address,
       profileImage: employee.profileImage
@@ -1075,11 +1095,70 @@ async function updateEmployeeStatus(req, res, next) {
 
 async function getAllEmployees(req, res, next) {
   try {
-    const employees = await Employee.find(
-      { status: { $ne: 'TERMINATED' } },
-      { _id: 1, name: 1, email: 1, employeeId: 1, role: 1, department: 1, position: 1, status: 1, joiningDate: 1, salary: 1 }
-    ).sort({ employeeId: 1 });
-    return ok(res, { employees }, 'Employees retrieved successfully', 200, req);
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+    const [employees, users, trialUsers] = await Promise.all([
+      Employee.find(
+        { status: { $ne: 'TERMINATED' } },
+        { _id: 1, name: 1, email: 1, employeeId: 1, role: 1, department: 1, position: 1, status: 1, joiningDate: 1, salary: 1 }
+      ).sort({ employeeId: 1 }).lean(),
+      User.find(
+        { role: { $nin: ['SYSTEM', 'AI'] } },
+        { _id: 1, fullName: 1, name: 1, email: 1, employeeId: 1, role: 1, department: 1, position: 1, isActive: 1 }
+      ).lean(),
+      SalesTrialUser.find(
+        { status: { $ne: 'REJECTED' } },
+        { _id: 1, fullName: 1, name: 1, trialId: 1, email: 1, role: 1, department: 1, position: 1, status: 1, joiningDate: 1 }
+      ).lean()
+    ]);
+
+    const empMap = new Map();
+
+    employees.forEach(emp => {
+      if (emp.email) {
+        empMap.set(emp.email.toLowerCase(), { ...emp });
+      }
+    });
+
+    users.forEach(u => {
+      if (u.email) {
+        const key = u.email.toLowerCase();
+        if (!empMap.has(key)) {
+          empMap.set(key, {
+            _id: u._id,
+            name: u.fullName || u.name || 'Staff User',
+            email: u.email,
+            employeeId: u.employeeId || 'EMP',
+            role: u.role || 'EMPLOYEE',
+            department: u.department || 'GENERAL',
+            position: u.position || 'Staff',
+            status: u.isActive !== false ? 'ACTIVE' : 'INACTIVE',
+            joiningDate: u.createdAt || new Date()
+          });
+        }
+      }
+    });
+
+    trialUsers.forEach(t => {
+      if (t.email) {
+        const key = t.email.toLowerCase();
+        if (!empMap.has(key)) {
+          empMap.set(key, {
+            _id: t._id,
+            name: t.fullName || t.name || 'Sales Trial User',
+            email: t.email,
+            employeeId: t.trialId || 'TRL',
+            role: t.role || 'SALES_TRIAL',
+            department: t.department || 'SALES_TRIAL',
+            position: t.position || 'Sales Trial Executive',
+            status: t.status || 'ACTIVE',
+            joiningDate: t.joiningDate || t.createdAt || new Date()
+          });
+        }
+      }
+    });
+
+    const combinedList = Array.from(empMap.values());
+    return ok(res, { employees: combinedList }, 'Employees retrieved successfully', 200, req);
   } catch (error) {
     next(error);
   }

@@ -121,7 +121,15 @@ export default function Notifications() {
         notificationsApi.markRead(notification._id).catch(() => {});
       }
 
-      if (notification.type === 'TASK_ASSIGNMENT' && notification.metadata?.leadId) {
+      if (
+        notification.type === 'FILE_SHARED' || 
+        notification.type === 'SHARED_FILE' || 
+        notification.metadata?.sharedFileId || 
+        notification.metadata?.link === '/crm/shared-files' ||
+        (notification.message && notification.message.toLowerCase().includes('shared a file'))
+      ) {
+        navigate('/crm/shared-files');
+      } else if (notification.type === 'TASK_ASSIGNMENT' && notification.metadata?.leadId) {
         navigate(`/crm/leads/${notification.metadata.leadId}`);
       } else if (notification.type === 'SECURITY_ALERT') {
         navigate('/crm/security');
