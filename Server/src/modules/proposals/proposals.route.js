@@ -13,8 +13,8 @@ const { authenticate, authenticateDistributor } = require('../../middlewares/aut
 
 const checkAdminManagerHR = (req, res, next) => {
   const userRole = (req.user?.role || '').toUpperCase();
-  const allowedRoles = ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'FINANCE_MANAGER', 'TRANSPORT_MANAGER', 'HR', 'EXECUTIVE', 'SALES_EXECUTIVE', 'EMPLOYEE'];
-  if (allowedRoles.includes(userRole) || userRole.includes('MANAGER') || userRole.includes('EXECUTIVE') || userRole.includes('ADMIN')) {
+  const allowedRoles = ['FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SALES_MANAGER', 'FINANCE_MANAGER', 'TRANSPORT_MANAGER', 'HR', 'EXECUTIVE', 'SALES_EXECUTIVE', 'EMPLOYEE'];
+  if (allowedRoles.includes(userRole) || userRole.includes('FOUNDER') || userRole.includes('CEO') || userRole.includes('MANAGER') || userRole.includes('EXECUTIVE') || userRole.includes('ADMIN')) {
     return next();
   }
   return require('../../utils/response').fail(res, 403, 'FORBIDDEN', 'Access denied. Unauthorized role.');

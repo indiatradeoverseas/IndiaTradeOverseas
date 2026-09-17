@@ -42,7 +42,7 @@ router.get('/', checkPermission('documentPermission'), getDocuments);
 router.post('/upload', checkPermission('documentPermission'), upload.single('file'), uploadDocument);
 router.post('/', checkPermission('documentPermission'), upload.single('file'), uploadDocument); 
 router.get('/:id', checkPermission('documentPermission'), getDocumentDetails);
-router.get('/:id/download', checkPermission('documentPermission'), downloadDoc);
+router.get('/:id/download', checkPermission('exportPermission'), downloadDoc);
 router.patch('/:id/approve', rbac('ADMIN', 'MANAGER'), approveDocument);
 router.patch('/:id/reject', rbac('ADMIN', 'MANAGER'), rejectDocument);
 router.post('/:id/new-version', checkPermission('documentPermission'), upload.single('file'), uploadNewVersion);

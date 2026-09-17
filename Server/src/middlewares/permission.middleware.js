@@ -12,21 +12,27 @@ const rolePermissions = {
     quotationPermission: true
   },
   MANAGER: {
-    exportPermission: true,
+    exportPermission: false,
+    importPermission: true,
     productUploadPermission: true,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
     paymentPermission: true,
-    quotationPermission: true
+    quotationPermission: true,
+    jobPermission: true
   },
   SALES: {
+    exportPermission: false,
+    importPermission: false,
     leadPermission: true,
     taskPermission: true,
     documentPermission: true
   },
   SALES_MANAGER: {
+    exportPermission: false,
+    importPermission: true,
     leadPermission: true,
     taskPermission: true,
     documentPermission: true,
@@ -35,6 +41,7 @@ const rolePermissions = {
     dispatchPermission: true
   },
   SALES_EXECUTIVE: {
+    exportPermission: false,
     leadPermission: true,
     taskPermission: true,
     documentPermission: true,
@@ -43,6 +50,7 @@ const rolePermissions = {
     dispatchPermission: true
   },
   SALES_TRIAL: {
+    exportPermission: false,
     leadPermission: true,
     taskPermission: true,
     documentPermission: true,
@@ -51,87 +59,91 @@ const rolePermissions = {
     dispatchPermission: true
   },
   ACCOUNTS: {
+    exportPermission: false,
     paymentPermission: true,
     leadPermission: true,
     documentPermission: true
   },
   FINANCE: {
+    exportPermission: false,
     paymentPermission: true,
     leadPermission: true,
     documentPermission: true
   },
   PROCUREMENT: {
+    exportPermission: false,
     dispatchPermission: true,
     leadPermission: true,
     documentPermission: true
   },
   HR: {
+    exportPermission: false,
     leadPermission: true,
     taskPermission: true,
     documentPermission: true
   },
   DRIVER: {
-    exportPermission: true,
-    productUploadPermission: true,
+    exportPermission: false,
+    productUploadPermission: false,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
-    paymentPermission: true,
-    quotationPermission: true
+    paymentPermission: false,
+    quotationPermission: false
   },
   FLEET_CAPTAIN: {
-    exportPermission: true,
-    productUploadPermission: true,
+    exportPermission: false,
+    productUploadPermission: false,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
-    paymentPermission: true,
-    quotationPermission: true
+    paymentPermission: false,
+    quotationPermission: false
   },
   TRANSPORT: {
-    exportPermission: true,
-    productUploadPermission: true,
+    exportPermission: false,
+    productUploadPermission: false,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
-    paymentPermission: true,
-    quotationPermission: true
+    paymentPermission: false,
+    quotationPermission: false
   },
   TRANSPORT_MANAGER: {
-    exportPermission: true,
-    productUploadPermission: true,
+    exportPermission: false,
+    productUploadPermission: false,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
-    paymentPermission: true,
-    quotationPermission: true
+    paymentPermission: false,
+    quotationPermission: false
   },
   LOGISTICS: {
-    exportPermission: true,
-    productUploadPermission: true,
+    exportPermission: false,
+    productUploadPermission: false,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
-    paymentPermission: true,
-    quotationPermission: true
+    paymentPermission: false,
+    quotationPermission: false
   },
   LOGISTICS_MANAGER: {
-    exportPermission: true,
-    productUploadPermission: true,
+    exportPermission: false,
+    productUploadPermission: false,
     leadPermission: true,
     documentPermission: true,
     taskPermission: true,
     dispatchPermission: true,
-    paymentPermission: true,
-    quotationPermission: true
+    paymentPermission: false,
+    quotationPermission: false
   },
   IT: {
-    exportPermission: true,
+    exportPermission: false,
     productUploadPermission: true,
     leadPermission: true,
     documentPermission: true,
@@ -141,7 +153,7 @@ const rolePermissions = {
     quotationPermission: true
   },
   SOFTWARE_ENGINEER: {
-    exportPermission: true,
+    exportPermission: false,
     productUploadPermission: true,
     leadPermission: true,
     documentPermission: true,
@@ -149,6 +161,24 @@ const rolePermissions = {
     dispatchPermission: true,
     paymentPermission: true,
     quotationPermission: true
+  },
+  EMPLOYEE: {
+    exportPermission: false,
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    quotationPermission: true,
+    paymentPermission: true,
+    dispatchPermission: true
+  },
+  USER: {
+    exportPermission: false,
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    quotationPermission: true,
+    paymentPermission: true,
+    dispatchPermission: true
   }
 };
 
@@ -158,34 +188,74 @@ function checkPermission(...permissionNames) {
       return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Unauthorized: Authentication required', [], req);
     }
 
-    // Admin role, ADMIN department, or Admin designations get bypass access to all CRM resources
+    const userRole = String(req.user.role || '').toUpperCase().trim();
+    const userDept = String(req.user.department || '').toUpperCase().trim();
+    const userPosition = String(req.user.position || '').toLowerCase().trim();
+
+    // 1. Admin role, ADMIN department, or Admin/Founder designations get full bypass access
     const isAdminUser =
-      req.user.role === 'ADMIN' ||
-      req.user.department === 'ADMIN' ||
-      (req.user.position && req.user.position.toLowerCase().includes('admin'));
+      userRole === 'ADMIN' ||
+      userRole === 'FOUNDER' ||
+      userRole === 'SUPER_ADMIN' ||
+      userRole === 'CO_FOUNDER' ||
+      userDept === 'ADMIN' ||
+      userPosition.includes('admin') ||
+      userPosition.includes('founder') ||
+      userRole.toLowerCase().includes('founder');
 
     if (isAdminUser) {
       return next();
     }
 
+    // 2. Check if user is a Manager (e.g. MANAGER, SALES_MANAGER, HR_MANAGER, etc.)
+    const isManagerUser =
+      userRole === 'MANAGER' ||
+      userRole.endsWith('_MANAGER') ||
+      userRole.includes('MANAGER') ||
+      userPosition.includes('manager');
+
     const hasAnyPermission = permissionNames.some(perm => {
-      // 1. Check nested permissions on Employee model (e.g. exportPermission -> permissions.export)
-      if (req.user.permissions) {
-        const shortName = perm.replace('Permission', '');
-        if (req.user.permissions[shortName] === true) return true;
+      const shortName = perm.replace('Permission', '');
+
+      // Special rule: EXPORT PERMISSION (export / exportPermission)
+      // Export is strictly blocked for non-Admins UNLESS explicitly set to true on user document/permissions
+      if (shortName === 'export' || perm === 'exportPermission') {
+        if (req.user.permissions && (req.user.permissions.export === true || req.user.permissions.exportPermission === true)) return true;
+        if (req.user.exportPermission === true) return true;
+        return false; // Block export by default for Managers & Employees
       }
 
-      // 2. Check root properties on User model
+      // For Managers (SALES_MANAGER, MANAGER, etc.), grant standard operational permissions by default (leads, tasks, import, documents, dispatch, payment, quotation)
+      if (isManagerUser) {
+        if (req.user.permissions && (req.user.permissions[shortName] === false || req.user.permissions[perm] === false)) {
+          return false; // Founder explicitly revoked this permission
+        }
+        return true; // Managers get default operational access to leads, tasks, import, docs, etc.
+      }
+
+      // 3. For non-manager employees: Check explicit true on user model or nested permissions
+      if (req.user.permissions) {
+        if (req.user.permissions[shortName] === true || req.user.permissions[perm] === true) return true;
+        // Don't auto-block leads or tasks for active employees if shortName is lead or task
+        if (shortName !== 'lead' && shortName !== 'task' && perm !== 'leadPermission' && perm !== 'taskPermission') {
+          if (req.user.permissions[shortName] === false || req.user.permissions[perm] === false) return false;
+        }
+      }
+
       if (req.user[perm] === true) return true;
 
-      // 3. Check role-based defaults (case-insensitive keys)
-      const roleKey = String(req.user.role || '').toUpperCase();
-      const deptKey = String(req.user.department || '').toUpperCase();
-      const rolePerms = rolePermissions[roleKey] || rolePermissions[deptKey];
+      // Check role default
+      const rolePerms = rolePermissions[userRole] || rolePermissions[userDept];
       if (rolePerms && rolePerms[perm] === true) return true;
+
+      // Default grant lead/task permissions for general active employees
+      if (shortName === 'lead' || shortName === 'task' || perm === 'leadPermission' || perm === 'taskPermission') {
+        return true;
+      }
 
       return false;
     });
+
     if (hasAnyPermission) {
       return next();
     }

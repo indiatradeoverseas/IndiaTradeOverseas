@@ -16,7 +16,8 @@ import SalesManagerDashboard from './SalesManagerDashboard';
 import HrManagerDashboard from './HrManagerDashboard';
 import HrExecutiveDashboard from './HrExecutiveDashboard';
 import FinanceManagerDashboard from './FinanceManagerDashboard';
-import FinanceDashboard from './FinanceDashboard';
+import FounderDashboard from './FounderDashboard';
+import CEODashboard from './CEODashboard';
 import TransportManager from './transport/TransportManager';
 import TransportExecutive from './transport/TransportExecutive';
 import DriverMobileView from './transport/DriverMobileView';
@@ -206,6 +207,17 @@ export default function Dashboard() {
   const role = user?.role || '';
   const pos = user?.position?.toLowerCase() || '';
 
+  const isCEO = role === 'CEO' || pos.includes('chief executive') || pos === 'ceo' || user?.email?.toLowerCase()?.startsWith('ceo@');
+  const isFounder = !isCEO && (role === 'FOUNDER' || role === 'CO_FOUNDER' || pos.includes('founder') || user?.email?.toLowerCase()?.startsWith('founder@'));
+
+  if (isFounder) {
+    return <FounderDashboard />;
+  }
+
+  if (isCEO) {
+    return <CEODashboard />;
+  }
+
   // 1. Transport Department Routing
   const isTransportDept = (dept === 'TRANSPORT' || dept === 'LOGISTICS' || role === 'TRANSPORT' || role === 'LOGISTICS' || role === 'DRIVER') && !isAdmin;
   const isTransportManager = isTransportDept && (role === 'MANAGER' || role === 'TRANSPORT_MANAGER' || role === 'LOGISTICS_MANAGER' || pos.includes('manager'));
@@ -252,15 +264,8 @@ export default function Dashboard() {
 
   // 4. Finance Department Routing
   const isFinanceDept = (dept === 'FINANCE' || dept === 'ACCOUNTS' || role === 'FINANCE' || role === 'ACCOUNTS' || role === 'FINANCE_MANAGER' || role === 'FINANCE_EXECUTIVE') && !isAdmin;
-  const isFinanceManager = isFinanceDept && (role === 'MANAGER' || role === 'FINANCE_MANAGER' || pos.includes('manager'));
-  const isFinanceExecutive = isFinanceDept && !isFinanceManager;
-
-  if (isFinanceManager) {
+  if (isFinanceDept) {
     return <FinanceManagerDashboard />;
-  }
-
-  if (isFinanceExecutive) {
-    return <FinanceDashboard />;
   }
 
   if (role === 'EMPLOYEE' && !isAdmin) {
@@ -318,22 +323,6 @@ export default function Dashboard() {
     );
   }
 
-  if (isAdmin && adminViewMode === 'FINANCE_EXECUTIVE') {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-6 py-3 rounded-lg shadow-sm font-mono text-[9px] text-[var(--crm-ink-soft)]">
-          <span>Viewing as: <strong className="text-teal-400">FINANCE ACCOUNTANT</strong> (Admin bypass mode)</span>
-          <button 
-            onClick={() => setAdminViewMode('COMPANY')}
-            className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] font-bold uppercase underline tracking-wider cursor-pointer bg-transparent border-none"
-          >
-            Back to Company Summary
-          </button>
-        </div>
-        <FinanceDashboard />
-      </div>
-    );
-  }
 
   if (isAdmin && adminViewMode === 'HR_MANAGER') {
     return (
@@ -373,11 +362,11 @@ export default function Dashboard() {
     { title: 'Total Employees', value: summary?.totalEmployees || 0, icon: FiUsers, tone: 'ink' },
     { title: 'Active Leads', value: summary?.activeLeads || 0, icon: FiActivity, tone: 'info' },
     { title: 'Completed & Delivered', value: summary?.completedLeads || 0, icon: FiCheckSquare, tone: 'positive' },
-    { title: 'Payment Received', value: summary?.paidLeads || 0, icon: FiTrendingUp, tone: 'positive' },
+    { title: 'Payment Received', value: fmtCurrency(summary?.revenue?.totalCollected || 0), icon: FiTrendingUp, tone: 'positive' },
     { title: 'Quotations Sent', value: summary?.quotations?.sent || 0, icon: FiFileText, tone: 'ink' },
     { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, icon: FiCheckSquare, tone: 'positive' },
-    { title: 'Total Conversion %', value: `${summary?.conversionRate || (summary?.totalLeads > 0 ? Math.round(((summary?.completedLeads || 0) / summary?.totalLeads) * 100) : 0)}%`, icon: FiTrendingUp, tone: 'positive' },
-    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), icon: FiAlertCircle, tone: 'danger' }
+    { title: 'Total Conversion %', value: `${(summary?.quotations?.sent || 0) > 0 ? Math.round(((summary?.ordersConfirmed || 0) / (summary?.quotations?.sent || 1)) * 100) : 0}%`, icon: FiTrendingUp, tone: 'positive' },
+    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingOrdersValue || summary?.payments?.pendingValue || 0), icon: FiAlertCircle, tone: 'danger' }
   ] : [
     { title: 'Assigned Pipeline Leads', value: summary?.totalLeads || 0, icon: FiUsers, tone: 'ink' },
     { title: 'Active Logistics Routing', value: summary?.activeLeads || 0, icon: FiTruck, tone: 'accent' },
@@ -437,8 +426,7 @@ export default function Dashboard() {
                 <option value="EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Sales Executive</option>
                 <option value="HR_MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">HR Manager</option>
                 <option value="HR_EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">HR Executive</option>
-                <option value="FINANCE_MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Manager</option>
-                <option value="FINANCE_EXECUTIVE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Accountant</option>
+                <option value="FINANCE_MANAGER" className="bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)]">Finance Department</option>
               </select>
             </div>
           )}
@@ -523,7 +511,7 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={performance} margin={{ left: -30 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-ink-soft)" opacity={0.06} vertical={false} />
-                      <XAxis dataKey="_id" stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
+                      <XAxis dataKey="name" stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
                       <YAxis stroke="var(--crm-ink-faint)" opacity={0.8} fontSize={9} tickLine={false} />
                       <Tooltip cursor={{ fill: 'var(--crm-bg-sunken)', opacity: 0.4 }} contentStyle={{ backgroundColor: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line-strong)', textTransform: 'uppercase', fontSize: '10px', fontFamily: 'var(--crm-font-mono)' }} />
                       <Bar dataKey="leads" fill="var(--crm-ink-faint)" maxBarSize={10} radius={[1, 1, 0, 0]} />

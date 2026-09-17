@@ -257,6 +257,7 @@ async function updateUserPermissions(id, permissions) {
     if (permissions.dispatchPermission !== undefined) empUpdates['permissions.dispatch'] = permissions.dispatchPermission;
     if (permissions.paymentPermission !== undefined) empUpdates['permissions.payment'] = permissions.paymentPermission;
     if (permissions.quotationPermission !== undefined) empUpdates['permissions.quotation'] = permissions.quotationPermission;
+    if (permissions.importPermission !== undefined) empUpdates['permissions.import'] = permissions.importPermission;
 
     await Employee.findOneAndUpdate(
       { email: { $regex: new RegExp('^' + targetEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } },

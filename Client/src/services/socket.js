@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { BACKEND_URL } from '../config/env';
+import { playNotificationSound } from '../utils/sound';
 
 let socket = null;
 
@@ -10,12 +11,12 @@ export const socketService = {
     if (!user) return null;
 
     const employeeId = String(user._id || user.id || user.trialId || user.employeeId || user.email || 'user');
-    const role = user.role || user.position || 'USER';
-    const name = user.fullName || user.name || user.email || 'User';
+    const role = String(user.role || user.position || 'USER');
+    const name = String(user.fullName || user.name || user.email || 'User').replace(/&/g, 'and');
 
     socket = io(BACKEND_URL, {
       query: { employeeId, role, name },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 20,
       reconnectionDelay: 1000,
@@ -62,6 +63,17 @@ export const socketService = {
 
     socket.on('payment_updated', (data) => {
       const event = new CustomEvent('payment_updated_event', { detail: data });
+      window.dispatchEvent(event);
+    });
+
+    socket.on('file_shared', (data) => {
+      const msg = data?.message || '📁 A file was shared with you!';
+      playNotificationSound();
+      toast.success(`${msg} (Click notification bell to open)`, {
+        duration: 8000,
+        position: 'top-right'
+      });
+      const event = new CustomEvent('file_shared_event', { detail: data });
       window.dispatchEvent(event);
     });
 

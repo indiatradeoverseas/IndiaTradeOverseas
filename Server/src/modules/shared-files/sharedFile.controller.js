@@ -6,12 +6,114 @@ const socketService = require('../../services/socket.service');
 const { ok, fail } = require('../../utils/response');
 
 /**
- * Share a file with an executive (Manager/Admin only)
+ * Get eligible recipient employees and managers for file sharing
+ */
+async function getRecipients(req, res) {
+  try {
+    const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+    const Admin = require('../admin-auth/admin.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
+    const [users, employees, admins, salesTrials] = await Promise.all([
+      User.find({ isActive: { $ne: false } }).select('fullName name email department position role employeeId').lean(),
+      Employee.find({ status: { $ne: 'INACTIVE' } }).select('name fullName email department position role employeeId').lean(),
+      Admin.find({}).select('fullName name username email department position role employeeId').lean(),
+      SalesTrialUser.find({ status: { $ne: 'INACTIVE' } }).select('fullName name email department position role trialId employeeId').lean()
+    ]);
+
+    const senderRole = (req.user.role || '').toUpperCase();
+    const senderPos = (req.user.position || '').toLowerCase();
+    
+    const isSenderLeader = ['FOUNDER', 'CEO', 'ADMIN', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(senderRole) || 
+      senderPos.includes('ceo') || senderPos.includes('founder') || senderPos.includes('admin');
+    
+    const isSenderManager = senderRole === 'MANAGER' || senderRole.endsWith('_MANAGER') || senderPos.includes('manager');
+
+    const recipientMap = new Map();
+    const currentUserIdStr = String(req.user._id);
+    const currentUserEmail = (req.user.email || '').toLowerCase().trim();
+
+    [...users, ...employees, ...admins, ...salesTrials].forEach((item) => {
+      if (!item || !item._id) return;
+      const idStr = String(item._id);
+      const emailKey = item.email ? String(item.email).toLowerCase().trim() : idStr;
+      
+      // Exclude self from target selection list
+      if (idStr === currentUserIdStr || (currentUserEmail && emailKey === currentUserEmail)) return;
+
+      const rawName = item.fullName || item.name || item.username || (item.email ? item.email.split('@')[0] : '') || item.employeeId || item.trialId || 'Staff Member';
+      const cleanName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      const role = (item.role || '').toUpperCase();
+      const pos = (item.position || '').toLowerCase();
+      
+      const isRecipientManager = role === 'MANAGER' || role.endsWith('_MANAGER') || pos.includes('manager') || pos.includes('head') || pos.includes('lead');
+      const isRecipientLeader = ['FOUNDER', 'CEO', 'ADMIN', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) || pos.includes('ceo') || pos.includes('founder');
+      const isRecipientSalesExec = role === 'SALES_EXECUTIVE' || role === 'EXECUTIVE' || role === 'EMPLOYEE' || role === 'SALES_TRIAL' || pos.includes('executive') || pos.includes('trial');
+
+      // Enforce Role Matrix Rules:
+      // 1. Founder, CEO, Admin -> Can share with ALL (Managers, Executives, Employees, Sales Trial)
+      // 2. Sales Manager -> Can share with Sales Executives, Sales Trial & Employees (and Leaders)
+      // 3. Sales Executive / Trial -> Can share with Sales Manager & Founder, CEO, Admin
+      let isEligible = false;
+
+      if (isSenderLeader) {
+        isEligible = true; // Founder/CEO/Admin can share with everyone
+      } else if (isSenderManager) {
+        if (isRecipientSalesExec || isRecipientLeader || isRecipientManager) {
+          isEligible = true;
+        }
+      } else {
+        // Executive / Employee / Trial sender: share with Managers and Management/Founder/CEO/Admin
+        if (isRecipientManager || isRecipientLeader) {
+          isEligible = true;
+        }
+      }
+
+      if (!isEligible) return;
+
+      let category = 'EMPLOYEE';
+      if (isRecipientLeader) category = 'MANAGEMENT';
+      else if (isRecipientManager) category = 'MANAGER';
+
+      if (!recipientMap.has(emailKey)) {
+        recipientMap.set(emailKey, {
+          _id: item._id,
+          name: cleanName,
+          email: item.email || '',
+          department: item.department || 'SALES_TRIAL',
+          position: item.position || item.role || 'Sales Trial Executive',
+          role: item.role || 'SALES_TRIAL',
+          employeeId: item.trialId || item.employeeId || idStr,
+          category,
+          isSelf: false
+        });
+      }
+    });
+
+    const recipients = Array.from(recipientMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return ok(res, { recipients }, 'Recipients fetched successfully', 200, req);
+  } catch (error) {
+    console.error('Error fetching recipients:', error);
+    return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
+  }
+}
+
+/**
+ * Share a file with employee(s)/manager(s) (Founder, CEO, Admin, Managers, etc.)
  */
 async function shareFile(req, res) {
   try {
-    const allowedRoles = ['ADMIN', 'MANAGER', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 'HR', 'EMPLOYEE', 'SALES_TRIAL'];
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRole = (req.user.role || '').toUpperCase();
+    const userPos = (req.user.position || '').toLowerCase();
+    
+    const isAuthorized = [
+      'ADMIN', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN', 'MANAGER', 
+      'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 
+      'HR', 'EMPLOYEE', 'SALES_TRIAL'
+    ].includes(userRole) || userPos.includes('ceo') || userPos.includes('founder') || userPos.includes('manager');
+
+    if (!isAuthorized) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied to share files', [], req);
     }
 
@@ -25,22 +127,53 @@ async function shareFile(req, res) {
       return fail(res, 400, 'BAD_REQUEST', 'A file attachment is required', [], req);
     }
 
-    // Verify recipient exists across Employee and User collections
-    const mongoose = require('mongoose');
-    const User = require('../users/user.model');
-    
-    let recipientId = sentTo;
-    if (mongoose.isValidObjectId(sentTo)) {
-      const recipientIdQuery = { $or: [{ _id: sentTo }, { _id: new mongoose.Types.ObjectId(sentTo) }] };
-      const empRecipient = await Employee.findOne(recipientIdQuery);
-      const userRecipient = await User.findOne(recipientIdQuery);
-      const matchedRecipient = empRecipient || userRecipient;
-      if (matchedRecipient) {
-        recipientId = matchedRecipient._id;
-      }
+    // STRICT 25MB FILE SIZE CHECK
+    const MAX_ALLOWED_SIZE = 25 * 1024 * 1024; // 25 MB
+    if (req.file.size > MAX_ALLOWED_SIZE) {
+      return fail(res, 400, 'FILE_TOO_LARGE', 'File size exceeds maximum allowed limit of 25MB', [], req);
     }
 
-    // Upload file directly into MongoDB GridFS Bucket
+    const mongoose = require('mongoose');
+    const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+    const Admin = require('../admin-auth/admin.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+    const Notification = require('../notifications/notification.model');
+
+    // Parse recipient targets (supports single ID, array of IDs, or 'ALL', 'MANAGERS', 'EMPLOYEES')
+    let targetIds = [];
+    if (Array.isArray(sentTo)) {
+      targetIds = sentTo;
+    } else if (typeof sentTo === 'string' && sentTo.includes(',')) {
+      targetIds = sentTo.split(',').map((s) => s.trim()).filter(Boolean);
+    } else if (sentTo === 'ALL' || sentTo === 'MANAGERS' || sentTo === 'EMPLOYEES') {
+      const [allUsers, allEmps, allAdmins, allTrials] = await Promise.all([
+        User.find({ isActive: { $ne: false } }).select('_id role position').lean(),
+        Employee.find({ status: { $ne: 'INACTIVE' } }).select('_id role position').lean(),
+        Admin.find({}).select('_id role position').lean(),
+        SalesTrialUser.find({ status: { $ne: 'INACTIVE' } }).select('_id role position').lean()
+      ]);
+      const combined = [...allUsers, ...allEmps, ...allAdmins, ...allTrials];
+      combined.forEach((u) => {
+        const r = (u.role || '').toUpperCase();
+        const p = (u.position || '').toLowerCase();
+        const isMgr = r === 'MANAGER' || r.endsWith('_MANAGER') || p.includes('manager');
+        if (sentTo === 'ALL') targetIds.push(u._id);
+        else if (sentTo === 'MANAGERS' && isMgr) targetIds.push(u._id);
+        else if (sentTo === 'EMPLOYEES' && !isMgr) targetIds.push(u._id);
+      });
+    } else {
+      targetIds = [sentTo];
+    }
+
+    // Remove duplicates
+    targetIds = Array.from(new Set(targetIds.map(id => String(id))));
+
+    if (targetIds.length === 0) {
+      return fail(res, 400, 'BAD_REQUEST', 'No valid recipient targets found', [], req);
+    }
+
+    // Upload file directly into MongoDB GridFS Bucket (once)
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
     const ext = path.extname(req.file.originalname);
     const storedFileName = `shared-${uniqueSuffix}${ext}`;
@@ -66,29 +199,71 @@ async function shareFile(req, res) {
     const backendBase = process.env.BACKEND_URL || (req.protocol + '://' + req.get('host'));
     const fullDownloadUrl = `${backendBase}/api/shared-files/gridfs/${gridFsFileId}`;
 
-    const sharedFile = await SharedFile.create({
-      fileName: storedFileName,
-      originalName: req.file.originalname,
-      fileUrl: fullDownloadUrl,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype,
-      gridFsFileId: gridFsFileId,
-      sentBy: req.user._id,
-      sentTo: recipientId,
-      department: department || req.user.department || 'GENERAL',
-      note: note || ''
-    });
+    const createdSharedFiles = [];
+    const senderName = req.user.fullName || req.user.name || 'Executive';
 
-    await sharedFile.populate('sentBy', 'name email department position role');
-    await sharedFile.populate('sentTo', 'name email department position role');
+    // Create SharedFile entry & Notification for each target recipient
+    for (const recipientId of targetIds) {
+      let resolvedRecipientId = recipientId;
+      if (mongoose.isValidObjectId(recipientId)) {
+        const recipientQuery = { $or: [{ _id: recipientId }, { _id: new mongoose.Types.ObjectId(recipientId) }] };
+        const empRec = await Employee.findOne(recipientQuery);
+        const userRec = await User.findOne(recipientQuery);
+        const trialRec = await SalesTrialUser.findOne(recipientQuery);
+        const adminRec = await Admin.findOne(recipientQuery);
+        const matched = empRec || userRec || trialRec || adminRec;
+        if (matched) resolvedRecipientId = matched._id;
+      }
 
-    // Real-time notification to recipient
-    socketService.emitToEmployee(sentTo, 'file_shared', {
-      message: `${req.user.name || 'Manager'} shared a file: ${req.file.originalname}`,
-      file: sharedFile
-    });
+      const sharedFileDoc = await SharedFile.create({
+        fileName: storedFileName,
+        originalName: req.file.originalname,
+        fileUrl: fullDownloadUrl,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        gridFsFileId: gridFsFileId,
+        sentBy: req.user._id,
+        sentTo: resolvedRecipientId,
+        department: department || req.user.department || 'GENERAL',
+        note: note || ''
+      });
 
-    return ok(res, { sharedFile }, 'File shared and stored in Database successfully', 201, req);
+      createdSharedFiles.push(sharedFileDoc);
+
+      // Create in-app notification for recipient with clickable link
+      try {
+        await Notification.create({
+          targetUserId: resolvedRecipientId,
+          message: `📁 ${senderName} shared a file with you: "${req.file.originalname}"`,
+          type: 'FILE_SHARED',
+          metadata: {
+            sharedFileId: sharedFileDoc._id,
+            fileName: req.file.originalname,
+            fileSize: req.file.size,
+            sentBy: req.user._id,
+            senderName,
+            note: note || '',
+            link: '/crm/shared-files'
+          }
+        });
+      } catch (nErr) {
+        console.warn('Notification creation failed for recipient:', resolvedRecipientId, nErr.message);
+      }
+
+      // Real-time socket notification
+      try {
+        socketService.emitToEmployee(String(resolvedRecipientId), 'file_shared', {
+          message: `📁 ${senderName} shared a file with you: "${req.file.originalname}"`,
+          file: sharedFileDoc,
+          sharedFileId: sharedFileDoc._id,
+          senderName
+        });
+      } catch (sErr) {
+        console.warn('Socket notification failed:', sErr.message);
+      }
+    }
+
+    return ok(res, { sharedFiles: createdSharedFiles, count: createdSharedFiles.length }, `File successfully shared with ${createdSharedFiles.length} recipient(s)`, 201, req);
   } catch (error) {
     console.error('Error sharing file to GridFS:', error);
     return fail(res, 500, 'INTERNAL_SERVER_ERROR', error.message, [], req);
@@ -102,6 +277,9 @@ async function getSharedFiles(req, res) {
   try {
     const mongoose = require('mongoose');
     const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+    const Admin = require('../admin-auth/admin.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
     const idStrings = new Set();
     if (req.user._id) idStrings.add(String(req.user._id));
@@ -110,6 +288,8 @@ async function getSharedFiles(req, res) {
       if (emp && emp._id) idStrings.add(String(emp._id));
       const userDoc = await User.findOne({ email: req.user.email });
       if (userDoc && userDoc._id) idStrings.add(String(userDoc._id));
+      const trialDoc = await SalesTrialUser.findOne({ email: req.user.email });
+      if (trialDoc && trialDoc._id) idStrings.add(String(trialDoc._id));
     }
 
     const matchConditions = [];
@@ -147,22 +327,24 @@ async function getSharedFiles(req, res) {
         if (sentById) {
           const userSender = await User.findById(sentById).select('fullName name email department position role');
           const empSender = await Employee.findById(sentById).select('name fullName email department position role');
-          const sender = userSender || empSender;
+          const adminSender = await Admin.findById(sentById).select('fullName name email department position role');
+          const trialSender = await SalesTrialUser.findById(sentById).select('fullName name email department position role');
+          const sender = userSender || empSender || adminSender || trialSender;
           if (sender) {
             fileObj.sentBy = {
               _id: sender._id,
-              name: sender.fullName || sender.name,
-              fullName: sender.fullName || sender.name,
-              role: sender.role || 'SALES_EXECUTIVE',
-              department: sender.department || 'SALES'
+              name: sender.fullName || sender.name || (sender.email ? sender.email.split('@')[0] : 'Executive'),
+              fullName: sender.fullName || sender.name || (sender.email ? sender.email.split('@')[0] : 'Executive'),
+              role: sender.role || sender.position || 'MANAGER',
+              department: sender.department || 'MANAGEMENT'
             };
           } else {
             fileObj.sentBy = {
               _id: sentById,
               name: 'Executive',
               fullName: 'Executive',
-              role: 'SALES_EXECUTIVE',
-              department: 'SALES'
+              role: 'EXECUTIVE',
+              department: 'GENERAL'
             };
           }
         }
@@ -172,14 +354,16 @@ async function getSharedFiles(req, res) {
         if (sentToId) {
           const userRecipient = await User.findById(sentToId).select('fullName name email department position role');
           const empRecipient = await Employee.findById(sentToId).select('name fullName email department position role');
-          const recipient = userRecipient || empRecipient;
+          const adminRecipient = await Admin.findById(sentToId).select('fullName name email department position role');
+          const trialRecipient = await SalesTrialUser.findById(sentToId).select('fullName name email department position role');
+          const recipient = userRecipient || empRecipient || adminRecipient || trialRecipient;
           if (recipient) {
             fileObj.sentTo = {
               _id: recipient._id,
-              name: recipient.fullName || recipient.name,
-              fullName: recipient.fullName || recipient.name,
-              role: recipient.role || 'EXECUTIVE',
-              department: recipient.department || 'SALES'
+              name: recipient.fullName || recipient.name || (recipient.email ? recipient.email.split('@')[0] : 'Staff'),
+              fullName: recipient.fullName || recipient.name || (recipient.email ? recipient.email.split('@')[0] : 'Staff'),
+              role: recipient.role || recipient.position || 'EXECUTIVE',
+              department: recipient.department || 'GENERAL'
             };
           } else {
             fileObj.sentTo = {
@@ -187,7 +371,7 @@ async function getSharedFiles(req, res) {
               name: 'Recipient',
               fullName: 'Recipient',
               role: 'EXECUTIVE',
-              department: 'SALES'
+              department: 'GENERAL'
             };
           }
         }
@@ -238,6 +422,51 @@ async function downloadFile(req, res) {
     if (isRecipient && !sharedFile.downloadedAt) {
       sharedFile.downloadedAt = new Date();
       await sharedFile.save();
+    }
+
+    // Notify Admin & Founder on download
+    const isManagementRole = ['ADMIN', 'FOUNDER', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((req.user.role || '').toUpperCase());
+    if (!isManagementRole) {
+      try {
+        const Notification = require('../notifications/notification.model');
+        const { recordAudit } = require('../security-audit/auditLog.service');
+        const alertMsg = `🚨 Security Alert: ${req.user.fullName || req.user.name || 'User'} (${req.user.role}) downloaded file "${sharedFile.originalName}"`;
+        
+        await Notification.create({
+          targetRole: 'ADMIN',
+          message: alertMsg,
+          type: 'SECURITY_ALERT',
+          metadata: {
+            downloadedBy: req.user._id,
+            userName: req.user.fullName || req.user.name,
+            userRole: req.user.role,
+            fileName: sharedFile.originalName,
+            ipAddress: req.ip
+          }
+        });
+
+        await recordAudit({
+          actorId: req.user._id,
+          actionType: 'DOCUMENT_DOWNLOADED',
+          entityType: 'SHARED_FILE',
+          entityId: sharedFile._id.toString(),
+          severity: 'HIGH',
+          ipAddress: req.ip,
+          metadata: { fileName: sharedFile.originalName, downloadedBy: req.user.fullName || req.user.name, role: req.user.role }
+        });
+
+        if (socketService.io) {
+          socketService.io.emit('security_alert', {
+            message: alertMsg,
+            type: 'SECURITY_ALERT',
+            downloadedBy: req.user.fullName || req.user.name,
+            fileName: sharedFile.originalName,
+            createdAt: new Date()
+          });
+        }
+      } catch (notifErr) {
+        console.error('Error notifying admin on shared file download:', notifErr.message);
+      }
     }
 
     res.setHeader('Content-Disposition', `attachment; filename="${sharedFile.originalName}"`);
@@ -415,6 +644,7 @@ async function downloadGridFSFileDirect(req, res) {
 }
 
 module.exports = {
+  getRecipients,
   shareFile,
   getSharedFiles,
   downloadFile,

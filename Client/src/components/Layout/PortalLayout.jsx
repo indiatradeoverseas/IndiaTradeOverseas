@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut } from 'react-icons/fi';
+import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut, FiCoffee } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
@@ -27,6 +27,8 @@ export default function PortalLayout({ children }) {
     localStorage.setItem('crm-theme', theme);
   }, [theme]);
 
+  const [lunchElapsed, setLunchElapsed] = useState(0);
+
   const fetchTodayAttendance = async () => {
     if (!user) return;
     try {
@@ -40,7 +42,34 @@ export default function PortalLayout({ children }) {
 
   useEffect(() => {
     fetchTodayAttendance();
+    const handleUpdate = () => {
+      fetchTodayAttendance();
+    };
+    window.addEventListener('attendance_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('attendance_updated', handleUpdate);
+    };
   }, [user]);
+
+  useEffect(() => {
+    if (!todayAttendance?.lunchStartAt || todayAttendance?.lunchEndAt) {
+      setLunchElapsed(0);
+      return;
+    }
+    const startedAt = new Date(todayAttendance.lunchStartAt).getTime();
+    const tick = () => setLunchElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [todayAttendance?.lunchStartAt, todayAttendance?.lunchEndAt]);
+
+  const formatElapsed = (totalSeconds) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  };
 
   const handleCheckIn = async () => {
     setLoadingAttendance(true);
@@ -59,6 +88,7 @@ export default function PortalLayout({ children }) {
   };
 
   const handleCheckOut = async () => {
+    if (!window.confirm('Check out now? This ends your work shift.')) return;
     setLoadingAttendance(true);
     try {
       const res = await attendanceApi.checkOut();
@@ -69,6 +99,38 @@ export default function PortalLayout({ children }) {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Check-out failed');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const handleLunchStart = async () => {
+    setLoadingAttendance(true);
+    try {
+      const res = await attendanceApi.startLunch();
+      if (res.success) {
+        toast.success('Lunch break started! ☕');
+        fetchTodayAttendance();
+        window.dispatchEvent(new Event('attendance_updated'));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to start lunch break');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const handleLunchEnd = async () => {
+    setLoadingAttendance(true);
+    try {
+      const res = await attendanceApi.endLunch();
+      if (res.success) {
+        toast.success(`Lunch break ended — ${res.data?.attendance?.lunchDurationMinutes || ''} min recorded!`);
+        fetchTodayAttendance();
+        window.dispatchEvent(new Event('attendance_updated'));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to end lunch break');
     } finally {
       setLoadingAttendance(false);
     }
@@ -128,8 +190,8 @@ export default function PortalLayout({ children }) {
           </div>
           <div className="flex items-center gap-2 justify-end">
             {user && (
-              <div className="flex items-center gap-1.5 mr-1">
-                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.clockIn)) && (
+              <div className="flex items-center gap-1.5 mr-1 font-mono">
+                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
@@ -138,16 +200,36 @@ export default function PortalLayout({ children }) {
                     In
                   </button>
                 )}
-                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.clockIn) && (!todayAttendance.checkOutTime && !todayAttendance.clockOut) && (
-                  <button
-                    onClick={handleCheckOut}
-                    disabled={loadingAttendance}
-                    className="bg-rose-950/90 hover:bg-rose-900 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
-                  >
-                    Out
-                  </button>
+                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
+                  <>
+                    {!todayAttendance.lunchStartAt && (
+                      <button
+                        onClick={handleLunchStart}
+                        disabled={loadingAttendance}
+                        className="bg-amber-950/90 hover:bg-amber-900 text-amber-300 border border-amber-800/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer flex items-center gap-1"
+                      >
+                        <FiCoffee size={10} /> Lunch
+                      </button>
+                    )}
+                    {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
+                      <button
+                        onClick={handleLunchEnd}
+                        disabled={loadingAttendance}
+                        className="bg-[#1f170d] text-[#f5c46c] border border-[#c89a54] text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer animate-pulse flex items-center gap-1"
+                      >
+                        <FiCoffee size={10} /> {formatElapsed(lunchElapsed)}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleCheckOut}
+                      disabled={loadingAttendance}
+                      className="bg-rose-950/90 hover:bg-rose-900 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                    >
+                      Out
+                    </button>
+                  </>
                 )}
-                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.clockOut) && (
+                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
@@ -214,7 +296,7 @@ export default function PortalLayout({ children }) {
           >
             {user && (
               <div className="flex items-center gap-2 mr-4 font-mono">
-                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.clockIn)) && (
+                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
@@ -223,16 +305,53 @@ export default function PortalLayout({ children }) {
                     <FiLogIn size={12} /> Check In
                   </button>
                 )}
-                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.clockIn) && (!todayAttendance.checkOutTime && !todayAttendance.clockOut) && (
-                  <button
-                    onClick={handleCheckOut}
-                    disabled={loadingAttendance}
-                    className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                  >
-                    <FiLogOut size={12} /> Check Out
-                  </button>
+
+                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
+                  <>
+                    {/* Lunch Break Controls */}
+                    {!todayAttendance.lunchStartAt && (
+                      <button
+                        onClick={handleLunchStart}
+                        disabled={loadingAttendance}
+                        className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                        title="Start Lunch Break"
+                      >
+                        <FiCoffee size={12} /> Lunch Break
+                      </button>
+                    )}
+
+                    {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
+                      <button
+                        onClick={handleLunchEnd}
+                        disabled={loadingAttendance}
+                        className="flex items-center gap-1.5 bg-[#1f170d] hover:bg-[#2a1f11] border border-[#c89a54] text-[#f5c46c] text-[10px] font-mono font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-md animate-pulse disabled:opacity-50"
+                        title="Click to end lunch break and return to work"
+                      >
+                        <FiCoffee size={12} /> BACK TO WORK <span className="font-bold text-amber-200">{formatElapsed(lunchElapsed)}</span>
+                      </button>
+                    )}
+
+                    {todayAttendance.lunchEndAt && (
+                      <span
+                        className="text-[10px] font-mono text-amber-300/90 bg-amber-950/40 border border-amber-900/40 px-2.5 py-1 rounded flex items-center gap-1"
+                        title={`Lunch break taken: ${todayAttendance.lunchDurationMinutes || 0} min`}
+                      >
+                        <FiCoffee size={10} /> Lunch ({todayAttendance.lunchDurationMinutes || 0}m)
+                      </span>
+                    )}
+
+                    {/* Check Out Button */}
+                    <button
+                      onClick={handleCheckOut}
+                      disabled={loadingAttendance}
+                      className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                    >
+                      <FiLogOut size={12} /> Check Out
+                    </button>
+                  </>
                 )}
-                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.clockOut) && (
+
+                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
@@ -241,11 +360,6 @@ export default function PortalLayout({ children }) {
                   >
                     <FiLogIn size={12} /> Check In
                   </button>
-                )}
-                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.clockIn) && (
-                  <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
-                    Clocked in: <strong className="text-[var(--crm-heading)]">{todayAttendance.checkInTime || todayAttendance.clockIn}</strong>
-                  </span>
                 )}
               </div>
             )}

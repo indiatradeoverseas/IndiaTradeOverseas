@@ -51,17 +51,42 @@ async function getUserAllIds(userOrId) {
       const filter = { $or: query };
 
       const Admin = require('../admin-auth/admin.model');
-      const [uMatches, eMatches, aMatches] = await Promise.all([
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      const [uMatches, eMatches, aMatches, tMatches] = await Promise.all([
         User.find(filter).select('_id email employeeId').lean(),
         Employee.find(filter).select('_id email employeeId').lean(),
-        Admin.find(filter).select('_id email').lean()
+        Admin.find(filter).select('_id email').lean(),
+        SalesTrialUser.find(filter).select('_id email trialId employeeId').lean()
       ]);
 
-      [...uMatches, ...eMatches, ...aMatches].forEach(item => {
+      const foundEmails = new Set();
+      [...uMatches, ...eMatches, ...aMatches, ...tMatches].forEach(item => {
         if (item._id) ids.add(String(item._id));
         if (item.employeeId) ids.add(String(item.employeeId));
-        if (item.email) ids.add(String(item.email).toLowerCase());
+        if (item.trialId) ids.add(String(item.trialId));
+        if (item.email) {
+          const em = String(item.email).toLowerCase().trim();
+          ids.add(em);
+          foundEmails.add(em);
+        }
       });
+
+      if (foundEmails.size > 0) {
+        const emailList = Array.from(foundEmails);
+        const emailFilter = { email: { $in: emailList } };
+        const [uByEmail, eByEmail, aByEmail, tByEmail] = await Promise.all([
+          User.find(emailFilter).select('_id email employeeId').lean(),
+          Employee.find(emailFilter).select('_id email employeeId').lean(),
+          Admin.find(emailFilter).select('_id email').lean(),
+          SalesTrialUser.find(emailFilter).select('_id email trialId employeeId').lean()
+        ]);
+        [...uByEmail, ...eByEmail, ...aByEmail, ...tByEmail].forEach(item => {
+          if (item._id) ids.add(String(item._id));
+          if (item.employeeId) ids.add(String(item.employeeId));
+          if (item.trialId) ids.add(String(item.trialId));
+          if (item.email) ids.add(String(item.email).toLowerCase());
+        });
+      }
     }
   } catch (err) {
     console.error('Error resolving user IDs:', err);
@@ -189,19 +214,27 @@ async function getManagerMessages(req, res, next) {
 async function getManagerParticipants(req, res, next) {
   try {
     const MANAGER_ROLES = [
-      'ADMIN', 'FOUNDER', 'MANAGER', 'HR_MANAGER', 'HR', 'HR_EXECUTIVE',
+      'ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'DIRECTOR',
+      'MANAGER', 'HR_MANAGER', 'HR', 'HR_EXECUTIVE',
       'SALES_MANAGER', 'SALES', 'FINANCE_MANAGER', 'FINANCE',
       'TRANSPORT_MANAGER', 'TRANSPORT', 'LOGISTICS_MANAGER', 'LOGISTICS',
       'PROCUREMENT', 'ACCOUNTS', 'IT'
     ];
 
+    const filterQuery = {
+      $or: [
+        { role: { $in: MANAGER_ROLES } },
+        { department: { $in: ['ADMIN', 'MANAGEMENT'] } }
+      ]
+    };
+
     const users = await User.find(
-      { role: { $in: MANAGER_ROLES } },
+      filterQuery,
       'fullName name email role department position employeeId phone'
     ).lean();
 
     const emps = await Employee.find(
-      { role: { $in: MANAGER_ROLES } },
+      filterQuery,
       'name fullName email role department position employeeId phone'
     ).lean();
 
@@ -214,6 +247,17 @@ async function getManagerParticipants(req, res, next) {
       ).lean();
     } catch (err) {
       console.error('Error querying Admin collection for chat participants:', err);
+    }
+
+    let salesTrials = [];
+    try {
+      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+      salesTrials = await SalesTrialUser.find(
+        { status: { $ne: 'INACTIVE' } },
+        'fullName name email role department position trialId employeeId phone'
+      ).lean();
+    } catch (err) {
+      console.error('Error querying SalesTrialUser collection for chat participants:', err);
     }
 
     const participantMap = new Map();
@@ -232,14 +276,15 @@ async function getManagerParticipants(req, res, next) {
           role: u.role || 'MANAGER',
           department: u.department || 'GENERAL',
           position: u.designation || u.position || u.role || 'Department Manager',
-          employeeId: u.employeeId || idStr,
+          employeeId: u.trialId || u.employeeId || idStr,
           phone: u.phone || '',
-          allIds: [idStr, u.employeeId].filter(Boolean),
+          allIds: [idStr, u.trialId, u.employeeId].filter(Boolean),
           source
         });
       } else {
         const existing = participantMap.get(emailKey);
         if (!existing.allIds.includes(idStr)) existing.allIds.push(idStr);
+        if (u.trialId && !existing.allIds.includes(u.trialId)) existing.allIds.push(u.trialId);
         if (u.employeeId && !existing.allIds.includes(u.employeeId)) existing.allIds.push(u.employeeId);
       }
     };
@@ -247,17 +292,29 @@ async function getManagerParticipants(req, res, next) {
     admins.forEach(a => addParticipant(a, 'Admin'));
     users.forEach(u => addParticipant(u, 'User'));
     emps.forEach(e => addParticipant(e, 'Employee'));
+    salesTrials.forEach(t => addParticipant(t, 'SalesTrial'));
 
     // Filter out current user from direct participants list
     const myIds = await getUserAllIds(req.user);
     const mySet = new Set(myIds);
 
-    const participants = Array.from(participantMap.values()).filter(p => {
+    const rawParticipants = Array.from(participantMap.values()).filter(p => {
       if (mySet.has(String(p._id)) || (p.email && mySet.has(p.email.toLowerCase()))) {
         return false;
       }
       return true;
     });
+
+    // Populate full multi-model resolved allIds for each participant so client matching is 100% accurate
+    const participants = await Promise.all(
+      rawParticipants.map(async (p) => {
+        const resolvedIds = await getUserAllIds(p);
+        return {
+          ...p,
+          allIds: Array.from(new Set([...(p.allIds || []), ...resolvedIds])).filter(Boolean)
+        };
+      })
+    );
 
     return ok(res, { participants }, 'Manager chat participants retrieved successfully', 200, req);
   } catch (error) {

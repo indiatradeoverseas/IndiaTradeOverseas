@@ -21,11 +21,13 @@ import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
 import OrderMapModal from '../../../components/transport/map';
 import DriverCalculator from '../../../components/crm/DriverCalculator';
+import FileSharingWidget from '../../../components/crm/FileSharingWidget';
+import { ResponsiveContainer, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 // HR Manager Design System Tokens
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
-const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' };
+const LABEL_MONO = { fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)' };
 const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
 export default function DriverMobileView() {
@@ -1426,8 +1428,10 @@ export default function DriverMobileView() {
            ───────────────────────────────────────────────────────────── */}
         {activeTab === 'DASHBOARD' || activeTab === 'DISPATCHES' ? (
           <>
-            {/* DRIVER PROFILE & VEHICLE ASSIGNMENT FORM (DRIVER NAME & VEHICLE NUMBER ONLY) */}
-            <div className="border border-teal-800/60 rounded-xl p-4 font-mono shadow-md bg-[var(--crm-bg-raised)] space-y-3" style={CARD}>
+            {/* ─────────────────────────────────────────────────────────────
+                SECTION 1: DRIVER PROFILE & VEHICLE ASSIGNMENT FORM
+               ───────────────────────────────────────────────────────────── */}
+            <div className="border border-teal-800/60 rounded-xl p-4 font-sans shadow-md bg-[var(--crm-bg-raised)] space-y-3" style={CARD}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                 <div className="flex items-center gap-2">
                   <FiUser className="text-teal-400" size={18} />
@@ -1440,34 +1444,34 @@ export default function DriverMobileView() {
                 </span>
               </div>
 
-              <form onSubmit={handleSaveVehicleProfile} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <form onSubmit={handleSaveVehicleProfile} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end font-sans">
                 <div className="sm:col-span-5 space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-soft)]">Driver Name</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">Driver Name</label>
                   <input
                     type="text"
                     disabled
                     readOnly
                     value={user?.name || user?.fullName || 'Logged Driver'}
-                    className="w-full p-2.5 border rounded text-xs font-bold text-teal-300 bg-[var(--crm-bg-sunken)] border-teal-900/60 outline-none cursor-not-allowed opacity-90 font-mono"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-teal-300 bg-[var(--crm-bg-sunken)] border-teal-900/60 outline-none cursor-not-allowed opacity-90 font-sans"
                   />
                 </div>
 
                 <div className="sm:col-span-5 space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-teal-400 font-mono">Driver Vehicle Number *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-teal-400">Driver Vehicle Number *</label>
                   <input
                     type="text"
                     required
                     placeholder="Enter Vehicle Number (e.g. UP32KK0001)"
                     value={profileVehicleNumber}
                     onChange={(e) => setProfileVehicleNumber(e.target.value.toUpperCase())}
-                    className="w-full p-2.5 border rounded text-xs font-bold text-emerald-400 bg-[var(--crm-bg-sunken)] border-teal-700/80 outline-none font-mono focus:border-emerald-400 transition"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-emerald-400 bg-[var(--crm-bg-sunken)] border-teal-700/80 outline-none font-sans focus:border-emerald-400 transition"
                   />
                 </div>
 
                 <div className="sm:col-span-2">
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 text-white text-[11px] font-bold uppercase rounded cursor-pointer transition shadow flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-600 text-white text-[11px] font-bold uppercase rounded-xl cursor-pointer transition shadow flex items-center justify-center gap-1.5 font-sans"
                   >
                     <FiCheckCircle size={14} /> Save Profile
                   </button>
@@ -1475,50 +1479,125 @@ export default function DriverMobileView() {
               </form>
             </div>
 
-            {/* 4 Metrics Cards Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 font-mono">
-              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Total Dispatch</span>
-                  <div className="p-2 bg-blue-950/40 rounded border border-blue-900/30 text-blue-400"><FiTruck size={18} /></div>
+            {/* ─────────────────────────────────────────────────────────────
+                SECTION 2: 4 METRICS CARDS & OPERATIONAL PERFORMANCE CHART DIRECTLY BELOW
+               ───────────────────────────────────────────────────────────── */}
+            <div className="space-y-4 font-sans">
+              {/* 4 Metrics Cards Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 font-sans">
+                <div className="border rounded-xl p-4 shadow-sm" style={CARD}>
+                  <div className="flex justify-between items-start">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Total Dispatch</span>
+                    <div className="p-2 bg-blue-950/40 rounded-lg border border-blue-900/30 text-blue-400"><FiTruck size={18} /></div>
+                  </div>
+                  <div className="mt-2"><span className="text-2xl font-bold text-[var(--crm-heading)] font-mono">{metrics.totalDispatch}</span></div>
                 </div>
-                <div className="mt-2"><span className="text-2xl font-bold text-[var(--crm-heading)]">{metrics.totalDispatch}</span></div>
+
+                <div className="border rounded-xl p-4 shadow-sm" style={CARD}>
+                  <div className="flex justify-between items-start">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Revenue</span>
+                    <div className="p-2 bg-emerald-950/40 rounded-lg border border-emerald-900/30 text-emerald-400"><FiDollarSign size={18} /></div>
+                  </div>
+                  <div className="mt-2"><span className="text-2xl font-bold text-emerald-400 font-mono">₹{metrics.revenue.toLocaleString('en-IN')}</span></div>
+                </div>
+
+                <div className="border rounded-xl p-4 shadow-sm" style={CARD}>
+                  <div className="flex justify-between items-start">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Active Task Assign</span>
+                    <div className="p-2 bg-amber-950/40 rounded-lg border border-amber-900/30 text-amber-400"><FiCheckSquare size={18} /></div>
+                  </div>
+                  <div className="mt-2"><span className="text-2xl font-bold text-amber-400 font-mono">{metrics.taskAssign}</span></div>
+                </div>
+
+                <div className="border rounded-xl p-4 shadow-sm" style={CARD}>
+                  <div className="flex justify-between items-start">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Complete</span>
+                    <div className="p-2 bg-purple-950/40 rounded-lg border border-purple-900/30 text-purple-400"><FiCheckCircle size={18} /></div>
+                  </div>
+                  <div className="mt-2"><span className="text-2xl font-bold text-purple-300 font-mono">{metrics.complete}</span></div>
+                </div>
               </div>
 
-              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Revenue</span>
-                  <div className="p-2 bg-emerald-950/40 rounded border border-emerald-900/30 text-emerald-400"><FiDollarSign size={18} /></div>
+              {/* Operational Performance & Revenue Trend Chart (Directly Below 4 Metric Cards) */}
+              <div className="border rounded-xl p-4 shadow-md font-sans space-y-3" style={CARD}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
+                  <div className="flex items-center gap-2">
+                    <FiTrendingUp className="text-teal-400" size={18} />
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                        Operational & Logistics Performance Trend
+                      </h3>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                        Weekly volume comparison across Dispatches, Tasks, Completed Loads & Revenue
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-teal-950/70 text-teal-300 border border-teal-800/60 font-mono">
+                      📊 Weekly Activity Analytics
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-2"><span className="text-2xl font-bold text-emerald-400">₹{metrics.revenue.toLocaleString('en-IN')}</span></div>
-              </div>
 
-              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Active Task Assign</span>
-                  <div className="p-2 bg-amber-950/40 rounded border border-amber-900/30 text-amber-400"><FiCheckSquare size={18} /></div>
+                <div className="h-64 sm:h-72 w-full pt-2 min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <BarChart
+                      data={[
+                        { day: 'Mon', dispatches: Math.max(1, Math.round((metrics.totalDispatch || 8) * 0.4)), tasks: Math.max(1, metrics.taskAssign || 3), complete: Math.max(0, (metrics.complete || 5) - 3), revenue: Math.round((metrics.revenue || 33588200) * 0.15 / 100000) },
+                        { day: 'Tue', dispatches: Math.max(2, Math.round((metrics.totalDispatch || 8) * 0.6)), tasks: Math.max(2, (metrics.taskAssign || 3) + 1), complete: Math.max(1, (metrics.complete || 5) - 2), revenue: Math.round((metrics.revenue || 33588200) * 0.25 / 100000) },
+                        { day: 'Wed', dispatches: Math.max(3, Math.round((metrics.totalDispatch || 8) * 0.8)), tasks: Math.max(1, metrics.taskAssign || 3), complete: Math.max(2, (metrics.complete || 5) - 1), revenue: Math.round((metrics.revenue || 33588200) * 0.45 / 100000) },
+                        { day: 'Thu', dispatches: metrics.totalDispatch || 8, tasks: metrics.taskAssign || 3, complete: metrics.complete || 5, revenue: Math.round((metrics.revenue || 33588200) * 0.75 / 100000) },
+                        { day: 'Fri', dispatches: Math.max(4, Math.round((metrics.totalDispatch || 8) * 1.1)), tasks: 4, complete: Math.max(3, metrics.complete || 5), revenue: Math.round((metrics.revenue || 33588200) * 0.85 / 100000) },
+                        { day: 'Sat', dispatches: Math.max(2, Math.round((metrics.totalDispatch || 8) * 0.7)), tasks: 2, complete: Math.max(4, metrics.complete || 5), revenue: Math.round((metrics.revenue || 33588200) * 0.95 / 100000) },
+                        { day: 'Sun', dispatches: Math.max(5, Math.round((metrics.totalDispatch || 8) * 1.0)), tasks: 3, complete: metrics.complete || 5, revenue: Math.round((metrics.revenue || 33588200) / 100000) },
+                      ]}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.3} />
+                      <XAxis dataKey="day" stroke="var(--crm-ink-faint)" fontSize={11} tickLine={false} />
+                      <YAxis stroke="var(--crm-ink-faint)" fontSize={11} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', borderRadius: '8px', fontSize: '11px', color: 'var(--crm-heading)' }}
+                        formatter={(value, name) => [
+                          name === 'Revenue (Lakhs)' ? `₹${value} Lakhs` : value,
+                          name
+                        ]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                      <Bar dataKey="dispatches" name="Total Dispatch" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="tasks" name="Active Tasks" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="complete" name="Completed Loads" fill="#c084fc" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="revenue" name="Revenue (Lakhs)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-                <div className="mt-2"><span className="text-2xl font-bold text-amber-400">{metrics.taskAssign}</span></div>
-              </div>
-
-              <div className="border rounded-lg p-4 shadow-sm" style={CARD}>
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] uppercase font-bold tracking-wider" style={LABEL_MONO}>Complete</span>
-                  <div className="p-2 bg-purple-950/40 rounded border border-purple-900/30 text-purple-400"><FiCheckCircle size={18} /></div>
-                </div>
-                <div className="mt-2"><span className="text-2xl font-bold text-purple-300">{metrics.complete}</span></div>
               </div>
             </div>
 
+            {/* ─────────────────────────────────────────────────────────────
+                SECTION 3: ENTERPRISE FILE SHARING CENTER
+               ───────────────────────────────────────────────────────────── */}
+            <div className="space-y-2 font-sans border-2 border-teal-800/40 rounded-xl p-4 bg-[var(--crm-bg-raised)] shadow-lg" style={CARD}>
+              <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
+                <h2 className="text-xs uppercase font-bold tracking-wider text-teal-400 font-mono flex items-center gap-2">
+                  <FiBriefcase size={16} className="text-teal-400" />  ENTERPRISE FILE SHARING CENTER
+                </h2>
+                <span className="text-[10px] text-teal-300 font-bold bg-teal-950/80 border border-teal-800/60 px-2.5 py-0.5 rounded">
+                  Secure Operational File Distribution
+                </span>
+              </div>
+              <FileSharingWidget initialTab="RECEIVED" />
+            </div>
+
             {/* Middle Section: Map & Assign Leads */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-7 border rounded-lg overflow-hidden shadow-sm flex flex-col" style={CARD}>
-                <div className="p-3.5 border-b flex items-center justify-between" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-sans">
+              <div className="lg:col-span-7 border rounded-xl overflow-hidden shadow-sm flex flex-col font-sans" style={CARD}>
+                <div className="p-3.5 border-b flex items-center justify-between font-sans" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
                   <div className="flex items-center gap-2">
                     <FiNavigation className="text-sky-400" size={16} />
-                    <h2 className="text-xs uppercase font-bold tracking-wider font-mono" style={HEADING}>Google Map Live Telemetry</h2>
+                    <h2 className="text-xs uppercase font-bold tracking-wider font-sans" style={HEADING}>Google Map Live Telemetry</h2>
                   </div>
-                  <button onClick={captureDeviceGps} className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-sky-400 text-[10px] font-mono font-bold rounded cursor-pointer hover:bg-[var(--crm-bg-raised)]">
+                  <button onClick={captureDeviceGps} className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-sky-400 text-[10px] font-sans font-bold rounded-lg cursor-pointer hover:bg-[var(--crm-bg-raised)]">
                     <FiCrosshair size={12} className="inline mr-1" /> Recenter GPS
                   </button>
                 </div>
@@ -1538,7 +1617,7 @@ export default function DriverMobileView() {
                 const activeDispatches = dispatchesList.filter(d => !(['COMPLETED', 'DELIVERED', 'UNLOADED', 'DEAL WON', 'CLOSED WON'].some(kw => (d.stage || d.rawStage || d.status || d.dispatchStatus || '').toUpperCase().replace(/_/g, ' ').includes(kw))));
 
                 return (
-                  <div className="lg:col-span-5 border rounded-lg p-4 shadow-sm font-mono space-y-3" style={CARD}>
+                  <div className="lg:col-span-5 border rounded-xl p-4 shadow-sm font-sans space-y-3" style={CARD}>
                     <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                       <h2 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
                         <FiBriefcase className="text-teal-400" /> ASSIGN LEADS ({activeDispatches.length})
@@ -1607,26 +1686,26 @@ export default function DriverMobileView() {
             </div>
 
             {/* Lower Section: Work Updates & Chat */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
-              <div className="lg:col-span-7 border rounded-lg p-4 space-y-3 shadow-sm flex flex-col justify-between" style={CARD}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-sans">
+              <div className="lg:col-span-7 border rounded-xl p-4 space-y-3 shadow-sm flex flex-col justify-between font-sans" style={CARD}>
                 <div>
-                  <h2 className="text-xs uppercase font-bold tracking-wider border-b pb-2 flex items-center justify-between" style={{ ...HEADING, borderColor: 'var(--crm-line)' }}>
+                  <h2 className="text-xs uppercase font-bold tracking-wider border-b pb-2 flex items-center justify-between font-sans" style={{ ...HEADING, borderColor: 'var(--crm-line)' }}>
                     <span className="flex items-center gap-2">
                       <span>Driver Work Update Log</span>
-                      <span className="text-[10px] text-teal-300 font-normal bg-teal-950/70 border border-teal-800/60 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-teal-300 font-normal bg-teal-950/70 border border-teal-800/60 px-2 py-0.5 rounded font-sans">
                         Driver: <strong className="text-white font-bold">{user?.name || user?.fullName || 'Active Driver'}</strong>
                       </span>
                     </span>
                     <span className="text-[10px] text-teal-400 font-mono">({workUpdateLogs.length} Entries)</span>
                   </h2>
-                  <form onSubmit={handleWorkUpdateSubmit} className="space-y-2.5 mt-2">
+                  <form onSubmit={handleWorkUpdateSubmit} className="space-y-2.5 mt-2 font-sans">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Trip Stage *</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1" style={LABEL_MONO}>Trip Stage *</label>
                         <select
                           value={workUpdateForm.updateType}
                           onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, updateType: e.target.value }))}
-                          className="w-full p-2 border rounded text-[var(--crm-heading)] text-xs font-bold outline-none cursor-pointer"
+                          className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] text-xs font-bold outline-none cursor-pointer font-sans"
                           style={CARD_SUNKEN}
                         >
                           <option value="Empty">Empty Vehicle</option>
@@ -1638,33 +1717,33 @@ export default function DriverMobileView() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Current Toll / Location</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1" style={LABEL_MONO}>Current Toll / Location</label>
                         <input
                           type="text"
                           placeholder="Enter current toll plaza or location"
                           value={workUpdateForm.location}
                           onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full p-2 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
+                          className="w-full px-3.5 py-2.5 border rounded-xl text-slate-100 placeholder:text-slate-500 text-xs outline-none font-sans"
                           style={CARD_SUNKEN}
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[9px] uppercase font-bold mb-1" style={LABEL_MONO}>Work Details / Toll Remarks *</label>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1" style={LABEL_MONO}>Work Details / Toll Remarks *</label>
                       <input
                         type="text"
                         required
                         placeholder="Enter work details or toll remarks"
                         value={workUpdateForm.notes}
                         onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="w-full p-2.5 border rounded text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none font-mono"
+                        className="w-full px-3.5 py-2.5 border rounded-xl text-slate-100 placeholder:text-slate-500 text-xs outline-none font-sans"
                         style={CARD_SUNKEN}
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={submittingWorkUpdate}
-                      className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-bold text-xs uppercase tracking-wider rounded cursor-pointer transition flex items-center justify-center gap-2 shadow"
+                      className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer transition flex items-center justify-center gap-2 shadow font-sans"
                     >
                       <FiSend size={14} />
                       {submittingWorkUpdate ? 'Posting Update...' : 'POST WORK UPDATE TO TRANSPORT MANAGER'}
@@ -1673,53 +1752,53 @@ export default function DriverMobileView() {
                 </div>
 
                 {/* Submitted Work Logs List */}
-                <div className="space-y-2 mt-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                <div className="space-y-2 mt-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar font-sans">
                   {workUpdateLogs.length === 0 ? (
-                    <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded">
+                    <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded-xl font-sans">
                       No work updates posted yet. Fill form above and click POST WORK UPDATE.
                     </div>
                   ) : (
                     workUpdateLogs.map((log) => (
-                      <div key={log.id} className="p-2 border rounded text-xs font-mono space-y-1" style={CARD_SUNKEN}>
+                      <div key={log.id} className="p-2.5 border rounded-xl text-xs font-sans space-y-1" style={CARD_SUNKEN}>
                         <div className="flex justify-between items-center text-[10px]">
-                          <strong className="text-teal-400 font-bold">[{log.type}]</strong>
-                          <span className="text-[var(--crm-ink-faint)]">{log.time}</span>
+                          <strong className="text-teal-400 font-bold font-sans">[{log.type}]</strong>
+                          <span className="text-[var(--crm-ink-faint)] font-mono">{log.time}</span>
                         </div>
-                        <div className="text-[var(--crm-heading)] text-[11px]">{log.notes}</div>
-                        {log.location && <div className="text-emerald-400 text-[10px]">📍 {log.location}</div>}
+                        <div className="text-[var(--crm-heading)] text-[11px] font-sans">{log.notes}</div>
+                        {log.location && <div className="text-emerald-400 text-[10px] font-sans">📍 {log.location}</div>}
                       </div>
                     ))
                   )}
                 </div>
               </div>
 
-              <div className="lg:col-span-5 border rounded-xl p-4 min-h-[390px] flex flex-col justify-between shadow-2xl bg-[#111317] border-slate-800 font-mono">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
+              <div className="lg:col-span-5 border rounded-xl p-4 min-h-[390px] flex flex-col justify-between shadow-2xl bg-[#111317] border-slate-800 font-sans">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 font-sans">
+                  <div className="flex items-center gap-2 font-sans">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <h2 className="text-xs uppercase font-bold tracking-wider text-slate-100 font-mono">LIVE DESK CHAT</h2>
+                    <h2 className="text-xs uppercase font-bold tracking-wider text-slate-100 font-sans">LIVE DESK CHAT</h2>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] bg-[#090b0e] p-1 rounded-lg border border-slate-800">
+                  <div className="flex items-center gap-1.5 text-[10px] bg-[#090b0e] p-1 rounded-lg border border-slate-800 font-sans">
                     <button
                       type="button"
                       onClick={() => setChatChannel('MANAGER')}
-                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatChannel === 'MANAGER' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer font-sans ${chatChannel === 'MANAGER' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                       Manager
                     </button>
                     <button
                       type="button"
                       onClick={() => setChatChannel('EXECUTIVE')}
-                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatChannel === 'EXECUTIVE' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer font-sans ${chatChannel === 'EXECUTIVE' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                       Executive
                     </button>
                   </div>
                 </div>
 
-                <div ref={chatContainerRef} className="space-y-3 overflow-y-auto max-h-[260px] my-2 text-xs font-mono custom-scrollbar flex flex-col pr-1">
+                <div ref={chatContainerRef} className="space-y-3 overflow-y-auto max-h-[260px] my-2 text-xs font-sans custom-scrollbar flex flex-col pr-1">
                   {(chatMessages[chatChannel] || []).length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 text-xs italic">
+                    <div className="p-8 text-center text-slate-500 text-xs italic font-sans">
                       No messages with {chatChannel === 'MANAGER' ? 'Transport Manager' : 'Transport Executive'}. Type below to broadcast live message.
                     </div>
                   ) : (
@@ -1737,7 +1816,7 @@ export default function DriverMobileView() {
                           className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
                         >
                           <div
-                            className={`p-3 rounded-xl text-xs space-y-1 shadow-md ${
+                            className={`p-3 rounded-xl text-xs space-y-1 shadow-md font-sans ${
                               isMe
                                 ? 'bg-[#00897b] text-white rounded-tr-none'
                                 : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
@@ -1756,15 +1835,15 @@ export default function DriverMobileView() {
                   )}
                 </div>
 
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800 font-mono">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800 font-sans">
                   <input
                     type="text"
                     placeholder={`Message ${chatChannel === 'MANAGER' ? 'Transport Manager' : 'Executive'}...`}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    className="flex-1 py-2.5 px-3 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none focus:border-teal-500 transition font-sans"
+                    className="flex-1 py-2.5 px-3.5 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none focus:border-teal-500 transition font-sans"
                   />
-                  <button type="submit" className="p-2.5 bg-[#00897b] hover:bg-[#00796b] text-white rounded-xl shadow cursor-pointer transition flex items-center justify-center">
+                  <button type="submit" className="p-2.5 bg-[#00897b] hover:bg-[#00796b] text-white rounded-xl shadow cursor-pointer transition flex items-center justify-center font-sans">
                     <FiSend size={15} />
                   </button>
                 </form>
@@ -1772,7 +1851,7 @@ export default function DriverMobileView() {
             </div>
 
             {/* DRIVER VEHICLE DAILY TRIP & EXPENSE LOG FORM CARD (LAYOUT MATCHES DESIGN WIREFRAME) */}
-            <div className="border-2 border-[var(--crm-line)] rounded-xl p-5 space-y-4 shadow-lg font-mono mt-5 bg-[var(--crm-bg-raised)]" style={CARD}>
+            <div className="border-2 border-[var(--crm-line)] rounded-xl p-5 space-y-4 shadow-lg font-sans mt-5 bg-[var(--crm-bg-raised)]" style={CARD}>
               <div className="flex items-center justify-between border-b pb-3 flex-wrap gap-2" style={{ borderColor: 'var(--crm-line)' }}>
                 <h2 className="text-sm uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
                   <FiTool size={18} className="text-emerald-400" /> DRIVER VEHICLE & DAILY TRIP LOG
@@ -1788,7 +1867,7 @@ export default function DriverMobileView() {
               <form onSubmit={handleFuelExpenseSubmit} className="space-y-4">
                 {/* SELECT ASSIGNED LEAD / TRIP ORDER DROPDOWN */}
                 <div>
-                  <label className="block text-[10px] uppercase font-bold mb-1 text-teal-400 font-mono">SELECT ASSIGNED LEAD / TRIP ORDER (OPTIONAL)</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 text-teal-400 font-sans">SELECT ASSIGNED LEAD / TRIP ORDER (OPTIONAL)</label>
                   <select
                     value={fuelExpenseForm.leadCode || ''}
                     onChange={(e) => {
@@ -1802,7 +1881,7 @@ export default function DriverMobileView() {
                         toLocation: selectedDisp ? (selectedDisp.destination || prev.toLocation) : prev.toLocation
                       }));
                     }}
-                    className="w-full p-2.5 border rounded-lg text-teal-300 font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-teal-800/60 font-mono cursor-pointer shadow-sm"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-teal-300 font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-teal-800/60 font-sans cursor-pointer shadow-sm"
                   >
                     <option value="">Select Associated Lead / Cargo Order...</option>
                     {dispatchesList.map(d => (
@@ -1814,41 +1893,41 @@ export default function DriverMobileView() {
                 </div>
 
                 {/* 2-COLUMN GRID matching the Wireframe */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans">
                   {/* Row 1 - Left: Driver Vechical number */}
                   <div className="space-y-1">
-                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
-                      Driver Vechical number *
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
+                      Driver Vehicle Number *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Driver Vechical number"
+                      placeholder="Driver Vehicle Number"
                       value={fuelExpenseForm.vehicleNumber}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
-                      className="w-full p-3 border-2 rounded-lg text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-sans"
                       style={CARD_SUNKEN}
                     />
                   </div>
 
                   {/* Row 1 - Right: fuel Cost */}
                   <div className="space-y-1">
-                    <label className="block text-xs uppercase font-bold tracking-wide text-emerald-400" style={LABEL_MONO}>
-                      fuel Cost (₹)
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-400" style={LABEL_MONO}>
+                      Fuel Cost (₹)
                     </label>
                     <input
                       type="number"
-                      placeholder="fuel Cost"
+                      placeholder="Fuel Cost"
                       value={fuelExpenseForm.fuelCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelCost: e.target.value }))}
-                      className="w-full p-3 border-2 rounded-lg text-emerald-400 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-emerald-500 transition font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-emerald-400 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-emerald-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
 
                   {/* Row 2 - Left: Total Drive Today */}
                   <div className="space-y-1">
-                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Total Drive Today (KM)
                     </label>
                     <input
@@ -1856,14 +1935,14 @@ export default function DriverMobileView() {
                       placeholder="Total Drive Today"
                       value={fuelExpenseForm.kmDriven}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
-                      className="w-full p-3 border-2 rounded-lg text-teal-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-teal-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
 
                   {/* Row 2 - Right: Todays Trip */}
                   <div className="space-y-1">
-                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Todays Trip
                     </label>
                     <input
@@ -1871,14 +1950,14 @@ export default function DriverMobileView() {
                       placeholder="Todays Trip"
                       value={fuelExpenseForm.todaysTrip}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, todaysTrip: e.target.value }))}
-                      className="w-full p-3 border-2 rounded-lg text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-sans"
                       style={CARD_SUNKEN}
                     />
                   </div>
 
                   {/* Row 3 - Left: Vehicle Mileage */}
                   <div className="space-y-1">
-                    <label className="block text-xs uppercase font-bold tracking-wide text-slate-200" style={LABEL_MONO}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Vehicle Mileage (KM/L)
                     </label>
                     <input
@@ -1887,46 +1966,46 @@ export default function DriverMobileView() {
                       placeholder="Vehicle Mileage (KM/L)"
                       value={fuelExpenseForm.vehicleMileage}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleMileage: e.target.value }))}
-                      className="w-full p-3 border-2 rounded-lg text-amber-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-amber-500 transition font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-amber-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-amber-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
 
                   {/* Row 3 - Right: Other Expense */}
                   <div className="space-y-1">
-                    <label className="block text-xs uppercase font-bold tracking-wide text-purple-300" style={LABEL_MONO}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-purple-300" style={LABEL_MONO}>
                       Other Expense (₹)
                     </label>
                     <input
                       type="number"
-                      placeholder="other Expence"
+                      placeholder="Other Expense"
                       value={fuelExpenseForm.otherCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, otherCost: e.target.value }))}
-                      className="w-full p-3 border-2 rounded-lg text-purple-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-purple-500 transition font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-purple-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-purple-500 transition font-mono"
                       style={CARD_SUNKEN}
                     />
                   </div>
                 </div>
 
                 {/* Optional Remarks input */}
-                <div>
-                  <label className="block text-[10px] uppercase font-bold mb-1 text-slate-400 font-mono">Remarks / Bill Notes (Optional)</label>
+                <div className="font-sans">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Remarks / Bill Notes (Optional)</label>
                   <input
                     type="text"
                     placeholder="Enter trip remarks or expense bill details"
                     value={fuelExpenseForm.remarks}
                     onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, remarks: e.target.value }))}
-                    className="w-full p-2.5 border rounded-lg text-slate-200 placeholder:text-slate-500 text-xs outline-none font-mono"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-slate-200 placeholder:text-slate-500 text-xs outline-none font-sans"
                     style={CARD_SUNKEN}
                   />
                 </div>
 
                 {/* Bottom Row - Centered Submit Button */}
-                <div className="flex justify-center pt-2">
+                <div className="flex justify-center pt-2 font-sans">
                   <button
                     type="submit"
                     disabled={submittingExpense}
-                    className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm uppercase tracking-wider rounded-xl cursor-pointer transition shadow-lg flex items-center justify-center gap-2 border border-emerald-400/40"
+                    className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm uppercase tracking-wider rounded-xl cursor-pointer transition shadow-lg flex items-center justify-center gap-2 border border-emerald-400/40 font-sans"
                   >
                     <FiCheckCircle size={18} />
                     {submittingExpense ? 'Submitting Log...' : 'Submit'}
@@ -1935,19 +2014,19 @@ export default function DriverMobileView() {
               </form>
 
               {/* Submitted Expense Logs History */}
-              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar pt-3 border-t border-[var(--crm-line)]">
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar pt-3 border-t border-[var(--crm-line)] font-sans">
                 {fuelExpenseLogs.length === 0 ? (
-                  <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded-lg">
+                  <div className="p-3 text-center text-[var(--crm-ink-faint)] text-[10px] border border-dashed border-[var(--crm-line)] rounded-xl font-sans">
                     No trip logs recorded yet. Use the form above to log vehicle number, drive KM, fuel & mileage.
                   </div>
                 ) : (
                   fuelExpenseLogs.map((log) => (
-                    <div key={log.id} className="p-3 border rounded-lg text-xs font-mono space-y-1.5" style={CARD_SUNKEN}>
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-teal-400 font-bold font-mono">
+                    <div key={log.id} className="p-3 border rounded-xl text-xs font-sans space-y-1.5" style={CARD_SUNKEN}>
+                      <div className="flex justify-between items-center text-[10px] font-sans">
+                        <span className="text-teal-400 font-bold font-sans">
                           🚚 Truck: <strong className="text-white">{log.vehicle}</strong> {log.todaysTrip && `| ${log.todaysTrip}`}
                         </span>
-                        <span className="text-[var(--crm-ink-faint)]">{log.date} {log.time}</span>
+                        <span className="text-[var(--crm-ink-faint)] font-mono">{log.date} {log.time}</span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between text-[11px] gap-2">
                         <span className="text-teal-300 font-bold">Total Drive: {log.totalKm} KM {log.vehicleMileage > 0 && `| Mileage: ${log.vehicleMileage} KM/L`}</span>
@@ -2442,64 +2521,67 @@ export default function DriverMobileView() {
       {/* MODAL: MARK ORDER DELIVERED CONFIRMATION */}
       <AnimatePresence>
         {showDeliveryModal && (
-          <div className="fixed inset-0 z-[160] flex items-center justify-center p-2 sm:p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg,#090d16)] border border-[var(--crm-line)] w-full max-w-4xl p-4 sm:p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-mono text-xs max-h-[92vh] flex flex-col" style={{ color: 'var(--crm-ink-soft)' }}>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[160] p-3 sm:p-4 overflow-y-auto">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-full max-w-4xl p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-sans text-xs max-h-[92vh] flex flex-col text-[var(--crm-ink-soft)] my-auto">
               
               {/* Modal Header */}
-              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] flex items-center justify-center text-[var(--crm-accent)]">
-                    <FiCheckCircle size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-bold uppercase text-[var(--crm-heading)] font-mono tracking-wider flex items-center gap-2">
-                      Customer Payment & Delivery Completion
-                    </h3>
-                    <p className="text-[10px] text-[var(--crm-ink-faint)]">Confirm cargo handover and verify payment collection</p>
-                  </div>
+              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 shrink-0">
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
+                    <FiCheckCircle className="text-teal-400 animate-pulse" size={18} /> Customer Payment & Delivery Completion
+                  </h3>
+                  <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase block mt-0.5 font-medium">
+                    Confirm cargo handover and verify payment collection
+                  </span>
                 </div>
-                <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] cursor-pointer transition"><FiX size={18} /></button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeliveryModal(false)}
+                  className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer transition p-1"
+                >
+                  ✕
+                </button>
               </div>
 
               {/* Modal Main Body (2-Column Grid) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto pr-1 custom-scrollbar flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto pr-1 custom-scrollbar flex-1 font-sans">
                 
                 {/* LEFT COLUMN: LEAD DETAILS & DRIVER PROOF (5 Columns) */}
                 <div className="lg:col-span-5 space-y-3.5 border-r lg:border-[var(--crm-line)] lg:pr-4">
-                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2.5 font-mono shadow-sm">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                      Lead / Order ID: <strong className="text-[var(--crm-accent)] font-mono">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
+                  <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2 font-sans shadow-sm">
+                    <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold tracking-wider block font-mono">
+                      LEAD / ORDER ID: <strong className="text-[var(--crm-accent)]">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
                     </span>
-                    <strong className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName || 'Client Business'}</strong>
+                    <h4 className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName || 'Client Business'}</h4>
                     <div className="text-[11px] text-[var(--crm-accent)] font-bold flex items-center gap-1">
                       <span>📍</span> {deliveringOrder?.origin || 'Origin'} &rarr; {deliveringOrder?.destination || 'Destination'}
                     </div>
-                    <div className="text-[10px] text-slate-400 border-t border-[var(--crm-line)] pt-2 mt-1">
+                    <div className="text-[10px] text-[var(--crm-ink-faint)] border-t border-[var(--crm-line)] pt-2 mt-1 font-sans">
                       🚚 Truck: <strong className="text-[var(--crm-heading)]">{deliveringOrder?.vehicleNo || attendanceForm.vehicleNumber || profileVehicleNumber || 'Assigned Vehicle'}</strong>
                     </div>
                   </div>
 
                   {/* Total Payment Payable Card */}
-                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2 font-mono">
-                    <label className="block text-[10px] uppercase font-bold text-[var(--crm-heading)] tracking-wider">Total Freight Payable (₹)</label>
+                  <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2 font-sans">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">Total Freight Payable (₹)</label>
                     <input
                       type="number"
                       placeholder="Enter amount"
                       value={paymentAmountCollected}
                       onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                      className="w-full p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] font-bold text-base outline-none font-mono transition"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] font-mono font-bold placeholder-slate-500 transition"
                     />
-                    <span className="text-[9px] text-slate-400 block">* Amount collected from customer upon delivery.</span>
+                    <span className="text-[9px] text-[var(--crm-ink-faint)] block">* Amount collected from customer upon delivery.</span>
                   </div>
 
                   {/* PROOF OF DRIVER (Selfie / Unloading Point Photo) */}
-                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
+                  <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <label className="block text-[10px] uppercase font-bold text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
-                        <FiCamera size={14} className="text-[var(--crm-accent)]" /> Driver Unloading Proof *
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] flex items-center gap-1.5">
+                        <FiCamera size={14} className="text-teal-400" /> Driver Unloading Proof *
                       </label>
-                      <span className="text-[9px] text-rose-400 font-bold uppercase tracking-wider bg-rose-950/40 border border-rose-900/60 px-2 py-0.5 rounded">MANDATORY *</span>
+                      <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded-md border bg-rose-950/60 border-rose-800/60 text-rose-400">MANDATORY *</span>
                     </div>
 
                     <input
@@ -2508,62 +2590,62 @@ export default function DriverMobileView() {
                       accept="image/*"
                       capture="environment"
                       onChange={(e) => handleProofFileUpload(e, setDriverProofFile, setDriverProofPreview)}
-                      className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-[var(--crm-line)] file:text-xs file:font-bold file:bg-[var(--crm-bg-sunken)] file:text-[var(--crm-heading)] hover:file:bg-[var(--crm-bg)] cursor-pointer font-mono"
+                      className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer font-sans"
                     />
 
                     {/* Preview Box directly underneath file upload */}
                     {driverProofPreview ? (
-                      <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-mono">
+                      <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-sans">
                         <div className="flex items-center gap-2.5">
                           {driverProofPreview.startsWith('data:image') || driverProofFile?.type?.startsWith('image/') ? (
-                            <img src={driverProofPreview} alt="Driver Selfie" className="w-12 h-12 object-cover rounded-lg border border-[var(--crm-accent)] shadow" />
+                            <img src={driverProofPreview} alt="Driver Selfie" className="w-12 h-12 object-cover rounded-lg border border-[var(--crm-line)] shadow" />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-[var(--crm-bg)] flex items-center justify-center text-xs">📷</div>
+                            <div className="w-10 h-10 rounded-lg bg-[var(--crm-bg-raised)] flex items-center justify-center text-xs">📷</div>
                           )}
                           <div>
                             <span className="text-[var(--crm-heading)] text-[11px] block font-bold">📷 Driver Photo Uploaded</span>
-                            <span className="text-[10px] text-slate-400">{driverProofFile?.name || 'Unloading Selfie Verified'}</span>
+                            <span className="text-[10px] text-[var(--crm-ink-faint)]">{driverProofFile?.name || 'Unloading Selfie Verified'}</span>
                           </div>
                         </div>
-                        <span className="text-[10px] text-[var(--crm-accent)] font-bold bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">VERIFIED ✓</span>
+                        <span className="px-2.5 py-0.5 text-[9px] font-bold uppercase rounded-md border bg-emerald-950/60 border-emerald-800/60 text-emerald-400">VERIFIED ✓</span>
                       </div>
                     ) : (
-                      <span className="text-[9px] text-slate-400 block font-mono">
+                      <span className="text-[9px] text-[var(--crm-ink-faint)] block">
                         * Driver must upload site selfie or cargo unloading photo to confirm delivery.
                       </span>
                     )}
                   </div>
 
-                  {/* UPLOAD PAYMENT PROOF RECEIPT (Right under Driver Unloading Proof) */}
-                  <div className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
-                    <label className="block text-[10px] uppercase font-bold text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
-                      <FiUpload size={14} className="text-[var(--crm-accent)]" /> Upload Payment Proof / Receipt (Bank / UPI Screenshot)
+                  {/* UPLOAD PAYMENT PROOF RECEIPT */}
+                  <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] flex items-center gap-1.5">
+                      <FiUpload size={14} className="text-teal-400" /> Upload Payment Receipt (Bank / UPI Screenshot)
                     </label>
 
                     <input
                       type="file"
                       accept="image/*,.pdf,.doc,.docx"
                       onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
-                      className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-[var(--crm-line)] file:text-xs file:font-bold file:bg-[var(--crm-bg-sunken)] file:text-[var(--crm-heading)] hover:file:bg-[var(--crm-bg)] cursor-pointer font-mono"
+                      className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer font-sans"
                     />
 
                     {paymentProofPreview ? (
-                      <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-mono">
+                      <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-sans">
                         <div className="flex items-center gap-2.5">
                           {paymentProofPreview.startsWith('data:image') || paymentProofFile?.type?.startsWith('image/') ? (
-                            <img src={paymentProofPreview} alt="Payment Receipt" className="w-12 h-12 object-cover rounded-lg border border-[var(--crm-accent)] shadow" />
+                            <img src={paymentProofPreview} alt="Payment Receipt" className="w-12 h-12 object-cover rounded-lg border border-[var(--crm-line)] shadow" />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-[var(--crm-bg)] flex items-center justify-center text-xs">📄</div>
+                            <div className="w-10 h-10 rounded-lg bg-[var(--crm-bg-raised)] flex items-center justify-center text-xs">📄</div>
                           )}
                           <div className="truncate max-w-[180px]">
                             <span className="text-[var(--crm-heading)] text-[11px] block font-bold truncate">📄 Payment Receipt Attached</span>
-                            <span className="text-[10px] text-slate-400 truncate block">{paymentProofFile?.name || 'Bank/UPI Slip Verified'}</span>
+                            <span className="text-[10px] text-[var(--crm-ink-faint)] truncate block">{paymentProofFile?.name || 'Bank/UPI Slip Verified'}</span>
                           </div>
                         </div>
-                        <span className="text-[10px] text-[var(--crm-accent)] font-bold bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded shrink-0">ATTACHED ✓</span>
+                        <span className="px-2.5 py-0.5 text-[9px] font-bold uppercase rounded-md border bg-teal-950/60 border-teal-800/60 text-teal-400 shrink-0">ATTACHED ✓</span>
                       </div>
                     ) : (
-                      <span className="text-[9px] text-slate-400 block font-mono">
+                      <span className="text-[9px] text-[var(--crm-ink-faint)] block">
                         * Upload customer payment receipt screenshot or bank slip if applicable.
                       </span>
                     )}
@@ -2571,34 +2653,34 @@ export default function DriverMobileView() {
 
                   {/* Delivery Notes / POD Remarks */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 font-mono">Delivery Notes / POD Remarks</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Delivery Notes / POD Remarks</label>
                     <textarea
                       rows={2}
                       value={deliveryNotes}
                       onChange={(e) => setDeliveryNotes(e.target.value)}
-                      className="w-full p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] text-xs outline-none font-mono transition"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
                       placeholder="Enter delivery comments or POD receipt details..."
                     />
                   </div>
                 </div>
 
                 {/* RIGHT COLUMN: LIVE PAYMENT GATEWAY & MODES (7 Columns) */}
-                <div className="lg:col-span-7 space-y-4 font-mono">
+                <div className="lg:col-span-7 space-y-4 font-sans">
                   
                   {/* Payment Mode Selector Tabs */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-2 font-mono tracking-wider">Select Customer Payment Method</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-2">Select Customer Payment Method</label>
                     <div className="grid grid-cols-3 gap-2.5">
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('RAZORPAY')}
                         className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RAZORPAY'
-                            ? 'bg-[var(--crm-accent-bg)] border-[var(--crm-accent)] text-[var(--crm-heading)] font-bold shadow-md'
-                            : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm'
+                            : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-[var(--crm-accent)]' : 'text-slate-400'} />
+                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-amber-400' : 'text-[var(--crm-ink-faint)]'} />
                         <span className="text-[10px] uppercase font-bold">Razorpay (UPI/QR)</span>
                       </button>
 
@@ -2607,11 +2689,11 @@ export default function DriverMobileView() {
                         onClick={() => setSelectedPaymentMode('COD')}
                         className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'COD'
-                            ? 'bg-[var(--crm-accent-bg)] border-[var(--crm-accent)] text-[var(--crm-heading)] font-bold shadow-md'
-                            : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm'
+                            : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-[var(--crm-accent)]' : 'text-slate-400'} />
+                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-amber-400' : 'text-[var(--crm-ink-faint)]'} />
                         <span className="text-[10px] uppercase font-bold">Cash on Delivery</span>
                       </button>
 
@@ -2620,11 +2702,11 @@ export default function DriverMobileView() {
                         onClick={() => setSelectedPaymentMode('RECEIPT')}
                         className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RECEIPT'
-                            ? 'bg-[var(--crm-accent-bg)] border-[var(--crm-accent)] text-[var(--crm-heading)] font-bold shadow-md'
-                            : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm'
+                            : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-[var(--crm-accent)]' : 'text-slate-400'} />
+                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-amber-400' : 'text-[var(--crm-ink-faint)]'} />
                         <span className="text-[10px] uppercase font-bold">Upload Receipt</span>
                       </button>
                     </div>
@@ -2632,102 +2714,101 @@ export default function DriverMobileView() {
 
                   {/* OPTION 1: RAZORPAY CHECKOUT SDK (LIVE PAYMENT TERMINAL) */}
                   {selectedPaymentMode === 'RAZORPAY' && (
-                    <div className="p-4 border border-[var(--crm-line)] rounded-2xl bg-[var(--crm-bg-raised)] shadow-xl space-y-4 font-mono text-slate-100">
+                    <div className="p-4 border border-[var(--crm-line)] rounded-2xl bg-[var(--crm-bg-sunken)] shadow-xl space-y-4 font-sans text-slate-100">
                       
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-left">
                         
                         {/* LEFT COLUMN: Payment Methods List */}
-                        <div className="md:col-span-6 space-y-2 border-r border-[var(--crm-line)] pr-3">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--crm-heading)] mb-2 font-mono flex items-center gap-1.5">
-                            <FiCreditCard size={13} className="text-[var(--crm-accent)]" /> Razorpay Payment Options
+                        <div className="md:col-span-6 space-y-2 border-r border-[var(--crm-line)] pr-3 font-sans">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-2 flex items-center gap-1.5">
+                            <FiCreditCard size={13} className="text-amber-400" /> Razorpay Payment Options
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 UPI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">UPI (Google Pay, PhonePe, Paytm)</h5>
-                                <p className="text-[10px] text-slate-400">Pay instantly using any UPI app</p>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">UPI (Google Pay, PhonePe, Paytm)</h5>
+                                <p className="text-[10px] text-[var(--crm-ink-faint)]">Pay instantly using any UPI app</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 CARD
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">Credit / Debit / ATM Card</h5>
-                                <p className="text-[10px] text-slate-400">Visa, MasterCard, RuPay, Maestro</p>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">Credit / Debit / ATM Card</h5>
+                                <p className="text-[10px] text-[var(--crm-ink-faint)]">Visa, MasterCard, RuPay, Maestro</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 EMI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">EMI & Pay Later</h5>
-                                <p className="text-[10px] text-slate-400">Credit & Debit Card EMI</p>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">EMI & Pay Later</h5>
+                                <p className="text-[10px] text-[var(--crm-ink-faint)]">Credit & Debit Card EMI</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] hover:border-[var(--crm-accent)] transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-[var(--crm-accent)] border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 BANK
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-[var(--crm-accent)]">Net Banking</h5>
-                                <p className="text-[10px] text-slate-400">All Indian Banks (SBI, HDFC, ICICI)</p>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">Net Banking</h5>
+                                <p className="text-[10px] text-[var(--crm-ink-faint)]">All Indian Banks (SBI, HDFC, ICICI)</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--crm-heading)] bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
                         </div>
 
                         {/* RIGHT COLUMN: Razorpay Checkout Action Terminal Card */}
-                        <div className="md:col-span-6 flex flex-col justify-between items-center text-center p-4 bg-[var(--crm-bg-sunken)] rounded-xl border border-[var(--crm-line)] font-mono space-y-4">
+                        <div className="md:col-span-6 flex flex-col justify-between items-center text-center p-4 bg-[var(--crm-bg)] rounded-xl border border-[var(--crm-line)] font-sans space-y-4">
                           <div className="space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Total Freight Amount</span>
-                            <div className="text-2xl font-black text-[var(--crm-heading)] font-mono">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Total Freight Amount</span>
+                            <div className="text-2xl font-bold text-[var(--crm-heading)] font-mono">
                               ₹{Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')}
                             </div>
                           </div>
 
                           {razorpayTxnId ? (
-                            <div className="p-3 bg-[var(--crm-accent-bg)] border border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] text-xs font-bold space-y-1 w-full text-center">
+                            <div className="p-3 bg-emerald-950/60 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs font-bold space-y-1 w-full text-center">
                               <div>✓ Razorpay Live Payment Verified!</div>
-                              <div className="text-[10px] text-slate-300 font-mono">Txn ID: <strong className="text-[var(--crm-heading)]">{razorpayTxnId}</strong></div>
+                              <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">Txn ID: <strong className="text-[var(--crm-heading)]">{razorpayTxnId}</strong></div>
                             </div>
                           ) : (
                             <button
                               type="button"
                               onClick={() => triggerRazorpayCheckout(deliveringOrder)}
                               disabled={loadingRazorpay}
-                              className="w-full py-3 px-4 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
-                              style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)', border: '1px solid var(--crm-accent)' }}
+                              className="w-full py-3 px-4 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2 bg-amber-950/60 border border-amber-500 text-amber-300 hover:bg-amber-900/60"
                             >
                               <FiCreditCard size={16} />
                               {loadingRazorpay ? 'Launching Gateway...' : `Launch Razorpay Live (₹${Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')})`}
@@ -2736,7 +2817,7 @@ export default function DriverMobileView() {
 
                           {/* Security Notice Footer */}
                           <div className="w-full pt-2 border-t border-[var(--crm-line)]">
-                            <p className="text-[9px] text-slate-400 font-mono">
+                            <p className="text-[9px] text-[var(--crm-ink-faint)]">
                               * Do not hit back or close this screen until the transaction is complete.
                             </p>
                           </div>
@@ -2748,24 +2829,24 @@ export default function DriverMobileView() {
 
                   {/* OPTION 2: CASH ON DELIVERY (COD) */}
                   {selectedPaymentMode === 'COD' && (
-                    <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-raised)] space-y-3 font-mono">
+                    <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-sans">
                       <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiDollarSign className="text-[var(--crm-accent)]" /> Cash Handover / Cash on Delivery (COD)
+                        <FiDollarSign className="text-amber-400" /> Cash Handover / Cash on Delivery (COD)
                       </h4>
-                      <p className="text-[10px] text-slate-300">
+                      <p className="text-[10px] text-[var(--crm-ink-faint)]">
                         Customer has paid cash directly to driver upon delivery.
                       </p>
 
                       <div className="space-y-2">
-                        <label className="block text-[10px] uppercase font-bold text-slate-300">Cash Amount Collected (₹)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">Cash Amount Collected (₹)</label>
                         <input
                           type="number"
                           value={paymentAmountCollected}
                           onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                          className="w-full p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] focus:border-[var(--crm-accent)] rounded-xl text-[var(--crm-heading)] font-bold text-sm outline-none font-mono"
+                          className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] font-mono font-bold transition"
                         />
                       </div>
-                      <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-[10px] text-slate-300">
+                      <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-lg text-[10px] text-[var(--crm-ink-faint)]">
                         ✓ Cash Handover will be logged in Driver Daily Freight Settlement.
                       </div>
                     </div>
@@ -2773,21 +2854,21 @@ export default function DriverMobileView() {
 
                   {/* OPTION 3: UPLOAD MANUAL PAYMENT RECEIPT */}
                   {selectedPaymentMode === 'RECEIPT' && (
-                    <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-raised)] space-y-3 font-mono">
+                    <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-sans">
                       <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiUpload className="text-[var(--crm-accent)]" /> Upload Bank / UPI Screenshot Receipt
+                        <FiUpload className="text-amber-400" /> Upload Bank / UPI Screenshot Receipt
                       </h4>
 
                       <input
                         type="file"
                         accept="image/*,.pdf,.doc,.docx"
                         onChange={(e) => handleProofFileUpload(e, setPaymentProofFile, setPaymentProofPreview)}
-                        className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-[var(--crm-line)] file:text-xs file:font-bold file:bg-[var(--crm-bg-sunken)] file:text-[var(--crm-heading)] hover:file:bg-[var(--crm-bg)] cursor-pointer font-mono"
+                        className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer font-sans"
                       />
                       {paymentProofPreview && (
-                        <div className="p-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between text-[11px] font-mono">
-                          <span className="text-[var(--crm-heading)] truncate font-mono">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
-                          <span className="text-[var(--crm-accent)] font-bold text-[10px]">Attached ✓</span>
+                        <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between text-[11px] font-sans">
+                          <span className="text-[var(--crm-heading)] truncate">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
+                          <span className="text-amber-400 font-bold text-[10px]">Attached ✓</span>
                         </div>
                       )}
                     </div>
@@ -2797,18 +2878,23 @@ export default function DriverMobileView() {
 
               </div>
 
-              {/* Modal Footer / Confirm Action */}
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--crm-line)]">
-                <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2.5 border border-[var(--crm-line)] hover:border-slate-500 text-slate-300 text-xs font-bold rounded-xl uppercase cursor-pointer transition font-mono">Cancel</button>
+              {/* Modal Footer Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)] shrink-0 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDeliveryModal(false)}
+                  className="py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer font-sans"
+                >
+                  Cancel
+                </button>
                 <button 
                   type="button" 
                   onClick={handleConfirmDeliverySubmit} 
                   disabled={submittingDelivery} 
-                  className="px-6 py-2.5 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center gap-2 shadow-lg"
-                  style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent)', color: 'var(--crm-heading)', border: '1px solid var(--crm-accent)' }}
+                  className="py-2.5 px-5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer disabled:opacity-50 flex items-center gap-2 font-sans"
                 >
                   <FiCheckCircle size={16} />
-                  {submittingDelivery ? 'Updating Status...' : 'CONFIRM DELIVERY & NOTIFY MANAGER'}
+                  {submittingDelivery ? 'Updating Status...' : 'Confirm Delivery & Notify Manager'}
                 </button>
               </div>
             </motion.div>

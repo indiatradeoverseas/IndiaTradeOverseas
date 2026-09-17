@@ -61,11 +61,17 @@ export default function Followup() {
   const [submittingTask, setSubmittingTask] = useState(false);
 
   const isManagerOrAdmin = 
-    user?.role === 'ADMIN' ||
-    user?.role === 'MANAGER' ||
-    user?.role === 'SALES_MANAGER' ||
+    ['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER'].includes((user?.role || '').toUpperCase()) ||
+    (user?.role && user.role.toUpperCase().endsWith('_MANAGER')) ||
+    (user?.role && user.role.toLowerCase().includes('manager')) ||
     user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'));
+    user?.department === 'MANAGEMENT' ||
+    (user?.position && (
+      user.position.toLowerCase().includes('admin') ||
+      user.position.toLowerCase().includes('manager') ||
+      user.position.toLowerCase().includes('founder') ||
+      user.position.toLowerCase().includes('ceo')
+    ));
 
   useEffect(() => {
     loadData();

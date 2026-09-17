@@ -76,9 +76,22 @@ const EmployeeLogin = () => {
             style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' }
           });
           pushDataLayerEvent('login', { method: 'employee' });
-          const role = response.data?.employee?.role;
-          const dept = response.data?.employee?.department;
-          if (role === 'HR_MANAGER' || (dept === 'HR' && role === 'MANAGER')) {
+          const role = (response.data?.employee?.role || '').toUpperCase();
+          const position = (response.data?.employee?.position || '').toLowerCase();
+          const email = (response.data?.employee?.email || formData.email || '').toLowerCase();
+          const empId = (response.data?.employee?.employeeId || '').toUpperCase();
+          const dept = (response.data?.employee?.department || '').toUpperCase();
+
+          const isCEO = role === 'CEO' || position.includes('chief executive') || position === 'ceo' || empId.includes('CEO') || email.startsWith('ceo@');
+          const isFounder = !isCEO && (role === 'FOUNDER' || role === 'CO_FOUNDER' || position.includes('founder') || empId.includes('FOUNDER') || email.startsWith('founder@'));
+
+          if (isFounder) {
+            navigate('/crm/founder');
+          } else if (isCEO) {
+            navigate('/crm/ceo');
+          } else if (role === 'ADMIN' || role === 'SUPER_ADMIN' || dept === 'ADMIN' || position.includes('admin')) {
+            navigate('/crm/dashboard');
+          } else if (role === 'HR_MANAGER' || (dept === 'HR' && role === 'MANAGER')) {
             navigate('/crm/hr/manager');
           } else if (role === 'HR_EXECUTIVE' || role === 'HR') {
             navigate('/crm/hr/executive');
@@ -506,9 +519,9 @@ const EmployeeLogin = () => {
               </Link>
             </p>
             <p className="font-light">
-              Administrator or Trial Executive?{' '}
+              Founder or Trial Executive?{' '}
               <Link to="/admin-login" className="font-medium text-[#C5CBD3] hover:text-[#F2F4F7] hover:underline">
-                Admin login
+                Founder login
               </Link>
               {' / '}
               <Link to="/trial-login" className="font-medium text-[#60A5FA] hover:text-[#93C5FD] hover:underline">

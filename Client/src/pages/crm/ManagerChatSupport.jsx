@@ -19,12 +19,15 @@ import {
   FiCheck
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { managerChatApi } from '../../api/managerChat';
 import { socketService } from '../../services/socket';
+import { playNotificationSound } from '../../utils/sound';
 
 export default function ManagerChatSupport() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // Set of all possible IDs/emails for the currently logged-in user
   const myIdsSet = useMemo(() => {
@@ -119,6 +122,17 @@ export default function ManagerChatSupport() {
             if (prev.some(m => String(m._id || m.id) === String(msg._id || msg.id))) return prev;
             return [...prev, msg];
           });
+
+          // Trigger audio chime and toast notification if received from someone else
+          if (!isSenderMe) {
+            playNotificationSound();
+            const senderInfo = msg.senderName ? `${msg.senderName} (${msg.senderRole || msg.senderDepartment || 'Staff'})` : 'Executive';
+            toast(`💬 Message from ${senderInfo}: "${(msg.message || 'Attachment').slice(0, 40)}"`, {
+              duration: 5000,
+              icon: '🔔',
+              style: { background: '#0f172a', color: '#38bdf8', border: '1px solid #0284c7' }
+            });
+          }
 
           // Mark message as read automatically if receiving while on this active channel
           if (isSenderTarget) {
@@ -231,6 +245,31 @@ export default function ManagerChatSupport() {
     }
   };
 
+  const renderMessageContent = (content) => {
+    if (!content) return null;
+    const parts = content.split(/(\b(?:LD|LEAD)-[A-Za-z0-9-]+|\b[0-9a-fA-F]{24}\b)/g);
+    return (
+      <span>
+        {parts.map((part, idx) => {
+          if (/^(?:LD|LEAD)-/i.test(part) || /^[0-9a-fA-F]{24}$/.test(part)) {
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => navigate(`/crm/leads/${part}`)}
+                className="bg-black/40 hover:bg-black/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-200 hover:text-cyan-100 font-mono font-bold text-[11px] px-2 py-0.5 rounded mx-0.5 inline-flex items-center gap-1 transition underline cursor-pointer shadow-sm"
+                title={`Click to open Lead Manifest (${part})`}
+              >
+                📄 {part} ↗
+              </button>
+            );
+          }
+          return part;
+        })}
+      </span>
+    );
+  };
+
   const filteredParticipants = participants.filter(p => {
     const name = (p.fullName || p.name || '').toLowerCase();
     const role = (p.role || '').toLowerCase();
@@ -259,7 +298,7 @@ export default function ManagerChatSupport() {
               fetchMessages(selectedChannel);
               toast.success('Chat synchronized 🔄');
             }}
-            className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[9px] uppercase px-3 py-1.5 rounded transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+            className="bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-[9px] uppercase px-3.5 py-1.5 rounded transition cursor-pointer flex items-center gap-1.5 shadow-sm border border-cyan-500/50"
           >
             <FiRefreshCw size={12} /> Refresh Sync
           </button>
@@ -276,11 +315,11 @@ export default function ManagerChatSupport() {
           <div className="flex justify-between items-center mb-3 font-mono border-b border-[var(--crm-line)] pb-3">
             <div>
               <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-1.5">
-                <FiZap className="text-amber-400 shrink-0" size={14} /> EXECUTIVE DIRECTORY
+                <FiZap className="text-cyan-400 shrink-0" size={14} /> EXECUTIVE DIRECTORY
               </h3>
               <p className="text-[9px] text-[var(--crm-ink-faint)]">Leadership channels & direct lines.</p>
             </div>
-            <span className="bg-amber-950/80 text-amber-400 text-[8px] px-1.5 py-0.5 rounded font-bold border border-amber-800">
+            <span className="bg-cyan-950/80 text-cyan-300 text-[8px] px-1.5 py-0.5 rounded font-bold border border-cyan-800">
               HQ NET
             </span>
           </div>
@@ -323,9 +362,9 @@ export default function ManagerChatSupport() {
               >
                 <div className="space-y-0.5 min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <FiHash className="text-amber-400 shrink-0" size={15} />
+                    <FiHash className="text-cyan-400 shrink-0" size={15} />
                     <span className="font-bold text-[var(--crm-heading)] text-xs truncate"># General Leadership Desk</span>
-                    <span className="bg-amber-950/80 text-amber-400 text-[8px] px-1.5 py-0.5 rounded font-bold border border-amber-800">
+                    <span className="bg-cyan-950/80 text-cyan-300 text-[8px] px-1.5 py-0.5 rounded font-bold border border-cyan-800">
                       LEADERSHIP
                     </span>
                   </div>
@@ -366,7 +405,7 @@ export default function ManagerChatSupport() {
                             <span className="font-bold text-[var(--crm-heading)] text-xs truncate max-w-[140px]">
                               {p.fullName || p.name}
                             </span>
-                            <span className="bg-amber-950/80 text-amber-400 text-[8px] px-1.5 py-0.5 rounded font-bold border border-amber-800 uppercase">
+                            <span className="bg-cyan-950/80 text-cyan-300 text-[8px] px-1.5 py-0.5 rounded font-bold border border-cyan-800 uppercase">
                               {p.department || 'HQ'}
                             </span>
                           </div>
@@ -410,7 +449,7 @@ export default function ManagerChatSupport() {
             </div>
 
             {selectedChannel !== 'GENERAL' && (
-              <span className="bg-amber-950/80 text-amber-400 text-[8px] px-2 py-1 rounded font-bold border border-amber-800 uppercase font-mono hidden sm:inline-block">
+              <span className="bg-cyan-950/80 text-cyan-300 text-[8px] px-2 py-1 rounded font-bold border border-cyan-800 uppercase font-mono hidden sm:inline-block">
                 🔒 1-ON-1 DIRECT LINE
               </span>
             )}
@@ -430,6 +469,7 @@ export default function ManagerChatSupport() {
               messages.map((msg, msgIdx) => {
                 const isMe = myIdsSet.has(String(msg.senderId)) || (user?.email && msg.senderEmail && String(msg.senderEmail).toLowerCase() === String(user.email).toLowerCase());
                 const isSeen = Boolean(msg.isRead) || (msg.readBy && msg.readBy.some(id => !myIdsSet.has(String(id))));
+                const isImage = msg.attachmentUrl && /\.(png|jpe?g|webp|gif)$/i.test(msg.attachmentUrl);
 
                 return (
                   <div
@@ -446,31 +486,55 @@ export default function ManagerChatSupport() {
                     >
                       {/* Sender Header */}
                       <div className="flex justify-between items-center gap-4 text-[9px] font-mono font-bold opacity-80 border-b border-white/10 pb-1">
-                        <span>{msg.senderName} ({msg.senderDepartment || msg.senderRole || 'MANAGER'})</span>
+                        <span>From: <strong>{msg.senderName}</strong> ({msg.senderDepartment || msg.senderRole || 'MANAGER'})</span>
                       </div>
 
                       {/* Associated Lead Code Tag */}
                       {msg.leadCode && (
-                        <div className="mb-1 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/20 text-amber-200 font-mono text-[9px]">
-                          <FiTag size={10} /> Lead Code: <strong>{msg.leadCode}</strong>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/crm/leads/${msg.leadCode}`)}
+                          className="mb-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 hover:bg-black/60 text-cyan-200 hover:text-cyan-100 border border-cyan-500/50 hover:border-cyan-400 font-mono text-[10px] font-bold cursor-pointer transition shadow-sm"
+                          title={`Click to open lead details for ${msg.leadCode}`}
+                        >
+                          <FiTag size={11} className="text-cyan-300" />
+                          <span>Lead Code: <strong className="underline font-extrabold">{msg.leadCode}</strong> ↗</span>
+                        </button>
                       )}
 
                       {/* Message Content */}
-                      <div className="leading-relaxed break-words font-sans text-xs pt-1">
-                        {msg.message}
-                      </div>
+                      {msg.message && (
+                        <div className="leading-relaxed break-words font-sans text-xs pt-1">
+                          {renderMessageContent(msg.message)}
+                        </div>
+                      )}
 
-                      {/* Attachment Link */}
-                      {msg.attachmentUrl && (
+                      {/* Inline Image Preview Thumbnail */}
+                      {isImage && (
+                        <div className="mt-2 space-y-1">
+                          <img
+                            src={msg.attachmentUrl}
+                            alt="Attachment preview"
+                            onClick={() => window.open(msg.attachmentUrl, '_blank')}
+                            className="max-h-56 max-w-full rounded border border-white/20 object-cover cursor-pointer hover:opacity-90 transition shadow-md"
+                          />
+                          <div className="text-[9px] font-mono text-cyan-200 flex items-center justify-between">
+                            <span>Image sent by <strong>{msg.senderName}</strong></span>
+                            <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Full View ↗</a>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Generic Attachment Link if not image */}
+                      {msg.attachmentUrl && !isImage && (
                         <div className="mt-1 pt-1 border-t border-white/20">
                           <a
                             href={msg.attachmentUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] font-mono text-amber-200 underline inline-flex items-center gap-1"
+                            className="text-[10px] font-mono text-cyan-200 underline inline-flex items-center gap-1"
                           >
-                            <FiImage size={10} /> View Attachment
+                            <FiImage size={10} /> View Attachment (Sent by {msg.senderName})
                           </a>
                         </div>
                       )}
@@ -505,7 +569,7 @@ export default function ManagerChatSupport() {
             
             {/* Associated Lead Tag Indicator */}
             {leadCodeInput && (
-              <div className="mb-2 inline-flex items-center gap-2 bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[9px] font-mono px-2.5 py-1 rounded">
+              <div className="mb-2 inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[9px] font-mono px-2.5 py-1 rounded">
                 <FiTag size={10} /> Tagged Lead: <strong>{leadCodeInput}</strong>
                 <button onClick={() => setLeadCodeInput('')} className="hover:text-white cursor-pointer ml-1">
                   <FiX size={12} />

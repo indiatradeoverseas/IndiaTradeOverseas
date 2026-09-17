@@ -10,6 +10,8 @@ import { chatApi } from '../../api/chat';
 import { leadsApi } from '../../api/leads';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
+import ScreenshotAlertsWidget from '../../components/crm/ScreenshotAlertsWidget';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 // Cinematic staggered entrance variations
 const containerVariants = {
@@ -47,7 +49,16 @@ export default function AdminPanel() {
   const [isAssigning, setIsAssigning] = useState(false);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN') {
+    const role = (user?.role || '').toUpperCase();
+    const position = (user?.position || '').toLowerCase();
+    const isAdminUser =
+      ['ADMIN', 'FOUNDER', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) ||
+      user?.department === 'ADMIN' ||
+      position.includes('admin') ||
+      position.includes('founder') ||
+      role.includes('FOUNDER');
+
+    if (isAdminUser) {
       fetchAdminData();
     }
   }, [user]);
@@ -228,6 +239,8 @@ export default function AdminPanel() {
       let response;
       if (type === 'export') {
         response = await adminApi.updateExportPermission(id, !currentValue);
+      } else if (type === 'import') {
+        response = await adminApi.updateImportPermission(id, !currentValue);
       } else if (type === 'upload') {
         response = await adminApi.updateProductUploadPermission(id, !currentValue);
       } else if (type === 'lead') {
@@ -379,6 +392,7 @@ export default function AdminPanel() {
           <nav className="flex space-x-6 min-w-max">
             {[
               { id: 'overview', label: 'Overview', icon: FiBarChart2 },
+              { id: 'files', label: 'File Sharing', icon: FiLayers },
               { id: 'users', label: 'Users & Permissions', icon: FiUsers },
               { id: 'alerts', label: 'Security Alerts', icon: FiShield },
               { id: 'chats', label: 'Support Desks', icon: FiMessageSquare },
@@ -456,6 +470,11 @@ export default function AdminPanel() {
               </div>
             )}
 
+            {/* FILE SHARING TAB */}
+            {activeTab === 'files' && (
+              <FileSharingWidget />
+            )}
+
             {/* USERS TAB */}
             {activeTab === 'users' && (
               <div className="bg-[var(--crm-bg-raised)]/10 border border-[var(--crm-ink-soft)]/15 rounded-sm shadow-2xl overflow-hidden">
@@ -488,9 +507,10 @@ export default function AdminPanel() {
                           <td className="py-4 px-5">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] font-mono text-[var(--crm-ink-faint)] min-w-[270px] text-left py-1">
                               {[
-                                { label: "Product Upload", key: "upload", val: userItem.productUploadPermission },
-                                { label: "Export DB", key: "export", val: userItem.exportPermission },
                                 { label: "Leads Node", key: "lead", val: userItem.leadPermission },
+                                { label: "Export Leads", key: "export", val: userItem.exportPermission },
+                                { label: "Import Leads", key: "import", val: userItem.importPermission },
+                                { label: "Product Upload", key: "upload", val: userItem.productUploadPermission },
                                 { label: "Documents", key: "document", val: userItem.documentPermission },
                                 { label: "Tasks Desk", key: "task", val: userItem.taskPermission },
                                 { label: "Dispatch Track", key: "dispatch", val: userItem.dispatchPermission },
@@ -534,7 +554,9 @@ export default function AdminPanel() {
 
             {/* ALERTS TAB */}
             {activeTab === 'alerts' && (
-              <div className="bg-[var(--crm-bg-raised)]/10 border border-[var(--crm-ink-soft)]/15 rounded-sm shadow-2xl overflow-hidden">
+              <div className="space-y-6">
+                <ScreenshotAlertsWidget />
+                <div className="bg-[var(--crm-bg-raised)]/10 border border-[var(--crm-ink-soft)]/15 rounded-sm shadow-2xl overflow-hidden">
                 <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-left border-collapse min-w-[850px]">
                     <thead>
@@ -586,6 +608,7 @@ export default function AdminPanel() {
                     </tbody>
                   </table>
                 </div>
+              </div>
               </div>
             )}
 

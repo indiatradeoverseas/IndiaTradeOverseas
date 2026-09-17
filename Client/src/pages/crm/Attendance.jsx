@@ -105,6 +105,8 @@ export default function Attendance() {
   const [report, setReport] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
   const [filters, setFilters] = useState(getTodayBounds);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [reportViewMode, setReportViewMode] = useState('summary'); // 'summary' | 'records'
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [lunchLoading, setLunchLoading] = useState(false);
   const [lunchElapsed, setLunchElapsed] = useState(0);
@@ -123,8 +125,21 @@ export default function Attendance() {
   });
   const [manualSubmitting, setManualSubmitting] = useState(false);
 
-  const isManagerTier = ['ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(user?.role);
-  const isAdmin = user?.role === 'ADMIN';
+  const userRole = (user?.role || '').toUpperCase();
+  const userPos = (user?.position || '').toLowerCase();
+  const userDept = (user?.department || '').toUpperCase();
+
+  const isManagerTier = [
+    'ADMIN', 'SUPER_ADMIN', 'FOUNDER', 'CO_FOUNDER', 'CEO',
+    'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'
+  ].includes(userRole) ||
+    userDept === 'ADMIN' || userDept === 'MANAGEMENT' ||
+    userPos.includes('founder') || userPos.includes('ceo') || userPos.includes('admin') || userPos.includes('manager');
+
+  const isAdmin = [
+    'ADMIN', 'SUPER_ADMIN', 'FOUNDER', 'CO_FOUNDER', 'CEO'
+  ].includes(userRole) ||
+    userPos.includes('founder') || userPos.includes('ceo') || userPos.includes('admin');
 
   useEffect(() => {
     if (isManagerTier) {
@@ -331,8 +346,17 @@ export default function Attendance() {
     }
   };
 
+  const filteredReport = useMemo(() => {
+    return report.filter((rec) => {
+      if (!employeeSearch) return true;
+      const empName = (rec.employeeId?.fullName || rec.employeeId?.name || '').toLowerCase();
+      const search = employeeSearch.toLowerCase();
+      return empName.includes(search) || (rec.employeeId?.employeeId || '').toLowerCase().includes(search);
+    });
+  }, [report, employeeSearch]);
+
   const summary = useMemo(() => {
-    return report.reduce(
+    return filteredReport.reduce(
       (acc, rec) => {
         if (rec.status === 'PRESENT') acc.present += 1;
         else if (rec.status === 'LATE') acc.late += 1;
@@ -342,11 +366,49 @@ export default function Attendance() {
       },
       { present: 0, late: 0, halfDay: 0, absent: 0 }
     );
-  }, [report]);
+  }, [filteredReport]);
+
+  const employeeSummaries = useMemo(() => {
+    const map = new Map();
+    filteredReport.forEach((rec) => {
+      const empId = rec.employeeId?._id || rec.employeeId?.employeeId || rec.employeeId?.name || 'Unknown';
+      const name = rec.employeeId?.fullName || rec.employeeId?.name || 'Unknown';
+      const dept = rec.employeeId?.department || '—';
+
+      if (!map.has(empId)) {
+        map.set(empId, {
+          id: empId,
+          name,
+          dept,
+          present: 0,
+          late: 0,
+          halfDay: 0,
+          absent: 0,
+          weekend: 0,
+          total: 0
+        });
+      }
+
+      const item = map.get(empId);
+      item.total += 1;
+      if (rec.status === 'PRESENT') item.present += 1;
+      else if (rec.status === 'LATE') item.late += 1;
+      else if (rec.status === 'HALF_DAY') item.halfDay += 1;
+      else if (rec.status === 'ABSENT') item.absent += 1;
+      else if (rec.status === 'WEEKEND') item.weekend += 1;
+    });
+
+    return Array.from(map.values()).map(item => {
+      const effectiveDays = item.present + item.late + (item.halfDay * 0.5);
+      const workingDays = Math.max(1, item.total - item.weekend);
+      const rate = Math.min(100, Math.round((effectiveDays / workingDays) * 100));
+      return { ...item, rate };
+    });
+  }, [filteredReport]);
 
   const displayRows = useMemo(
-    () => buildDisplayRows(report, filters.startDate, filters.endDate),
-    [report, filters.startDate, filters.endDate]
+    () => buildDisplayRows(filteredReport, filters.startDate, filters.endDate),
+    [filteredReport, filters.startDate, filters.endDate]
   );
 
   const myHistoryRows = useMemo(
@@ -513,6 +575,15 @@ export default function Attendance() {
                   {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
 
+                {/* Employee Search Input */}
+                <input
+                  type="text"
+                  placeholder="Search Employee..."
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono w-36"
+                />
+
                 {/* Compact Date Range Pickers */}
                 <input
                   type="date"
@@ -540,7 +611,7 @@ export default function Attendance() {
                 <button
                   onClick={() => {
                     const todayStr = formatLocalDate(new Date());
-                    const todayF = { startDate: todayStr, endDate: todayStr, department: '' };
+                    const todayF = { startDate: todayStr, endDate: todayStr, department: filters.department };
                     setFilters(todayF);
                     if (isManagerTier) fetchReport(todayF);
                     else fetchMyHistory(todayF);
@@ -550,9 +621,24 @@ export default function Attendance() {
                 >
                   Today
                 </button>
+
+                {/* This Month Button */}
+                <button
+                  onClick={() => {
+                    const monthF = getCurrentMonthBounds();
+                    monthF.department = filters.department;
+                    setFilters(monthF);
+                    if (isManagerTier) fetchReport(monthF);
+                    else fetchMyHistory(monthF);
+                  }}
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-sky-500/40 hover:bg-sky-500/10 text-sky-400 text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  title="Filter full current month"
+                >
+                  This Month
+                </button>
               </div>
 
-              {/* Right Side Action Buttons */}
+              {/* Right Actions */}
               <div className="flex items-center gap-2">
                 {isManagerTier && (
                   <button
@@ -576,6 +662,7 @@ export default function Attendance() {
               </div>
             </motion.div>
 
+            {/* Daily Logs Table View */}
             <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/10 rounded-sm overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
@@ -594,10 +681,10 @@ export default function Attendance() {
                   <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
                     {reportLoading ? (
                       <tr><td colSpan="8" className="text-center py-12 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">Loading...</td></tr>
-                    ) : report.length === 0 ? (
+                    ) : filteredReport.length === 0 ? (
                       <tr><td colSpan="8" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No attendance records found.</td></tr>
                     ) : (
-                      report.map((record) => (
+                      filteredReport.map((record) => (
                         <tr key={record._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
                           <td className="py-3 px-5 text-[var(--crm-heading)]">{record.employeeId?.fullName || record.employeeId?.name || 'Unknown'}</td>
                           <td className="py-3 px-5">
@@ -608,8 +695,32 @@ export default function Attendance() {
                           <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(record.date).toLocaleDateString()}</td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(record.checkInTime, record.checkInAt)}</td>
                           <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(record.checkOutTime, record.checkOutAt)}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{record.workingHours || 0}h</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{record.lunchDurationMinutes ? `${record.lunchDurationMinutes}m` : '—'}</td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">
+                            <div>
+                              {record.workingHours
+                                ? `${record.workingHours}h`
+                                : (record.checkInAt && !record.checkOutAt
+                                    ? `${((Date.now() - new Date(record.checkInAt).getTime()) / (1000 * 60 * 60)).toFixed(2)}h`
+                                    : '0h')}
+                            </div>
+                            {record.checkInAt && !record.checkOutAt && (
+                              <span className="text-[9px] text-[var(--crm-positive)] font-bold block mt-0.5">🟢 Active Now</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">
+                            {record.lunchStartAt ? (
+                              <div>
+                                <div className="text-[11px] font-bold">
+                                  {formatTimeDisplay(null, record.lunchStartAt)} &ndash; {record.lunchEndAt ? formatTimeDisplay(null, record.lunchEndAt) : 'On Lunch'}
+                                </div>
+                                <div className="text-[9px] text-[var(--crm-ink-faint)]">
+                                  ({record.lunchDurationMinutes || 0} min total)
+                                </div>
+                              </div>
+                            ) : (
+                              record.lunchDurationMinutes ? `${record.lunchDurationMinutes}m` : '—'
+                            )}
+                          </td>
                           <td className="py-3 px-5 text-center">
                             <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(record.status)}`}>
                               {record.status.replace('_', ' ')}

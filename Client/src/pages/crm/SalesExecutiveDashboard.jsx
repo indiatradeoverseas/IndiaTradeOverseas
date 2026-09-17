@@ -46,6 +46,7 @@ import { taskApi } from '../../api/task';
 import { sharedFilesApi } from '../../api/sharedFiles';
 import { employeesApi } from '../../api/employees';
 import { socketService } from '../../services/socket';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 // Framer motion variants
 const containerVariants = {
@@ -639,7 +640,7 @@ export default function SalesExecutiveDashboard() {
   // Calculation for Targets
   const targetVal = performance?.target?.targetValue || 2500000; // default ₹25 Lakhs
   const wonRevenue = deals
-    .filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage))
+    .filter(d => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase()))
     .reduce((sum, d) => sum + (d.leadValue || 0), 0);
   const achievedVal = performance?.revenue || wonRevenue || 0;
   const remainingVal = Math.max(0, targetVal - achievedVal);
@@ -647,7 +648,7 @@ export default function SalesExecutiveDashboard() {
 
   // Lead Conversion Calculation (Leads -> Orders)
   const totalMyLeads = performance?.totalLeads !== undefined ? performance.totalLeads : (deals.length || 0);
-  const wonMyDeals = performance?.dealsWon !== undefined ? performance.dealsWon : deals.filter(d => ['CLOSED_WON', 'DEAL_WON'].includes(d.stage)).length;
+  const wonMyDeals = performance?.dealsWon !== undefined ? performance.dealsWon : deals.filter(d => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase())).length;
   const conversionRate = totalMyLeads > 0 ? Math.round((wonMyDeals / totalMyLeads) * 100) : 0;
 
   // Render circular progress path definitions
@@ -932,7 +933,7 @@ export default function SalesExecutiveDashboard() {
                     {[
                       { label: 'Assigned Leads', val: totalMyLeads, color: 'text-indigo-400 bg-indigo-950/20', icon: FiUsers },
                       { label: 'Won Leads', val: wonMyDeals, color: 'text-emerald-400 bg-emerald-950/20', icon: FiCheckCircle },
-                      { label: 'Pending Leads', val: deals.filter(d => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, color: 'text-amber-400 bg-amber-950/20', icon: FiClock },
+                      { label: 'Pending Leads', val: deals.filter(d => !['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((d.stage || '').toUpperCase())).length, color: 'text-amber-400 bg-amber-950/20', icon: FiClock },
                       { label: 'Lost Leads', val: deals.filter(d => ['CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, color: 'text-rose-400 bg-rose-950/20', icon: FiAlertCircle },
                       { label: 'Total Revenue', val: currency(achievedVal), color: 'text-cyan-400 bg-cyan-950/20', icon: FiTrendingUp },
                       { label: 'Completed Tasks', val: completedTasksCount, color: 'text-teal-400 bg-teal-950/20', icon: FiCheckSquare }
@@ -1594,6 +1595,11 @@ export default function SalesExecutiveDashboard() {
                     </form>
                   </div>
 
+                </div>
+
+                {/* Shared Files Section directly on Sales Executive Dashboard (Full Width) */}
+                <div className="col-span-full mt-6 w-full">
+                  <FileSharingWidget initialTab="RECEIVED" />
                 </div>
 
               </div>

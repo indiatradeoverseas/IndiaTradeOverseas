@@ -375,7 +375,18 @@ async function getMyHistory(req, res, next) {
 // 5. Get General Attendance Report & Telemetry Stats (HR/Manager)
 async function getReport(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
+    const role = (req.user.role || '').toUpperCase();
+    const pos = (req.user.position || '').toLowerCase();
+    const dept = (req.user.department || '').toUpperCase();
+
+    const isAuthorized = [
+      'ADMIN', 'SUPER_ADMIN', 'FOUNDER', 'CO_FOUNDER', 'CEO', 
+      'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'
+    ].includes(role) ||
+      dept === 'ADMIN' || dept === 'MANAGEMENT' ||
+      pos.includes('founder') || pos.includes('ceo') || pos.includes('admin') || pos.includes('manager');
+
+    if (!isAuthorized) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
     }
 
