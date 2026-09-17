@@ -773,7 +773,7 @@ export default function About() {
                 <div className="absolute inset-0 bg-[#040A12]/10 z-10 transition-colors group-hover:bg-transparent" />
 
                 <img
-                  src="../../../public/images/Jashwinder Ji.jpeg"
+                  src="../../../public/images/Jashwinder-Ji.jpeg"
                   alt="Jashwinder Singh"
                   className="w-full h-full object-cover scale-105 transition-transform duration-500 group-hover:scale-100 filter brightness-95"
                 />
