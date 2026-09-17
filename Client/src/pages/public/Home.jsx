@@ -23,7 +23,8 @@ import {
 import {
   GiTeapot,
   GiWheat,
-  GiStonePile
+  GiStonePile,
+  GiGarlic
 } from 'react-icons/gi';
 
 // ============================================================
@@ -195,6 +196,19 @@ export default function Home() {
         'Performance marketing & customer acquisition',
         'CRM-ready lead delivery & automation',
         'Pan-India targeting with transparent reporting'
+      ]
+    },
+
+    {
+      to: '/nashik-onion',
+      icon: GiGarlic,
+      label: 'Onion Division',
+      image: '/images/onion_image.png',
+      points: [
+        'Nashik red onion sourcing',
+        'Multiple grades & sizes',
+        'Bulk supply for domestic & export',
+        'Quality inspection & logistics support'
       ]
     }
   ];
@@ -643,7 +657,7 @@ export default function Home() {
                       key={item.to}
                       className="absolute inset-0"
                       style={{
-                        transform: `rotateY(${i * 90}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
+                        transform: `rotateY(${i * 72}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
                         transformStyle: 'preserve-3d'
                       }}
                     >

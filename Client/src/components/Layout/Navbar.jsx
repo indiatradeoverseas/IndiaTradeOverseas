@@ -102,13 +102,14 @@ export default function Navbar() {
       links: [
         { to: '/prakriti', label: 'Tea' },
         { to: '/prakriti/rice', label: 'Rice' },
-        { to: null, label: 'Onion' }
+        { to: '/nashik-onion' , label :'onion' }
       ]
     },
     {
       groupLabel: 'BUILDING, CONSTRUCTION AND MINERALS',
       links: [
-        { to: '/stone', label: 'Stone' }
+        { to: '/stone', label: 'Stone' },
+        { to : '/coal' , label : 'Coal '},
       ]
     },
     {
@@ -117,12 +118,7 @@ export default function Navbar() {
         { to: '/ito-ads', label: 'ITO ADS' }
       ]
     },
-    {
-      groupLabel: 'ADVERTISING & LEAD GEN',
-      links: [
-        { to: '/ito-ads', label: 'ITO ADS' },
-      ]
-    }
+    
   ];
 
   const isActive = (path) => location.pathname === path;
