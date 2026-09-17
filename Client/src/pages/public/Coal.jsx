@@ -96,15 +96,20 @@ function Coal() {
     // IMPORTANT:
     // Frame progress is based on the ENTIRE document height,
     // not the .coal-hero section.
-    const scrollableHeight =
-      document.documentElement.scrollHeight - window.innerHeight;
+    // Stop the lifecycle animation as soon as the solid footer enters view.
+    // The canvas remains fixed behind the page until that point.
+    const footer = document.querySelector('.coal-footer');
+    const footerStart = footer
+      ? footer.getBoundingClientRect().top + window.scrollY
+      : document.documentElement.scrollHeight;
 
-    if (scrollableHeight <= 0) return;
-
-    const progress = Math.max(
+    const animationEnd = Math.max(
       0,
-      Math.min(1, window.scrollY / scrollableHeight)
+      footerStart - window.innerHeight
     );
+    const progress = animationEnd > 0
+      ? Math.max(0, Math.min(1, window.scrollY / animationEnd))
+      : 0;
 
     const target = Math.min(
       FRAME_COUNT - 1,
@@ -455,7 +460,7 @@ function Coal() {
         </div>
       </section>
 
-      <section id="quote-form" className="py-20 px-6 bg-transparent/90 backdrop-blur-[1px]" aria-labelledby="quote-title">
+      <section id="quote-form" className="py-20 px-6 bg-transparent" aria-labelledby="quote-title">
         <div className="max-w-4xl mx-auto">
           <h2 id="quote-title" className="text-3xl md:text-4xl text-[#F4F0E7] mb-8 text-center">REQUEST BULK QUOTE</h2>
           <CoalQuoteForm onSubmit={scrollToQuote} />
@@ -471,17 +476,6 @@ function Coal() {
         </button>
         <p className="mt-8 text-[#D4A84F]">info@indiatradeoverseas.com</p>
       </section>
-
-      {/* <footer className="bg-[#101214] text-white py-12 px-6 text-center text-sm">
-        <p className="font-bold text-lg mb-2">India Trade Overseas</p>
-        <p className="mb-1">Where Quality Meets Global Demand</p>
-        <p className="mb-4">Website: <a href="https://www.indiatradeoverseas.com" target="_blank" rel="noopener noreferrer" className="underline">www.indiatradeoverseas.com</a> | Email: info@indiatradeoverseas.com | Phone: 011 6926 2028</p>
-        <p className="mb-6">Registered address: Deramari, Kishanganj, Bihar – 855107, India</p>
-        <hr className="border-[#2B3036] my-6 mx-auto max-w-md" />
-        <p className="text-white text-xs max-w-3xl mx-auto">
-          Coal specifications, grades, calorific values, moisture, ash, sulphur, volatile matter, fixed carbon, sizing, origin, quantity, price, freight, taxes, port charges, exchange rate, loading schedule, inspection, documentation, delivery period and payment terms are subject to source availability, current test reports, statutory requirements and final written commercial confirmation. All GCV figures displayed on the website are classification or reference values unless expressly identified as guaranteed contractual specifications. No website content overrides the final signed quotation, purchase order, sale contract, certificate of analysis or mutually agreed inspection result. India Trade Overseas does not represent itself as the owner or operator of any mine, coal block, washery, railway siding, port or vessel unless such ownership or operating authority is separately documented.
-        </p>
-      </footer> */}
       </div>
     </>
   );
@@ -493,8 +487,9 @@ function OriginCard({ name, description, grades, details, isTable, isUsTable, on
       <h3 className="text-xl font-bold text-[#F4F0E7] mb-3">{name}</h3>
       <p className="text-[#F4F0E7] text-sm mb-4">{description}</p>
       {(isTable || isUsTable) ? (
-        <table className="w-full text-xs border-collapse mb-4">
-          <thead>
+        <div className={isTable ? "px-1" : ""}>
+          <table className={`w-full text-xs border-collapse mb-4 ${isTable ? "table-fixed" : ""}`}>
+            <thead>
             <tr className="bg-transparent text-[#F4F0E7] border-b border-[#D4A84F]/60">
               {isUsTable ? (
                 <>
@@ -504,11 +499,11 @@ function OriginCard({ name, description, grades, details, isTable, isUsTable, on
                 </>
               ) : (
                 <>
-                  <th className="p-2 text-left">Grade</th>
-                  <th className="p-2 text-left">GCV (GAR)</th>
-                  <th className="p-2 text-left">TM %</th>
-                  <th className="p-2 text-left">S %</th>
-                  <th className="p-2 text-left">Ash %</th>
+                  <th className="px-1.5 py-2 text-left align-top leading-tight">Grade</th>
+                  <th className="px-1.5 py-2 text-left align-top leading-tight">GCV (GAR)</th>
+                  <th className="px-1.5 py-2 text-left align-top leading-tight">TM %</th>
+                  <th className="px-1.5 py-2 text-left align-top leading-tight">S %</th>
+                  <th className="px-1.5 py-2 text-left align-top leading-tight">Ash %</th>
                 </>
               )}
             </tr>
@@ -518,23 +513,24 @@ function OriginCard({ name, description, grades, details, isTable, isUsTable, on
               <tr key={i} className={i % 2 === 0 ? 'bg-[#2B3036]/05' : ''}>
                 {isUsTable ? (
                   <>
-                    <td className="p-2 text-[#F4F0E7] font-medium">{g.label}</td>
-                    <td className="p-2 text-[#F4F0E7]">{g.mmbtu}</td>
-                    <td className="p-2 text-[#F4F0E7]">{g.kcal}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7] font-medium break-words">{g.label}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7]">{g.mmbtu}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7]">{g.kcal}</td>
                   </>
                 ) : (
                   <>
-                    <td className="p-2 text-[#F4F0E7] font-medium">{g.label}</td>
-                    <td className="p-2 text-[#F4F0E7]">{g.gcv}</td>
-                    <td className="p-2 text-[#F4F0E7]">{g.tm}</td>
-                    <td className="p-2 text-[#F4F0E7]">{g.s}</td>
-                    <td className="p-2 text-[#F4F0E7]">{g.ash}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7] font-medium break-words">{g.label}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7]">{g.gcv}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7]">{g.tm}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7]">{g.s}</td>
+                    <td className="px-1.5 py-2 text-[#F4F0E7]">{g.ash}</td>
                   </>
                 )}
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap gap-2 mb-4">
@@ -587,77 +583,77 @@ function CoalQuoteForm({ onSubmit }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 " noValidate>
-      <fieldset className="border border-[#F4F0E7]/35  rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-[#071826]/35 backdrop-blur-[2px] shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Identity</legend>
         <div className="grid sm:grid-cols-2 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Full name</span><input name="fullName" value={formData.fullName} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Company</span><input name="company" value={formData.company} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Work email</span><input name="email" type="email" value={formData.email} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Phone / WhatsApp</span><input name="phone" value={formData.phone} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Buyer type</span><select name="buyerType" value={formData.buyerType} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Thermal power plant</option><option className="bg-[#071826] text-[#F4F0E7]">Cement / sponge-iron</option><option className="bg-[#071826] text-[#F4F0E7]">Steel / rolling mill</option><option className="bg-[#071826] text-[#F4F0E7]">Trader / distributor</option><option className="bg-[#071826] text-[#F4F0E7]">Other</option></select></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Full name</span><input name="fullName" value={formData.fullName} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-[1px] focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Company</span><input name="company" value={formData.company} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Work email</span><input name="email" type="email" value={formData.email} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Phone / WhatsApp</span><input name="phone" value={formData.phone} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Buyer type</span><select name="buyerType" value={formData.buyerType} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Thermal power plant</option><option className="bg-[#071826] text-[#F4F0E7]">Cement / sponge-iron</option><option className="bg-[#071826] text-[#F4F0E7]">Steel / rolling mill</option><option className="bg-[#071826] text-[#F4F0E7]">Trader / distributor</option><option className="bg-[#071826] text-[#F4F0E7]">Other</option></select></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Application</legend>
         <div className="grid sm:grid-cols-2 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Industry</span><input name="industry" value={formData.industry} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Plant / Process</span><input name="plant" value={formData.plant} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block sm:col-span-2"><span className="text-sm text-[#F4F0E7]/70">Intended use</span><textarea name="use" value={formData.use} onChange={handleChange} rows={2} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Industry</span><input name="industry" value={formData.industry} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Plant / Process</span><input name="plant" value={formData.plant} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block sm:col-span-2"><span className="text-sm text-[#F4F0E7]/95 font-medium">Intended use</span><textarea name="use" value={formData.use} onChange={handleChange} rows={2} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Product</legend>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Origin</span><select name="origin" value={formData.origin} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Assam</option><option className="bg-[#071826] text-[#F4F0E7]">Jharkhand</option><option className="bg-[#071826] text-[#F4F0E7]">Indonesia</option><option className="bg-[#071826] text-[#F4F0E7]">U.S.</option><option className="bg-[#071826] text-[#F4F0E7]">Other domestic</option><option className="bg-[#071826] text-[#F4F0E7]">Other imported</option></select></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Coal type</span><select name="coalType" value={formData.coalType} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Non-coking thermal</option><option className="bg-[#071826] text-[#F4F0E7]">Steam</option><option className="bg-[#071826] text-[#F4F0E7]">Coking</option><option className="bg-[#071826] text-[#F4F0E7]">Metallurgical</option><option className="bg-[#071826] text-[#F4F0E7]">Anthracite</option><option className="bg-[#071826] text-[#F4F0E7]">Sub-bituminous</option><option className="bg-[#071826] text-[#F4F0E7]">Lignite</option><option className="bg-[#071826] text-[#F4F0E7]">Not sure</option></select></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">GCV</span><input name="gcv" type="number" step="1" value={formData.gcv} onChange={handleChange} placeholder="e.g. 6200" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Basis</span><select name="basis" value={formData.basis} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">GAR</option><option className="bg-[#071826] text-[#F4F0E7]">NAR</option><option className="bg-[#071826] text-[#F4F0E7]">ARB</option><option className="bg-[#071826] text-[#F4F0E7]">ADB</option><option className="bg-[#071826] text-[#F4F0E7]">DB</option><option className="bg-[#071826] text-[#F4F0E7]">DAF</option><option className="bg-[#071826] text-[#F4F0E7]">Other</option></select></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Rejection value</span><input name="rejVal" type="number" step="1" value={formData.rejVal} onChange={handleChange} placeholder="kcal/kg" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Origin</span><select name="origin" value={formData.origin} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Assam</option><option className="bg-[#071826] text-[#F4F0E7]">Jharkhand</option><option className="bg-[#071826] text-[#F4F0E7]">Indonesia</option><option className="bg-[#071826] text-[#F4F0E7]">U.S.</option><option className="bg-[#071826] text-[#F4F0E7]">Other domestic</option><option className="bg-[#071826] text-[#F4F0E7]">Other imported</option></select></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Coal type</span><select name="coalType" value={formData.coalType} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Non-coking thermal</option><option className="bg-[#071826] text-[#F4F0E7]">Steam</option><option className="bg-[#071826] text-[#F4F0E7]">Coking</option><option className="bg-[#071826] text-[#F4F0E7]">Metallurgical</option><option className="bg-[#071826] text-[#F4F0E7]">Anthracite</option><option className="bg-[#071826] text-[#F4F0E7]">Sub-bituminous</option><option className="bg-[#071826] text-[#F4F0E7]">Lignite</option><option className="bg-[#071826] text-[#F4F0E7]">Not sure</option></select></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">GCV</span><input name="gcv" type="number" step="1" value={formData.gcv} onChange={handleChange} placeholder="e.g. 6200" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Basis</span><select name="basis" value={formData.basis} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">GAR</option><option className="bg-[#071826] text-[#F4F0E7]">NAR</option><option className="bg-[#071826] text-[#F4F0E7]">ARB</option><option className="bg-[#071826] text-[#F4F0E7]">ADB</option><option className="bg-[#071826] text-[#F4F0E7]">DB</option><option className="bg-[#071826] text-[#F4F0E7]">DAF</option><option className="bg-[#071826] text-[#F4F0E7]">Other</option></select></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Rejection value</span><input name="rejVal" type="number" step="1" value={formData.rejVal} onChange={handleChange} placeholder="kcal/kg" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Quality (key parameters)</legend>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Ash %</span><input name="ash" type="number" step="0.01" value={formData.ash} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Sulphur %</span><input name="sulphur" type="number" step="0.01" value={formData.sulphur} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Total moisture %</span><input name="tm" type="number" step="0.01" value={formData.tm} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Volatile matter %</span><input name="vm" type="number" step="0.01" value={formData.vm} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Fixed carbon %</span><input name="fc" type="number" step="0.01" value={formData.fc} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">HGI / AFT (if needed)</span><input name="hgiAft" value={formData.hgiAft} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Ash %</span><input name="ash" type="number" step="0.01" value={formData.ash} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Sulphur %</span><input name="sulphur" type="number" step="0.01" value={formData.sulphur} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Total moisture %</span><input name="tm" type="number" step="0.01" value={formData.tm} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Volatile matter %</span><input name="vm" type="number" step="0.01" value={formData.vm} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Fixed carbon %</span><input name="fc" type="number" step="0.01" value={formData.fc} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">HGI / AFT (if needed)</span><input name="hgiAft" value={formData.hgiAft} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Volume</legend>
         <div className="grid sm:grid-cols-3 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Order qty (MT)</span><input name="orderQty" type="number" step="1" value={formData.orderQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Trial qty (MT)</span><input name="trialQty" type="number" step="1" value={formData.trialQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Recurring monthly demand (MT)</span><input name="monthly" type="number" step="1" value={formData.monthly} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Order qty (MT)</span><input name="orderQty" type="number" step="1" value={formData.orderQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Trial qty (MT)</span><input name="trialQty" type="number" step="1" value={formData.trialQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Recurring monthly demand (MT)</span><input name="monthly" type="number" step="1" value={formData.monthly} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Delivery</legend>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">City / Plant / Port / Country</span><input name="dest" value={formData.dest} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Transport mode</span><select name="tMode" value={formData.tMode} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Road</option><option className="bg-[#071826] text-[#F4F0E7]">Rail</option><option className="bg-[#071826] text-[#F4F0E7]">Port</option><option className="bg-[#071826] text-[#F4F0E7]">Vessel</option><option className="bg-[#071826] text-[#F4F0E7]">Multimodal</option><option className="bg-[#071826] text-[#F4F0E7]">To be advised</option></select></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Incoterm</span><input name="incoterm" value={formData.incoterm} onChange={handleChange} placeholder="e.g. FOB, CIF" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Required date</span><input name="reqDate" type="date" value={formData.reqDate} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">City / Plant / Port / Country</span><input name="dest" value={formData.dest} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Transport mode</span><select name="tMode" value={formData.tMode} onChange={handleChange} required className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]"><option value="" className="bg-[#071826] text-[#F4F0E7]">Select</option><option className="bg-[#071826] text-[#F4F0E7]">Road</option><option className="bg-[#071826] text-[#F4F0E7]">Rail</option><option className="bg-[#071826] text-[#F4F0E7]">Port</option><option className="bg-[#071826] text-[#F4F0E7]">Vessel</option><option className="bg-[#071826] text-[#F4F0E7]">Multimodal</option><option className="bg-[#071826] text-[#F4F0E7]">To be advised</option></select></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Incoterm</span><input name="incoterm" value={formData.incoterm} onChange={handleChange} placeholder="e.g. FOB, CIF" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Required date</span><input name="reqDate" type="date" value={formData.reqDate} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Evidence</legend>
         <div className="space-y-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Specification sheet (PDF/Excel)</span><input name="specFile" type="file" accept=".pdf,.xls,.xlsx" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/70">Additional notes</span><textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Specification sheet (PDF/Excel)</span><input name="specFile" type="file" accept=".pdf,.xls,.xlsx" className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Additional notes</span><textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 bg-transparent">
+      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Consent</legend>
         <label className="flex items-start gap-3 cursor-pointer">
           <input type="checkbox" name="privacy" checked={formData.privacy} onChange={handleChange} required className="mt-1 w-4 h-4 accent-[#D4A84F]" />

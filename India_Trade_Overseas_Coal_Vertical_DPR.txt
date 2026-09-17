@@ -1,0 +1,626 @@
+--- Page 1 ---
+INDIA TRADE OVERSEAS
+WHERE QUALITY MEETS GLOBAL DEMAND
+DETAILED PROJECT REPORT
+COAL & INDUSTRIAL
+MATERIALS VERTICAL
+Cinematic website strategy, product architecture, coal specifications, lead
+generation, technology and implementation plan
+PREPARED FOR DOCUMENT DATE
+Md Ramiz Raza Khan 7 September 2026
+Founder & Proprietor Final DPR
+Trade. Supply. Logistics. Growth.
+1
+
+--- Page 2 ---
+DOCUMENT CONTROL
+Purpose, scope and governing assumptions
+A development-ready plan for a dedicated coal business vertical at
+www.indiatradeoverseas.com/coal.
+Item Approved Direction
+Business India Trade Overseas - Coal & Industrial Materials
+Primary outcome Generate qualified bulk coal enquiries and route them into the ITO CRM
+Geographic portfolio Assam, Jharkhand, Indonesia and the United States
+Primary audience Industrial buyers, procurement teams, traders, distributors and importers
+Experience Cinematic, minimalist, specification-led and conversion-focused
+Commercial model Quotation-led; no static public pricing or uncontrolled checkout
+Proposed URL www.indiatradeoverseas.com/coal
+CRITICAL ACCURACY RULE
+The website may present classification and benchmark reference values, but no cargo specification
+is guaranteed until it is confirmed in a written quotation, contract and accepted certificate of analysis.
+01 | Executive summary
+India Trade Overseas will create a dedicated Coal & Industrial Materials vertical that combines
+premium cinematic presentation with disciplined B2B lead capture. The page will explain the four
+origin categories, help buyers state the correct calorific-value basis, collect the complete technical
+requirement and convert qualified interest into an actionable commercial enquiry.
+The recommended positioning is sourcing, bulk supply, trade and logistics coordination. The page
+must not imply mine ownership, unrestricted allocation, guaranteed stock or fixed specifications
+unless those claims are supported by current documents.
+Business objectives
+• Make the coal offering understandable within five seconds.
+• Generate verified enquiries containing origin, GCV basis, quantity, application and destination.
+• Present Assam, Jharkhand, Indonesian and U.S. coal without mixing incompatible testing bases.
+• Build credibility through transparent specifications, process and documentation.
+• Integrate the page with CRM, analytics, campaign attribution and disciplined follow-up.
+• Create search visibility for domestic and imported coal requirements.
+Scope boundaries
+Included Excluded unless separately approved
+Responsive coal landing page Live commodity exchange or automated price feed
+Origin and GCV specification content Unverified mine ownership or allocation claims
+2
+
+--- Page 3 ---
+Included Excluded unless separately approved
+Bulk quotation form and document upload Retail shopping cart and instant payment checkout
+CRM, GA4, GTM and conversion tracking Guarantees not supported by contract or COA
+SEO, security, performance and accessibility Publication of supplier-confidential documents
+REPORT MAP
+DPR contents
+No. Section
+01 Strategic positioning and target buyers
+02 Minimalist cinematic experience and information architecture
+03 Coal portfolio: Assam, Jharkhand, Indonesia and U.S.
+04 Official Indian G1-G17 classification and coking-coal grades
+05 Imported-coal benchmark references and calorific-value basis
+06 Quotation form, CRM, analytics and lead operating model
+07 SEO, performance, security, accessibility and governance
+08 Implementation roadmap, acceptance criteria and final web copy
+02 | Strategic positioning
+RECOMMENDED MARKET POSITION
+Specification-led coal sourcing and bulk supply coordination for industrial buyers, supported by clear
+documentation and practical logistics.
+Core brand promise
+Reliable Coal Supply. Delivered at Scale.
+India Trade Overseas coordinates domestic and imported coal requirements through verified
+commercial supply channels, subject to grade, source, availability, documentation and mutually
+agreed commercial terms.
+Target buyers
+• Thermal and captive power plants
+• Cement and sponge-iron manufacturers
+• Steel, rolling-mill and metallurgical buyers
+• Brick, paper, tea-processing and boiler-based industries
+• Coal traders, distributors and stockyard operators
+• Industrial procurement companies, contractors, importers and exporters
+3
+
+--- Page 4 ---
+Buyer information hierarchy
+Buyer question Website response
+What do you supply? Assam, Jharkhand, Indonesian and U.S. coal
+Can it match my plant? GCV-basis selector plus ash, sulphur, moisture and application fields
+Can you deliver? Road, rail, port and multimodal coordination, subject to feasibility
+How do I proceed? One prominent Request Bulk Quote action
+What is guaranteed? Only terms confirmed in the final written contract and accepted COA
+EXPERIENCE DESIGN
+Minimalist cinematic website system
+A premium industrial atmosphere with less interface, stronger hierarchy and a single commercial
+action.
+03 | Visual direction
+• Full-bleed coal terminal or bulk-port photography with realistic scale.
+• Blue-hour light, coal-black foreground, restrained amber operational lighting.
+• Deep navy gradient behind copy; vessel, conveyor and stockpile activity on the right.
+• Warm ivory sections below the hero, with muted gold used only for emphasis.
+• Thin dividers, generous whitespace and no decorative card overload.
+• No pollution-heavy smoke, flames, fake badges, fake numbers or unsafe imagery.
+Brand tokens
+Role Name Hex Usage
+Primary Midnight Navy #071826 Hero overlay, headers and dark sections
+Material Coal Black #101214 Photography, separators and strong contrast
+Surface Graphite #2B3036 Body text and secondary backgrounds
+Accent Muted Gold #D4A84F CTA, rules and micro-labels only
+Light Warm Ivory #F4F0E7 Content surface and premium contrast
+Hero design
+The desktop hero should occupy approximately one viewport. The left half carries concise live HTML
+copy; the right half carries the cinematic port image. Mobile cropping must retain either the vessel or
+the coal-handling system while maintaining headline legibility.
+HERO COPY
+COAL & INDUSTRIAL MATERIALS
+POWERING INDUSTRY. DELIVERING RELIABILITY.
+Domestic and imported coal supply coordinated around specification, quantity and destination.
+REQUEST BULK QUOTE
+4
+
+--- Page 5 ---
+Navigation
+Use only HOME, ABOUT, COAL PRODUCTS, LOGISTICS and CONTACT, followed by one outlined
+REQUEST QUOTE button. The header begins transparent and becomes a solid navy bar on scroll.
+Responsive and accessible behavior
+• Use live text instead of text embedded inside the hero image.
+• Maintain WCAG AA contrast, keyboard navigation and visible focus states.
+• Provide reduced-motion behavior and avoid auto-playing sound.
+• Stack the quotation form into one column on mobile.
+• Allow wide technical tables to scroll horizontally without clipping.
+PAGE ARCHITECTURE
+Conversion-focused content sequence
+04 | Recommended section order
+No. Section Commercial job
+01 Cinematic hero Identify the offer and drive Request Bulk Quote
+02 Capability line Domestic Coal | Imported Coal | Logistics Support
+03 Coal portfolio Four origin categories with safe specification language
+04 Specification selector Capture GCV basis, ash, sulphur, moisture and size
+05 Grade reference Official Indian G1-G17 and imported reference tables
+06 Applications Help buyers match the enquiry to plant use
+07 Process Requirement to delivery in six clear stages
+08 Quality and documents Explain testing, COA, weighment and documentation
+09 Quotation form Collect a decision-ready commercial requirement
+10 FAQ and final CTA Resolve objections and close the conversion path
+Conversion principles
+• Do not show static prices; coal pricing changes with source, grade, freight and market conditions.
+• Repeat the bulk-quote CTA after the portfolio, specification table and final FAQ.
+• Qualify before calling: origin, GCV basis, quantity, destination and application are mandatory.
+• Allow a buyer to upload a specification sheet, but secure and scan every upload.
+• Persist campaign attribution through the full form and CRM flow.
+Primary on-page messages
+Message role Approved wording
+Headline Powering Industry. Delivering Reliability.
+5
+
+--- Page 6 ---
+Message role Approved wording
+Portfolio Assam | Jharkhand | Indonesia | United States
+Value proposition Specification-led sourcing, bulk supply and logistics coordination
+Primary CTA Request Bulk Quote
+Secondary CTA View Coal Specifications
+Final CTA Share Your Coal Requirement
+Portfolio at a glance
+Origin Commercial position Basis / control
+Assam High-calorific domestic reference Source grade, GCV basis and current COA
+Jharkhand Domestic thermal and metallurgical categories G1-G17 or coking analysis, source and COA
+Indonesia Imported thermal-coal benchmarks GAR/NAR, moisture, sulphur, ash and cargo COA
+United States Rank- and basin-specific imported coal MMBtu or kcal/kg basis plus full cargo analysis
+PRODUCT PORTFOLIO
+Four origin-led coal offerings
+Every product block states a reference range and the parameters that still require COA confirmation.
+05 | Assam coal
+Assam coal is positioned as a high-calorific domestic option with low-ash characteristics in official
+mineral literature. Sulphur can be comparatively high, so suitability must be confirmed through a
+current mine declaration, laboratory report or certificate of analysis before any application-specific
+commitment.
+Reference grade Official source-specific GCV band
+G1 Above 7,500 and up to 7,600 kcal/kg
+G2 Above 6,700 and up to 7,000 kcal/kg
+G4 Above 6,100 and up to 6,400 kcal/kg
+Reference: North Eastern Coalfields, Tikak Colliery. These are source-specific reference grades, not a standing ITO stock
+guarantee.
+Mandatory quotation checks
+• Mine/source and declared grade
+• GCV and analysis basis
+• Total and inherent moisture
+• Ash, total sulphur, volatile matter and fixed carbon
+• Sizing, quantity, loading point and transport mode
+6
+
+--- Page 7 ---
+• Buyer application and current certificate of analysis
+Jharkhand coal
+Jharkhand coal spans multiple coalfields, mines, seams and product categories. It must not be
+marketed under one universal GCV. Non-coking coal should be identified by the applicable G1-G17
+grade; coking coal must be evaluated primarily through ash and coke-making parameters.
+Potential category Required commercial description
+Non-coking thermal coal Mine/source, declared GCV grade, basis, size and COA
+Steam/industrial coal Boiler application, GCV, ash, sulphur, moisture and size
+ROM or sized coal Source permission, sizing, oversize/undersize tolerance and delivery
+Washed coal Yield/source, ash guarantee, moisture and test method
+Coking/metallurgical coal Ash plus full coking analysis; GCV alone is insufficient
+Indonesian coal
+Indonesian thermal coal should be presented using GAR, or Gross As Received, unless a different
+basis is expressly agreed. The Indonesian government's HBA framework provides useful benchmark
+reference specifications, but those values are not automatic specifications for every cargo.
+Reference GCV GAR Total moisture Total sulphur Ash
+HBA 6,322 kcal/kg 12.26% 0.66% 7.94%
+HBA I 5,300 kcal/kg 21.32% 0.75% 6.04%
+HBA II 4,100 kcal/kg 35.73% 0.23% 3.90%
+HBA III 3,400 kcal/kg 44.30% 0.24% 3.88%
+Reference: Indonesia Ministry of Energy and Mineral Resources, Ministerial Decision 227.K/MB.01/MEM.B/2023. Benchmark
+reference only.
+Imported-cargo enquiry fields
+• Required GAR and/or NAR, including rejection value
+• Total moisture, inherent moisture, ash and total sulphur
+• Volatile matter, fixed carbon, HGI and ash-fusion temperature
+• Cargo size, loading port, destination port, laycan and Incoterm
+• Inspection agency, sampling method and accepted laboratory
+U.S. coal
+U.S. coal enquiries may cover anthracite, bituminous, subbituminous, lignite, thermal or metallurgical
+grades. The following converted values are broad U.S. Energy Information Administration heat-
+content references; actual cargo specifications depend on basin, mine, preparation, moisture and
+contract basis.
+7
+
+--- Page 8 ---
+Coal rank EIA reference Approx. kcal/kg equivalent
+Anthracite 25.090 MMBtu/short ton 6,976
+Bituminous 23.270 MMBtu/short ton 6,470
+Subbituminous 17.490 MMBtu/short ton 4,863
+Lignite 12.970 MMBtu/short ton 3,606
+Conversion: 1 MMBtu per U.S. short ton is approximately 278.0 kcal/kg. Reference values are not cargo guarantees.
+TECHNICAL REFERENCE
+Indian non-coking coal grade matrix
+The Ministry of Coal classifies non-coking coal by Gross Calorific Value.
+06 | Complete G1-G17 classification
+Grade GCV band (kcal/kg)
+G1 Above 7,000
+G2 Above 6,700 and up to 7,000
+G3 Above 6,400 and up to 6,700
+G4 Above 6,100 and up to 6,400
+G5 Above 5,800 and up to 6,100
+G6 Above 5,500 and up to 5,800
+G7 Above 5,200 and up to 5,500
+G8 Above 4,900 and up to 5,200
+G9 Above 4,600 and up to 4,900
+G10 Above 4,300 and up to 4,600
+G11 Above 4,000 and up to 4,300
+G12 Above 3,700 and up to 4,000
+G13 Above 3,400 and up to 3,700
+G14 Above 3,100 and up to 3,400
+G15 Above 2,800 and up to 3,100
+G16 Above 2,500 and up to 2,800
+G17 Above 2,200 and up to 2,500
+Reference: Ministry of Coal, Government of India. Actual mine availability and dispatch grade remain subject to current source
+declaration and commercial confirmation.
+8
+
+--- Page 9 ---
+TECHNICAL REFERENCE
+Coking and semi-coking classifications
+Coking coal cannot be evaluated by GCV alone.
+07 | Coking-coal ash grades
+Grade Ash content
+Steel Grade I Not exceeding 15%
+Steel Grade II Above 15% and up to 18%
+Washery Grade I Above 18% and up to 21%
+Washery Grade II Above 21% and up to 24%
+Washery Grade III Above 24% and up to 28%
+Washery Grade IV Above 28% and up to 35%
+Washery Grade V Above 35% and up to 42%
+Washery Grade VI Above 42% and up to 49%
+Semi-coking and weakly coking grades
+Grade Ash plus moisture
+Semi-Coking Grade I Not exceeding 19%
+Semi-Coking Grade II Above 19% and up to 24%
+Reference: Ministry of Coal, Government of India.
+Additional metallurgical parameters
+• Total ash, sulphur and phosphorus
+• Volatile matter and fixed carbon
+• CSN/FSI, CSR, CRI and maximum fluidity
+• Vitrinite, moisture and size distribution
+• Coke-making suitability for the buyer's blend and process
+COMMERCIAL CONTROL
+Do not publish or quote a metallurgical coal as suitable for steelmaking based only on a high GCV.
+Require the buyer's full technical specification and a current source analysis.
+9
+
+--- Page 10 ---
+SPECIFICATION GOVERNANCE
+GCV basis, test data and offer control
+08 | Calorific-value terminology
+Term Meaning Commercial implication
+GCV Gross Calorific Value / Higher Heating Value Must state the analytical basis
+NCV Net Calorific Value / Lower Heating Value Lower than GCV because latent heat is excluded
+GAR Gross calorific value on as-received basis Common in imported thermal-coal trade
+NAR Net calorific value on as-received basis Common commercial comparison metric
+ARB As-received basis Includes the condition and moisture at receipt
+ADB Air-dried basis Cannot be compared directly with GAR without conversion data
+DB Dry basis Moisture removed for analytical reporting
+DAF Dry ash-free basis Excludes moisture and ash; not a delivered-energy figure
+MANDATORY WEBSITE NOTE
+A statement such as 5,500 kcal/kg is incomplete unless the page, enquiry or quotation also states
+GAR, ARB, ADB, DB, NAR or another mutually accepted basis.
+Complete specification capture
+Parameter group Information required
+Origin and source Country/state, mine/colliery or seller source where permitted
+Coal type Thermal, non-coking, coking, metallurgical, anthracite or lignite
+Energy GCV/NCV, basis, typical value and rejection value
+Proximate analysis Total moisture, inherent moisture, ash, volatile matter and fixed carbon
+Other quality Total sulphur, HGI, AFT, phosphorus or coking parameters as applicable
+Sizing ROM, slack, fines or millimetre range plus tolerance
+Quantity Trial quantity, order quantity and monthly/annual demand
+Delivery Plant/stockyard/port, route, mode, Incoterm and timeline
+Inspection Sampling point, laboratory, agency and result-control mechanism
+Commercial Price basis, taxes, freight, validity, payment and documentation
+10
+
+--- Page 11 ---
+COMMERCIAL JOURNEY
+Application, sourcing and delivery
+09 | Industries and applications
+Coal selection must reflect the buyer's plant design, fuel-handling system, environmental
+permissions and process requirements. The website should invite enquiries from the following
+approved commercial uses without representing universal suitability.
+• Thermal and captive power generation
+• Industrial boilers and process heating
+• Cement, sponge iron, steel and rolling-mill requirements
+• Brick, paper and tea-processing industries
+• Industrial trading, distribution and stockyard supply
+Six-stage sourcing-to-delivery process
+Step Stage Action
+01 Requirement Buyer submits origin, GCV basis, quantity, application and destination.
+02 Review ITO checks supply-channel, quality, documentation and logistics feasibility.
+03 Offer Available grade, price basis, taxes, freight, validity and terms are documented.
+04 Verification Source documents, COA, inspection and sampling are agreed where applicable.
+05 Dispatch Loading, weighment, transport and dispatch documentation are coordinated.
+06 Closure Delivery records, documents and commercial closure are completed.
+Quality and documentation
+• Commercial quotation and proforma invoice
+• Purchase order and supply/sale contract
+• Source declaration and certificate of analysis
+• Weighment slip, invoice, e-way bill and transport document
+• Railway receipt, bill of lading, origin, inspection and insurance documents where applicable
+Logistics capability language
+India Trade Overseas coordinates coal movement according to source, shipment size, destination
+and feasibility through road, rail-linked dispatch, stockyard movement, port handling, bulk vessel
+shipment or multimodal arrangements. All logistics commitments remain subject to transporter,
+railway or port acceptance, permits, route conditions, weather and final written confirmation.
+11
+
+--- Page 12 ---
+LEAD GENERATION
+Bulk quotation form and qualification logic
+10 | Form objective
+The form must create an enquiry that the commercial team can evaluate without first calling only to
+discover basic technical information. It should remain visually simple while expanding conditional
+fields after the buyer selects a coal category.
+Form group Required fields
+Identity Full name, company, work email, phone/WhatsApp and buyer type
+Application Industry, plant/process and intended use
+Product Origin, coal type, GCV, basis and rejection value
+Quality Ash, sulphur, total moisture, volatile matter, fixed carbon, HGI/AFT if needed
+Volume Order quantity, trial quantity and recurring monthly demand
+Delivery City/plant/port/country, transport mode, Incoterm and required date
+Evidence Specification-sheet upload and additional notes
+Consent Privacy acknowledgement and permission to contact
+Dropdown controls
+Control Options
+Origin Assam | Jharkhand | Indonesia | U.S. | Other domestic | Other imported
+Non-coking thermal | Steam | Coking | Metallurgical | Anthracite | Subbituminous | Lignite | Not
+Type
+sure
+Basis GAR | NAR | ARB | ADB | DB | DAF | Other
+Delivery Road | Rail | Port | Vessel | Multimodal | To be advised
+SUCCESS MESSAGE
+Thank you. Your coal requirement has been received by India Trade Overseas. Our commercial
+team will review the specification, quantity and destination before responding with the next available
+commercial steps.
+CRM record
+• Unique lead ID, timestamp, source page, UTM source and UTM campaign
+• Buyer identity, company, country, application and verification status
+• Origin, coal type, GCV basis, quality limits, quantity and destination
+• Assigned owner, lead stage, follow-up date, notes and uploaded document
+12
+
+--- Page 13 ---
+SALES OPERATIONS
+Lead routing, tracking and response discipline
+11 | Lead stages
+• New
+• Verification Pending
+• Qualified
+• Specification Pending
+• Sourcing in Progress
+• Quotation Sent
+• Negotiation
+• Inspection/Sample
+• Contract Pending
+• Order Confirmed
+• Dispatch in Progress
+• Delivered
+• Lost
+• Duplicate
+• Invalid
+Measurement events
+Event Meaning
+view_coal_page Coal page viewed
+select_coal_origin Origin choice made
+view_gcv_table GCV reference viewed
+start_coal_quote Buyer starts form
+upload_specification Specification uploaded
+submit_coal_quote Valid form submitted
+coal_whatsapp_click WhatsApp action selected
+coal_phone_click Telephone action selected
+coal_email_click Email action selected
+quote_success Submission confirmed server-side
+Data-control requirements
+• GA4 and GTM receive event and campaign data, not private uploaded specifications.
+• Meta Pixel and Conversions API receive only compliant marketing events.
+• First-party UTM values persist through form submission and CRM creation.
+13
+
+--- Page 14 ---
+• Every lead has a visible source and assigned commercial owner.
+• Duplicate, invalid and spam submissions are separately classified.
+Operating KPIs
+Marketing Commercial operations
+Visitors and qualified traffic Lead-response time
+Quote CTA click-through Specification-verification time
+Form-start and completion rate Quotation turnaround time
+Cost per qualified coal lead Follow-up completion rate
+Enquiry-to-quotation rate Quotation-to-order conversion
+DISCOVERABILITY
+SEO and content strategy
+12 | Metadata
+Element Recommended content
+Title Coal Supplier in India | Domestic & Imported Coal | ITO
+Source Assam, Jharkhand, Indonesian and U.S. coal through India Trade Overseas. Share GCV,
+Meta description
+quantity and destination for a bulk quotation.
+H1 Reliable Domestic and Imported Coal Supply
+Canonical https://www.indiatradeoverseas.com/coal
+Keyword themes
+• Coal supplier in India; domestic and imported coal supplier
+• Assam coal supplier; Jharkhand coal supplier
+• Indonesian coal supplier India; U.S. coal supplier India
+• Thermal, industrial, non-coking and coking coal supplier
+• High GCV coal; GCV coal grades; bulk coal quotation
+• Coal logistics, road delivery, rail dispatch and port coordination
+Search content rules
+• Use one clear primary topic per section; do not repeat keywords unnaturally.
+• Link the coal page from Home, Services, footer verticals and relevant articles.
+• Add Organization, Service, Product, Breadcrumb, FAQ and ContactPoint schema only where visible
+content supports it.
+• Publish educational content on GCV basis, ash/sulphur selection and domestic-versus-imported
+comparisons.
+• Do not place time-sensitive prices in indexed copy unless an owner and expiry process exist.
+14
+
+--- Page 15 ---
+Recommended educational articles
+Topic Commercial purpose
+GAR vs ADB vs NAR Pre-qualify buyers and reduce specification mistakes
+Indian G1-G17 grades Earn search visibility and support domestic enquiries
+How ash, sulphur and moisture affect use Improve application-quality conversations
+Coal quotation checklist Drive specification-ready form submissions
+PLATFORM REQUIREMENTS
+Performance, security and accessibility
+13 | Performance
+• Serve the hero in AVIF/WebP with responsive srcset and an appropriate preload.
+• Target Largest Contentful Paint below 2.5 seconds and Cumulative Layout Shift below 0.1.
+• Lazy-load images below the first viewport and avoid heavy animation libraries.
+• Use CDN delivery, caching, compressed assets and minimized CSS/JavaScript.
+• Test on mid-range Android devices and real mobile networks.
+Security
+Control area Minimum requirement
+Transport HTTPS, HSTS and secure cookies
+Browser Content Security Policy and restricted third-party scripts
+Forms Server-side validation, CAPTCHA/bot control and rate limiting
+Uploads Allowlist type/size, malware scan and private object storage
+CRM Role-based access, audit logs and least-privilege API credentials
+Recovery Automated backups, tested restore and incident logging
+Secrets Environment or secret-manager storage; never frontend code
+Accessibility
+• WCAG AA contrast and keyboard-operable navigation
+• Visible focus, descriptive labels, clear validation and error recovery
+• Logical heading structure and alternative text for meaningful images
+• Reduced-motion support and no essential information carried only by color
+Recommended hero alternative text
+ALT TEXT
+Coal stockpiles, conveyor infrastructure and a bulk carrier at an industrial coal terminal.
+15
+
+--- Page 16 ---
+CONTENT OPERATIONS
+CMS, review and commercial governance
+14 | Authorized CMS functions
+• Add, revise or withdraw an origin/product category
+• Update reference grades and upload a current specification sheet
+• Set publication and expiry dates for availability notices
+• Edit FAQs, SEO metadata and enquiry routing
+• Assign ownership and export authorized CRM data
+• Maintain revision history and publish a Last reviewed date
+Pre-publication approval workflow
+Owner Approval responsibility
+Commercial Confirms product, source, availability language and permitted claims
+Technical Checks GCV basis, quality values, units and suitability caveats
+Legal/compliance Checks ownership, certification, import/export and disclaimer language
+Marketing Checks clarity, SEO, CTA and brand presentation
+IT Checks function, security, analytics, accessibility and release quality
+PUBLICATION RULE
+No coal availability, specification, price or source claim should remain online after its supporting
+document or commercial validity has expired.
+Commercial disclaimers required near the tables
+• Values are classification or benchmark references unless expressly guaranteed in writing.
+• Actual mine/cargo analysis, availability and price are subject to final confirmation.
+• Specifications shown on different analytical bases are not directly comparable.
+• The final contract, accepted COA and agreed inspection mechanism control the transaction.
+16
+
+--- Page 17 ---
+DELIVERY PLAN
+Implementation roadmap and launch gates
+15 | Indicative work plan
+Stage Work Duration Output
+1 Content and commercial validation 2 days Approved claims and product matrix
+2 UX and responsive wireframe 2 days Desktop/mobile journey
+3 Cinematic UI design 2-3 days Final visual system
+4 Frontend and CMS development 4-5 days Responsive coal page
+5 CRM, form and analytics 2-3 days End-to-end lead flow
+6 Security, performance and QA 2 days Test evidence and fixes
+7 Management review and launch 1 day Production release
+Indicative total: 15-18 working days, subject to approvals, content readiness and access to existing systems.
+Launch acceptance criteria
+• All four origins appear with accurate, approved specification language.
+• The complete G1-G17 table and coking-coal classifications are correct.
+• Imported reference values display their correct basis and disclaimer.
+• Every quote form submission reaches the CRM and carries attribution.
+• Email/CRM notifications, upload controls and success tracking work.
+• Desktop, tablet and mobile layouts have no clipping or inaccessible controls.
+• No fake statistic, certification or ownership claim is present.
+• Legal, privacy and commercial disclaimers are visible and approved.
+30-day post-launch review
+After 30 days, review traffic quality, CTA click-through, form starts, completion, spam, qualified-lead
+rate, response time and quotation outcomes. Use evidence to simplify fields or improve copy; do not
+remove essential GCV, quantity, destination or application qualifiers merely to inflate lead volume.
+17
+
+--- Page 18 ---
+IMPLEMENTATION APPENDIX
+Copy-ready homepage content
+16 | Hero
+COAL & INDUSTRIAL MATERIALS
+POWERING INDUSTRY.
+DELIVERING RELIABILITY.
+India Trade Overseas coordinates specification-led sourcing and bulk supply of Assam coal,
+Jharkhand coal, Indonesian coal and U.S. coal for power, manufacturing, infrastructure and
+approved industrial applications.
+REQUEST BULK QUOTE | VIEW COAL SPECIFICATIONS
+Portfolio introduction
+COAL SUPPLY BUILT AROUND YOUR SPECIFICATION
+Every industrial requirement is different. Coal selection must consider calorific value, moisture, ash,
+sulphur, volatile matter, fixed carbon, sizing, application, delivery location and commercial terms.
+India Trade Overseas coordinates each requirement according to the buyer's declared technical and
+commercial parameters.
+Process introduction
+FROM REQUIREMENT TO DELIVERY
+Share the coal origin, GCV basis, quantity, application and destination. Our commercial team will
+review source availability, specifications, documentation and logistics before providing the next
+commercial steps.
+Final conversion block
+LOOKING FOR A RELIABLE COAL SUPPLY PARTNER?
+Share your required coal origin, GCV, testing basis, quantity, application and destination. India Trade
+Overseas will review the specification and coordinate the next available commercial steps.
+REQUEST BULK QUOTE
+info@indiatradeoverseas.com
+Final website disclaimer
+Coal specifications, grades, calorific values, moisture, ash, sulphur, volatile matter, fixed carbon, sizing, origin, quantity,
+price, freight, taxes, port charges, exchange rate, loading schedule, inspection, documentation, delivery period and payment
+terms are subject to source availability, current test reports, statutory requirements and final written commercial
+confirmation.
+All GCV figures displayed on the website are classification or reference values unless expressly identified as guaranteed
+contractual specifications. No website content overrides the final signed quotation, purchase order, sale contract, certificate
+of analysis or mutually agreed inspection result.
+India Trade Overseas does not represent itself as the owner or operator of any mine, coal block, washery, railway
+siding, port or vessel unless such ownership or operating authority is separately documented.
+18
+
+--- Page 19 ---
+EVIDENCE BASE
+Official and corporate references
+17 | Reference sources
+1. India Trade Overseas corporate website
+https://www.indiatradeoverseas.com/
+2. Ministry of Coal, Government of India - Coal Grades
+https://www.coal.nic.in/major-statistics/coal-grades
+3. North Eastern Coalfields - Tikak Colliery
+https://neccoal.co.in/tikak-collinery/
+4. Indian Bureau of Mines - Coal and Lignite reference
+https://ibm.gov.in/writereaddata/files/11272019155933Coal_2018_FR.pdf
+5. Central Coalfields Limited - Grade notification reference
+https://centralcoalfields.in/busns/pdf/30_03_2024_annual_grade.pdf
+6. Indonesia Ministry of Energy and Mineral Resources - HBA framework
+https://jdih.esdm.go.id/dokumen/download?id=Kepmen+227+K.pdf
+7. U.S. Energy Information Administration - Heat content
+https://www.eia.gov/environment/emissions/includes/methodology.php
+8. U.S. Energy Information Administration - Coal glossary
+https://www.eia.gov/tools/glossary/?id=coal
+SOURCE-USE NOTE
+These references support classification, benchmark and background information. They do not
+establish present ITO inventory, supplier authorization, cargo quality, allocation or a binding
+commercial offer.
+Company details
+INDIA TRADE OVERSEAS
+Where Quality Meets Global Demand
+Website: www.indiatradeoverseas.com
+Email: info@indiatradeoverseas.com
+Phone: 01169262028
+Registered address: Deramari, Kishanganj, Bihar - 855107, India
+Prepared for internal approval and website implementation.
+19
+

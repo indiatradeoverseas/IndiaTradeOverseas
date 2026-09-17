@@ -1,0 +1,760 @@
+--- Page 1 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+INDIA TRADE OVERSEAS
+WHERE QUALITY MEETS GLOBAL DEMAND
+MASTER DETAILED PROJECT REPORT
+Qualified Traffic • Soft-Gate Lead Capture • Tracking • CRM • Conversion • Digital Sales
+Prepared for Management, IT, Marketing, Sales & Operations
+Version 4.0 • September 2026
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 1
+
+--- Page 2 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+PROJECT MANDATE
+Executive Summary
+India Trade Overseas requires a measurable B2B customer-acquisition system in which advertising does not end at a
+website click. The target operating model is: qualified traffic → product-specific landing experience → requirement
+capture → value-based soft gate → identified lead → CRM → qualification → quotation → order → revenue → repeat
+business.
+CRITICAL CLARIFICATION
+No legitimate website or advertising system can guarantee that 100% of visitors will submit personal details
+or buy. This DPR instead defines a 100%-testable technical standard: every successful lead submission must
+be persisted, attributed, routed, auditable and recoverable; campaign scaling is prohibited until end-to-end
+QA passes.
+The current live website already has a strong B2B positioning, multiple product verticals, a commercial enquiry process
+and visible trust markers. The key conversion weakness is that the Stone experience asks for Full Name, Email, Phone,
+City and State before presenting substantive product value. The general contact and quote forms are also heavy for cold
+paid traffic. The proposed architecture keeps the premium institutional brand while replacing early hard gating with
+progressive qualification and a commercial-value soft gate.
+Workstream Current state Target state Priority
+Paid traffic Can reach broad/generic Product + geography + intent P0
+destinations matched landing pages
+Stone page Identity gate before product Public product proof + P0
+value requirement builder + soft
+gate
+Tracking GTM is visibly embedded; GA4 + Meta Pixel + CAPI + P0
+deeper setup not proven by first-party attribution + QA
+crawl
+Lead capture Large forms Phone-first progressive P0
+capture, then business
+details
+CRM Not verifiable from public Persistent lead store + CRM P0
+crawl sync + retry queue + scoring
+Services architecture /our-services duplicates True service hub with P0
+homepage content dedicated commercial pages
+Sales reporting Not visible publicly Lead status → quote → order P1
+→ revenue
+Digital ordering Limited Quotation, customer portal, P2
+reorder, eventual self-
+service
+WEBSITE REVIEW
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 2
+
+--- Page 3 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+1. Current Live Website Audit
+The live homepage positions India Trade Overseas as a B2B sourcing, bulk supply and export company from India. It
+lists Agriculture, Stone, Coal, Industrial Materials, Consumer Products and Logistics; its process asks buyers to share
+product, quantity, destination and delivery requirement. The homepage also displays APEDA, DGFT, ISO, FSSAI, GST,
+IEC and MSME/UDYAM trust markers.
+ Homepage H1 is commercially clear: B2B sourcing, bulk supply and export from India.
+ The crawlable homepage contains the B2B Sourcing / Bulk Supply / Documentation Support / Logistics Coordination
+block twice; IT should remove duplicate rendering/content.
+ The footer exposes Stone as a crawlable link while several other business verticals appear as button elements;
+strategic product pages should use normal crawlable anchor links.
+ The live Stone page opens with an identity gate asking Full Name, Email, Phone, City and State before useful product
+detail.
+ The current Contact page asks buyer type, contact person, company, email, mobile/WhatsApp, product/service,
+quantity, destination, required-by date, specification, payment terms and commercial requirement—good for
+serious corporate intake, too heavy as the first conversion step for cold paid traffic.
+ The current Request a Quote page asks Full Name, Company, Phone/WhatsApp, Email, Product/Service,
+Quantity/Volume, Destination and additional requirements—appropriate for high-intent quote requests, not the only
+lead-capture mechanism.
+ The /our-services route currently serves essentially the same content as the homepage and should be rebuilt as a
+genuine services hub.
+ Google Tag Manager is visibly embedded on audited pages; public crawl alone cannot verify whether GA4, Meta
+Pixel, Conversions API, event mapping, deduplication and CRM attribution are correctly configured.
+P0 DECISION
+Do not scale another major Stone traffic campaign into the existing entry gate. Keep the brand. Rebuild the
+paid-traffic conversion path.
+BRANDING
+2. India Trade Overseas Brand System
+The acquisition system must look and feel like the same India Trade Overseas organization as the corporate website.
+Conversion pages should be faster and clearer than the main site, but should not look like a third-party lead form.
+Brand element Specification Usage rule
+Primary name INDIA TRADE OVERSEAS Use full name on first brand
+occurrence.
+Tagline Where Quality Meets Global Demand Use as corporate lock-up / footer line;
+do not repeat on every section.
+Brand character Institutional, premium, international, Avoid exaggerated luxury language.
+dependable, commercially precise
+Primary dark Near-black #111214 Headers, navigation, high-value panels.
+Secondary dark Charcoal #202226 Cards, panels, footer.
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 3
+
+--- Page 4 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Brand element Specification Usage rule
+Accent Warm gold #C7A24A CTAs, rules, priority indicators, key
+numerals.
+Background Warm off-white #F7F4ED Long-form content and forms.
+Neutral Grey #6A6D72 Secondary copy, labels, metadata.
+Photography Real Operational proof outranks generic
+source/product/loading/dispatch/packa stock imagery.
+ging/office evidence
+Typography Modern sans-serif; bold uppercase for Readability before visual effect.
+major commercial headings
+Motion Subtle, fast, purposeful No cinematic intro that delays
+product/CTA.
+2.1 Brand Voice
+ Write in direct commercial English: product, quantity, destination, availability, quotation, dispatch, delivery.
+ Avoid unnecessarily futuristic or legalistic phrases on customer-facing pages.
+ Never overstate certifications, availability, delivery commitments, pricing or market reach.
+ Use confidence without hype: 'Bulk commercial supply' is better than 'revolutionary world-class procurement
+ecosystem'.
+ Use one primary CTA per conversion section.
+COMMERCIAL OUTCOMES
+3. Project Objectives and Success Criteria
+Objective Primary KPI Management question
+Qualified traffic Cost per qualified lead Are we buying buyer intent, not
+curiosity?
+Lead capture Lead rate and valid-contact rate Are high-intent visitors identifying
+themselves?
+Qualification Qualified-lead % Do leads meet product, quantity,
+location and timing criteria?
+Sales Quote rate and win rate Does the pipeline convert?
+Finance CAC, revenue, gross profit Is acquisition economically
+sustainable?
+Retention Repeat order rate Are digital leads becoming durable
+customers?
+Clicks, CTR, reach and page views remain diagnostic metrics. They are not final success metrics.
+TRAFFIC ACQUISITION
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 4
+
+--- Page 5 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+4. How to Bring Qualified Traffic
+4.1 Commercial market selection
+Before Marketing buys traffic, Operations must define where ITO can serve competitively. For freight-sensitive
+categories such as Stone, targeting must be based on product economics rather than audience size alone.
+Field Required input
+Product e.g., 20mm stone
+Source Bhutan / Pakur / other verified source
+Target market City / district / corridor
+Minimum commercial quantity Actual operating MOQ
+Material economics Current working cost range
+Freight economics Route-specific estimate / approved band
+Expected selling range Subject to commercial confirmation
+Margin band Internal
+Delivery capability Available / constrained / not supported
+Priority A Scale / B Test / C Limited / D Do Not Advertise
+4.2 Ad-level self-qualification
+Ads should state the actual product, buyer type, commercial context and location. This intentionally reduces low-intent
+clicks.
+EXAMPLE STONE AD
+20MM STONE — BULK COMMERCIAL SUPPLY
+Bhutan / Pakur sourcing • For contractors, traders & infrastructure buyers • Check today's price & availability.
+4.3 Channel role
+Channel Best use Primary KPI
+Meta Ads Demand generation, visual proof, Qualified lead / order
+remarketing, lead capture
+Google Search High-intent demand capture Qualified lead / quote
+SEO Compounding commercial-intent Organic qualified leads
+acquisition
+WhatsApp Continuation, rapid commercial Qualified conversation
+conversation
+CRM / Email Nurture, reactivation, repeat purchase Reactivated / repeat revenue
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 5
+
+--- Page 6 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+CONVERSION DESIGN
+5. Paid-Traffic Landing Page Architecture
+Do not send product advertisements to a generic homepage. Each campaign should land on a page that matches the
+product, geography and promise in the advertisement.
+Advertisement Destination experience
+20mm Stone — Purnia 20mm Stone page / Purnia-compatible commercial flow
+Bhutan Stone Bhutan Stone page
+Bulk Rice Rice commercial page
+Bulk Tea Tea commercial page
+ITO Ads lead generation ITO Ads lead-generation page
+5.1 Five-second test
+ WHAT is being supplied?
+ WHO is it for?
+ WHERE can it be supplied / what market is being addressed?
+ WHY should the buyer trust ITO?
+ WHAT should the buyer do next?
+5.2 Recommended section order
+1. Hero with exact product promise and one primary CTA.
+2. Real product / source / dispatch evidence.
+3. Key commercial specifications and buyer-fit information.
+4. Available grades, sizes or varieties.
+5. Supply process and logistics capability.
+6. Trust and compliance evidence.
+7. Requirement builder.
+8. Value-based soft gate.
+9. FAQs and commercial notes.
+10. Secondary contact/WhatsApp option.
+LEAD CAPTURE
+6. The Soft-Gate System
+CORE RULE
+Do not gate product knowledge. Gate personalized commercial value.
+The soft gate should appear only after the buyer has selected enough requirement information to understand the
+benefit of identification. The buyer should feel that they are using a commercial tool, not being interrogated by a form.
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 6
+
+--- Page 7 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+6.1 Stone requirement builder
+Step Customer question Captured value Event
+1 Which material do you 10mm / 20mm / 40mm / select_product
+need? Dust / WMM
+2 How much do you need? 1 truck / 2–5 / 6–10 / 10+ / select_quantity
+custom
+3 Where do you need City + PIN enter_destination
+delivery?
+4 When do you need it? Immediate / 3 / 7 / 15 days / select_timeline
+future
+5 Commercial eligibility Supported / manual review / eligibility_checked
+unsupported
+6 Get current price & Phone / WhatsApp + consent submit_phone
+availability
+6.2 Exact soft-gate copy
+CUSTOMER-FACING COPY
+YOUR REQUIREMENT
+20mm Stone • 5 Trucks • Purnia • Within 7 Days
+Get current commercial price & availability
+Mobile / WhatsApp Number*
+[____________]
+☐ I agree to be contacted by India Trade Overseas regarding this commercial enquiry and acknowledge the
+Privacy Policy.
+[ GET CURRENT PRICE ]
+6.3 Progressive capture after phone
+Immediately persist the lead after a valid phone submission. Only then ask for secondary details.
+Stage Fields Mandatory?
+Soft gate Phone/WhatsApp; enquiry-contact Yes
+consent
+Step 2 profile Name, Company, Email Prefer optional / progressive unless
+business rule requires
+Commercial qualification GST, detailed specification, payment Only when relevant
+terms, documentation
+Transaction Billing, shipping, statutory and Only when order progresses
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 7
+
+--- Page 8 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Stage Fields Mandatory?
+payment data
+6.4 When OTP should be used
+Do not add OTP by default. Introduce it only if invalid/fake numbers materially damage sales efficiency. OTP improves
+contact validity but increases friction; test it as a separate optimization.
+DYNAMIC FORMS
+7. Product-Specific Qualification Flows
+7.1 Stone
+ Material/size
+ Quantity or truck range
+ Destination/PIN
+ Required timeline
+ Source preference if relevant
+ Phone/WhatsApp
+ Progressive company/GST/specification
+7.2 Rice
+ Variety/grade actually offered
+ Quantity
+ Packaging
+ Domestic or export
+ Destination/port
+ Required timeline
+ Phone/WhatsApp
+ Progressive company/email/incoterm/quality requirement
+7.3 Tea
+ Tea type/grade
+ Quantity
+ Packaging
+ Domestic/export
+ Private-label requirement if offered
+ Destination
+ Timeline
+ Phone/WhatsApp
+7.4 ITO Ads
+ Business category
+ Target location
+ Primary objective: leads/calls/WhatsApp/sales/awareness
+ Monthly ad budget
+ Current marketing status
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 8
+
+--- Page 9 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+ Phone
+ Name/business name after lead capture
+Do not reuse one generic form for every vertical. Each form should ask only questions needed to qualify that
+commercial category.
+TECHNICAL MEASUREMENT
+8. Measurement & Tracking Architecture
+The audited pages visibly embed Google Tag Manager, but a public crawl cannot prove the presence or correctness of
+GA4, Meta Pixel, Meta Conversions API, consent configuration, deduplication, event mapping or CRM attribution. IT
+must verify these directly in the deployed environment.
+Component Role Required outcome
+Google Tag Manager Controls tags/triggers and structured One governed container; tested events
+data-layer events
+GA4 Traffic and behavior analytics Acquisition + funnel visibility
+Meta Pixel Browser-side Meta event signal Website event measurement
+Meta Conversions API Server-side Meta event signal More resilient event transmission
+where appropriate
+First-party session store Preserves campaign + journey context Attach attribution to lead
+CRM Identity + sales lifecycle Lead → quote → order
+Management dashboard Business reporting Campaign → qualified lead → revenue
+8.1 Canonical event dictionary
+Event Definition
+landing_page_view Paid landing page successfully viewed
+view_product Product content viewed
+start_requirement Requirement builder opened
+select_product Product/size selected
+select_quantity Quantity selected
+enter_destination Destination entered
+select_timeline Purchase timeline selected
+eligibility_checked Commercial rule evaluated
+view_soft_gate Contact gate displayed
+submit_phone Valid phone submitted
+lead_created Lead persisted in ITO backend
+qualification_completed Secondary details completed
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 9
+
+--- Page 10 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Event Definition
+qualified_lead Sales/business rules mark lead qualified
+quote_created Quotation prepared
+quote_sent Quotation issued
+order_won Opportunity won
+purchase Revenue event / completed order where defined
+repeat_order Existing customer reorders
+8.2 Data-layer parameters
+ product_vertical, product, variant/size/grade
+ quantity_value or quantity_band
+ destination_city, destination_state, destination_pin only where appropriate for first-party analytics design
+ timeline
+ landing_page_type
+ utm_source, utm_medium, utm_campaign, utm_content
+ campaign/ad/adset identifiers where available
+ anonymous session identifier
+ lead_id only in systems where policy permits; do not expose unnecessary personal information to analytics
+platforms
+8.3 UTM standard
+STANDARD
+utm_source=facebook
+utm_medium=paid_social
+utm_campaign=stone_purnia_sep26
+utm_content=20mm_video03
+Google's current GA4 documentation recommends standardized UTM usage and notes that source, medium and
+campaign are core campaign parameters; naming is case-sensitive, so ITO should use one lowercase naming
+convention.
+BACKEND RELIABILITY
+9. Lead Persistence and Failure-Proof Delivery
+The most valuable event in the funnel is a successful lead submission. It must not depend solely on a third-party CRM
+API being online.
+11. Browser validates required fields.
+12. Lead request reaches ITO backend API.
+13. Backend validates and normalizes data.
+14. Backend writes lead to ITO-controlled persistent database.
+15. Backend generates immutable Lead ID.
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 10
+
+--- Page 11 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+16. Customer receives success state only after persistence succeeds.
+17. CRM synchronization is queued asynchronously.
+18. If CRM succeeds, record external CRM ID.
+19. If CRM fails, retry automatically with exponential backoff.
+20. If retries exceed threshold, alert IT and preserve the lead for manual recovery.
+NON-NEGOTIABLE
+No successfully persisted lead may disappear because CRM, WhatsApp, email or another third-party service is
+temporarily unavailable.
+9.1 Required operational logs
+ Lead API success/failure
+ Database write outcome
+ CRM sync outcome
+ Retry count
+ Notification outcome
+ Quotation generation outcome
+ Tracking dispatch status where available
+Do not log passwords, raw payment credentials, API secrets or unnecessary personal data.
+SALES OPERATIONS
+10. CRM Data Model
+Group Fields
+Identity Lead ID, Contact ID, Name, Phone, WhatsApp, Email,
+Company, GST if provided
+Requirement Vertical, Product, Specification, Quantity, Unit, Destination,
+Timeline
+Attribution Source, Medium, Campaign, Ad Set, Ad, Creative, Landing
+Page, Session ID
+Ownership Assigned executive, territory, team
+Status New, Attempted, Contacted, Qualified, Quote Sent,
+Negotiation, Won, Lost
+Commercial Quote ID, Quote amount, expected margin band, order
+amount
+Activity Created time, first response time, last contact, next follow-up
+Outcome Won/Lost, reason, competitor/price/freight/timing notes
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 11
+
+--- Page 12 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+10.1 Duplicate management
+Use normalized phone number and/or verified email as contact-resolution keys. The same person can have multiple
+opportunities. Example: one Stone enquiry and later a Rice enquiry should remain one contact with separate
+opportunities and attribution history.
+10.2 Lead statuses
+ NEW
+ CONTACT ATTEMPTED
+ CONTACTED
+ QUALIFIED
+ QUOTATION SENT
+ NEGOTIATION
+ WON
+ LOST
+10.3 Mandatory lost reasons
+ Price
+ Freight
+ Competitor
+ Unsupported destination
+ Quantity too low
+ Product unavailable
+ No response
+ Invalid contact
+ Timing
+ Payment terms
+ Trust concern
+ Other
+QUALIFICATION
+11. Lead Scoring
+Start with a rule-based score, then recalibrate using actual won/lost data. Never assume the first weights are
+permanently correct.
+Signal Illustrative score
+10+ trucks +30
+6–10 trucks +25
+2–5 trucks +15
+Immediate requirement +20
+Within 7 days +15
+Priority-A serviceable market +20
+Company provided +5
+GST/business verification provided +5
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 12
+
+--- Page 13 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Signal Illustrative score
+Completed price check +10
+Return visit +5
+Score Classification Action
+80+ HOT Immediate priority
+60–79 WARM Fast sales follow-up
+40–59 NURTURE Automated + scheduled follow-up
+<40 LOW Low-priority review / nurture
+PAID SOCIAL
+12. Meta Advertising Operating Model
+For lead generation, campaign evaluation should center on leads, qualified leads and business outcomes—not click
+volume alone. Run a website conversion path and a Meta Instant Form path as controlled alternatives, then compare
+downstream quality.
+Path Journey Use
+Website Ad → product landing page → Higher context and qualification
+requirement builder → soft gate → CRM
+Instant Form Ad → Meta form → CRM → Lower friction backup / comparison
+website/WhatsApp follow-up
+12.1 Test matrix
+ One product + one commercially strong market for the first controlled test.
+ 3–5 distinct creatives: product proof, loading/dispatch proof, source proof, price/availability hook, corporate trust.
+ Do not optimize decisions on CPC or CTR alone.
+ Compare CPL, valid-contact rate, qualified-lead rate, cost per qualified lead, quote rate, order rate and gross-profit
+contribution.
+ Exclude existing leads/customers from generic acquisition where appropriate; build separate nurture/reorder
+journeys.
+AUDIENCE STRATEGY
+13. Retargeting and Abandonment Recovery
+Audience Intent Recommended message
+Landing visitor Low Product/value education
+Product viewer Medium Product proof + supply capability
+Requirement starter Medium-high Continue requirement
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 13
+
+--- Page 14 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Audience Intent Recommended message
+Quantity + destination entered High Check current commercial price
+Soft-gate abandoner Very high Complete price/availability request
+Lead Converted Exclude from generic lead acquisition;
+move to sales/nurture
+Customer Existing Reorder / relevant cross-sell
+Audience creation and advertising use must follow applicable consent, privacy and platform requirements.
+LEAD CONVERSION
+14. Sales Execution and SLA
+A qualified traffic system fails if Sales ignores or mishandles leads. CRM discipline is therefore part of the acquisition
+architecture.
+Lead type Priority Required action
+HOT Highest Immediate operational priority during
+working hours
+WARM High Contact in defined same-day service
+window
+NURTURE Medium Automated message + scheduled
+follow-up
+LOW Low Review / nurture without crowding
+priority queue
+ Every lead must have an owner.
+ Every contact attempt must be logged.
+ Every lead must move out of NEW.
+ Every quote must have an amount and timestamp.
+ Every lost opportunity must have a structured reason.
+ Management must monitor lead response time and untouched hot leads.
+REPORTING
+15. Management Command Center
+Layer Metrics
+Acquisition Spend, impressions, clicks, landing-page views, CPC
+Engagement Product views, requirement starts,
+product/quantity/destination selections
+Conversion Soft-gate views, phone submissions, valid leads, lead rate
+Qualification Qualified leads, qualified-lead %, hot leads, cost per qualified
+lead
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 14
+
+--- Page 15 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Layer Metrics
+Sales Quotes, negotiations, won orders, win rate
+Finance Revenue, gross profit, CAC, marketing efficiency
+Operations Availability, freight, unsupported destinations, fulfillment
+constraints
+15.1 Funnel diagnostic logic
+Observed pattern Likely area to investigate
+Clicks high; landing views low Page speed, accidental clicks, link issues, tracking
+Landing views high; requirement starts low Message match, trust, relevance, offer
+Requirement starts high; soft-gate views low Form friction / step complexity
+Soft-gate views high; submissions low Value exchange, trust, phone field, consent UX
+Leads high; qualified low Traffic quality / ad qualification / targeting
+Qualified high; quotes low Sales process / operational feasibility
+Quotes high; wins low Price, freight, trust, terms, competition
+SEO + CONVERSION
+16. Website Information Architecture
+16.1 Homepage
+21. Header
+22. Hero
+23. Trust / compliance strip
+24. Main product divisions
+25. Featured commercial products
+26. Why ITO
+27. How supply works
+28. Operational evidence
+29. Trade footprint
+30. Commercial enquiry
+31. Footer
+16.2 Our Services
+Rebuild /our-services as a genuine service hub rather than a duplicate homepage.
+ B2B Sourcing & Procurement
+ Bulk Commodity Supply
+ Export Coordination
+ Trade Documentation
+ Quality Coordination
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 15
+
+--- Page 16 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+ Transport & Logistics
+ Commercial Supply Management
+16.3 Product page families
+ Stone: Bhutan Stone, Pakur Stone, 10mm, 20mm, 40mm, Stone Dust, WMM.
+ Agriculture: Rice, Tea, Spices and only genuinely supplied subcategories.
+ Industrial: Coal, Dolomite and verified industrial materials.
+ Consumer: Clay and ceramic products genuinely offered.
+ ITO Ads: dedicated service architecture separate from commodity procurement.
+Do not create thin city pages or mass keyword pages solely for search engines. Every page must provide real
+commercial value.
+FORM GOVERNANCE
+17. Contact and Quote Form Strategy
+Keep the current detailed Contact and Quote forms for high-intent buyers, but add lighter entry paths.
+Form Purpose Recommended entry fields
+Quick enquiry Cold / medium-intent visitor Phone, product, city
+Requirement builder Paid traffic Product, quantity, destination, timeline
+→ phone
+Commercial enquiry Serious corporate buyer Current detailed form
+Export quote FOB/CIF / institutional Full quote-request form
+Customer portal Existing customer Authenticated reorder / quote request
+GOVERNANCE
+18. Privacy, Consent and Security
+ Publish and link a clear Privacy Policy at every personal-data capture point.
+ Separate enquiry-contact permission from optional promotional marketing consent where required.
+ Do not attempt to secretly identify anonymous visitors.
+ Use HTTPS, server-side validation, rate limiting, CSRF protection, input sanitization and secure secret storage.
+ Restrict CRM access by role; log administrative access and data exports.
+ Maintain backups, retention rules and a documented incident-response procedure.
+ Avoid transmitting prohibited or unnecessary personal data to advertising/analytics systems.
+TESTING
+19. Pre-Launch QA — Release Blockers
+# Release blocker
+1 Correct product landing page loads from real ad URL
+2 UTM parameters persist correctly
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 16
+
+--- Page 17 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+# Release blocker
+3 Mobile layout tested on Android and iPhone
+4 Page speed acceptable on mobile network
+5 Product content visible without gate
+6 Requirement builder opens
+7 Product selection event fires
+8 Quantity selection event fires
+9 Destination validation works
+10 Timeline selection works
+11 Eligibility logic works
+12 Soft gate appears at correct moment
+13 Consent wording and Privacy link work
+14 Phone validation works
+15 Lead is persisted before success message
+16 Unique Lead ID generated
+17 CRM sync succeeds
+18 CRM outage retry tested
+19 Sales notification succeeds
+20 WhatsApp continuation works
+21 GA4 events verified
+22 Meta Pixel events verified
+23 Meta CAPI events verified
+24 Pixel/CAPI deduplication verified
+25 Dashboard receives lead + attribution
+26 Qualified-lead status works
+27 Quote creation/status works
+28 Won/Lost flow works
+29 Lost reason is mandatory
+30 Duplicate customer logic tested
+31 Backup/recovery verified
+DELIVERY PLAN
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 17
+
+--- Page 18 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+20. Implementation Roadmap
+Phase Scope Exit criterion
+0 — Freeze blind scaling Do not send major spend into current Management approval
+Stone gate
+1 — Audit & tracking GTM audit, GA4, Pixel, CAPI, UTM, Test events verified
+consent
+2 — Backend & CRM Lead API, DB, queue, CRM, alerts No lost-lead failure path
+3 — Stone MVP Public Stone content + builder + soft End-to-end mobile QA passes
+gate
+4 — Controlled campaign One product + one market + multiple Real qualified leads observed
+creatives
+5 — Optimize A/B tests + sales feedback Acceptable CPQL / economics
+6 — Rice & Tea Dynamic product flows Validated funnels
+7 — Search & SEO Commercial-intent pages and paid Qualified organic/search leads
+search
+8 — Quotation automation Price/freight logic + PDF quote Controlled production release
+9 — Customer portal Quotes, orders, documents, reorder Existing-customer adoption
+GOVERNANCE
+21. Department Responsibility Matrix
+Department Owns
+IT Website, APIs, database, tracking, CRM integrations, security,
+reliability, dashboards
+Marketing Market/campaign structure, creative, UTM governance,
+CPQL, remarketing, experiment design
+Sales Lead contact, qualification, CRM hygiene, quote, negotiation,
+close, lost reason
+Operations Availability, source, freight, delivery feasibility,
+specifications, commercial constraints
+Management Budget, target markets, margin thresholds, SLAs, scale
+decisions, accountability
+ACCEPTANCE CRITERIA
+22. ITO '100% Workable' Engineering Standard
+DEFINITION
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 18
+
+--- Page 19 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+100% workable does not mean every visitor converts. It means every defined system component is testable
+and reliable: successful lead submissions are persisted, attributed, routed or safely queued; critical events are
+verified; sales outcomes are recorded; and no major campaign is scaled while the funnel is technically blind.
+ No silent lead loss.
+ No serious paid campaign without tested attribution.
+ No critical funnel step without an event definition.
+ No lead without owner/status.
+ No lost opportunity without reason.
+ No scaling decision based solely on clicks or CTR.
+ No paid product ad to a mismatched generic landing page.
+ No mandatory identity gate before basic product value.
+ No unverified claim of certification, price, stock or delivery.
+ No release without end-to-end mobile QA.
+PHASE II / III
+23. Future Digital Commerce State
+Once the lead and quotation engine is stable, ITO can move standard transactions toward self-service.
+32. Customer selects product/specification.
+33. Enters quantity and destination.
+34. System calculates or requests current commercial price.
+35. Customer identifies / signs in.
+36. Quotation is generated.
+37. Buyer accepts terms / submits PO.
+38. Payment or approved credit workflow begins.
+39. Order is created.
+40. Dispatch and document status becomes visible.
+41. Customer receives delivery updates.
+42. Reorder is available from account history.
+Human sales should remain available for negotiation, high-value orders, non-standard terms, export documentation,
+complex logistics and strategic accounts.
+EVIDENCE
+24. Source Notes & Current Audit References
+Source URL Used for
+ITO Homepage https://www.indiatradeoverseas.com/ Audited live structure, verticals, trust
+markers, process, duplicated feature
+blocks, footer link behavior.
+ITO Stone https://www.indiatradeoverseas.com/ Audited current entry gate fields and
+stone limited public product content.
+ITO Contact https://www.indiatradeoverseas.com/ Audited current commercial enquiry
+contact fields and office/business-hour
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 19
+
+--- Page 20 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+Source URL Used for
+information.
+ITO Quote Request https://www.indiatradeoverseas.com/ Audited current quote-request fields
+quote-request and commercial note.
+ITO About https://www.indiatradeoverseas.com/ Audited corporate positioning,
+about founding year and brand language.
+ITO Our Services https://www.indiatradeoverseas.com/ Audited current duplication of
+our-services homepage content.
+Google Analytics — UTM campaign https://support.google.com/analytics/ Current GA4 UTM parameter and
+data answer/10917952?hl=en naming guidance.
+Google Tag Manager — Data layer https://developers.google.com/tag- Current data-layer/event guidance for
+platform/tag-manager/datalayer GTM.
+Google Tag Manager — Google tag https://support.google.com/ Current relationship between Google
+overview tagmanager/answer/7582054?hl=en-IN tag, Google Ads and GA4.
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 20
+
+--- Page 21 ---
+INDIA TRADE OVERSEAS | MASTER DPR v4.0
+INDIA TRADE OVERSEAS
+WHERE QUALITY MEETS GLOBAL DEMAND
+FINAL OPERATING PRINCIPLE
+Qualified Market → Qualified Ad → Matched Landing Page → Product Value →
+Requirement Builder → Soft Gate → Persistent Lead → CRM → Qualified Lead →
+Quotation → Order → Revenue → Better Data → Better Acquisition
+Do not pay merely for clicks. Build a measurable commercial pipeline.
+Where Quality Meets Global Demand • Internal Implementation Document
+Page 21
+
