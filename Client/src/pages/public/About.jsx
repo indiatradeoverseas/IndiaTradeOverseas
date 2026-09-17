@@ -709,7 +709,7 @@ export default function About() {
 
         </div>
 
-<motion.div
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -727,7 +727,7 @@ export default function About() {
 
             <div className="w-28 h-32 md:w-32 md:h-36 rounded-sm mb-4 sm:mb-0 border border-[#C5CBD3]/20 overflow-hidden bg-[#040A12] shrink-0 relative shadow-md">
 
-                <div className="absolute inset-0 bg-[#040A12]/10 z-10 transition-colors group-hover:bg-transparent" />
+              <div className="absolute inset-0 bg-[#040A12]/10 z-10 transition-colors group-hover:bg-transparent" />
 
               <img
                 src="./images/Ramiz.jpeg"
@@ -735,69 +735,31 @@ export default function About() {
                 className="w-full h-full object-cover scale-105 transition-transform duration-500 group-hover:scale-100 filter brightness-95"
               />
 
-              </div>
-
-              <div className="flex-1 flex flex-col items-center md:items-start w-full">
+            </div>
 
             <div className="flex-1 flex flex-col items-center sm:items-start w-full">
 
-                <p className="text-[10px] uppercase tracking-widest font-semibold text-[#6D7886] mb-3">
-                  Founder & Proprietor
-                </p>
+              <h3 className="text-lg font-serif font-medium text-[#F2F4F7] mb-1 group-hover:text-white transition-colors">
+                Md Ramiz Raza Khan
+              </h3>
 
-                <span className="text-[9px] bg-[#0E1116] text-[#C5CBD3] px-3.5 py-1 border border-[#C5CBD3]/30 rounded-full font-mono font-medium shadow-sm tracking-wide self-center md:self-start">
-                  BA LLB, Amity University, Mumbai
-                </span>
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-[#6D7886] mb-3">
+                Founder &amp; Proprietor
+              </p>
 
               <span className="text-[9px] bg-[#0E1116] text-[#C5CBD3] px-3.5 py-1 border border-[#C5CBD3]/30 rounded-full font-mono font-medium shadow-sm tracking-wide self-center sm:self-start">
                 BA LLB, Amity University, Mumbai
               </span>
 
-              </div>
+              <p className="text-[#C5CBD3] text-xs font-sans font-light leading-[1.68] border-t border-[#C5CBD3]/15 pt-4 mt-5 w-full text-left opacity-90">
+                Provides strategic direction for the business and oversees its
+                development across trade relationships, sourcing, commercial
+                operations and organizational growth.
+              </p>
 
-            </motion.div>
+            </div>
 
-            {/* CEO CARD */}
-            <motion.div
-              variants={cardVariants}
-              className="bg-[#121D29]/40 backdrop-blur-sm border border-[#C5CBD3]/20 rounded-sm p-6 lg:p-8 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-6 lg:gap-8 hover:border-[#F2F4F7] hover:-translate-y-1 transition-all duration-300 shadow-lg group"
-            >
-
-              <div className="w-28 h-32 md:w-32 md:h-36 rounded-sm mb-4 md:mb-0 border border-[#C5CBD3]/20 overflow-hidden bg-[#040A12] shrink-0 relative shadow-md">
-
-                <div className="absolute inset-0 bg-[#040A12]/10 z-10 transition-colors group-hover:bg-transparent" />
-
-                <img
-                  src="../../../public/images/Jashwinder-Ji.jpeg"
-                  alt="Jashwinder Singh"
-                  className="w-full h-full object-cover scale-105 transition-transform duration-500 group-hover:scale-100 filter brightness-95"
-                />
-
-              </div>
-
-              <div className="flex-1 flex flex-col items-center md:items-start w-full">
-
-                <h3 className="text-lg font-serif font-medium text-[#F2F4F7] mb-1 group-hover:text-white transition-colors">
-                  Jasvinder Singh Chopra
-                </h3>
-
-                <p className="text-[10px] uppercase tracking-widest font-semibold text-[#6D7886] mb-3">
-                  CEO
-                </p>
-
-                <span className="text-[9px] bg-[#0E1116] text-[#C5CBD3] px-3.5 py-1 border border-[#C5CBD3]/30 rounded-full font-mono font-medium shadow-sm tracking-wide self-center md:self-start">
-                  Chief Executive Officer
-                </span>
-
-                <p className="text-[#C5CBD3] text-xs font-sans font-light leading-[1.68] border-t border-[#C5CBD3]/15 pt-4 mt-5 w-full text-left opacity-90">
-                  Leads daily operations, business execution and commercial
-                  coordination across sourcing, supply and logistics functions.
-                </p>
-
-              </div>
-
-            </motion.div>
-</div>
+          </motion.div>
 
           <motion.div
             variants={cardVariants}
