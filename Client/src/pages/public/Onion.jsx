@@ -3071,7 +3071,7 @@ export default function Onion() {
             <div className="ito-actions">
               <a className="ito-button" href="#rfq">Request Domestic Rate</a>
               <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
-              <a className="ito-button secondary" href="https://wa.me/911169262028?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements." target="_blank" rel="noopener noreferrer">Chat with Export Sales on WhatsApp</a>
+              <a className="ito-button secondary" href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements." target="_blank" rel="noopener noreferrer">Chat with Export Sales on WhatsApp</a>
             </div>
           </div>
         </div>
