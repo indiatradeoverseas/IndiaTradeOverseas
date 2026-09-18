@@ -116,13 +116,13 @@ export default function FounderTransportWidget({ summary }) {
       >
         <div className="flex items-center gap-2">
           <FiTruck size={16} className="text-[#c9a84c]" />
-          <h3 className="text-xs uppercase font-bold tracking-widest text-[var(--crm-heading)]">
+          <h3 className="text-xs uppercase font-bold tracking-widest text-[var(--crm-heading)] font-sans">
             Transport Operations & Live Driver GPS Telemetry
           </h3>
         </div>
         <Link
           to="/crm/transport/manager?tab=DASHBOARD"
-          className="px-3 py-1.5 bg-[#0a192f] hover:bg-[#122b50] border border-[#c9a84c] text-[#c9a84c] hover:text-white rounded text-[9px] uppercase font-bold tracking-wider transition flex items-center gap-1.5 cursor-pointer"
+          className="px-3 py-1.5 bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 rounded text-[9px] uppercase font-bold tracking-wider transition flex items-center gap-1.5 cursor-pointer font-sans"
         >
           Go to Transport Operations <FiArrowRight size={11} />
         </Link>
@@ -131,30 +131,30 @@ export default function FounderTransportWidget({ summary }) {
       {/* KPI Grid Mini */}
       <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Active Trips</span>
-          <span className="text-xl font-light text-[var(--crm-heading)] mt-0.5 block">{activeDispatches}</span>
+          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block font-sans">Active Trips</span>
+          <span className="text-xl font-light text-[var(--crm-heading)] mt-0.5 block font-sans">{activeDispatches}</span>
         </div>
         <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">In Transit</span>
-          <span className="text-xl font-light text-sky-400 mt-0.5 block">{inTransit}</span>
+          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block font-sans">In Transit</span>
+          <span className="text-xl font-light text-sky-500 mt-0.5 block font-sans">{inTransit}</span>
         </div>
         <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Pending POD</span>
-          <span className="text-xl font-light text-amber-400 mt-0.5 block">{pendingPod}</span>
+          <span className="text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block font-sans">Pending POD</span>
+          <span className="text-xl font-light text-amber-500 mt-0.5 block font-sans">{pendingPod}</span>
         </div>
-        <div className="p-3 border rounded bg-rose-950/20" style={{ borderColor: 'rgba(220, 38, 38, 0.4)' }}>
-          <span className="text-[8px] uppercase tracking-wider text-rose-400 font-bold block">Overdue Alerts</span>
-          <span className="text-xl font-light text-rose-400 mt-0.5 block">{overdue}</span>
+        <div className="p-3 border rounded bg-rose-500/10" style={{ borderColor: 'rgba(220, 38, 38, 0.4)' }}>
+          <span className="text-[8px] uppercase tracking-wider text-rose-500 font-bold block font-sans">Overdue Alerts</span>
+          <span className="text-xl font-light text-rose-500 mt-0.5 block font-sans">{overdue}</span>
         </div>
       </div>
 
       {/* Live Driver GPS Telemetry Radar Map Section */}
       <div className="mx-4 mb-4 border rounded-sm overflow-hidden" style={{ borderColor: 'var(--crm-line)' }}>
-        <div className="p-3 border-b bg-[#0d1117] flex items-center justify-between" style={{ borderColor: 'var(--crm-line)' }}>
-          <span className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1.5 font-serif tracking-wider">
+        <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+          <span className="text-[10px] uppercase font-bold text-emerald-500 flex items-center gap-1.5 tracking-wider font-sans">
             <FiNavigation className="animate-pulse" size={13} /> Live Drivers Radar Map (Real-Time Driver GPS Tracking)
           </span>
-          <span className="text-[8px] text-emerald-400 font-mono flex items-center gap-1">
+          <span className="text-[8px] text-emerald-500 font-mono flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" /> Live Driver Telemetry ({activeDriversList.length} Online)
           </span>
         </div>
@@ -168,34 +168,34 @@ export default function FounderTransportWidget({ summary }) {
             />
           </div>
 
-          <div className="p-3 border-t lg:border-t-0 lg:border-l space-y-2.5 bg-[#090b0e] overflow-y-auto max-h-[360px]" style={{ borderColor: 'var(--crm-line)' }}>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-slate-400 border-b border-slate-800 pb-1 flex items-center justify-between">
-              <span>Active Drivers ({activeDriversList.length})</span>
-              <FiActivity className="text-emerald-400" />
+          <div className="p-3 border-t lg:border-t-0 lg:border-l space-y-2.5 overflow-y-auto max-h-[360px]" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+            <div className="text-[9px] uppercase tracking-wider font-bold text-[var(--crm-ink-faint)] border-b pb-1 flex items-center justify-between" style={{ borderColor: 'var(--crm-line)' }}>
+              <span className="font-sans">Active Drivers ({activeDriversList.length})</span>
+              <FiActivity className="text-emerald-500" />
             </div>
 
             {activeDriversList.length === 0 ? (
-              <div className="p-4 text-center text-[10px] text-slate-500 italic">
+              <div className="p-4 text-center text-[10px] text-[var(--crm-ink-faint)] italic font-sans">
                 No active driver logged in via mobile app yet. Listening for GPS updates...
               </div>
             ) : (
               activeDriversList.map((drv, dIdx) => (
-                <div key={drv.driverId || dIdx} className="p-2 rounded border bg-slate-900/80 border-slate-800 space-y-1 transition hover:border-[#c9a84c]">
+                <div key={drv.driverId || dIdx} className="p-2 rounded border space-y-1 transition hover:border-[#c9a84c]" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-200 text-[10px] flex items-center gap-1">
+                    <span className="font-bold text-[var(--crm-ink)] text-[10px] flex items-center gap-1 font-sans">
                       <FiUser className="text-[#c9a84c]" size={11} /> {drv.driverName}
                     </span>
-                    <span className="px-1.5 py-0.2 bg-emerald-950/80 border border-emerald-800 text-emerald-400 text-[8px] font-bold uppercase rounded">
+                    <span className="px-1.5 py-0.2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[8px] font-bold uppercase rounded font-mono">
                       ● ONLINE
                     </span>
                   </div>
-                  <div className="text-[9px] text-sky-400 font-mono font-bold">
+                  <div className="text-[9px] text-sky-500 font-mono font-bold">
                     Truck: {drv.vehicleNo || 'Carrier Truck'}
                   </div>
-                  <div className="text-[9px] text-slate-400 flex items-center gap-1">
-                    <FiMapPin size={9} className="text-amber-400" /> GPS: {Number(drv.lat || 0).toFixed(4)}, {Number(drv.long || 0).toFixed(4)}
+                  <div className="text-[9px] text-[var(--crm-ink-faint)] flex items-center gap-1 font-mono">
+                    <FiMapPin size={9} className="text-amber-500" /> GPS: {Number(drv.lat || 0).toFixed(4)}, {Number(drv.long || 0).toFixed(4)}
                   </div>
-                  <div className="text-[8px] text-slate-500 text-right">
+                  <div className="text-[8px] text-[var(--crm-ink-faint)] text-right font-mono">
                     Updated: {drv.time || 'Just now'}
                   </div>
                 </div>

@@ -36,10 +36,10 @@ export const AuthProvider = ({ children }) => {
 
         const isEmployeeAuth = localStorage.getItem('isEmployeeAuth');
         const EMPLOYEE_ROLES = [
-          'EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 
-          'SALES_EXECUTIVE', 'SALES_MANAGER', 'SALES', 'PROCUREMENT', 'ACCOUNTS', 
-          'IT', 'TRANSPORT', 'FINANCE', 'FINANCE_MANAGER', 'FINANCE_EXECUTIVE', 
-          'ACCOUNTS_MANAGER'
+          'SALES_EXECUTIVE', 'SALES_MANAGER', 'HR_EXECUTIVE', 'HR_MANAGER', 
+          'TRANSPORT_MANAGER', 'TRANSPORT_EXECUTIVE', 'DRIVER', 'CEO', 'ADMIN', 
+          'SALES_TRIAL', 'EMPLOYEE', 'MANAGER', 'HR', 'SALES', 'PROCUREMENT', 
+          'ACCOUNTS', 'IT', 'TRANSPORT', 'FINANCE'
         ];
         const isEmployee = isEmployeeAuth !== null
           ? isEmployeeAuth === 'true'

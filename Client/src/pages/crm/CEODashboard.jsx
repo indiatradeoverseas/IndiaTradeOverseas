@@ -528,37 +528,31 @@ export default function CEODashboard() {
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-400 font-mono">
+            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-500 font-sans">
               Executive Command & Oversight
             </span>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase text-white flex items-center gap-2">
-              <FiZap className="text-cyan-400" /> CEO Master Dashboard
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase flex items-center gap-2 font-sans" style={{ color: 'var(--crm-heading)' }}>
+              <FiZap className="text-cyan-500" /> CEO Master Dashboard
             </h1>
           </div>
 
           {/* Action Controls */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setActiveTab('FILES')}
-              className="px-3.5 py-1.5 text-[10px] font-mono uppercase font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/30 shadow-sm"
-            >
-              <FiUpload size={12} /> <span>Share File</span>
-            </button>
-            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-mono uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-cyan-950/80 text-cyan-300 border border-cyan-800 hover:bg-cyan-900">
-              <FiMessageSquare size={12} /> <span>Executive Chat</span>
+          <div className="flex flex-wrap items-center gap-2 font-sans">
+            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiMessageSquare size={12} /> 
             </Link>
             <button
               onClick={fetchAllData}
-              className="px-3.5 py-1.5 text-[10px] font-mono uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800 hover:text-white"
+              className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold"
             >
-              <FiRefreshCw size={12} /> <span>Refresh</span>
+              <FiRefreshCw size={12} /> 
             </button>
 
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-1.5 text-[10px] font-mono uppercase font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30 shadow-sm"
+              className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold"
             >
-              <FiDownload size={12} /> <span>Export CSV</span>
+              <FiDownload size={12} /> 
             </button>
           </div>
         </div>
@@ -569,7 +563,6 @@ export default function CEODashboard() {
             { id: 'ALL', label: 'All Modules' },
             { id: 'OVERVIEW', label: 'Overview Chart' },
             { id: 'FILES', label: 'File Sharing' },
-            { id: 'EXECUTIVE', label: 'Executive' },
             { id: 'SALES', label: 'Sales' },
             { id: 'ATTENDANCE', label: 'Attendance' },
             { id: 'TRANSPORT', label: 'Transport Map' },
@@ -579,10 +572,10 @@ export default function CEODashboard() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-1.5 text-[10px] uppercase font-mono font-semibold rounded-md transition-all whitespace-nowrap ${
+              className={`px-4 py-1.5 text-[10px] uppercase font-sans font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === t.id
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
-                  : 'bg-slate-900/80 text-slate-400 border border-slate-800 hover:bg-slate-800 hover:text-white'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300'
               }`}
             >
               {t.label}
@@ -621,10 +614,10 @@ export default function CEODashboard() {
                   <button
                     key={r}
                     onClick={() => setDateRange(r)}
-                    className={`px-3 py-1 text-[10px] font-mono uppercase rounded-md transition-all ${
+                    className={`px-3 py-1 text-[10px] font-sans uppercase rounded-md transition-all ${
                       dateRange === r
                         ? 'border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-md shadow-cyan-950/60'
-                        : 'border border-slate-800 bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800'
+                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
                     }`}
                   >
                     {r}
@@ -700,7 +693,7 @@ export default function CEODashboard() {
               </div>
 
               <div className="h-80 sm:h-96 w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
                   <ComposedChart data={composedChartData} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="period" tick={XAXIS_TICK_STYLE} />
@@ -751,7 +744,7 @@ export default function CEODashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
                   <div className="sm:col-span-5 h-64 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
                       <PieChart>
                         <Pie
                           data={pipelineData}
@@ -821,7 +814,7 @@ export default function CEODashboard() {
                 </div>
 
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
                     <LineChart data={monthlyLeadsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                       <XAxis dataKey="month" tick={XAXIS_TICK_STYLE} />
@@ -852,66 +845,7 @@ export default function CEODashboard() {
           </motion.div>
         )}
 
-        {/* =========================================================================
-            MODULE 1 & 2: EXECUTIVE SUMMARY & FINANCIALS
-            ========================================================================= */}
-        {(activeTab === 'ALL' || activeTab === 'EXECUTIVE') && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 border rounded-sm p-5 space-y-4" style={CARD_STYLE}>
-              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                  <FiDollarSign className="text-emerald-400" /> Executive Financial Summary & Runway
-                </h3>
-                <span className="text-[9px] font-mono text-[var(--crm-positive)] bg-[var(--crm-positive-bg)] px-2 py-0.5 rounded">
-                  Healthy Cashflow
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-mono block">MRR</span>
-                  <span className="text-lg font-light text-emerald-400 block">{fmtCurrency(execMetrics.mrr)}</span>
-                </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-mono block">ARR</span>
-                  <span className="text-lg font-light text-sky-400 block">{fmtCurrency(execMetrics.arr)}</span>
-                </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-mono block">Monthly Burn</span>
-                  <span className="text-lg font-light text-rose-400 block">{fmtCurrency(execMetrics.burn)}</span>
-                </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-mono block">Runway</span>
-                  <span className="text-lg font-light text-amber-400 block">{execMetrics.runway}</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Support & Marketing Snapshot */}
-            <div className="border rounded-sm p-5 space-y-4" style={CARD_STYLE}>
-              <h3 className="text-xs uppercase font-bold tracking-widest border-b pb-3 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-                <FiAward className="text-amber-400" /> Support & Marketing Metrics
-              </h3>
-              <div className="space-y-3 text-xs font-mono">
-                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[var(--crm-ink-faint)]">CSAT Score:</span>
-                  <span className="text-emerald-400 font-bold">{supportMetrics.csat}</span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[var(--crm-ink-faint)]">Avg Response Time:</span>
-                  <span className="text-sky-400 font-bold">{supportMetrics.responseTime}</span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[var(--crm-ink-faint)]">CAC / LTV:</span>
-                  <span className="text-amber-400 font-bold">{marketingMetrics.cac} / {marketingMetrics.ltv}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[var(--crm-ink-faint)]">Marketing Campaign ROI:</span>
-                  <span className="text-emerald-400 font-bold">{marketingMetrics.roi}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* =========================================================================
             MODULE 3 & 4: TEAM ATTENDANCE & ACTIVE/INACTIVE TELEMETRY

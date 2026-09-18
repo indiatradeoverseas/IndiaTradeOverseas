@@ -916,18 +916,16 @@ export default function Leads() {
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Leads & Global Inquiries</h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto font-sans">
           {/* Table Badge */}
-          <div className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 px-2.5 py-1 rounded-sm font-mono text-[10px] font-bold text-[var(--crm-heading)] flex items-center gap-1">
-            <FiList size={11} /> Table
-          </div>
+        
 
           <DownloadButton
             action={handleExportLeads}
-            className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[10px] uppercase tracking-wider font-semibold h-[30px] px-2.5 rounded-sm transition-all hover:bg-[var(--crm-bg-raised)] disabled:cursor-default"
+            className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm transition-all disabled:cursor-default"
             icon={FiDownload}
             iconSize={11}
-            idleLabel="Export"
+           
             busyLabel="Exporting..."
             doneLabel="Exported"
           />
@@ -935,46 +933,46 @@ export default function Leads() {
           {isManagerOrAdmin && (
             <button 
               onClick={() => setShowImportModal(true)} 
-              className="bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-ink-soft)]/20 text-[10px] uppercase tracking-wider font-bold h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
+              className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
             >
-              <FiUpload size={11} /> <span>Import</span>
+              <FiUpload size={11} /> 
             </button>
           )}
 
           <button
             onClick={() => setShowLOIModal(true)}
-            className="bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 text-[10px] uppercase tracking-wider font-bold h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
+            className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
           >
-            <FiFileText size={11} className="text-teal-400" /> <span>Upload LOI</span>
+            <FiFileText size={11} className="text-teal-600" /> <span>Upload LOI</span>
           </button>
 
           <button
             onClick={() => setShowCallModal(true)}
-            className="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-[10px] uppercase tracking-wider font-bold h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
+            className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
           >
-            <FiMic size={11} className="animate-pulse text-rose-400" /> <span>Upload Recording</span>
+            <FiMic size={11} className="animate-pulse text-rose-600" /> <span>Upload Recording</span>
           </button>
 
-          <button onClick={() => setShowCreateModal(true)} className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all hover:bg-[var(--crm-ink-soft)] cursor-pointer">
-            <FiPlus size={12} /> <span>New Lead</span>
+          <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm">
+            <FiPlus size={12} /> 
           </button>
         </div>
       </motion.div>
 
       {/* Calendar Date Filter Bar */}
-      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 p-3 sm:p-4 rounded-sm shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left mx-4 md:mx-8 mt-4">
+      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-sm shadow-sm font-sans text-xs flex flex-wrap justify-between items-center gap-3 text-left mx-4 md:mx-8 mt-4">
         <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
-          <FiCalendar className="text-teal-400 animate-pulse" size={16} />
-          <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+          <FiCalendar className="text-teal-500 animate-pulse" size={16} />
+          <span className="text-[11px] uppercase tracking-wider font-sans">Date & Calendar Filter:</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 font-sans">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
             className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
               dateFilterMode === 'ALL'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             All Dates
@@ -983,8 +981,8 @@ export default function Leads() {
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
             className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
               dateFilterMode === 'TODAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             Today
@@ -993,15 +991,15 @@ export default function Leads() {
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
             className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
               dateFilterMode === 'YESTERDAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             Yesterday
           </button>
 
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 px-2.5 py-1 rounded-sm">
-            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-sm">
+            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold font-sans">Pick Date:</span>
             <input
               type="date"
               value={selectedDate}
@@ -1009,48 +1007,48 @@ export default function Leads() {
                 setSelectedDate(e.target.value);
                 setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
               }}
-              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-sans cursor-pointer"
             />
           </div>
 
           {dateFilterMode !== 'ALL' && (
             <button
               onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+              className="text-[9px] uppercase font-bold text-rose-500 hover:text-rose-400 underline ml-1 cursor-pointer font-sans"
             >
               Clear Filter
             </button>
           )}
         </div>
 
-        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+        <div className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
+          Showing: <strong className="text-teal-600 dark:text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
           &bull; ({getFilteredByDate(leads).length} Leads Matched)
         </div>
       </motion.div>
 
       {/* Main Container Content */}
-      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)] min-w-0 overflow-x-hidden">
+      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)] min-w-0 overflow-x-hidden font-sans">
 
         {/* Module 4: Sales Performance Metrics Sub-Header */}
-        <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 rounded-sm font-mono text-xs">
+        <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm font-sans text-xs">
           <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Active Pipeline</span>
+            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Active Pipeline</span>
             <span className="text-base font-bold text-[var(--crm-heading)]">{leads.length} Records</span>
           </div>
           <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Gross Valuation</span>
-            <span className="text-base font-bold text-[var(--crm-positive)]">
+            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Gross Valuation</span>
+            <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
               ₹{leads.reduce((sum, l) => sum + (l.leadValue || 0), 0).toLocaleString('en-IN')}
             </span>
           </div>
           <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Pending Follow-ups</span>
-            <span className="text-base font-bold text-[var(--crm-warning)]">{reminders.length} Due</span>
+            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Pending Follow-ups</span>
+            <span className="text-base font-bold text-amber-600 dark:text-amber-400">{reminders.length} Due</span>
           </div>
           <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Conversion Rate</span>
-            <span className="text-base font-bold text-[var(--crm-info)]">
+            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Conversion Rate</span>
+            <span className="text-base font-bold text-sky-600 dark:text-sky-400">
               {leads.length > 0 ? Math.round((leads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((l.stage || '').toUpperCase())).length / leads.length) * 100) : 0}%
             </span>
           </div>
@@ -1058,7 +1056,7 @@ export default function Leads() {
 
         {/* Follow-up Reminder Stream */}
         {reminders.length > 0 && (
-          <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-warning-bg)] border border-[var(--crm-warning)]/20 flex justify-between items-center rounded-sm text-xs font-mono text-[var(--crm-warning)]">
+          <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-warning-bg)] border border-[var(--crm-warning)]/30 flex justify-between items-center rounded-sm text-xs font-sans text-[var(--crm-warning)]">
             <div className="flex items-center space-x-2.5">
               <FiClock className="text-[var(--crm-warning)] animate-pulse" size={14} />
               <span>System logs track <strong>{reminders.length} follow-up records</strong> targeting execution today.</span>
@@ -1067,18 +1065,20 @@ export default function Leads() {
         )}
 
         {/* Lead Section Tab Switcher */}
-        <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-ink-soft)]/15 pb-2 font-mono">
+        <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-line)] pb-2 font-sans">
           <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
             <button
               onClick={() => setLeadTab('ALL')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ALL'
-                  ? 'bg-teal-950/80 text-teal-300 border-teal-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>All Lead</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'ALL' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.length}
               </span>
             </button>
@@ -1087,12 +1087,14 @@ export default function Leads() {
               onClick={() => setLeadTab('WON_DELIVERED')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WON_DELIVERED'
-                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-emerald-600 text-white border-emerald-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
-              <span>DEAL WON, DELIVERED, CLOSED WON</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
+              <span>DEAL WON</span>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'WON_DELIVERED' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.filter(l => isWonOrDelivered(l.stage)).length}
               </span>
             </button>
@@ -1101,12 +1103,14 @@ export default function Leads() {
               onClick={() => setLeadTab('ORDER_CONFIRM')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ORDER_CONFIRM'
-                  ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>order Confirm</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-900/60 text-cyan-200 border border-cyan-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'ORDER_CONFIRM' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.filter(l => isOrderConfirmedStage(l.stage)).length}
               </span>
             </button>
@@ -1115,12 +1119,14 @@ export default function Leads() {
               onClick={() => setLeadTab('NEW_LEAD')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'NEW_LEAD'
-                  ? 'bg-amber-950/90 text-amber-300 border-amber-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>New Lead</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-900/60 text-amber-200 border border-amber-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'NEW_LEAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.filter(l => isNewOrAssignedLead(l.stage)).length}
               </span>
             </button>
@@ -1129,60 +1135,64 @@ export default function Leads() {
               onClick={() => setLeadTab('WORKLOAD')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WORKLOAD'
-                  ? 'bg-sky-950/90 text-sky-300 border-sky-800/90 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>👥 Employee Workload</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-900/60 text-sky-200 border border-sky-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'WORKLOAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {executiveWorkloadSummary.list.length} Members
               </span>
             </button>
           </div>
 
           {leadTab === 'COMPLETED' && (
-            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider bg-emerald-950/40 border border-emerald-900/30 px-3 py-1 rounded">
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded">
               ✓ Total Completed Valuation: ₹{completedLeads.reduce((s, l) => s + (l.leadValue || 0), 0).toLocaleString('en-IN')}
             </span>
           )}
         </motion.div>
 
         {/* Employee Lead Allocation Ribbon Matrix */}
-        <motion.div variants={blockVariants} className="p-3 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-ink-soft)]/15 rounded-sm font-mono text-xs shadow-sm space-y-2">
+        <motion.div variants={blockVariants} className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm font-sans text-xs shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FiUsers className="text-sky-400" size={14} />
-              <span className="text-[10px] text-[var(--crm-heading)] uppercase font-bold tracking-wider">
+              <FiUsers className="text-sky-500" size={14} />
+              <span className="text-[10px] text-[var(--crm-heading)] uppercase font-bold tracking-wider font-sans">
                 {isManagerOrAdmin ? 'Employee Lead Distribution Summary' : 'My Assigned Leads Summary'}
               </span>
-              <span className="text-[9px] text-[var(--crm-ink-faint)] hidden sm:inline">
+              <span className="text-[9px] text-[var(--crm-ink-faint)] hidden sm:inline font-sans">
                 {isManagerOrAdmin ? '(Click any employee to filter their assigned leads)' : '(Filtered for your assigned workspace)'}
               </span>
             </div>
             {(filterAssignee !== 'ALL' || filterCategory !== 'ALL') && (
               <button
                 onClick={() => { setFilterAssignee('ALL'); setFilterCategory('ALL'); }}
-                className="text-[9px] text-rose-400 hover:underline uppercase font-bold cursor-pointer"
+                className="text-[9px] text-rose-500 hover:underline uppercase font-bold cursor-pointer font-sans"
               >
                 Clear Filters (Show All)
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar font-sans">
             {/* Unassigned Pill - Only for Sales Manager / Admin */}
             {isManagerOrAdmin && (
               <button
                 onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
-                className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
                   filterAssignee === 'UNASSIGNED'
-                    ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-md ring-1 ring-amber-500'
-                    : 'bg-amber-950/30 text-amber-400/90 border-amber-800/40 hover:bg-amber-950/60'
+                    ? 'bg-amber-600 text-white border-amber-700 font-black shadow-md'
+                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200 font-black'
                 }`}
               >
-                <FiAlertCircle size={12} />
+                <FiAlertCircle size={14} className={filterAssignee === 'UNASSIGNED' ? 'text-white' : 'text-amber-600 dark:text-amber-400'} />
                 <span>❓ Unassigned Pool</span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-900/80 text-amber-200 font-mono font-bold">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                  filterAssignee === 'UNASSIGNED' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'
+                }`}>
                   {executiveWorkloadSummary.unassigned.totalCount} Leads
                 </span>
               </button>
@@ -1191,15 +1201,17 @@ export default function Leads() {
             {/* Logged-in User Pill */}
             <button
               onClick={() => setFilterAssignee(filterAssignee === 'MY' ? 'ALL' : 'MY')}
-              className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
                 filterAssignee === 'MY'
-                  ? 'bg-emerald-950 text-emerald-300 border-emerald-600 shadow-md ring-1 ring-emerald-500'
-                  : 'bg-emerald-950/30 text-emerald-400/90 border-emerald-800/40 hover:bg-emerald-950/60'
+                  ? 'bg-emerald-600 text-white border-emerald-700 font-black shadow-md'
+                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 font-black'
               }`}
             >
-              <FiUser size={12} />
+              <FiUser size={14} className={filterAssignee === 'MY' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'} />
               <span>👤 Assigned to Me</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-900/80 text-emerald-200 font-mono font-bold">
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                filterAssignee === 'MY' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'
+              }`}>
                 {myLeadsCount} Leads
               </span>
             </button>
@@ -1211,20 +1223,18 @@ export default function Leads() {
                 <button
                   key={emp.id}
                   onClick={() => setFilterAssignee(isSelected ? 'ALL' : emp.id)}
-                  className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
                     isSelected
-                      ? 'bg-sky-950 text-sky-300 border-sky-600 shadow-md ring-1 ring-sky-500'
-                      : emp.totalCount > 0
-                      ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/20 hover:border-sky-500/50'
-                      : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-[var(--crm-ink-soft)]/10 opacity-60'
+                      ? 'bg-cyan-600 text-white border-cyan-700 font-black shadow-md'
+                      : 'bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-200 border-sky-300 dark:border-sky-700 hover:bg-sky-200 font-black'
                   }`}
                 >
-                  <FiUserCheck size={12} className={emp.totalCount > 0 ? "text-sky-400" : "text-[var(--crm-ink-faint)]"} />
+                  <FiUserCheck size={14} className={isSelected ? "text-white" : "text-sky-600 dark:text-sky-400"} />
                   <span>{emp.name}</span>
-                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
-                    emp.totalCount > 0 ? 'bg-sky-950 text-sky-300 border border-sky-800/60' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]'
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                    isSelected ? 'bg-white/25 text-white' : 'bg-cyan-600 text-white'
                   }`}>
-                    {emp.totalCount} Leads
+                    {emp.totalCount}
                   </span>
                 </button>
               );
@@ -1233,7 +1243,7 @@ export default function Leads() {
         </motion.div>
 
         {/* Search & Filter Controls */}
-        <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm flex flex-col md:flex-row gap-4 items-center">
+        <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm flex flex-col md:flex-row gap-4 items-center font-sans">
           <div className="flex-1 w-full flex flex-col sm:flex-row gap-3 items-center">
             <div className="relative flex-1 w-full">
               <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
@@ -1242,40 +1252,40 @@ export default function Leads() {
                 placeholder="Search leads by customer, code, or company..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
+                className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-cyan-500 placeholder-[var(--crm-ink-faint)] font-sans"
               />
             </div>
 
             {/* Category Filter Dropdown */}
-            <div className="w-full sm:w-auto shrink-0 flex items-center gap-2">
+            <div className="w-full sm:w-auto shrink-0 flex items-center gap-2 font-sans">
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className={`w-full sm:w-auto px-3.5 py-2.5 text-xs font-mono font-bold rounded-sm border outline-none cursor-pointer transition shadow-sm ${
+                className={`w-full sm:w-auto px-3.5 py-2.5 text-xs font-sans font-bold rounded-sm border outline-none cursor-pointer transition shadow-sm ${
                   filterCategory !== 'ALL'
-                    ? 'bg-amber-950/80 text-amber-300 border-amber-600 ring-1 ring-amber-500/50'
-                    : 'bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/20 hover:border-[var(--crm-ink-soft)]/40'
+                    ? 'bg-amber-600 text-white border-amber-400 font-bold'
+                    : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)] hover:border-cyan-400'
                 }`}
               >
-                <option value="ALL" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]">All Categories</option>
-                <option value="STONE" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Stone</option>
-                <option value="COAL" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Coal</option>
-                <option value="TEA" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Tea</option>
-                <option value="RICE" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Rice</option>
-                <option value="TRANSPORT" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Transport</option>
-                <option value="OTHERS" className="bg-[var(--crm-bg)] text-[var(--crm-heading)]"> Others</option>
+                <option value="ALL" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">All Categories</option>
+                <option value="STONE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Stone</option>
+                <option value="COAL" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Coal</option>
+                <option value="TEA" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Tea</option>
+                <option value="RICE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Rice</option>
+                <option value="TRANSPORT" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Transport</option>
+                <option value="OTHERS" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Others</option>
               </select>
             </div>
           </div>
 
           {/* Temperature Filters */}
-          <div className="flex items-center gap-1.5 font-mono text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 font-sans text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setFilterPriority('ALL')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${
                 filterPriority === 'ALL'
-                  ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80 shadow-sm'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               🌐 ALL LEADS (Date Wise)
@@ -1284,8 +1294,8 @@ export default function Leads() {
               onClick={() => setFilterPriority('HOT')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
                 filterPriority === 'HOT'
-                  ? 'bg-rose-950/80 text-rose-400 border-rose-800/80'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-rose-400'
+                  ? 'bg-rose-600 text-white border-rose-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               🔥 Hot
@@ -1294,8 +1304,8 @@ export default function Leads() {
               onClick={() => setFilterPriority('WARM')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
                 filterPriority === 'WARM'
-                  ? 'bg-amber-950/80 text-amber-400 border-amber-800/80'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-amber-400'
+                  ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               ⚡ Warm
@@ -1304,8 +1314,8 @@ export default function Leads() {
               onClick={() => setFilterPriority('COLD')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
                 filterPriority === 'COLD'
-                  ? 'bg-cyan-950/80 text-cyan-400 border-cyan-800/80'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-cyan-400'
+                  ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               ❄️ Cold
@@ -1418,26 +1428,26 @@ export default function Leads() {
                               {lead.customerName}
                             </Link>
                             {lead.priority === 'HOT' && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
                             )}
                             {lead.priority === 'WARM' && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-amber-950/80 text-amber-400 border border-amber-800/50">WARM ⚡</span>
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
                             )}
                             {lead.priority === 'COLD' && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">COLD ❄️</span>
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                             )}
                           </div>
                           <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
                         </td>
                         <td className="py-3.5 px-5">
-                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm mr-2">
+                          <span className="px-2.5 py-1 text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md border border-slate-300 dark:border-slate-700 shadow-xs mr-2">
                             {lead.productCategory}
                           </span>
                           <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.country || 'IN'}</span>
                         </td>
                         <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
                           {lead.targetDate ? (
-                            <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                            <span className="text-[11px] font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
                               📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </span>
                           ) : (
@@ -1590,13 +1600,13 @@ export default function Leads() {
 
                         <div className="shrink-0 flex items-center gap-1.5">
                           {lead.priority === 'HOT' && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
                           )}
                           {lead.priority === 'WARM' && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-amber-950/80 text-amber-400 border border-amber-800/50">WARM ⚡</span>
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
                           )}
                           {lead.priority === 'COLD' && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">COLD ❄️</span>
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                           )}
                         </div>
                       </div>
@@ -1967,10 +1977,10 @@ export default function Leads() {
                     </span>
                     <div className="flex items-center gap-2 flex-wrap">
                       {[
-                        { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80' },
-                        { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-950/60 text-rose-400 border-rose-800/60' },
-                        { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-950/60 text-amber-400 border-amber-800/60' },
-                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60' }
+                        { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-600 text-white border-indigo-700 font-bold' },
+                        { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-600 text-white border-rose-700 font-bold' },
+                        { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-500 text-white border-amber-600 font-bold' },
+                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-600 text-white border-cyan-700 font-bold' }
                       ].map(t => (
                         <button
                           key={t.value}

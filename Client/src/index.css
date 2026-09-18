@@ -284,10 +284,29 @@ textarea {
   color: #0369A1 !important;
 }
 
-.crm-portal.light-theme .bg-cyan-950\/60,
-.crm-portal.light-theme .bg-cyan-950\/90 {
-  background-color: #F0F9FF !important;
-  border-color: #7DD3FC !important;
+/* Light Mode — Workforce Directory Management Badges & Actions (Matching Image 1 Employee ID Style) */
+.crm-portal.light-theme .bg-cyan-950,
+.crm-portal[data-theme='light'] .bg-cyan-950,
+.crm-portal.light-theme .bg-emerald-950,
+.crm-portal[data-theme='light'] .bg-emerald-950,
+.crm-portal.light-theme .bg-rose-950,
+.crm-portal[data-theme='light'] .bg-rose-950,
+.crm-portal.light-theme .bg-sky-950,
+.crm-portal[data-theme='light'] .bg-sky-950 {
+  background-color: #FEE2E2 !important;
+  border-color: #FCA5A5 !important;
+  color: #991B1B !important;
+}
+
+.crm-portal.light-theme td .bg-cyan-950,
+.crm-portal.light-theme td .bg-emerald-950,
+.crm-portal.light-theme td .bg-rose-950,
+.crm-portal.light-theme td .bg-sky-950,
+.crm-portal.light-theme td button,
+.crm-portal.light-theme td a {
+  background-color: #FEE2E2 !important;
+  border: 1px solid #FCA5A5 !important;
+  color: #991B1B !important;
 }
 
 .crm-portal.light-theme .text-purple-400,
@@ -391,4 +410,4 @@ textarea {
 .crm-portal select,
 .crm-portal textarea {
   border-radius: 0.75rem;
-}
+}
