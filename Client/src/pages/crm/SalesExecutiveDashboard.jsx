@@ -717,36 +717,36 @@ export default function SalesExecutiveDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
               dateFilterMode === 'ALL'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
             }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
               dateFilterMode === 'TODAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
             }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
               dateFilterMode === 'YESTERDAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
             }`}
           >
             Yesterday
           </button>
 
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-lg">
             <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
             <input
               type="date"
@@ -762,7 +762,7 @@ export default function SalesExecutiveDashboard() {
           {dateFilterMode !== 'ALL' && (
             <button
               onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+              className="text-[9px] uppercase font-bold text-rose-500 hover:text-rose-400 underline ml-1 cursor-pointer"
             >
               Clear Filter
             </button>
@@ -770,14 +770,14 @@ export default function SalesExecutiveDashboard() {
         </div>
 
         <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
           &bull; ({getFilteredByDate(deals).length} Leads, {getFilteredByDate(myCallRecordings).length} Recordings)
         </div>
       </motion.div>
 
       {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full">
-        <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-2 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full">
+        <nav className="flex space-x-2 min-w-max px-1">
           {[
             { id: 'daily', label: 'Daily Action View', icon: FiClock },
             { id: 'leaderboard', label: 'Leaderboard & Gamification', icon: FiAward },
@@ -786,13 +786,13 @@ export default function SalesExecutiveDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3.5 px-1 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 activeTab === tab.id
-                  ? 'border-teal-500 text-teal-500'
-                  : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
+                  : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
               }`}
             >
-              <tab.icon size={13} className={activeTab === tab.id ? 'text-teal-500' : 'text-inherit'} />
+              <tab.icon size={13} className={activeTab === tab.id ? 'text-white' : 'text-inherit'} />
               {tab.label}
             </button>
           ))}
@@ -848,10 +848,10 @@ export default function SalesExecutiveDashboard() {
                             >
                               <div className="space-y-1">
                                 <div className="flex justify-between items-start gap-2">
-                                  <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                                    task.priority === 'HIGH' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/30' :
-                                    task.priority === 'MEDIUM' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/30' :
-                                    'bg-slate-800/40 text-slate-400 border border-slate-700/30'
+                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${
+                                    task.priority === 'HIGH' ? 'bg-rose-600 text-white border border-rose-700' :
+                                    task.priority === 'MEDIUM' ? 'bg-amber-500 text-white border border-amber-600' :
+                                    'bg-slate-700 text-white border border-slate-600'
                                   }`}>
                                     {task.priority}
                                   </span>
@@ -1167,14 +1167,25 @@ export default function SalesExecutiveDashboard() {
                             </div>
 
                             {(rec.material || rec.location || rec.quantity) && (
-                              <div className="bg-[var(--crm-bg-raised)] p-2 rounded text-[9px] space-y-0.5 border border-[var(--crm-line)]/50">
-                                {rec.material && <div>📦 Material: <strong className="text-teal-400">{rec.material}</strong> {rec.quantity ? `(${rec.quantity})` : ''}</div>}
-                                {rec.location && <div>📍 Location: <strong className="text-amber-400">{rec.location}</strong></div>}
+                              <div className="bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 p-2.5 rounded-lg text-[10px] space-y-1 shadow-xs text-slate-900 dark:text-slate-100">
+                                {rec.material && (
+                                  <div>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium">📦 Material: </span>
+                                    <strong className="text-teal-700 dark:text-teal-300 font-black">{rec.material}</strong>
+                                    {rec.quantity ? <span className="text-slate-700 dark:text-slate-300 font-bold"> ({rec.quantity})</span> : ''}
+                                  </div>
+                                )}
+                                {rec.location && (
+                                  <div>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium">📍 Location: </span>
+                                    <strong className="text-amber-700 dark:text-amber-300 font-black">{rec.location}</strong>
+                                  </div>
+                                )}
                               </div>
                             )}
 
                             {rec.notes && (
-                              <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] italic line-clamp-2 bg-[var(--crm-bg-raised)] p-2 rounded">
+                              <p className="text-[11px] font-sans text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800/90 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 italic line-clamp-3 break-words shadow-xs font-bold">
                                 "{rec.notes}"
                               </p>
                             )}

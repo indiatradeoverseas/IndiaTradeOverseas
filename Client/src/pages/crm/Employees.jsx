@@ -149,15 +149,16 @@ export default function Employees() {
   ];
 
   const roleOptions = [
-    { value: 'ADMIN', label: 'Admin' },
-    { value: 'MANAGER', label: 'Manager' },
-    { value: 'SALES', label: 'Sales' },
-    { value: 'PROCUREMENT', label: 'Procurement' },
-    { value: 'ACCOUNTS', label: 'Accounts' },
-    { value: 'HR', label: 'HR' },
-    { value: 'FINANCE', label: 'Finance' },
-    { value: 'IT', label: 'IT' },
-    { value: 'SOFTWARE_ENGINEER', label: 'Software Engineer' }
+    { value: 'SALES_EXECUTIVE', label: 'Sales Executive (SALES_EXECUTIVE)' },
+    { value: 'SALES_MANAGER', label: 'Sales Manager (SALES_MANAGER)' },
+    { value: 'HR_EXECUTIVE', label: 'HR Executive (HR_EXECUTIVE)' },
+    { value: 'HR_MANAGER', label: 'HR Manager (HR_MANAGER)' },
+    { value: 'TRANSPORT_MANAGER', label: 'Transport Manager (TRANSPORT_MANAGER)' },
+    { value: 'TRANSPORT_EXECUTIVE', label: 'Transport Executive (TRANSPORT_EXECUTIVE)' },
+    { value: 'DRIVER', label: 'Driver (DRIVER)' },
+    { value: 'CEO', label: 'CEO' },
+    { value: 'ADMIN', label: 'Admin (ADMIN)' },
+    { value: 'SALES_TRIAL', label: 'Sales Trial (SALES_TRIAL)' }
   ];
 
   useEffect(() => {

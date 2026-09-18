@@ -1163,21 +1163,16 @@ export default function SalesManagerDashboard() {
             onClick={handlePrintPDF}
             className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <FiPrinter size={12} /> Export PDF
+            <FiPrinter size={12} /> 
           </button>
 
-          <button 
-            onClick={() => setShowTaskModal(true)}
-            className="flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
-          >
-            <FiCheckSquare size={12} /> Assign Task
-          </button>
+        
 
           <button 
             onClick={() => setShowFileModal(true)}
             className="flex items-center justify-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <FiUpload size={12} /> Send File
+            <FiUpload size={12} />
           </button>
         </div>
       </motion.div>
@@ -1194,36 +1189,36 @@ export default function SalesManagerDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
               dateFilterMode === 'ALL'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
             }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
               dateFilterMode === 'TODAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
             }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
               dateFilterMode === 'YESTERDAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
             }`}
           >
             Yesterday
           </button>
 
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-lg">
             <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
             <input
               type="date"
@@ -1239,7 +1234,7 @@ export default function SalesManagerDashboard() {
           {dateFilterMode !== 'ALL' && (
             <button
               onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+              className="text-[9px] uppercase font-bold text-rose-500 hover:text-rose-400 underline ml-1 cursor-pointer"
             >
               Clear Filter
             </button>
@@ -1247,14 +1242,14 @@ export default function SalesManagerDashboard() {
         </div>
 
         <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
           &bull; ({getFilteredByDate(allLeads).length} Leads &bull; {getFilteredByDate(callRecordings).length} Recordings)
         </div>
       </motion.div>
 
       {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full print:hidden">
-        <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-2 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full print:hidden">
+        <nav className="flex space-x-2 min-w-max px-1">
           {[
             { id: 'command', label: 'Team Command Center', icon: FiUsers },
             { id: 'sales_activity_monitor', label: 'Sales Activity & Hours', icon: FiClock },
@@ -1269,13 +1264,13 @@ export default function SalesManagerDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3.5 px-1 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 activeTab === tab.id
-                  ? 'border-teal-500 text-teal-500'
-                  : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
+                  : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
               }`}
             >
-              <tab.icon size={13} className={activeTab === tab.id ? 'text-teal-500' : 'text-inherit'} />
+              <tab.icon size={13} className={activeTab === tab.id ? 'text-white' : 'text-inherit'} />
               {tab.label}
             </button>
           ))}
@@ -1311,28 +1306,28 @@ export default function SalesManagerDashboard() {
                 <div className="lg:col-span-8 space-y-6">
                   
                   {/* Lead Temperature Classification Banner */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] rounded-lg font-mono text-xs text-left">
-                    <div className="flex items-center space-x-3 p-2 bg-rose-950/40 border border-rose-900/40 rounded">
-                      <span className="text-xl">🔥</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs text-left shadow-sm">
+                    <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-rose-600 to-red-600 text-white border border-rose-500 rounded-lg shadow-sm">
+                      <span className="text-2xl">🔥</span>
                       <div>
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-rose-400 block">Hot Deals (Urgent)</span>
-                        <strong className="text-sm text-rose-200 font-bold">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'HOT').length} Leads</strong>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-rose-100 block">Hot Deals (Urgent)</span>
+                        <strong className="text-base text-white font-black">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'HOT').length} Leads</strong>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-2 bg-amber-950/40 border border-amber-900/40 rounded">
-                      <span className="text-xl">⚡</span>
+                    <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white border border-amber-500 rounded-lg shadow-sm">
+                      <span className="text-2xl">⚡</span>
                       <div>
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-amber-400 block">Warm Pipeline</span>
-                        <strong className="text-sm text-amber-200 font-bold">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'WARM').length} Leads</strong>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-amber-100 block">Warm Pipeline</span>
+                        <strong className="text-base text-white font-black">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'WARM').length} Leads</strong>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-2 bg-cyan-950/40 border border-cyan-900/40 rounded">
-                      <span className="text-xl">❄️</span>
+                    <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white border border-cyan-500 rounded-lg shadow-sm">
+                      <span className="text-2xl">❄️</span>
                       <div>
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-cyan-400 block">Cold / Nurturing</span>
-                        <strong className="text-sm text-cyan-200 font-bold">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'COLD').length} Leads</strong>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-100 block">Cold / Nurturing</span>
+                        <strong className="text-base text-white font-black">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'COLD').length} Leads</strong>
                       </div>
                     </div>
                   </div>
@@ -1447,10 +1442,10 @@ export default function SalesManagerDashboard() {
                     <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left flex flex-col justify-between">
                       <div>
                         <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                          <span className="flex items-center gap-1.5 text-teal-400">
+                          <span className="flex items-center gap-1.5 text-teal-600 dark:text-teal-400 font-bold">
                             <FiTruck size={14} /> Ready for Dispatch & Logistics
                           </span>
-                          <span className="bg-amber-950/40 text-amber-400 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold border border-amber-900/30">
+                          <span className="bg-amber-500 text-white font-mono text-[9px] px-2.5 py-1 rounded-full font-black border border-amber-600 shadow-xs">
                             {allLeads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'].includes((l.stage || '').toUpperCase())).length} Orders
                           </span>
                         </h3>
@@ -1471,7 +1466,7 @@ export default function SalesManagerDashboard() {
                                 <div key={lead._id} className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/50 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-2">
                                   <div className="flex justify-between items-start">
                                     <div>
-                                      <span className="bg-amber-950/80 text-amber-300 font-mono font-bold text-[8px] px-1.5 py-0.5 rounded uppercase border border-amber-800/40">
+                                      <span className="bg-gradient-to-r from-amber-500 to-orange-600 text-white font-mono font-black text-[9px] px-2.5 py-1 rounded-full uppercase shadow-xs">
                                         {lead.stage?.replace(/_/g, ' ')}
                                       </span>
                                       <h5 className="font-serif font-bold text-[var(--crm-heading)] mt-1.5 truncate max-w-[160px]">
@@ -1545,17 +1540,17 @@ export default function SalesManagerDashboard() {
                                 <td className="py-3 px-4 text-[var(--crm-ink-soft)]">{task.assignedTo?.name || 'Employee'}</td>
                                 <td className="py-3 px-4 font-mono text-[var(--crm-ink-faint)]">{new Date(task.dueDate).toLocaleDateString('en-IN')}</td>
                                 <td className="py-3 px-4">
-                                  <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
-                                    task.priority === 'HIGH' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/30' :
-                                    task.priority === 'MEDIUM' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/30' :
-                                    'bg-slate-800/40 text-slate-400 border border-slate-700/30'
+                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${
+                                    task.priority === 'HIGH' ? 'bg-rose-600 text-white border border-rose-700' :
+                                    task.priority === 'MEDIUM' ? 'bg-amber-500 text-white border border-amber-600' :
+                                    'bg-slate-700 text-white border border-slate-600'
                                   }`}>{task.priority}</span>
                                 </td>
                                 <td className="py-3 px-4">
-                                  <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
-                                    task.status === 'COMPLETED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' :
-                                    task.status === 'IN_PROGRESS' ? 'bg-blue-950/40 text-blue-400 border border-blue-900/30' :
-                                    'bg-amber-950/40 text-amber-400 border border-amber-900/30'
+                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${
+                                    task.status === 'COMPLETED' ? 'bg-emerald-600 text-white border border-emerald-700' :
+                                    task.status === 'IN_PROGRESS' ? 'bg-blue-600 text-white border border-blue-700' :
+                                    'bg-amber-500 text-white border border-amber-600'
                                   }`}>{task.status?.replace('_', ' ')}</span>
                                 </td>
                                 <td className="py-3 px-4">
@@ -1621,7 +1616,7 @@ export default function SalesManagerDashboard() {
                           setTaskForm({ title: '', description: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', category: 'GENERAL', leadId: '' });
                           setShowTaskModal(true);
                         }}
-                        className="bg-teal-700 hover:bg-teal-600 text-white font-mono font-bold text-[9px] uppercase tracking-wider py-1.5 px-3 rounded transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
+                        className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-sans font-bold text-[9px] uppercase tracking-wider py-1.5 px-3.5 rounded-lg shadow-md hover:shadow-cyan-500/25 transition-all cursor-pointer whitespace-nowrap shrink-0 border border-cyan-400/40"
                       >
                         + Assign Task
                       </button>
@@ -1637,7 +1632,7 @@ export default function SalesManagerDashboard() {
                           return (
                             <div 
                               key={emp._id} 
-                              className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-2.5"
+                              className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 hover:bg-[var(--crm-bg-sunken)] rounded-xl transition text-xs font-mono space-y-2.5 shadow-xs"
                             >
                               <div className="flex justify-between items-start gap-2">
                                 <div className="min-w-0 pr-1">
@@ -1653,7 +1648,7 @@ export default function SalesManagerDashboard() {
                               <div className="flex justify-between items-center text-[10px] text-[var(--crm-ink-soft)] border-t border-[var(--crm-line)]/50 pt-2 font-mono">
                                 <span className="text-[var(--crm-ink-faint)] uppercase text-[9px] font-bold tracking-wider">Pending Tasks</span>
                                 <div>
-                                  <strong className="text-teal-400">{emp.tasksCount || 0} Tasks</strong>
+                                  <strong className="text-cyan-500 font-bold">{emp.tasksCount || 0} Tasks</strong>
                                 </div>
                               </div>
 
@@ -1663,7 +1658,7 @@ export default function SalesManagerDashboard() {
                                     setTaskForm(prev => ({ ...prev, assignedTo: emp._id }));
                                     setShowTaskModal(true);
                                   }}
-                                  className="flex-1 bg-teal-950/60 hover:bg-teal-900/80 text-teal-300 border border-teal-800/50 font-bold text-[9px] uppercase tracking-wider py-1.5 px-2 rounded transition cursor-pointer whitespace-nowrap text-center"
+                                  className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold text-[9px] uppercase tracking-wider py-1.5 px-2 rounded-lg transition-all shadow-sm cursor-pointer whitespace-nowrap text-center border border-cyan-400/30"
                                 >
                                   Assign Task
                                 </button>
@@ -1679,7 +1674,7 @@ export default function SalesManagerDashboard() {
                                     setSelectedEmpName(emp.name);
                                     setShowTargetModal(true);
                                   }}
-                                  className="flex-1 bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 border border-sky-800/50 font-bold text-[9px] uppercase tracking-wider py-1.5 px-2 rounded transition cursor-pointer whitespace-nowrap text-center"
+                                  className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[9px] uppercase tracking-wider py-1.5 px-2 rounded-lg transition-all shadow-sm cursor-pointer whitespace-nowrap text-center border border-emerald-400/30"
                                 >
                                   Set Target
                                 </button>
@@ -1826,25 +1821,25 @@ export default function SalesManagerDashboard() {
                           }
                           return divisionLeadsList.map((lead) => {
                             const catUpper = (lead.productCategory || '').toUpperCase();
-                            let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-900 text-slate-300 border-slate-700' };
+                            let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-700 text-white font-bold border-slate-600 shadow-xs' };
                             if (catUpper.includes('TEA')) {
-                              divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40' };
+                              divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-xs' };
                             } else if (catUpper.includes('RICE')) {
-                              divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-950/60 text-amber-400 border-amber-800/40' };
+                              divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-600 text-white font-bold border-amber-700 shadow-xs' };
                             } else if (catUpper.includes('STONE')) {
-                              divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-950/60 text-sky-400 border-sky-800/40' };
+                              divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-600 text-white font-bold border-sky-700 shadow-xs' };
                             }
 
                             const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || (lead.source || '').toUpperCase().includes('CHAT');
                             const originBadge = isChatLead 
-                              ? { label: '💬 Website Chat', color: 'bg-indigo-950/60 text-indigo-300 border-indigo-800/40' }
-                              : { label: '🌐 Website Form', color: 'bg-cyan-950/60 text-cyan-300 border-sky-800/40' };
+                              ? { label: '💬 Website Chat', color: 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs' }
+                              : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
 
                             const assignedEmp = teamEmployees.find(e => 
                               e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
                             );
 
-                            let prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                            let prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
                             if (lead.targetDate) {
                               const tDate = new Date(lead.targetDate);
                               if (!isNaN(tDate.getTime())) {
@@ -1852,18 +1847,18 @@ export default function SalesManagerDashboard() {
                                 const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
                                 const diffDays = Math.ceil(diffHours / 24);
                                 if (diffDays <= 3) {
-                                  prioInfo = { label: 'HOT 🔥', color: 'bg-rose-950/80 text-rose-400 border-rose-800/50' };
+                                  prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
                                 } else if (diffDays <= 7) {
-                                  prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
+                                  prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
                                 } else {
-                                  prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/50' };
+                                  prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
                                 }
                               }
                             } else {
                               const pUpper = (lead.priority || 'WARM').toUpperCase();
-                              if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-950/80 text-rose-400 border-rose-800/50' };
-                              else if (pUpper === 'WARM') prioInfo = { label: 'WARM ⚡', color: 'bg-amber-950/80 text-amber-400 border-amber-800/50' };
-                              else if (pUpper === 'COLD') prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-950/80 text-cyan-400 border-cyan-800/50' };
+                              if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+                              else if (pUpper === 'WARM') prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
+                              else if (pUpper === 'COLD') prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
                             }
 
                             return (
@@ -1889,13 +1884,13 @@ export default function SalesManagerDashboard() {
                                   <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono border ${prioInfo.color}`}>
+                                  <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase font-mono border ${prioInfo.color}`}>
                                     {prioInfo.label}
                                   </span>
                                 </td>
                                 <td className="py-3 px-4 text-center font-mono text-[11px] whitespace-nowrap">
                                   {lead.targetDate ? (
-                                    <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                                    <span className="text-[11px] font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap bg-transparent">
                                       📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </span>
                                   ) : (
@@ -1917,7 +1912,7 @@ export default function SalesManagerDashboard() {
                                     <span className={`inline-block px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider rounded border ${divisionBadge.color}`}>
                                       {divisionBadge.label}
                                     </span>
-                                    <span className={`inline-block px-2 py-0.5 text-[8px] font-mono font-semibold uppercase tracking-wider rounded border ${originBadge.color}`}>
+                                    <span className={`inline-block px-2 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider rounded border ${originBadge.color}`}>
                                       {originBadge.label}
                                     </span>
                                   </div>
@@ -1928,7 +1923,7 @@ export default function SalesManagerDashboard() {
                                       <FiUserCheck size={12} /> {assignedEmp.fullName || assignedEmp.name}
                                     </span>
                                   ) : (
-                                    <span className="text-amber-400 bg-amber-950/40 border border-amber-900/30 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="bg-amber-600 text-white font-bold border border-amber-700 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider shadow-xs">
                                       Unassigned
                                     </span>
                                   )}
@@ -1936,7 +1931,7 @@ export default function SalesManagerDashboard() {
                                 <td className="py-3 px-4 font-mono text-xs">
                                   {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
                                     <div className="space-y-1">
-                                      <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                      <span className="bg-emerald-600 text-white border border-emerald-700 text-[8px] px-2 py-0.5 rounded font-black uppercase inline-block shadow-xs">
                                         ✓ LOI Uploaded ({lead.loiDocuments.length})
                                       </span>
                                       {lead.loiDocuments.map((loi, idx) => (
@@ -2001,19 +1996,19 @@ export default function SalesManagerDashboard() {
                       }
                       return divisionLeadsList.map((lead) => {
                         const catUpper = (lead.productCategory || '').toUpperCase();
-                        let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-900 text-slate-300 border-slate-700' };
+                        let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-700 text-white font-bold border-slate-600 shadow-xs' };
                         if (catUpper.includes('TEA')) {
-                          divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40' };
+                          divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-xs' };
                         } else if (catUpper.includes('RICE')) {
-                          divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-950/60 text-amber-400 border-amber-800/40' };
+                          divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-600 text-white font-bold border-amber-700 shadow-xs' };
                         } else if (catUpper.includes('STONE')) {
-                          divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-950/60 text-sky-400 border-sky-800/40' };
+                          divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-600 text-white font-bold border-sky-700 shadow-xs' };
                         }
 
                         const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || (lead.source || '').toUpperCase().includes('CHAT');
                         const originBadge = isChatLead 
-                          ? { label: '💬 Website Chat', color: 'bg-indigo-950/60 text-indigo-300 border-indigo-800/40' }
-                          : { label: '🌐 Website Form', color: 'bg-cyan-950/60 text-cyan-300 border-sky-800/40' };
+                          ? { label: '💬 Website Chat', color: 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs' }
+                          : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
 
                         const assignedEmp = teamEmployees.find(e => 
                           e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
@@ -2122,7 +2117,7 @@ export default function SalesManagerDashboard() {
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span>Forecast Accuracy (Past 6 Months)</span>
-                      <span className="text-[10px] font-bold text-teal-400 bg-teal-950/40 border border-teal-900/30 px-3 py-0.5 rounded-full">
+                      <span className="text-[10px] font-black text-white bg-emerald-600 border border-emerald-700 px-3 py-1 rounded-full shadow-xs">
                         Total Revenue Generated: {currency(strategicInsights?.totalActualRevenue || 0)}
                       </span>
                     </h3>
@@ -2176,25 +2171,6 @@ export default function SalesManagerDashboard() {
                           </div>
                         ))}
                       </div>
-
-                      {/* AI Generated Text Insight */}
-                      <div className="p-5 border border-teal-800/40 bg-teal-950/20 rounded-lg flex flex-col justify-between">
-                        <div>
-                          <span className="text-[9px] uppercase font-bold text-teal-400 tracking-[0.2em] font-mono flex items-center gap-1.5">
-                            <FiCpu size={12} className="text-teal-400 animate-pulse" /> Strategic Insight
-                          </span>
-                          <p className="text-xs text-teal-100 mt-3.5 font-light leading-relaxed">
-                            Underperforming reps are making <strong>30% to 65% fewer calls</strong> per day than the top performers. 
-                            There is a direct correlation between dial volume and closed deals this month.
-                          </p>
-                          <p className="text-xs text-teal-100 mt-2 font-light leading-relaxed">
-                            <strong>Recommendation:</strong> Host a dedicated call-coaching session for underperforming representatives and set daily outreach thresholds to restore conversion pipelines.
-                          </p>
-                        </div>
-                        <div className="border-t border-teal-900/20 pt-3 mt-4 text-right">
-                          <span className="text-[8px] font-mono text-teal-500/70 font-semibold uppercase">Engine: Llama-3-Crm-Coacher // OK</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -2209,7 +2185,7 @@ export default function SalesManagerDashboard() {
                           Real-time daily work entries submitted by Sales Executives (Calls, Conversions & Closed Sales).
                         </p>
                       </div>
-                      <span className="bg-teal-950/60 border border-teal-800 text-teal-300 font-mono text-[9px] px-2.5 py-0.5 rounded font-bold uppercase">
+                      <span className="bg-emerald-600 border border-emerald-700 text-white font-mono text-[9px] px-2.5 py-1 rounded-full font-black shadow-xs uppercase">
                         {dailyWorkLogs.length} Entries Logged
                       </span>
                     </div>
@@ -2544,9 +2520,9 @@ export default function SalesManagerDashboard() {
                         .filter(rec => recordingPriorityFilter === 'ALL' || rec.leadPriority === recordingPriorityFilter)
                         .map((rec) => {
                           const priorityColors = {
-                            HOT: 'bg-rose-950/60 text-rose-400 border-rose-800/60',
-                            WARM: 'bg-amber-950/60 text-amber-400 border-amber-800/60',
-                            COLD: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
+                            HOT: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs',
+                            WARM: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs',
+                            COLD: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs'
                           };
                           const pColor = priorityColors[rec.leadPriority] || 'bg-slate-900 text-slate-300 border-slate-700';
 
@@ -2603,14 +2579,25 @@ export default function SalesManagerDashboard() {
                                 </div>
 
                                 {(rec.material || rec.location || rec.quantity) && (
-                                  <div className="bg-[var(--crm-bg-raised)] p-2 rounded text-[9px] space-y-0.5 border border-[var(--crm-line)]/50">
-                                    {rec.material && <div>📦 Material: <strong className="text-teal-400">{rec.material}</strong> {rec.quantity ? `(${rec.quantity})` : ''}</div>}
-                                    {rec.location && <div>📍 Location: <strong className="text-amber-400">{rec.location}</strong></div>}
+                                  <div className="bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 p-2.5 rounded-lg text-[10px] space-y-1 shadow-xs text-slate-900 dark:text-slate-100">
+                                    {rec.material && (
+                                      <div>
+                                        <span className="text-slate-700 dark:text-slate-300 font-medium">📦 Material: </span>
+                                        <strong className="text-teal-700 dark:text-teal-300 font-black">{rec.material}</strong>
+                                        {rec.quantity ? <span className="text-slate-700 dark:text-slate-300 font-bold"> ({rec.quantity})</span> : ''}
+                                      </div>
+                                    )}
+                                    {rec.location && (
+                                      <div>
+                                        <span className="text-slate-700 dark:text-slate-300 font-medium">📍 Location: </span>
+                                        <strong className="text-amber-700 dark:text-amber-300 font-black">{rec.location}</strong>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
                                 {rec.notes && (
-                                  <p className="text-[10px] font-sans text-[var(--crm-ink-soft)] bg-[var(--crm-bg-raised)] p-2.5 rounded border border-[var(--crm-line)] italic line-clamp-3 break-words">
+                                  <p className="text-[11px] font-sans text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800/90 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 italic line-clamp-3 break-words shadow-xs font-bold">
                                     "{rec.notes}"
                                   </p>
                                 )}
@@ -2642,12 +2629,12 @@ export default function SalesManagerDashboard() {
                                       placeholder="Add manager feedback..."
                                       value={remarkInputs[rec._id] !== undefined ? remarkInputs[rec._id] : (rec.managerRemark || '')}
                                       onChange={(e) => setRemarkInputs({ ...remarkInputs, [rec._id]: e.target.value })}
-                                      className="flex-1 min-w-0 w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-2.5 py-1 rounded text-[10px] text-[var(--crm-heading)] outline-none focus:border-teal-500 font-sans"
+                                      className="flex-1 min-w-0 w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] px-3 py-1.5 rounded-lg text-[10px] text-[var(--crm-heading)] outline-none focus:border-teal-500 font-sans shadow-xs"
                                     />
                                     <button
                                       onClick={() => handleSaveRemark(rec._id)}
                                       disabled={savingRemarkId === rec._id}
-                                      className="shrink-0 whitespace-nowrap bg-teal-950 hover:bg-teal-900 border border-teal-800 text-teal-300 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition cursor-pointer disabled:opacity-50"
+                                      className="shrink-0 whitespace-nowrap bg-teal-600 hover:bg-teal-700 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition cursor-pointer shadow-xs disabled:opacity-50"
                                     >
                                       {savingRemarkId === rec._id ? 'Saving...' : 'Save'}
                                     </button>
@@ -2691,33 +2678,33 @@ export default function SalesManagerDashboard() {
                 <div className="space-y-6 text-left font-mono">
                   {/* Top Overview Bar */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-rose-950/30 border border-rose-900/40 rounded-lg flex items-center space-x-4">
-                      <div className="p-3 bg-rose-900/60 text-rose-400 rounded-lg border border-rose-700/50">
+                    <div className="p-4 bg-gradient-to-r from-rose-600 to-red-600 border border-rose-500 rounded-xl flex items-center space-x-4 shadow-sm text-white">
+                      <div className="p-3 bg-white/20 text-white rounded-lg border border-white/30">
                         <FiAlertCircle size={22} />
                       </div>
                       <div>
-                        <span className="text-[9px] uppercase tracking-wider text-rose-400 font-bold block">Total Closed Lost Leads</span>
-                        <h2 className="text-2xl font-bold text-rose-200">{lostLeads.length} Deals Lost</h2>
+                        <span className="text-[9px] uppercase tracking-wider text-rose-100 font-bold block">Total Closed Lost Leads</span>
+                        <h2 className="text-2xl font-black text-white">{lostLeads.length} Deals Lost</h2>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-amber-950/30 border border-amber-900/40 rounded-lg flex items-center space-x-4">
-                      <div className="p-3 bg-amber-900/60 text-amber-400 rounded-lg border border-amber-700/50">
+                    <div className="p-4 bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-500 rounded-xl flex items-center space-x-4 shadow-sm text-white">
+                      <div className="p-3 bg-white/20 text-white rounded-lg border border-white/30">
                         <FiDollarSign size={22} />
                       </div>
                       <div>
-                        <span className="text-[9px] uppercase tracking-wider text-amber-400 font-bold block">Total Valuation Lost</span>
-                        <h2 className="text-2xl font-bold text-amber-200">{currency(totalLostValue)}</h2>
+                        <span className="text-[9px] uppercase tracking-wider text-amber-100 font-bold block">Total Valuation Lost</span>
+                        <h2 className="text-2xl font-black text-white">{currency(totalLostValue)}</h2>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-indigo-950/30 border border-indigo-900/40 rounded-lg flex items-center space-x-4">
-                      <div className="p-3 bg-indigo-900/60 text-indigo-400 rounded-lg border border-indigo-700/50">
+                    <div className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 border border-indigo-500 rounded-xl flex items-center space-x-4 shadow-sm text-white">
+                      <div className="p-3 bg-white/20 text-white rounded-lg border border-white/30">
                         <FiPieChart size={22} />
                       </div>
                       <div>
-                        <span className="text-[9px] uppercase tracking-wider text-indigo-400 font-bold block">Top Lost Root Cause</span>
-                        <h2 className="text-lg font-bold text-indigo-200 truncate max-w-[200px]">
+                        <span className="text-[9px] uppercase tracking-wider text-indigo-100 font-bold block">Top Lost Root Cause</span>
+                        <h2 className="text-lg font-black text-white truncate max-w-[200px]">
                           {Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None Recorded'}
                         </h2>
                       </div>
@@ -2742,7 +2729,7 @@ export default function SalesManagerDashboard() {
                           <div key={cat} className="p-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-left space-y-2">
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-bold text-[var(--crm-heading)] truncate max-w-[130px]">{cat}</span>
-                              <span className="px-2 py-0.5 bg-rose-950/80 text-rose-400 border border-rose-800/40 text-[10px] font-bold rounded">
+                              <span className="px-2 py-0.5 bg-rose-600 text-white border border-rose-700 text-[10px] font-black rounded shadow-xs">
                                 {count} ({percent}%)
                               </span>
                             </div>
@@ -2964,7 +2951,7 @@ export default function SalesManagerDashboard() {
                       </div>
                       <button
                         onClick={handleOpenCreateTrialModal}
-                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[9px] uppercase px-2.5 py-1.5 rounded transition cursor-pointer"
+                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg shadow-sm cursor-pointer"
                       >
                         + Create Account
                       </button>
@@ -2985,18 +2972,18 @@ export default function SalesManagerDashboard() {
                             <div
                               key={u._id || u.trialId || `trial_user_${uIdx}`}
                               onClick={() => handleSelectTrialUser(u)}
-                              className={`p-3 border rounded-md cursor-pointer transition flex items-center justify-between gap-2 ${
+                              className={`p-3 border rounded-lg cursor-pointer transition flex items-center justify-between gap-2 shadow-xs ${
                                 isSelected
-                                  ? 'bg-teal-950/60 border-teal-500 text-white'
+                                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 border-teal-500 text-white shadow-sm'
                                   : isPending
-                                    ? 'bg-amber-950/20 border-amber-800/60 hover:border-amber-600'
-                                    : 'bg-[var(--crm-bg-sunken)]/40 border-[var(--crm-line)] hover:border-teal-700/50'
+                                    ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700 text-slate-900 dark:text-slate-100'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-teal-500'
                               }`}
                             >
                               <div className="space-y-0.5 min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="font-bold text-[var(--crm-heading)] text-xs truncate max-w-[140px]">{u.fullName || u.name}</span>
-                                  <span className="bg-amber-950/80 text-amber-400 text-[8px] px-1.5 py-0.5 rounded font-bold border border-amber-800">
+                                  <span className={`font-bold text-xs truncate max-w-[140px] ${isSelected ? 'text-white' : 'text-[var(--crm-heading)]'}`}>{u.fullName || u.name}</span>
+                                  <span className="bg-amber-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black shadow-xs">
                                     {u.trialId || 'TRL'}
                                   </span>
                                   {isPending && (
@@ -3045,7 +3032,7 @@ export default function SalesManagerDashboard() {
                                       });
                                       setShowTaskModal(true);
                                     }}
-                                    className="bg-teal-900 hover:bg-teal-800 text-teal-200 font-bold text-[8px] uppercase px-2 py-1 rounded transition shrink-0 cursor-pointer"
+                                    className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[9px] uppercase px-2.5 py-1 rounded-md shadow-xs cursor-pointer"
                                   >
                                     + Task
                                   </button>
@@ -3083,7 +3070,7 @@ export default function SalesManagerDashboard() {
                             });
                             setShowTaskModal(true);
                           }}
-                          className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[9px] uppercase px-3 py-1.5 rounded transition cursor-pointer flex items-center gap-1"
+                          className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg shadow-sm cursor-pointer flex items-center gap-1.5"
                         >
                           <FiCheckSquare size={12} /> Assign Task
                         </button>
@@ -3106,10 +3093,10 @@ export default function SalesManagerDashboard() {
 
                           return (
                             <div key={msg._id || `msg_${msgIdx}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                              <div className={`max-w-[80%] rounded-lg p-3 space-y-1 shadow-sm ${
+                              <div className={`max-w-[80%] rounded-xl p-3 space-y-1 shadow-sm ${
                                 isMe 
-                                  ? 'bg-teal-600 text-white' 
-                                  : 'bg-indigo-950/90 border border-indigo-800 text-[var(--crm-heading)]'
+                                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-sm' 
+                                  : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
                               }`}>
                                 <div className="flex justify-between items-center gap-4 text-[9px] font-mono font-bold opacity-80 border-b border-white/10 pb-1">
                                   <span>{msg.senderName} ({msg.senderRole})</span>

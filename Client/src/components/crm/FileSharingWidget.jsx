@@ -289,12 +289,12 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
       {/* Header Bar */}
       <div className="px-4 sm:px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800">
+          <div className="p-2 rounded bg-cyan-500/10 text-cyan-500 border border-cyan-400/30">
             <FiFolder size={18} />
           </div>
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-              Enterprise File Sharing Center <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Max 25MB</span>
+              Enterprise File Sharing Center <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold">Max 25MB</span>
             </h2>
             <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
               Share PDFs, Excel, Images & Documents securely across Founder, CEO, Admin, Managers & Staff
@@ -309,7 +309,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
             className={`px-3 py-1.5 text-[10px] font-sans uppercase font-semibold rounded transition-all ${
               activeTab === 'RECEIVED'
                 ? 'bg-cyan-600 text-white border border-cyan-400'
-                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] hover:text-white border border-[var(--crm-line)]'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             Received Files
@@ -319,7 +319,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
             className={`px-3 py-1.5 text-[10px] font-sans uppercase font-semibold rounded transition-all ${
               activeTab === 'SENT'
                 ? 'bg-cyan-600 text-white border border-cyan-400'
-                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] hover:text-white border border-[var(--crm-line)]'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             Sent Files
@@ -330,7 +330,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
               className={`px-3.5 py-1.5 text-[10px] font-sans uppercase font-semibold rounded flex items-center gap-1.5 transition-all ${
                 activeTab === 'SHARE'
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md border border-cyan-400'
-                  : 'bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400'
               }`}
             >
               <FiUpload size={12} /> <span>Share File</span>
@@ -349,7 +349,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
               <div className="lg:col-span-6 space-y-4">
                 <div className="space-y-1">
                   <label className="text-[11px] uppercase tracking-wider font-sans font-bold text-[var(--crm-heading)] flex items-center gap-1.5">
-                    <FiPaperclip className="text-cyan-400" /> Select Document / File (Max 25MB)
+                    <FiPaperclip className="text-cyan-500" /> Select Document / File (Max 25MB)
                   </label>
                   <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
                     Supported: PDF, Excel (.xlsx, .csv), Images (.png, .jpg), Word (.docx), ZIP, etc.
@@ -361,9 +361,10 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
                     selectedFile
-                      ? 'border-emerald-500 bg-emerald-950/20'
-                      : 'border-slate-700 bg-[var(--crm-bg-sunken)] hover:border-cyan-500 hover:bg-slate-900/60'
+                      ? 'border-emerald-500 bg-emerald-500/10'
+                      : 'bg-[var(--crm-bg-sunken)] hover:border-cyan-500'
                   }`}
+                  style={{ borderColor: selectedFile ? undefined : 'var(--crm-line)' }}
                 >
                   <input
                     ref={fileInputRef}
@@ -375,11 +376,11 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
 
                   {selectedFile ? (
                     <div className="space-y-2">
-                      <div className="w-12 h-12 rounded-full bg-emerald-950 border border-emerald-500 flex items-center justify-center mx-auto text-emerald-400">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
                         <FiCheck size={24} />
                       </div>
-                      <div className="text-xs font-sans font-bold text-white truncate max-w-xs">{selectedFile.name}</div>
-                      <div className="text-[10px] font-sans text-emerald-400">{formatBytes(selectedFile.size)} / 25MB Limit</div>
+                      <div className="text-xs font-sans font-bold text-[var(--crm-heading)] truncate max-w-xs">{selectedFile.name}</div>
+                      <div className="text-[10px] font-sans text-emerald-600 dark:text-emerald-400 font-bold">{formatBytes(selectedFile.size)} / 25MB Limit</div>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -387,18 +388,18 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                           setSelectedFile(null);
                           if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
-                        className="text-[10px] text-rose-400 hover:underline font-sans"
+                        className="text-[10px] text-rose-500 hover:underline font-sans font-bold"
                       >
                         Change File
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="w-12 h-12 rounded-full bg-cyan-950/60 border border-cyan-800 flex items-center justify-center mx-auto text-cyan-400">
+                      <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-500">
                         <FiUpload size={20} />
                       </div>
-                      <div className="text-xs font-sans text-cyan-300 font-semibold">Click to select file or drag & drop</div>
-                      <div className="text-[10px] font-sans text-slate-400">Maximum file size allowed: <strong className="text-emerald-400">25MB</strong></div>
+                      <div className="text-xs font-sans text-cyan-600 dark:text-cyan-400 font-bold">Click to select file or drag & drop</div>
+                      <div className="text-[10px] font-sans text-[var(--crm-ink-faint)]">Maximum file size allowed: <strong className="text-emerald-600 dark:text-emerald-400">25MB</strong></div>
                     </div>
                   )}
                 </div>
@@ -423,9 +424,9 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] uppercase tracking-wider font-sans font-bold text-[var(--crm-heading)] flex items-center gap-1.5">
-                      <FiUsers className="text-cyan-400" /> Select Recipient(s) ({selectedRecipients.length} selected)
+                      <FiUsers className="text-cyan-500" /> Select Recipient(s) ({selectedRecipients.length} selected)
                     </label>
-                    <span className="text-[9px] font-sans text-cyan-400 uppercase">Target Audience</span>
+                    <span className="text-[9px] font-sans text-cyan-500 uppercase font-bold">Target Audience</span>
                   </div>
                   <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
                     Select specific Employee(s)/Manager(s) or use quick preset buttons
@@ -439,8 +440,8 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     onClick={() => handleSelectPreset('ALL')}
                     className={`px-2.5 py-1 text-[10px] font-sans uppercase rounded border transition-all ${
                       presetTarget === 'ALL'
-                        ? 'bg-cyan-600 text-white border-cyan-400'
-                        : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
+                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
                     }`}
                   >
                     All Staff ({recipients.length})
@@ -450,8 +451,8 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     onClick={() => handleSelectPreset('MANAGERS')}
                     className={`px-2.5 py-1 text-[10px] font-sans uppercase rounded border transition-all ${
                       presetTarget === 'MANAGERS'
-                        ? 'bg-cyan-600 text-white border-cyan-400'
-                        : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
+                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
                     }`}
                   >
                     All Managers ({managersCount})
@@ -461,8 +462,8 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     onClick={() => handleSelectPreset('EMPLOYEES')}
                     className={`px-2.5 py-1 text-[10px] font-sans uppercase rounded border transition-all ${
                       presetTarget === 'EMPLOYEES'
-                        ? 'bg-cyan-600 text-white border-cyan-400'
-                        : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
+                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
                     }`}
                   >
                     All Executives ({executivesCount})
@@ -471,7 +472,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     <button
                       type="button"
                       onClick={() => handleSelectPreset('')}
-                      className="px-2.5 py-1 text-[10px] font-sans uppercase rounded bg-rose-950 text-rose-300 border border-rose-800 hover:bg-rose-900"
+                      className="px-2.5 py-1 text-[10px] font-sans uppercase rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400 hover:bg-rose-500/30 font-bold"
                     >
                       Clear Selection
                     </button>
@@ -481,13 +482,13 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 {/* Filter & Search Recipient Bar */}
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <FiSearch className="absolute left-2.5 top-2.5 text-slate-400" size={13} />
+                    <FiSearch className="absolute left-2.5 top-2.5 text-[var(--crm-ink-faint)]" size={13} />
                     <input
                       type="text"
                       value={recipientSearch}
                       onChange={(e) => setRecipientSearch(e.target.value)}
                       placeholder="Search employee by name, role, dept..."
-                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
+                      className="w-full pl-8 pr-3 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
                     />
                   </div>
                   <select
@@ -504,11 +505,11 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 {/* Recipient Selection Scroll List */}
                 <div className="h-56 overflow-y-auto border rounded p-2 space-y-1.5 bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
                   {loadingRecipients ? (
-                    <div className="text-center py-8 text-xs font-sans text-slate-400 flex items-center justify-center gap-2">
+                    <div className="text-center py-8 text-xs font-sans text-[var(--crm-ink-faint)] flex items-center justify-center gap-2">
                       <FiRefreshCw className="animate-spin" /> Loading employee directory...
                     </div>
                   ) : filteredRecipients.length === 0 ? (
-                    <div className="text-center py-8 text-xs font-sans text-slate-400">No matching employees found</div>
+                    <div className="text-center py-8 text-xs font-sans text-[var(--crm-ink-faint)]">No matching employees found</div>
                   ) : (
                     filteredRecipients.map((emp) => {
                       const isSelected = selectedRecipients.includes(emp._id);
@@ -518,21 +519,25 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                           onClick={() => toggleRecipient(emp._id)}
                           className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all border ${
                             isSelected
-                              ? 'bg-cyan-950/80 border-cyan-500 text-white'
-                              : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                              ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                              : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-[var(--crm-heading)] hover:border-cyan-400'
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-cyan-500 border-cyan-400 text-black' : 'border-slate-600'}`}>
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-white border-white text-cyan-700 font-bold' : 'border-[var(--crm-line)]'}`}>
                               {isSelected && <FiCheck size={12} />}
                             </div>
                             <div className="min-w-0">
                               <div className="text-xs font-semibold font-sans truncate">{emp.name}</div>
-                              <div className="text-[9px] font-sans text-slate-400 truncate">{emp.department} · {emp.position || emp.role}</div>
+                              <div className="text-[9px] font-sans text-[var(--crm-ink-faint)] truncate">{emp.department} · {emp.position || emp.role}</div>
                             </div>
                           </div>
 
-                          <span className={`text-[9px] font-sans px-2 py-0.5 rounded uppercase flex-shrink-0 ${emp.category === 'MANAGER' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'bg-slate-800 text-slate-400'}`}>
+                          <span className={`text-[9px] font-sans px-2 py-0.5 rounded uppercase flex-shrink-0 border ${
+                            isSelected 
+                              ? 'bg-cyan-700 text-white border-cyan-300 font-bold' 
+                              : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
+                          }`}>
                             {emp.category}
                           </span>
                         </div>
@@ -550,7 +555,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 disabled={isUploading || !selectedFile}
                 className={`px-6 py-2.5 text-xs font-sans uppercase font-bold rounded flex items-center gap-2 transition-all shadow-lg ${
                   isUploading || !selectedFile
-                    ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    ? 'bg-slate-300 text-slate-500 border border-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'
                     : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white border border-emerald-400/40 cursor-pointer'
                 }`}
               >
@@ -570,11 +575,11 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
 
         {/* LIST RECEIVED OR SENT FILES TAB */}
         {(activeTab === 'RECEIVED' || activeTab === 'SENT') && (
-          <div className="space-y-4">
+          <div className="space-y-4 font-sans">
             {/* Search & Filter Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="relative flex-1 max-w-md">
-                <FiSearch className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                <FiSearch className="absolute left-3 top-2.5 text-[var(--crm-ink-faint)]" size={14} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -590,7 +595,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </span>
                 <button
                   onClick={fetchSharedFiles}
-                  className="px-2.5 py-1.5 text-[10px] font-sans uppercase bg-slate-900 text-slate-300 border border-slate-700 rounded hover:bg-slate-800 flex items-center gap-1"
+                  className="px-2.5 py-1.5 text-[10px] font-sans uppercase bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold rounded flex items-center gap-1"
                 >
                   <FiRefreshCw size={11} /> Refresh
                 </button>
@@ -599,16 +604,16 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
 
             {/* Files Grid / Table List */}
             {loadingFiles ? (
-              <div className="text-center py-12 text-xs font-sans text-slate-400 flex items-center justify-center gap-2">
+              <div className="text-center py-12 text-xs font-sans text-[var(--crm-ink-faint)] flex items-center justify-center gap-2">
                 <FiRefreshCw className="animate-spin" /> Fetching shared files from database...
               </div>
             ) : filteredFiles.length === 0 ? (
               <div className="text-center py-10 sm:py-12 border border-dashed rounded-lg p-4 sm:p-6 bg-[var(--crm-bg-sunken)] space-y-2 w-full max-w-full overflow-hidden" style={{ borderColor: 'var(--crm-line)' }}>
-                <FiFolder className="mx-auto text-slate-400 shrink-0" size={32} />
-                <div className="text-xs sm:text-sm font-sans text-slate-200 uppercase font-bold tracking-wider leading-snug">
+                <FiFolder className="mx-auto text-[var(--crm-ink-faint)] shrink-0" size={32} />
+                <div className="text-xs sm:text-sm font-sans text-[var(--crm-heading)] uppercase font-bold tracking-wider leading-snug">
                   No Shared Files Found
                 </div>
-                <div className="text-[10px] sm:text-xs font-sans text-slate-400 leading-relaxed max-w-md mx-auto">
+                <div className="text-[10px] sm:text-xs font-sans text-[var(--crm-ink-faint)] leading-relaxed max-w-md mx-auto">
                   {activeTab === 'RECEIVED' ? 'No files have been shared with you yet.' : 'You have not shared any files yet.'}
                 </div>
               </div>
@@ -626,7 +631,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     <motion.div
                       key={fileObj._id}
                       whileHover={{ y: -2 }}
-                      className="border rounded p-4 space-y-3 flex flex-col justify-between bg-[var(--crm-bg-sunken)] hover:border-slate-700 transition-all font-sans"
+                      className="border rounded p-4 space-y-3 flex flex-col justify-between bg-[var(--crm-bg-raised)] hover:border-cyan-400 transition-all font-sans"
                       style={{ borderColor: 'var(--crm-line)' }}
                     >
                       {/* Top Info */}
@@ -636,10 +641,10 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                             <IconComp size={18} />
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs font-bold font-sans text-white truncate" title={fileObj.originalName}>
+                            <h4 className="text-xs font-bold font-sans text-[var(--crm-heading)] truncate" title={fileObj.originalName}>
                               {fileObj.originalName}
                             </h4>
-                            <div className="text-[9px] font-sans text-slate-400 flex items-center gap-2 mt-0.5">
+                            <div className="text-[9px] font-sans text-[var(--crm-ink-faint)] flex items-center gap-2 mt-0.5">
                               <span>{formatBytes(fileObj.fileSize)}</span>
                               <span>·</span>
                               <span className="uppercase">{typeMeta.label}</span>
@@ -650,7 +655,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                         {activeTab === 'SENT' && (
                           <button
                             onClick={() => handleDelete(fileObj._id, fileObj.originalName)}
-                            className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                            className="text-slate-400 hover:text-rose-500 transition-colors p-1"
                             title="Delete file"
                           >
                             <FiTrash2 size={13} />
@@ -660,27 +665,27 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
 
                       {/* Note snippet */}
                       {fileObj.note && (
-                        <div className="text-[10px] font-sans p-2 rounded bg-slate-950/80 border border-slate-800 text-slate-300 italic">
+                        <div className="text-[10px] font-sans p-2 rounded bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] italic">
                           "{fileObj.note}"
                         </div>
                       )}
 
                       {/* Metadata Details & Download Action */}
-                      <div className="pt-2 border-t flex items-center justify-between text-[9.5px] font-sans text-slate-400" style={{ borderColor: 'var(--crm-line)' }}>
+                      <div className="pt-2 border-t flex items-center justify-between text-[9.5px] font-sans text-[var(--crm-ink-faint)]" style={{ borderColor: 'var(--crm-line)' }}>
                         <div>
                           {activeTab === 'RECEIVED' ? (
-                            <div>From: <strong className="text-cyan-300 font-semibold">{senderName} {senderRole ? `(${senderRole})` : ''}</strong></div>
+                            <div>From: <strong className="text-cyan-600 dark:text-cyan-300 font-semibold">{senderName} {senderRole ? `(${senderRole})` : ''}</strong></div>
                           ) : (
-                            <div>To: <strong className="text-emerald-300 font-semibold">{recipientName} {recipientRole ? `(${recipientRole})` : ''}</strong></div>
+                            <div>To: <strong className="text-emerald-600 dark:text-emerald-300 font-semibold">{recipientName} {recipientRole ? `(${recipientRole})` : ''}</strong></div>
                           )}
-                          <div className="text-[8.5px] text-slate-500 flex items-center gap-1 mt-0.5 font-sans">
+                          <div className="text-[8.5px] text-[var(--crm-ink-faint)] flex items-center gap-1 mt-0.5 font-sans">
                             <FiClock size={9} /> {new Date(fileObj.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </div>
                         </div>
 
                         <button
                           onClick={() => handleDownload(fileObj)}
-                          className="px-3 py-1 text-[10px] font-sans uppercase font-bold bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 rounded flex items-center gap-1.5 transition-all cursor-pointer"
+                          className="px-3 py-1 text-[10px] font-sans uppercase font-bold bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 rounded flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                           <FiDownload size={12} /> Download
                         </button>

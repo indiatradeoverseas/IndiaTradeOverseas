@@ -28,7 +28,18 @@ import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonito
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT'];
-const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'];
+const EMPLOYEE_ROLES = [
+  'SALES_EXECUTIVE',
+  'SALES_MANAGER',
+  'HR_EXECUTIVE',
+  'HR_MANAGER',
+  'TRANSPORT_MANAGER',
+  'TRANSPORT_EXECUTIVE',
+  'DRIVER',
+  'CEO',
+  'ADMIN',
+  'SALES_TRIAL'
+];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const now = new Date();
 
@@ -45,21 +56,21 @@ const STAGE_COLORS = [
   '#64748b'  // slate
 ];
 
-const AXIS_TICK_STYLE = { fill: 'var(--crm-ink-faint)', fontSize: 11, fontFamily: 'var(--crm-font-mono)', fontWeight: 500 };
-const XAXIS_TICK_STYLE = { fill: 'var(--crm-heading)', fontSize: 11, fontFamily: 'var(--crm-font-mono)', fontWeight: 600 };
+const AXIS_TICK_STYLE = { fill: 'var(--crm-ink-faint)', fontSize: 11, fontFamily: 'var(--crm-font-body)', fontWeight: 500 };
+const XAXIS_TICK_STYLE = { fill: 'var(--crm-heading)', fontSize: 11, fontFamily: 'var(--crm-font-body)', fontWeight: 600 };
 const CHART_GRID_STROKE = 'rgba(197,203,211,0.12)';
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: 'var(--crm-bg-raised)',
   border: '1px solid var(--crm-line)',
   borderRadius: '8px',
   fontSize: '11px',
-  fontFamily: 'var(--crm-font-mono)',
+  fontFamily: 'var(--crm-font-body)',
   color: 'var(--crm-heading)',
   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)'
 };
-const CHART_TOOLTIP_LABEL_STYLE = { color: 'var(--crm-heading)', fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', fontFamily: 'var(--crm-font-mono)' };
-const CHART_TOOLTIP_ITEM_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-mono)', padding: '2px 0' };
-const CHART_LEGEND_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)', paddingTop: '10px' };
+const CHART_TOOLTIP_LABEL_STYLE = { color: 'var(--crm-heading)', fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', fontFamily: 'var(--crm-font-body)' };
+const CHART_TOOLTIP_ITEM_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-body)', padding: '2px 0' };
+const CHART_LEGEND_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)', paddingTop: '10px' };
 
 const CARD_STYLE = {
   borderColor: 'var(--crm-line)',
@@ -73,12 +84,12 @@ const CARD_SUNKEN = {
 };
 
 const LABEL_MONO = {
-  fontFamily: 'var(--crm-font-mono)',
+  fontFamily: 'var(--crm-font-body)',
   color: 'var(--crm-ink-faint)'
 };
 
 const HEADING_STYLE = {
-  fontFamily: 'var(--crm-font-display)',
+  fontFamily: 'var(--crm-font-body)',
   color: 'var(--crm-heading)'
 };
 
@@ -468,33 +479,25 @@ export default function FounderDashboard() {
       <div className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-400 font-mono">
+            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-500 font-sans">
               Founder Oversight & Enterprise Command
             </span>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase text-white flex items-center gap-2">
-              <FiShield className="text-cyan-400" /> Founder Command Center
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase flex items-center gap-2 font-sans" style={{ color: 'var(--crm-heading)' }}>
+              <FiShield className="text-cyan-500" /> Founder Command Center
             </h1>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setActiveTab('FILES')}
-              className="px-3.5 py-1.5 text-[10px] font-mono uppercase font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/30 shadow-sm"
-            >
-              <FiUpload size={12} /> <span>Share File</span>
-            </button>
-            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-mono uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-cyan-950/80 text-cyan-300 border border-cyan-800 hover:bg-cyan-900">
-              <FiMessageSquare size={12} /> <span>Executive Chat</span>
+          <div className="flex flex-wrap items-center gap-2 font-sans">
+            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiMessageSquare size={12} /> 
             </Link>
-            <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3.5 py-1.5 text-[10px] font-mono uppercase font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-400/30 shadow-sm">
-              <FiPlus size={12} /> <span>Add Employee</span>
+           
+            <button onClick={fetchAll} className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiRefreshCw size={12} /> 
             </button>
-            <button onClick={fetchAll} className="px-3.5 py-1.5 text-[10px] font-mono uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800 hover:text-white">
-              <FiRefreshCw size={12} /> <span>Refresh</span>
-            </button>
-            <button onClick={handleExportCSV} className="px-3.5 py-1.5 text-[10px] font-mono uppercase font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30 shadow-sm">
-              <FiDownload size={12} /> <span>Export CSV</span>
+            <button onClick={handleExportCSV} className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiDownload size={12} /> 
             </button>
           </div>
         </div>
@@ -513,10 +516,10 @@ export default function FounderDashboard() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-1.5 text-[10px] uppercase font-mono font-semibold rounded-md transition-all whitespace-nowrap ${
+              className={`px-4 py-1.5 text-[10px] uppercase font-sans font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === t.id
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
-                  : 'bg-slate-900/80 text-slate-400 border border-slate-800 hover:bg-slate-800 hover:text-white'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300'
               }`}
             >
               {t.label}
@@ -542,15 +545,15 @@ export default function FounderDashboard() {
 
               {/* Date Range Filter Selector */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] uppercase font-mono text-[var(--crm-ink-faint)]">Range:</span>
+                <span className="text-[10px] uppercase font-sans text-[var(--crm-ink-faint)]">Range:</span>
                 {['ALL', 'Today', '7d', '30d', '90d', 'Custom'].map((r) => (
                   <button
                     key={r}
                     onClick={() => setDateRange(r)}
-                    className={`px-3 py-1 text-[10px] font-mono uppercase rounded-sm border transition-all ${
+                    className={`px-3 py-1 text-[10px] font-sans uppercase rounded-sm border transition-all ${
                       dateRange === r
                         ? 'border-[var(--crm-accent)] bg-[var(--crm-accent)] text-[var(--crm-bg)] font-bold'
-                        : 'border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)]'
+                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
                     }`}
                   >
                     {r}
@@ -572,14 +575,14 @@ export default function FounderDashboard() {
               {kpiCards.map((card, i) => (
                 <motion.div key={i} whileHover={{ y: -3 }} className="border p-4 rounded-sm flex flex-col justify-between" style={CARD_SUNKEN}>
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] uppercase tracking-wider font-bold font-mono text-[var(--crm-ink-faint)]">{card.title}</span>
+                    <span className="text-[10px] uppercase tracking-wider font-bold font-sans text-[var(--crm-ink-faint)]">{card.title}</span>
                     <div className="p-1.5 border rounded-sm flex-shrink-0" style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg)' }}>
                       <card.icon size={14} />
                     </div>
                   </div>
                   <div className="mt-3">
-                    <div className="text-2xl font-light font-serif text-[var(--crm-heading)]">{card.value}</div>
-                    <div className="text-[10px] mt-1 font-mono text-[var(--crm-ink-faint)]">{card.subtitle}</div>
+                    <div className="text-2xl font-bold font-sans text-[var(--crm-heading)]">{card.value}</div>
+                    <div className="text-[10px] mt-1 font-sans text-[var(--crm-ink-faint)]">{card.subtitle}</div>
                   </div>
                 </motion.div>
               ))}
@@ -589,14 +592,14 @@ export default function FounderDashboard() {
             <div className="border rounded-sm p-4 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
               <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <div>
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
+                  <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
                     Core Enterprise Telemetry
                   </span>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
                     <FiActivity className="text-emerald-400 animate-pulse" /> Combined Business Performance (Bars: Volume/Revenue, Line: Total Conversion %)
                   </h3>
                 </div>
-                <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                <span className="text-[9px] font-sans uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
                   Founder Command Feed
                 </span>
               </div>
@@ -633,8 +636,8 @@ export default function FounderDashboard() {
               <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
+                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
                       <FiPieChart className="text-purple-400" /> Stage Distribution ({totalPipelineLeads} Total Leads)
                     </h3>
                   </div>
@@ -680,11 +683,11 @@ export default function FounderDashboard() {
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                            <span className="text-[10px] font-mono font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
+                            <span className="text-[10px] font-sans font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
                               {String(entry._id || 'STAGE').replace(/_/g, ' ')}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 font-mono text-xs flex-shrink-0">
+                          <div className="flex items-center gap-2 font-sans text-xs flex-shrink-0">
                             <span className="font-bold text-[var(--crm-heading)]">{entry.total || 0}</span>
                             <span className="text-[9px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">
                               {pct}%
@@ -701,12 +704,12 @@ export default function FounderDashboard() {
               <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
+                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
                       <FiTrendingUp className="text-emerald-400" /> Monthly Trends (Leads, Won & Lost)
                     </h3>
                   </div>
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
+                  <span className="text-[9px] font-sans uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
                     Telemetry Stream
                   </span>
                 </div>
@@ -744,6 +747,15 @@ export default function FounderDashboard() {
         )}
 
         {/* =========================================================================
+            ATTENDANCE & ACTIVE/INACTIVE USER TELEMETRY
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'ATTENDANCE') && (
+          <div className="space-y-6">
+            <EmployeeActivityMonitor title="Employee Activity & Working Hours Monitor" />
+          </div>
+        )}
+
+        {/* =========================================================================
             WORKFORCE MANAGEMENT & SALES TARGET ASSIGNMENT
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'WORKFORCE') && (
@@ -755,7 +767,7 @@ export default function FounderDashboard() {
                   <FiUsers className="text-[var(--crm-heading)]" /> Workforce Directory Management ({employees.length})
                 </h3>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setShowFilters(!showFilters)} className="px-3 py-1.5 text-[9px] font-mono uppercase rounded-sm border flex items-center gap-1 transition-all" style={{ borderColor: 'var(--crm-line)', color: 'var(--crm-heading)', background: 'var(--crm-bg)' }}>
+                  <button onClick={() => setShowFilters(!showFilters)} className="px-3 py-1.5 text-[9px] font-sans uppercase rounded-sm border flex items-center gap-1 transition-all bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300 font-bold">
                     <FiFilter size={10} /> Filters {showFilters ? <FiChevronUp size={10} /> : <FiChevronDown size={10} />}
                   </button>
                   <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 py-1.5 text-[9px] font-mono uppercase rounded-sm flex items-center gap-1 cursor-pointer" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
@@ -804,7 +816,7 @@ export default function FounderDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
-                    <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                    <tr className="border-b text-[9px] uppercase font-sans" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
                       <th className="py-2.5 px-3">Employee</th>
                       <th className="py-2.5 px-3">Dept</th>
                       <th className="py-2.5 px-3">Role</th>
@@ -815,22 +827,22 @@ export default function FounderDashboard() {
                   </thead>
                   <tbody className="text-xs divide-y" style={{ borderColor: 'var(--crm-line)' }}>
                     {filteredEmployees.length === 0 ? (
-                      <tr><td colSpan="6" className="text-center py-8 font-mono text-[var(--crm-ink-faint)]">No employees found.</td></tr>
+                      <tr><td colSpan="6" className="text-center py-8 font-sans text-[var(--crm-ink-faint)]">No employees found.</td></tr>
                     ) : (
                       filteredEmployees.map((emp) => (
                         <tr key={emp._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
                           <td className="py-3 px-3">
                             <div className="font-bold text-[var(--crm-heading)]">{emp.name}</div>
-                            <div className="text-[9px] font-mono text-[var(--crm-ink-faint)]">{emp.employeeId} · {emp.email}</div>
+                            <div className="text-[9px] font-sans text-[var(--crm-ink-faint)]">{emp.employeeId} · {emp.email}</div>
                           </td>
-                          <td className="py-3 px-3 font-mono">
-                            <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400">
+                          <td className="py-3 px-3 font-sans">
+                            <span className="px-2.5 py-1 rounded-full text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400 font-sans shadow-xs">
                               {emp.department}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono text-[var(--crm-heading)]">{emp.role}</td>
+                          <td className="py-3 px-3 font-sans text-[var(--crm-heading)]">{emp.role}</td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold border uppercase ${
+                            <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold border uppercase ${
                               emp.status === 'ACTIVE'
                                 ? 'border-emerald-800 bg-emerald-950 text-emerald-400'
                                 : 'border-rose-800 bg-rose-950 text-rose-400'
@@ -841,13 +853,13 @@ export default function FounderDashboard() {
                           <td className="py-3 px-3 text-[10px] text-[var(--crm-ink-soft)]">{emp.position || '—'}</td>
                           <td className="py-3 px-3">
                             <div className="flex items-center gap-1.5">
-                              <Link to={`/crm/employees/${emp._id}`} className="text-[9px] uppercase p-1.5 rounded bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] hover:underline">
+                              <Link to={`/crm/employees/${emp._id}`} className="text-[9px] uppercase p-1.5 rounded-md bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] hover:underline border border-cyan-800" title="View">
                                 <FiEye size={11} />
                               </Link>
-                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded bg-sky-950 text-sky-400 border border-sky-800" title="Edit">
+                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-md bg-sky-950 text-sky-400 border border-sky-800 cursor-pointer" title="Edit">
                                 <FiEdit size={11} />
                               </button>
-                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded bg-rose-950 text-rose-400 border border-rose-800" title="Delete">
+                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-md bg-rose-950 text-rose-400 border border-rose-800 cursor-pointer" title="Delete">
                                 <FiTrash2 size={11} />
                               </button>
                             </div>
@@ -888,7 +900,7 @@ export default function FounderDashboard() {
                       <input type="number" placeholder="Deals count..." value={targetForm.targetDeals} onChange={(e) => setTargetForm({ ...targetForm, targetDeals: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                     </div>
                   </div>
-                  <button type="submit" disabled={submittingTarget} className="w-full py-2 text-[10px] font-mono uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+                  <button type="submit" disabled={submittingTarget} className="w-full py-2 text-[10px] font-sans uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
                     {submittingTarget ? 'Assigning...' : 'Assign Target'}
                   </button>
                 </form>
@@ -911,15 +923,6 @@ export default function FounderDashboard() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            ATTENDANCE & ACTIVE/INACTIVE USER TELEMETRY
-            ========================================================================= */}
-        {(activeTab === 'ALL' || activeTab === 'ATTENDANCE') && (
-          <div className="space-y-6">
-            <EmployeeActivityMonitor title="Executive Employee Activity & Active/Inactive Working Hours Monitor" />
           </div>
         )}
 
@@ -952,15 +955,15 @@ export default function FounderDashboard() {
                     <div key={lv._id} className="p-4 flex items-center justify-between gap-3 bg-[var(--crm-bg-sunken)]">
                       <div className="space-y-1 text-xs">
                         <div className="font-bold text-[var(--crm-heading)]">{lv.employeeName || lv.employeeId?.fullName || 'Employee'}</div>
-                        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+                        <div className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
                           {new Date(lv.fromDate).toLocaleDateString()} – {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} Days)
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-2.5 py-1 text-[9px] font-mono uppercase rounded bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900">
+                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900">
                           Approve
                         </button>
-                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-2.5 py-1 text-[9px] font-mono uppercase rounded bg-rose-950 text-rose-400 border border-rose-800 hover:bg-rose-900">
+                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-rose-950 text-rose-400 border border-rose-800 hover:bg-rose-900">
                           Reject
                         </button>
                       </div>
@@ -977,9 +980,9 @@ export default function FounderDashboard() {
       <AnimatePresence>
         {showEmployeeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-lg border rounded-sm p-6 space-y-4" style={CARD_STYLE}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-lg border rounded-sm p-6 space-y-4 font-sans" style={CARD_STYLE}>
               <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-                <h3 className="text-sm uppercase font-bold font-mono text-[var(--crm-heading)]">
+                <h3 className="text-sm uppercase font-bold font-sans text-[var(--crm-heading)]">
                   {editingEmployee ? 'Edit Staff Member' : 'Add New Employee'}
                 </h3>
                 <button onClick={() => setShowEmployeeModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white">
@@ -1026,10 +1029,10 @@ export default function FounderDashboard() {
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
-                  <button type="button" onClick={() => setShowEmployeeModal(false)} className="px-4 py-2 text-[10px] font-mono uppercase rounded border border-[var(--crm-line)] text-[var(--crm-heading)]">
+                  <button type="button" onClick={() => setShowEmployeeModal(false)} className="px-4 py-2 text-[10px] font-sans uppercase rounded border border-[var(--crm-line)] text-[var(--crm-heading)]">
                     Cancel
                   </button>
-                  <button type="submit" className="px-4 py-2 text-[10px] font-mono uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+                  <button type="submit" className="px-4 py-2 text-[10px] font-sans uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
                     Save Staff
                   </button>
                 </div>
