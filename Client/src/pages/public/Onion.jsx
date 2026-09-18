@@ -527,12 +527,25 @@ export default function Onion() {
         .ito-vignette {
           position: absolute;
           inset: 0;
+          z-index: 1;
           pointer-events: none;
-          /* Keep the frame fully visible. This is only a very light readability
-             gradient around the hero copy, not a full-screen image overlay. */
+          /* Cinematic charcoal vignette around the onion frames — darkens all four edges while keeping the center visible. */
           background:
-            linear-gradient(90deg, rgba(247,243,234,.20) 0%, rgba(247,243,234,.08) 24%, transparent 48%),
-            linear-gradient(180deg, rgba(247,243,234,.10) 0%, transparent 22%, transparent 78%, rgba(34,33,31,.04) 100%);
+            radial-gradient(ellipse at center,
+              rgba(34,33,31,0) 34%,
+              rgba(34,33,31,.10) 52%,
+              rgba(34,33,31,.30) 72%,
+              rgba(34,33,31,.58) 100%),
+            linear-gradient(90deg,
+              rgba(34,33,31,.28) 0%,
+              rgba(34,33,31,0) 18%,
+              rgba(34,33,31,0) 82%,
+              rgba(34,33,31,.28) 100%),
+            linear-gradient(180deg,
+              rgba(34,33,31,.24) 0%,
+              rgba(34,33,31,0) 18%,
+              rgba(34,33,31,0) 82%,
+              rgba(34,33,31,.34) 100%);
         }
 
         .ito-hero-copy {
@@ -540,9 +553,12 @@ export default function Onion() {
           z-index: 2;
           width: min(1180px, calc(100% - 40px));
           margin: 0 auto;
-          padding-top: 8vh;
+          padding: 6vh 32px 4vh;
+          border-radius: 20px;
+          background: rgba(247,243,234,.95);
+          box-shadow: 0 20px 60px rgba(34,33,31,.1);
+          border: 1px solid var(--sand);
           pointer-events: none;
-          text-shadow: 0 1px 12px rgba(247,243,234,.55);
         }
 
         .ito-kicker {
@@ -555,6 +571,7 @@ export default function Onion() {
           font-weight: 800;
           letter-spacing: .17em;
           text-transform: uppercase;
+          
         }
 
         .ito-kicker::before {
@@ -717,6 +734,10 @@ export default function Onion() {
           line-height: 1.75;
         }
 
+        .ito-lead-burgundy {
+          color: var(--burgundy) !important;
+        }
+
         .ito-spec-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -765,13 +786,13 @@ export default function Onion() {
         }
 
         .ito-dark .ito-spec {
-          background: rgba(255,255,255,.035);
-          border-color: rgba(247,243,234,.14);
+          background: rgba(255,255,255,.12);
+          border-color: rgba(247,243,234,.25);
         }
 
         .ito-dark .ito-spec-grid {
-          background: rgba(247,243,234,.14);
-          border-color: rgba(247,243,234,.14);
+          background: rgba(247,243,234,.2);
+          border-color: rgba(247,243,234,.25);
         }
 
         .ito-dark .ito-spec strong {
@@ -890,11 +911,11 @@ export default function Onion() {
         }
 
         .ito-market {
-          border: 1px solid rgba(247,243,234,.18);
+          border: 1px solid rgba(247,243,234,.3);
           border-radius: 999px;
           padding: 11px 15px;
-          color: rgba(247,243,234,.82);
-          background: rgba(247,243,234,.035);
+          color: var(--ivory);
+          background: rgba(255,255,255,.1);
           font-size: 11px;
           letter-spacing: .04em;
         }
@@ -909,8 +930,9 @@ export default function Onion() {
         .ito-pack-card {
           padding: 36px;
           border-radius: 14px;
-          background: rgba(255,255,255,.70);
+          background: rgba(255,255,255,.92);
           border: 1px solid var(--sand);
+          box-shadow: 0 12px 35px rgba(34,33,31,.08);
         }
 
         .ito-pack-card small {
@@ -1075,14 +1097,15 @@ export default function Onion() {
 
         .ito-quote-box--alt {
           margin-top: 32px;
-          background: rgba(247,243,234,.08);
-          border-color: rgba(247,243,234,.18);
+          background: rgba(74,16,28,.1);
+          border-color: rgba(74,16,28,.2);
+          color: rgba(34,33,31,.9);
         }
 
         .ito-disclaimer {
           margin-top: 16px;
           font-size: 13px;
-          color: rgba(34,33,31,.70);
+          color: rgba(34,33,31,.8);
         }
 
         .ito-section-heading {
@@ -1220,7 +1243,7 @@ export default function Onion() {
         .ito-market-notice {
           margin-top: 24px;
           font-size: 13px;
-          color: rgba(34,33,31,.70);
+          color: rgba(34,33,31,.85);
         }
 
         .ito-section--pt {
@@ -1355,13 +1378,13 @@ export default function Onion() {
         }
 
         .ito-quote-box {
-          background: rgba(74,16,28,.05);
+          background: rgba(74,16,28,.08);
           border: 1px solid var(--sand);
           border-radius: 12px;
           padding: 28px;
           margin-top: 32px;
           font-style: italic;
-          color: rgba(34,33,31,.88);
+          color: rgba(34,33,31,.9);
           line-height: 1.7;
         }
 
@@ -1379,6 +1402,13 @@ export default function Onion() {
           text-transform: uppercase;
         }
 
+        /* Keep the hero kicker clear of the fixed navigation on desktop. */
+        @media (min-width: 801px) {
+          .ito-hero-copy .ito-kicker {
+            margin-top: 24px;
+          }
+        }
+
         @media (max-width: 800px) {
           .ito-sequence {
             height: 100vh;
@@ -1390,8 +1420,23 @@ export default function Onion() {
           }
 
           .ito-vignette {
+            /* Same all-side charcoal vignette on mobile; keep the frame readable in the center. */
             background:
-              linear-gradient(180deg, rgba(247,243,234,.84) 0%, rgba(247,243,234,.38) 35%, transparent 67%, rgba(34,33,31,.10) 100%);
+              radial-gradient(ellipse at center,
+                rgba(34,33,31,0) 28%,
+                rgba(34,33,31,.12) 48%,
+                rgba(34,33,31,.34) 70%,
+                rgba(34,33,31,.62) 100%),
+              linear-gradient(90deg,
+                rgba(34,33,31,.30) 0%,
+                rgba(34,33,31,0) 22%,
+                rgba(34,33,31,0) 78%,
+                rgba(34,33,31,.30) 100%),
+              linear-gradient(180deg,
+                rgba(34,33,31,.26) 0%,
+                rgba(34,33,31,0) 20%,
+                rgba(34,33,31,0) 80%,
+                rgba(34,33,31,.38) 100%);
           }
 
           /* Top branding/nav stays fixed; give hero copy room beneath it */
@@ -1495,6 +1540,20 @@ export default function Onion() {
             padding: 10px 12px;
             font-size: 13px;
           }
+
+          .ito-cta-image {
+            max-width: 100%;
+          }
+
+          .ito-intro > div:first-child {
+            max-width: 100%;
+          }
+
+          .ito-section-title,
+          .ito-display {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1504,88 +1563,277 @@ export default function Onion() {
         }
 
         /*
-         * IMPORTANT: the fixed Canvas is the visual layer for the entire page.
-         * Do NOT put opaque section backgrounds over it. Content gets readability
-         * treatment locally instead, so the onion/peeling sequence remains fully
-         * visible from top to bottom.
+         * READABILITY FIRST: Every text block gets a solid reading surface.
+         * The canvas stays visible but dimmed; content panels are opaque.
          */
-        .ito-section:not(.ito-dark):not(.ito-cta) {
+        .ito-section {
           background: transparent;
         }
 
-        .ito-section.ito-dark,
-        .ito-section.ito-cta {
-          background: transparent;
-        }
-
-        /* Local reading surfaces only where text/cards need extra contrast. */
-        .ito-section:not(.ito-dark):not(.ito-cta) .ito-section-inner {
+        .ito-section-inner {
           position: relative;
+          z-index: 10;
         }
 
-        .ito-section:not(.ito-dark):not(.ito-cta) .ito-intro > div:last-child {
-          padding: 24px 28px;
-          border-radius: 16px;
-          background: rgba(247,243,234,.72);
-          box-shadow: 0 12px 35px rgba(34,33,31,.08);
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
+        .ito-section .ito-section-inner {
+          background: rgba(247,243,234,.98);
+          border-radius: 20px;
+          padding: 40px;
+          box-shadow: 0 20px 60px rgba(20,18,16,.15);
+          margin: 0 auto;
+          max-width: 1180px;
         }
 
-        .ito-section:not(.ito-dark):not(.ito-cta) .ito-section-title {
-          text-shadow: 0 2px 18px rgba(247,243,234,.85), 0 1px 3px rgba(255,255,255,.7);
+        .ito-section.ito-dark .ito-section-inner {
+          background: rgba(247,243,234,.98);
+          border: 1px solid var(--sand);
         }
 
-        .ito-section:not(.ito-dark):not(.ito-cta) .ito-eyebrow,
-        .ito-section:not(.ito-dark):not(.ito-cta) .ito-lead {
-          text-shadow: 0 1px 9px rgba(247,243,234,.95);
-        }
-
-        /* Cards remain solid enough to keep all detailed information readable,
-           while the space between cards stays transparent so the animation shows. */
-        .ito-spec,
-        .ito-pack-card,
-        .ito-market,
-        .ito-quote-box,
-        .ito-crm-panel,
-        .ito-table-wrap {
-          box-shadow: 0 10px 28px rgba(34,33,31,.10);
-        }
-
-        /* CRM section: no full-section overlay. Only the actual content surfaces
-           receive contrast, leaving the onion animation unobstructed around them. */
-        .ito-section--pt {
-          position: relative;
-          isolation: isolate;
-          background: transparent;
-          color: var(--ivory);
+        .ito-section.ito-cta .ito-section-inner {
+          background: rgba(247,243,234,.98);
+          border: 1px solid var(--sand);
         }
 
         .ito-section--pt .ito-section-inner {
-          position: relative;
-          z-index: 1;
+          background: rgba(247,243,234,.98);
+          border: 1px solid var(--sand);
         }
 
-        .ito-section--pt .ito-intro > div:last-child {
-          background: rgba(34,33,31,.72);
-          color: var(--ivory);
-          border: 1px solid rgba(181,150,90,.55);
-          box-shadow: 0 14px 36px rgba(0,0,0,.16);
+        .ito-intro {
+          display: grid;
+          grid-template-columns: 1fr 1.25fr;
+          gap: clamp(40px, 8vw, 120px);
+          align-items: end;
         }
 
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-section-title,
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-section-heading,
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-crm-heading {
+          color: var(--burgundy) !important;
+        }
+
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-eyebrow {
+          color: var(--olive);
+        }
+
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-lead {
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-section.ito-dark .ito-section-title,
+        .ito-section.ito-dark .ito-section-heading,
+        .ito-section.ito-dark .ito-crm-heading,
+        .ito-section.ito-cta .ito-section-title,
+        .ito-section.ito-cta .ito-section-heading,
+        .ito-section.ito-cta .ito-crm-heading,
+        .ito-section--pt .ito-section-title,
+        .ito-section--pt .ito-section-heading,
+        .ito-section--pt .ito-crm-heading {
+          color: var(--burgundy) !important;
+        }
+
+        .ito-section.ito-dark .ito-eyebrow,
+        .ito-section.ito-cta .ito-eyebrow,
         .ito-section--pt .ito-eyebrow {
+          color: var(--olive);
+        }
+
+        .ito-section.ito-dark .ito-lead,
+        .ito-section.ito-cta .ito-lead,
+        .ito-section--pt .ito-lead {
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-spec {
+          background: var(--white) !important;
+          border: 1px solid var(--sand);
+          border-radius: 12px;
+        }
+
+        .ito-spec strong {
+          color: var(--burgundy);
+        }
+
+        .ito-spec span {
+          color: rgba(34,33,31,.85);
+        }
+
+        .ito-dark .ito-spec {
+          background: rgba(255,255,255,.08) !important;
+          border-color: rgba(247,243,234,.2);
+        }
+
+        .ito-dark .ito-spec strong {
+          color: var(--ivory);
+        }
+
+        .ito-dark .ito-spec span {
+          color: rgba(247,243,234,.9);
+        }
+
+        .ito-pack-card {
+          background: var(--white) !important;
+          border: 1px solid var(--sand);
+          border-radius: 14px;
+          box-shadow: 0 12px 35px rgba(34,33,31,.1);
+        }
+
+        .ito-dark .ito-pack-card {
+          background: rgba(255,255,255,.06) !important;
+          border-color: rgba(247,243,234,.18);
+        }
+
+        .ito-market {
+          background: rgba(247,243,234,.2) !important;
+          border: 1px solid var(--sand);
+          color: var(--burgundy);
+        }
+
+        .ito-quote-box {
+          background: rgba(247,243,234,.2) !important;
+          border: 1px solid var(--sand);
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-dark .ito-quote-box,
+        .ito-section--pt .ito-quote-box {
+          background: rgba(247,243,234,.2) !important;
+          border-color: var(--sand);
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-grade-grid {
+          gap: 20px;
+        }
+
+        .ito-card {
+          background: var(--white) !important;
+          border: 1px solid var(--sand);
+          border-radius: 14px;
+          box-shadow: 0 12px 35px rgba(34,33,31,.1);
+        }
+
+        .ito-dark .ito-card {
+          background: rgba(255,255,255,.06) !important;
+          border-color: rgba(247,243,234,.18);
+        }
+
+        .ito-card h3 {
+          color: var(--burgundy);
+        }
+
+        .ito-dark .ito-card h3 {
+          color: var(--ivory);
+        }
+
+        .ito-card p,
+        .ito-card .positioning {
+          color: rgba(34,33,31,.85);
+        }
+
+        .ito-dark .ito-card p,
+        .ito-dark .ito-card .positioning {
+          color: rgba(247,243,234,.9);
+        }
+
+        .ito-persona-card {
+          background: var(--white) !important;
+          border: 1px solid var(--sand);
+          border-radius: 14px;
+          box-shadow: 0 12px 35px rgba(34,33,31,.1);
+        }
+
+        .ito-split-card {
+          background: var(--white) !important;
+          border: 1px solid var(--sand);
+          border-radius: 14px;
+          box-shadow: 0 12px 35px rgba(34,33,31,.1);
+        }
+
+        .ito-split-card h3 {
+          color: var(--burgundy);
+        }
+
+        .ito-split-card p {
+          color: rgba(34,33,31,.85);
+        }
+
+        .ito-table {
+          background: var(--white);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .ito-table th {
+          background: rgba(74,16,28,.05);
+          color: var(--burgundy);
+        }
+
+        .ito-table td {
+          color: rgba(34,33,31,.85);
+        }
+
+        .ito-table.alt {
+          background: rgba(247,243,234,.98);
+        }
+        .ito-table.alt th { background: rgba(74,16,28,.08); color: var(--burgundy); }
+        .ito-table.alt td { color: rgba(34,33,31,.85); }
+
+        .ito-faq-q {
+          color: var(--burgundy);
+        }
+
+        .ito-faq-a {
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-dark .ito-faq-q {
+          color: var(--burgundy);
+        }
+
+        .ito-dark .ito-faq-a {
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-process-item span {
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-export-step .ito-process-stage {
           color: var(--gold);
+        }
+
+        .ito-export-step .ito-process-control {
+          color: rgba(34,33,31,.9);
+        }
+
+        .ito-export-docs {
+          background: rgba(247,243,234,.15) !important;
+          border: 1px solid var(--sand);
+          border-radius: 12px;
+        }
+
+        .ito-export-docs .ito-section-heading { color: var(--burgundy); }
+        .ito-export-docs .ito-bullet-list li { color: rgba(34,33,31,.9); }
+        .ito-export-docs .ito-doc-note { color: rgba(34,33,31,.7); }
+
+        .ito-spec-grid {
+          background: var(--white);
+          border: 1px solid var(--sand);
+        }
+
+        .ito-dark .ito-spec-grid {
+          background: rgba(255,255,255,.04);
+          border-color: rgba(247,243,234,.15);
         }
 
         .ito-section--pt .ito-section-title,
         .ito-section--pt .ito-crm-heading {
           color: var(--ivory);
-          text-shadow: 0 2px 18px rgba(0,0,0,.55);
         }
 
         .ito-section--pt .ito-lead {
-          color: rgba(247,243,234,.96);
-          text-shadow: 0 2px 10px rgba(0,0,0,.45);
+          color: rgba(247,243,234,.95);
         }
 
         .ito-section--pt .ito-market--crm {
@@ -1608,74 +1856,59 @@ export default function Onion() {
           color: var(--gold);
         }
 
-        /* CTA: keep the canvas visible. Give the heading/copy their own compact
-           reading surfaces instead of covering the whole section with burgundy. */
+        /* CTA reading surfaces */
         .ito-cta-inner {
           position: relative;
         }
 
-        .ito-cta-inner > div:first-child {
+        .ito-cta-inner > div:first-child,
+        .ito-cta-inner > div:last-child {
           padding: 22px 26px 26px;
           border-radius: 16px;
-          background: rgba(74,16,28,.76);
-          border: 1px solid rgba(247,243,234,.16);
-          box-shadow: 0 14px 38px rgba(0,0,0,.18);
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
-        }
-
-        .ito-cta-inner > div:last-child {
-          padding: 22px;
-          border-radius: 16px;
-          background: rgba(34,33,31,.72);
-          border: 1px solid rgba(247,243,234,.14);
-          box-shadow: 0 14px 38px rgba(0,0,0,.18);
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
+          background: rgba(247,243,234,.98);
+          border: 1px solid var(--sand);
+          box-shadow: 0 14px 38px rgba(20,18,16,.15);
         }
 
         .ito-cta h2 {
-          text-shadow: 0 3px 18px rgba(0,0,0,.55);
+          color: var(--burgundy) !important;
         }
 
-        /* Keep text controls readable without putting a page-wide overlay over the Canvas. */
+        .ito-cta-copy {
+          color: rgba(34,33,31,.9) !important;
+        }
+
         .ito-frame-counter {
-          background: rgba(34,33,31,.55);
+          background: rgba(247,243,234,.9);
           padding: 4px 8px;
-          border: 1px solid rgba(247,243,234,.24);
+          border: 1px solid var(--sand);
           border-radius: 5px;
-          color: var(--ivory);
-          text-shadow: 0 1px 4px rgba(0,0,0,.30);
-        }
-
-        /* Requested treatment:
-           ONLY the text is Burgundy. No Burgundy content/background panels.
-           A soft white text-shadow keeps the Burgundy text readable over the
-           moving onion Canvas. */
-        .ito-section .ito-section-title,
-        .ito-section .ito-lead,
-        .ito-section .ito-section-heading,
-        .ito-section--pt .ito-crm-heading {
           color: var(--burgundy);
-          text-shadow:
-            0 1px 0 rgba(255,255,255,.98),
-            0 2px 7px rgba(255,255,255,.95),
-            0 4px 16px rgba(255,255,255,.78);
         }
 
-        /* Dark sections still use Burgundy text for the requested headings,
-           with no filled panel behind them. */
+        /* Light sections: burgundy text */
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-section-title,
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-lead,
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-section-heading,
+        .ito-section:not(.ito-dark):not(.ito-cta) .ito-crm-heading {
+          color: var(--burgundy);
+        }
+
+        /* Dark sections: ivory text */
         .ito-section.ito-dark .ito-section-title,
         .ito-section.ito-dark .ito-lead,
-        .ito-section.ito-dark .ito-section-heading {
-          color: var(--burgundy);
-          background: transparent;
-          border: 0;
-          box-shadow: none;
-          text-shadow:
-            0 1px 0 rgba(255,255,255,1),
-            0 2px 8px rgba(255,255,255,.98),
-            0 4px 18px rgba(255,255,255,.82);
+        .ito-section.ito-dark .ito-section-heading,
+        .ito-section.ito-cta .ito-section-title,
+        .ito-section.ito-cta .ito-lead,
+        .ito-section.ito-cta .ito-section-heading,
+        .ito-section--pt .ito-section-title,
+        .ito-section--pt .ito-lead,
+        .ito-section--pt .ito-crm-heading {
+          color: var(--ivory);
+        }
+
+        #international .ito-lead {
+          color: var(--burgundy) !important;
         }
 
         .ito-section:not(.ito-cta) .ito-section-title,
@@ -1697,19 +1930,6 @@ export default function Onion() {
           padding: 0;
           border-radius: 0;
           max-width: 760px;
-        }
-
-        .ito-section--pt .ito-section-title,
-        .ito-section--pt .ito-lead,
-        .ito-section--pt .ito-crm-heading {
-          background: transparent;
-          border: 0;
-          box-shadow: none;
-          color: var(--burgundy);
-          text-shadow:
-            0 1px 0 rgba(255,255,255,1),
-            0 2px 8px rgba(255,255,255,.98),
-            0 4px 18px rgba(255,255,255,.82);
         }
 
         .ito-section--pt .ito-section-title {
@@ -1858,9 +2078,9 @@ export default function Onion() {
 
         /* FINAL REQUESTED TEXT TREATMENT */
 
-        /* Process steps: all ten labels must be bright white. */
+        /* Process steps: use burgundy for readability on ivory */
         .ito-process-item span {
-          color: #FFFFFF !important;
+          color: var(--burgundy) !important;
           text-shadow: none !important;
         }
 
@@ -1877,10 +2097,10 @@ export default function Onion() {
           text-shadow: none !important;
         }
 
-        /* Market-price notice: white text. */
+        /* Market-price notice: burgundy text. */
         .ito-market-notice,
         .ito-market-notice * {
-          color: #FFFFFF !important;
+          color: var(--burgundy) !important;
           text-shadow: none !important;
         }
 
@@ -1904,21 +2124,23 @@ export default function Onion() {
           text-shadow: none !important;
         }
 
-        /* CTA buttons: white background + white text, including links and nested text. */
+        /* CTA buttons: ivory background with Burgundy text for readability */
         .ito-actions .ito-button,
         .ito-actions .ito-button *,
         .ito-actions a {
-          background: #FFFFFF !important;
-          color: #FFFFFF !important;
-          border-color: #FFFFFF !important;
+          background: var(--ivory) !important;
+          color: var(--burgundy) !important;
+          border-color: var(--burgundy) !important;
           text-shadow: none !important;
         }
 
         .ito-actions .ito-button:hover,
-        .ito-actions .ito-button:focus-visible {
-          background: #FFFFFF !important;
-          color: #FFFFFF !important;
-          border-color: #FFFFFF !important;
+        .ito-actions .ito-button:focus-visible,
+        .ito-actions a:hover,
+        .ito-actions a:focus-visible {
+          background: var(--gold) !important;
+          color: var(--ivory) !important;
+          border-color: var(--gold) !important;
         }
 
 
@@ -1948,26 +2170,11 @@ export default function Onion() {
         }
 
         .ito-cta-copy {
-          color: #FFFFFF !important;
-          text-shadow: none !important;
+          color: rgba(247,243,234,.95) !important;
         }
 
-        .ito-actions .ito-button,
-        .ito-actions .ito-button *,
-        .ito-actions a {
-          background: #FFFFFF !important;
+        .ito-cta-copy-burgundy {
           color: var(--burgundy) !important;
-          border-color: var(--burgundy) !important;
-          text-shadow: none !important;
-        }
-
-        .ito-actions .ito-button:hover,
-        .ito-actions .ito-button:focus-visible,
-        .ito-actions a:hover,
-        .ito-actions a:focus-visible {
-          background: #FFFFFF !important;
-          color: var(--burgundy) !important;
-          border-color: var(--burgundy) !important;
         }
 
 
@@ -2277,6 +2484,105 @@ export default function Onion() {
 
 
 
+
+        /* Mobile-only alignment fix for the Core Value Proposition section.
+           Everything else remains unchanged. */
+        @media (max-width: 800px) {
+          .ito-core-value-section .ito-intro {
+            grid-template-columns: 1fr;
+            gap: 28px;
+          }
+
+          .ito-core-value-section .ito-intro > div,
+          .ito-core-value-section .ito-lead {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+          }
+
+          .ito-core-value-section .ito-section-title {
+            width: 100%;
+            max-width: 100%;
+            font-size: clamp(38px, 11vw, 56px);
+            line-height: 1.02;
+            word-break: normal;
+            overflow-wrap: normal;
+          }
+
+          .ito-core-value-section .ito-spec-grid {
+            width: 100%;
+            max-width: 100%;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-core-value-section .ito-spec {
+            min-width: 0;
+            width: 100%;
+            padding: 20px 16px;
+            overflow: visible;
+          }
+
+          .ito-core-value-section .ito-spec strong,
+          .ito-core-value-section .ito-spec span {
+            min-width: 0;
+            max-width: 100%;
+            overflow-wrap: normal;
+            word-break: normal;
+          }
+
+          .ito-core-value-section .ito-spec strong {
+            white-space: nowrap;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-core-value-section .ito-section-title {
+            font-size: clamp(36px, 10.5vw, 50px);
+            line-height: 1.03;
+          }
+        }
+
+        /* Mobile-only alignment fix for the Packaging section.
+           Keeps the desktop layout unchanged and stacks the heading content cleanly on mobile. */
+        @media (max-width: 800px) {
+          .ito-packaging-section .ito-intro {
+            grid-template-columns: 1fr;
+            gap: 28px;
+            align-items: start;
+          }
+
+          .ito-packaging-section .ito-intro > div,
+          .ito-packaging-section .ito-lead {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+          }
+
+          .ito-packaging-section .ito-section-title {
+            width: 100%;
+            max-width: 100%;
+            font-size: clamp(42px, 12vw, 58px);
+            line-height: 1.02;
+            word-break: normal;
+            overflow-wrap: normal;
+          }
+
+          .ito-packaging-section .ito-eyebrow {
+            margin-top: 14px;
+          }
+
+          .ito-packaging-section .ito-lead {
+            line-height: 1.65;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-packaging-section .ito-section-title {
+            font-size: clamp(40px, 11.5vw, 52px);
+            line-height: 1.03;
+          }
+        }
+
 `}</style>
 
       <nav className="ito-nav" aria-label="Primary">
@@ -2332,9 +2638,6 @@ export default function Onion() {
             aria-label="Frame-by-frame Nashik onion product sequence"
           />
           <div className="ito-vignette" />
-          <div className="ito-frame-counter">
-            {String(activeFrame + 1).padStart(3, "0")} / {TOTAL_FRAMES}
-          </div>
           <div className="ito-progress" aria-hidden="true">
             <span style={{ transform: `scaleX(${scrollProgress})` }} />
           </div>
@@ -2376,7 +2679,7 @@ export default function Onion() {
         <div className="ito-section-inner">
           <div className="ito-eyebrow">Market entry</div>
           <h2 className="ito-display ito-section-title">Choose Your Supply Route</h2>
-          <p className="ito-lead">
+          <p className="ito-lead ito-lead-burgundy">
             The page splits domestic and international visitors immediately because their buying questions, commercial terms, documentation and logistics are materially different.
           </p>
 
@@ -2396,7 +2699,7 @@ export default function Onion() {
       </section>
 
       {/* CORE VALUE PROPOSITION */}
-      <section className="ito-section">
+      <section className="ito-section ito-core-value-section">
         <div className="ito-section-inner">
           <div className="ito-intro">
             <div>
@@ -2511,12 +2814,12 @@ export default function Onion() {
       </section>
 
       {/* PACKAGING */}
-      <section className="ito-section" id="packaging">
+      <section className="ito-section ito-packaging-section" id="packaging">
         <div className="ito-section-inner">
           <div className="ito-intro">
             <div>
-              <div className="ito-eyebrow">Packaging</div>
               <h2 className="ito-display ito-section-title">Packed for Domestic and Export Markets</h2>
+              <div className="ito-eyebrow">Packaging</div>
             </div>
             <p className="ito-lead">
               Packaging must protect ventilation, maintain presentation and match the buyer's distribution model. Final net weight, bag tolerance, artwork and shipping marks must be confirmed before production.
@@ -2729,7 +3032,7 @@ export default function Onion() {
             <strong>Long-term supply programme:</strong> Qualified buyers requiring weekly, monthly or seasonal supply can request a structured programme covering volume forecasts, specifications, packing, delivery calendar, price review, documentation and performance review.
           </div>
 
-          <p className="ito-market-notice">
+          <p className="ito-market-notice ">
             <strong>Market-price notice:</strong> Onion prices can change according to crop arrivals, quality, size, weather, demand, packaging, labour, transport, port charges, freight and government regulations. Every quotation carries a defined validity period. An enquiry does not lock price or confirm stock.
           </p>
         </div>
@@ -2762,13 +3065,13 @@ export default function Onion() {
 
           <div>
             <img src="/images/onion_image.png" alt="Nashik onions" className="ito-cta-image" />
-            <p className="ito-cta-copy">
+            <p className="ito-cta-copy ito-cta-copy-burgundy">
               Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability, logistics and applicable terms before preparing the offer.
             </p>
             <div className="ito-actions">
               <a className="ito-button" href="#rfq">Request Domestic Rate</a>
               <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
-              <a className="ito-button secondary" href="https://wa.me/91XXXXXXXXXX" target="_blank" rel="noopener noreferrer">Chat on WhatsApp</a>
+              <a className="ito-button secondary" href="https://wa.me/911169262028?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements." target="_blank" rel="noopener noreferrer">Chat with Export Sales on WhatsApp</a>
             </div>
           </div>
         </div>

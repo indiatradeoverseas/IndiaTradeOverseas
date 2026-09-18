@@ -1,9 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import { pushDataLayerEvent } from '../../utils/analytics';
 
-const FRAME_COUNT = 240;
-const FRAME_DIR = '/images/coal-frames/';
+const HERO_IMAGES = [
+  '/images/coal-images/coal-1.png',
+  '/images/coal-images/coal-2.png',
+  '/images/coal-images/coal-3.png',
+  '/images/coal-images/coal-4.png'
+];
 
 function Coal() {
   useDocumentMeta({
@@ -12,170 +17,21 @@ function Coal() {
     canonicalPath: '/coal'
   });
 
-  const canvasRef = useRef(null);
-  const framesRef = useRef([]);
-  const loadedRef = useRef(0);
-  const currentFrameRef = useRef(0);
-  const rafRef = useRef(null);
-  const resizeHandlerRef = useRef(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-
   useEffect(() => {
     pushDataLayerEvent('view_coal_page', {});
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (resizeHandlerRef.current) {
-        window.removeEventListener('resize', resizeHandlerRef.current);
-      }
-    };
   }, []);
 
-  // Files inside /public are served from the site root.
-  // Example: /public/images/coal-frames/ezgif-frame-001.jpg
-  // is requested in the browser as /images/coal-frames/ezgif-frame-001.jpg
-  const getFrameSrc = (index) =>
-    `${FRAME_DIR}ezgif-frame-${String(index + 1).padStart(3, '0')}.jpg`;
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  const preloadFrames = () => {
-    return new Promise((resolve) => {
-      framesRef.current = new Array(FRAME_COUNT);
-      loadedRef.current = 0;
-
-      for (let i = 0; i < FRAME_COUNT; i++) {
-        const img = new Image();
-        img.decoding = 'async';
-        img.src = getFrameSrc(i);
-
-        const finish = () => {
-          loadedRef.current++;
-          if (loadedRef.current === FRAME_COUNT) resolve();
-        };
-
-        img.onload = finish;
-        img.onerror = finish;
-        framesRef.current[i] = img;
-      }
-    });
-  };
-
-  const drawFrame = (idx) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const img = framesRef.current[idx];
-
-    if (!img || !img.complete || !img.naturalWidth) return;
-
-    const cw = window.innerWidth;
-    const ch = window.innerHeight;
-
-    if (canvas.width !== cw || canvas.height !== ch) {
-      canvas.width = cw;
-      canvas.height = ch;
-    }
-
-    const iw = img.naturalWidth;
-    const ih = img.naturalHeight;
-
-    // CONTAIN the entire frame inside the viewport.
-    // Cover the entire viewport so the animation reaches every edge.
-    // The original frame aspect ratio is preserved; only the excess area
-    // outside the viewport is cropped.
-    const scale = Math.max(cw / iw, ch / ih);
-    const dw = iw * scale;
-    const dh = ih * scale;
-    const dx = (cw - dw) * 0.5;
-    const dy = (ch - dh) * 0.5;
-
-    ctx.clearRect(0, 0, cw, ch);
-    ctx.drawImage(img, dx, dy, dw, dh);
-  };
-
-  const handleScroll = () => {
-    // IMPORTANT:
-    // Frame progress is based on the ENTIRE document height,
-    // not the .coal-hero section.
-    // Stop the lifecycle animation as soon as the solid footer enters view.
-    // The canvas remains fixed behind the page until that point.
-    const footer = document.querySelector('.coal-footer');
-    const footerStart = footer
-      ? footer.getBoundingClientRect().top + window.scrollY
-      : document.documentElement.scrollHeight;
-
-    const animationEnd = Math.max(
-      0,
-      footerStart - window.innerHeight
-    );
-    const progress = animationEnd > 0
-      ? Math.max(0, Math.min(1, window.scrollY / animationEnd))
-      : 0;
-
-    const target = Math.min(
-      FRAME_COUNT - 1,
-      Math.floor(progress * (FRAME_COUNT - 1))
-    );
-
-    if (target === currentFrameRef.current) return;
-
-    currentFrameRef.current = target;
-
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
-    rafRef.current = requestAnimationFrame(() => {
-      drawFrame(target);
-      rafRef.current = null;
-    });
-  };
-
+  // Match the Rice.jsx hero carousel: one active image at a time,
+  // AnimatePresence handles the premium cross-fade/scale transition.
   useEffect(() => {
-    let cancelled = false;
+    const timer = setTimeout(() => {
+      setCurrentIndex(prev => (prev + 1) % HERO_IMAGES.length);
+    }, 5000);
 
-    const init = async () => {
-      await preloadFrames();
-
-      if (cancelled) return;
-
-      const canvas = canvasRef.current;
-
-      if (canvas) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        drawFrame(0);
-        setIsLoaded(true);
-      }
-
-      resizeHandlerRef.current = () => {
-        if (!canvasRef.current) return;
-
-        canvasRef.current.width = window.innerWidth;
-        canvasRef.current.height = window.innerHeight;
-        drawFrame(currentFrameRef.current);
-      };
-
-      window.addEventListener('resize', resizeHandlerRef.current);
-      window.addEventListener('scroll', handleScroll, { passive: true });
-
-      // Handle the case where the page is refreshed at a scrolled position.
-      handleScroll();
-    };
-
-    init();
-
-    return () => {
-      cancelled = true;
-
-      window.removeEventListener('scroll', handleScroll);
-
-      if (resizeHandlerRef.current) {
-        window.removeEventListener('resize', resizeHandlerRef.current);
-      }
-
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, []);
+    return () => clearTimeout(timer);
+  }, [currentIndex]);
 
   const scrollToQuote = () => {
     document.getElementById('quote-form')?.scrollIntoView({ behavior: 'smooth' });
@@ -193,56 +49,93 @@ function Coal() {
 
   return (
     <>
-      {/*
-        Fixed canvas = the lifecycle animation remains attached to the viewport
-        while the user scrolls through the ENTIRE Coal page.
-        The frame index is calculated from document scroll progress.
-      */}
-      <canvas
-        ref={canvasRef}
-        className="fixed inset-0 z-0 w-full h-full pointer-events-none"
-        aria-hidden="true"
-      />
-
-      {!isLoaded && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071826] text-[#F4F0E7]">
-          <div className="text-center">
-            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[#2B3036] border-t-[#D4A84F]" />
-            <p className="text-sm tracking-[0.2em] uppercase text-[#D4A84F]">
-              Loading coal lifecycle
-            </p>
-          </div>
-        </div>
-      )}
-
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fade-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fade-up 0.9s ease-out forwards; }
+      `}} />
       <div className="relative z-10">
-        <section className="coal-hero relative min-h-screen overflow-hidden" aria-label="Hero with scroll-linked coal lifecycle animation">
-          <div className="relative z-10 min-h-screen flex flex-col justify-start md:justify-center px-6 pt-32 md:pt-0 pb-10 md:pb-0 text-white bg-gradient-to-b from-[#071826]/90 via-[#071826]/55 to-[#071826]/20">
-          <span className="text-white text-sm md:text-base tracking-widest uppercase mb-4">COAL & INDUSTRIAL MATERIALS</span>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6">
-            POWERING INDUSTRY.<br />DELIVERING RELIABILITY.
-          </h1>
-          <p className="text-lg md:text-xl max-w-2xl mb-8">
-            Domestic and imported coal supply coordinated around specification, quantity and destination.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={scrollToQuote}
-              className="bg-[#D4A84F] text-[#F4F0E7] px-8 py-4 rounded font-bold text-lg hover:brightness-110 transition"
-            >
-              REQUEST BULK QUOTE
-            </button>
-            <button
-              onClick={scrollToSpecs}
-              className="border-2 border-[#D4A84F] text-white px-8 py-4 rounded font-bold text-lg bg-transparent hover:bg-[#D4A84F] hover:text-[#F4F0E7] transition"
-            >
-              VIEW COAL SPECIFICATIONS
-            </button>
-          </div>
-        </div>
-      </section>
+        <section className="coal-hero relative min-h-screen overflow-hidden" aria-label="Hero with auto-rotating coal images" style={{ backgroundColor: '#071826' }}>
+          <div className="absolute inset-0 z-0">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={currentIndex}
+                src={HERO_IMAGES[currentIndex]}
+                alt="Coal mining and supply"
+                initial={{
+                  opacity: 0,
+                  scale: 1.02
+                }}
+                animate={{
+                  opacity: 1,
+                  scale: 1
+                }}
+                exit={{
+                  opacity: 0
+                }}
+                transition={{
+                  duration: 1.2,
+                  ease: 'easeInOut'
+                }}
+                className="absolute inset-0 w-full h-full object-cover object-center"
+                style={{
+                  filter: 'brightness(1.2) contrast(1.02)'
+                }}
+              />
+            </AnimatePresence>
 
-      <section className="py-20 px-6 bg-transparent/90 backdrop-blur-[1px]" aria-labelledby="capability-title">
+            <div
+              className="absolute inset-0 z-1"
+              style={{
+                background:
+                  'linear-gradient(to right, rgba(7, 24, 38, 0.55) 35%, rgba(7, 24, 38, 0.30) 70%, transparent 100%)'
+              }}
+            />
+
+            <div
+              className="absolute inset-0 z-1"
+              style={{
+                background:
+                  'linear-gradient(to right, #071826 10%, transparent 65%)'
+              }}
+            />
+          </div>
+
+          {/* Hero copy with entrance animation */}
+          <div className="relative z-10 min-h-screen flex flex-col justify-start md:justify-center px-6 pt-32 md:pt-0 pb-10 md:pb-0 text-white opacity-0 animate-fade-up">
+            <span className="text-white text-sm md:text-base tracking-widest uppercase mb-4">COAL & INDUSTRIAL MATERIALS</span>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6">
+              POWERING INDUSTRY.<br />DELIVERING RELIABILITY.
+            </h1>
+            <p className="text-lg md:text-xl max-w-2xl mb-8">
+              Domestic and imported coal supply coordinated around specification, quantity and destination.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <button
+                onClick={scrollToQuote}
+                className="bg-[#D4A84F] text-[#F4F0E7] px-8 py-4 rounded font-bold text-lg hover:brightness-110 transition"
+              >
+                REQUEST BULK QUOTE
+              </button>
+              <button
+                onClick={scrollToSpecs}
+                className="border-2 border-[#D4A84F] text-white px-8 py-4 rounded font-bold text-lg bg-transparent hover:bg-[#D4A84F] hover:text-[#F4F0E7] transition"
+              >
+                VIEW COAL SPECIFICATIONS
+              </button>
+            </div>
+          </div>
+
+        </section>
+
+        {/* Trust strip */}
+        <div className="px-6 py-4 text-center text-sm text-[#F4F0E7]/70 border-y border-white/10 bg-[#101214]/80 backdrop-blur">
+          ✔ ISO‑9001 certified &nbsp;|&nbsp; 150+ satisfied clients &nbsp;|&nbsp; 24/7 dedicated support
+        </div>
+
+      <section className="py-20 px-6" aria-labelledby="capability-title" style={{ backgroundColor: '#101214' }}>
         <h2 id="capability-title" className="text-3xl md:text-4xl text-[#F4F0E7] text-center mb-12">CORE CAPABILITIES</h2>
         <div className="max-w-6xl mx-auto flex flex-wrap justify-center gap-6">
           <span className="bg-transparent border border-[#D4A84F]/70 text-[#F4F0E7] px-6 py-3 rounded-full font-semibold" onClick={() => handleOriginSelect('domestic')}>Domestic Coal</span>
@@ -251,7 +144,7 @@ function Coal() {
         </div>
       </section>
 
-      <section id="specifications" className="py-20 px-6 bg-transparent/90 backdrop-blur-[1px]" aria-labelledby="portfolio-title">
+      <section id="specifications" className="py-20 px-6" aria-labelledby="portfolio-title" style={{ backgroundColor: '#071826' }}>
         <div className="max-w-6xl mx-auto">
           <h2 id="portfolio-title" className="text-3xl md:text-4xl text-[#F4F0E7] mb-6">COAL SUPPLY BUILT AROUND YOUR SPECIFICATION</h2>
           <p className="text-[#F4F0E7] mb-12 max-w-3xl">
@@ -321,7 +214,7 @@ function Coal() {
         </div>
       </section>
 
-      <section className="py-16 px-6 bg-transparent" aria-labelledby="g-title">
+      <section className="py-16 px-6" aria-labelledby="g-title" style={{ backgroundColor: '#101214' }}>
         <div className="max-w-6xl mx-auto overflow-x-auto">
           <h2 id="g-title" className="text-3xl md:text-4xl text-[#F4F0E7] mb-6 text-center">INDIAN G1–G17 COAL CLASSIFICATION (Ministry of Coal)</h2>
           <div className="mx-auto w-full max-w-md rounded-md border border-white/20 bg-[#071826]/35 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.25)] overflow-hidden">
@@ -364,7 +257,7 @@ function Coal() {
         </div>
       </section>
 
-      <section className="py-20 px-6 bg-transparent" aria-labelledby="cok-title">
+      <section className="py-20 px-6" aria-labelledby="cok-title" style={{ backgroundColor: '#071826' }}>
         <div className="max-w-6xl mx-auto">
           <h2 id="cok-title" className="text-3xl md:text-4xl text-[#F4F0E7] mb-4 text-center">COKING COAL CLASSIFICATION</h2>
           <p className="text-center text-[#F4F0E7] mb-8">Coking coal cannot be evaluated by GCV alone.</p>
@@ -424,7 +317,7 @@ function Coal() {
         </div>
       </section>
 
-      <section className="py-20 px-6 bg-transparent" aria-labelledby="cv-title">
+      <section className="py-20 px-6" aria-labelledby="cv-title" style={{ backgroundColor: '#101214' }}>
         <div className="max-w-6xl mx-auto">
           <h2 id="cv-title" className="text-3xl md:text-4xl text-[#F4F0E7] mb-6 text-center">CALORIFIC VALUE TERMINOLOGY</h2>
 
@@ -460,14 +353,14 @@ function Coal() {
         </div>
       </section>
 
-      <section id="quote-form" className="py-20 px-6 bg-transparent" aria-labelledby="quote-title">
+      <section id="quote-form" className="py-20 px-6" aria-labelledby="quote-title" style={{ backgroundColor: '#071826' }}>
         <div className="max-w-4xl mx-auto">
           <h2 id="quote-title" className="text-3xl md:text-4xl text-[#F4F0E7] mb-8 text-center">REQUEST BULK QUOTE</h2>
           <CoalQuoteForm onSubmit={scrollToQuote} />
         </div>
       </section>
 
-      <section className="py-20 px-6  text-white text-center " aria-labelledby="final-title">
+      <section className="py-20 px-6 text-white text-center" aria-labelledby="final-title" style={{ backgroundColor: '#101214' }}>
         <h2 id="final-title" className="text-3xl md:text-4xl text-[#D4A84F] mb-6">LOOKING FOR A RELIABLE COAL SUPPLY PARTNER?</h2>
         <p className="mb-4 max-w-2xl mx-auto">Share your required coal origin, GCV, testing basis, quantity, application and destination.</p>
         <p className="mb-8 max-w-2xl mx-auto">India Trade Overseas will review the specification and coordinate the next available commercial steps.</p>
@@ -483,14 +376,14 @@ function Coal() {
 
 function OriginCard({ name, description, grades, details, isTable, isUsTable, onSelect }) {
   return (
-    <article className="bg-[#071826]/30 backdrop-blur-md border border-white/25 rounded-xl p-6 hover:border-[#D4A84F] transition cursor-pointer" onClick={onSelect}>
+    <article className="bg-[#2B3036] border border-[#D4A84F]/30 rounded-xl p-6 hover:border-[#D4A84F] hover:bg-[#071826] transition cursor-pointer" onClick={onSelect}>
       <h3 className="text-xl font-bold text-[#F4F0E7] mb-3">{name}</h3>
-      <p className="text-[#F4F0E7] text-sm mb-4">{description}</p>
+      <p className="text-[#F4F0E7]/90 text-sm mb-4">{description}</p>
       {(isTable || isUsTable) ? (
         <div className={isTable ? "px-1" : ""}>
           <table className={`w-full text-xs border-collapse mb-4 ${isTable ? "table-fixed" : ""}`}>
             <thead>
-            <tr className="bg-transparent text-[#F4F0E7] border-b border-[#D4A84F]/60">
+            <tr className="bg-[#071826] text-[#F4F0E7] border-b border-[#D4A84F]/60">
               {isUsTable ? (
                 <>
                   <th className="p-2 text-left">Type</th>
@@ -510,7 +403,7 @@ function OriginCard({ name, description, grades, details, isTable, isUsTable, on
           </thead>
           <tbody>
             {grades.map((g, i) => (
-              <tr key={i} className={i % 2 === 0 ? 'bg-[#2B3036]/05' : ''}>
+              <tr key={i} className={i % 2 === 0 ? 'bg-[#2B3036]/50' : 'bg-[#071826]/50'}>
                 {isUsTable ? (
                   <>
                     <td className="px-1.5 py-2 text-[#F4F0E7] font-medium break-words">{g.label}</td>
@@ -535,10 +428,10 @@ function OriginCard({ name, description, grades, details, isTable, isUsTable, on
         <>
           <div className="flex flex-wrap gap-2 mb-4">
             {grades.map(g => (
-              <span key={g.label} className="bg-transparent border border-[#D4A84F]/50 text-[#D4A84F] px-2 py-1 rounded text-xs font-mono">{g.label}: {g.range}</span>
+              <span key={g.label} className="bg-[#071826] border border-[#D4A84F]/50 text-[#D4A84F] px-2 py-1 rounded text-xs font-mono">{g.label}: {g.range}</span>
             ))}
           </div>
-          <ul className="text-xs text-[#F4F0E7] space-y-1">
+          <ul className="text-xs text-[#F4F0E7]/90 space-y-1">
             {details.map((d, i) => <li key={i} className="flex items-start gap-1">• {d}</li>)}
           </ul>
         </>
@@ -614,17 +507,7 @@ function CoalQuoteForm({ onSubmit }) {
         </div>
       </fieldset>
 
-      <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
-        <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Quality (key parameters)</legend>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Ash %</span><input name="ash" type="number" step="0.01" value={formData.ash} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Sulphur %</span><input name="sulphur" type="number" step="0.01" value={formData.sulphur} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Total moisture %</span><input name="tm" type="number" step="0.01" value={formData.tm} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Volatile matter %</span><input name="vm" type="number" step="0.01" value={formData.vm} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Fixed carbon %</span><input name="fc" type="number" step="0.01" value={formData.fc} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">HGI / AFT (if needed)</span><input name="hgiAft" value={formData.hgiAft} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
-        </div>
-      </fieldset>
+      
 
       <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Volume</legend>
