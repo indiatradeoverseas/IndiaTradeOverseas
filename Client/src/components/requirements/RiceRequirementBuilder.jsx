@@ -93,7 +93,6 @@ export function RiceRequirementBuilder({ onComplete }) {
       tradeType: 'Is this for domestic or export supply?',
       destination: 'Delivery location or port of discharge',
       timeline: 'When do you need the rice delivered?',
-      eligibility: 'Checking serviceability for your requirement',
     },
     destinationData,
   };

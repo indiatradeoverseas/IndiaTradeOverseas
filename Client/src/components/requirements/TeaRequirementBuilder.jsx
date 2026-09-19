@@ -65,7 +65,6 @@ export function TeaRequirementBuilder({ onComplete }) {
       privateLabel: 'Do you need private label / custom blend?',
       destination: 'Delivery location',
       timeline: 'When do you need the tea delivered?',
-      eligibility: 'Checking serviceability for your requirement',
     },
     destinationData: [], // will be filled later when rates are available
   };

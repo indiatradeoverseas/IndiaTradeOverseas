@@ -110,9 +110,21 @@ export default function ITOAds() {
   const [isPolicyOpen, setIsPolicyOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
-  // Payment State
+  // Payment / Checkout State
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentPlan, setPaymentPlan] = useState(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // GST shown transparently in checkout. The backend should independently
+  // validate the final amount before creating the Razorpay order.
+  const GST_RATE = 0.18;
+
+  const getCheckoutAmounts = useCallback((pkg) => {
+    if (!pkg) return { subtotal: 0, gst: 0, total: 0 };
+    const subtotal = parseInt(pkg.price.replace(/[₹,]/g, ''), 10) || 0;
+    const gst = Math.round(subtotal * GST_RATE);
+    return { subtotal, gst, total: subtotal + gst };
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -136,13 +148,18 @@ export default function ITOAds() {
   const handleSelectPackage = useCallback((packageName) => {
     const pkg = packages.find(p => p.name === packageName);
     if (!pkg) return;
-    
+
     setSelectedPlan(packageName);
     setFormData((prev) => ({ ...prev, plan: packageName }));
     setPaymentPlan(pkg);
-    // Start payment flow instead of directly opening modal
-    initiatePayment(pkg);
+    setIsCheckoutOpen(true);
   }, []);
+
+  const handleCloseCheckout = useCallback(() => {
+    if (isProcessingPayment) return;
+    setIsCheckoutOpen(false);
+    setPaymentPlan(null);
+  }, [isProcessingPayment]);
 
   const handleOpenChat = useCallback(() => {
     setIsChatOpen(true);
@@ -278,17 +295,20 @@ export default function ITOAds() {
         phone: formData.phone || ''
       };
 
-      // Extract numeric amount from price string (e.g., "₹5,000" -> 5000)
-      const amount = parseInt(pkg.price.replace(/[₹,]/g, ''), 10);
-      
-      if (isNaN(amount)) {
+      // Calculate the GST-inclusive customer-facing amount.
+      // The backend should independently validate these values.
+      const { subtotal, gst, total } = getCheckoutAmounts(pkg);
+
+      if (!subtotal || !total) {
         throw new Error('Invalid package price');
       }
 
-      // Create Razorpay order
       const orderResult = await paymentsApi.createItoAdsRazorpayOrder({
         packageName: pkg.name,
-        amount,
+        amount: total,
+        subtotal,
+        gst,
+        gstRate: GST_RATE * 100,
         customerDetails
       });
 
@@ -308,7 +328,7 @@ export default function ITOAds() {
         order_id: orderResult.data.orderId,
         handler: async (response) => {
           // Verify payment on success
-          await verifyPayment(response, pkg, amount, customerDetails);
+          await verifyPayment(response, pkg, total, customerDetails);
         },
         prefill: {
           name: customerDetails.name,
@@ -325,7 +345,6 @@ export default function ITOAds() {
         modal: {
           ondismiss: () => {
             setIsProcessingPayment(false);
-            setPaymentPlan(null);
           }
         }
       };
@@ -335,7 +354,6 @@ export default function ITOAds() {
         console.error('Payment failed:', response.error);
         toast.error('Payment failed: ' + (response.error?.description || 'Please try again'));
         setIsProcessingPayment(false);
-        setPaymentPlan(null);
       });
       rzp.open();
 
@@ -343,7 +361,6 @@ export default function ITOAds() {
       console.error('Payment initiation error:', error);
       toast.error('Failed to initiate payment. Please try again.');
       setIsProcessingPayment(false);
-      setPaymentPlan(null);
     }
   };
 
@@ -361,6 +378,7 @@ export default function ITOAds() {
       if (verifyResult?.success) {
         toast.success(`Payment successful! ${pkg.name} package activated.`);
         setIsProcessingPayment(false);
+        setIsCheckoutOpen(false);
         setPaymentPlan(null);
         // Open consultation modal after successful payment
         setIsConsultModalOpen(true);
@@ -371,7 +389,6 @@ export default function ITOAds() {
       console.error('Payment verification error:', error);
       toast.error('Payment verification failed. Please contact support.');
       setIsProcessingPayment(false);
-      setPaymentPlan(null);
     }
   };
 
@@ -961,6 +978,190 @@ export default function ITOAds() {
           </div>
         </div>
       </footer>
+
+      {/* ====================================================================
+          PREMIUM CHECKOUT MODAL
+          Package -> Customer Details -> GST Breakdown -> Razorpay
+      ==================================================================== */}
+      <AnimatePresence>
+        {isCheckoutOpen && paymentPlan && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !isProcessingPayment) handleCloseCheckout();
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.97 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              style={{ backgroundColor: TOKENS.surfaceCard, borderColor: 'rgba(242, 88, 14, 0.30)' }}
+              className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-[24px] border shadow-2xl"
+            >
+              {(() => {
+                const { subtotal, gst, total } = getCheckoutAmounts(paymentPlan);
+                const requiredCustomerFieldsMissing =
+                  !formData.name.trim() || !formData.email.trim() || !formData.phone.trim();
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        background: `linear-gradient(135deg, ${TOKENS.bgDeep}, ${TOKENS.surfaceCard})`,
+                        borderBottom: '1px solid rgba(255,255,255,0.08)'
+                      }}
+                      className="sticky top-0 z-10 p-5 md:p-6 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          style={{ backgroundColor: 'rgba(242,88,14,0.12)', borderColor: 'rgba(242,88,14,0.28)' }}
+                          className="w-11 h-11 rounded-xl border flex items-center justify-center"
+                        >
+                          <FiCreditCard size={20} className="text-[#F2580E]" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.22em] text-[#A1A1A7] font-mono">Secure Checkout</p>
+                          <h3 className="text-xl md:text-2xl font-serif font-bold text-white">Complete Your Order</h3>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCloseCheckout}
+                        disabled={isProcessingPayment}
+                        className="p-2 rounded-lg text-[#A1A1A7] hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
+                        aria-label="Close checkout"
+                      >
+                        <FiX size={20} />
+                      </button>
+                    </div>
+
+                    <div className="p-5 md:p-7 space-y-6">
+                      {/* Selected package */}
+                      <div
+                        style={{ backgroundColor: TOKENS.bgDeep, borderColor: 'rgba(242,88,14,0.22)' }}
+                        className="rounded-[18px] border p-5"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Selected Package</span>
+                              {paymentPlan.popular && <span className="px-2 py-0.5 rounded-full bg-[#F2580E] text-white text-[9px] font-bold uppercase tracking-wider">Most Popular</span>}
+                            </div>
+                            <h4 className="text-2xl font-serif font-bold text-white mt-1">{paymentPlan.name}</h4>
+                            <p className="text-xs text-[#A1A1A7] mt-1">{paymentPlan.leads} • {paymentPlan.period}</p>
+                          </div>
+                          <div className="sm:text-right">
+                            <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Package Price</p>
+                            <p className="text-2xl font-bold font-mono text-[#F2580E] mt-1">
+                              {paymentPlan.price}<span className="text-xs text-[#A1A1A7]">{paymentPlan.period}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Customer details */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-[#F2580E] font-mono font-bold">01 / Customer</p>
+                            <h4 className="text-lg text-white font-serif font-semibold">Customer Details</h4>
+                          </div>
+                          <FiUser className="text-[#A1A1A7]" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {[
+                            ['name', 'Full Name *', 'Enter your full name', 'text'],
+                            ['email', 'Email Address *', 'you@company.com', 'email'],
+                            ['phone', 'Phone Number *', '+91 XXXXX XXXXX', 'tel'],
+                            ['company', 'Company', 'Company / Organization', 'text']
+                          ].map(([field, label, placeholder, type]) => (
+                            <label key={field} className="block">
+                              <span className="block text-[11px] text-[#A1A1A7] mb-1.5">{label}</span>
+                              <input
+                                type={type}
+                                name={field}
+                                value={formData[field]}
+                                onChange={handleInputChange}
+                                placeholder={placeholder}
+                                className="w-full bg-[#07111F] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-[#686A70] outline-none focus:border-[#F2580E]/60 transition-colors"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Payment breakdown */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-[#F2580E] font-mono font-bold">02 / Summary</p>
+                            <h4 className="text-lg text-white font-serif font-semibold">Payment Breakdown</h4>
+                          </div>
+                          <FiCreditCard className="text-[#A1A1A7]" />
+                        </div>
+                        <div style={{ backgroundColor: TOKENS.bgDeep, borderColor: 'rgba(255,255,255,0.08)' }} className="rounded-[18px] border p-4 md:p-5 space-y-3">
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <span className="text-[#A1A1A7]">{paymentPlan.name} Package</span>
+                            <span className="text-white font-mono">₹{subtotal.toLocaleString('en-IN')}.00</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <span className="text-[#A1A1A7]">GST ({GST_RATE * 100}%)</span>
+                            <span className="text-white font-mono">₹{gst.toLocaleString('en-IN')}.00</span>
+                          </div>
+                          <div className="border-t border-white/10 pt-4 flex items-end justify-between gap-4">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Total Payable</p>
+                              <p className="text-xs text-[#686A70] mt-1">GST-inclusive</p>
+                            </div>
+                            <span className="text-2xl md:text-3xl font-bold font-mono text-[#F2580E]">₹{total.toLocaleString('en-IN')}.00</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Included features */}
+                      <div style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.07)' }} className="rounded-[16px] border p-4">
+                        <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono mb-3">Included in this package</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {paymentPlan.features.map((feature, index) => (
+                            <div key={index} className="flex items-start gap-2 text-xs text-[#C3C5CA]">
+                              <FiCheck className="text-[#F2580E] shrink-0 mt-0.5" />
+                              <span>{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Consent */}
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" name="consent" checked={formData.consent} onChange={handleInputChange} className="mt-1 accent-[#F2580E]" />
+                        <span className="text-[11px] leading-relaxed text-[#A1A1A7]">
+                          I confirm that the customer and billing details provided above are correct and I agree to proceed with this purchase. Applicable GST is included in the total shown above.
+                        </span>
+                      </label>
+
+                      {/* Pay */}
+                      <button
+                        type="button"
+                        disabled={isProcessingPayment || requiredCustomerFieldsMissing || !formData.consent}
+                        onClick={() => initiatePayment(paymentPlan)}
+                        style={{ opacity: isProcessingPayment || requiredCustomerFieldsMissing || !formData.consent ? 0.55 : 1 }}
+                        className="w-full py-3.5 rounded-xl bg-[#F2580E] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#FF7A18] transition-all disabled:cursor-not-allowed shadow-lg"
+                      >
+                        {isProcessingPayment ? <><FiLoader className="animate-spin" size={17} />Preparing Secure Payment...</> : <>Proceed to Pay ₹{total.toLocaleString('en-IN')}.00<FiArrowRight /></>}
+                      </button>
+
+                      <div className="flex items-center justify-center gap-2 text-[10px] text-[#686A70]">
+                        <FiShield className="text-[#A1A1A7]" />Secure payment powered by Razorpay
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ====================================================================
           CHAT MODAL
