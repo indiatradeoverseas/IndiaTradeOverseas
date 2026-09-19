@@ -2397,26 +2397,23 @@ export default function Stone() {
           )}
       </AnimatePresence>
 
-      {/* ---------- Premium Requirement Builder Modal (STONE) ---------- */}
+{/* Requirement Builder Modal */}
       <AnimatePresence>
         {showRequirementBuilder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
             onClick={() => setShowRequirementBuilder(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl
-                   bg-[#2B333A] border border-[#C5A059]/30"
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              {/* Header – brand gradient */}
-              <div className="flex items-center justify-between p-5 border-b border-[#C5A059]/30
-                        bg-gradient-to-r from-[#37424B] to-[#2B333A] rounded-t-2xl">
-                <h3 className="text-xl font-serif text-[#F4F2EE] uppercase tracking-wide">
+              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
                   Build Your Stone Requirement
                 </h3>
                 <button onClick={() => setShowRequirementBuilder(false)}
-                  className="p-1 rounded-lg text-[#A89E8E] hover:text-[#F4F2EE] hover:bg-[#C5A059]/20 transition">
+                  className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
                   <FiX size={24} />
                 </button>
               </div>

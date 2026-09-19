@@ -9,6 +9,7 @@ const authRoutes = require('./modules/auth/auth.routes');
 const adminAuthRoutes = require('./modules/admin-auth/adminAuth.routes');
 const userRoutes = require('./modules/users/user.routes');
 const leadRoutes = require('./modules/leads/lead.routes');
+const softLeadRoutes = require('./modules/leads/softLead.routes');
 const quotationRoutes = require('./modules/quotations/quotation.routes');
 const dispatchRoutes = require('./modules/dispatch/dispatch.routes');
 const paymentRoutes = require('./modules/payments/payment.routes');
@@ -105,7 +106,7 @@ const apiRoutes = [
   { path: '/users', router: userRoutes },
   { path: '/leads', router: leadRoutes },
   { path: '/ai/leads', router: leadRoutes },
-  // { path: '/soft-leads', router: softLeadRoutes },
+  { path: '/soft-leads', router: softLeadRoutes },
   { path: '/quotations', router: quotationRoutes },
   { path: '/dispatches', router: dispatchRoutes },
   { path: '/dispatch', router: dispatchRoutes },

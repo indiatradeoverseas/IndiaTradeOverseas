@@ -4418,25 +4418,23 @@ export default function RicePage() {
 
             </footer>
 
-            {/* ---------- Premium Requirement Builder Modal (RICE) ---------- */}
+{/* Requirement Builder Modal */}
             <AnimatePresence>
                 {showRequirementBuilder && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs"
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
                         onClick={() => setShowRequirementBuilder(false)}>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl
-                   bg-[#4A3819] border border-[#D9B85C]/30"
+                            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-300"
                             onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between p-5 border-b border-[#D9B85C]/30
-                        bg-gradient-to-r from-[#5A4422] to-[#4A3819] rounded-t-2xl">
-                                <h3 className="text-xl font-serif text-[#FFF9EC] uppercase tracking-wide">
+                            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+                                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
                                     Build Your Rice Requirement
                                 </h3>
                                 <button onClick={() => setShowRequirementBuilder(false)}
-                                    className="p-1 rounded-lg text-[#C9AE81] hover:text-[#FFF9EC] hover:bg-[#D9B85C]/20 transition">
+                                    className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
                                     <FiX size={24} />
                                 </button>
                             </div>
