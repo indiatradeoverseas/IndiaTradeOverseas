@@ -115,15 +115,17 @@ export default function ITOAds() {
   const [paymentPlan, setPaymentPlan] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  // GST shown transparently in checkout. The backend should independently
-  // validate the final amount before creating the Razorpay order.
-  const GST_RATE = 0.18;
+  // The supplied ITO Ads documents mention GST, but do NOT specify a GST
+  // percentage or confirm that GST is collected inside this Razorpay order.
+  // Do not hard-code 18% (or any other rate) in the frontend.
+  const GST_RATE = null;
 
   const getCheckoutAmounts = useCallback((pkg) => {
-    if (!pkg) return { subtotal: 0, gst: 0, total: 0 };
+    if (!pkg) return { subtotal: 0, gst: null, total: 0 };
     const subtotal = parseInt(pkg.price.replace(/[₹,]/g, ''), 10) || 0;
-    const gst = Math.round(subtotal * GST_RATE);
-    return { subtotal, gst, total: subtotal + gst };
+    // GST remains an applicable invoice item until the billing entity confirms
+    // the applicable rate and invoice treatment.
+    return { subtotal, gst: null, total: subtotal };
   }, []);
 
   // Form State
@@ -132,10 +134,13 @@ export default function ITOAds() {
     email: '',
     phone: '',
     company: '',
+    billingAddress: '',
+    billingState: '',
+    gstin: '',
     industry: '',
     objective: '',
     plan: 'Professional',
-    consent: true
+    consent: false
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
 
@@ -182,10 +187,10 @@ export default function ITOAds() {
     'positioning': 'ITO Ads sits at the intersection of Strategic, Creative, Digital and Performance‑Driven capabilities. We connect branding, creative, advertising, media and performance into one unified growth system.',
     'services': 'We deliver eight capability pillars: 1) Brand Strategy & Identity, 2) Digital Advertising, 3) Social Media & Content, 4) Creative & Campaign Production, 5) Performance Marketing, 6) Media Strategy & Planning, 7) Lead Generation & Growth Campaigns, 8) Technology, Data & Automation.',
     'process': 'Our 7‑step proven process: 1) Understand Your Business, 2) Research & Analysis, 3) Strategy Development, 4) Creative Development, 5) Campaign Launch, 6) Monitor & Optimize, 7) Report & Growth.',
-    'packages': 'We offer 4 performance packages: Starter (₹5,000/mo – 50 qualified leads), Growth (₹10,000/mo – 125 leads), Professional (₹15,000/mo – 200 leads – Most Popular), Scale (₹20,000/mo – 300 leads). Platform media spend and applicable GST are extra.',
+    'packages': 'We offer 4 performance packages: Starter (₹5,000/mo – estimated 50 qualified leads), Growth (₹10,000/mo – estimated 125 leads), Professional (₹15,000/mo – estimated 200 qualified leads – Most Popular), Scale (₹20,000/mo – estimated 300 qualified leads). Media spend is additional. Applicable GST and invoice treatment must be confirmed before checkout.',
     'how it works': 'Our 4‑stage qualification funnel: Raw Lead → Valid Lead (phone/email/business verified) → Validated Lead (commercial requirements & budget validated) → Qualified Lead (matched criteria, pushed to CRM within 60 seconds).',
     'lead quality': 'Multistage verification: contact data verification, BANT qualification, automatic deduplication. Non‑responsive/wrong‑number/duplicate leads reported within 7 business days are credited and replaced.',
-    'pricing': 'Starter ₹5,000/mo (₹100/lead), Growth ₹10,000/mo (₹80/lead), Professional ₹15,000/mo (₹75/lead), Scale ₹20,000/mo (≈₹66.67/lead). Media spend & GST billed separately.',
+    'pricing': 'Starter ₹5,000/mo, Growth ₹10,000/mo, Professional ₹15,000/mo, Scale ₹20,000/mo. These are service fees. Media spend is additional. The supplied ITO Ads documents do not specify a GST percentage; applicable GST and invoice treatment must be confirmed before checkout.',
     'targeting': 'Pan‑India precision targeting: industrial zone geo‑fencing, Tier‑1 & Tier‑2 trade clusters, localized campaign messaging, and custom geography per client.',
     'crm integration': 'Sub‑60 second webhook dispatch to your CRM, round‑robin agent routing, sales SLA escalations, instant WhatsApp & email notifications.',
     'reporting': 'Weekly video audits, transparent spend ledgers, continuous CAC optimization, live CPQL reporting, and actionable insights for next‑step improvements.',
@@ -292,11 +297,16 @@ export default function ITOAds() {
       const customerDetails = {
         name: formData.name || '',
         email: formData.email || '',
-        phone: formData.phone || ''
+        phone: formData.phone || '',
+        company: formData.company || '',
+        billingAddress: formData.billingAddress || '',
+        billingState: formData.billingState || '',
+        gstin: formData.gstin || ''
       };
 
-      // Calculate the GST-inclusive customer-facing amount.
-      // The backend should independently validate these values.
+      // The report says media spend is additional and GST/invoice treatment
+      // must be visible before checkout, but it does not specify a GST rate.
+      // This Razorpay order therefore represents the service fee only.
       const { subtotal, gst, total } = getCheckoutAmounts(pkg);
 
       if (!subtotal || !total) {
@@ -308,7 +318,9 @@ export default function ITOAds() {
         amount: total,
         subtotal,
         gst,
-        gstRate: GST_RATE * 100,
+        gstRate: GST_RATE,
+        mediaSpendIncluded: false,
+        paymentAmountBasis: 'service_fee_only',
         customerDetails
       });
 
@@ -337,7 +349,9 @@ export default function ITOAds() {
         },
         notes: {
           packageName: pkg.name,
-          leads: pkg.leads
+          leads: pkg.leads,
+          mediaSpendIncluded: 'false',
+          gstTreatment: 'applicable_per_invoice'
         },
         theme: {
           color: '#F2580E'
@@ -372,7 +386,9 @@ export default function ITOAds() {
         razorpay_signature: razorpayResponse.razorpay_signature,
         packageName: pkg.name,
         amount,
-        customerDetails
+        customerDetails,
+        mediaSpendIncluded: false,
+        gstTreatment: 'applicable_per_invoice'
       });
 
       if (verifyResult?.success) {
@@ -463,8 +479,7 @@ export default function ITOAds() {
       name: 'Starter',
       price: '₹5,000',
       period: '/mo',
-      leads: '50 Qualified Leads',
-      rate: '₹100 / lead',
+      leads: 'Estimated 50 qualified leads',
       subtitle: 'Best for initial campaign validation and niche trade tests.',
       features: ['Single campaign channel', 'Dedicated landing page', 'Standard lead verification', 'Email lead dispatch', 'Monthly performance summary']
     },
@@ -472,8 +487,7 @@ export default function ITOAds() {
       name: 'Growth',
       price: '₹10,000',
       period: '/mo',
-      leads: '125 Qualified Leads',
-      rate: '₹80 / lead',
+      leads: 'Estimated 125 qualified leads',
       subtitle: 'Designed for scaling operations demanding predictable flow.',
       features: ['Dual-channel targeting', 'A/B landing page variants', 'BANT lead scoring', 'Instant WhatsApp notifications', 'Bi-weekly optimization reviews']
     },
@@ -481,8 +495,7 @@ export default function ITOAds() {
       name: 'Professional',
       price: '₹15,000',
       period: '/mo',
-      leads: '200 Qualified Leads',
-      rate: '₹75 / lead',
+      leads: 'Estimated 200 qualified leads',
       popular: true,
       subtitle: 'The primary choice for ambitious multi-channel market expansion.',
       features: ['Full omni-channel acquisition', 'Custom conversion funnel', 'Full CRM webhook integration', 'Sub-15m team response SLA', 'Weekly performance dashboard']
@@ -491,8 +504,7 @@ export default function ITOAds() {
       name: 'Scale',
       price: '₹20,000',
       period: '/mo',
-      leads: '300 Qualified Leads',
-      rate: '≈ ₹66.67 / lead',
+      leads: 'Estimated 300 qualified leads',
       subtitle: 'High-volume lead engine built for nationwide dominance.',
       features: ['Custom target geography', 'Dedicated campaign manager', 'Priority lead validation', 'Live API pipeline sync', 'Executive monthly strategy call']
     }
@@ -834,7 +846,7 @@ export default function ITOAds() {
             Acquisition Packages
           </h2>
           <p className="mt-2 text-xs text-[#A1A1A7]">
-            Note: Platform media spend and applicable GST are excluded and billed directly at transparent cost.
+            Service fees shown below exclude platform media spend. Applicable GST and invoice treatment must be confirmed before checkout; no GST percentage is specified in the supplied ITO Ads documents.
           </p>
         </div>
 
@@ -863,7 +875,7 @@ export default function ITOAds() {
                   </span>
                   <span className="text-xs text-[#A1A1A7]">{pkg.period}</span>
                   <div style={{ color: TOKENS.brandOrange }} className="text-xs font-mono font-semibold mt-1">
-                    {pkg.leads} ({pkg.rate})
+                    {pkg.leads}
                   </div>
                 </div>
 
@@ -972,7 +984,7 @@ export default function ITOAds() {
           <div>
             <h5 className="font-semibold text-[#F7F6F6] mb-3 uppercase tracking-wider">Governance</h5>
             <p className="font-light leading-relaxed mb-2">
-              India Trade Overseas. All commercial representations subject to signed service contracts.
+              India Trade Overseas. All commercial representations subject to signed service contracts. Service fees exclude platform media spend; applicable GST/tax treatment is stated on the final invoice.
             </p>
             <p>© {new Date().getFullYear()} ITO Ads. All Rights Reserved.</p>
           </div>
@@ -981,7 +993,7 @@ export default function ITOAds() {
 
       {/* ====================================================================
           PREMIUM CHECKOUT MODAL
-          Package -> Customer Details -> GST Breakdown -> Razorpay
+          Package -> Billing Details -> Commercial Breakdown -> Razorpay
       ==================================================================== */}
       <AnimatePresence>
         {isCheckoutOpen && paymentPlan && (
@@ -1002,7 +1014,7 @@ export default function ITOAds() {
               {(() => {
                 const { subtotal, gst, total } = getCheckoutAmounts(paymentPlan);
                 const requiredCustomerFieldsMissing =
-                  !formData.name.trim() || !formData.email.trim() || !formData.phone.trim();
+                  !formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.company.trim() || !formData.billingAddress.trim() || !formData.billingState.trim();
 
                 return (
                   <>
@@ -1058,6 +1070,11 @@ export default function ITOAds() {
                             </p>
                           </div>
                         </div>
+                        <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider font-mono text-[#A1A1A7]">
+                          <span className="px-2.5 py-1 rounded-full border border-white/10">Service Fee</span>
+                          <span className="px-2.5 py-1 rounded-full border border-white/10">Media Spend Extra</span>
+                          <span className="px-2.5 py-1 rounded-full border border-white/10">GST As Applicable</span>
+                        </div>
                       </div>
 
                       {/* Customer details */}
@@ -1074,7 +1091,10 @@ export default function ITOAds() {
                             ['name', 'Full Name *', 'Enter your full name', 'text'],
                             ['email', 'Email Address *', 'you@company.com', 'email'],
                             ['phone', 'Phone Number *', '+91 XXXXX XXXXX', 'tel'],
-                            ['company', 'Company', 'Company / Organization', 'text']
+                            ['company', 'Company / Organization *', 'Company name', 'text'],
+                            ['billingAddress', 'Billing Address *', 'Full billing address', 'text'],
+                            ['billingState', 'Billing State *', 'State / Union Territory', 'text'],
+                            ['gstin', 'GSTIN (if applicable)', 'e.g. 19XXXXXXXXXX1Z1', 'text']
                           ].map(([field, label, placeholder, type]) => (
                             <label key={field} className="block">
                               <span className="block text-[11px] text-[#A1A1A7] mb-1.5">{label}</span>
@@ -1102,20 +1122,35 @@ export default function ITOAds() {
                         </div>
                         <div style={{ backgroundColor: TOKENS.bgDeep, borderColor: 'rgba(255,255,255,0.08)' }} className="rounded-[18px] border p-4 md:p-5 space-y-3">
                           <div className="flex items-center justify-between gap-4 text-sm">
-                            <span className="text-[#A1A1A7]">{paymentPlan.name} Package</span>
+                            <span className="text-[#A1A1A7]">{paymentPlan.name} Service Fee</span>
                             <span className="text-white font-mono">₹{subtotal.toLocaleString('en-IN')}.00</span>
                           </div>
-                          <div className="flex items-center justify-between gap-4 text-sm">
-                            <span className="text-[#A1A1A7]">GST ({GST_RATE * 100}%)</span>
-                            <span className="text-white font-mono">₹{gst.toLocaleString('en-IN')}.00</span>
+                          <div className="flex items-start justify-between gap-4 text-sm">
+                            <span className="text-[#A1A1A7]">Platform Media Spend</span>
+                            <span className="text-right text-[#F3D0AB] font-medium">Additional<br /><span className="text-[10px] text-[#686A70]">Not included in service fee</span></span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4 text-sm">
+                            <span className="text-[#A1A1A7]">GST / Taxes</span>
+                            <span className="text-right text-[#F3D0AB] font-medium">Applicable as invoiced<br /><span className="text-[10px] text-[#686A70]">Rate not specified in source documents</span></span>
                           </div>
                           <div className="border-t border-white/10 pt-4 flex items-end justify-between gap-4">
                             <div>
-                              <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Total Payable</p>
-                              <p className="text-xs text-[#686A70] mt-1">GST-inclusive</p>
+                              <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Payable in this Razorpay order</p>
+                              <p className="text-xs text-[#686A70] mt-1">Service fee only; media spend and applicable GST are excluded.</p>
                             </div>
-                            <span className="text-2xl md:text-3xl font-bold font-mono text-[#F2580E]">₹{total.toLocaleString('en-IN')}.00</span>
+                            <span className="text-2xl md:text-3xl font-bold font-mono text-[#F2580E] whitespace-nowrap">₹{total.toLocaleString('en-IN')}.00</span>
                           </div>
+                        </div>
+
+                        <div className="rounded-[14px] border border-[#F2580E]/20 bg-[#F2580E]/5 p-4 text-xs leading-relaxed text-[#C3C5CA]">
+                          <p className="font-semibold text-white mb-1">Commercial terms to confirm before payment</p>
+                          <ul className="space-y-1 text-[#A1A1A7]">
+                            <li>• Media spend is additional and must be shown separately.</li>
+                            <li>• GST and invoice treatment must be visible before checkout.</li>
+                            <li>• Lead quantities are estimates unless a written category-specific guarantee exists.</li>
+                            <li>• Campaign preparation, reporting, renewal, cancellation and refund terms must be defined in the agreement.</li>
+                            <li>• The final billing entity should match the agreement, Razorpay account and GST invoice.</li>
+                          </ul>
                         </div>
                       </div>
 
@@ -1136,7 +1171,7 @@ export default function ITOAds() {
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input type="checkbox" name="consent" checked={formData.consent} onChange={handleInputChange} className="mt-1 accent-[#F2580E]" />
                         <span className="text-[11px] leading-relaxed text-[#A1A1A7]">
-                          I confirm that the customer and billing details provided above are correct and I agree to proceed with this purchase. Applicable GST is included in the total shown above.
+                          I confirm that the customer and billing details provided above are correct. I understand that platform media spend is additional, and that applicable GST/tax treatment will be stated on the invoice. I agree to proceed subject to the applicable service agreement and commercial policies.
                         </span>
                       </label>
 
@@ -1148,7 +1183,7 @@ export default function ITOAds() {
                         style={{ opacity: isProcessingPayment || requiredCustomerFieldsMissing || !formData.consent ? 0.55 : 1 }}
                         className="w-full py-3.5 rounded-xl bg-[#F2580E] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#FF7A18] transition-all disabled:cursor-not-allowed shadow-lg"
                       >
-                        {isProcessingPayment ? <><FiLoader className="animate-spin" size={17} />Preparing Secure Payment...</> : <>Proceed to Pay ₹{total.toLocaleString('en-IN')}.00<FiArrowRight /></>}
+                        {isProcessingPayment ? <><FiLoader className="animate-spin" size={17} />Preparing Secure Payment...</> : <>Pay Service Fee ₹{total.toLocaleString('en-IN')}.00<FiArrowRight /></>}
                       </button>
 
                       <div className="flex items-center justify-center gap-2 text-[10px] text-[#686A70]">
