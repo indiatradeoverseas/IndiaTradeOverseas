@@ -1,4 +1,6 @@
+import CustomerPortal from './pages/public/CustomerPortal';
 import React, { useEffect } from 'react';
+import CommercialRequirement from './components/CommercialRequirement';
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,7 +14,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop';
-import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
+import { DPR_EVENTS, pushDataLayerEvent, pushDprEvent } from './utils/analytics';
 
 import Home from './pages/public/Home';
 import Products from './pages/public/Products';
@@ -63,6 +65,7 @@ import SalesPerformance from './pages/crm/SalesPerformance';
 import SalesDashboard from './pages/crm/SalesDashboard';
 import Followup from './pages/crm/Followup';
 import TrialDashboard from './pages/crm/TrialDashboard';
+import ControlledCampaigns from './pages/crm/ControlledCampaigns';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
@@ -78,11 +81,111 @@ import PortalLayout from './components/Layout/PortalLayout';
 import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
+import TrackingConsentBanner from './components/privacy/TrackingConsentBanner';
 import Prakriti from './pages/public/Prakriti';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
 import Disclaimer from './pages/legal/Disclaimer';
 import FraudPaymentPolicy from './pages/legal/FraudPaymentPolicy';
+
+
+
+/* =========================================================
+   MASTER DPR v4.0 — PHASE 1 ROUTE TRACKING
+
+   External acquisition analytics is intentionally limited to
+   known public website routes. Internal CRM/auth routes can contain
+   identifiers or operational context and must not be sent to GTM/GA4/Meta.
+
+   `virtual_page_view` is a diagnostic/navigation event.
+   `landing_page_view` is the canonical DPR acquisition event and is
+   emitted only for commercial landing experiences.
+========================================================= */
+
+const PUBLIC_PAGE_META = Object.freeze({
+  '/': {
+    page_type: 'homepage'
+  },
+  '/products': {
+    page_type: 'product_index'
+  },
+  '/about': {
+    page_type: 'corporate'
+  },
+  '/contact': {
+    page_type: 'contact'
+  },
+  '/careers': {
+    page_type: 'careers'
+  },
+  '/quote-request': {
+    page_type: 'commercial_enquiry'
+  },
+  '/our-services': {
+    page_type: 'services'
+  },
+  '/prakriti/tea': {
+    page_type: 'commercial_landing',
+    vertical: 'tea',
+    landing_page_type: 'product'
+  },
+  '/prakriti/rice': {
+    page_type: 'commercial_landing',
+    vertical: 'rice',
+    landing_page_type: 'product'
+  },
+  '/stone': {
+    page_type: 'commercial_landing',
+    vertical: 'stone',
+    landing_page_type: 'product'
+  },
+  '/ito-ads': {
+    page_type: 'commercial_landing',
+    vertical: 'ito_ads',
+    landing_page_type: 'service'
+  },
+  '/privacy-policy': {
+    page_type: 'legal'
+  },
+  '/terms': {
+    page_type: 'legal'
+  },
+  '/terms-and-conditions': {
+    page_type: 'legal'
+  },
+  '/fraud-payment-policy': {
+    page_type: 'legal'
+  },
+  '/disclaimer': {
+    page_type: 'legal'
+  }
+});
+
+
+function getPublicPageMeta(pathname) {
+  if (PUBLIC_PAGE_META[pathname]) {
+    return PUBLIC_PAGE_META[pathname];
+  }
+
+  if (pathname.startsWith('/products/')) {
+    return {
+      page_type: 'product_detail'
+    };
+  }
+
+  return null;
+}
+
+
+function getCommercialLandingMeta(pathname) {
+  const pageMeta = getPublicPageMeta(pathname);
+
+  if (!pageMeta || pageMeta.page_type !== 'commercial_landing') {
+    return null;
+  }
+
+  return pageMeta;
+}
 
 
 
@@ -116,6 +219,41 @@ function isAdminUser(user) {
 }
 
 
+function isControlledCampaignUser(user) {
+  if (!user) return false;
+
+  const role = String(user?.role || '').trim().toUpperCase();
+  const department = String(user?.department || '').trim().toUpperCase();
+  const position = String(user?.position || '').trim().toUpperCase();
+
+  const isManagement =
+    role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'SUPER_ADMIN' ||
+    role.includes('FOUNDER') ||
+    department === 'ADMIN' ||
+    department === 'MANAGEMENT' ||
+    position.includes('ADMIN') ||
+    position.includes('FOUNDER') ||
+    position.includes('CEO') ||
+    position.includes('DIRECTOR') ||
+    position.includes('OWNER');
+
+  return (
+    isManagement ||
+    department === 'MARKETING' ||
+    department === 'OPERATIONS' ||
+    department === 'IT'
+  );
+}
+
+
+function ManagementRoute({children}) {
+  const {user,loading}=useAuth();
+  if(loading)return null;
+  return ['ADMIN','FOUNDER','CO_FOUNDER','SUPER_ADMIN'].includes(user?.role)||['ADMIN','MANAGEMENT'].includes(user?.department)?children:<Navigate to="/crm/dashboard"/>;
+}
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -184,17 +322,48 @@ function AppLayout() {
   const location = useLocation();
 
   useEffect(() => {
-    pushDataLayerEvent('virtual_page_view', {
-      page_path: location.pathname + location.search,
-      page_location: window.location.href,
-      page_title: document.title
+    if (loading) {
+      return undefined;
+    }
+
+    const pageMeta = getPublicPageMeta(location.pathname);
+
+    /*
+     * Do not send CRM, employee/auth, transport or other internal
+     * application routes to external acquisition analytics.
+     */
+    if (!pageMeta) {
+      return undefined;
+    }
+
+    /*
+     * Let the route render first so page-level SEO/meta hooks have an
+     * opportunity to update document.title before we capture it.
+     */
+    const frameId = window.requestAnimationFrame(() => {
+      const basePayload = {
+        page_path: location.pathname,
+        page_title: document.title,
+        page_type: pageMeta.page_type
+      };
+
+      pushDataLayerEvent('virtual_page_view', basePayload);
+
+      const landingMeta = getCommercialLandingMeta(location.pathname);
+
+      if (landingMeta) {
+        pushDprEvent(DPR_EVENTS.LANDING_PAGE_VIEWED, {
+          ...basePayload,
+          vertical: landingMeta.vertical,
+          landing_page_type: landingMeta.landing_page_type
+        });
+      }
     });
-  }, [location.pathname, location.search]);
 
-
-  useEffect(() => {
-    initActivityTracking();
-  }, []);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [loading, location.pathname]);
 
 
   const isCRM = location.pathname.startsWith('/crm');
@@ -660,9 +829,9 @@ function AppLayout() {
             <Route
               path="/crm/founder"
               element={
-                <AdminRoute>
+                <ManagementRoute>
                   <FounderDashboard />
-                </AdminRoute>
+                </ManagementRoute>
               }
             />
 
@@ -775,7 +944,21 @@ function AppLayout() {
             <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
             <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
             <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-            <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
+            <Route path="/founder" element={<ManagementRoute><FounderDashboard /></ManagementRoute>} />
+
+            <Route
+              path="/crm/controlled-campaigns"
+              element={
+                isControlledCampaignUser(user) ? (
+                  <ControlledCampaigns />
+                ) : (
+                  <Navigate
+                    to="/crm/dashboard"
+                    replace
+                  />
+                )
+              }
+            />
 
             <Route
               path="*"
@@ -822,6 +1005,7 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/quote-request" element={<QuoteRequest />} />
+          <Route path="/customer-portal" element={<CustomerPortal />} />
           <Route path="/our-services" element={<OurServices />} />
           <Route path="/prakriti" element={<Navigate to="/prakriti/tea" replace />} />
           <Route path="/prakriti/tea" element={<Prakriti />} />
@@ -835,9 +1019,24 @@ function AppLayout() {
           <Route path="/disclaimer" element={<Disclaimer />} />
         </Routes>
       </main>
+      {location.pathname === '/ito-ads' && (
+        <CommercialRequirement
+          key={location.pathname}
+          category="ITO_ADS"
+        />
+      )}
       {!isITOAds && <Footer />}
 
       {!isITOAds && <ChatWidget />}
+
+      {/*
+        Master DPR v4.0 — Phase 1 consent management.
+
+        This is intentionally rendered only on the public website.
+        CRM/auth/employee routes are excluded from acquisition analytics,
+        so they do not need the customer-facing tracking banner.
+      */}
+      <TrackingConsentBanner />
     </div>
   );
 }

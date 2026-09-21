@@ -1,3 +1,4 @@
+import { BUSINESS_WHATSAPP, businessWhatsAppUrl } from '../../config/business';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -32,6 +33,7 @@ import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import CommercialRequirement from '../../components/CommercialRequirement';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
@@ -420,6 +422,10 @@ export default function RicePage() {
         canonicalPath: '/prakriti/rice'
     });
 
+    useEffect(() => {
+        pushDataLayerEvent('view_product', { product_vertical: 'RICE', source_page: '/prakriti/rice' });
+    }, []);
+
 
     /* =====================================================
        ACCESS STATE
@@ -429,20 +435,7 @@ export default function RicePage() {
 
     const [isSessionLoading, setIsLoadingSession] = useState(true);
 
-    const [showEntryGate, setShowEntryGate] = useState(() => {
-
-        if (
-            import.meta.env.DEV &&
-            new URLSearchParams(window.location.search).get('previewTestimonials') === '1'
-        ) {
-            return false;
-        }
-
-        return !(
-            localStorage.getItem('rice_distributor_id') &&
-            localStorage.getItem('distributor_token')
-        );
-    });
+    const [showEntryGate, setShowEntryGate] = useState(false);
 
     const [distributorId, setDistributorId] = useState('');
 
@@ -1155,7 +1148,6 @@ export default function RicePage() {
                 color: '#5A4422'
             }}
         >
-
             <style
                 dangerouslySetInnerHTML={{
                     __html: `
@@ -2605,6 +2597,13 @@ export default function RicePage() {
 
                     </header>
 
+      {userAccessLayer === 1 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+          <CommercialRequirement category="RICE" />
+        </div>
+      )}
+
+
 
                     {/* =================================================
                         PRODUCT CATEGORIES
@@ -3914,7 +3913,7 @@ export default function RicePage() {
 
 
                                 <a
-                                    href="https://wa.me/911169262028?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20rice%20supply.%20Please%20share%20availability%20and%20quotation%20requirements."
+                                    href={businessWhatsAppUrl('Hello India Trade Overseas. I need bulk rice supply. Please share availability and quotation requirements.')}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() =>

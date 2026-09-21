@@ -16,6 +16,83 @@ const blockVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 20 } }
 };
 
+function getConfirmedCommercialTotal(quotation) {
+  const terms = quotation?.commercialTerms;
+
+  if (!terms || !terms.confirmedAt) {
+    return null;
+  }
+
+  const requiredTextFields = [
+    'source',
+    'product',
+    'destination',
+    'unit',
+    'deliveryTerms',
+    'paymentTerms',
+    'reference',
+    'currency',
+  ];
+
+  if (requiredTextFields.some((field) => !String(terms[field] || '').trim())) {
+    return null;
+  }
+
+  if (!/^[A-Z]{3}$/.test(String(terms.currency || '').trim().toUpperCase())) {
+    return null;
+  }
+
+  const quantity = Number(terms.quantity);
+  const unitPrice = Number(terms.unitPrice);
+  const freight = Number(terms.freight);
+  const tax = Number(terms.tax);
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    !Number.isFinite(unitPrice) ||
+    unitPrice < 0 ||
+    !Number.isFinite(freight) ||
+    freight < 0 ||
+    !Number.isFinite(tax) ||
+    tax < 0
+  ) {
+    return null;
+  }
+
+  const validUntil = new Date(terms.validUntil);
+  if (!Number.isFinite(validUntil.getTime()) || validUntil <= new Date()) {
+    return null;
+  }
+
+  return Math.round((quantity * unitPrice + freight + tax) * 100) / 100;
+}
+
+function formatCommercialAmount(value, currency = '') {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return '—';
+  }
+
+  const code = String(currency || '').trim().toUpperCase();
+
+  if (!/^[A-Z]{3}$/.test(code)) {
+    return amount.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
+
+  try {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${code} ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  }
+}
+
+
 export default function Quotations() {
   const { user } = useAuth();
   const [quotations, setQuotations] = useState([]);
@@ -45,19 +122,40 @@ export default function Quotations() {
     }
   };
 
-  const handleApprove = async (id, approvedPrice) => {
-    const price = prompt('Enter approved price:', approvedPrice);
-    if (price) {
-      try {
-        const response = await quotationsApi.approveQuotation(id, { approvedPrice: parseFloat(price) });
-        if (response.success) {
-          toast.success('Quotation approved successfully');
-          fetchQuotations();
-        }
-      } catch (error) {
-        console.error('Error approving quotation:', error);
-        toast.error('Failed to commit approval metric.');
+  const handleApprove = async (quotation) => {
+    const confirmedTotal = getConfirmedCommercialTotal(quotation);
+
+    if (confirmedTotal === null) {
+      toast.error('Operations must confirm current price, freight, tax and commercial terms before Management approval.');
+      return;
+    }
+
+    const currency = quotation.commercialTerms?.currency || '';
+    const price = prompt(
+      `Approve Operations-confirmed quotation total (${currency || 'currency pending'}):`,
+      String(confirmedTotal)
+    );
+
+    if (price === null) return;
+
+    const numericPrice = Number(price);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      toast.error('Approved price must be a positive number.');
+      return;
+    }
+
+    try {
+      const response = await quotationsApi.approveQuotation(quotation._id, {
+        approvedPrice: numericPrice,
+      });
+
+      if (response.success) {
+        toast.success('Quotation approved successfully');
+        fetchQuotations();
       }
+    } catch (error) {
+      console.error('Error approving quotation:', error);
+      toast.error(error.response?.data?.message || 'Failed to approve quotation.');
     }
   };
 
@@ -104,7 +202,9 @@ export default function Quotations() {
     return cat === sectorFilter;
   });
 
-  const pendingFilteredQuotations = filteredQuotations.filter(q => q.status === 'PENDING');
+  const pendingFilteredQuotations = filteredQuotations.filter(
+    q => q.status === 'PENDING' && getConfirmedCommercialTotal(q) !== null
+  );
 
   const handleSelectAll = () => {
     const pendingIds = pendingFilteredQuotations.map(q => q._id);
@@ -125,20 +225,32 @@ export default function Quotations() {
 
   const handleBulkApprove = async () => {
     if (selectedIds.length === 0) return;
-    const input = prompt(`Enter Approved Price for all ${selectedIds.length} selected quotations:\n(Leave blank to approve each quote at its own proposed base price)`);
-    
-    if (input === null) return; // User clicked Cancel
+
+    const selectedQuotations = filteredQuotations.filter(
+      q => selectedIds.includes(q._id)
+    );
+
+    if (selectedQuotations.some(q => getConfirmedCommercialTotal(q) === null)) {
+      toast.error('Every selected quotation must have current Operations-confirmed commercial terms.');
+      return;
+    }
 
     try {
-      const payload = {
-        quotationIds: selectedIds,
-        ...(input.trim() !== '' ? { approvedPrice: parseFloat(input) } : {})
-      };
-      const response = await quotationsApi.bulkApproveQuotations(payload);
-      if (response.success) {
-        toast.success(`🎉 Bulk Approved ${response.data.approvedCount} quotations successfully!`);
-        fetchQuotations();
+      let approvedCount = 0;
+
+      for (const quotation of selectedQuotations) {
+        const approvedPrice = getConfirmedCommercialTotal(quotation);
+        const response = await quotationsApi.approveQuotation(quotation._id, {
+          approvedPrice,
+        });
+
+        if (response.success) {
+          approvedCount += 1;
+        }
       }
+
+      toast.success(`Approved ${approvedCount} quotation${approvedCount === 1 ? '' : 's'} successfully.`);
+      fetchQuotations();
     } catch (error) {
       console.error('Error bulk approving quotations:', error);
       toast.error(error.response?.data?.message || 'Failed to execute bulk approval.');
@@ -300,7 +412,7 @@ export default function Quotations() {
                   <th className="py-4 px-5">Lead / Client Name</th>
                   <th className="py-4 px-5">Commodity Sector</th>
                   <th className="py-4 px-5">Requested By</th>
-                  <th className="py-4 px-5">Proposed Base Price</th>
+                  <th className="py-4 px-5">Confirmed Commercial Total</th>
                   <th className="py-4 px-5">Approved Price</th>
                   <th className="py-4 px-5 text-center">Timestamp</th>
                   <th className="py-4 px-5 text-center">Execution Deck</th>
@@ -320,7 +432,7 @@ export default function Quotations() {
                   filteredQuotations.map((quotation) => (
                     <tr key={quotation._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
                       <td className="py-4 px-4 text-center shrink-0 w-10">
-                        {quotation.status === 'PENDING' ? (
+                        {quotation.status === 'PENDING' && getConfirmedCommercialTotal(quotation) !== null ? (
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(quotation._id)}
@@ -359,12 +471,37 @@ export default function Quotations() {
                         {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Sales Representative'}
                       </td>
 
-                      <td className="py-4 px-5 font-mono font-bold text-sm text-[var(--crm-heading)]">
-                        {quotation.employeeRequestedPrice ? `₹${quotation.employeeRequestedPrice.toLocaleString('en-IN')}` : '₹—'}
+                      <td className="py-4 px-5 font-mono text-sm text-[var(--crm-heading)]">
+                        {(() => {
+                          const total = getConfirmedCommercialTotal(quotation);
+                          const currency = quotation.commercialTerms?.currency || '';
+
+                          if (total === null) {
+                            return (
+                              <span className="text-[10px] uppercase tracking-wider text-amber-400">
+                                Awaiting Operations terms
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <div className="flex flex-col">
+                              <span className="font-bold">{formatCommercialAmount(total, currency)}</span>
+                              <span className="text-[9px] text-[var(--crm-ink-faint)] font-normal">
+                                Product + freight + tax
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td className="py-4 px-5 font-mono font-bold text-sm text-[var(--crm-positive)]">
-                        {quotation.approvedPrice ? `₹${quotation.approvedPrice.toLocaleString('en-IN')}` : '—'}
+                        {quotation.approvedPrice
+                          ? formatCommercialAmount(
+                              quotation.approvedPrice,
+                              quotation.commercialTerms?.currency
+                            )
+                          : '—'}
                       </td>
 
                       <td className="py-4 px-5 text-center font-mono text-[var(--crm-ink-faint)]">
@@ -399,12 +536,22 @@ export default function Quotations() {
                             );
                           }
 
+                          const commercialReady = getConfirmedCommercialTotal(quotation) !== null;
+
+                          if (canApprove && !commercialReady) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-950/40 px-2 py-1 border border-amber-700/40 rounded-sm">
+                                <FiClock size={10} /> Awaiting Ops Terms
+                              </span>
+                            );
+                          }
+
                           return canApprove ? (
                             <div className="flex justify-center items-center gap-2.5">
                               <motion.button 
                                 whileHover={{ scale: 1.08 }}
                                 whileTap={{ scale: 0.92 }}
-                                onClick={() => handleApprove(quotation._id, quotation.employeeRequestedPrice)} 
+                                onClick={() => handleApprove(quotation)} 
                                 className="w-8 h-8 rounded-sm bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/20 text-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md" 
                                 title="Approve Quote"
                               >

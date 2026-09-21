@@ -1,3 +1,4 @@
+import AcquisitionReport from '../../components/crm/AcquisitionReport';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +8,7 @@ import { leaveApi } from '../../api/leave';
 import { salesApi } from '../../api/sales';
 import { careersApi } from '../../api/careers';
 import { employeeSignupApi } from '../../api/employee-signup';
+import controlledCampaignApi from '../../api/controlledCampaigns';
 import {
   FiUsers, FiTrendingUp, FiCalendar, FiBriefcase, FiDollarSign, FiSearch,
   FiCheckCircle, FiXCircle, FiArrowRight, FiAlertCircle, FiTarget,
@@ -72,7 +74,7 @@ const STATUS_STYLES = {
   REJECTED: { color: 'var(--crm-danger)', bg: 'var(--crm-danger-bg)', border: 'var(--crm-danger-bg)' }
 };
 
-const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
+const fmtCurrency = (val, currency) => typeof val === 'number' && currency ? `${currency} ${val.toLocaleString('en-IN')}` : 'Unavailable';
 const fmtNumber = (val) => (val || 0).toLocaleString('en-IN');
 const formatDate = (d) => d.toISOString().slice(0, 10);
 
@@ -116,13 +118,13 @@ const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptC
     [''],
     ['REVENUE & PAYMENTS'],
     ['Metric', 'Value'],
-    ['Total Revenue Collected (All Time)', fmtCurrency(summary.revenue?.totalCollected || 0)],
+    ['Total Revenue Collected (All Time)', fmtCurrency(summary.revenue?.totalCollected,summary.revenue?.currency)],
     ['Pending Payments Count', summary.payments?.pendingCount || 0],
     ['Pending Payments Value', fmtCurrency(summary.payments?.pendingValue || 0)],
     [''],
     ['MONTHLY REVENUE TREND'],
     ['Month', 'Collected (₹)'],
-    ...(summary.revenue?.monthlyTrend || []).map(m => [m.month, fmtCurrency(m.collected)]),
+    ...(summary.revenue?.monthlyTrend || []).map(m => [m.month, fmtCurrency(m.collected,m.currency)]),
     [''],
     ['TRANSPORT & LOGISTICS'],
     ['Metric', 'Value'],
@@ -259,6 +261,7 @@ export default function FounderDashboard() {
   const [employees, setEmployees] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [controlledCampaignSnapshot, setControlledCampaignSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -288,7 +291,57 @@ export default function FounderDashboard() {
     role: 'EMPLOYEE', status: 'ACTIVE', salary: 0, joiningDate: new Date().toISOString().split('T')[0]
   });
 
-  useEffect(() => { fetchAll(); }, []);
+  const fetchControlledCampaignSnapshot = async () => {
+    try {
+      const listResponse = await controlledCampaignApi.list();
+      const listData = listResponse?.data ?? listResponse ?? {};
+      const rows = Array.isArray(listData?.campaigns)
+        ? listData.campaigns
+        : [];
+
+      if (rows.length === 0) {
+        setControlledCampaignSnapshot(null);
+        return;
+      }
+
+      const latest = rows[0];
+      const campaignId = latest?.campaign?._id;
+      let metrics = null;
+
+      if (campaignId) {
+        try {
+          const metricsResponse = await controlledCampaignApi.getMetrics(campaignId);
+          metrics = metricsResponse?.data ?? metricsResponse ?? null;
+        } catch (metricsError) {
+          console.warn(
+            'Controlled campaign metrics are not available yet:',
+            metricsError?.message || metricsError
+          );
+        }
+      }
+
+      setControlledCampaignSnapshot({
+        campaign: latest?.campaign || null,
+        readiness: latest?.readiness || null,
+        metrics
+      });
+    } catch (campaignError) {
+      /*
+       * Phase 4 summary must never make the rest of the Founder Command Center
+       * unavailable. Backend RBAC/configuration remains authoritative.
+       */
+      console.warn(
+        'Controlled campaign snapshot could not be loaded:',
+        campaignError?.message || campaignError
+      );
+      setControlledCampaignSnapshot(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchAll();
+    fetchControlledCampaignSnapshot();
+  }, []);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -464,8 +517,8 @@ export default function FounderDashboard() {
     { title: 'Total Employees', value: activeEmployees.length, subtitle: `${employees.length} total staff`, icon: FiUsers, tone: 'ink' },
     { title: 'Active Leads', value: summary?.activeLeads || 0, subtitle: 'Pipeline in progress', icon: FiTrendingUp, tone: 'info' },
     { title: 'Completed & Delivered', value: summary?.completedLeads || 0, subtitle: `${summary?.deliveredLeads || 0} delivered`, icon: FiCheckCircle, tone: 'positive' },
-    { title: 'Payment Received', value: summary?.paidLeads || 0, subtitle: `${fmtCurrency(summary?.revenue?.totalCollected)} total`, icon: FiCreditCard, tone: 'positive' },
-    { title: 'Quotations Sent', value: summary?.quotations?.sent || summary?.quotations?.total || 0, subtitle: `${summary?.quotations?.approved || 0} approved`, icon: FiFileText, tone: 'accent' },
+    { title: 'Payment Received', value: summary?.paidLeads || 0, subtitle: `${fmtCurrency(summary?.revenue?.totalCollected,summary?.revenue?.currency)} total`, icon: FiCreditCard, tone: 'positive' },
+    { title: 'Quotations Sent', value: summary?.quotations?.sent ?? 0, subtitle: `${summary?.quotations?.approved || 0} approved`, icon: FiFileText, tone: 'accent' },
     { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, subtitle: `${summary?.pendingOrders || 0} pending pipeline`, icon: FiCheckSquare, tone: 'positive' },
     { title: 'Total Conversion %', value: `${summary?.conversionRate || (summary?.totalLeads > 0 ? Math.round(((summary?.completedLeads || 0) / summary?.totalLeads) * 100) : 0)}%`, subtitle: `${summary?.completedLeads || 0} / ${summary?.totalLeads || 0} won`, icon: FiZap, tone: 'positive' },
     { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), subtitle: `${summary?.payments?.pendingCount || 0} invoices due`, icon: FiAlertCircle, tone: 'danger' }
@@ -513,7 +566,7 @@ export default function FounderDashboard() {
           <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
             <FiPlus size={12} /> <span>Add Employee</span>
           </button>
-          <button onClick={fetchAll} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)', border: '1px solid', borderColor: 'var(--crm-line)' }}>
+          <button onClick={() => { fetchAll(); fetchControlledCampaignSnapshot(); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)', border: '1px solid', borderColor: 'var(--crm-line)' }}>
             <FiRefreshCw size={12} /> <span>Refresh</span>
           </button>
           <button
@@ -533,9 +586,172 @@ export default function FounderDashboard() {
           ))}
         </motion.div>
 
+        {/* Master DPR v4.0 — Phase 4 Controlled Campaign Management Snapshot */}
+        <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
+          <SectionHeader
+            icon={FiTarget}
+            title="Controlled Stone Campaign"
+            action={
+              <Link
+                to="/crm/controlled-campaigns"
+                className="text-[9px] sm:text-[10px] uppercase flex items-center gap-1 hover:underline"
+                style={{ color: 'var(--crm-accent)' }}
+              >
+                Open Workbench <FiExternalLink size={10} />
+              </Link>
+            }
+          />
+
+          {!controlledCampaignSnapshot?.campaign ? (
+            <div className="p-4 sm:p-5">
+              <EmptyState
+                title="No controlled campaign defined"
+                description="Create the governed one-product, one-market Stone test in the Controlled Campaign workbench using real Operations inputs."
+              />
+            </div>
+          ) : (
+            <div className="p-4 sm:p-5 space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span
+                      className="px-2 py-1 rounded-sm text-[8px] sm:text-[9px] font-mono uppercase tracking-wider"
+                      style={{
+                        color: controlledCampaignSnapshot?.readiness?.ready
+                          ? 'var(--crm-positive)'
+                          : 'var(--crm-warning)',
+                        background: controlledCampaignSnapshot?.readiness?.ready
+                          ? 'var(--crm-positive-bg)'
+                          : 'var(--crm-warning-bg)'
+                      }}
+                    >
+                      {controlledCampaignSnapshot?.readiness?.ready
+                        ? 'Configuration Ready'
+                        : 'Configuration Blocked'}
+                    </span>
+
+                    <span
+                      className="px-2 py-1 rounded-sm text-[8px] sm:text-[9px] font-mono uppercase tracking-wider"
+                      style={{
+                        color: 'var(--crm-info)',
+                        background: 'var(--crm-info-bg)'
+                      }}
+                    >
+                      STONE · META
+                    </span>
+                  </div>
+
+                  <div
+                    className="text-sm sm:text-base font-semibold truncate"
+                    style={{ color: 'var(--crm-heading)' }}
+                  >
+                    {controlledCampaignSnapshot.campaign?.marketSelection?.product || 'Product not set'}
+                  </div>
+
+                  <div className="text-[9px] sm:text-[10px] mt-1" style={LABEL_MONO}>
+                    {controlledCampaignSnapshot.campaign?.marketSelection?.targetMarket?.type || 'Market type not set'}
+                    {' · '}
+                    {controlledCampaignSnapshot.campaign?.marketSelection?.targetMarket?.name || 'Market not set'}
+                  </div>
+                </div>
+
+                <div className="text-left lg:text-right">
+                  <div className="text-[8px] uppercase tracking-wider" style={LABEL_MONO}>
+                    UTM Campaign
+                  </div>
+                  <div
+                    className="mt-1 text-[10px] sm:text-xs font-mono break-all"
+                    style={{ color: 'var(--crm-heading)' }}
+                  >
+                    {controlledCampaignSnapshot.campaign?.utm?.campaign || '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                {[
+                  {
+                    label: 'Priority',
+                    value: controlledCampaignSnapshot.campaign?.marketSelection?.priority || '—'
+                  },
+                  {
+                    label: 'Operations Confirmed',
+                    value: controlledCampaignSnapshot.campaign?.operationsInputsConfirmedAt ? 'YES' : 'NO'
+                  },
+                  {
+                    label: 'Management Approved',
+                    value: controlledCampaignSnapshot.campaign?.managementApprovalAt ? 'YES' : 'NO'
+                  },
+                  {
+                    label: 'Qualified Leads',
+                    value:
+                      controlledCampaignSnapshot.metrics?.observed?.overall?.qualifiedLeads ??
+                      '—'
+                  },
+                  {
+                    label: 'Phase 4 Exit',
+                    value: controlledCampaignSnapshot.metrics?.phase4?.exitCriterionAchieved
+                      ? 'ACHIEVED'
+                      : 'NOT YET'
+                  }
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="border rounded-sm p-3 min-w-0"
+                    style={CARD_SUNKEN}
+                  >
+                    <div
+                      className="text-[8px] uppercase tracking-wider truncate"
+                      style={LABEL_MONO}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      className="mt-2 text-xs sm:text-sm font-semibold break-words"
+                      style={{ color: 'var(--crm-heading)' }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {controlledCampaignSnapshot?.readiness?.reasons?.length > 0 && (
+                <div
+                  className="border rounded-sm p-3"
+                  style={{
+                    borderColor: 'var(--crm-warning-bg)',
+                    background: 'var(--crm-warning-bg)'
+                  }}
+                >
+                  <div
+                    className="text-[8px] uppercase tracking-wider font-bold"
+                    style={{ color: 'var(--crm-warning)' }}
+                  >
+                    Current readiness blockers
+                  </div>
+                  <div
+                    className="mt-2 text-[9px] sm:text-[10px] leading-5"
+                    style={{ color: 'var(--crm-ink-soft)' }}
+                  >
+                    {controlledCampaignSnapshot.readiness.reasons
+                      .map((reason) => String(reason).replace(/_/g, ' '))
+                      .join(' · ')}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-[9px] sm:text-[10px] leading-5" style={LABEL_MONO}>
+                Configuration readiness is not Phase 4 completion. DPR exit remains real qualified leads observed.
+              </div>
+            </div>
+          )}
+        </motion.div>
+
         {/* Phase 4: Founder Transport & Logistics Overview Widget */}
         <motion.div variants={blockVariants}>
-          <FounderTransportWidget summary={summary} />
+          <AcquisitionReport />
+<FounderTransportWidget summary={summary} />
         </motion.div>
 
 
@@ -826,6 +1042,7 @@ export default function FounderDashboard() {
                   { to: '/crm/tasks', label: 'Task Board', icon: FiCheckSquare },
                   { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
                   { to: '/crm/career-leads', label: 'Career Leads', icon: FiUserPlus },
+                  { to: '/crm/controlled-campaigns', label: 'Controlled Campaign', icon: FiTarget },
                   { to: '/crm/founder', label: 'Founder Dashboard', icon: FiHome },
                 ].map((link) => (
                   <Link key={link.to} to={link.to} className="flex items-center justify-between p-2.5 border rounded-sm text-[9px] sm:text-xs transition-colors hover:opacity-80" style={CARD_SUNKEN}>

@@ -29,6 +29,7 @@ import { distributorApi } from '../../api/distributor';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
+import CommercialRequirement from '../../components/CommercialRequirement';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import TestimonialCoverflow from '../../components/Testimonials/TestimonialCoverflow';
 import TestimonialSectionBackground from '../../components/Testimonials/TestimonialSectionBackground';
@@ -394,21 +395,9 @@ export default function Prakriti() {
     const [userAccessLayer, setUserAccessLayer] = useState(1);
     const [isSessionLoading, setIsLoadingSession] = useState(true);
 
-    const [showEntryGate, setShowEntryGate] = useState(() => {
-        if (
-            import.meta.env.DEV &&
-            new URLSearchParams(window.location.search).get(
-                'previewTestimonials'
-            ) === '1'
-        ) {
-            return false;
-        }
-
-        return !(
-            localStorage.getItem('prakriti_distributor_id') &&
-            localStorage.getItem('distributor_token')
-        );
-    });
+    // Master DPR v4.0: product knowledge stays public. The distributor
+    // identity gate is opened only for the high-value live marketplace action.
+    const [showEntryGate, setShowEntryGate] = useState(false);
 
     const [distributorId, setDistributorId] = useState('');
 
@@ -2513,6 +2502,9 @@ export default function Prakriti() {
                         </div>
 
                     </section>
+
+
+                    <CommercialRequirement category="TEA" />
 
 
                     {/* =================================================

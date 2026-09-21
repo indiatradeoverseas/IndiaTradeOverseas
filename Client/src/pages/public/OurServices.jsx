@@ -126,30 +126,33 @@ const processSteps = [
 ];
 
 const supportPoints = [
+  {icon:FiShoppingBag,title:'B2B Sourcing & Procurement',description:'Share specifications and quantities for a sourcing review.'},
+  {icon:FiShoppingBag,title:'Bulk Commodity Supply',description:'Commercial supply enquiries for our listed product divisions, subject to availability confirmation.'},
+  {icon:FiShield,title:'Quality Coordination',description:'Coordinate buyer specifications, inspection requirements and available product documentation before confirmation.'},
   {
     icon: FiGlobe,
-    title: 'Domestic & Export',
+    title: 'Export Coordination',
     description:
       'Supply support for domestic buyers as well as international trade requirements.',
   },
 
   {
     icon: FiShield,
-    title: 'Commercial Coordination',
+    title: 'Commercial Supply Management',
     description:
       'Product, quantity, documentation and delivery requirements coordinated through one process.',
   },
 
   {
     icon: FiFileText,
-    title: 'Documentation Support',
+    title: 'Trade Documentation',
     description:
       'Relevant commercial and product documentation coordinated as part of the trade process.',
   },
 
   {
     icon: FiTruck,
-    title: 'Logistics Coordination',
+    title: 'Transport & Logistics',
     description:
       'Dispatch and delivery coordination based on the agreed supply requirement.',
   },

@@ -1,3 +1,4 @@
+import { BUSINESS_WHATSAPP, businessWhatsAppUrl } from '../../config/business';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -2417,7 +2418,7 @@ export default function Home() {
                 {/* WHATSAPP */}
 
                 <a
-                  href="https://wa.me/919999999999"
+                  href={businessWhatsAppUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="

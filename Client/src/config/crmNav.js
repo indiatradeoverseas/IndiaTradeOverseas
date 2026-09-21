@@ -24,7 +24,8 @@ import {
   FiCreditCard,
   FiCheckCircle,
   FiPhoneCall,
-  FiClock
+  FiClock,
+  FiTarget
 } from 'react-icons/fi';
 
 // ─────────────────────────────────────────────
@@ -49,6 +50,10 @@ function isAdminUser(user) {
     position.includes('director') ||
     position.includes('owner')
   );
+}
+
+function isControlledCampaignUser(user) {
+  return ['ADMIN','FOUNDER','CO_FOUNDER','SUPER_ADMIN'].includes(String(user?.role || '').toUpperCase()) || ['ADMIN','MANAGEMENT','MARKETING','OPERATIONS','IT'].includes(String(user?.department || '').toUpperCase());
 }
 
 function isSalesManager(user) {
@@ -215,6 +220,7 @@ export function getCrmMainNavItems(user) {
   const hrExec = isHRExecutive(user);
 
   return [
+    (['ADMIN','MANAGEMENT','OPERATIONS','SALES','FINANCE','ACCOUNTS'].includes(user?.department) || ['ADMIN','FOUNDER','CO_FOUNDER','SUPER_ADMIN'].includes(user?.role)) && {to:'/crm/customer-orders',label:'Customer Orders',icon:FiTruck},
     // 1. Founder Dashboard — ADMIN & FOUNDER
     admin && { to: '/crm/founder', label: 'Founder Dashboard', icon: FiCommand },
 
@@ -230,6 +236,14 @@ export function getCrmMainNavItems(user) {
       label: 'Transport Dashboard', 
       icon: FiTruck,
       children: getTransportChildren(user)
+    },
+
+    // Master DPR v4.0 — Phase 4 controlled campaign workbench.
+    // Visibility mirrors the backend campaign read-access boundary.
+    isControlledCampaignUser(user) && {
+      to: '/crm/controlled-campaigns',
+      label: 'Controlled Campaign',
+      icon: FiTarget
     },
 
     // 5. Attendance — ADMIN + HR_MANAGER

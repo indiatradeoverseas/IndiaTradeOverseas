@@ -30,6 +30,9 @@ const taskRoutes = require('./modules/task/task.routes');
 const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 const payslipRoutes = require('./modules/payslip/payslip.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
+const analyticsEventRoutes = require('./modules/analytics/analyticsEvent.routes');
+const controlledCampaignRoutes = require('./modules/marketing/controlledCampaign.routes');
+const metaLeadAdsRoutes = require('./modules/leads/metaLeadAds.routes');
 
 
 const app = express();
@@ -42,13 +45,41 @@ app.use(helmet({
 }));
 
 
-app.use(morgan('dev'));
+morgan.token('safe-path', req => String(req.originalUrl || req.url || '').split('?')[0]);
+app.use(morgan(':method :safe-path :status :response-time ms'));
 
 
 app.use(cors());
 
 
-app.use(express.json({ limit: '200mb' }));
+app.use(
+  express.json({
+    limit: '200mb',
+
+    /*
+     * Master DPR Phase 4 — Meta Instant Form webhook.
+     *
+     * Meta POST signatures must be verified against the exact bytes received
+     * from Meta, before JSON normalization changes the representation.
+     * Keep the raw body only for the dedicated Lead Ads webhook path so other
+     * API requests do not retain an unnecessary second copy of large bodies.
+     */
+    verify: (req, res, buffer) => {
+      const requestUrl =
+        req.originalUrl ||
+        req.url ||
+        '';
+
+      if (
+        requestUrl.includes(
+          '/meta-lead-ads/webhook'
+        )
+      ) {
+        req.rawBody = Buffer.from(buffer);
+      }
+    }
+  })
+);
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 const path = require('path');
@@ -62,7 +93,13 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+app.use(
+  '/uploads',
+  express.static(
+    path.join(__dirname, '../uploads')
+  )
+);
 
 
 app.use(rateLimiter);
@@ -70,13 +107,23 @@ app.use(rateLimiter);
 
 app.use((req, res, next) => {
   const crypto = require('crypto');
-  req.id = 'req_' + crypto.randomBytes(6).toString('hex');
+
+  req.id =
+    'req_' +
+    crypto
+      .randomBytes(6)
+      .toString('hex');
+
   next();
 });
 
 
 const healthCheck = (req, res) => {
-  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  const dbStatus =
+    mongoose.connection.readyState === 1
+      ? 'connected'
+      : 'disconnected';
+
   res.status(200).json({
     success: true,
     service: 'ITO Backend API',
@@ -86,141 +133,676 @@ const healthCheck = (req, res) => {
   });
 };
 
-app.get('/api/health', healthCheck);
-app.get('/api/v1/health', healthCheck);
+
+app.get(
+  '/api/health',
+  healthCheck
+);
+
+app.get(
+  '/api/v1/health',
+  healthCheck
+);
+
 
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Welcome to India Trade Overseas Backend API. Access health check at /api/health'
+    message:
+      'Welcome to India Trade Overseas Backend API. Access health check at /api/health'
   });
 });
 
 
 const apiRoutes = [
-  { path: '/auth', router: authRoutes },
-  { path: '/admin-auth', router: adminAuthRoutes },
-  { path: '/users', router: userRoutes },
-  { path: '/leads', router: leadRoutes },
-  { path: '/ai/leads', router: leadRoutes },
-  { path: '/quotations', router: quotationRoutes },
-  { path: '/dispatches', router: dispatchRoutes },
-  { path: '/dispatch', router: dispatchRoutes },
-  { path: '/payments', router: paymentRoutes },
-  { path: '/products', router: productRoutes },
-  { path: '/documents', router: documentRoutes },
-  { path: '/reports', router: reportRoutes },
-  { path: '/dashboard', router: notificationRoutes },
-  { path: '/daily-reports', router: dailyReportRoutes },
-  { path: '/security', router: auditRoutes },
-  { path: '/chat', router: chatRoutes },
-  { path: '/careers', router: careerRoutes },
-  { path: '/distributors', router: distributorRoutes },
-  { path: '/attendance', router: attendanceRoutes },
-  { path: '/tickets', router: ticketRoutes },
-  { path: '/leaves', router: leaveRoutes },
-  { path: '/leave', router: leaveRoutes },
-  { path: '/sales', router: salesRoutes },
-  { path: '/employee', router: employeeRoutes },
-  { path: '/employees', router: employeeRoutes },
-  { path: '/tasks', router: taskRoutes },
-  { path: '/shared-files', router: sharedFileRoutes },
-  { path: '/payslips', router: payslipRoutes },
-  { path: '/ai', router: aiRoutes }
+  { path: '/sales-policy', router: require('./modules/leads/salesPolicy.routes') },
+  { path: '/customer-portal', router: require('./modules/orders/customerPortal.routes') },
+  { path: '/customer-orders', router: require('./modules/orders/orderGovernance.routes') },
+  { path: '/quotations', router: require('./modules/quotations/quotationCommercial.routes') },
+  { path: '/reports', router: require('./modules/reports/acquisitionReport.routes') },
+  { path: '/leads', router: require('./modules/leads/leadCommercial.routes') },
+  { path: '/marketing/controlled-campaigns', router: require('./modules/marketing/campaignEvidence.routes') },
+  {
+    path: '/auth',
+    router: authRoutes
+  },
+
+  {
+    path: '/admin-auth',
+    router: adminAuthRoutes
+  },
+
+  {
+    path: '/users',
+    router: userRoutes
+  },
+
+  {
+    path: '/leads',
+    router: leadRoutes
+  },
+
+  {
+    path: '/ai/leads',
+    router: leadRoutes
+  },
+
+  {
+    path: '/quotations',
+    router: quotationRoutes
+  },
+
+  {
+    path: '/dispatches',
+    router: dispatchRoutes
+  },
+
+  {
+    path: '/dispatch',
+    router: dispatchRoutes
+  },
+
+  {
+    path: '/payments',
+    router: paymentRoutes
+  },
+
+  {
+    path: '/products',
+    router: productRoutes
+  },
+
+  {
+    path: '/documents',
+    router: documentRoutes
+  },
+
+  {
+    path: '/reports',
+    router: reportRoutes
+  },
+
+  {
+    path: '/dashboard',
+    router: notificationRoutes
+  },
+
+  {
+    path: '/daily-reports',
+    router: dailyReportRoutes
+  },
+
+  {
+    path: '/security',
+    router: auditRoutes
+  },
+
+  {
+    path: '/chat',
+    router: chatRoutes
+  },
+
+  {
+    path: '/careers',
+    router: careerRoutes
+  },
+
+  {
+    path: '/distributors',
+    router: distributorRoutes
+  },
+
+  {
+    path: '/attendance',
+    router: attendanceRoutes
+  },
+
+  {
+    path: '/tickets',
+    router: ticketRoutes
+  },
+
+  {
+    path: '/leaves',
+    router: leaveRoutes
+  },
+
+  {
+    path: '/leave',
+    router: leaveRoutes
+  },
+
+  {
+    path: '/sales',
+    router: salesRoutes
+  },
+
+  {
+    path: '/employee',
+    router: employeeRoutes
+  },
+
+  {
+    path: '/employees',
+    router: employeeRoutes
+  },
+
+  {
+    path: '/tasks',
+    router: taskRoutes
+  },
+
+  {
+    path: '/shared-files',
+    router: sharedFileRoutes
+  },
+
+  {
+    path: '/payslips',
+    router: payslipRoutes
+  },
+
+  {
+    path: '/ai',
+    router: aiRoutes
+  },
+
+  {
+    path: '/analytics',
+    router: analyticsEventRoutes
+  },
+
+  {
+    path: '/marketing/controlled-campaigns',
+    router: controlledCampaignRoutes
+  },
+
+  {
+    path: '/meta-lead-ads',
+    router: metaLeadAdsRoutes
+  }
 ];
 
-apiRoutes.forEach(route => {
-  app.use(`/api${route.path}`, route.router);
-  app.use(`/api/v1${route.path}`, route.router);
+
+apiRoutes.forEach((route) => {
+  app.use(
+    `/api${route.path}`,
+    route.router
+  );
+
+  app.use(
+    `/api/v1${route.path}`,
+    route.router
+  );
 });
 
-const { getMarketplace } = require('./modules/distributors/distributor.controller');
-const { authenticateDistributor } = require('./middlewares/auth.middleware');
 
-app.get('/api/marketplace', authenticateDistributor, getMarketplace);
-app.get('/api/v1/marketplace', authenticateDistributor, getMarketplace);
+const {
+  getMarketplace
+} =
+  require(
+    './modules/distributors/distributor.controller'
+  );
 
-const adminFallbackRouter = require('express').Router();
-const rbac = require('./middlewares/rbac.middleware');
-const { authenticate } = require('./middlewares/auth.middleware');
+const {
+  authenticateDistributor
+} =
+  require(
+    './middlewares/auth.middleware'
+  );
 
-adminFallbackRouter.patch('/leads/:leadId/assign', authenticate, rbac('ADMIN', 'MANAGER', 'HR'), require('./modules/leads/lead.controller').assignLead);
-adminFallbackRouter.get('/users', authenticate, rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), require('./modules/users/user.controller').listUsers);
 
-adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'));
-adminFallbackRouter.get('/dashboard/summary', require('./modules/reports/report.controller').getAdminSummary);
-adminFallbackRouter.get('/dashboard/pipeline', require('./modules/reports/report.controller').getPipelineReport);
-adminFallbackRouter.get('/dashboard/employee-performance', require('./modules/reports/report.controller').getPerformanceReport);
-adminFallbackRouter.get('/dashboard/security-alerts', async (req, res, next) => {
-  try {
-    const SecurityAlert = require('./modules/security-audit/securityAlert.model');
-    const alerts = await SecurityAlert.find().populate('actorId', 'fullName email').sort({ createdAt: -1 });
-    return require('./utils/response').ok(res, { alerts }, 'Alerts list', 200, req);
-  } catch (error) { next(error); }
-});
-adminFallbackRouter.patch('/security/alerts/:alertId/resolve', require('./modules/security-audit/audit.controller').resolveAlert);
-adminFallbackRouter.get('/dashboard/quotation-queue', async (req, res, next) => {
-  try {
-    const Quotation = require('./modules/quotations/quotation.model');
-    const quotations = await Quotation.find({ status: 'PENDING' }).populate('leadId').sort({ createdAt: -1 });
-    return require('./utils/response').ok(res, { quotations }, 'Pending quotations queue', 200, req);
-  } catch (error) { next(error); }
-});
+app.get(
+  '/api/marketplace',
+  authenticateDistributor,
+  getMarketplace
+);
 
-adminFallbackRouter.patch('/users/:id/activate', require('./modules/users/user.controller').activateUser);
-adminFallbackRouter.patch('/users/:id/deactivate', require('./modules/users/user.controller').deactivateUser);
-adminFallbackRouter.patch('/users/:id/role', require('./modules/users/user.controller').updateUserRole);
-adminFallbackRouter.patch('/users/:id/department', require('./modules/users/user.controller').updateUserDepartment);
-adminFallbackRouter.patch('/users/:id/export-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/product-upload-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/lead-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/document-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/task-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/dispatch-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/payment-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/quotation-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.patch('/users/:id/job-permission', require('./modules/users/user.controller').updateUserPermissions);
-adminFallbackRouter.delete('/users/:id', require('./modules/users/user.controller').deleteUser);
-adminFallbackRouter.delete('/leads/:leadId', rbac('ADMIN'), require('./modules/leads/lead.controller').deleteLead);
-adminFallbackRouter.get('/devices', async (req, res, next) => {
-  try {
-    const TrustedDevice = require('./modules/auth/trustedDevice.model');
-    const devices = await TrustedDevice.find().populate('userId', 'fullName email employeeId');
-    return require('./utils/response').ok(res, { devices }, 'Devices list retrieved', 200, req);
-  } catch (error) { next(error); }
-});
-adminFallbackRouter.patch('/devices/:deviceId/approve', async (req, res, next) => {
-  try {
-    const TrustedDevice = require('./modules/auth/trustedDevice.model');
-    const device = await TrustedDevice.findByIdAndUpdate(
-      req.params.deviceId,
-      { isApproved: true, approvedBy: req.user._id, verifiedAt: new Date(), revokedAt: null },
-      { new: true }
-    );
-    if (!device) return require('./utils/response').fail(res, 404, 'NOT_FOUND', 'Device not found');
-    return require('./utils/response').ok(res, { device }, 'Device approved successfully', 200, req);
-  } catch (error) { next(error); }
-});
-adminFallbackRouter.patch('/devices/:deviceId/revoke', async (req, res, next) => {
-  try {
-    const TrustedDevice = require('./modules/auth/trustedDevice.model');
-    const device = await TrustedDevice.findByIdAndUpdate(
-      req.params.deviceId,
-      { isApproved: false, revokedAt: new Date() },
-      { new: true }
-    );
-    if (!device) return require('./utils/response').fail(res, 404, 'NOT_FOUND', 'Device not found');
-    return require('./utils/response').ok(res, { device }, 'Device revoked successfully', 200, req);
-  } catch (error) { next(error); }
-});
+app.get(
+  '/api/v1/marketplace',
+  authenticateDistributor,
+  getMarketplace
+);
 
-app.use('/api/admin', adminFallbackRouter);
-app.use('/api/v1/admin', adminFallbackRouter);
-app.use('/api/v1/dispatch', dispatchRoutes);
+
+const adminFallbackRouter =
+  require('express').Router();
+
+const rbac =
+  require(
+    './middlewares/rbac.middleware'
+  );
+
+const {
+  authenticate
+} =
+  require(
+    './middlewares/auth.middleware'
+  );
+
+
+adminFallbackRouter.patch(
+  '/leads/:leadId/assign',
+  authenticate,
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'HR'
+  ),
+  require(
+    './modules/leads/lead.controller'
+  ).assignLead
+);
+
+
+adminFallbackRouter.get(
+  '/users',
+  authenticate,
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'HR',
+    'HR_MANAGER',
+    'HR_EXECUTIVE'
+  ),
+  require(
+    './modules/users/user.controller'
+  ).listUsers
+);
+
+
+adminFallbackRouter.use(
+  authenticate,
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'HR_MANAGER',
+    'HR'
+  )
+);
+
+
+adminFallbackRouter.get(
+  '/dashboard/summary',
+  require(
+    './modules/reports/report.controller'
+  ).getAdminSummary
+);
+
+
+adminFallbackRouter.get(
+  '/dashboard/pipeline',
+  require(
+    './modules/reports/report.controller'
+  ).getPipelineReport
+);
+
+
+adminFallbackRouter.get(
+  '/dashboard/employee-performance',
+  require(
+    './modules/reports/report.controller'
+  ).getPerformanceReport
+);
+
+
+adminFallbackRouter.get(
+  '/dashboard/security-alerts',
+  async (req, res, next) => {
+    try {
+      const SecurityAlert =
+        require(
+          './modules/security-audit/securityAlert.model'
+        );
+
+      const alerts =
+        await SecurityAlert
+          .find()
+          .populate(
+            'actorId',
+            'fullName email'
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return require(
+        './utils/response'
+      ).ok(
+        res,
+        { alerts },
+        'Alerts list',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+adminFallbackRouter.patch(
+  '/security/alerts/:alertId/resolve',
+  require(
+    './modules/security-audit/audit.controller'
+  ).resolveAlert
+);
+
+
+adminFallbackRouter.get(
+  '/dashboard/quotation-queue',
+  async (req, res, next) => {
+    try {
+      const Quotation =
+        require(
+          './modules/quotations/quotation.model'
+        );
+
+      const quotations =
+        await Quotation
+          .find({
+            status: 'PENDING'
+          })
+          .populate('leadId')
+          .sort({
+            createdAt: -1
+          });
+
+      return require(
+        './utils/response'
+      ).ok(
+        res,
+        { quotations },
+        'Pending quotations queue',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/activate',
+  require(
+    './modules/users/user.controller'
+  ).activateUser
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/deactivate',
+  require(
+    './modules/users/user.controller'
+  ).deactivateUser
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/role',
+  require(
+    './modules/users/user.controller'
+  ).updateUserRole
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/department',
+  require(
+    './modules/users/user.controller'
+  ).updateUserDepartment
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/export-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/product-upload-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/lead-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/document-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/task-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/dispatch-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/payment-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/quotation-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.patch(
+  '/users/:id/job-permission',
+  require(
+    './modules/users/user.controller'
+  ).updateUserPermissions
+);
+
+
+adminFallbackRouter.delete(
+  '/users/:id',
+  require(
+    './modules/users/user.controller'
+  ).deleteUser
+);
+
+
+adminFallbackRouter.delete(
+  '/leads/:leadId',
+  rbac('ADMIN'),
+  require(
+    './modules/leads/lead.controller'
+  ).deleteLead
+);
+
+
+adminFallbackRouter.get(
+  '/devices',
+  async (req, res, next) => {
+    try {
+      const TrustedDevice =
+        require(
+          './modules/auth/trustedDevice.model'
+        );
+
+      const devices =
+        await TrustedDevice
+          .find()
+          .populate(
+            'userId',
+            'fullName email employeeId'
+          );
+
+      return require(
+        './utils/response'
+      ).ok(
+        res,
+        { devices },
+        'Devices list retrieved',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+adminFallbackRouter.patch(
+  '/devices/:deviceId/approve',
+  async (req, res, next) => {
+    try {
+      const TrustedDevice =
+        require(
+          './modules/auth/trustedDevice.model'
+        );
+
+      const device =
+        await TrustedDevice.findByIdAndUpdate(
+          req.params.deviceId,
+          {
+            isApproved: true,
+            approvedBy:
+              req.user._id,
+            verifiedAt:
+              new Date(),
+            revokedAt:
+              null
+          },
+          {
+            new: true
+          }
+        );
+
+      if (!device) {
+        return require(
+          './utils/response'
+        ).fail(
+          res,
+          404,
+          'NOT_FOUND',
+          'Device not found'
+        );
+      }
+
+      return require(
+        './utils/response'
+      ).ok(
+        res,
+        { device },
+        'Device approved successfully',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+adminFallbackRouter.patch(
+  '/devices/:deviceId/revoke',
+  async (req, res, next) => {
+    try {
+      const TrustedDevice =
+        require(
+          './modules/auth/trustedDevice.model'
+        );
+
+      const device =
+        await TrustedDevice.findByIdAndUpdate(
+          req.params.deviceId,
+          {
+            isApproved: false,
+            revokedAt:
+              new Date()
+          },
+          {
+            new: true
+          }
+        );
+
+      if (!device) {
+        return require(
+          './utils/response'
+        ).fail(
+          res,
+          404,
+          'NOT_FOUND',
+          'Device not found'
+        );
+      }
+
+      return require(
+        './utils/response'
+      ).ok(
+        res,
+        { device },
+        'Device revoked successfully',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+app.use(
+  '/api/admin',
+  adminFallbackRouter
+);
+
+app.use(
+  '/api/v1/admin',
+  adminFallbackRouter
+);
+
+app.use(
+  '/api/v1/dispatch',
+  dispatchRoutes
+);
 
 
 app.use(errorHandler);
-
 
 
 module.exports = app;

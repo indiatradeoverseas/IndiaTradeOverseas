@@ -93,6 +93,7 @@ export default function Navbar() {
     { to: '/', label: 'HOME' },
     { to: '/about', label: 'ABOUT US' },
     { to: '/careers', label: 'CAREERS' },
+    { to: '/customer-portal', label: 'MY ORDERS' },
   ];
 
   // Services structure

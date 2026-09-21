@@ -2,21 +2,40 @@ const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
+
 const {
   createWebsiteLead,
+  updateWebsiteLeadProfile,
   getLeadsList,
   getLeadDetails,
+  changeLeadCrmStatus,
   changeLeadStage,
   changeLeadPriority,
   assignLead,
   assignLeadsBulk,
-  bulkImportLeads
+  bulkImportLeads,
 } = require('./lead.controller');
-const {getSalesMetrics} = require('./leadManagement.controller.js');
-const { createFromChat } = require('./ai-agent/aiLead.controller');
+
+const {
+  getSalesMetrics,
+} = require('./leadManagement.controller.js');
+
+const {
+  getSalesSlaDashboardController,
+} = require('./leadSla.controller');
+
+const {
+  getLeadRecoveryDashboardController,
+  requeueLeadRecoveryController,
+} = require('./leadRecovery.controller');
+
+const {
+  createFromChat,
+} = require('./ai-agent/aiLead.controller');
 
 const {
   createManualLead,
@@ -32,147 +51,577 @@ const {
   updateCallRecordingRemark,
   updateCallRecordingStatus,
   uploadLOIDocument,
-  streamLOIDocument
+  streamLOIDocument,
 } = require('./leadManagement.controller');
 
-// Multer setup for LOI documents
+
+// ============================================================
+// MULTER — LOI DOCUMENTS
+// ============================================================
+
 const loiStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'loi_documents');
+    const destDir = path.join(
+      process.cwd(),
+      'uploads',
+      'loi_documents'
+    );
+
     if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
+      fs.mkdirSync(destDir, {
+        recursive: true,
+      });
     }
+
     cb(null, destDir);
   },
+
   filename: (req, file, cb) => {
-    const safeName = `loi-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName =
+      `loi-${Date.now()}-${file.originalname}`
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+
     cb(null, safeName);
-  }
+  },
 });
 
 const uploadLOIFile = multer({
   storage: loiStorage,
-  limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for LOI files
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
 });
 
-// Multer setup for lead voice notes
+
+// ============================================================
+// MULTER — LEAD VOICE NOTES
+// ============================================================
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'voice_notes');
+    const destDir = path.join(
+      process.cwd(),
+      'uploads',
+      'voice_notes'
+    );
+
     if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
+      fs.mkdirSync(destDir, {
+        recursive: true,
+      });
     }
+
     cb(null, destDir);
   },
+
   filename: (req, file, cb) => {
-    const safeName = `${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName =
+      `${Date.now()}-${file.originalname}`
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+
     cb(null, safeName);
-  }
+  },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for audio clips
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
 });
 
-// Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
-// and the public chat widget. Must stay above router.use(authenticate) below.
-router.post('/from-chat', createFromChat);
-// MASTER DPR v4.0
-// Public requirement-builder lead persistence.
-// MUST remain above router.use(authenticate).
+
+// ============================================================
+// PUBLIC ROUTES
+// ============================================================
+
+/**
+ * Public chat / quote-request ingestion.
+ * MUST remain above router.use(authenticate).
+ */
+router.post(
+  '/from-chat',
+  createFromChat
+);
+
+/**
+ * Master DPR v4.0 — public Requirement Builder persistence.
+ * MUST remain above router.use(authenticate).
+ */
 router.post(
   '/website',
   createWebsiteLead
 );
-router.get('/call-recordings/:recordingId/stream', streamCallRecording);
+
+/**
+ * Master DPR v4.0 — progressive profile after phone capture.
+ *
+ * Lead must already exist before this route is called.
+ * Protected by immutable Lead ID + original submissionId pairing.
+ * No OTP is introduced by default.
+ */
+router.patch(
+  '/website/profile',
+  updateWebsiteLeadProfile
+);
+
+
+// ============================================================
+// AUTHENTICATED ROUTES FROM THIS POINT
+// ============================================================
 
 router.use(authenticate);
 
-// Multer setup for Call Recordings
+
+// ============================================================
+// MULTER — CALL RECORDINGS
+// ============================================================
+
 const callRecordingStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'call_recordings');
+    const destDir = path.join(
+      process.cwd(),
+      'uploads',
+      'call_recordings'
+    );
+
     if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
+      fs.mkdirSync(destDir, {
+        recursive: true,
+      });
     }
+
     cb(null, destDir);
   },
+
   filename: (req, file, cb) => {
-    const safeName = `call-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName =
+      `call-${Date.now()}-${file.originalname}`
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+
     cb(null, safeName);
-  }
+  },
 });
 
 const uploadCallAudio = multer({
   storage: callRecordingStorage,
-  limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit
+  limits: {
+    fileSize: 30 * 1024 * 1024,
+  },
 });
 
-// 1. Static Sub-Routes (MUST stay above dynamic /:id routes to avoid CastError)
-router.post('/score', async (req, res, next) => {
-  try {
-    const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
-    return require('../../utils/response').ok(res, { score, priority }, 'Lead scored successfully', 200, req);
-  } catch (error) {
-    next(error);
-  }
-});
 
-router.get('/call-recordings', getCallRecordings);
-router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
-router.patch('/call-recordings/:recordingId/remark', updateCallRecordingRemark);
-router.patch('/call-recordings/:recordingId/status', updateCallRecordingStatus);
+// ============================================================
+// STATIC SUB-ROUTES
+// MUST remain above dynamic /:id routes.
+// ============================================================
 
-router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
-  try {
-    const Lead = require('./lead.model');
-    const { getLeadDisplay } = require('./lead.service');
-    const leads = await Lead.find({ assignedTo: null }).sort({ createdAt: -1 });
-    return require('../../utils/response').ok(res, { leads: leads.map(l => getLeadDisplay(l, req.user)) }, 'Unassigned leads list', 200, req);
-  } catch (error) {
-    next(error);
-  }
-});
+// Master DPR v4.0 — management monitoring and recovery routes.
+router.get(
+  '/management/sla',
+  getSalesSlaDashboardController
+);
 
-router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
-router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
+router.get(
+  '/management/recovery',
+  getLeadRecoveryDashboardController
+);
 
-router.get('/count', checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
-  try {
-    const Lead = require('./lead.model');
-    const { status } = req.query;
-    let filter = {};
-    if (status === 'won') {
-      filter.stage = { $in: ['CLOSED_WON', 'DEAL_WON'] };
-    } else if (status === 'pending') {
-      filter.stage = { $nin: ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'] };
+router.post(
+  '/management/recovery/:id/requeue',
+  requeueLeadRecoveryController
+);
+
+/**
+ * Call recordings are internal CRM evidence.
+ * They must never be exposed before authentication.
+ * Record-level ownership enforcement is performed in the controller layer.
+ */
+router.get(
+  '/call-recordings/:recordingId/stream',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  streamCallRecording
+);
+
+router.post(
+  '/score',
+  async (req, res, next) => {
+    try {
+      const {
+        score,
+        priority,
+        classification,
+        action,
+        breakdown,
+        scoringVersion,
+      } = require('./ai-agent/leadScoring.service')
+        .scoreAndClassifyLead(req.body);
+
+      return require('../../utils/response').ok(
+        res,
+        {
+          score,
+          priority,
+          classification,
+          action,
+          breakdown,
+          scoringVersion,
+        },
+        'Lead scored successfully',
+        200,
+        req
+      );
+    } catch (error) {
+      next(error);
     }
-    const count = await Lead.countDocuments(filter);
-    return require('../../utils/response').ok(res, { count }, 'Leads count retrieved successfully', 200, req);
-  } catch (error) {
-    next(error);
   }
-});
+);
 
-router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
-router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
-router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadsList);
-router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
+router.get(
+  '/call-recordings',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  getCallRecordings
+);
 
-// 2. Dynamic /:id Sub-Routes
-router.post('/:id/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLead);
-router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
-router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
-router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
-router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
-router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
-router.post('/:id/loi', checkPermission('leadPermission', 'taskPermission'), uploadLOIFile.single('file'), uploadLOIDocument);
-router.get('/:id/loi/:index', checkPermission('leadPermission', 'taskPermission'), streamLOIDocument);
+router.post(
+  '/call-recordings',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  uploadCallAudio.single('file'),
+  uploadCallRecording
+);
 
-router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
-router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
-router.patch('/:id/priority', checkPermission('leadPermission', 'taskPermission'), changeLeadPriority);
-router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);  
+router.patch(
+  '/call-recordings/:recordingId/remark',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  updateCallRecordingRemark
+);
+
+router.patch(
+  '/call-recordings/:recordingId/status',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  updateCallRecordingStatus
+);
+
+router.get(
+  '/unassigned',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'HR'
+  ),
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  async (req, res, next) => {
+    try {
+      const Lead = require('./lead.model');
+
+      const {
+        getLeadDisplay,
+      } = require('./lead.service');
+
+      const leads = await Lead.find({
+        assignedTo: null,
+      }).sort({
+        createdAt: -1,
+      });
+
+      return require('../../utils/response').ok(
+        res,
+        {
+          leads: leads.map(
+            (lead) =>
+              getLeadDisplay(
+                lead,
+                req.user
+              )
+          ),
+        },
+        'Unassigned leads list',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/reminders/due',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  getDueReminders
+);
+
+router.get(
+  '/metrics',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  getSalesMetrics
+);
+
+router.get(
+  '/count',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  async (req, res, next) => {
+    try {
+      const Lead = require('./lead.model');
+
+      const {
+        status,
+      } = req.query;
+
+      let filter = {};
+
+      if (status === 'won') {
+        filter.crmStatus =
+          'WON';
+
+      } else if (
+        status === 'lost'
+      ) {
+        filter.crmStatus =
+          'LOST';
+
+      } else if (
+        status === 'pending'
+      ) {
+        filter.crmStatus = {
+          $nin: [
+            'WON',
+            'LOST',
+          ],
+        };
+      }
+
+      const count =
+        await Lead.countDocuments(
+          filter
+        );
+
+      return require('../../utils/response').ok(
+        res,
+        {
+          count,
+        },
+        'Leads count retrieved successfully',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/assign',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  assignLeadsBulk
+);
+
+router.post(
+  '/bulk-import',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  bulkImportLeads
+);
+
+router.get(
+  '/',
+  checkPermission(
+    'leadPermission',
+    'taskPermission',
+    'paymentPermission',
+    'dispatchPermission',
+    'quotationPermission'
+  ),
+  getLeadsList
+);
+
+router.post(
+  '/',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  createManualLead
+);
+
+
+// ============================================================
+// DYNAMIC /:id SUB-ROUTES
+// ============================================================
+
+router.post(
+  '/:id/assign',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  assignLead
+);
+
+router.post(
+  '/:id/activity',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  addActivity
+);
+
+router.post(
+  '/:id/voice-note',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  upload.single('voiceNote'),
+  uploadVoiceNote
+);
+
+router.get(
+  '/:id/voice-note/:index',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  streamVoiceNote
+);
+
+router.post(
+  '/:id/log-whatsapp',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  logWhatsAppActivity
+);
+
+router.post(
+  '/:id/send-email',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  logEmailActivity
+);
+
+router.post(
+  '/:id/loi',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  uploadLOIFile.single('file'),
+  uploadLOIDocument
+);
+
+router.get(
+  '/:id/loi/:index',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  streamLOIDocument
+);
+
+
+// ============================================================
+// MASTER DPR v4.0 — CANONICAL CRM LIFECYCLE
+// ============================================================
+
+router.patch(
+  '/:id/status',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadCrmStatus
+);
+
+
+// ============================================================
+// EXISTING LEAD DETAIL / OPERATIONAL PIPELINE
+// ============================================================
+
+router.get(
+  '/:id',
+  checkPermission(
+    'leadPermission',
+    'taskPermission',
+    'paymentPermission',
+    'dispatchPermission',
+    'quotationPermission'
+  ),
+  getLeadDetails
+);
+
+router.patch(
+  '/:id/stage',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadStage
+);
+
+router.patch(
+  '/:id/priority',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadPriority
+);
+
+/**
+ * Compatibility route.
+ * crmStatus must continue to be handled only by /:id/status.
+ */
+router.patch(
+  '/:id',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadStage
+);
+
 
 module.exports = router;

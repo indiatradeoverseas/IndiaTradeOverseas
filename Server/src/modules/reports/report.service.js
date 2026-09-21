@@ -37,13 +37,7 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
   const activeLeads = await Lead.countDocuments({ stage: { $nin: CLOSED_STAGES } });
   const completedLeads = await Lead.countDocuments({ stage: { $in: ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'] } });
   const deliveredLeads = await Lead.countDocuments({ stage: { $in: ['DELIVERED', 'COMPLETED'] } });
-  const paidLeads = await Lead.countDocuments({
-    $or: [
-      { stage: { $in: ['CLOSED_WON', 'DEAL_WON', 'COMPLETED'] } },
-      { paymentProofUrl: { $exists: true, $ne: '' } },
-      { 'paymentProof.proofImageUrl': { $exists: true, $ne: '' } }
-    ]
-  });
+  const paidLeads = (await require('../orders/customerOrder.model').distinct('leadId',{paymentStatus:'PAID',paymentVerifiedAt:{$ne:null}})).length;
   const conversionRate = totalLeads > 0 ? Math.round((completedLeads / totalLeads) * 100) : 0;
   const pendingLeads = await Lead.countDocuments({ stage: 'NEW_LEAD' });
   const todayLeads = await Lead.countDocuments({ createdAt: { $gte: todayStart } });
@@ -70,7 +64,7 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       }
     }
   ]);
-  const sentQuotations = await Quotation.countDocuments({ status: { $in: ['SENT_TO_CUSTOMER', 'APPROVED', 'SENT', 'QUOTATION_SENT'] } });
+  const sentQuotations = await Quotation.countDocuments({ status: { $in: ['SENT_TO_CUSTOMER', 'SENT', 'QUOTATION_SENT'] } });
   const approvedQuotations = await Quotation.countDocuments({ status: 'APPROVED' });
 
   const ordersConfirmed = await Lead.countDocuments({ stage: { $in: ['ORDER_CONFIRMED', 'PO_RECEIVED', 'CLOSED_WON', 'DEAL_WON', 'DISPATCH_PENDING', 'DELIVERED', 'COMPLETED'] } });
@@ -90,21 +84,9 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
   const paymentPendingCount = pendingPayments[0] ? pendingPayments[0].count : 0;
   const paymentPendingValue = pendingPayments[0] ? pendingPayments[0].totalOutstanding : 0;
 
-  const revenueAgg = await Payment.aggregate([
-    { $group: { _id: null, collected: { $sum: { $subtract: ['$totalAmount', '$balanceAmount'] } } } }
-  ]);
-  const monthlyRevenueAgg = await Payment.aggregate([
-    { $match: { createdAt: { $gte: revenueRangeStart, $lte: revenueRangeEnd } } },
-    {
-      $group: {
-        _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
-        collected: { $sum: { $subtract: ['$totalAmount', '$balanceAmount'] } }
-      }
-    },
-    { $sort: { _id: 1 } }
-  ]);
-
-
+  const paidOrders=require('../orders/customerOrder.model');
+  const revenueByCurrency=await paidOrders.aggregate([{$match:{paymentStatus:'PAID',paymentVerifiedAt:{$ne:null}}},{$group:{_id:'$currency',collected:{$sum:'$amount'}}}]);
+  const monthlyRevenueAgg=await paidOrders.aggregate([{$match:{paymentStatus:'PAID',paymentVerifiedAt:{$gte:revenueRangeStart,$lte:revenueRangeEnd}}},{$group:{_id:{month:{$dateToString:{format:'%Y-%m',date:'$paymentVerifiedAt'}},currency:'$currency'},collected:{$sum:'$amount'}}},{$sort:{'_id.month':1}}]);
   const transportAgg = await Dispatch.aggregate([
     { $group: { _id: '$dispatchStatus', count: { $sum: 1 } } }
   ]);
@@ -191,19 +173,22 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       quotations: {
         total: totalQuotations,
         pending: pendingQuotes[0] ? pendingQuotes[0].count : 0,
-        pendingValue: pendingQuotes[0] ? pendingQuotes[0].totalValue : 0,
+        pendingValue: null,
         sent: sentQuotations,
         approved: approvedQuotations
       },
       ordersConfirmed,
       pendingOrders,
       revenue: {
-        totalCollected: revenueAgg[0] ? revenueAgg[0].collected : 0,
-        monthlyTrend: monthlyRevenueAgg.map((row) => ({ month: row._id, collected: row.collected }))
+        totalCollected: revenueByCurrency.length===1?revenueByCurrency[0].collected:null,
+        currency: revenueByCurrency.length===1?revenueByCurrency[0]._id:null,
+        byCurrency:revenueByCurrency,
+        scope:'Finance-verified customer orders; legacy payments without currency are excluded.',
+        monthlyTrend: monthlyRevenueAgg.map((row) => ({ month: row._id.month, currency:row._id.currency, collected: row.collected }))
       },
       payments: {
         pendingCount: paymentPendingCount,
-        pendingValue: paymentPendingValue
+        pendingValue: null
       },
       transport: {
         total: transportTotal,
