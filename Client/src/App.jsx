@@ -76,6 +76,8 @@ import TransportManager from './pages/crm/transport/TransportManager';
 import TransportExecutive from './pages/crm/transport/TransportExecutive';
 import DriverMobileView from './pages/crm/transport/DriverMobileView';
 import ManagerChatSupport from './pages/crm/ManagerChatSupport';
+import ItDashboard from './pages/crm/ItDashboard';
+
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -442,6 +444,24 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/it"
+              element={
+                <ProtectedRoute>
+                  <ItDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/it-dashboard"
+              element={
+                <ProtectedRoute>
+                  <ItDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/crm/manager-chat"
               element={
                 <ProtectedRoute>
@@ -449,6 +469,7 @@ function AppLayout() {
                 </ProtectedRoute>
               }
             />
+
 
             <Route
               path="/crm/sales"
@@ -814,14 +835,21 @@ function AppLayout() {
             <Route
               path="/crm/applications"
               element={
-                [
-                  'ADMIN',
-                  'MANAGER',
-                  'SALES_MANAGER',
-                  'HR_MANAGER',
-                  'HR_EXECUTIVE',
-                  'HR'
-                ].includes(user?.role) ? (
+                (
+                  isAdminUser(user) ||
+                  [
+                    'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER',
+                    'CEO',
+                    'SUPER_ADMIN',
+                    'MANAGER',
+                    'SALES_MANAGER',
+                    'HR_MANAGER',
+                    'HR_EXECUTIVE',
+                    'HR'
+                  ].includes(user?.role)
+                ) ? (
                   <Applications />
                 ) : (
                   <Navigate
@@ -836,8 +864,13 @@ function AppLayout() {
               path="/crm/jobs"
               element={
                 (
+                  isAdminUser(user) ||
                   [
                     'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER',
+                    'CEO',
+                    'SUPER_ADMIN',
                     'MANAGER',
                     'HR_MANAGER',
                     'HR_EXECUTIVE',

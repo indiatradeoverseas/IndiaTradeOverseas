@@ -801,6 +801,12 @@ export default function SalesManagerDashboard() {
         return sortDirection === 'asc' ? rateA - rateB : rateB - rateA;
       }
 
+      if (sortField === 'dealsLost') {
+        valA = a.dealsLost || 0;
+        valB = b.dealsLost || 0;
+        return sortDirection === 'asc' ? valA - valB : valB - valA;
+      }
+
       return sortDirection === 'asc' ? valA - valB : valB - valA;
     });
   };
@@ -1159,6 +1165,13 @@ export default function SalesManagerDashboard() {
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Refresh
           </button>
 
+          <Link
+            to="/crm/manager-chat"
+            className="flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white border border-teal-700 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
+          >
+            <FiMessageSquare size={12} /> Executive & Founder Chat
+          </Link>
+
           <button 
             onClick={handlePrintPDF}
             className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
@@ -1256,7 +1269,6 @@ export default function SalesManagerDashboard() {
             { id: 'strategic', label: 'Strategic Analytics & Coaching', icon: FiCpu },
             { id: 'lost_analytics', label: 'Closed Lost Audit & Reasons', icon: FiAlertCircle },
             { id: 'call_recordings', label: 'Executive Call Recordings', icon: FiMic },
-            { id: 'shared_files_hub', label: 'Shared Files Hub', icon: FiFolder },
             { id: 'sales_trial_hub', label: 'Sales Trial Hub & Chat', icon: FiZap },
             { id: 'incoming_leads', label: 'Division Leads & Assignments', icon: FiGrid },
             { id: 'leaves_mgmt', label: 'Team Leave Requests', icon: FiCalendar }
@@ -1369,12 +1381,13 @@ export default function SalesManagerDashboard() {
                     </h3>
                     
                     <div className="overflow-x-auto mt-4">
-                      <table className="w-full text-left border-collapse min-w-[700px]">
+                      <table className="w-full text-left border-collapse min-w-[750px]">
                         <thead>
                           <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)] select-none">
                             <th onClick={() => handleSort('fullName')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Rep Name {sortField === 'fullName' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                             <th onClick={() => handleSort('totalLeads')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Leads Received {sortField === 'totalLeads' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                             <th onClick={() => handleSort('dealsWon')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Leads Completed {sortField === 'dealsWon' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th onClick={() => handleSort('dealsLost')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Lost Leads {sortField === 'dealsLost' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                             <th onClick={() => handleSort('completedTasksCount')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Completed Tasks {sortField === 'completedTasksCount' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                             <th onClick={() => handleSort('revenue')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Revenue Generated {sortField === 'revenue' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                             <th onClick={() => handleSort('activityCount')} className="py-3 px-4 cursor-pointer hover:text-[var(--crm-heading)] transition">Activities {sortField === 'activityCount' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
@@ -1392,9 +1405,17 @@ export default function SalesManagerDashboard() {
 
                             return (
                               <tr key={rep.employeeId} className={`hover:bg-[var(--crm-bg-sunken)]/60 transition ${rowBg}`}>
-                                <td className="py-3 px-4 font-semibold text-[var(--crm-heading)]">{rep.fullName}</td>
+                                <td className="py-3 px-4 font-semibold text-[var(--crm-heading)] flex items-center gap-1.5 flex-wrap">
+                                  <span>{rep.fullName}</span>
+                                  {rep.isTrial && (
+                                    <span className="text-[8px] bg-purple-500/20 text-purple-400 border border-purple-500/40 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
+                                      TRIAL
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">{rep.totalLeads} leads</td>
-                                <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">{rep.dealsWon} Won</td>
+                                <td className="py-3 px-4 font-mono font-medium text-emerald-400 font-semibold">{rep.dealsWon} Won</td>
+                                <td className="py-3 px-4 font-mono font-medium text-rose-400 font-semibold">{rep.dealsLost || 0} Lost</td>
                                 <td className="py-3 px-4 font-mono font-medium text-[var(--crm-ink-soft)]">{rep.completedTasksCount || 0} tasks</td>
                                 <td className="py-3 px-4 font-mono font-semibold text-teal-400">{currency(rep.revenue)}</td>
                                 <td className="py-3 px-4 font-mono text-[var(--crm-ink-soft)]">{rep.activityCount} logs</td>
@@ -1798,8 +1819,8 @@ export default function SalesManagerDashboard() {
                           <th className="py-3 px-4">Date & Time</th>
                           <th className="py-3 px-4">Lead Identifier</th>
                           <th className="py-3 px-4">Customer & Entity</th>
-                          <th className="py-3 px-4 text-center">Priority / Temp</th>
-                          <th className="py-3 px-4 text-center">Target Timeline</th>
+                          <th className="py-3 px-4 text-center whitespace-nowrap">Priority / Temp</th>
+                          <th className="py-3 px-4 text-center whitespace-nowrap">Target Timeline</th>
                           <th className="py-3 px-4">Contact Details</th>
                           <th className="py-3 px-4">Division / Source Origin</th>
                           <th className="py-3 px-4">Assigned Executive</th>
@@ -1856,7 +1877,10 @@ export default function SalesManagerDashboard() {
                               }
                             } else {
                               const pUpper = (lead.priority || 'WARM').toUpperCase();
-                              if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+                              const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase());
+
+                              if (pUpper === 'DEAD' || isDateExpired) prioInfo = { label: 'DEAD 💀', color: 'bg-zinc-800 text-zinc-200 font-black border-zinc-600 shadow-xs' };
+                              else if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
                               else if (pUpper === 'WARM') prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
                               else if (pUpper === 'COLD') prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
                             }
@@ -1883,8 +1907,8 @@ export default function SalesManagerDashboard() {
                                   <div className="font-bold text-[var(--crm-heading)] text-sm">{lead.customerName}</div>
                                   <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
                                 </td>
-                                <td className="py-3 px-4 text-center">
-                                  <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase font-mono border ${prioInfo.color}`}>
+                                <td className="py-3 px-4 text-center whitespace-nowrap">
+                                  <span className={`inline-flex items-center justify-center gap-1 px-3 py-1 rounded-md text-[10px] font-black uppercase font-mono border whitespace-nowrap shadow-xs ${prioInfo.color}`}>
                                     {prioInfo.label}
                                   </span>
                                 </td>
@@ -2512,8 +2536,21 @@ export default function SalesManagerDashboard() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
                     {getFilteredByDate(callRecordings).filter(rec => recordingPriorityFilter === 'ALL' || rec.leadPriority === recordingPriorityFilter).length === 0 ? (
-                      <div className="col-span-full text-center py-16 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">
-                        No call recordings found for the selected date filter.
+                      <div className="col-span-full text-center py-12 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px] space-y-3 border border-dashed border-[var(--crm-line)] rounded-xl p-6">
+                        <div>
+                          {callRecordings.length > 0
+                            ? `No call recordings match the selected date filter (${dateFilterMode}). (${callRecordings.length} total recording(s) exist in database)`
+                            : 'No call recordings uploaded by Sales Executives yet.'}
+                        </div>
+                        {callRecordings.length > 0 && dateFilterMode !== 'ALL' && (
+                          <button
+                            type="button"
+                            onClick={() => setDateFilterMode('ALL')}
+                            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs uppercase rounded-lg shadow-sm transition cursor-pointer inline-flex items-center gap-2"
+                          >
+                            <span>Show All {callRecordings.length} Recordings (Switch Date Filter to ALL)</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       getFilteredByDate(callRecordings)
@@ -2650,29 +2687,43 @@ export default function SalesManagerDashboard() {
               </div>
             )}
 
-            {/* TAB: SHARED FILES HUB */}
-            {activeTab === 'shared_files_hub' && (
-              <div className="space-y-6">
-                <FileSharingWidget initialTab="RECEIVED" />
-              </div>
-            )}
-
             {/* TAB: CLOSED LOST AUDIT & REASON ANALYTICS */}
             {activeTab === 'lost_analytics' && (() => {
               const lostLeads = allLeads.filter(l => ['CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase()));
               const totalLostValue = lostLeads.reduce((sum, l) => sum + (Number(l.leadValue) || 0), 0);
-              
-              const reasonCounts = {};
-              lostLeads.forEach(l => {
-                const r = l.lostReason || 'Other / Unspecified';
-                reasonCounts[r] = (reasonCounts[r] || 0) + 1;
-              });
 
               const categories = [
                 'Price', 'Freight', 'Competitor', 'Unsupported destination',
                 'Quantity too low', 'Product unavailable', 'No response',
                 'Invalid contact', 'Timing', 'Payment terms', 'Trust concern', 'Other'
               ];
+
+              const normalizeLostReason = (rawReason) => {
+                if (!rawReason) return 'Other';
+                const clean = rawReason.trim().toLowerCase();
+                
+                if (clean.includes('price') || clean.includes('rate') || clean.includes('cost')) return 'Price';
+                if (clean.includes('freight') || clean.includes('shipping')) return 'Freight';
+                if (clean.includes('competitor') || clean.includes('competing')) return 'Competitor';
+                if (clean.includes('unsupported') || clean.includes('destination') || clean.includes('location')) return 'Unsupported destination';
+                if (clean.includes('quantity') || clean.includes('volume')) return 'Quantity too low';
+                if (clean.includes('product') || clean.includes('unavailable') || clean.includes('stock')) return 'Product unavailable';
+                if (clean.includes('no response') || clean.includes('ghosted') || clean.includes('unreachable')) return 'No response';
+                if (clean.includes('invalid') || clean.includes('contact') || clean.includes('wrong') || clean.includes('fake')) return 'Invalid contact';
+                if (clean.includes('timing') || clean.includes('time') || clean.includes('postponed')) return 'Timing';
+                if (clean.includes('payment') || clean.includes('credit') || clean.includes('lc')) return 'Payment terms';
+                if (clean.includes('trust') || clean.includes('hesitat')) return 'Trust concern';
+                
+                return 'Other';
+              };
+
+              const reasonCounts = {};
+              categories.forEach(c => { reasonCounts[c] = 0; });
+
+              lostLeads.forEach(l => {
+                const cat = normalizeLostReason(l.lostReason);
+                reasonCounts[cat] = (reasonCounts[cat] || 0) + 1;
+              });
 
               return (
                 <div className="space-y-6 text-left font-mono">
@@ -2772,39 +2823,42 @@ export default function SalesManagerDashboard() {
                               </td>
                             </tr>
                           ) : (
-                            lostLeads.map((l) => (
-                              <tr key={l._id} className="hover:bg-[var(--crm-bg-sunken)]/60 transition-colors">
-                                <td className="p-3">
-                                  <div className="font-bold text-[var(--crm-heading)]">{l.customerName}</div>
-                                  <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{l.leadCode} &bull; {l.productCategory}</div>
-                                </td>
-                                <td className="p-3">
-                                  <span className="px-2.5 py-1 bg-rose-950/80 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase rounded inline-block">
-                                    ⚠️ {l.lostReason || 'Other / Unspecified'}
-                                  </span>
-                                </td>
-                                <td className="p-3 font-sans text-xs max-w-xs">
-                                  <p className="text-[var(--crm-heading)] leading-relaxed line-clamp-2" title={l.lostReasonNotes || l.remarks}>
-                                    {l.lostReasonNotes || l.remarks || 'No detailed explanation note recorded.'}
-                                  </p>
-                                </td>
-                                <td className="p-3 text-center text-[10px] text-[var(--crm-ink-faint)]">
-                                  <div>{l.lostByName || 'Executive'}</div>
-                                  <div>{l.lostAt ? new Date(l.lostAt).toLocaleDateString() : new Date(l.updatedAt).toLocaleDateString()}</div>
-                                </td>
-                                <td className="p-3 text-right font-bold text-amber-400">
-                                  {currency(l.leadValue)}
-                                </td>
-                                <td className="p-3 text-center">
-                                  <Link
-                                    to={`/crm/leads/${l._id}`}
-                                    className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded text-[10px] uppercase font-bold transition inline-flex items-center gap-1"
-                                  >
-                                    View Node &rarr;
-                                  </Link>
-                                </td>
-                              </tr>
-                            ))
+                            lostLeads.map((l) => {
+                              const categoryLabel = normalizeLostReason(l.lostReason);
+                              return (
+                                <tr key={l._id} className="hover:bg-[var(--crm-bg-sunken)]/60 transition-colors">
+                                  <td className="p-3">
+                                    <div className="font-bold text-[var(--crm-heading)]">{l.customerName}</div>
+                                    <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{l.leadCode} &bull; {l.productCategory}</div>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="px-2.5 py-1 bg-rose-950/80 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase rounded inline-block">
+                                      ⚠️ {categoryLabel}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 font-sans text-xs max-w-xs">
+                                    <p className="text-[var(--crm-heading)] leading-relaxed line-clamp-2" title={l.lostReasonNotes || l.remarks}>
+                                      {l.lostReasonNotes || l.remarks || 'No detailed explanation note recorded.'}
+                                    </p>
+                                  </td>
+                                  <td className="p-3 text-center text-[10px] text-[var(--crm-ink-faint)]">
+                                    <div>{l.lostByName || 'Executive'}</div>
+                                    <div>{l.lostAt ? new Date(l.lostAt).toLocaleDateString() : new Date(l.updatedAt).toLocaleDateString()}</div>
+                                  </td>
+                                  <td className="p-3 text-right font-bold text-amber-400">
+                                    {currency(l.leadValue)}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <Link
+                                      to={`/crm/leads/${l._id}`}
+                                      className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded text-[10px] uppercase font-bold transition inline-flex items-center gap-1"
+                                    >
+                                      View Node &rarr;
+                                    </Link>
+                                  </td>
+                                </tr>
+                              );
+                            })
                           )}
                         </tbody>
                       </table>
@@ -2814,126 +2868,6 @@ export default function SalesManagerDashboard() {
               );
             })()}
 
-            {/* TAB 3: SHARED FILES HUB */}
-            {activeTab === 'shared_files_hub' && (
-              <div className="space-y-6">
-                <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-6 rounded-lg shadow-sm text-left">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[var(--crm-line)] pb-4 mb-4 gap-3">
-                    <div>
-                      <h3 className="text-sm font-serif font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-2">
-                        <FiFolder className="text-teal-400" /> Team Shared Files Repository
-                      </h3>
-                      <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
-                        Inspect, download, and manage client Excel files and documents shared by Sales Executives and Managers.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowFileModal(true)}
-                      className="bg-teal-700 hover:bg-teal-600 text-white border border-teal-800 px-4 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition cursor-pointer flex items-center gap-2 font-mono"
-                    >
-                      <FiUpload size={12} /> + Share File
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[900px]">
-                      <thead>
-                        <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
-                          <th className="py-3.5 px-4">File Name</th>
-                          <th className="py-3.5 px-4">Sent By (Executive)</th>
-                          <th className="py-3.5 px-4">Sent To (Recipient)</th>
-                          <th className="py-3.5 px-4">Department</th>
-                          <th className="py-3.5 px-4">Date Shared</th>
-                          <th className="py-3.5 px-4">Note / Context</th>
-                          <th className="py-3.5 px-4 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
-                        {sharedFiles.length === 0 ? (
-                          <tr>
-                            <td colSpan="7" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
-                              No files shared by executives yet. Click "+ Share File" to send a document.
-                            </td>
-                          </tr>
-                        ) : (
-                          sharedFiles.map((file) => {
-                            const isSender = String(file.sentBy?._id || file.sentBy) === String(user?._id);
-                            return (
-                              <tr key={file._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
-                                <td className="py-3.5 px-4 font-bold text-[var(--crm-heading)]">
-                                  <div className="flex items-center gap-2">
-                                    <FiFileText className="text-teal-400 shrink-0" size={14} />
-                                    <span className="truncate max-w-[200px]" title={file.originalName}>{file.originalName}</span>
-                                  </div>
-                                </td>
-                                <td className="py-3.5 px-4">
-                                  {file.sentBy?.name || file.sentBy?.fullName || 'Executive'}
-                                </td>
-                                <td className="py-3.5 px-4">
-                                  {file.sentTo?.name || file.sentTo?.fullName || 'Recipient'}
-                                </td>
-                                <td className="py-3.5 px-4">
-                                  <span className="bg-slate-900 border border-slate-800 text-teal-300 px-2 py-0.5 rounded text-[9px] uppercase">
-                                    {file.department || 'SALES'}
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 text-[var(--crm-ink-faint)]">
-                                  {new Date(file.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                </td>
-                                <td className="py-3.5 px-4 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[180px]">
-                                  {file.note ? `"${file.note}"` : '—'}
-                                </td>
-                                <td className="py-3.5 px-4 text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          const response = await sharedFilesApi.downloadFile(file._id);
-                                          const url = window.URL.createObjectURL(new Blob([response.data]));
-                                          const link = document.createElement('a');
-                                          link.href = url;
-                                          link.setAttribute('download', file.originalName || 'shared-file');
-                                          document.body.appendChild(link);
-                                          link.click();
-                                          link.remove();
-                                          toast.success('Download completed');
-                                        } catch (err) {
-                                          toast.error('Could not download file');
-                                        }
-                                      }}
-                                      className="bg-teal-950/60 hover:bg-teal-900 border border-teal-800 text-teal-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <FiDownload size={11} /> Download
-                                    </button>
-                                    <button
-                                      onClick={async () => {
-                                        if (window.confirm('Delete this shared file?')) {
-                                          try {
-                                            await sharedFilesApi.deleteSharedFile(file._id);
-                                            toast.success('File deleted successfully');
-                                            setSharedFiles(prev => prev.filter(f => f._id !== file._id));
-                                          } catch (err) {
-                                            toast.error('Failed to delete file');
-                                          }
-                                        }
-                                      }}
-                                      className="bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 p-1.5 rounded transition cursor-pointer"
-                                      title="Delete Shared File"
-                                    >
-                                      <FiTrash2 size={12} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* TAB: SALES TRIAL HUB & CHAT */}
             {activeTab === 'sales_trial_hub' && (

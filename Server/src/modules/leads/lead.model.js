@@ -384,6 +384,7 @@ const leadSchema = new mongoose.Schema(
         "HOT",
         "WARM",
         "COLD",
+        "DEAD",
         "FAKE",
         "INCOMPLETE",
       ],

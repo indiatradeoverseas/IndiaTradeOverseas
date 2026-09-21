@@ -185,13 +185,44 @@ function init(server) {
         if (!cleanMsg) return;
 
         const ManagerChat = require('../modules/chat/managerChat.model');
+        const managerChatCtrl = require('../modules/chat/managerChat.controller');
+
+        const senderId = String(chatMsg.senderId || employeeId || 'unknown');
+        const senderEmail = (chatMsg.senderEmail || '').toLowerCase().trim();
+        const recipientId = String(chatMsg.recipientId || 'GENERAL');
+
+        let senderAllIds = [];
+        let recipientAllIds = [];
+        let recipientEmail = (chatMsg.recipientEmail || '').toLowerCase().trim();
+
+        if (managerChatCtrl && typeof managerChatCtrl.getManagerMessages === 'function') {
+          // Resolve multi-model IDs if available
+          try {
+            const { getUserAllIds } = require('../modules/chat/managerChat.controller');
+            if (typeof getUserAllIds === 'function') {
+              senderAllIds = await getUserAllIds(senderId || senderEmail);
+              if (recipientId !== 'GENERAL') {
+                recipientAllIds = await getUserAllIds(recipientId || recipientEmail);
+                if (!recipientEmail) {
+                  const foundEm = recipientAllIds.find(id => id.includes('@'));
+                  if (foundEm) recipientEmail = foundEm.toLowerCase().trim();
+                }
+              }
+            }
+          } catch (e) {}
+        }
+
         const dbDoc = await ManagerChat.create({
-          senderId: String(chatMsg.senderId || employeeId || 'unknown'),
+          senderId,
+          senderEmail,
           senderName: chatMsg.senderName || name || 'User',
           senderRole: chatMsg.senderRole || role || 'MANAGER',
           senderDepartment: chatMsg.senderDepartment || 'GENERAL',
-          recipientId: String(chatMsg.recipientId || 'GENERAL'),
+          senderAllIds,
+          recipientId,
+          recipientEmail,
           recipientName: chatMsg.recipientName || 'General Leadership Hub',
+          recipientAllIds,
           message: cleanMsg,
           attachmentUrl: chatMsg.attachmentUrl || '',
           leadCode: chatMsg.leadCode || ''
@@ -201,11 +232,15 @@ function init(server) {
           _id: dbDoc._id.toString(),
           id: dbDoc._id.toString(),
           senderId: dbDoc.senderId,
+          senderEmail: dbDoc.senderEmail || senderEmail,
           senderName: dbDoc.senderName,
           senderRole: dbDoc.senderRole,
           senderDepartment: dbDoc.senderDepartment,
+          senderAllIds: dbDoc.senderAllIds || senderAllIds,
           recipientId: dbDoc.recipientId,
+          recipientEmail: dbDoc.recipientEmail || recipientEmail,
           recipientName: dbDoc.recipientName,
+          recipientAllIds: dbDoc.recipientAllIds || recipientAllIds,
           message: dbDoc.message,
           attachmentUrl: dbDoc.attachmentUrl,
           leadCode: dbDoc.leadCode,

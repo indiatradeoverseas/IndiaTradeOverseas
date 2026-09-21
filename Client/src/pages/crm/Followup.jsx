@@ -548,6 +548,7 @@ export default function Followup() {
             <option value="HOT">🔥 HOT</option>
             <option value="WARM">⚡ WARM</option>
             <option value="COLD">❄️ COLD</option>
+            <option value="DEAD">💀 DEAD</option>
           </select>
 
           <button
@@ -618,11 +619,12 @@ export default function Followup() {
 
                       {rec.leadPriority && (
                         <span className={`text-[8px] font-black px-2 py-1 rounded uppercase shadow-xs ${
+                          rec.leadPriority === 'DEAD' ? 'bg-zinc-800 text-zinc-200 border border-zinc-600' :
                           rec.leadPriority === 'HOT' ? 'bg-rose-600 text-white border border-rose-700' :
                           rec.leadPriority === 'WARM' ? 'bg-amber-500 text-white border border-amber-600' :
                           'bg-cyan-600 text-white border border-cyan-700'
                         }`}>
-                          {rec.leadPriority === 'HOT' ? 'HOT 🔥' : rec.leadPriority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
+                          {rec.leadPriority === 'DEAD' ? 'DEAD 💀' : rec.leadPriority === 'HOT' ? 'HOT 🔥' : rec.leadPriority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
                         </span>
                       )}
                     </div>

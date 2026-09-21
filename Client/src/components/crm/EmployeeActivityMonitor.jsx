@@ -15,7 +15,7 @@ const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-
 const LABEL_MONO = { fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)' };
 const HEADING = { fontFamily: 'var(--crm-font-body)', color: 'var(--crm-heading)' };
 
-const DEPARTMENTS = ['ALL', 'SALES', 'HR', 'IT', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT', 'ADMIN'];
+const DEPARTMENTS = ['ALL', 'SALES', 'SALES_TRIAL', 'HR', 'IT', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT', 'ADMIN'];
 
 const formatTimeOrDate = (dateVal) => {
   if (!dateVal) return '—';
@@ -154,9 +154,23 @@ export default function EmployeeActivityMonitor({ scopeDepartment = null, showLu
     let result = employees;
 
     if (scopeDepartment && scopeDepartment !== 'ALL') {
-      result = result.filter(e => (e.department || '').toUpperCase() === scopeDepartment.toUpperCase());
+      const scopeUpper = scopeDepartment.toUpperCase();
+      result = result.filter(e => {
+        const d = (e.department || '').toUpperCase();
+        if (scopeUpper === 'SALES') {
+          return d === 'SALES' || d === 'SALES_TRIAL';
+        }
+        return d === scopeUpper;
+      });
     } else if (deptFilter !== 'ALL') {
-      result = result.filter(e => (e.department || '').toUpperCase() === deptFilter.toUpperCase());
+      const deptUpper = deptFilter.toUpperCase();
+      result = result.filter(e => {
+        const d = (e.department || '').toUpperCase();
+        if (deptUpper === 'SALES') {
+          return d === 'SALES' || d === 'SALES_TRIAL';
+        }
+        return d === deptUpper;
+      });
     }
 
     if (statusFilter !== 'ALL') {

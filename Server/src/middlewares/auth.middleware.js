@@ -86,15 +86,22 @@ async function authenticate(req, res, next) {
       }
       user.employeeDbId = user._id;
 
-      // Trigger Employee Activity heartbeat for Employee/Admin model logins too
-      if (foundIn === 'Employee') {
+      // Trigger Employee Activity heartbeat for Employee/Admin/SalesTrialUser model logins
+      if (foundIn === 'Employee' || foundIn === 'SalesTrialUser') {
         try {
+          if (foundIn === 'SalesTrialUser') {
+            const SalesTrialUser = require('../modules/sales-trial/salesTrialUser.model');
+            await SalesTrialUser.updateOne(
+              { _id: user._id },
+              { $set: { isOnline: true, lastActiveAt: new Date() } }
+            );
+          }
           const employeeActivityService = require('../modules/employee-activity/employeeActivity.service');
           employeeActivityService.recordHeartbeat(user).catch(err => {
-            console.error('Asynchronous heartbeat error (Employee):', err);
+            console.error(`Asynchronous heartbeat error (${foundIn}):`, err);
           });
         } catch (err) {
-          console.error('Error recording heartbeat for Employee login:', err);
+          console.error(`Error recording heartbeat for ${foundIn} login:`, err);
         }
       }
     }

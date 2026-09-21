@@ -7,12 +7,14 @@ import { adminApi } from '../../api/admin';
 import { useAuth } from '../../hooks/useAuth';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
 import LostReasonModal, { LOST_REASON_OPTIONS } from '../../components/crm/LostReasonModal';
+import SalesCalculatorModal from '../../components/crm/SalesCalculatorModal';
 import {
   FiArrowLeft, FiActivity, FiFileText, FiTruck, FiDollarSign,
   FiSend, FiTrash2, FiEye, FiShield, FiStar, FiUser, FiPhone,
   FiCheck, FiAward, FiXCircle, FiCheckCircle, FiCompass,
   FiMessageCircle, FiMail, FiAlertTriangle, FiPlus, FiClock
 } from 'react-icons/fi';
+import { BsCalculator } from 'react-icons/bs';
 import toast from 'react-hot-toast';
 
 // Fluid animation orchestration profiles
@@ -64,6 +66,7 @@ export default function LeadDetail() {
   const [deptAssignee, setDeptAssignee] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [updatingPriority, setUpdatingPriority] = useState(false);
+  const [showSalesCalc, setShowSalesCalc] = useState(false);
 
   const departments = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES'];
 
@@ -489,6 +492,12 @@ export default function LeadDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
+          <button
+            onClick={() => setShowSalesCalc(true)}
+            className="bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer shadow-md"
+          >
+            <BsCalculator size={15} /> <span>Sales Calculator 🧮</span>
+          </button>
           {user?.role === 'ADMIN' && (
             <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-[var(--crm-danger-bg)]">
               <FiTrash2 size={13} /> <span>Delete Node</span>
@@ -565,17 +574,18 @@ export default function LeadDetail() {
               <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
                 Lead Temperature Status: 
                 <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${
+                  lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'bg-zinc-900 text-zinc-300 border-zinc-700 shadow-sm' :
                   lead.priority === 'HOT' ? 'bg-rose-950/80 text-rose-400 border-rose-800/60' :
                   lead.priority === 'WARM' ? 'bg-amber-950/80 text-amber-400 border-amber-800/60' :
                   'bg-cyan-950/80 text-cyan-400 border-cyan-800/60'
                 }`}>
-                  {lead.priority === 'HOT' ? 'HOT 🔥' : lead.priority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
+                  {lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'DEAD 💀' : lead.priority === 'HOT' ? 'HOT 🔥' : lead.priority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
                 </span>
               </h3>
             </div>
             
             {/* Manual Temperature Override Dropdown */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold">Manual Override:</span>
               <select
                 value={lead.priority || 'WARM'}
@@ -586,8 +596,17 @@ export default function LeadDetail() {
                 <option value="HOT" className="bg-[var(--crm-bg)] text-rose-400">HOT 🔥 (High Priority)</option>
                 <option value="WARM" className="bg-[var(--crm-bg)] text-amber-400">WARM ⚡ (Medium Priority)</option>
                 <option value="COLD" className="bg-[var(--crm-bg)] text-cyan-400">COLD ❄️ (Low Priority)</option>
+                <option value="DEAD" className="bg-[var(--crm-bg)] text-zinc-300 font-bold">DEAD 💀 (Expired Lead)</option>
                 <option value="FAKE" className="bg-[var(--crm-bg)] text-gray-400">FAKE (Invalid Lead)</option>
               </select>
+              <button
+                type="button"
+                onClick={() => setShowSalesCalc(true)}
+                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 text-xs font-bold rounded-sm flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              >
+                <BsCalculator size={13} />
+                <span>Calculator 🧮</span>
+              </button>
             </div>
           </div>
 
@@ -1024,6 +1043,24 @@ export default function LeadDetail() {
         onSubmit={handleLostReasonSubmit}
         leadName={lead?.customerName}
         loading={submittingLost}
+      />
+
+      {/* SALES CALCULATOR MODAL */}
+      <SalesCalculatorModal
+        isOpen={showSalesCalc}
+        onClose={() => setShowSalesCalc(false)}
+        initialValue={lead?.leadValue}
+        onApplyValue={async (newVal) => {
+          try {
+            const res = await leadsApi.updatePriority(id, { leadValue: newVal });
+            if (res.success) {
+              toast.success(`Updated lead valuation to ₹${Number(newVal).toLocaleString('en-IN')}!`);
+              fetchLeadDetails();
+            }
+          } catch (err) {
+            toast.error('Failed to update lead valuation');
+          }
+        }}
       />
     </motion.div>
   );

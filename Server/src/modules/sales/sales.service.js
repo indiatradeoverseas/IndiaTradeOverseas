@@ -224,7 +224,14 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
     assignedTo: { $ne: null },
     updatedAt: { $gte: range.start, $lte: range.end }
   };
-  if (department) leadMatch.assignedDepartment = department;
+  if (department && department !== 'ALL') {
+    const d = String(department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      leadMatch.assignedDepartment = { $in: ['SALES', 'SALES_TRIAL'] };
+    } else {
+      leadMatch.assignedDepartment = department;
+    }
+  }
 
   const leadsAgg = await Lead.aggregate([
     { $match: leadMatch },
@@ -245,6 +252,7 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
         _id: '$assignedTo',
         totalLeads: { $sum: 1 },
         dealsWon: { $sum: { $cond: [{ $in: ['$stage', WON_STAGES] }, 1, 0] } },
+        dealsLost: { $sum: { $cond: [{ $in: ['$stage', LOST_STAGES] }, 1, 0] } },
         revenue: { $sum: { $cond: [{ $in: ['$stage', WON_STAGES] }, '$dealRevenue', 0] } }
       }
     }
@@ -326,28 +334,52 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
     return acc;
   }, {});
 
-  const employeeIds = new Set([
-    ...leadsAgg.map((row) => row._id.toString()),
-    ...Object.keys(activityByEmployee)
-  ]);
-
   const Employee = require('../employee/employee.model');
   const User = require('../users/user.model');
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
-  const employees = await Employee.find({ status: 'ACTIVE', department: 'SALES' });
-  const users = await User.find({ isActive: true, department: 'SALES' });
+  let empFilter = { status: 'ACTIVE' };
+  let userFilter = { isActive: true };
+  let trialFilter = { status: { $ne: 'INACTIVE' } };
+
+  if (department && department !== 'ALL') {
+    const d = String(department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      empFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
+      userFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
+      trialFilter.$or = [
+        { department: { $in: ['SALES', 'SALES_TRIAL'] } },
+        { department: { $exists: false } },
+        { department: null },
+        { department: '' }
+      ];
+    } else {
+      empFilter.department = department;
+      userFilter.department = department;
+      trialFilter.department = department;
+    }
+  } else {
+    empFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
+    userFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
+  }
+
+  const employees = await Employee.find(empFilter);
+  const users = await User.find(userFilter);
+  const trialUsers = await SalesTrialUser.find(trialFilter);
 
   const repMap = new Map();
 
   // Add users first
   users.forEach(u => {
     if (u.email) {
-      repMap.set(u.email.toLowerCase(), {
+      const emailKey = u.email.toLowerCase();
+      repMap.set(emailKey, {
         employeeId: u._id.toString(),
-        fullName: u.fullName,
-        employeeCode: u.employeeId,
-        department: u.department,
-        email: u.email.toLowerCase(),
+        fullName: u.fullName || u.name,
+        employeeCode: u.employeeId || String(u._id),
+        department: u.department || 'SALES',
+        email: emailKey,
+        isTrial: u.role === 'SALES_TRIAL' || u.department === 'SALES_TRIAL',
         userIds: [u._id.toString()]
       });
     }
@@ -365,13 +397,45 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
       } else {
         repMap.set(emailKey, {
           employeeId: e._id.toString(),
-          fullName: e.name,
-          employeeCode: e.employeeId,
-          department: e.department,
+          fullName: e.name || e.fullName,
+          employeeCode: e.employeeId || String(e._id),
+          department: e.department || 'SALES',
           email: emailKey,
+          isTrial: e.role === 'SALES_TRIAL' || e.department === 'SALES_TRIAL',
           userIds: [e._id.toString()]
         });
       }
+    }
+  });
+
+  // Add/merge Sales Trial Users
+  trialUsers.forEach(t => {
+    const emailKey = t.email ? t.email.toLowerCase() : String(t._id);
+    const existing = repMap.get(emailKey);
+    const tIdStr = t._id ? t._id.toString() : '';
+    const tCodeStr = t.trialId || t.employeeId || tIdStr;
+
+    if (existing) {
+      if (tIdStr && !existing.userIds.includes(tIdStr)) {
+        existing.userIds.push(tIdStr);
+      }
+      if (tCodeStr && !existing.userIds.includes(tCodeStr)) {
+        existing.userIds.push(tCodeStr);
+      }
+    } else {
+      const ids = [];
+      if (tIdStr) ids.push(tIdStr);
+      if (tCodeStr && tCodeStr !== tIdStr) ids.push(tCodeStr);
+
+      repMap.set(emailKey, {
+        employeeId: tIdStr || tCodeStr,
+        fullName: t.fullName || t.name || 'Sales Trial Executive',
+        employeeCode: tCodeStr,
+        department: t.department || 'SALES_TRIAL',
+        email: emailKey,
+        isTrial: true,
+        userIds: ids
+      });
     }
   });
 
@@ -391,14 +455,16 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
     .map((rep) => {
       let totalLeads = 0;
       let dealsWon = 0;
+      let dealsLost = 0;
       let revenue = 0;
       let activityCount = 0;
       let completedTasksCount = 0;
 
       rep.userIds.forEach(id => {
-        const leadInfo = leadsByEmployee[id] || { totalLeads: 0, dealsWon: 0, revenue: 0 };
+        const leadInfo = leadsByEmployee[id] || { totalLeads: 0, dealsWon: 0, dealsLost: 0, revenue: 0 };
         totalLeads += leadInfo.totalLeads;
         dealsWon += leadInfo.dealsWon;
+        dealsLost += leadInfo.dealsLost;
         revenue += leadInfo.revenue;
 
         activityCount += activityByEmployee[id] || 0;
@@ -421,8 +487,10 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
         fullName: rep.fullName,
         employeeCode: rep.employeeCode,
         department: rep.department,
+        isTrial: rep.isTrial || false,
         totalLeads,
         dealsWon,
+        dealsLost,
         revenue,
         activityCount,
         completedTasksCount,
@@ -431,8 +499,7 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
         isTargetAchieved: targetValue > 0 ? revenue >= targetValue : false
       };
     })
-    .sort((a, b) => b.revenue - a.revenue || b.dealsWon - a.dealsWon || b.completedTasksCount - a.completedTasksCount || b.activityCount - a.activityCount)
-    .slice(0, 20);
+    .sort((a, b) => b.revenue - a.revenue || b.dealsWon - a.dealsWon || b.completedTasksCount - a.completedTasksCount || b.activityCount - a.activityCount);
 
   const deptMatch = {
     productCategory: { $in: ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'] },

@@ -6,16 +6,32 @@ import { adminApi } from '../../api/admin';
 import { employeesApi } from '../../api/employees';
 import { taskApi } from '../../api/task';
 import { salesTrialApi } from '../../api/salesTrialApi';
+import SalesCalculatorModal from '../../components/crm/SalesCalculatorModal';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
+
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
   FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2
 } from 'react-icons/fi';
+import { BsCalculator } from 'react-icons/bs';
 import { useAuth } from '../../hooks/useAuth';
 import { API_URL, getFileUrl } from '../../config/env';
 import toast from 'react-hot-toast';
-import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend 
+} from 'recharts';
 
 // Staggered animation configurations
 const containerVariants = {
@@ -56,6 +72,82 @@ export default function Leads() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [leadTab, setLeadTab] = useState('ACTIVE'); // 'ACTIVE' | 'COMPLETED' | 'WORKLOAD' | 'ALL'
   const [filterPriority, setFilterPriority] = useState('ALL'); // 'ALL' | 'HOT' | 'WARM' | 'COLD'
+  const [showAnalyticsGraph, setShowAnalyticsGraph] = useState(true);
+  const [graphViewMode, setGraphViewMode] = useState('BAR'); // 'BAR' | 'PIE' | 'ALL'
+
+  const pipelineAnalytics = useMemo(() => {
+    const totalLeads = leads.length;
+    let totalGrossValue = 0;
+    let totalWonValue = 0;
+    let totalLostValue = 0;
+    let activeValue = 0;
+
+    let wonCount = 0;
+    let lostCount = 0;
+    let activeCount = 0;
+    let newLeadCount = 0;
+    let inDiscussionCount = 0;
+
+    const categoryTotals = {};
+
+    leads.forEach(l => {
+      const val = Number(l.leadValue) || 0;
+      const st = String(l.stage || '').toUpperCase();
+      const cat = String(l.productCategory || 'Uncategorized').toUpperCase();
+
+      totalGrossValue += val;
+
+      if (['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'COMPLETED'].includes(st)) {
+        wonCount++;
+        totalWonValue += val;
+      } else if (['CLOSED_LOST', 'DEAD', 'LOST', 'CANCELLED', 'EXPIRED'].includes(st)) {
+        lostCount++;
+        totalLostValue += val;
+      } else {
+        activeCount++;
+        activeValue += val;
+        if (st.includes('NEW')) newLeadCount++;
+        else inDiscussionCount++;
+      }
+
+      if (!categoryTotals[cat]) {
+        categoryTotals[cat] = { name: cat, count: 0, value: 0 };
+      }
+      categoryTotals[cat].count += 1;
+      categoryTotals[cat].value += val;
+    });
+
+    const conversionRate = totalLeads > 0 ? Math.round((wonCount / totalLeads) * 100) : 0;
+
+    const stageChartData = [
+      { name: 'New Lead', count: newLeadCount, value: leads.filter(l => (l.stage || '').toUpperCase().includes('NEW')).reduce((s, x) => s + Number(x.leadValue || 0), 0), fill: '#06b6d4' },
+      { name: 'In Discussion', count: inDiscussionCount, value: leads.filter(l => !(l.stage || '').toUpperCase().includes('NEW') && !['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAD', 'LOST'].includes((l.stage || '').toUpperCase())).reduce((s, x) => s + Number(x.leadValue || 0), 0), fill: '#6366f1' },
+      { name: 'Deals Won', count: wonCount, value: totalWonValue, fill: '#10b981' },
+      { name: 'Lost/Dead', count: lostCount, value: totalLostValue, fill: '#f43f5e' }
+    ];
+
+    const categoryChartData = Object.values(categoryTotals).map(c => ({
+      name: c.name,
+      value: c.value,
+      count: c.count
+    }));
+
+    return {
+      totalLeads,
+      totalGrossValue,
+      totalWonValue,
+      totalLostValue,
+      activeValue,
+      activeCount,
+      wonCount,
+      lostCount,
+      conversionRate,
+      pendingRemindersCount: reminders.length,
+      stageChartData,
+      categoryChartData
+    };
+  }, [leads, reminders]);
+
 
   const isAssignedToMe = (lead) => {
     if (!user || !lead || !lead.assignedTo) return false;
@@ -116,8 +208,9 @@ export default function Leads() {
   const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
 
-  // Call Recording Modal State
+  // Call Recording & Sales Calculator Modal State
   const [showCallModal, setShowCallModal] = useState(false);
+  const [showSalesCalc, setShowSalesCalc] = useState(false);
 
   // Calendar Date Filtering & LOI State
   const [dateFilterMode, setDateFilterMode] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'PICK_DATE'
@@ -277,7 +370,7 @@ export default function Leads() {
     let targetPhone = '';
     let targetLead = null;
 
-    if (eOrPhone && typeof eOrPhone === 'object' && eOrPhone.stopPropagation) {
+    if (eOrPhone && typeof eOrPhone === 'object' && (eOrPhone.stopPropagation || eOrPhone.nativeEvent)) {
       e = eOrPhone;
       targetPhone = phone;
       targetLead = lead;
@@ -286,7 +379,10 @@ export default function Leads() {
       targetLead = phone;
     }
 
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
 
     let num = (targetPhone || targetLead?.whatsAppNumber || targetLead?.phone || '').replace(/[^0-9]/g, '');
     if (!num) {
@@ -303,7 +399,7 @@ export default function Leads() {
     let targetEmail = '';
     let targetLead = null;
 
-    if (eOrEmail && typeof eOrEmail === 'object' && eOrEmail.stopPropagation) {
+    if (eOrEmail && typeof eOrEmail === 'object' && (eOrEmail.stopPropagation || eOrEmail.nativeEvent)) {
       e = eOrEmail;
       targetEmail = email;
       targetLead = lead;
@@ -312,16 +408,37 @@ export default function Leads() {
       targetLead = email;
     }
 
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
 
-    const clientEmail = targetEmail || targetLead?.email || targetLead?.customerEmail || targetLead?.emailMasked || (targetLead?.customerName ? `${targetLead.customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@indiatradeoverseas.com` : '');
+    const clientEmail = (
+      targetEmail ||
+      targetLead?.email ||
+      targetLead?.customerEmail ||
+      targetLead?.emailMasked ||
+      (targetLead?.customerName ? `${targetLead.customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@indiatradeoverseas.com` : '')
+    );
+
     if (!clientEmail) {
       return toast.error('No email address available for this client');
     }
+
     const subject = encodeURIComponent(`India Trade Overseas - Lead Communication (${targetLead?.leadCode || targetLead?.customerName || 'Inquiry'})`);
-    const body = encodeURIComponent(`Hello ${targetLead?.customerName || 'Client'},\n\nWe are following up regarding your inquiry (Reference: ${targetLead?.leadCode || 'N/A'})...\n\nBest regards,\nIndia Trade Overseas`);
-    
-    window.location.href = `mailto:${clientEmail}?subject=${subject}&body=${body}`;
+    const body = encodeURIComponent(`Hello ${targetLead?.customerName || 'Client'},\n\nWe are following up regarding your inquiry with India Trade Overseas (Reference: ${targetLead?.leadCode || 'N/A'})...\n\nBest regards,\nIndia Trade Overseas`);
+
+    const mailtoUrl = `mailto:${clientEmail}?subject=${subject}&body=${body}`;
+
+    const link = document.createElement('a');
+    link.href = mailtoUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    toast.success(`Opening email client for ${clientEmail}...`, { id: 'email-toast' });
   };
 
   const fetchReminders = async () => {
@@ -784,7 +901,14 @@ export default function Leads() {
 
     if (filterPriority !== 'ALL') {
       const pUpper = (lead.priority || 'WARM').toUpperCase();
-      if (pUpper !== filterPriority) return false;
+      const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !completedStages.includes((lead.stage || '').toUpperCase());
+
+      if (filterPriority === 'DEAD') {
+        if (pUpper !== 'DEAD' && !isDateExpired) return false;
+      } else {
+        if (isDateExpired || pUpper === 'DEAD') return false;
+        if (pUpper !== filterPriority) return false;
+      }
     }
 
     if (filterCategory !== 'ALL') {
@@ -953,6 +1077,13 @@ export default function Leads() {
             <FiMic size={11} className="animate-pulse text-rose-600" /> <span>Upload Recording</span>
           </button>
 
+          <button
+            onClick={() => setShowSalesCalc(true)}
+            className="bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
+          >
+            <BsCalculator size={12} /> <span>Sales Calculator 🧮</span>
+          </button>
+
           <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm">
             <FiPlus size={12} /> 
           </button>
@@ -1030,29 +1161,283 @@ export default function Leads() {
       {/* Main Container Content */}
       <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)] min-w-0 overflow-x-hidden font-sans">
 
-        {/* Module 4: Sales Performance Metrics Sub-Header */}
-        <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm font-sans text-xs">
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Active Pipeline</span>
-            <span className="text-base font-bold text-[var(--crm-heading)]">{leads.length} Records</span>
+        {/* Module 4: Sales Performance Metrics & Graph Analytics Section */}
+        <motion.div variants={blockVariants} className="space-y-4 font-sans">
+          
+          {/* Header Controls for Analytics & Graph */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--crm-bg-raised)] p-3 border border-[var(--crm-line)] rounded-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wide text-[var(--crm-heading)]">
+                SALES PIPELINE ANALYTICS & VISUAL GRAPH
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold border border-cyan-500/20">
+                LIVE METRICS
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              {showAnalyticsGraph && (
+                <div className="flex items-center bg-[var(--crm-bg-sunken)] p-0.5 rounded border border-[var(--crm-line)]">
+                  <button
+                    onClick={() => setGraphViewMode('BAR')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      graphViewMode === 'BAR'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    📊 
+                  </button>
+                  <button
+                    onClick={() => setGraphViewMode('PIE')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      graphViewMode === 'PIE'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    🥧 
+                  </button>
+                  <button
+                    onClick={() => setGraphViewMode('ALL')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      graphViewMode === 'ALL'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    📈 Both Graphs
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowAnalyticsGraph(!showAnalyticsGraph)}
+                className="px-3 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-line)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>{showAnalyticsGraph ? '🙈 Hide Graph' : '👁️ Show Graph'}</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Gross Valuation</span>
-            <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-              ₹{leads.reduce((sum, l) => sum + (l.leadValue || 0), 0).toLocaleString('en-IN')}
-            </span>
+
+          {/* 7 Core Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            
+            {/* 1. Active Pipeline */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-cyan-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Active Pipeline
+              </span>
+              <span className="text-sm font-extrabold text-[var(--crm-heading)] block">
+                {pipelineAnalytics.activeCount} Leads
+              </span>
+              <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold block mt-0.5">
+                ₹{pipelineAnalytics.activeValue.toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            {/* 2. Gross Valuation */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-emerald-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Gross Valuation
+              </span>
+              <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 block truncate">
+                ₹{pipelineAnalytics.totalGrossValue.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-[var(--crm-ink-faint)] font-semibold block mt-0.5">
+                {pipelineAnalytics.totalLeads} Total Records
+              </span>
+            </div>
+
+            {/* 3. Pending Follow-ups */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-amber-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Pending Follow-ups
+              </span>
+              <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400 block">
+                {pipelineAnalytics.pendingRemindersCount} Due
+              </span>
+              <span className="text-[10px] text-amber-500/80 font-semibold block mt-0.5">
+                Action Items
+              </span>
+            </div>
+
+            {/* 4. Conversion Rate */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-sky-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Conversion Rate
+              </span>
+              <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 block">
+                {pipelineAnalytics.conversionRate}%
+              </span>
+              <span className="text-[10px] text-sky-500/80 font-semibold block mt-0.5">
+                {pipelineAnalytics.wonCount} / {pipelineAnalytics.totalLeads} Won
+              </span>
+            </div>
+
+            {/* 5. Total Earnings (Won Revenue) */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-emerald-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Total Earning
+              </span>
+              <span className="text-sm font-extrabold text-emerald-500 block truncate">
+                ₹{pipelineAnalytics.totalWonValue.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-emerald-600/80 font-semibold block mt-0.5">
+                Closed Deals ₹
+              </span>
+            </div>
+
+            {/* 6. Total Lead Completed */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-teal-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Total Lead Complete
+              </span>
+              <span className="text-sm font-extrabold text-teal-600 dark:text-teal-400 block">
+                {pipelineAnalytics.wonCount} Completed
+              </span>
+              <span className="text-[10px] text-teal-500/80 font-semibold block mt-0.5">
+                Deals Won
+              </span>
+            </div>
+
+            {/* 7. Lost / Dead Leads */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-rose-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Lost / Dead
+              </span>
+              <span className="text-sm font-extrabold text-rose-500 block">
+                {pipelineAnalytics.lostCount} Lose
+              </span>
+              <span className="text-[10px] text-rose-400/80 font-semibold block mt-0.5 truncate">
+                ₹{pipelineAnalytics.totalLostValue.toLocaleString('en-IN')}
+              </span>
+            </div>
+
           </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Pending Follow-ups</span>
-            <span className="text-base font-bold text-amber-600 dark:text-amber-400">{reminders.length} Due</span>
-          </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block">Conversion Rate</span>
-            <span className="text-base font-bold text-sky-600 dark:text-sky-400">
-              {leads.length > 0 ? Math.round((leads.filter(l => ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((l.stage || '').toUpperCase())).length / leads.length) * 100) : 0}%
-            </span>
-          </div>
+
+          {/* Interactive Recharts Graph Visualizations */}
+          <AnimatePresence>
+            {showAnalyticsGraph && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <div className={`grid gap-4 ${graphViewMode === 'ALL' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                  
+                  {/* BAR CHART: Pipeline Stage Valuation */}
+                  {(graphViewMode === 'BAR' || graphViewMode === 'ALL') && (
+                    <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-sm">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--crm-line)]">
+                        <h4 className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>📊 Stage Valuation & Lead Distribution</span>
+                        </h4>
+                        <span className="text-[10px] text-[var(--crm-ink-faint)]">Valuation in ₹ INR</span>
+                      </div>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart data={pipelineAnalytics.stageChartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--crm-ink-faint)' }} />
+                            <YAxis
+                              tick={{ fontSize: 10, fill: 'var(--crm-ink-faint)' }}
+                              tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0];
+                                  return (
+                                    <div className="bg-slate-900 border border-slate-700 p-2.5 rounded shadow-xl text-xs font-sans text-slate-100">
+                                      <p className="font-bold text-teal-400 mb-1">{label}</p>
+                                      <p className="text-slate-300">
+                                        Valuation: <span className="font-bold text-emerald-400">₹{Number(item.value || 0).toLocaleString('en-IN')}</span>
+                                      </p>
+                                      <p className="text-slate-400 text-[11px]">
+                                        Leads Count: <span className="font-bold text-sky-300">{item.payload.count}</span>
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                              {pipelineAnalytics.stageChartData.map((entry, idx) => (
+                                <Cell key={`cell-${idx}`} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PIE CHART: Product Category Distribution */}
+                  {(graphViewMode === 'PIE' || graphViewMode === 'ALL') && (
+                    <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-sm">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--crm-line)]">
+                        <h4 className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>🥧 Category Distribution & Value Share</span>
+                        </h4>
+                        <span className="text-[10px] text-[var(--crm-ink-faint)]">Product Categories</span>
+                      </div>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <PieChart>
+                            <Pie
+                              data={pipelineAnalytics.categoryChartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={85}
+                              paddingAngle={4}
+                              dataKey="value"
+                            >
+                              {pipelineAnalytics.categoryChartData.map((entry, index) => {
+                                const colors = ['#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#64748b'];
+                                return <Cell key={`pie-cell-${index}`} fill={colors[index % colors.length]} />;
+                              })}
+                            </Pie>
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0];
+                                  return (
+                                    <div className="bg-slate-900 border border-slate-700 p-2.5 rounded shadow-xl text-xs font-sans text-slate-100">
+                                      <p className="font-bold text-cyan-400 mb-1">{item.name}</p>
+                                      <p className="text-slate-300">
+                                        Valuation: <span className="font-bold text-emerald-400">₹{Number(item.value || 0).toLocaleString('en-IN')}</span>
+                                      </p>
+                                      <p className="text-slate-400 text-[11px]">
+                                        Leads Count: <span className="font-bold text-sky-300">{item.payload.count}</span>
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Legend
+                              formatter={(value) => <span className="text-[11px] text-[var(--crm-heading)] font-semibold">{value}</span>}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
         </motion.div>
+
 
         {/* Follow-up Reminder Stream */}
         {reminders.length > 0 && (
@@ -1320,6 +1705,16 @@ export default function Leads() {
             >
               ❄️ Cold
             </button>
+            <button
+              onClick={() => setFilterPriority('DEAD')}
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                filterPriority === 'DEAD'
+                  ? 'bg-zinc-800 text-zinc-100 border-zinc-600 font-bold shadow-sm'
+                  : 'bg-zinc-300 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 border border-zinc-400 dark:border-zinc-700 hover:bg-zinc-400 font-bold'
+              }`}
+            >
+              💀 Dead (Expired Date)
+            </button>
           </div>
         </motion.div>
 
@@ -1427,13 +1822,13 @@ export default function Leads() {
                             <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
                               {lead.customerName}
                             </Link>
-                            {lead.priority === 'HOT' && (
+                            {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
+                            ) : lead.priority === 'HOT' ? (
                               <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
-                            )}
-                            {lead.priority === 'WARM' && (
+                            ) : lead.priority === 'WARM' ? (
                               <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
-                            )}
-                            {lead.priority === 'COLD' && (
+                            ) : (
                               <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                             )}
                           </div>
@@ -1599,13 +1994,13 @@ export default function Leads() {
                         </div>
 
                         <div className="shrink-0 flex items-center gap-1.5">
-                          {lead.priority === 'HOT' && (
+                          {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
+                          ) : lead.priority === 'HOT' ? (
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
-                          )}
-                          {lead.priority === 'WARM' && (
+                          ) : lead.priority === 'WARM' ? (
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
-                          )}
-                          {lead.priority === 'COLD' && (
+                          ) : (
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                           )}
                         </div>
@@ -1980,7 +2375,8 @@ export default function Leads() {
                         { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-600 text-white border-indigo-700 font-bold' },
                         { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-600 text-white border-rose-700 font-bold' },
                         { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-500 text-white border-amber-600 font-bold' },
-                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-600 text-white border-cyan-700 font-bold' }
+                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-600 text-white border-cyan-700 font-bold' },
+                        { value: 'DEAD', label: 'DEAD 💀', style: 'bg-zinc-800 text-zinc-200 border-zinc-700 font-bold' }
                       ].map(t => (
                         <button
                           key={t.value}
@@ -2263,6 +2659,12 @@ export default function Leads() {
           </div>
         </div>
       )}
+
+      {/* SALES CALCULATOR MODAL */}
+      <SalesCalculatorModal
+        isOpen={showSalesCalc}
+        onClose={() => setShowSalesCalc(false)}
+      />
     </motion.div>
   );
 }

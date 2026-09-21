@@ -1452,19 +1452,19 @@ export default function DriverMobileView() {
                     disabled
                     readOnly
                     value={user?.name || user?.fullName || 'Logged Driver'}
-                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-teal-300 bg-[var(--crm-bg-sunken)] border-teal-900/60 outline-none cursor-not-allowed opacity-90 font-sans"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] outline-none cursor-not-allowed opacity-90 font-sans"
                   />
                 </div>
 
                 <div className="sm:col-span-5 space-y-1">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-teal-400">Driver Vehicle Number *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-heading)]">Driver Vehicle Number *</label>
                   <input
                     type="text"
                     required
                     placeholder="Enter Vehicle Number (e.g. UP32KK0001)"
                     value={profileVehicleNumber}
                     onChange={(e) => setProfileVehicleNumber(e.target.value.toUpperCase())}
-                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-emerald-400 bg-[var(--crm-bg-sunken)] border-teal-700/80 outline-none font-sans focus:border-emerald-400 transition"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] outline-none font-sans focus:border-teal-500 transition"
                   />
                 </div>
 
@@ -1881,7 +1881,7 @@ export default function DriverMobileView() {
                         toLocation: selectedDisp ? (selectedDisp.destination || prev.toLocation) : prev.toLocation
                       }));
                     }}
-                    className="w-full px-3.5 py-2.5 border rounded-xl text-teal-300 font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-teal-800/60 font-sans cursor-pointer shadow-sm"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] font-bold text-xs outline-none bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] font-sans cursor-pointer shadow-sm"
                   >
                     <option value="">Select Associated Lead / Cargo Order...</option>
                     {dispatchesList.map(d => (
@@ -1905,14 +1905,13 @@ export default function DriverMobileView() {
                       placeholder="Driver Vehicle Number"
                       value={fuelExpenseForm.vehicleNumber}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-sans"
-                      style={CARD_SUNKEN}
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-teal-500 transition font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
                   {/* Row 1 - Right: fuel Cost */}
                   <div className="space-y-1">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-400" style={LABEL_MONO}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400" style={LABEL_MONO}>
                       Fuel Cost (₹)
                     </label>
                     <input
@@ -1920,8 +1919,7 @@ export default function DriverMobileView() {
                       placeholder="Fuel Cost"
                       value={fuelExpenseForm.fuelCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, fuelCost: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-emerald-400 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-emerald-500 transition font-mono"
-                      style={CARD_SUNKEN}
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-emerald-500 transition font-mono bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
@@ -1935,8 +1933,7 @@ export default function DriverMobileView() {
                       placeholder="Total Drive Today"
                       value={fuelExpenseForm.kmDriven}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-teal-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-mono"
-                      style={CARD_SUNKEN}
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-teal-500 transition font-mono bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
@@ -1950,8 +1947,7 @@ export default function DriverMobileView() {
                       placeholder="Todays Trip"
                       value={fuelExpenseForm.todaysTrip}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, todaysTrip: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-slate-100 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-teal-500 transition font-sans"
-                      style={CARD_SUNKEN}
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-teal-500 transition font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
@@ -1966,14 +1962,13 @@ export default function DriverMobileView() {
                       placeholder="Vehicle Mileage (KM/L)"
                       value={fuelExpenseForm.vehicleMileage}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleMileage: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-amber-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-amber-500 transition font-mono"
-                      style={CARD_SUNKEN}
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-amber-500 transition font-mono bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
                   {/* Row 3 - Right: Other Expense */}
                   <div className="space-y-1">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-purple-300" style={LABEL_MONO}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-300" style={LABEL_MONO}>
                       Other Expense (₹)
                     </label>
                     <input
@@ -1981,8 +1976,7 @@ export default function DriverMobileView() {
                       placeholder="Other Expense"
                       value={fuelExpenseForm.otherCost}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, otherCost: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border-2 rounded-xl text-purple-300 placeholder:text-slate-500 font-bold text-xs outline-none focus:border-purple-500 transition font-mono"
-                      style={CARD_SUNKEN}
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-purple-500 transition font-mono bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
                 </div>
@@ -1995,8 +1989,7 @@ export default function DriverMobileView() {
                     placeholder="Enter trip remarks or expense bill details"
                     value={fuelExpenseForm.remarks}
                     onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, remarks: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 border rounded-xl text-slate-200 placeholder:text-slate-500 text-xs outline-none font-sans"
-                    style={CARD_SUNKEN}
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] text-xs outline-none font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                   />
                 </div>
 
@@ -2023,17 +2016,16 @@ export default function DriverMobileView() {
                   fuelExpenseLogs.map((log) => (
                     <div key={log.id} className="p-3 border rounded-xl text-xs font-sans space-y-1.5" style={CARD_SUNKEN}>
                       <div className="flex justify-between items-center text-[10px] font-sans">
-                        <span className="text-teal-400 font-bold font-sans">
-                          🚚 Truck: <strong className="text-white">{log.vehicle}</strong> {log.todaysTrip && `| ${log.todaysTrip}`}
+                        <span className="text-[var(--crm-heading)] font-bold font-sans">
+                          🚚 Truck: <strong className="text-teal-600 dark:text-teal-300 font-extrabold">{log.vehicle}</strong> {log.todaysTrip && `| ${log.todaysTrip}`}
                         </span>
                         <span className="text-[var(--crm-ink-faint)] font-mono">{log.date} {log.time}</span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between text-[11px] gap-2">
-                        <span className="text-teal-300 font-bold">Total Drive: {log.totalKm} KM {log.vehicleMileage > 0 && `| Mileage: ${log.vehicleMileage} KM/L`}</span>
-                        <strong className="text-emerald-400 font-mono font-bold">Total Expenses: ₹{(log.fuelCost + log.otherCost + log.punctureCost).toLocaleString('en-IN')}</strong>
+                        <span className="text-teal-700 dark:text-teal-300 font-bold">Total Drive: {log.totalKm} KM {log.vehicleMileage > 0 && `| Mileage: ${log.vehicleMileage} KM/L`}</span>
+                        <strong className="text-emerald-700 dark:text-emerald-400 font-mono font-extrabold">Total Expenses: ₹{(log.fuelCost + log.otherCost + log.punctureCost).toLocaleString('en-IN')}</strong>
                       </div>
                       <div className="flex gap-3 text-[10px] text-[var(--crm-ink-faint)] font-mono">
-                        {log.fuelCost > 0 && <span className="text-emerald-400 font-bold">Fuel Cost: ₹{log.fuelCost.toLocaleString('en-IN')}</span>}
                         {log.otherCost > 0 && <span className="text-purple-300 font-bold">Other Expense: ₹{log.otherCost}</span>}
                       </div>
                       {log.remarks && <div className="text-[10px] text-[var(--crm-ink-soft)]">Remarks: {log.remarks}</div>}
@@ -2137,42 +2129,42 @@ export default function DriverMobileView() {
           return (
             <div className="space-y-5 font-mono">
               {/* Top Header Card */}
-              <div className="border border-emerald-700/80 rounded-xl p-5 shadow-lg bg-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={CARD}>
+              <div className="border border-[var(--crm-line)] rounded-xl p-5 shadow-lg bg-[var(--crm-bg-raised)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={CARD}>
                 <div>
-                  <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 text-emerald-400" style={HEADING}>
-                    <FiCheckCircle className="text-emerald-400" /> Completed & Delivered Freight Loads
+                  <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 text-[var(--crm-heading)]" style={HEADING}>
+                    <FiCheckCircle className="text-emerald-500" /> Completed & Delivered Freight Loads
                   </h1>
-                  <p className="text-xs text-slate-300 mt-1" style={LABEL_MONO}>
+                  <p className="text-xs text-[var(--crm-ink-faint)] mt-1" style={LABEL_MONO}>
                     Verified history of delivered cargo orders, customer handover proofs, and completed freight settlements.
                   </p>
                 </div>
-                <div className="px-3.5 py-1.5 bg-emerald-900/60 border border-emerald-600 rounded-lg text-xs text-emerald-300 font-bold font-mono">
-                  Delivered Value: <code className="text-amber-300">₹{totalDeliveredValue.toLocaleString('en-IN')}</code>
+                <div className="px-3.5 py-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-xs text-[var(--crm-heading)] font-bold font-mono">
+                  Delivered Value: <code className="text-emerald-600 dark:text-emerald-400 font-extrabold ml-1">₹{totalDeliveredValue.toLocaleString('en-IN')}</code>
                 </div>
               </div>
 
               {/* Stats Summary Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
-                <div className="p-4 border border-emerald-800/80 rounded-xl bg-emerald-950/30 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Completed Loads</span>
-                  <strong className="text-xl text-emerald-400 font-bold block">
+                <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-1">
+                  <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold block">Total Completed Loads</span>
+                  <strong className="text-xl text-emerald-600 dark:text-emerald-400 font-bold block">
                     {completedLoads.length} Delivered Cargoes
                   </strong>
                 </div>
 
-                <div className="p-4 border border-amber-800/80 rounded-xl bg-amber-950/30 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Freight Revenue Handled</span>
-                  <strong className="text-xl text-amber-400 font-bold block">
+                <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-1">
+                  <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold block">Total Freight Revenue Handled</span>
+                  <strong className="text-xl text-amber-600 dark:text-amber-400 font-bold block">
                     ₹{totalDeliveredValue.toLocaleString('en-IN')}
                   </strong>
                 </div>
               </div>
 
               {/* Date & Quick Filters Bar */}
-              <div className="p-3.5 border border-emerald-800/60 rounded-xl bg-emerald-950/30 flex flex-wrap items-center justify-between gap-3 shadow-md">
+              <div className="p-3.5 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] flex flex-wrap items-center justify-between gap-3 shadow-md">
                 <div className="flex items-center gap-2">
-                  <FiFilter className="text-emerald-400 text-sm" />
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Filter Records:</span>
+                  <FiFilter className="text-teal-500 text-sm" />
+                  <span className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider">Filter Records:</span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -2184,8 +2176,8 @@ export default function DriverMobileView() {
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       deliveredFilter === 'ALL'
-                        ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                        : 'bg-slate-900/80 border border-slate-700 text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                        : 'bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:text-emerald-600'
                     }`}
                   >
                     All Records ({allCompletedLoads.length})
@@ -2199,8 +2191,8 @@ export default function DriverMobileView() {
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       deliveredFilter === 'TODAY'
-                        ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                        : 'bg-slate-900/80 border border-slate-700 text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                        : 'bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:text-emerald-600'
                     }`}
                   >
                     <span className="relative flex h-2 w-2">
@@ -2210,8 +2202,8 @@ export default function DriverMobileView() {
                     Today's Delivered
                   </button>
 
-                  <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-700 rounded-lg px-2.5 py-1 focus-within:border-emerald-500 transition-colors">
-                    <span className="text-[11px] text-slate-400 font-bold uppercase">Datewise:</span>
+                  <div className="flex items-center gap-1.5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg px-2.5 py-1 focus-within:border-teal-500 transition-colors">
+                    <span className="text-[11px] text-[var(--crm-ink-faint)] font-bold uppercase">Datewise:</span>
                     <input
                       type="date"
                       value={deliveredFilterDate}
@@ -2223,7 +2215,7 @@ export default function DriverMobileView() {
                           setDeliveredFilter('ALL');
                         }
                       }}
-                      className="bg-transparent text-xs text-emerald-300 focus:outline-none cursor-pointer [color-scheme:dark]"
+                      className="bg-transparent text-xs text-[var(--crm-heading)] focus:outline-none cursor-pointer"
                     />
                     {deliveredFilterDate && (
                       <button
@@ -2232,7 +2224,7 @@ export default function DriverMobileView() {
                           setDeliveredFilterDate('');
                           setDeliveredFilter('ALL');
                         }}
-                        className="text-slate-400 hover:text-rose-400 font-bold text-xs ml-1 px-1"
+                        className="text-[var(--crm-ink-faint)] hover:text-rose-500 font-bold text-xs ml-1 px-1"
                         title="Clear date filter"
                       >
                         ✕
@@ -2243,21 +2235,21 @@ export default function DriverMobileView() {
               </div>
 
               {/* Completed Loads Table / Cards List */}
-              <div className="border border-emerald-800/60 rounded-xl p-5 shadow-sm space-y-3 bg-[var(--crm-bg-raised)]" style={CARD}>
+              <div className="border border-[var(--crm-line)] rounded-xl p-5 shadow-sm space-y-3 bg-[var(--crm-bg-raised)]" style={CARD}>
                 <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
-                  <h3 className="text-xs uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
-                    <FiCheckCircle size={16} /> Delivered Load Records ({completedLoads.length})
+                  <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] flex items-center gap-2" style={HEADING}>
+                    <FiCheckCircle size={16} className="text-emerald-500" /> Delivered Load Records ({completedLoads.length})
                   </h3>
-                  <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded">
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700/60 px-2.5 py-0.5 rounded">
                     POD Verified ✓
                   </span>
                 </div>
 
                 {completedLoads.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-mono space-y-2">
-                    <FiCheckCircle size={28} className="mx-auto text-slate-500" />
+                  <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-mono space-y-2">
+                    <FiCheckCircle size={28} className="mx-auto text-[var(--crm-ink-faint)]" />
                     <div>No completed or delivered loads recorded yet.</div>
-                    <div className="text-[10px] text-slate-500">When you click "Mark Delivered" on assigned loads, completed orders will automatically appear here.</div>
+                    <div className="text-[10px] text-[var(--crm-ink-faint)]">When you click "Mark Delivered" on assigned loads, completed orders will automatically appear here.</div>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -2265,50 +2257,50 @@ export default function DriverMobileView() {
                       const isCod = String(d.paymentMode || d.paymentMethod || d.paymentType || d.paymentTerms || d.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(d.paymentMode || d.paymentMethod || d.paymentType || d.paymentTerms || d.paymentProof?.paymentMode || '').toUpperCase().includes('CASH');
 
                       return (
-                        <div key={d._id || idx} className="p-4 border border-emerald-900/60 rounded-xl bg-emerald-950/20 space-y-3 font-mono shadow-sm">
+                        <div key={d._id || idx} className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-mono shadow-sm">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <div>
-                              <span className="text-[10px] text-teal-400 font-mono font-bold block">
+                              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono font-bold block">
                                 Lead / Order ID: {d.dispatchNumber || d.orderNumber || d._id}
                               </span>
-                              <strong className="text-sm text-white font-bold block mt-0.5">{d.customerName || 'Delivered Cargo'}</strong>
-                              <span className="text-[11px] text-slate-300 block mt-0.5 font-mono">
-                                Material: <strong className="text-teal-300">{d.material || d.productName || 'Goods Cargo'}</strong> {d.weightTons && `(${d.weightTons} MT)`}
+                              <strong className="text-sm text-[var(--crm-heading)] font-bold block mt-0.5">{d.customerName || 'Delivered Cargo'}</strong>
+                              <span className="text-[11px] text-[var(--crm-ink-soft)] block mt-0.5 font-mono">
+                                Material: <strong className="text-teal-700 dark:text-teal-300">{d.material || d.productName || 'Goods Cargo'}</strong> {d.weightTons && `(${d.weightTons} MT)`}
                               </span>
                             </div>
 
                             <div className="flex flex-col items-start sm:items-end gap-1">
-                              <span className="px-2.5 py-0.5 bg-emerald-950/90 border border-emerald-600 text-emerald-400 text-[10px] font-bold uppercase rounded font-mono shadow-sm flex items-center gap-1">
+                              <span className="px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-600 text-emerald-800 dark:text-emerald-400 text-[10px] font-bold uppercase rounded font-mono shadow-sm flex items-center gap-1">
                                 <FiCheckCircle size={11} /> COMPLETED & DELIVERED ✓
                               </span>
                               <span className={`px-2.5 py-0.5 border text-[9px] font-bold uppercase rounded font-mono ${
-                                isCod ? 'bg-amber-950/80 text-amber-300 border-amber-600' : 'bg-emerald-950/80 text-emerald-300 border-emerald-500'
+                                isCod ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-600' : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500'
                               }`}>
                                 {isCod ? '💳 COD CASH COLLECTED' : '🌐 ONLINE PAYMENT VERIFIED'}
                               </span>
                             </div>
                           </div>
 
-                          <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-xs font-mono flex flex-wrap justify-between items-center gap-2">
-                            <span className="text-slate-200">
-                              📍 Route: <strong className="text-emerald-300">{d.origin || 'Delhi'}</strong> &rarr; <strong className="text-sky-300">{d.destination || 'Destination'}</strong>
+                          <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg text-xs font-mono flex flex-wrap justify-between items-center gap-2">
+                            <span className="text-[var(--crm-heading)]">
+                              📍 Route: <strong className="text-emerald-700 dark:text-emerald-300 font-bold">{d.origin || 'Delhi'}</strong> &rarr; <strong className="text-sky-700 dark:text-sky-300 font-bold">{d.destination || 'Destination'}</strong>
                             </span>
-                            <span className="text-emerald-400 font-bold text-xs">
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs">
                               Total Freight: ₹{Number(d.amountCollected || d.totalFreightAmount || d.freightAmount || 0).toLocaleString('en-IN')}
                             </span>
                           </div>
 
                           {(d.driverProofUrl || d.podFileUrl || d.paymentProofUrl || d.deliveryNotes) && (
-                            <div className="pt-2 border-t border-[var(--crm-line)] flex flex-wrap items-center justify-between text-[10px] text-slate-400 gap-2">
+                            <div className="pt-2 border-t border-[var(--crm-line)] flex flex-wrap items-center justify-between text-[10px] text-[var(--crm-ink-faint)] gap-2">
                               <div className="space-y-0.5">
                                 {d.deliveryNotes && (
                                   <div>
-                                    Notes: <span className="text-slate-300 italic">"{d.deliveryNotes}"</span>
+                                    Notes: <span className="text-[var(--crm-ink-soft)] italic">"{d.deliveryNotes}"</span>
                                   </div>
                                 )}
                                 {d.vehicleNo && (
                                   <div>
-                                    Truck: <strong className="text-slate-200">{d.vehicleNo}</strong>
+                                    Truck: <strong className="text-[var(--crm-heading)]">{d.vehicleNo}</strong>
                                   </div>
                                 )}
                               </div>
@@ -2319,7 +2311,7 @@ export default function DriverMobileView() {
                                     href={d.driverProofUrl || d.podFileUrl || d.paymentProofUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-2.5 py-1 bg-teal-900/60 hover:bg-teal-800 text-teal-200 border border-teal-600 rounded text-[10px] font-bold uppercase transition"
+                                    className="px-2.5 py-1 bg-teal-800 dark:bg-teal-900/60 hover:bg-teal-700 text-white dark:text-teal-200 border border-teal-500 rounded text-[10px] font-bold uppercase transition"
                                   >
                                     🖼️ View Uploaded Proofs
                                   </a>
@@ -2365,77 +2357,77 @@ export default function DriverMobileView() {
           return (
           <div className="space-y-5 font-mono">
             {/* Top Header Card */}
-            <div className="border border-emerald-700/80 rounded-xl p-5 shadow-lg bg-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={CARD}>
+            <div className="border border-[var(--crm-line)] rounded-xl p-5 shadow-lg bg-[var(--crm-bg-raised)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={CARD}>
               <div>
-                <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 text-emerald-400" style={HEADING}>
-                  <FiCreditCard className="text-emerald-400" /> Customer Payment Proofs & Settlement Records
+                <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 text-[var(--crm-heading)]" style={HEADING}>
+                  <FiCreditCard className="text-emerald-500" /> Customer Payment Proofs & Settlement Records
                 </h1>
-                <p className="text-xs text-slate-300 mt-1" style={LABEL_MONO}>
+                <p className="text-xs text-[var(--crm-ink-faint)] mt-1" style={LABEL_MONO}>
                   Verified logs of Razorpay Online payments, Cash on Delivery (COD) handovers, and uploaded receipts.
                 </p>
               </div>
-              <div className="px-3 py-1.5 bg-emerald-900/60 border border-emerald-600 rounded-lg text-xs text-emerald-300 font-bold font-mono">
-                Total Freight Collected: <code className="text-amber-300">₹{liveTotalCollected.toLocaleString('en-IN')}</code>
+              <div className="px-3 py-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-lg text-xs text-[var(--crm-heading)] font-bold font-mono">
+                Total Freight Collected: <code className="text-emerald-600 dark:text-emerald-400 font-extrabold ml-1">₹{liveTotalCollected.toLocaleString('en-IN')}</code>
               </div>
             </div>
 
             {/* 2 Summary Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-4 border border-emerald-800/80 rounded-xl bg-emerald-950/30 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Deliveries Paid</span>
-                <strong className="text-xl text-emerald-400 font-bold block">
+              <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-1">
+                <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold block">Total Deliveries Paid</span>
+                <strong className="text-xl text-emerald-600 dark:text-emerald-400 font-bold block">
                   {displayDispatches.length} Orders
                 </strong>
               </div>
 
-              <div className="p-4 border border-amber-800/80 rounded-xl bg-amber-950/30 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Amount Collected</span>
-                <strong className="text-xl text-amber-400 font-bold block">
+              <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-1">
+                <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold block">Total Amount Collected</span>
+                <strong className="text-xl text-amber-600 dark:text-amber-400 font-bold block">
                   ₹{liveTotalCollected.toLocaleString('en-IN')}
                 </strong>
               </div>
             </div>
 
             {/* COMPLETED PAYMENTS & SETTLED ORDERS HISTORY SECTION */}
-            <div className="border border-emerald-800/60 rounded-xl p-5 shadow-sm space-y-3 bg-[var(--crm-bg-raised)]" style={CARD}>
+            <div className="border border-[var(--crm-line)] rounded-xl p-5 shadow-sm space-y-3 bg-[var(--crm-bg-raised)]" style={CARD}>
 
               <div className="space-y-3">
                 {displayDispatches.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-mono space-y-2">
-                    <FiCreditCard size={28} className="mx-auto text-slate-500" />
+                  <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-mono space-y-2">
+                    <FiCreditCard size={28} className="mx-auto text-[var(--crm-ink-faint)]" />
                     <div>No completed payment records found yet.</div>
-                    <div className="text-[10px] text-slate-500">Deliveries confirmed with Razorpay / COD will automatically appear here.</div>
+                    <div className="text-[10px] text-[var(--crm-ink-faint)]">Deliveries confirmed with Razorpay / COD will automatically appear here.</div>
                   </div>
                 ) : (
                   displayDispatches.map((item) => (
-                    <div key={item._id || item.dispatchNumber} className="p-4 border border-emerald-900/60 rounded-xl bg-emerald-950/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-mono">
+                    <div key={item._id || item.dispatchNumber} className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-mono">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <strong className="text-sm text-white block">{item.customerName || 'Client'}</strong>
+                          <strong className="text-sm text-[var(--crm-heading)] font-bold block">{item.customerName || 'Client'}</strong>
                           <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase ${
                             (item.paymentMode || '').toUpperCase().includes('COD')
-                              ? 'bg-amber-950/80 text-amber-300 border-amber-600'
-                              : 'bg-emerald-950/80 text-emerald-300 border-emerald-500'
+                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-600'
+                              : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500'
                           }`}>
                             {(item.paymentMode || '').toUpperCase().includes('COD') ? '✓ COD CASH PAID' : '✓ ONLINE PAID'}
                           </span>
                         </div>
-                        <span className="text-[11px] text-slate-400 block font-mono">
-                          Order #{item.dispatchNumber || item.orderNumber || item._id} &bull; Route: <strong className="text-emerald-300">{item.origin || 'Delhi'} &rarr; {item.destination || 'Patna'}</strong>
+                        <span className="text-[11px] text-[var(--crm-ink-soft)] block font-mono">
+                          Order #{item.dispatchNumber || item.orderNumber || item._id} &bull; Route: <strong className="text-emerald-700 dark:text-emerald-300 font-bold">{item.origin || 'Delhi'} &rarr; {item.destination || 'Patna'}</strong>
                         </span>
                         {item.deliveryNotes && (
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-[var(--crm-ink-faint)]">
                             Notes: {item.deliveryNotes}
                           </div>
                         )}
                       </div>
 
                       <div className="text-right space-y-1">
-                        <strong className="text-base text-emerald-400 font-bold block">
+                        <strong className="text-base text-emerald-700 dark:text-emerald-400 font-extrabold block">
                           ₹{Number(item.amountCollected || item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
                         </strong>
-                        <span className="text-[10px] text-slate-300 block">
-                          Payment Mode: <strong className={String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold'}>
+                        <span className="text-[10px] text-[var(--crm-ink-faint)] block">
+                          Payment Mode: <strong className={String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? 'text-amber-700 dark:text-amber-300 font-bold' : 'text-emerald-700 dark:text-emerald-400 font-bold'}>
                             {String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? 'COD (Cash on Delivery)' : 'Online Payment'}
                           </strong>
                         </span>
@@ -2551,10 +2543,10 @@ export default function DriverMobileView() {
                 <div className="lg:col-span-5 space-y-3.5 border-r lg:border-[var(--crm-line)] lg:pr-4">
                   <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2 font-sans shadow-sm">
                     <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold tracking-wider block font-mono">
-                      LEAD / ORDER ID: <strong className="text-[var(--crm-accent)]">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
+                      LEAD / ORDER ID: <strong className="text-teal-400">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
                     </span>
                     <h4 className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName || 'Client Business'}</h4>
-                    <div className="text-[11px] text-[var(--crm-accent)] font-bold flex items-center gap-1">
+                    <div className="text-[11px] text-teal-400 font-bold flex items-center gap-1">
                       <span>📍</span> {deliveringOrder?.origin || 'Origin'} &rarr; {deliveringOrder?.destination || 'Destination'}
                     </div>
                     <div className="text-[10px] text-[var(--crm-ink-faint)] border-t border-[var(--crm-line)] pt-2 mt-1 font-sans">
@@ -2676,11 +2668,11 @@ export default function DriverMobileView() {
                         onClick={() => setSelectedPaymentMode('RAZORPAY')}
                         className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RAZORPAY'
-                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm'
+                            ? 'bg-teal-950/60 border-teal-500 text-teal-300 font-bold shadow-sm'
                             : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-amber-400' : 'text-[var(--crm-ink-faint)]'} />
+                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'} />
                         <span className="text-[10px] uppercase font-bold">Razorpay (UPI/QR)</span>
                       </button>
 
@@ -2689,11 +2681,11 @@ export default function DriverMobileView() {
                         onClick={() => setSelectedPaymentMode('COD')}
                         className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'COD'
-                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm'
+                            ? 'bg-teal-950/60 border-teal-500 text-teal-300 font-bold shadow-sm'
                             : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-amber-400' : 'text-[var(--crm-ink-faint)]'} />
+                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'} />
                         <span className="text-[10px] uppercase font-bold">Cash on Delivery</span>
                       </button>
 
@@ -2702,11 +2694,11 @@ export default function DriverMobileView() {
                         onClick={() => setSelectedPaymentMode('RECEIPT')}
                         className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RECEIPT'
-                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm'
+                            ? 'bg-teal-950/60 border-teal-500 text-teal-300 font-bold shadow-sm'
                             : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-amber-400' : 'text-[var(--crm-ink-faint)]'} />
+                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'} />
                         <span className="text-[10px] uppercase font-bold">Upload Receipt</span>
                       </button>
                     </div>
@@ -2721,71 +2713,71 @@ export default function DriverMobileView() {
                         {/* LEFT COLUMN: Payment Methods List */}
                         <div className="md:col-span-6 space-y-2 border-r border-[var(--crm-line)] pr-3 font-sans">
                           <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-2 flex items-center gap-1.5">
-                            <FiCreditCard size={13} className="text-amber-400" /> Razorpay Payment Options
+                            <FiCreditCard size={13} className="text-teal-400" /> Razorpay Payment Options
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 UPI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">UPI (Google Pay, PhonePe, Paytm)</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">UPI (Google Pay, PhonePe, Paytm)</h5>
                                 <p className="text-[10px] text-[var(--crm-ink-faint)]">Pay instantly using any UPI app</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 CARD
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">Credit / Debit / ATM Card</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">Credit / Debit / ATM Card</h5>
                                 <p className="text-[10px] text-[var(--crm-ink-faint)]">Visa, MasterCard, RuPay, Maestro</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 EMI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">EMI & Pay Later</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">EMI & Pay Later</h5>
                                 <p className="text-[10px] text-[var(--crm-ink-faint)]">Credit & Debit Card EMI</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-amber-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-amber-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 BANK
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-amber-300">Net Banking</h5>
+                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">Net Banking</h5>
                                 <p className="text-[10px] text-[var(--crm-ink-faint)]">All Indian Banks (SBI, HDFC, ICICI)</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
                         </div>
 
@@ -2808,7 +2800,7 @@ export default function DriverMobileView() {
                               type="button"
                               onClick={() => triggerRazorpayCheckout(deliveringOrder)}
                               disabled={loadingRazorpay}
-                              className="w-full py-3 px-4 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2 bg-amber-950/60 border border-amber-500 text-amber-300 hover:bg-amber-900/60"
+                              className="w-full py-3 px-4 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2 bg-teal-950/60 border border-teal-500 text-teal-300 hover:bg-teal-900/60"
                             >
                               <FiCreditCard size={16} />
                               {loadingRazorpay ? 'Launching Gateway...' : `Launch Razorpay Live (₹${Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')})`}
@@ -2831,7 +2823,7 @@ export default function DriverMobileView() {
                   {selectedPaymentMode === 'COD' && (
                     <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-sans">
                       <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiDollarSign className="text-amber-400" /> Cash Handover / Cash on Delivery (COD)
+                        <FiDollarSign className="text-teal-400" /> Cash Handover / Cash on Delivery (COD)
                       </h4>
                       <p className="text-[10px] text-[var(--crm-ink-faint)]">
                         Customer has paid cash directly to driver upon delivery.
@@ -2856,7 +2848,7 @@ export default function DriverMobileView() {
                   {selectedPaymentMode === 'RECEIPT' && (
                     <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-sans">
                       <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiUpload className="text-amber-400" /> Upload Bank / UPI Screenshot Receipt
+                        <FiUpload className="text-teal-400" /> Upload Bank / UPI Screenshot Receipt
                       </h4>
 
                       <input
@@ -2868,7 +2860,7 @@ export default function DriverMobileView() {
                       {paymentProofPreview && (
                         <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between text-[11px] font-sans">
                           <span className="text-[var(--crm-heading)] truncate">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
-                          <span className="text-amber-400 font-bold text-[10px]">Attached ✓</span>
+                          <span className="text-teal-400 font-bold text-[10px]">Attached ✓</span>
                         </div>
                       )}
                     </div>

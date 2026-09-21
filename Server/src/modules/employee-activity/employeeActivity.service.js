@@ -42,12 +42,18 @@ async function recordHeartbeat(user) {
   
   const today = getTodayString();
   const now = new Date();
-  const empId = user.employeeId || String(user._id);
-  const dept = user.department || 'SALES';
-  const role = user.role || 'EMPLOYEE';
+  const empId = user.employeeId || user.trialId || String(user._id);
+  const dept = user.department || (user.role === 'SALES_TRIAL' || user.modelName === 'SalesTrialUser' ? 'SALES_TRIAL' : 'SALES');
+  const role = user.role || (user.modelName === 'SalesTrialUser' ? 'SALES_TRIAL' : 'EMPLOYEE');
 
   try {
-    let activity = await EmployeeActivity.findOne({ employeeId: empId, date: today });
+    let activity = await EmployeeActivity.findOne({
+      $or: [
+        { employeeId: empId },
+        { userId: user._id }
+      ],
+      date: today
+    });
 
     if (!activity) {
       activity = new EmployeeActivity({
@@ -107,8 +113,8 @@ async function recordHeartbeat(user) {
 async function recordCrmAction(user, actionCategory, details = '', metadata = {}) {
   if (!user || !user._id) return null;
 
-  const empId = user.employeeId || String(user._id);
-  const dept = user.department || 'SALES';
+  const empId = user.employeeId || user.trialId || String(user._id);
+  const dept = user.department || (user.role === 'SALES_TRIAL' || user.modelName === 'SalesTrialUser' ? 'SALES_TRIAL' : 'SALES');
   const now = new Date();
 
   // 1. Record log event
@@ -213,11 +219,17 @@ async function recordCrmAction(user, actionCategory, details = '', metadata = {}
 async function recordLogout(user) {
   if (!user || !user._id) return null;
   const today = getTodayString();
-  const empId = user.employeeId || String(user._id);
+  const empId = user.employeeId || user.trialId || String(user._id);
   const now = new Date();
 
   try {
-    const activity = await EmployeeActivity.findOne({ employeeId: empId, date: today });
+    const activity = await EmployeeActivity.findOne({
+      $or: [
+        { employeeId: empId },
+        { userId: user._id }
+      ],
+      date: today
+    });
     if (activity) {
       activity.lastLogoutAt = now;
       activity.status = 'OFFLINE';
@@ -238,7 +250,12 @@ async function getLiveEmployeeStatuses(reqUser) {
   
   let userQuery = { isActive: true };
   if (!isGlobalManager && reqUser?.department) {
-    userQuery.department = reqUser.department;
+    const d = String(reqUser.department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      userQuery.department = { $in: ['SALES', 'SALES_TRIAL'] };
+    } else {
+      userQuery.department = reqUser.department;
+    }
   }
 
   // Query BOTH User model and Employee model to get all staff
@@ -249,7 +266,12 @@ async function getLiveEmployeeStatuses(reqUser) {
   const Employee = require('../employee/employee.model');
   let empQuery = { status: 'ACTIVE' };
   if (!isGlobalManager && reqUser?.department) {
-    empQuery.department = reqUser.department;
+    const d = String(reqUser.department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      empQuery.department = { $in: ['SALES', 'SALES_TRIAL'] };
+    } else {
+      empQuery.department = reqUser.department;
+    }
   }
   const allEmployees = await Employee.find(empQuery).select(
     'employeeId name email role department profileImage'
@@ -294,6 +316,44 @@ async function getLiveEmployeeStatuses(reqUser) {
     }
   });
 
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+  let trialQuery = { status: { $ne: 'INACTIVE' } };
+  if (!isGlobalManager && reqUser?.department) {
+    const d = String(reqUser.department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      trialQuery.$or = [
+        { department: { $in: ['SALES', 'SALES_TRIAL'] } },
+        { department: { $exists: false } },
+        { department: null },
+        { department: '' }
+      ];
+    } else {
+      trialQuery.department = reqUser.department;
+    }
+  }
+  const allSalesTrialUsers = await SalesTrialUser.find(trialQuery).select(
+    '_id employeeId trialId fullName name email role department isOnline lastActiveAt lastLoginAt profileImage status'
+  ).lean();
+
+  // Add SalesTrialUser model entries (only if not already present by employeeId / trialId / _id)
+  allSalesTrialUsers.forEach(t => {
+    const empId = t.employeeId || t.trialId || String(t._id);
+    if (!mergedMap[empId] && !mergedMap[String(t._id)]) {
+      mergedMap[empId] = {
+        _id: t._id,
+        employeeId: empId,
+        fullName: t.fullName || t.name || 'Sales Trial Executive',
+        email: t.email || '',
+        role: t.role || 'SALES_TRIAL',
+        department: t.department || 'SALES_TRIAL',
+        isOnline: t.isOnline || false,
+        lastActiveAt: t.lastActiveAt || null,
+        lastLoginAt: t.lastLoginAt || null,
+        profileImage: t.profileImage || ''
+      };
+    }
+  });
+
   const allUsers = Object.values(mergedMap);
 
   const Attendance = require('../attendance/attendance.model');
@@ -314,6 +374,7 @@ async function getLiveEmployeeStatuses(reqUser) {
     if (typeof empDoc === 'object') {
       if (empDoc._id) attendanceMap[String(empDoc._id)] = att;
       if (empDoc.employeeId) attendanceMap[String(empDoc.employeeId)] = att;
+      if (empDoc.trialId) attendanceMap[String(empDoc.trialId)] = att;
     } else {
       attendanceMap[String(empDoc)] = att;
     }
@@ -472,9 +533,19 @@ async function getActivityReports(query = {}, reqUser) {
   let matchQuery = {};
 
   if (!isGlobalManager && reqUser?.department) {
-    matchQuery.department = reqUser.department;
+    const d = String(reqUser.department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      matchQuery.department = { $in: ['SALES', 'SALES_TRIAL'] };
+    } else {
+      matchQuery.department = reqUser.department;
+    }
   } else if (department && department !== 'ALL') {
-    matchQuery.department = department;
+    const d = String(department).toUpperCase();
+    if (d === 'SALES' || d === 'SALES_TRIAL') {
+      matchQuery.department = { $in: ['SALES', 'SALES_TRIAL'] };
+    } else {
+      matchQuery.department = department;
+    }
   }
 
   if (employeeId && employeeId !== 'ALL') {
