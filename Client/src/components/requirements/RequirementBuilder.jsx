@@ -132,7 +132,7 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
             className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
           >
             <option value="">Select location</option>
-            {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            {locationOptions.map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
           </select>
           <input
             type="text"

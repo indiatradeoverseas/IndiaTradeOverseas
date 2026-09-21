@@ -161,9 +161,9 @@ export default function Visitors() {
     const todayCount = divisionVisitors.filter(v => isSameDay(getVisitorLatestDate(v), getLocalDateStr(new Date()))).length;
     const repeatVisitorsCount = divisionVisitors.filter(v => (v.visitCount || 1) > 1).length;
 
-    // Merge soft lead data (phone, requirement) into visitors by email
+    // Merge soft lead data (phone, requirement) into visitors by distributorId
     const mergedVisitors = filteredVisitors.map(visitor => {
-        const soft = softLeads.find(sl => sl.email?.toLowerCase() === visitor.email?.toLowerCase());
+        const soft = softLeads.find(sl => sl.distributorId && sl.distributorId === visitor._id);
         if (!soft) return visitor;
         return {
             ...visitor,
