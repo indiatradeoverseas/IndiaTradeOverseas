@@ -5,15 +5,13 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import { BHUTAN_RATES, PAKUR_RATES_ADV100 } from '../../components/requirements/StoneRequirementBuilder';
 import { useNavigate } from 'react-router-dom';
 import { pushDataLayerEvent } from '../../utils/analytics';
-import { softLeadsApi } from '../../api/leads';
 import { distributorApi } from '../../api/distributor';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { loadRazorpayScript } from '../../utils/razorpay';
 
 export default function StonePricing() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const material = searchParams.get('material') || '';
   const location = searchParams.get('location') || '';
@@ -31,38 +29,90 @@ export default function StonePricing() {
   const locationRates = rates[location] || {};
   const price = locationRates[material];
 
+  const distributorId = localStorage.getItem('ito_stone_buyer_id');
+  const token = localStorage.getItem('distributor_token');
+
   const handlePlaceOrder = async () => {
-    if (!user) {
-      toast.error('Please login to place an order');
-      navigate('/login');
+    if (!distributorId || !token) {
+      toast.error('Session expired. Please re‑enter the terminal.');
+      navigate('/stone');
+      return;
+    }
+    if (!price) {
+      toast.error('Price not available for this selection');
       return;
     }
 
-    const payload = {
-      distributorId: user._id,
+    const qty = parseInt(quantity.replace(/\D/g, '')) || 1;
+    const estimatedValue = qty * price;
+
+    // Create proposal (approved) first
+    const proposalPayload = {
+      distributorId,
       division: 'STONE',
       lotId: `${type}-${location}-${material}`,
       region: location,
       grade: material,
-      quantity: parseInt(quantity.replace(/\D/g, '')) || 1,
-      basePrice: price || 0,
+      quantity: qty,
+      basePrice: price,
       paymentTerm: 'ADVANCE_100',
-      estimatedValue: (parseInt(quantity.replace(/\D/g, '')) || 1) * (price || 0),
+      estimatedValue,
       status: 'approved',
     };
 
     try {
-      const res = await distributorApi.createProposal(payload);
-      if (res.success) {
-        toast.success('Proposal created, redirecting to payment...');
-        pushDataLayerEvent('stone_proposal_submitted', { lot_id: payload.lotId, quantity: payload.quantity, value: payload.estimatedValue });
-        // open payment modal? For now redirect to proposals page
-        navigate('/crm/distributors/stone');
-      } else {
-        toast.error(res.message || 'Failed to create proposal');
-      }
+      const propRes = await distributorApi.createProposal(proposalPayload);
+      if (!propRes.success) throw new Error(propRes.message || 'Failed to create proposal');
+      const proposalId = propRes.data._id;
+
+      // Razorpay order
+      const orderResult = await distributorApi.createRazorpayOrder({
+        amount: estimatedValue,
+        lotId: proposalId,
+        quantity: qty,
+      });
+      if (!orderResult.success) throw new Error(orderResult.message || 'Failed to create Razorpay order');
+
+      const { orderId, keyId } = orderResult.data;
+      await loadRazorpayScript();
+
+      const options = {
+        key: keyId,
+        amount: estimatedValue * 100,
+        currency: 'INR',
+        name: 'Stone & Infrastructure Division',
+        description: `Order ${proposalId}`,
+        order_id: orderId,
+        handler: async (response) => {
+          try {
+            const verifyResult = await distributorApi.verifyRazorpayPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              lotId: proposalId,
+              quantity: qty,
+              amount: estimatedValue,
+            });
+            if (verifyResult.success) {
+              await distributorApi.updateProposalStatus(proposalId, 'paid');
+              toast.success('Payment successful!');
+              pushDataLayerEvent('stone_payment_success', { transaction_id: response.razorpay_payment_id, value: estimatedValue, currency: 'INR' });
+              // refresh proposals list if needed
+            } else {
+              toast.error(verifyResult.message || 'Payment verification failed');
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error('Payment verification failed');
+          }
+        },
+        theme: { color: '#37424B' },
+      };
+
+      new window.Razorpay(options).open();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to place order');
+      console.error(err);
+      toast.error(err.message || 'Failed to place order');
     }
   };
 
@@ -81,22 +131,22 @@ export default function StonePricing() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-12 px-4">
+    <div className="min-h-screen bg-[#F4F2EE] py-12 px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8">
-        <Link to="/stone" className="inline-flex items-center text-primary hover:underline mb-6">
+        <Link to="/stone" className="inline-flex items-center text-[#37424B] hover:underline mb-6">
           <FiArrowLeft className="mr-1" /> Back to Stone
         </Link>
 
-        <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+        <h1 className="text-3xl font-bold text-[#37424B] mb-2">
           {material.replace(/_/g, ' ')} – {location} ({type === 'BHUTAN' ? 'Bhutan' : 'Pakur'} Stone)
         </h1>
 
-        {timeline && <p className="text-neutral-600 mb-4">Required by: {timeline.replace(/_/g, ' ')}</p>}
+        {timeline && <p className="text-[#6D6760] mb-4">Required by: {timeline.replace(/_/g, ' ')}</p>}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mb-6">
           <table className="w-full text-sm text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-100 text-neutral-700">
+              <tr className="bg-[#F4F2EE] text-[#6D6760]">
                 <th className="p-3 border-b">Payment Term</th>
                 <th className="p-3 border-b">Price (INR / MT)</th>
               </tr>
@@ -104,21 +154,21 @@ export default function StonePricing() {
             <tbody>
               {type === 'PAKUR' ? (
                 (['adv100','adv50','cod']).map(term => (
-                  <tr key={term} className="border-b border-neutral-200 hover:bg-neutral-50">
+                  <tr key={term} className="border-b border-[#DCCCB4] hover:bg-[#F4F2EE]">
                     <td className="p-3 font-medium">
                       {term === 'adv100' && '100 % Advance'}
                       {term === 'adv50'  && '50 % Advance'}
                       {term === 'cod'    && 'Cash on Delivery'}
                     </td>
-                    <td className="p-3 font-mono font-semibold text-neutral-900">
+                    <td className="p-3 font-mono font-semibold text-[#37424B]">
                       {price[term] != null ? `₹ ${price[term].toLocaleString()}` : 'N/A'}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr className="border-b border-neutral-200">
+                <tr className="border-b border-[#DCCCB4]">
                   <td className="p-3 font-medium">Standard (Rs 100 negotiable)</td>
-                  <td className="p-3 font-mono font-semibold text-neutral-900">
+                  <td className="p-3 font-mono font-semibold text-[#37424B]">
                     {price != null ? `₹ ${price.toLocaleString()}` : 'N/A'}
                   </td>
                 </tr>
@@ -130,9 +180,9 @@ export default function StonePricing() {
         <div className="mt-8 text-center">
           <button
             onClick={handlePlaceOrder}
-            className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 font-semibold"
+            className="px-8 py-3 bg-[#37424B] text-white rounded-lg hover:bg-[#252c34] font-semibold flex items-center justify-center gap-2"
           >
-            Place Order
+            <FiShoppingCart size={16} /> Place Order & Pay
           </button>
         </div>
       </div>

@@ -853,7 +853,7 @@ const submitCoalQuote = async (req, res, next) => {
     }
 
     // Create proposal from form data
-    const Proposal = require('./proposals/proposal.model');
+    const Proposal = require('../proposals/proposal.model');
     
     // Generate lotId
     const lotId = `COAL-${origin?.toUpperCase().slice(0,3) || 'GEN'}-${Date.now().toString().slice(-6)}`;
