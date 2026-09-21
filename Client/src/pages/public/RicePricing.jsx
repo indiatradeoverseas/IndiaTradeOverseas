@@ -7,13 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { distributorApi } from '../../api/distributor';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
-import { PlaceOrderButton } from '../../components/ui/PlaceOrderButton';
+import { loadRazorpayScript } from '../../utils/razorpay';
 
 export default function RicePricing() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   // URL params
   const variety = searchParams.get('variety') || '';
@@ -39,6 +37,9 @@ export default function RicePricing() {
   const varieties = Object.keys(rates[locations[0]] || {});
 
   const price = rates[selectedLocation]?.[selectedVariety];
+
+  const distributorId = localStorage.getItem('rice_distributor_id');
+  const token = localStorage.getItem('distributor_token');
 
   const addToCart = () => {
     if (!selectedVariety || !selectedLocation || !price) {
@@ -66,9 +67,20 @@ export default function RicePricing() {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
 
-  const payloadBuilder = () => {
-    return cart.map(item => ({
-      distributorId: user?._id,
+  const handlePlaceOrder = async () => {
+    if (!distributorId || !token) {
+      toast.error('Session expired. Please re‑enter the terminal.');
+      navigate('/prakriti/rice');
+      return;
+    }
+    if (cart.length === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
+    // Create proposals for each cart item
+    const proposalPayloads = cart.map(item => ({
+      distributorId,
       division: 'RICE',
       lotId: `${item.variety}-${item.location}`,
       region: item.location,
@@ -79,10 +91,62 @@ export default function RicePricing() {
       estimatedValue: item.lineTotal,
       status: 'approved',
     }));
-  };
 
-  const handlePlaceOrder = async () => {
-    // handled by PlaceOrderButton
+    try {
+      const proposals = await Promise.all(
+        proposalPayloads.map(p => distributorApi.createProposal(p))
+      );
+      const proposalIds = proposals.map(r => r.data._id);
+      const total = cartTotal;
+
+      // Razorpay order
+      const orderResult = await distributorApi.createRazorpayOrder({
+        amount: total,
+        lotId: proposalIds.join(','),
+        quantity: cart.reduce((s, p) => s + (parseInt(p.quantity.replace(/\D/g, '')) || 0), 0),
+      });
+      if (!orderResult.success) throw new Error(orderResult.message || 'Failed to create Razorpay order');
+
+      const { orderId, keyId } = orderResult.data;
+      await loadRazorpayScript();
+
+      const options = {
+        key: keyId,
+        amount: total * 100,
+        currency: 'INR',
+        name: 'Prakriti Rice Division',
+        description: `Order ${proposalIds.join(',')}`,
+        order_id: orderId,
+        handler: async (response) => {
+          try {
+            const verifyResult = await distributorApi.verifyRazorpayPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              lotId: proposalIds.join(','),
+              quantity: cart.reduce((s, p) => s + (parseInt(p.quantity.replace(/\D/g, '')) || 0), 0),
+              amount: total,
+            });
+            if (verifyResult.success) {
+              await Promise.all(proposalIds.map(id => distributorApi.updateProposalStatus(id, 'paid')));
+              toast.success('Payment successful!');
+              pushDataLayerEvent('rice_payment_success', { transaction_id: response.razorpay_payment_id, value: total, currency: 'INR' });
+            } else {
+              toast.error(verifyResult.message || 'Payment verification failed');
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error('Payment verification failed');
+          }
+        },
+        theme: { color: '#5A4422' },
+      };
+
+      new window.Razorpay(options).open();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to place order');
+    }
   };
 
   // Options
@@ -101,51 +165,47 @@ export default function RicePricing() {
     { value: 'FUTURE', label: 'Future / Planning' },
   ];
 
-  if (!selectedVariety && !cart.length) {
-    // Show selection UI only
-  }
-
   return (
-    <div className="min-h-screen bg-neutral-50 py-12 px-4">
+    <div className="min-h-screen bg-[#FFF9EC] py-12 px-4" style={{ color: '#5A4422' }}>
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8">
-        <Link to="/prakriti/rice" className="inline-flex items-center text-primary hover:underline mb-6">
+        <Link to="/prakriti/rice" className="inline-flex items-center text-[#5A4422] hover:underline mb-6">
           <FiArrowLeft className="mr-1" /> Back to Rice
         </Link>
 
-        <h1 className="text-3xl font-bold text-neutral-900 mb-6">Rice Pricing & Order</h1>
+        <h1 className="text-3xl font-bold text-[#5A4422] mb-6">Rice Pricing & Order</h1>
 
         {/* Selection Form */}
-        <div className="mb-8 p-6 bg-neutral-50 rounded-xl">
+        <div className="mb-8 p-6 bg-[#FFF9EC] rounded-xl border border-[#D9B85C]">
           <h2 className="text-xl font-semibold mb-4">Select Your Requirements</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Variety</label>
+              <label className="block text-sm font-medium text-[#5A4422] mb-1">Variety</label>
               <select
                 value={selectedVariety}
                 onChange={e => setSelectedVariety(e.target.value)}
-                className="w-full px-4 py-2 border border-teal-200 bg-white rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400"
+                className="w-full px-4 py-2 border border-[#D9B85C] bg-white rounded-lg focus:ring-2 focus:ring-[#D9B85C] focus:border-[#D9B85C]"
               >
                 <option value="">Select variety</option>
                 {varieties.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Location</label>
+              <label className="block text-sm font-medium text-[#5A4422] mb-1">Location</label>
               <select
                 value={selectedLocation}
                 onChange={e => setSelectedLocation(e.target.value)}
-                className="w-full px-4 py-2 border border-teal-200 bg-white rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400"
+                className="w-full px-4 py-2 border border-[#D9B85C] bg-white rounded-lg focus:ring-2 focus:ring-[#D9B85C] focus:border-[#D9B85C]"
               >
                 <option value="">Select location</option>
                 {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Quantity</label>
+              <label className="block text-sm font-medium text-[#5A4422] mb-1">Quantity</label>
               <select
                 value={selectedQuantity}
                 onChange={e => setSelectedQuantity(e.target.value)}
-                className="w-full px-4 py-2 border border-teal-200 bg-white rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400"
+                className="w-full px-4 py-2 border border-[#D9B85C] bg-white rounded-lg focus:ring-2 focus:ring-[#D9B85C] focus:border-[#D9B85C]"
               >
                 {quantityOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -153,11 +213,11 @@ export default function RicePricing() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Timeline</label>
+              <label className="block text-sm font-medium text-[#5A4422] mb-1">Timeline</label>
               <select
                 value={selectedTimeline}
                 onChange={e => setSelectedTimeline(e.target.value)}
-                className="w-full px-4 py-2 border border-teal-200 bg-white rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400"
+                className="w-full px-4 py-2 border border-[#D9B85C] bg-white rounded-lg focus:ring-2 focus:ring-[#D9B85C] focus:border-[#D9B85C]"
               >
                 {timelineOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -168,7 +228,7 @@ export default function RicePricing() {
 
           {/* Price Preview */}
           {selectedVariety && selectedLocation && (
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 text-primary text-sm">
+            <div className="p-4 rounded-lg bg-[#D9B85C]/10 border border-[#D9B85C]/30 text-[#5A4422] text-sm">
               <strong>Estimated Rate (INR/MT):</strong> {price != null ? `₹ ${price.toLocaleString()}` : 'N/A'}
             </div>
           )}
@@ -176,7 +236,7 @@ export default function RicePricing() {
           <button
             onClick={addToCart}
             disabled={!selectedVariety || !selectedLocation || !price}
-            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2"
+            className="px-6 py-2 bg-[#D9B85C] text-[#2E2000] rounded-lg hover:bg-[#D9B85C]/90 flex items-center gap-2"
           >
             <FiPlus className="w-4 h-4" /> Add to Order
           </button>
@@ -189,7 +249,7 @@ export default function RicePricing() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left border-collapse">
                 <thead>
-                  <tr className="bg-neutral-100 text-neutral-700">
+                  <tr className="bg-[#FFF9EC] text-[#5A4422]">
                     <th className="p-3 border-b">Variety</th>
                     <th className="p-3 border-b">Location</th>
                     <th className="p-3 border-b">Qty</th>
@@ -201,7 +261,7 @@ export default function RicePricing() {
                 </thead>
                 <tbody>
                   {cart.map(item => (
-                    <tr key={item.id} className="border-b border-neutral-200 hover:bg-neutral-50">
+                    <tr key={item.id} className="border-b border-[#D9B85C] hover:bg-[#FFF9EC]">
                       <td className="p-3">{item.variety.replace(/_/g, ' ')}</td>
                       <td className="p-3">{item.location}</td>
                       <td className="p-3">{item.quantity}</td>
@@ -217,7 +277,7 @@ export default function RicePricing() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-neutral-100 font-bold">
+                  <tr className="bg-[#FFF9EC] font-bold">
                     <td colSpan="4" className="p-3 text-right">Grand Total</td>
                     <td className="p-3 font-mono">₹ {cartTotal.toLocaleString()}</td>
                     <td className="p-3"></td>
@@ -226,20 +286,12 @@ export default function RicePricing() {
               </table>
             </div>
 
-            <PlaceOrderButton
-              payloadBuilder={() => cart.map(item => ({
-                distributorId: user?._id,
-                division: 'RICE',
-                lotId: `${item.variety}-${item.location}`,
-                region: item.location,
-                grade: item.variety,
-                quantity: parseInt(item.quantity.replace(/\D/g, '')) || 1,
-                basePrice: item.unitPrice,
-                paymentTerm: 'ADVANCE_100',
-                estimatedValue: item.lineTotal,
-                status: 'approved',
-              }))}
-            />
+            <button
+              onClick={handlePlaceOrder}
+              className="mt-4 px-8 py-3 bg-[#5A4422] text-white rounded-lg hover:bg-[#4a3819] flex items-center justify-center gap-2"
+            >
+              <FiShoppingCart size={16} /> Place Order & Pay
+            </button>
           </div>
         )}
 
@@ -249,7 +301,7 @@ export default function RicePricing() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left border-collapse">
               <thead>
-                <tr className="bg-neutral-100 text-neutral-700">
+                <tr className="bg-[#FFF9EC] text-[#5A4422]">
                   <th className="p-3 border-b">Location</th>
                   {varieties.map(v => (
                     <th key={v} className="p-3 border-b">{v.replace(/_/g, ' ')}</th>
@@ -258,7 +310,7 @@ export default function RicePricing() {
               </thead>
               <tbody>
                 {Object.entries(RICE_RATES).map(([loc, rates]) => (
-                  <tr key={loc} className="border-b border-neutral-200 hover:bg-neutral-50">
+                  <tr key={loc} className="border-b border-[#D9B85C] hover:bg-[#FFF9EC]">
                     <td className="p-3 font-medium">{loc}</td>
                     {varieties.map(v => (
                       <td key={v} className="p-3 font-mono">
@@ -276,7 +328,6 @@ export default function RicePricing() {
   );
 }
 
-const locations = ['Haryana'];
 const quantityOptions = [
   { value: '1_TRUCK', label: '1 Truck (20 MT)' },
   { value: '2_5_TRUCKS', label: '2–5 Trucks (40-100 MT)' },
