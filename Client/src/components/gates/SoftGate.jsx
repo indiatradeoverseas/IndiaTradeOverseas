@@ -62,13 +62,21 @@ export default function SoftGate({
     setError('');
 
     try {
+      // Determine product key based on division / requirement shape
+      const productKey =
+        requirement.product ??
+        requirement.material ??
+        requirement.variety ??
+        requirement.teaType ??
+        '';
+
       const payload = {
         division,
-        product: requirement.product,
-        productDetails: requirement.productDetails || {},
+        product: productKey,
+        productDetails: requirement.productDetails || requirement,
         quantity: requirement.quantity,
         quantityUnit: requirement.quantityUnit,
-        destination: requirement.destination?.city || requirement.destination || '',
+        destination: requirement.destination?.location || requirement.destination?.city || requirement.destination || '',
         pin: requirement.destination?.pin || requirement.pin || '',
         timeline: requirement.timeline,
         eligibility: requirement.eligibility,
