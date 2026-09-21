@@ -795,7 +795,9 @@ const submitCoalQuote = async (req, res, next) => {
       tMode,
       incoterm,
       reqDate,
-      notes
+      notes,
+      targetQty,
+      estValuation
     } = req.body;
 
     if (!fullName || !email || !phone) {
@@ -860,8 +862,10 @@ const submitCoalQuote = async (req, res, next) => {
     
     // Map form data to proposal fields
     const quantity = Number(orderQty) || Number(trialQty) || 100; // Default to 100 MT if not provided
+    const targetQuantity = Number(targetQty) || 0;
     const basePrice = 5000; // Placeholder - would need pricing logic
     const estimatedValue = quantity * basePrice;
+    const estimatedValuation = Number(estValuation) || 0;
 
     const proposal = await Proposal.create({
       distributorId: distributor._id,
@@ -870,9 +874,11 @@ const submitCoalQuote = async (req, res, next) => {
       region: origin || 'Domestic',
       grade: coalType || gcv ? `${gcv} kcal/kg ${basis || 'GAR'}` : 'Unspecified',
       quantity,
+      targetQuantity,
       basePrice,
       paymentTerm: 'ADVANCE_50',
       estimatedValue,
+      estimatedValuation,
       status: 'pending'
     });
 

@@ -449,6 +449,7 @@ function CoalQuoteForm({ onSubmit }) {
     origin: '', coalType: '', gcv: '', basis: '', rejVal: '',
     ash: '', sulphur: '', tm: '', vm: '', fc: '', hgiAft: '',
     orderQty: '', trialQty: '', monthly: '',
+    targetQty: '', estValuation: '',
     dest: '', tMode: '', incoterm: '', reqDate: '',
     notes: '', privacy: false
   });
@@ -536,10 +537,12 @@ function CoalQuoteForm({ onSubmit }) {
 
       <fieldset className="border border-[#F4F0E7]/35 rounded-xl p-6 backdrop-blur-[2px] bg-[#071826]/35">
         <legend className="text-lg font-semibold text-[#F4F0E7] px-2">Volume</legend>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-5 gap-4">
           <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Order qty (MT)</span><input name="orderQty" type="number" step="1" value={formData.orderQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
           <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Trial qty (MT)</span><input name="trialQty" type="number" step="1" value={formData.trialQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
           <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Recurring monthly demand (MT)</span><input name="monthly" type="number" step="1" value={formData.monthly} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Target Quantity (MT)</span><input name="targetQty" type="number" step="1" value={formData.targetQty} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
+          <label className="block"><span className="text-sm text-[#F4F0E7]/95 font-medium">Estimated Valuation (INR)</span><input name="estValuation" type="number" step="1" value={formData.estValuation} onChange={handleChange} className="w-full mt-1 p-2 border border-white/30 bg-[#071826]/25 text-white placeholder:text-white/55 rounded backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D4A84F]" /></label>
         </div>
       </fieldset>
 
