@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiTruck, FiCheckCircle, FiClock, FiUser, FiMapPin, 
@@ -389,6 +390,13 @@ export default function TransportExecutive() {
               Shared Files
             </button>
           </div>
+
+          <Link
+            to="/crm/manager-chat"
+            className="px-3 py-2 border border-teal-700 bg-teal-950/60 hover:bg-teal-900 text-teal-300 rounded-sm text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <FiMessageSquare size={12} /> Executive & Founder Chat
+          </Link>
 
           <button
             onClick={fetchAssignedTrips}

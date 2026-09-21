@@ -338,17 +338,25 @@ export default function FounderDashboard() {
     return pipelineData.reduce((sum, item) => sum + (item.total || 0), 0);
   }, [pipelineData]);
 
-  const activeLeadsCount = summary?.activeLeads || 0;
-  const completedDeliveredCount = summary?.completedLeads || summary?.transport?.delivered || 0;
-  const paymentReceivedCount = summary?.revenue?.totalCollected || 0;
-  const quotationsSentCount = summary?.quotations?.sent || summary?.quotations?.total || 1;
-  const ordersConfirmedCount = summary?.ordersConfirmed || summary?.completedLeads || 0;
+  const activeLeadsCount = summary?.activeLeads !== undefined ? summary.activeLeads : (summary?.totalLeads || 0);
+  const completedDeliveredCount = summary?.completedLeads !== undefined ? summary.completedLeads : (summary?.deliveredLeads || summary?.transport?.delivered || 0);
+  const paymentReceivedCount = summary?.revenue?.totalCollected !== undefined ? summary.revenue.totalCollected : (summary?.paidLeads || 0);
+  const quotationsSentCount = summary?.quotations?.sent !== undefined ? summary.quotations.sent : (summary?.quotations?.total || 1);
+  const ordersConfirmedCount = (summary?.ordersConfirmed !== undefined && summary?.ordersConfirmed > 0) 
+    ? summary.ordersConfirmed 
+    : Math.max(summary?.completedLeads || 0, summary?.transport?.delivered || 0);
 
   // Total Conversion % = Orders Confirmed / Quotations Sent * 100
   const totalConversionPercent = useMemo(() => {
-    if (!quotationsSentCount || quotationsSentCount === 0) return 0;
-    return Math.round((ordersConfirmedCount / quotationsSentCount) * 100);
-  }, [ordersConfirmedCount, quotationsSentCount]);
+    const totalWonOrConfirmed = Math.max(ordersConfirmedCount, completedDeliveredCount, summary?.completedLeads || 0);
+    if (quotationsSentCount > 0) {
+      return Math.round((totalWonOrConfirmed / quotationsSentCount) * 100);
+    }
+    if (activeLeadsCount + totalWonOrConfirmed > 0) {
+      return Math.round((totalWonOrConfirmed / (activeLeadsCount + totalWonOrConfirmed)) * 100);
+    }
+    return summary?.conversionRate || 0;
+  }, [ordersConfirmedCount, completedDeliveredCount, summary, quotationsSentCount, activeLeadsCount]);
 
   const pendingPaymentsAmount = summary?.payments?.pendingOrdersValue || summary?.payments?.pendingValue || 0;
   const presentTodayCount = summary?.presentToday ?? 0;
@@ -605,7 +613,7 @@ export default function FounderDashboard() {
               </div>
 
               <div className="h-80 sm:h-96 w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+                <ResponsiveContainer width="100%" height={320}>
                   <ComposedChart data={composedChartData} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="period" tick={XAXIS_TICK_STYLE} />
@@ -645,7 +653,7 @@ export default function FounderDashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
                   <div className="sm:col-span-5 h-64 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+                    <ResponsiveContainer width="100%" height={240}>
                       <PieChart>
                         <Pie
                           data={pipelineData}
@@ -715,7 +723,7 @@ export default function FounderDashboard() {
                 </div>
 
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+                  <ResponsiveContainer width="100%" height={240}>
                     <LineChart data={monthlyLeadsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                       <XAxis dataKey="month" tick={XAXIS_TICK_STYLE} />
@@ -742,7 +750,7 @@ export default function FounderDashboard() {
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'FILES') && (
           <motion.div initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-            <FileSharingWidget />
+            <FileSharingWidget initialTab="ALL_AUDIT" />
           </motion.div>
         )}
 
@@ -912,7 +920,7 @@ export default function FounderDashboard() {
                   <FiPieChart className="text-sky-400" /> Workforce Distribution
                 </h3>
                 <div className="h-56">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
                       <Pie data={deptChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {deptChartData.map((_, i) => <Cell key={`c-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}

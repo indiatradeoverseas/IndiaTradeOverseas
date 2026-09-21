@@ -1349,7 +1349,7 @@ async function bulkImportLeads(leadsArray, user) {
 
       // Priority resolution: Explicit choice from row/import > AI priority
       const rowPriority = String(row.priority || row.temperature || row.quality || '').trim().toUpperCase();
-      const finalPriority = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'].includes(rowPriority)
+      const finalPriority = ['HOT', 'WARM', 'COLD', 'DEAD', 'FAKE', 'INCOMPLETE'].includes(rowPriority)
         ? rowPriority
         : aiPriority;
 
@@ -1414,7 +1414,7 @@ async function updatePriority({ leadId, priority, leadValue, user }) {
 
   const oldPriority = lead.priority;
   if (priority) {
-    const validPriorities = ['HOT', 'WARM', 'COLD', 'FAKE', 'INCOMPLETE'];
+    const validPriorities = ['HOT', 'WARM', 'COLD', 'DEAD', 'FAKE', 'INCOMPLETE'];
     const upperPriority = String(priority || '').toUpperCase();
     if (validPriorities.includes(upperPriority)) {
       lead.priority = upperPriority;

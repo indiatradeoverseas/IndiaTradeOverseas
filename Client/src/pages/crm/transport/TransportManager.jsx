@@ -317,6 +317,8 @@ export default function TransportManager() {
       fetchedTrips.forEach(t => {
         if (t.fuelLogs && Array.isArray(t.fuelLogs) && t.fuelLogs.length > 0) {
           t.fuelLogs.forEach(fl => {
+            const rawD = fl.loggedAt || fl.createdAt || fl.date || t.createdAt || Date.now();
+            const ts = new Date(rawD).getTime() || Date.now();
             dbFuelLogs.push({
               id: fl._id || `db_${fl.loggedAt || Date.now()}`,
               driver: fl.driverName || fl.driver || t.driverName || 'Driver',
@@ -333,8 +335,9 @@ export default function TransportManager() {
               punctureCost: Number(fl.punctureCost) || 0,
               otherCost: Number(fl.otherCost) || 0,
               remarks: fl.remarks || '',
-              time: new Date(fl.loggedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              date: new Date(fl.loggedAt || Date.now()).toLocaleDateString('en-IN')
+              rawTimestamp: ts,
+              time: new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              date: new Date(ts).toLocaleDateString('en-IN')
             });
           });
         }
@@ -384,6 +387,9 @@ export default function TransportManager() {
                 toLoc = toLoc || parts[1]?.trim();
               }
 
+              const rawD = u.createdAt || u.date || Date.now();
+              const ts = new Date(rawD).getTime() || Date.now();
+
               dbFuelLogs.push({
                 id: u.id || u._id,
                 driver: u.driverName || u.driver || 'Driver',
@@ -399,6 +405,7 @@ export default function TransportManager() {
                 otherCost: parsedOther,
                 punctureCost: Number(u.punctureCost) || 0,
                 remarks: u.notes || u.update || '',
+                rawTimestamp: ts,
                 time: u.time || (u.createdAt ? new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
                 date: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : 'Today'
               });
@@ -412,7 +419,26 @@ export default function TransportManager() {
         const key = item.id || `${item.vehicle}-${item.date}-${item.time}-${item.fuelCost}`;
         map.set(key, item);
       });
-      setFuelMaintenanceLogs(Array.from(map.values()));
+
+      const getLogTimestamp = (obj) => {
+        if (obj.rawTimestamp && !isNaN(obj.rawTimestamp)) return Number(obj.rawTimestamp);
+        if (obj.date || obj.dateStr) {
+          const dStr = obj.date || obj.dateStr;
+          if (typeof dStr === 'string' && dStr.includes('/')) {
+            const p = dStr.split('/');
+            if (p.length === 3) {
+              let [d, m, y] = p.map(n => parseInt(n, 10));
+              if (y < 100) y += 2000;
+              return new Date(y, m - 1, d).getTime() || 0;
+            }
+          }
+          return new Date(dStr).getTime() || 0;
+        }
+        return 0;
+      };
+
+      const sortedLogs = Array.from(map.values()).sort((a, b) => getLogTimestamp(b) - getLogTimestamp(a));
+      setFuelMaintenanceLogs(sortedLogs);
 
       let fetchedDrivers = [];
       if (empRes.status === 'fulfilled' && (empRes.value?.success || empRes.value?.data)) {
@@ -1156,6 +1182,14 @@ export default function TransportManager() {
             <FiLifeBuoy size={13} /> Support Tickets
           </Link>
 
+          <Link
+            to="/crm/manager-chat"
+            className="text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans"
+            style={{ borderColor: 'rgba(20, 184, 166, 0.4)', background: 'rgba(20, 184, 166, 0.15)', color: '#2dd4bf' }}
+          >
+            <FiMessageSquare size={13} /> Executive & Founder Chat
+          </Link>
+
           <button
             onClick={() => setActiveTab(activeTab === 'SHARED_FILES' ? 'DASHBOARD' : 'SHARED_FILES')}
             className={`text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans ${
@@ -1375,8 +1409,8 @@ export default function TransportManager() {
                   driverWorkUpdates.map((up) => (
                     <div key={up.id} className="p-3 border rounded-sm space-y-1 hover:border-teal-500/50 transition" style={CARD_SUNKEN}>
                       <div className="flex justify-between items-center text-[10px]">
-                        <strong className="text-teal-400 font-bold">{up.driver} ({up.vehicle})</strong>
-                        <span className="px-1.5 py-0.5 border text-[9px] font-bold uppercase text-sky-400 border-sky-900 bg-sky-950/40 rounded-sm">{up.stage}</span>
+                        <strong className="text-teal-700 dark:text-teal-300 font-extrabold">{up.driver} ({up.vehicle})</strong>
+                        <span className="px-2 py-0.5 border text-[9px] font-extrabold uppercase text-white bg-teal-700 dark:bg-slate-700 border-teal-600 dark:border-slate-600 rounded-md shadow-xs">{up.stage}</span>
                       </div>
                       <p className="text-[var(--crm-heading)] text-[11px] leading-relaxed font-sans font-medium">{up.update}</p>
                       <div className="flex justify-between items-center text-[9px] text-[var(--crm-ink-faint)] pt-1 font-mono">
@@ -1482,23 +1516,23 @@ export default function TransportManager() {
             </div>
 
             {/* TRANSPORT & DRIVER CHAT HUB */}
-            <div className="lg:col-span-5 border rounded-xl p-4 space-y-3 font-mono bg-[#111317] border-slate-800 shadow-2xl flex flex-col justify-between h-[420px]">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
+            <div className="lg:col-span-5 border rounded-xl p-4 space-y-3 font-sans shadow-sm flex flex-col justify-between h-[420px]" style={CARD}>
+              <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={HEADING}>
                   <FiMessageSquare className="text-teal-400" size={15} /> TRANSPORT & DRIVER CHAT HUB
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleToggleVoiceRecord}
-                    className={`p-1 rounded cursor-pointer transition ${isRecordingVoice ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-900 border border-slate-700 text-teal-400 hover:bg-slate-800'}`}
+                    className={`p-1.5 rounded cursor-pointer transition ${isRecordingVoice ? 'bg-rose-600 text-white animate-pulse' : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-teal-400 hover:bg-[var(--crm-bg-raised)]'}`}
                     title="Record Voice Note for Driver"
                   >
                     <FiMic size={13} />
                   </button>
                   <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span className="text-[9px] font-bold text-emerald-400 tracking-widest uppercase">LIVE CONNECTION</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 tracking-widest uppercase">LIVE CONNECTION</span>
                   </div>
                 </div>
               </div>
@@ -1506,7 +1540,7 @@ export default function TransportManager() {
               {/* MESSAGES THREAD AREA */}
               <div ref={chatContainerRef} className="space-y-2.5 max-h-[290px] min-h-[200px] overflow-y-auto pr-1 custom-scrollbar flex flex-col flex-1">
                 {chatMessages.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 text-xs italic">
+                  <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs italic font-sans">
                     No live messages yet. Type a message below to broadcast to Drivers.
                   </div>
                 ) : (
@@ -1518,20 +1552,20 @@ export default function TransportManager() {
                         className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${isManager ? 'self-end items-end' : 'self-start items-start'}`}
                       >
                         <div
-                          className={`p-2.5 rounded-xl text-xs space-y-0.5 shadow-md ${
+                          className={`p-3 rounded-xl text-xs space-y-1 shadow-sm ${
                             isManager
-                              ? 'bg-[#00897b] text-white rounded-tr-none'
-                              : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
+                              ? 'bg-teal-600 text-white rounded-tr-none border border-teal-500'
+                              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-tl-none'
                           }`}
                         >
-                          <span className={`text-[9px] font-bold block ${isManager ? 'text-teal-100' : 'text-slate-400'}`}>
+                          <span className={`text-[10px] font-extrabold block ${isManager ? 'text-teal-100' : 'text-amber-400'}`}>
                             {msg.sender || (isManager ? `${user?.name || user?.fullName || 'Transport Manager'} (MANAGER)` : 'Driver')}
                           </span>
-                          <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
+                          <p className={`text-xs font-sans font-medium leading-relaxed whitespace-pre-wrap ${isManager ? 'text-white' : 'text-[var(--crm-heading)]'}`}>
                             {msg.text}
                           </p>
                         </div>
-                        <span className="text-[8px] text-slate-500 mt-0.5 font-mono">{msg.time || '12:00 PM'}</span>
+                        <span className="text-[9px] text-[var(--crm-ink-faint)] mt-1 font-mono font-medium">{msg.time || '12:00 PM'}</span>
                       </div>
                     );
                   })
@@ -1539,20 +1573,20 @@ export default function TransportManager() {
               </div>
 
               {/* INPUT BAR */}
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800">
+              <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
                 <div className="relative flex-1">
                   <input
                     type="text"
                     placeholder="Type a message to Drivers..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    className="w-full py-2 px-3 bg-[#090b0e] border border-teal-700/60 rounded-lg text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
+                    className="w-full py-2.5 px-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl text-[var(--crm-heading)] font-medium text-xs outline-none focus:border-teal-500 transition font-sans placeholder-[var(--crm-ink-faint)]"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={!inputMessage.trim()}
-                  className="p-2 bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 text-white rounded-lg shadow transition cursor-pointer flex items-center justify-center shrink-0"
+                  className="p-2.5 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 disabled:opacity-50 text-white rounded-xl shadow-md transition cursor-pointer flex items-center justify-center shrink-0 border border-teal-500"
                 >
                   <FiSend size={15} />
                 </button>
@@ -1561,10 +1595,10 @@ export default function TransportManager() {
           </div>
 
           {/* LOWER SECTION: DRIVER SCORECARD & FUEL / MAINTENANCE Tracker */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 font-sans">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 font-sans items-stretch">
             <DriverCalculator />
 
-            <div className="border border-[var(--crm-line)] rounded-xl p-4 space-y-3 font-sans shadow-md bg-[var(--crm-bg-raised)]" style={CARD}>
+            <div className="border border-[var(--crm-line)] rounded-xl p-4 space-y-3 font-sans shadow-md bg-[var(--crm-bg-raised)] flex flex-col justify-between h-full min-h-[480px]" style={CARD}>
               <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2 font-sans text-[var(--crm-heading)]" style={HEADING}>
                   <FiTool className="text-emerald-400" size={15} /> Fuel & Vehicle Maintenance Expenses (Driver Logs)
@@ -1572,48 +1606,68 @@ export default function TransportManager() {
                 <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-medium">Diesel, Toll, Garage Bills</span>
               </div>
 
-              <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1 text-xs custom-scrollbar font-sans">
+              <div className="space-y-2.5 max-h-[420px] flex-1 overflow-y-auto pr-1 text-xs custom-scrollbar font-sans">
                 {fuelMaintenanceLogs.length === 0 ? (
                   <div className="p-6 text-center text-[var(--crm-ink-faint)] text-xs border border-dashed border-[var(--crm-line)] rounded-xl font-sans">No fuel or maintenance expense logs recorded yet.</div>
                 ) : (
-                  fuelMaintenanceLogs.map((log) => (
-                    <div key={log.id} className="p-3 border border-[var(--crm-line)] rounded-xl space-y-2 font-sans bg-[var(--crm-bg-sunken)] shadow-sm" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
-                      <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-1.5 font-sans" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                        <span className="text-[var(--crm-heading)] font-bold text-xs flex items-center gap-1.5 font-sans">
-                          <FiUser className="text-emerald-400" size={12} /> {log.driver} <span className="text-[var(--crm-ink-faint)]">({log.vehicle})</span>
+                  [...fuelMaintenanceLogs]
+                    .sort((a, b) => {
+                      const getTs = (obj) => {
+                        if (obj.rawTimestamp && !isNaN(obj.rawTimestamp)) return Number(obj.rawTimestamp);
+                        if (obj.date || obj.dateStr) {
+                          const dStr = obj.date || obj.dateStr;
+                          if (typeof dStr === 'string' && dStr.includes('/')) {
+                            const p = dStr.split('/');
+                            if (p.length === 3) {
+                              let [d, m, y] = p.map(n => parseInt(n, 10));
+                              if (y < 100) y += 2000;
+                              return new Date(y, m - 1, d).getTime() || 0;
+                            }
+                          }
+                          return new Date(dStr).getTime() || 0;
+                        }
+                        return 0;
+                      };
+                      return getTs(b) - getTs(a);
+                    })
+                    .map((log) => (
+                    <div key={log.id} className="p-3.5 border rounded-xl space-y-2.5 font-sans shadow-xs transition hover:border-emerald-500/40" style={CARD_SUNKEN}>
+                      <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="text-[var(--crm-heading)] font-extrabold text-xs flex items-center gap-1.5 font-sans">
+                          <FiUser className="text-emerald-400" size={13} /> {log.driver} <span className="text-[var(--crm-ink-faint)] font-medium">({log.vehicle})</span>
                         </span>
                         <div className="flex items-center gap-2 font-sans">
-                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1">
+                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1 font-semibold">
                             <FiCalendar size={11} className="text-teal-400" /> {log.date || log.dateStr || 'Today'} {log.time ? `• ${log.time}` : ''}
                           </span>
-                          <span className="text-[10px] text-teal-300 font-bold bg-teal-950/50 border border-teal-800/60 px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
-                            <FiPackage size={11} /> Log Ref: <strong className="underline text-teal-200 font-mono">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
+                          <span className="text-[10px] text-teal-300 font-extrabold bg-teal-950/80 border border-teal-800 px-2.5 py-1 rounded-md flex items-center gap-1 font-sans shadow-xs">
+                            <FiPackage size={11} className="text-teal-400" /> Log Ref: <strong className="underline text-teal-200 font-mono font-bold">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
                           </span>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-0.5 font-sans">
-                        <div className="text-[var(--crm-ink-soft)] font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Route Vector</span>
-                          <strong className="text-[var(--crm-heading)] font-bold">📍 {log.fromLocation || 'Delhi'} &rarr; 🚩 {log.toLocation || 'Patna'} ({log.totalKm || 0} KM)</strong>
+                        <div className="font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Route Vector</span>
+                          <strong className="text-[var(--crm-heading)] font-extrabold text-xs block">📍 {log.fromLocation && log.fromLocation.trim() !== '-' ? log.fromLocation : 'Main Depot'} &rarr; 🚩 {log.toLocation || 'Destination'} ({log.totalKm || 0} KM)</strong>
                         </div>
-                        <div className="text-[var(--crm-ink-soft)] font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Fuel Cost</span>
-                          <strong className="text-emerald-400 font-bold font-mono">₹{Number(log.fuelCost || 0).toLocaleString('en-IN')} ({log.litres || 0}L)</strong>
+                        <div className="font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Fuel Cost</span>
+                          <strong className="text-emerald-400 font-black font-mono text-xs block">₹{Number(log.fuelCost || 0).toLocaleString('en-IN')} ({log.litres || 0}L)</strong>
                         </div>
-                        <div className="text-[var(--crm-ink-soft)] font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Tire & Toll</span>
-                          <strong className="text-sky-300 font-bold font-mono">₹{(Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
+                        <div className="font-sans">
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Tire & Toll</span>
+                          <strong className="text-sky-400 font-black font-mono text-xs block">₹{(Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
                         </div>
                         <div className="text-right font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-bold">Trip Expense</span>
-                          <strong className="text-emerald-400 font-bold text-xs font-mono">₹{(Number(log.fuelCost || 0) + Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
+                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Trip Expense</span>
+                          <strong className="text-emerald-400 font-black text-xs font-mono block">₹{(Number(log.fuelCost || 0) + Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
                         </div>
                       </div>
 
                       {log.remarks && (
-                        <div className="text-[10px] text-[var(--crm-ink-soft)] pt-1 border-t font-sans" style={{ borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-                          <span className="text-[var(--crm-ink-faint)] font-bold">Remarks:</span> {log.remarks}
+                        <div className="text-[10px] text-[var(--crm-ink-soft)] pt-1.5 border-t font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                          <span className="text-[var(--crm-heading)] font-bold">Remarks:</span> {log.remarks}
                         </div>
                       )}
                     </div>
@@ -1825,7 +1879,7 @@ export default function TransportManager() {
                           <strong className="text-emerald-400 text-xs font-bold block font-mono">
                             ₹{row.totalAmount.toLocaleString('en-IN')}
                           </strong>
-                          <span className="inline-block text-[9px] px-1.5 py-0.5 bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold rounded-sm">
+                          <span className="inline-block text-[10px] px-2 py-0.5 bg-emerald-600 text-white border border-emerald-500 font-extrabold rounded-md shadow-xs uppercase tracking-wider">
                             {row.status}
                           </span>
                         </td>

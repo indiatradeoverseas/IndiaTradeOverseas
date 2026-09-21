@@ -17,37 +17,37 @@ const CRM_OPTIONS = [
     icon: FiBriefcase,
     label: 'Job Openings & Hiring',
     query: 'What job vacancies and career opportunities are available?',
-    color: 'text-amber-300 border-amber-500/40 hover:border-amber-400 bg-amber-950/40 hover:bg-amber-900/60'
+    color: 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-600/50 shadow-xs font-extrabold'
   },
   {
     icon: FiTag,
     label: 'Product Prices & Rate Cards',
     query: 'What are the official price rates for Stone, Tea, and Rice?',
-    color: 'text-emerald-300 border-emerald-500/40 hover:border-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60'
+    color: 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-600/50 shadow-xs font-extrabold'
   },
   {
     icon: FiClock,
     label: 'Attendance & Shift Check-In',
     query: 'How do I check in and check out for my attendance shift?',
-    color: 'text-sky-300 border-sky-500/40 hover:border-sky-400 bg-sky-950/40 hover:bg-sky-900/60'
+    color: 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-600/50 shadow-xs font-extrabold'
   },
   {
     icon: FiCheckSquare,
     label: 'Task Rules & Status Updates',
     query: 'What is the procedure for updating task status and attaching files?',
-    color: 'text-purple-300 border-purple-500/40 hover:border-purple-400 bg-purple-950/40 hover:bg-purple-900/60'
+    color: 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-600/50 shadow-xs font-extrabold'
   },
   {
     icon: FiTruck,
     label: 'Dispatch & Logistics Status',
     query: 'How do I track truck dispatches and freight logistics in CRM?',
-    color: 'text-teal-300 border-teal-500/40 hover:border-teal-400 bg-teal-950/40 hover:bg-teal-900/60'
+    color: 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-900 dark:text-teal-200 border-teal-300 dark:border-teal-600/50 shadow-xs font-extrabold'
   },
   {
     icon: FiLifeBuoy,
     label: 'Report an Issue / Support Ticket',
     query: 'How do I create a support ticket or report an issue in CRM?',
-    color: 'text-rose-300 border-rose-500/40 hover:border-rose-400 bg-rose-950/40 hover:bg-rose-900/60'
+    color: 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-600/50 shadow-xs font-extrabold'
   }
 ];
 
@@ -353,7 +353,7 @@ export default function AiChatMessenger() {
             key={match.index}
             to={url}
             onClick={() => setIsOpen(false)}
-            className="inline-flex items-center gap-1 font-bold text-emerald-300 hover:text-emerald-100 underline bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded text-[10px] mx-1 my-0.5 transition hover:scale-105"
+            className="inline-flex items-center gap-1 font-extrabold text-emerald-700 dark:text-emerald-300 hover:underline bg-emerald-100 dark:bg-emerald-950 border border-emerald-400 dark:border-emerald-700 px-2 py-0.5 rounded text-[10px] mx-1 my-0.5 transition hover:scale-105"
           >
             {label} <FiExternalLink size={10} />
           </Link>
@@ -373,7 +373,7 @@ export default function AiChatMessenger() {
           const subParts = part.split(/(\*\*.*?\*\*)/g);
           return subParts.map((sub, sIdx) => {
             if (sub.startsWith('**') && sub.endsWith('**')) {
-              return <strong key={sIdx} className={isWarning ? 'font-bold text-rose-300' : 'font-semibold text-emerald-400'}>{sub.slice(2, -2)}</strong>;
+              return <strong key={sIdx} className={isWarning ? 'font-bold text-rose-600 dark:text-rose-300' : 'font-extrabold text-emerald-700 dark:text-emerald-400'}>{sub.slice(2, -2)}</strong>;
             }
             return sub;
           });
@@ -382,7 +382,7 @@ export default function AiChatMessenger() {
       }) : (
         line.split(/(\*\*.*?\*\*)/g).map((sub, sIdx) => {
           if (sub.startsWith('**') && sub.endsWith('**')) {
-            return <strong key={sIdx} className={isWarning ? 'font-bold text-rose-300' : 'font-semibold text-emerald-400'}>{sub.slice(2, -2)}</strong>;
+            return <strong key={sIdx} className={isWarning ? 'font-bold text-rose-600 dark:text-rose-300' : 'font-extrabold text-emerald-700 dark:text-emerald-400'}>{sub.slice(2, -2)}</strong>;
           }
           return sub;
         })
@@ -434,21 +434,21 @@ export default function AiChatMessenger() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="flex flex-col w-[92vw] sm:w-[410px] h-[570px] max-h-[85vh] bg-slate-950/95 text-slate-100 rounded-2xl shadow-2xl border border-emerald-500/30 overflow-hidden backdrop-blur-xl"
-            style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.15)' }}
+            className="flex flex-col w-[92vw] sm:w-[420px] h-[580px] max-h-[85vh] bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-2xl shadow-2xl border border-slate-200 dark:border-emerald-500/30 overflow-hidden font-mono"
+            style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25), 0 0 20px rgba(16, 185, 129, 0.15)' }}
           >
             {/* HEADER */}
-            <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-slate-900 via-slate-950 to-emerald-950/80 border-b border-emerald-500/20">
+            <div className="flex items-center justify-between px-4 py-3.5 bg-emerald-600 dark:bg-gradient-to-r dark:from-emerald-900 dark:to-slate-900 text-white border-b border-emerald-500/30 shadow-sm font-mono">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                <div className="p-2 bg-white/20 border border-white/30 rounded-xl text-white shadow-xs">
                   <IoMdChatboxes size={18} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-xs font-bold text-slate-100 tracking-wide">ITO AI Assistant</h3>
+                    <h3 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase font-mono">ITO AI Assistant</h3>
                   </div>
-                  <p className="text-[10px] text-emerald-400/80 flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Ready for ITO CRM, jobs & rates
+                  <p className="text-[10px] text-emerald-100 font-bold flex items-center gap-1 font-mono">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> Ready for ITO CRM, jobs & rates
                   </p>
                 </div>
               </div>
@@ -457,7 +457,7 @@ export default function AiChatMessenger() {
                 <button
                   type="button"
                   onClick={handleClearChat}
-                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                  className="p-1.5 text-emerald-100 hover:text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
                   title="Clear Conversation"
                 >
                   <FiTrash2 size={14} />
@@ -465,7 +465,7 @@ export default function AiChatMessenger() {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                  className="p-1.5 text-emerald-100 hover:text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
                   title="Minimize AI Chat"
                 >
                   <FiMinimize2 size={14} />
@@ -474,7 +474,7 @@ export default function AiChatMessenger() {
             </div>
 
             {/* MESSAGES BODY */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-xs font-sans scrollbar-thin scrollbar-thumb-slate-800">
+            <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 text-xs font-mono bg-slate-50/70 dark:bg-slate-950/80">
               {messages.map((msg) => {
                 const isUser = msg.role === 'user';
                 return (
@@ -485,10 +485,10 @@ export default function AiChatMessenger() {
                     <div
                       className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${
                         isUser
-                          ? 'bg-teal-600 text-white'
+                          ? 'bg-teal-600 text-white shadow-xs'
                           : msg.isWarning
-                          ? 'bg-rose-950 border border-rose-600 text-rose-400'
-                          : 'bg-emerald-950 border border-emerald-500/40 text-emerald-400'
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-emerald-600 text-white shadow-xs'
                       }`}
                     >
                       {isUser ? <FiUser size={12} /> : msg.isWarning ? <FiAlertTriangle size={12} /> : <IoMdChatboxes size={12} />}
@@ -496,21 +496,21 @@ export default function AiChatMessenger() {
 
                     <div className={`max-w-[88%] ${msg.isWelcomeCard ? 'w-full max-w-[90%]' : ''}`}>
                       {msg.isWelcomeCard ? (
-                        <div className="space-y-3 w-full">
-                          <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-slate-200 shadow-inner">
+                        <div className="space-y-3 w-full font-mono">
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3.5 rounded-2xl text-slate-800 dark:text-slate-100 font-bold leading-relaxed shadow-sm font-mono text-[11px]">
                             {renderFormattedContent(msg.content)}
                           </div>
 
                           {/* Daburshop-style Options Box */}
-                          <div className="bg-slate-900/95 border border-emerald-500/30 p-3.5 rounded-2xl space-y-2.5 shadow-xl">
-                            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                              <span className="text-[11px] font-bold text-slate-200 font-sans tracking-wide flex items-center gap-1.5">
-                                <FiHelpCircle className="text-emerald-400" /> How can we assist you today?
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-emerald-500/40 p-3.5 rounded-2xl space-y-3 shadow-md font-mono">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                              <span className="text-[11px] font-extrabold text-slate-800 dark:text-white font-mono tracking-tight flex items-center gap-1.5 uppercase">
+                                <FiHelpCircle className="text-emerald-600 dark:text-emerald-400" size={14} /> How can we assist you today?
                               </span>
-                              <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-800/50">CRM Directives</span>
+                              <span className="text-[9px] font-extrabold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700 font-mono uppercase">CRM Directives</span>
                             </div>
 
-                            <div className="space-y-2 pt-1">
+                            <div className="space-y-2 pt-1 font-mono">
                               {CRM_OPTIONS.map((opt, oIdx) => {
                                 const IconComp = opt.icon;
                                 return (
@@ -519,15 +519,15 @@ export default function AiChatMessenger() {
                                     type="button"
                                     onClick={() => handleSend(opt.query)}
                                     disabled={loading}
-                                    className={`w-full p-2.5 rounded-xl border text-left font-sans text-xs font-semibold flex items-center justify-between transition-all duration-200 cursor-pointer group shadow-sm hover:scale-[1.01] ${opt.color}`}
+                                    className={`w-full p-2.5 rounded-xl border text-left font-mono text-xs font-bold flex items-center justify-between transition-all duration-200 cursor-pointer group shadow-xs hover:scale-[1.01] ${opt.color}`}
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="p-1.5 rounded-lg bg-slate-950/80 border border-current shrink-0">
+                                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-current shrink-0 shadow-xs">
                                         <IconComp size={14} />
                                       </div>
-                                      <span className="truncate text-[11.5px]">{opt.label}</span>
+                                      <span className="truncate text-xs font-bold text-slate-900 dark:text-white font-mono">{opt.label}</span>
                                     </div>
-                                    <FiChevronRight size={14} className="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition shrink-0" />
+                                    <FiChevronRight size={15} className="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition shrink-0" />
                                   </button>
                                 );
                               })}
@@ -536,14 +536,14 @@ export default function AiChatMessenger() {
                         </div>
                       ) : (
                         <div
-                          className={`p-3 rounded-2xl leading-relaxed text-[11px] ${
+                          className={`p-3 rounded-2xl leading-relaxed text-xs font-mono ${
                             isUser
-                              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-tr-none shadow-md'
+                              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-tr-none shadow-md font-bold'
                               : msg.isWarning
-                              ? 'bg-rose-950/90 border border-rose-600/70 text-rose-200 rounded-tl-none shadow-lg'
+                              ? 'bg-rose-50 dark:bg-rose-950 border border-rose-300 dark:border-rose-600 text-rose-900 dark:text-rose-100 rounded-tl-none shadow-sm font-bold'
                               : msg.isError
-                              ? 'bg-rose-950/80 border border-rose-800/60 text-rose-200 rounded-tl-none'
-                              : 'bg-slate-900/90 border border-slate-800/90 text-slate-200 rounded-tl-none shadow-inner'
+                              ? 'bg-rose-50 dark:bg-rose-950 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100 rounded-tl-none font-bold'
+                              : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none shadow-sm font-bold'
                           }`}
                         >
                           {renderFormattedContent(msg.content, msg.isWarning)}
@@ -569,7 +569,7 @@ export default function AiChatMessenger() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="p-2.5 bg-slate-900/95 border-t border-slate-800 flex items-center gap-2"
+              className="p-3 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2"
             >
               <input
                 type="text"
@@ -577,12 +577,12 @@ export default function AiChatMessenger() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask job, price rates, or CRM doubts..."
                 disabled={loading}
-                className="flex-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 text-slate-100 text-xs px-3 py-2 rounded-xl outline-none transition disabled:opacity-50 placeholder:text-slate-500"
+                className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 focus:border-emerald-600 text-slate-900 dark:text-white font-bold text-xs px-3.5 py-2.5 rounded-xl outline-none transition disabled:opacity-50 placeholder:text-slate-400 shadow-inner font-mono"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="p-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white disabled:text-slate-600 rounded-xl transition cursor-pointer disabled:cursor-not-allowed shadow-md"
+                className="p-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl transition cursor-pointer disabled:cursor-not-allowed shadow-md font-extrabold border border-emerald-500"
               >
                 <FiSend size={14} />
               </button>

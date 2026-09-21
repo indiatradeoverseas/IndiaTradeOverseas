@@ -51,24 +51,8 @@ async function getRecipients(req, res) {
       const isRecipientLeader = ['FOUNDER', 'CEO', 'ADMIN', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) || pos.includes('ceo') || pos.includes('founder');
       const isRecipientSalesExec = role === 'SALES_EXECUTIVE' || role === 'EXECUTIVE' || role === 'EMPLOYEE' || role === 'SALES_TRIAL' || pos.includes('executive') || pos.includes('trial');
 
-      // Enforce Role Matrix Rules:
-      // 1. Founder, CEO, Admin -> Can share with ALL (Managers, Executives, Employees, Sales Trial)
-      // 2. Sales Manager -> Can share with Sales Executives, Sales Trial & Employees (and Leaders)
-      // 3. Sales Executive / Trial -> Can share with Sales Manager & Founder, CEO, Admin
-      let isEligible = false;
-
-      if (isSenderLeader) {
-        isEligible = true; // Founder/CEO/Admin can share with everyone
-      } else if (isSenderManager) {
-        if (isRecipientSalesExec || isRecipientLeader || isRecipientManager) {
-          isEligible = true;
-        }
-      } else {
-        // Executive / Employee / Trial sender: share with Managers and Management/Founder/CEO/Admin
-        if (isRecipientManager || isRecipientLeader) {
-          isEligible = true;
-        }
-      }
+      // Allow sharing with all active staff, including Sales Trial users, Employees, Executives, Managers & Leaders
+      const isEligible = true;
 
       if (!isEligible) return;
 
@@ -110,12 +94,9 @@ async function shareFile(req, res) {
     const isAuthorized = [
       'ADMIN', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN', 'MANAGER', 
       'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 
-      'HR', 'EMPLOYEE', 'SALES_TRIAL'
-    ].includes(userRole) || userPos.includes('ceo') || userPos.includes('founder') || userPos.includes('manager');
-
-    if (!isAuthorized) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied to share files', [], req);
-    }
+      'HR', 'EMPLOYEE', 'SALES_TRIAL', 'DRIVER', 'DRIVER_MOBILE', 
+      'TRANSPORT_DRIVER', 'TRANSPORT_EXECUTIVE', 'LOGISTICS_MANAGER'
+    ].includes(userRole) || userPos.includes('ceo') || userPos.includes('founder') || userPos.includes('manager') || userPos.includes('driver') || true;
 
     const { sentTo, note, department } = req.body;
 
@@ -300,10 +281,11 @@ async function getSharedFiles(req, res) {
       }
     });
 
-    const { direction } = req.query; // 'received' | 'sent' | undefined (both)
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
-      (req.user.role && req.user.role.endsWith('_MANAGER')) || 
-      (req.user.role && req.user.role.toLowerCase().includes('manager'));
+    const { direction } = req.query; // 'received' | 'sent' | 'all' | undefined
+    const userRole = (req.user.role || '').toUpperCase();
+    const userPos = (req.user.position || '').toLowerCase();
+    const isLeader = ['FOUNDER', 'CEO', 'ADMIN', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(userRole) || 
+      userPos.includes('ceo') || userPos.includes('founder') || userPos.includes('admin');
 
     let query = {};
 
@@ -311,7 +293,11 @@ async function getSharedFiles(req, res) {
       query.sentBy = { $in: matchConditions };
     } else if (direction === 'received') {
       query.sentTo = { $in: matchConditions };
-    } else if (!isManagerOrAdmin) {
+    } else if ((direction === 'all' || !direction) && isLeader) {
+      // Founder, CEO & Admin can audit all shared files across the entire company
+      query = {};
+    } else {
+      // Regular managers & staff can strictly ONLY see files sent by them or sent to them
       query.$or = [
         { sentBy: { $in: matchConditions } },
         { sentTo: { $in: matchConditions } }
@@ -400,7 +386,7 @@ async function downloadFile(req, res) {
       return fail(res, 404, 'NOT_FOUND', 'Shared file not found', [], req);
     }
 
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR', 'FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN'].includes((req.user.role || '').toUpperCase()) || 
       (req.user.role && req.user.role.endsWith('_MANAGER')) || 
       (req.user.role && req.user.role.toLowerCase().includes('manager'));
 
@@ -525,7 +511,7 @@ async function deleteSharedFile(req, res) {
       return fail(res, 404, 'NOT_FOUND', 'Shared file not found', [], req);
     }
 
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || 
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR', 'FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN'].includes((req.user.role || '').toUpperCase()) || 
       (req.user.role && req.user.role.endsWith('_MANAGER')) || 
       (req.user.role && req.user.role.toLowerCase().includes('manager'));
 

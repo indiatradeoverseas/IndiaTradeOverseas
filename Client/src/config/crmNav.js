@@ -25,8 +25,10 @@ import {
   FiCheckCircle,
   FiPhoneCall,
   FiClock,
-  FiMessageSquare
+  FiMessageSquare,
+  FiCpu
 } from 'react-icons/fi';
+
 
 // ─────────────────────────────────────────────
 // RBAC helpers
@@ -225,12 +227,13 @@ export function getCrmMainNavItems(user) {
   const isCEO = isCEOUser(user);
   const isFounder = isFounderUser(user);
 
-  // 0. SALES TRIAL EXECUTIVE: Sales Dashboard, Leads, Follow Up, My Profile, Notifications, Support Tickets, My Tasks
+  // 0. SALES TRIAL EXECUTIVE: Sales Dashboard, Leads, Follow Up, Executive Manager & Founder Chat, My Profile, Notifications, Support Tickets, My Tasks
   if (!admin && isSalesTrialExecutive(user)) {
     return [
       { to: '/crm/trial-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
       { to: '/crm/leads', label: 'Leads', icon: FiUsers },
       { to: '/crm/followup', label: 'Follow Up', icon: FiPhoneCall },
+      { to: '/crm/manager-chat', label: 'Executive Manager & Founder Chat', icon: FiMessageSquare },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/notifications', label: 'Notifications', icon: FiBell },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
@@ -238,33 +241,36 @@ export function getCrmMainNavItems(user) {
     ];
   }
 
-  // 1. DRIVER: Driver Dashboard, Completed & Delivered Loads, Payment Proof, Support Tickets & My Profile
+  // 1. DRIVER: Driver Dashboard, Completed & Delivered Loads, Payment Proof, Support Tickets, Executive Manager & Founder Chat & My Profile
   if (!admin && isDriverRole(user)) {
     return [
       { to: '/crm/transport/driver', label: 'Driver Dashboard', icon: FiTruck },
       { to: '/crm/transport/driver?tab=COMPLETED_DELIVERED', label: 'Completed & Delivered Loads', icon: FiCheckCircle },
       { to: '/crm/transport/driver?tab=PAYMENTS', label: 'Payment Proof', icon: FiCreditCard },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+      { to: '/crm/manager-chat', label: 'Executive Manager & Founder Chat', icon: FiMessageSquare },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser }
     ];
   }
 
-  // 2. TRANSPORT EXECUTIVE: Transport Executive Dashboard, Support Tickets & My Profile
+  // 2. TRANSPORT EXECUTIVE: Transport Executive Dashboard, Support Tickets, Executive Manager & Founder Chat & My Profile
   if (!admin && isTransportExecutiveUser(user)) {
     return [
       { to: '/crm/transport/executive', label: 'Transport Executive Dashboard', icon: FiTruck },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+      { to: '/crm/manager-chat', label: 'Executive Manager & Founder Chat', icon: FiMessageSquare },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser }
     ];
   }
 
-  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Team Leave Requests, Support Tickets, Driver Uploaded All Proof & My Profile
+  // 3. TRANSPORT MANAGER: Transport Manager Dashboard, Lead & Trip Assignment, Team Leave Requests, Support Tickets, Executive Manager & Founder Chat, Driver Uploaded All Proof & My Profile
   if (!admin && isTransportManagerUser(user)) {
     return [
       { to: '/crm/transport/manager?tab=DASHBOARD', label: 'Transport Manager Dashboard', icon: FiTruck },
       { to: '/crm/transport/manager?tab=ASSIGN_LEADS', label: 'Lead & Trip Assignment', icon: FiCheckSquare },
       { to: '/crm/transport/manager?tab=TEAM_LEAVES', label: 'Team Leave Requests', icon: FiCalendar },
       { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
+      { to: '/crm/manager-chat', label: 'Executive Manager & Founder Chat', icon: FiMessageSquare },
       { to: '/crm/profile', label: 'My Profile', icon: FiUser },
       { to: '/crm/transport/manager?tab=DRIVER_PROOFS', label: 'Driver Uploaded All Proof', icon: FiFolder }
     ];
@@ -287,6 +293,10 @@ export function getCrmMainNavItems(user) {
 
     // 3. Sales Dashboard — ADMIN (Excluded for CEO) + Sales Manager + Sales Executive
     (!isCEO && (admin || salesMgr || salesExec)) && { to: '/crm/sales-dashboard', label: 'Sales Dashboard', icon: FiBarChart2 },
+
+    // 3.5 IT Dashboard — ADMIN + IT Department / IT staff
+    (!isCEO && (admin || user?.department === 'IT' || user?.role === 'IT' || user?.role === 'IT_MANAGER' || user?.position?.toLowerCase()?.includes('it'))) && { to: '/crm/it', label: 'IT Dashboard', icon: FiCpu },
+
 
     // 4. Transport Dashboard — Transport Dept or Permitted or Admin (Excluded for CEO & Sales Manager/Executive)
     (!isCEO && !salesMgr && !salesExec && (admin || isTransportAllowed(user))) && { 
@@ -368,10 +378,10 @@ export function getCrmMainNavItems(user) {
     // Support Tickets — Available to all employees for raising tickets/grievances
     { to: '/crm/tickets', label: 'Support Tickets', icon: FiLifeBuoy },
 
-    // Executive Manager Chat Support — Available for all CRM users
+    // Executive Manager & Founder Chat Support — Available for all CRM users
     {
       to: '/crm/manager-chat',
-      label: 'Executive Chat Support',
+      label: 'Executive Manager & Founder Chat',
       icon: FiMessageSquare
     },
 
@@ -382,10 +392,7 @@ export function getCrmMainNavItems(user) {
     (!salesMgr && !salesExec && !admin && (user?.permissions?.dispatch === true || user?.dispatchPermission === true)) && { to: '/crm/dispatches', label: 'Dispatches Manifest', icon: FiFileText },
 
     // Payments — Non-admin permitted payment staff only (Excluded for Sales Manager & Executive)
-    (!salesMgr && !salesExec && !admin && (user?.permissions?.payment === true || user?.paymentPermission === true)) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign },
-
-    // Documents — Excluded for CEO and Founder
-    (!isCEO && !isFounder && !salesMgr && !salesExec && (admin || hrMgr || hrExec || ['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(user?.role) || user?.department === 'HR' || user?.permissions?.document === true || user?.documentPermission === true)) && { to: '/crm/documents', label: 'Documents', icon: FiFolder }
+    (!salesMgr && !salesExec && !admin && (user?.permissions?.payment === true || user?.paymentPermission === true)) && { to: '/crm/payments', label: 'Payments', icon: FiDollarSign }
   ].filter(Boolean);
 }
 

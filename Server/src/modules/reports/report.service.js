@@ -30,6 +30,15 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
 
   // Date range filter for metrics queries (when startDate & endDate are supplied)
   const dateFilter = (startDate && endDate)
+    ? {
+        $or: [
+          { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } },
+          { updatedAt: { $gte: new Date(startDate), $lte: new Date(endDate) } }
+        ]
+      }
+    : {};
+
+  const createdDateFilter = (startDate && endDate)
     ? { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } }
     : {};
 
@@ -86,7 +95,7 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
   const pendingLeaveRequests = await Leave.countDocuments({ status: 'PENDING' });
 
 
-  const totalLeads = await Lead.countDocuments(dateFilter);
+  const totalLeads = await Lead.countDocuments(createdDateFilter);
   const activeLeads = await Lead.countDocuments({ stage: { $nin: CLOSED_STAGES }, ...dateFilter });
   const completedLeads = await Lead.countDocuments({ stage: { $in: ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'] }, ...dateFilter });
   const deliveredLeads = await Lead.countDocuments({ stage: { $in: ['DELIVERED', 'COMPLETED'] }, ...dateFilter });
@@ -98,7 +107,10 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
     ]
   };
   if (startDate && endDate) {
-    paidLeadsQuery.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    paidLeadsQuery.$or = [
+      { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } },
+      { updatedAt: { $gte: new Date(startDate), $lte: new Date(endDate) } }
+    ];
   }
   const paidLeads = await Lead.countDocuments(paidLeadsQuery);
 
@@ -119,8 +131,8 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
     stage: { $nin: CLOSED_STAGES }
   });
 
-  const totalQuotations = await Quotation.countDocuments(dateFilter);
-  const pendingQuotesMatch = { status: 'PENDING', ...dateFilter };
+  const totalQuotations = await Quotation.countDocuments(createdDateFilter);
+  const pendingQuotesMatch = { status: 'PENDING', ...createdDateFilter };
   const pendingQuotes = await Quotation.aggregate([
     { $match: pendingQuotesMatch },
     {
@@ -131,8 +143,8 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       }
     }
   ]);
-  const sentQuotations = await Quotation.countDocuments({ status: { $in: ['SENT_TO_CUSTOMER', 'APPROVED', 'SENT', 'QUOTATION_SENT'] }, ...dateFilter });
-  const approvedQuotations = await Quotation.countDocuments({ status: 'APPROVED', ...dateFilter });
+  const sentQuotations = await Quotation.countDocuments({ status: { $in: ['SENT_TO_CUSTOMER', 'APPROVED', 'SENT', 'QUOTATION_SENT'] }, ...createdDateFilter });
+  const approvedQuotations = await Quotation.countDocuments({ status: 'APPROVED', ...createdDateFilter });
 
   const ordersConfirmed = await Lead.countDocuments({ stage: { $in: ['ORDER_CONFIRMED', 'PO_RECEIVED', 'CLOSED_WON', 'DEAL_WON', 'DISPATCH_PENDING', 'DELIVERED', 'COMPLETED'] }, ...dateFilter });
   const pendingOrders = await Lead.countDocuments({ stage: { $in: ORDER_PIPELINE_STAGES }, ...dateFilter });

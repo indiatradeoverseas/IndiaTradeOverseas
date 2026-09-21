@@ -51,36 +51,37 @@ async function createTask(req, res) {
       return fail(res, 400, 'BAD_REQUEST', 'Missing required fields: title, assignedTo, and dueDate are mandatory', [], req);
     }
 
-    // Verify target employee exists in Employee or SalesTrialUser
+    // Verify target employee/manager exists across Employee, User, Admin, or SalesTrialUser collections
     let assigneeId = null;
     let assigneeDept = department || req.user.department || 'GENERAL';
 
-    let employee = null;
+    const User = require('../users/user.model');
+    const Admin = require('../admin-auth/admin.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
+    let matchedTarget = null;
+
     if (mongoose.isValidObjectId(assignedTo)) {
-      employee = await Employee.findOne({
-        $or: [{ _id: assignedTo }, { _id: new mongoose.Types.ObjectId(assignedTo) }]
-      }).catch(() => null);
+      const objId = new mongoose.Types.ObjectId(assignedTo);
+      matchedTarget = await Employee.findOne({ $or: [{ _id: assignedTo }, { _id: objId }] }).catch(() => null);
+      if (!matchedTarget) matchedTarget = await User.findOne({ $or: [{ _id: assignedTo }, { _id: objId }] }).catch(() => null);
+      if (!matchedTarget) matchedTarget = await Admin.findOne({ $or: [{ _id: assignedTo }, { _id: objId }] }).catch(() => null);
+      if (!matchedTarget) matchedTarget = await SalesTrialUser.findOne({ $or: [{ _id: assignedTo }, { _id: objId }] }).catch(() => null);
     } else {
-      employee = await Employee.findOne({
-        $or: [{ employeeId: assignedTo }, { email: assignedTo }]
-      }).catch(() => null);
+      const queryStr = String(assignedTo).trim();
+      const emailRegex = { $regex: new RegExp('^' + queryStr.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
+
+      matchedTarget = await Employee.findOne({ $or: [{ employeeId: queryStr }, { email: emailRegex }] }).catch(() => null);
+      if (!matchedTarget) matchedTarget = await User.findOne({ $or: [{ employeeId: queryStr }, { email: emailRegex }] }).catch(() => null);
+      if (!matchedTarget) matchedTarget = await Admin.findOne({ $or: [{ employeeId: queryStr }, { username: queryStr }, { email: emailRegex }] }).catch(() => null);
+      if (!matchedTarget) matchedTarget = await SalesTrialUser.findOne({ $or: [{ trialId: queryStr }, { trialId: queryStr.toUpperCase() }, { email: emailRegex }] }).catch(() => null);
     }
-    
-    if (employee) {
-      assigneeId = employee._id;
+
+    if (matchedTarget) {
+      assigneeId = matchedTarget._id;
+      assigneeDept = matchedTarget.department || department || req.user.department || 'GENERAL';
     } else {
-      const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
-      const trialUserQuery = [{ trialId: assignedTo }, { trialId: String(assignedTo).toUpperCase() }, { _id: assignedTo }];
-      if (mongoose.isValidObjectId(assignedTo)) {
-        trialUserQuery.push({ _id: new mongoose.Types.ObjectId(assignedTo) });
-      }
-      const trialUser = await SalesTrialUser.findOne({ $or: trialUserQuery }).catch(() => null);
-      if (trialUser) {
-        assigneeId = trialUser._id;
-        assigneeDept = 'SALES_TRIAL';
-      } else {
-        return fail(res, 404, 'NOT_FOUND', 'Target assignee employee or trial executive not found', [], req);
-      }
+      return fail(res, 404, 'NOT_FOUND', 'Target assignee employee or manager not found', [], req);
     }
 
     const taskData = {
@@ -398,44 +399,52 @@ async function deleteTask(req, res) {
 async function getEmployeesByDepartment(req, res) {
   try {
     const { department } = req.query;
-    
-    let query = { status: 'ACTIVE' };
-    if (department && department.toUpperCase() !== 'SALES') {
-      query.department = department;
-    }
+    const User = require('../users/user.model');
+    const Admin = require('../admin-auth/admin.model');
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
 
-    const employees = await Employee.find(query)
-      .select('name email department position role employeeId')
-      .sort({ name: 1 });
+    const [users, emps, admins, trials] = await Promise.all([
+      User.find({ isActive: { $ne: false } }).select('fullName name email department position role employeeId').lean(),
+      Employee.find({ status: { $ne: 'INACTIVE' } }).select('name fullName email department position role employeeId').lean(),
+      Admin.find({}).select('fullName name username email department position role employeeId').lean(),
+      SalesTrialUser.find({ status: { $ne: 'INACTIVE' } }).select('fullName name email department position role trialId employeeId').lean()
+    ]);
 
-    const formattedEmployees = employees.map(e => (e.toObject ? e.toObject() : { ...e }));
+    const formattedEmployees = [];
+    const seenMap = new Map();
 
-    // Include Sales Trial Users if department is SALES, SALES_TRIAL, or empty
-    if (!department || ['SALES', 'SALES_TRIAL', 'sales'].includes(department)) {
-      try {
-        const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
-        const trialUsers = await SalesTrialUser.find({ status: 'ACTIVE' }).sort({ fullName: 1 });
-        trialUsers.forEach(tu => {
-          // Avoid duplication if already present
-          const exists = formattedEmployees.some(emp => String(emp._id) === String(tu._id) || emp.email === tu.email);
-          if (!exists) {
-            formattedEmployees.push({
-              _id: tu._id,
-              name: `${tu.fullName || tu.name} (Sales Trial Executive)`,
-              fullName: tu.fullName || tu.name,
-              email: tu.email,
-              department: 'SALES_TRIAL',
-              position: 'Sales Trial Executive',
-              role: 'SALES_TRIAL',
-              employeeId: tu.trialId,
-              isTrial: true
-            });
-          }
-        });
-      } catch (tErr) {
-        console.error('Error fetching trial users in getEmployeesByDepartment:', tErr);
+    [...users, ...emps, ...admins, ...trials].forEach(item => {
+      if (!item || !item._id) return;
+      const idStr = String(item._id);
+      const emailKey = item.email ? String(item.email).toLowerCase().trim() : idStr;
+
+      if (seenMap.has(emailKey) || seenMap.has(idStr)) return;
+      seenMap.set(emailKey, true);
+      seenMap.set(idStr, true);
+
+      const dept = item.department || 'GENERAL';
+      if (department && department.toUpperCase() !== 'ALL' && department.toUpperCase() !== 'SALES') {
+        if (dept.toUpperCase() !== department.toUpperCase()) return;
       }
-    }
+
+      const rawName = item.fullName || item.name || item.username || (item.email ? item.email.split('@')[0] : 'Employee');
+      const cleanName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      const empIdStr = item.employeeId || item.trialId || idStr;
+      const roleStr = (item.role || item.position || 'STAFF').toUpperCase();
+
+      formattedEmployees.push({
+        _id: item._id,
+        name: `${cleanName} (${empIdStr} - ${roleStr})`,
+        fullName: cleanName,
+        email: item.email || '',
+        department: dept,
+        position: item.position || item.role || 'Staff Member',
+        role: item.role || 'EMPLOYEE',
+        employeeId: empIdStr
+      });
+    });
+
+    formattedEmployees.sort((a, b) => a.fullName.localeCompare(b.fullName));
 
     return ok(res, { employees: formattedEmployees }, 'Employees retrieved', 200, req);
   } catch (error) {

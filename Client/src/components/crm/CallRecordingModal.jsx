@@ -327,17 +327,18 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Lead Quality / Temperature *
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {[
                   { value: 'HOT', label: 'HOT 🔥', activeColor: 'bg-rose-950 border-rose-600 text-rose-400 font-bold' },
                   { value: 'WARM', label: 'WARM ⚡', activeColor: 'bg-amber-950 border-amber-500 text-amber-300 font-bold' },
-                  { value: 'COLD', label: 'COLD ❄️', activeColor: 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold' }
+                  { value: 'COLD', label: 'COLD ❄️', activeColor: 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold' },
+                  { value: 'DEAD', label: 'DEAD 💀', activeColor: 'bg-zinc-900 border-zinc-600 text-zinc-300 font-bold' }
                 ].map(item => (
                   <button
                     key={item.value}
                     type="button"
                     onClick={() => setLeadPriority(item.value)}
-                    className={`py-2 px-3 border rounded-xl text-xs font-semibold uppercase transition cursor-pointer ${
+                    className={`py-2 px-2 border rounded-xl text-[10px] font-semibold uppercase transition cursor-pointer ${
                       leadPriority === item.value
                         ? `${item.activeColor} shadow-sm`
                         : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'

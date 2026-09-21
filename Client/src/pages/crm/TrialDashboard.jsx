@@ -1392,9 +1392,9 @@ export default function TrialDashboard() {
                             </td>
                             <td className="py-3 px-4 text-[var(--crm-ink-faint)] font-mono">{lead.phone || '--'}</td>
                             <td className="py-3 px-4">{lead.productCategory || 'General'}</td>
-                            <td className="py-3 px-4">
-                              <span className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase border ${
-                                (lead.priority || '').toUpperCase() === 'HOT' ? 'bg-rose-950 text-rose-400 border-rose-800' : 'bg-amber-950 text-amber-400 border-amber-800'
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`text-[8px] font-bold px-2.5 py-1 rounded-md uppercase border whitespace-nowrap inline-block ${
+                                (lead.priority || '').toUpperCase() === 'HOT' ? 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' : 'bg-amber-500 text-white font-black border-amber-600 shadow-xs'
                               }`}>{lead.priority || 'WARM'}</span>
                             </td>
                             <td className="py-3 px-4">

@@ -138,9 +138,9 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
           {activeTab === 'COMPOSE' ? (
             <form onSubmit={handleSend} className="space-y-3">
               {/* Recipient Details */}
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#1a1d24] border border-slate-800">
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#1e293b] border border-slate-700">
                 <div>
-                  <label className="block text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold flex items-center gap-1">
+                  <label className="block text-[9px] uppercase tracking-widest text-slate-300 mb-1 font-extrabold flex items-center gap-1">
                     <FiUser size={9} /> Recipient Name
                   </label>
                   <input 
@@ -148,11 +148,11 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
                     required
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
-                    className="w-full bg-[#090b0e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-200 text-xs outline-none"
+                    className="w-full bg-[#0f172a] border border-slate-600 px-3 py-1.5 rounded-lg text-white font-semibold text-xs outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold flex items-center gap-1">
+                  <label className="block text-[9px] uppercase tracking-widest text-slate-300 mb-1 font-extrabold flex items-center gap-1">
                     <FiPhone size={9} /> Mobile Number
                   </label>
                   <input 
@@ -160,20 +160,20 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
                     required
                     value={recipientPhone}
                     onChange={(e) => setRecipientPhone(e.target.value)}
-                    className="w-full bg-[#090b0e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-200 text-xs outline-none font-mono"
+                    className="w-full bg-[#0f172a] border border-slate-600 px-3 py-1.5 rounded-lg text-white font-semibold text-xs outline-none font-mono"
                   />
                 </div>
               </div>
 
               {/* Template Select */}
               <div>
-                <label className="block text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold">
+                <label className="block text-[9px] uppercase tracking-widest text-slate-300 mb-1 font-extrabold">
                   Quick Reply Templates
                 </label>
                 <select
                   value={selectedTemplate}
                   onChange={handleTemplateChange}
-                  className="w-full bg-[#090b0e] border border-slate-800 px-3 py-2 rounded-lg text-slate-200 text-xs outline-none cursor-pointer font-sans"
+                  className="w-full bg-[#0f172a] border border-slate-600 px-3 py-2 rounded-lg text-white font-semibold text-xs outline-none cursor-pointer font-sans"
                 >
                   {TEMPLATES.map((t, idx) => (
                     <option key={idx} value={t.label}>{t.label}</option>
@@ -182,19 +182,19 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
               </div>
 
               {/* Message Input & Send */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
                 <input
                   type="text"
                   required
                   placeholder="Message Transport Manager..."
                   value={messageBody}
                   onChange={(e) => setMessageBody(e.target.value)}
-                  className="flex-1 py-3 px-4 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 text-xs outline-none focus:border-teal-500 transition font-sans"
+                  className="flex-1 py-3 px-4 bg-[#0f172a] border border-teal-500 rounded-xl text-white font-semibold text-xs outline-none focus:border-teal-400 transition font-sans placeholder-slate-400"
                 />
                 <button
                   type="submit"
                   disabled={sending || !messageBody.trim()}
-                  className="p-3 bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 text-white rounded-xl shadow transition cursor-pointer flex items-center justify-center"
+                  className="p-3 bg-[#0f766e] hover:bg-[#0d6861] disabled:opacity-50 text-white rounded-xl shadow-md transition cursor-pointer flex items-center justify-center border border-teal-400"
                 >
                   <FiSend size={16} />
                 </button>
@@ -212,18 +212,18 @@ export default function MessageBox({ isOpen, onClose, trip, currentUser }) {
                     <div
                       className={`p-3.5 rounded-2xl text-xs space-y-1 shadow-md ${
                         isMe
-                          ? 'bg-[#00897b] text-white rounded-tr-none'
-                          : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
+                          ? 'bg-[#0f766e] text-white rounded-tr-none border border-teal-500'
+                          : 'bg-[#1e293b] border border-slate-600 text-slate-100 rounded-tl-none'
                       }`}
                     >
-                      <span className={`text-[10px] font-bold block ${isMe ? 'text-teal-100' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-extrabold block ${isMe ? 'text-teal-200' : 'text-amber-300'}`}>
                         {item.sender}
                       </span>
-                      <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
+                      <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap text-white">
                         {item.text}
                       </p>
                     </div>
-                    <span className="text-[9px] text-slate-500 mt-1 font-mono">{new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-[9px] text-slate-300 mt-1 font-mono font-medium">{new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 );
               })}

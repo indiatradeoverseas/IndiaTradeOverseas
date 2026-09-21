@@ -15,23 +15,32 @@ async function getUserAllIds(userOrId) {
 
   let targetIdStr = '';
   let targetEmail = '';
+  let targetPhone = '';
 
   if (typeof userOrId === 'object') {
     if (userOrId._id) ids.add(String(userOrId._id));
     if (userOrId.id) ids.add(String(userOrId.id));
     if (userOrId.employeeDbId) ids.add(String(userOrId.employeeDbId));
     if (userOrId.employeeId) ids.add(String(userOrId.employeeId));
+    if (userOrId.trialId) ids.add(String(userOrId.trialId));
+    if (userOrId.phone) {
+      targetPhone = String(userOrId.phone).trim();
+      ids.add(targetPhone);
+    }
     if (userOrId.email) targetEmail = String(userOrId.email).toLowerCase().trim();
     targetIdStr = String(userOrId._id || userOrId.id || userOrId.employeeDbId || userOrId.employeeId || '');
   } else {
     targetIdStr = String(userOrId).trim();
     if (targetIdStr.includes('@')) {
       targetEmail = targetIdStr.toLowerCase();
+    } else if (/^\+?[0-9]{7,15}$/.test(targetIdStr)) {
+      targetPhone = targetIdStr;
     }
   }
 
   if (targetIdStr) ids.add(targetIdStr);
   if (targetEmail) ids.add(targetEmail);
+  if (targetPhone) ids.add(targetPhone);
 
   try {
     const isObjId = mongoose.isValidObjectId(targetIdStr);
@@ -43,8 +52,12 @@ async function getUserAllIds(userOrId) {
     if (targetEmail) {
       query.push({ email: targetEmail });
     }
-    if (targetIdStr && !targetEmail) {
+    if (targetPhone) {
+      query.push({ phone: targetPhone });
+    }
+    if (targetIdStr && !targetEmail && !targetPhone) {
       query.push({ employeeId: targetIdStr });
+      query.push({ trialId: targetIdStr });
     }
 
     if (query.length > 0) {
@@ -52,18 +65,35 @@ async function getUserAllIds(userOrId) {
 
       const Admin = require('../admin-auth/admin.model');
       const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
-      const [uMatches, eMatches, aMatches, tMatches] = await Promise.all([
-        User.find(filter).select('_id email employeeId').lean(),
-        Employee.find(filter).select('_id email employeeId').lean(),
-        Admin.find(filter).select('_id email').lean(),
-        SalesTrialUser.find(filter).select('_id email trialId employeeId').lean()
-      ]);
+      let Driver;
+      try {
+        Driver = require('../dispatch/driver.model');
+      } catch (e) {}
+
+      const promises = [
+        User.find(filter).select('_id email employeeId phone').lean(),
+        Employee.find(filter).select('_id email employeeId phone').lean(),
+        Admin.find(filter).select('_id email phone').lean(),
+        SalesTrialUser.find(filter).select('_id email trialId employeeId phone').lean()
+      ];
+
+      if (Driver) {
+        promises.push(Driver.find(filter).select('_id phone employeeId name').lean().catch(() => []));
+      }
+
+      const results = await Promise.all(promises);
+      const uMatches = results[0] || [];
+      const eMatches = results[1] || [];
+      const aMatches = results[2] || [];
+      const tMatches = results[3] || [];
+      const dMatches = results[4] || [];
 
       const foundEmails = new Set();
-      [...uMatches, ...eMatches, ...aMatches, ...tMatches].forEach(item => {
+      [...uMatches, ...eMatches, ...aMatches, ...tMatches, ...dMatches].forEach(item => {
         if (item._id) ids.add(String(item._id));
         if (item.employeeId) ids.add(String(item.employeeId));
         if (item.trialId) ids.add(String(item.trialId));
+        if (item.phone) ids.add(String(item.phone));
         if (item.email) {
           const em = String(item.email).toLowerCase().trim();
           ids.add(em);
@@ -75,15 +105,16 @@ async function getUserAllIds(userOrId) {
         const emailList = Array.from(foundEmails);
         const emailFilter = { email: { $in: emailList } };
         const [uByEmail, eByEmail, aByEmail, tByEmail] = await Promise.all([
-          User.find(emailFilter).select('_id email employeeId').lean(),
-          Employee.find(emailFilter).select('_id email employeeId').lean(),
-          Admin.find(emailFilter).select('_id email').lean(),
-          SalesTrialUser.find(emailFilter).select('_id email trialId employeeId').lean()
+          User.find(emailFilter).select('_id email employeeId phone').lean(),
+          Employee.find(emailFilter).select('_id email employeeId phone').lean(),
+          Admin.find(emailFilter).select('_id email phone').lean(),
+          SalesTrialUser.find(emailFilter).select('_id email trialId employeeId phone').lean()
         ]);
         [...uByEmail, ...eByEmail, ...aByEmail, ...tByEmail].forEach(item => {
           if (item._id) ids.add(String(item._id));
           if (item.employeeId) ids.add(String(item.employeeId));
           if (item.trialId) ids.add(String(item.trialId));
+          if (item.phone) ids.add(String(item.phone));
           if (item.email) ids.add(String(item.email).toLowerCase());
         });
       }
@@ -106,18 +137,48 @@ async function sendManagerMessage(req, res, next) {
     }
 
     const senderId = String(req.user?._id || req.user?.id || req.user?.employeeDbId || req.user?.employeeId || 'unknown');
-    const senderEmail = (req.user?.email || '').toLowerCase();
+    const senderEmail = (req.user?.email || '').toLowerCase().trim();
     const senderName = req.user?.fullName || req.user?.name || 'User';
-    const senderRole = req.user?.role || 'MANAGER';
+    const senderRole = req.user?.role || 'STAFF';
     const senderDepartment = req.user?.department || 'GENERAL';
+
+    let senderAllIds = [senderId].filter(Boolean);
+    try {
+      const resolved = await getUserAllIds(req.user);
+      if (resolved && resolved.length) senderAllIds = resolved;
+    } catch (e) {
+      console.error('Error resolving senderAllIds in sendManagerMessage:', e);
+    }
+
+    let recipientEmail = '';
+    let recipientAllIds = [];
+    if (recipientId !== 'GENERAL') {
+      try {
+        const resolved = await getUserAllIds(recipientId);
+        if (resolved && resolved.length) {
+          recipientAllIds = resolved;
+          const foundEm = recipientAllIds.find(id => id && typeof id === 'string' && id.includes('@'));
+          if (foundEm) recipientEmail = foundEm.toLowerCase().trim();
+        } else {
+          recipientAllIds = [String(recipientId)].filter(Boolean);
+        }
+      } catch (e) {
+        console.error('Error resolving recipientAllIds in sendManagerMessage:', e);
+        recipientAllIds = [String(recipientId)].filter(Boolean);
+      }
+    }
 
     const chatDoc = await ManagerChat.create({
       senderId,
+      senderEmail,
       senderName,
       senderRole,
       senderDepartment,
+      senderAllIds,
       recipientId: String(recipientId || 'GENERAL'),
+      recipientEmail,
       recipientName: recipientName || 'General Leadership Hub',
+      recipientAllIds,
       message: cleanMessage,
       attachmentUrl: attachmentUrl || '',
       leadCode: leadCode || '',
@@ -129,12 +190,15 @@ async function sendManagerMessage(req, res, next) {
       _id: chatDoc._id.toString(),
       id: chatDoc._id.toString(),
       senderId: chatDoc.senderId,
-      senderEmail,
+      senderEmail: chatDoc.senderEmail || senderEmail,
       senderName: chatDoc.senderName,
       senderRole: chatDoc.senderRole,
       senderDepartment: chatDoc.senderDepartment,
+      senderAllIds: chatDoc.senderAllIds || senderAllIds,
       recipientId: chatDoc.recipientId,
+      recipientEmail: chatDoc.recipientEmail || recipientEmail,
       recipientName: chatDoc.recipientName,
+      recipientAllIds: chatDoc.recipientAllIds || recipientAllIds,
       message: chatDoc.message,
       attachmentUrl: chatDoc.attachmentUrl,
       leadCode: chatDoc.leadCode,
@@ -169,16 +233,39 @@ async function getManagerMessages(req, res, next) {
     if (recipientId === 'GENERAL') {
       filter = { recipientId: 'GENERAL' };
     } else {
-      // 1-on-1 DM: match ALL resolved IDs for current user and recipient to prevent missing messages
-      const myUserIds = await getUserAllIds(req.user);
-      const targetUserIds = await getUserAllIds(recipientId);
+      let myUserIds = [String(req.user?._id || req.user?.id || '')].filter(Boolean);
+      let targetUserIds = [String(recipientId)].filter(Boolean);
+      try {
+        const resMine = await getUserAllIds(req.user);
+        if (resMine && resMine.length) myUserIds = resMine;
+        const resTarget = await getUserAllIds(recipientId);
+        if (resTarget && resTarget.length) targetUserIds = resTarget;
+      } catch (e) {
+        console.error('Error resolving IDs in getManagerMessages:', e);
+      }
 
-      filter = {
-        $or: [
-          { senderId: { $in: myUserIds }, recipientId: { $in: targetUserIds } },
-          { senderId: { $in: targetUserIds }, recipientId: { $in: myUserIds } }
-        ]
-      };
+      const myEmail = (req.user?.email || '').toLowerCase().trim();
+      let targetEmail = '';
+      const foundEm = targetUserIds.find(id => id && typeof id === 'string' && id.includes('@'));
+      if (foundEm) targetEmail = foundEm.toLowerCase().trim();
+
+      const orConditions = [
+        { senderId: { $in: myUserIds }, recipientId: { $in: targetUserIds } },
+        { senderId: { $in: targetUserIds }, recipientId: { $in: myUserIds } },
+        { senderAllIds: { $in: myUserIds }, recipientId: { $in: targetUserIds } },
+        { senderId: { $in: targetUserIds }, recipientAllIds: { $in: myUserIds } },
+        { senderAllIds: { $in: targetUserIds }, recipientId: { $in: myUserIds } },
+        { senderId: { $in: myUserIds }, recipientAllIds: { $in: targetUserIds } }
+      ];
+
+      if (myEmail && targetEmail) {
+        orConditions.push(
+          { senderEmail: myEmail, recipientEmail: targetEmail },
+          { senderEmail: targetEmail, recipientEmail: myEmail }
+        );
+      }
+
+      filter = { $or: orConditions };
     }
 
     const rawChats = await ManagerChat.find(filter)
@@ -190,11 +277,15 @@ async function getManagerMessages(req, res, next) {
       _id: String(c._id),
       id: String(c._id),
       senderId: c.senderId,
+      senderEmail: c.senderEmail || '',
       senderName: c.senderName,
       senderRole: c.senderRole,
       senderDepartment: c.senderDepartment,
+      senderAllIds: c.senderAllIds || [],
       recipientId: c.recipientId,
+      recipientEmail: c.recipientEmail || '',
       recipientName: c.recipientName,
+      recipientAllIds: c.recipientAllIds || [],
       message: c.message,
       attachmentUrl: c.attachmentUrl || '',
       leadCode: c.leadCode || '',
@@ -210,31 +301,16 @@ async function getManagerMessages(req, res, next) {
   }
 }
 
-// Get Chat Participants List (Founder, Admin & Department Managers)
+// Get Chat Participants List (All Roles: HR, HR Manager, HR Executive, Sales Manager, Sales Executive, CEO, Admin, Driver, Transport Manager, etc.)
 async function getManagerParticipants(req, res, next) {
   try {
-    const MANAGER_ROLES = [
-      'ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'DIRECTOR',
-      'MANAGER', 'HR_MANAGER', 'HR', 'HR_EXECUTIVE',
-      'SALES_MANAGER', 'SALES', 'FINANCE_MANAGER', 'FINANCE',
-      'TRANSPORT_MANAGER', 'TRANSPORT', 'LOGISTICS_MANAGER', 'LOGISTICS',
-      'PROCUREMENT', 'ACCOUNTS', 'IT'
-    ];
-
-    const filterQuery = {
-      $or: [
-        { role: { $in: MANAGER_ROLES } },
-        { department: { $in: ['ADMIN', 'MANAGEMENT'] } }
-      ]
-    };
-
     const users = await User.find(
-      filterQuery,
+      { isActive: { $ne: false } },
       'fullName name email role department position employeeId phone'
     ).lean();
 
     const emps = await Employee.find(
-      filterQuery,
+      { status: { $ne: 'Inactive' } },
       'name fullName email role department position employeeId phone'
     ).lean();
 
@@ -260,25 +336,33 @@ async function getManagerParticipants(req, res, next) {
       console.error('Error querying SalesTrialUser collection for chat participants:', err);
     }
 
+    let drivers = [];
+    try {
+      const Driver = require('../dispatch/driver.model');
+      drivers = await Driver.find({}).lean();
+    } catch (err) {
+      console.error('Error querying Driver collection for chat participants:', err);
+    }
+
     const participantMap = new Map();
 
     const addParticipant = (u, source) => {
       if (!u || !u._id) return;
       const idStr = String(u._id);
-      const emailKey = u.email ? String(u.email).toLowerCase().trim() : idStr;
+      const emailKey = u.email ? String(u.email).toLowerCase().trim() : (u.phone ? `phone_${u.phone}` : idStr);
 
       if (!participantMap.has(emailKey)) {
         participantMap.set(emailKey, {
           _id: idStr,
-          fullName: u.fullName || u.name || 'Manager',
-          name: u.fullName || u.name || 'Manager',
+          fullName: u.fullName || u.name || (source === 'Driver' ? 'Driver' : 'Staff Member'),
+          name: u.fullName || u.name || (source === 'Driver' ? 'Driver' : 'Staff Member'),
           email: u.email || '',
-          role: u.role || 'MANAGER',
-          department: u.department || 'GENERAL',
-          position: u.designation || u.position || u.role || 'Department Manager',
-          employeeId: u.trialId || u.employeeId || idStr,
+          role: u.role || (source === 'Driver' ? 'DRIVER' : 'STAFF'),
+          department: u.department || (source === 'Driver' ? 'TRANSPORT' : 'GENERAL'),
+          position: u.designation || u.position || u.role || (source === 'Driver' ? 'Vehicle Driver' : 'Staff Member'),
+          employeeId: u.trialId || u.employeeId || u.phone || idStr,
           phone: u.phone || '',
-          allIds: [idStr, u.trialId, u.employeeId].filter(Boolean),
+          allIds: [idStr, u.trialId, u.employeeId, u.phone].filter(Boolean),
           source
         });
       } else {
@@ -286,6 +370,7 @@ async function getManagerParticipants(req, res, next) {
         if (!existing.allIds.includes(idStr)) existing.allIds.push(idStr);
         if (u.trialId && !existing.allIds.includes(u.trialId)) existing.allIds.push(u.trialId);
         if (u.employeeId && !existing.allIds.includes(u.employeeId)) existing.allIds.push(u.employeeId);
+        if (u.phone && !existing.allIds.includes(u.phone)) existing.allIds.push(u.phone);
       }
     };
 
@@ -293,13 +378,14 @@ async function getManagerParticipants(req, res, next) {
     users.forEach(u => addParticipant(u, 'User'));
     emps.forEach(e => addParticipant(e, 'Employee'));
     salesTrials.forEach(t => addParticipant(t, 'SalesTrial'));
+    drivers.forEach(d => addParticipant(d, 'Driver'));
 
     // Filter out current user from direct participants list
     const myIds = await getUserAllIds(req.user);
     const mySet = new Set(myIds);
 
     const rawParticipants = Array.from(participantMap.values()).filter(p => {
-      if (mySet.has(String(p._id)) || (p.email && mySet.has(p.email.toLowerCase()))) {
+      if (mySet.has(String(p._id)) || (p.email && mySet.has(p.email.toLowerCase())) || (p.phone && mySet.has(String(p.phone)))) {
         return false;
       }
       return true;
@@ -330,17 +416,37 @@ async function markManagerChatRead(req, res, next) {
       recipientId = 'GENERAL';
     }
     
-    const myUserIds = await getUserAllIds(req.user);
-    let filter = {};
+    let myUserIds = [String(req.user?._id || req.user?.id || '')].filter(Boolean);
+    let targetUserIds = [String(recipientId)].filter(Boolean);
+    try {
+      const resMine = await getUserAllIds(req.user);
+      if (resMine && resMine.length) myUserIds = resMine;
+      const resTarget = await getUserAllIds(recipientId);
+      if (resTarget && resTarget.length) targetUserIds = resTarget;
+    } catch (e) {
+      console.error('Error resolving IDs in markManagerChatRead:', e);
+    }
 
+    let filter = {};
     if (recipientId === 'GENERAL') {
       filter = { recipientId: 'GENERAL' };
     } else {
-      const targetUserIds = await getUserAllIds(recipientId);
-      filter = {
-        senderId: { $in: targetUserIds },
-        recipientId: { $in: myUserIds }
-      };
+      const myEmail = (req.user?.email || '').toLowerCase().trim();
+      let targetEmail = '';
+      const foundEm = targetUserIds.find(id => id && typeof id === 'string' && id.includes('@'));
+      if (foundEm) targetEmail = foundEm.toLowerCase().trim();
+
+      const readConditions = [
+        { senderId: { $in: targetUserIds }, recipientId: { $in: myUserIds } },
+        { senderAllIds: { $in: targetUserIds }, recipientId: { $in: myUserIds } },
+        { senderId: { $in: targetUserIds }, recipientAllIds: { $in: myUserIds } }
+      ];
+
+      if (myEmail && targetEmail) {
+        readConditions.push({ senderEmail: targetEmail, recipientEmail: myEmail });
+      }
+
+      filter = { $or: readConditions };
     }
 
     if (myUserIds.length > 0) {

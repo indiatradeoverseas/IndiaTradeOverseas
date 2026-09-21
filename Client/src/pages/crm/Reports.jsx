@@ -186,7 +186,7 @@ export default function Reports() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           {/* Donut Chart */}
           <div className="lg:col-span-5 h-72 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={stageDist}
@@ -252,7 +252,7 @@ export default function Reports() {
         </div>
 
         <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={monthlyLeads} margin={{ top: 15, right: 30, left: 0, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
               <XAxis dataKey="month" tick={XAXIS_TICK} />
@@ -276,7 +276,7 @@ export default function Reports() {
         </div>
 
         <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={performanceData} margin={{ top: 15, right: 30, left: 0, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
               <XAxis dataKey="name" tick={{ fill: 'var(--crm-heading)', fontSize: 11, fontFamily: 'var(--crm-font-mono)' }} />

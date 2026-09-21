@@ -62,8 +62,10 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
 
   const userRole = (user?.role || '').toUpperCase();
   const userPos = (user?.position || '').toLowerCase();
-  const canShare = ['ADMIN', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'HR_EXECUTIVE', 'HR', 'EMPLOYEE', 'SALES_TRIAL'].includes(userRole) ||
-    userPos.includes('ceo') || userPos.includes('founder') || userPos.includes('manager');
+  // Enable file sharing capability for all authenticated users (including Drivers, Transport Staff, Managers & Staff)
+  const canShare = true;
+  const isLeader = ['FOUNDER', 'CEO', 'ADMIN', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(userRole) ||
+    userPos.includes('ceo') || userPos.includes('founder') || userPos.includes('admin');
 
   useEffect(() => {
     fetchSharedFiles();
@@ -86,7 +88,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
   const fetchSharedFiles = async () => {
     setLoadingFiles(true);
     try {
-      const direction = activeTab === 'SENT' ? 'sent' : activeTab === 'RECEIVED' ? 'received' : undefined;
+      const direction = activeTab === 'SENT' ? 'sent' : activeTab === 'RECEIVED' ? 'received' : activeTab === 'ALL_AUDIT' ? 'all' : undefined;
       const res = await sharedFilesApi.getSharedFiles({ direction });
       const fileList = res?.data?.files || res?.files || (Array.isArray(res?.data) ? res.data : []);
       setFiles(fileList);
@@ -112,7 +114,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
       toast.loading(`Downloading "${fileObj.originalName}"...`, { id: 'download-toast' });
       const res = await sharedFilesApi.downloadFile(fileObj._id);
       
-      const blob = new Blob([res.data || res], { type: fileObj.mimeType || 'application/octet-stream' });
+      const blob = res?.data instanceof Blob ? res.data : new Blob([res?.data || res], { type: fileObj.mimeType || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -126,9 +128,11 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
     } catch (err) {
       console.error('Download error:', err);
       if (fileObj._id) {
-        const directUrl = `${import.meta.env.VITE_BACKEND_URL || ''}/api/shared-files/download/${fileObj._id}`;
+        const token = localStorage.getItem('token') || '';
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const directUrl = `${backendUrl}/api/shared-files/${fileObj._id}/download?token=${token}`;
         window.open(directUrl, '_blank');
-        toast.success(`Downloading via direct stream...`, { id: 'download-toast' });
+        toast.success(`Downloading file...`, { id: 'download-toast' });
       } else {
         toast.error('Failed to download file', { id: 'download-toast' });
       }
@@ -139,7 +143,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
   const handleDelete = async (fileId, fileName) => {
     if (!window.confirm(`Are you sure you want to delete "${fileName}"?`)) return;
     try {
-      const res = await sharedFilesApi.deleteFile(fileId);
+      const res = await sharedFilesApi.deleteSharedFile(fileId);
       if (res?.success) {
         toast.success(`Deleted "${fileName}"`);
         setFiles(prev => prev.filter(f => f._id !== fileId));
@@ -147,7 +151,8 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
         toast.error(res?.message || 'Failed to delete file');
       }
     } catch (err) {
-      toast.error('Error deleting file');
+      const errMsg = err?.response?.data?.message || err.message || 'Error deleting file';
+      toast.error(`Delete Failed: ${errMsg}`);
     }
   };
 
@@ -289,12 +294,12 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
       {/* Header Bar */}
       <div className="px-4 sm:px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded bg-cyan-500/10 text-cyan-500 border border-cyan-400/30">
+          <div className="p-2 rounded bg-blue-500/10 text-blue-400 border border-blue-400/30">
             <FiFolder size={18} />
           </div>
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-              Enterprise File Sharing Center <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold">Max 25MB</span>
+              Enterprise File Sharing Center <span className="text-[9px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-bold">Max 25MB</span>
             </h2>
             <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
               Share PDFs, Excel, Images & Documents securely across Founder, CEO, Admin, Managers & Staff
@@ -303,37 +308,49 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
         </div>
 
         {/* Action Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 py-1">
+          {canShare && (
+            <button
+              onClick={() => setActiveTab('SHARE')}
+              className={`px-3.5 py-1.5 text-[11px] font-sans uppercase font-extrabold rounded-md whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                activeTab === 'SHARE'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border border-cyan-400'
+                  : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/60'
+              }`}
+            >
+              <FiUpload size={13} /> + Share New File
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('RECEIVED')}
-            className={`px-3 py-1.5 text-[10px] font-sans uppercase font-semibold rounded transition-all ${
+            className={`px-3 py-1.5 text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'RECEIVED'
-                ? 'bg-cyan-600 text-white border border-cyan-400'
-                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
+                : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
             }`}
           >
             Received Files
           </button>
           <button
             onClick={() => setActiveTab('SENT')}
-            className={`px-3 py-1.5 text-[10px] font-sans uppercase font-semibold rounded transition-all ${
+            className={`px-3 py-1.5 text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'SENT'
-                ? 'bg-cyan-600 text-white border border-cyan-400'
-                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
+                : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
             }`}
           >
             Sent Files
           </button>
-          {canShare && (
+          {isLeader && (
             <button
-              onClick={() => setActiveTab('SHARE')}
-              className={`px-3.5 py-1.5 text-[10px] font-sans uppercase font-semibold rounded flex items-center gap-1.5 transition-all ${
-                activeTab === 'SHARE'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md border border-cyan-400'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400'
+              onClick={() => setActiveTab('ALL_AUDIT')}
+              className={`px-3 py-1.5 text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'ALL_AUDIT'
+                  ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
+                  : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
               }`}
             >
-              <FiUpload size={12} /> <span>Share File</span>
+              Team Shared Files Audit
             </button>
           )}
         </div>
@@ -553,19 +570,19 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
               <button
                 type="submit"
                 disabled={isUploading || !selectedFile}
-                className={`px-6 py-2.5 text-xs font-sans uppercase font-bold rounded flex items-center gap-2 transition-all shadow-lg ${
+                className={`px-6 py-2.5 text-xs font-sans uppercase font-extrabold rounded-lg flex items-center gap-2 transition-all shadow-md ${
                   isUploading || !selectedFile
-                    ? 'bg-slate-300 text-slate-500 border border-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white border border-emerald-400/40 cursor-pointer'
+                    ? 'bg-gradient-to-r from-cyan-500/70 to-blue-600/70 text-white/80 border border-cyan-400/30 cursor-not-allowed opacity-85'
+                    : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white border border-cyan-400/50 shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
                 }`}
               >
                 {isUploading ? (
                   <>
-                    <FiRefreshCw className="animate-spin" size={14} /> <span>Uploading & Sharing...</span>
+                    <FiRefreshCw className="animate-spin text-white" size={14} /> <span className="text-white">Uploading & Sharing...</span>
                   </>
                 ) : (
                   <>
-                    <FiSend size={14} /> <span>Share File Now</span>
+                    <FiSend size={14} className="text-white" /> <span className="text-white font-extrabold tracking-wider">Share File Now</span>
                   </>
                 )}
               </button>
@@ -695,6 +712,123 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 })}
               </div>
             )}
+          </div>
+        )}
+        {/* TEAM SHARED FILES AUDIT REPOSITORY TAB (FOUNDER & CEO ONLY) */}
+        {activeTab === 'ALL_AUDIT' && isLeader && (
+          <div className="space-y-4 font-sans">
+            <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm text-left">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-line)] pb-3 mb-4 gap-3">
+                <div>
+                  <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
+                    <FiFolder className="text-blue-500" /> Team Shared Files Audit Repository
+                  </h3>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans mt-0.5">
+                    Founder & CEO Master Audit Log: Inspect and download all client Excel files and documents shared across all Sales Executives, Managers & Staff.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <FiSearch className="absolute left-2.5 top-2.5 text-[var(--crm-ink-faint)]" size={13} />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search file, sender, recipient..."
+                      className="pl-8 pr-3 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
+                    />
+                  </div>
+                  <button
+                    onClick={fetchSharedFiles}
+                    className="px-3 py-1.5 text-[10px] font-sans uppercase bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 font-bold rounded flex items-center gap-1 cursor-pointer"
+                  >
+                    <FiRefreshCw size={11} /> Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[900px]">
+                  <thead>
+                    <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-sans font-bold border-b border-[var(--crm-line)]">
+                      <th className="py-3.5 px-4">File Name</th>
+                      <th className="py-3.5 px-4">Sent By (Executive)</th>
+                      <th className="py-3.5 px-4">Sent To (Recipient)</th>
+                      <th className="py-3.5 px-4">Department</th>
+                      <th className="py-3.5 px-4">Date Shared</th>
+                      <th className="py-3.5 px-4">Note / Context</th>
+                      <th className="py-3.5 px-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--crm-line)] text-xs font-sans">
+                    {loadingFiles ? (
+                      <tr>
+                        <td colSpan="7" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                          Fetching company shared files audit logs...
+                        </td>
+                      </tr>
+                    ) : filteredFiles.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                          No shared files found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredFiles.map((fileObj) => {
+                        const senderName = fileObj.sentBy?.fullName || fileObj.sentBy?.name || fileObj.sentBy?.email || 'Executive';
+                        const recipientName = fileObj.sentTo?.fullName || fileObj.sentTo?.name || fileObj.sentTo?.email || 'Staff';
+
+                        return (
+                          <tr key={fileObj._id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                            <td className="py-3.5 px-4 font-bold text-[var(--crm-heading)]">
+                              <div className="flex items-center gap-2">
+                                <FiFileText className="text-blue-500 shrink-0" size={14} />
+                                <span className="truncate max-w-[200px]" title={fileObj.originalName}>{fileObj.originalName}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-blue-600 dark:text-blue-400">
+                              {senderName}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                              {recipientName}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-teal-300 border border-slate-300 dark:border-slate-800 px-2 py-0.5 rounded text-[9px] uppercase font-bold">
+                                {fileObj.department || 'GENERAL'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-[var(--crm-ink-faint)]">
+                              {new Date(fileObj.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="py-3.5 px-4 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[180px]">
+                              {fileObj.note ? `"${fileObj.note}"` : '—'}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => handleDownload(fileObj)}
+                                  className="bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:border-rose-800 dark:text-rose-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <FiDownload size={11} /> Download
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(fileObj._id, fileObj.originalName)}
+                                  className="bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:border-rose-800/60 dark:text-rose-300 p-1.5 rounded transition cursor-pointer"
+                                  title="Delete Shared File"
+                                >
+                                  <FiTrash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

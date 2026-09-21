@@ -32,7 +32,8 @@ const auditLogSchema = new mongoose.Schema(
         'UNAUTHORIZED_VIEW',
         'DEVICE_APPROVAL_REQUEST',
         'DEVICE_REVOKED',
-        'DEVICE_APPROVED'
+        'DEVICE_APPROVED',
+        'SCREENSHOT_ATTEMPTED'
       ]
     },
     entityType: { type: String, required: true },
