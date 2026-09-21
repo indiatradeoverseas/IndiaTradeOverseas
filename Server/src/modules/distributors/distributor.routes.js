@@ -16,7 +16,8 @@ const {
   createRazorpayOrder,
   verifyRazorpayPayment,
   createPaypalOrder,
-  capturePaypalOrder
+  capturePaypalOrder,
+  submitCoalQuote
 } = require('./distributor.controller');
 
 
@@ -61,6 +62,9 @@ router.post(
   registerDistributor
 );
 
+
+
+router.post('/coal-quote', submitCoalQuote);
 
 
 router.post('/verify-otp', verifyDistributorOtp);

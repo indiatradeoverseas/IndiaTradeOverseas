@@ -765,6 +765,139 @@ const capturePaypalOrder = async (req, res, next) => {
   }
 };
 
+// Submit Coal Quote (Public) - Creates distributor + proposal in one flow
+const submitCoalQuote = async (req, res, next) => {
+  try {
+    const {
+      fullName,
+      company,
+      email,
+      phone,
+      buyerType,
+      industry,
+      plant,
+      use: intendedUse,
+      origin,
+      coalType,
+      gcv,
+      basis,
+      rejVal,
+      ash,
+      sulphur,
+      tm,
+      vm,
+      fc,
+      hgiAft,
+      orderQty,
+      trialQty,
+      monthly,
+      dest,
+      tMode,
+      incoterm,
+      reqDate,
+      notes
+    } = req.body;
+
+    if (!fullName || !email || !phone) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, and phone are required.');
+    }
+
+    // Find or create distributor for COAL division
+    let distributor = await Distributor.findOne({ email: email.toLowerCase().trim(), division: 'COAL' });
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+
+    const distributorData = {
+      name: fullName,
+      email: email.toLowerCase().trim(),
+      mobile: phone,
+      company: company || fallbackCompanyName('COAL'),
+      city: dest?.split(',')[0]?.trim() || 'N/A',
+      state: dest?.split(',')[1]?.trim() || 'N/A',
+      country: 'India',
+      division: 'COAL',
+      registrationSource: 'QUICK_GATE',
+      businessType: '1',
+      purpose: intendedUse || 'Coal Sourcing',
+      gstNumber: '',
+      otpToken: otpCode,
+      otpExpires,
+      isOtpVerified: false,
+      approvalStatus: 'approved', // Auto-approve for coal quote requests
+      lastVisitedAt: new Date(),
+      visitCount: distributor ? (distributor.visitCount || 1) + 1 : 1,
+      visitHistory: distributor ? [...distributor.visitHistory, {
+        visitedAt: new Date(),
+        city: dest?.split(',')[0]?.trim() || 'N/A',
+        state: dest?.split(',')[1]?.trim() || 'N/A',
+        mobile: phone,
+        name: fullName,
+        registrationSource: 'QUICK_GATE'
+      }] : [{
+        visitedAt: new Date(),
+        city: dest?.split(',')[0]?.trim() || 'N/A',
+        state: dest?.split(',')[1]?.trim() || 'N/A',
+        mobile: phone,
+        name: fullName,
+        registrationSource: 'QUICK_GATE'
+      }]
+    };
+
+    if (distributor) {
+      Object.assign(distributor, distributorData);
+      await distributor.save();
+    } else {
+      distributor = new Distributor(distributorData);
+      await distributor.save();
+    }
+
+    // Create proposal from form data
+    const Proposal = require('./proposals/proposal.model');
+    
+    // Generate lotId
+    const lotId = `COAL-${origin?.toUpperCase().slice(0,3) || 'GEN'}-${Date.now().toString().slice(-6)}`;
+    
+    // Map form data to proposal fields
+    const quantity = Number(orderQty) || Number(trialQty) || 100; // Default to 100 MT if not provided
+    const basePrice = 5000; // Placeholder - would need pricing logic
+    const estimatedValue = quantity * basePrice;
+
+    const proposal = await Proposal.create({
+      distributorId: distributor._id,
+      division: 'COAL',
+      lotId,
+      region: origin || 'Domestic',
+      grade: coalType || gcv ? `${gcv} kcal/kg ${basis || 'GAR'}` : 'Unspecified',
+      quantity,
+      basePrice,
+      paymentTerm: 'ADVANCE_50',
+      estimatedValue,
+      status: 'pending'
+    });
+
+    // Send OTP email (optional - for future verification if needed)
+    const subject = `Coal Quote Request Received - India Trade Overseas`;
+    const text = `Thank you ${fullName} for your coal quote request. Your reference: ${lotId}. Our team will review and respond shortly.`;
+    
+    try {
+      await sendEmail(email, subject, text, text);
+    } catch (emailErr) {
+      console.warn('Failed to send coal quote confirmation email:', emailErr.message);
+    }
+
+    return ok(res, { 
+      proposal, 
+      distributorId: distributor._id,
+      lotId 
+    }, 'Coal quote request submitted successfully. Our commercial team will review and respond.', 201, req);
+
+  } catch (error) {
+    console.error('Error submitting coal quote:', error);
+    next(error);
+  }
+};
+
 const resendDistributorOtp = async (req, res, next) => {
   try {
     const { email, distributorId } = req.body;
@@ -830,5 +963,6 @@ module.exports = {
   createRazorpayOrder,
   verifyRazorpayPayment,
   createPaypalOrder,
-  capturePaypalOrder
+  capturePaypalOrder,
+  submitCoalQuote
 };

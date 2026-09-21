@@ -40,6 +40,7 @@ const createSoftLead = async (req, res, next) => {
       phone,
       consent,
       attribution,
+      distributorId,
     } = req.body;
 
     if (!division || !['STONE', 'RICE', 'TEA'].includes(division)) {
@@ -92,6 +93,7 @@ const createSoftLead = async (req, res, next) => {
       attribution: mergedAttribution,
       status: 'NEW',
       qualificationState: 'PHONE_CAPTURED',
+      distributorId: distributorId || '',
     });
 
     await softLead.save();

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
 import { distributorApi } from '../../api/distributor';
 import { adminApi } from '../../api/admin';
 import { toast } from 'react-hot-toast';
@@ -11,24 +10,11 @@ import {
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import ProposalCard from '../../components/crm/ProposalCard';
 
-// Each division renders its own dedicated Orders page (/crm/distributors/tea|rice|stone),
-// scoped strictly to its own sourcing requests - the route param decides which one,
-// defaulting to TEA for an unrecognized/missing param so this never silently mixes divisions.
-// This page shows only sourcing requests (proposals); the registered-buyer directory lives
-// on the separate Visitors pages.
 const DIVISION_META = {
-    TEA: { title: 'Tea Orders', badge: 'Tea Sourcing', eyebrow: 'PRAKRITI TEA FLEET TELEMETRY' },
-    RICE: { title: 'Rice Orders', badge: 'Rice Millings', eyebrow: 'RICE FLEET TELEMETRY' },
-    STONE: { title: 'Stone Orders', badge: 'Stone Aggregates', eyebrow: 'STONE FLEET TELEMETRY' },
     COAL: { title: 'Coal Orders', badge: 'Coal Sourcing', eyebrow: 'COAL FLEET TELEMETRY' }
 };
-const VALID_DIVISIONS = Object.keys(DIVISION_META);
 
-export default function Distributor() {
-    const { division: divisionParam } = useParams();
-    const division = VALID_DIVISIONS.includes(divisionParam?.toUpperCase()) ? divisionParam.toUpperCase() : 'TEA';
-    const meta = DIVISION_META[division];
-
+export default function CoalOrders() {
     const [proposals, setProposals] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -43,8 +29,8 @@ export default function Distributor() {
                 setProposals(propRes.data || []);
             }
         } catch (err) {
-            console.error("Failed to fetch sourcing requests:", err);
-            toast.error("Failed to fetch sourcing requests.");
+            console.error("Failed to fetch coal sourcing requests:", err);
+            toast.error("Failed to fetch coal sourcing requests.");
         } finally {
             setIsLoading(false);
         }
@@ -59,7 +45,7 @@ export default function Distributor() {
             const res = await distributorApi.updateProposalStatus(proposalId, statusUpdate);
             if (res.success) {
                 toast.success(res.message || "Proposal state synchronized.");
-                fetchProposals(); // Refresh values
+                fetchProposals();
             }
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to update target proposal parameters.");
@@ -81,11 +67,9 @@ export default function Distributor() {
         }
     };
 
-    // Excludes orphaned proposals whose distributor record was deleted from
-    // the CRM (populate() comes back empty for distributorId) - these used
-    // to render as "Unknown Distributor". Hidden here rather than deleted
-    // outright; run Server/scripts/removeOrphanedProposals.js to purge them
-    // from the database entirely.
+    const division = 'COAL';
+    const meta = DIVISION_META[division];
+
     const divisionProposals = proposals.filter(p => p.division === division && p.distributorId);
 
     const filteredProposals = divisionProposals.filter(p => {
@@ -125,7 +109,7 @@ export default function Distributor() {
             link.click();
             document.body.removeChild(link);
 
-            toast.success("Sourcing requests exported safely!");
+            toast.success("Coal sourcing requests exported successfully!");
         } catch (error) {
             toast.error("Export execution failed.");
             throw error;
@@ -136,7 +120,6 @@ export default function Distributor() {
         <div className="min-h-screen bg-[var(--crm-bg-sunken)] font-sans antialiased text-[var(--crm-ink-soft)] p-4 sm:p-8 pt-24">
             <div className="max-w-7xl mx-auto space-y-6">
 
-                {/* Header Block matching CRM Layout */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--crm-ink-soft)]/10 pb-5">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 text-[var(--crm-ink-faint)] font-mono text-[9px] uppercase font-bold tracking-[0.2em]">
@@ -171,7 +154,6 @@ export default function Distributor() {
                     </div>
                 </div>
 
-                {/* Filter Control Array */}
                 <div className="bg-[var(--crm-bg)]/20 border border-[var(--crm-ink-soft)]/10 rounded-sm p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
                     <div className="relative w-full md:w-96">
                         <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--crm-ink-faint)] text-sm" />
@@ -208,15 +190,14 @@ export default function Distributor() {
                     </div>
                 </div>
 
-                {/* Sourcing Requests */}
                 <div className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm overflow-hidden">
                     {isLoading ? (
                         <div className="p-12 text-center font-mono text-xs text-[var(--crm-ink-faint)] animate-pulse">
-                            Auditing sourcing pipeline...
+                            Auditing coal sourcing pipeline...
                         </div>
                     ) : filteredProposals.length === 0 ? (
                         <div className="p-8 text-center text-[var(--crm-ink-faint)] font-light italic text-xs">
-                            No sourcing requests matched the designated search metrics.
+                            No coal sourcing requests matched the designated search metrics.
                         </div>
                     ) : (
                         <div className="p-4 space-y-3">
@@ -236,7 +217,6 @@ export default function Distributor() {
                 </div>
             </div>
 
-            {/* Order Detail Modal - order info plus the buyer's original entry-gate submission */}
             <AnimatePresence>
                 {selectedProposal && (
                     <motion.div
@@ -273,7 +253,7 @@ export default function Distributor() {
                                     <h4 className="font-mono text-[9px] text-[var(--crm-ink-faint)] uppercase font-bold tracking-wider border-b border-[var(--crm-ink-soft)]/10 pb-1">Order Details</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[var(--crm-ink-soft)] font-mono">
                                         <div>Region: <span className="text-[var(--crm-heading)] font-bold">{selectedProposal.region}</span></div>
-                                        <div>Quantity: <span className="text-[var(--crm-positive)] font-bold">{selectedProposal.quantity?.toLocaleString()} {selectedProposal.division === 'STONE' ? 'MT' : 'Kg'}</span></div>
+                                        <div>Quantity: <span className="text-[var(--crm-positive)] font-bold">{selectedProposal.quantity?.toLocaleString()} MT</span></div>
                                         <div>Base Price: <span className="text-[var(--crm-heading)] font-bold">INR {selectedProposal.basePrice}</span></div>
                                         <div>Estimated Value: <span className="text-[var(--crm-positive)] font-bold">INR {selectedProposal.estimatedValue?.toLocaleString()}</span></div>
                                         {selectedProposal.paymentTerm && <div>Payment Term: <span className="text-[var(--crm-heading)] font-bold">{selectedProposal.paymentTerm.replace('_', ' ')}</span></div>}

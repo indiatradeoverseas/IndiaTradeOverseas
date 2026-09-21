@@ -8,7 +8,7 @@ const proposalSchema = new mongoose.Schema({
   },
   division: {
     type: String,
-    enum: ['TEA', 'RICE' , 'STONE'],
+    enum: ['TEA', 'RICE', 'STONE', 'COAL'],
     default: 'TEA',
     required: true
   },

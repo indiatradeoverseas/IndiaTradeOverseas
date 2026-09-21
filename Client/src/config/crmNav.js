@@ -319,7 +319,8 @@ export function getCrmMainNavItems(user) {
       children: [
         { to: '/crm/distributors/tea', label: 'Tea Orders', dotColor: '#2dd4a7' },
         { to: '/crm/distributors/rice', label: 'Rice Orders', dotColor: '#f5b942' },
-        { to: '/crm/distributors/stone', label: 'Stone Orders', dotColor: '#94a3b8' }
+        { to: '/crm/distributors/stone', label: 'Stone Orders', dotColor: '#94a3b8' },
+        { to: '/crm/distributors/coal', label: 'Coal Orders', dotColor: '#78716c' }
       ]
     },
 
@@ -335,7 +336,10 @@ export function getCrmMainNavItems(user) {
       ]
     },
 
-    // 9. My Profile — Common to all
+    // 9. Coal Orders — ADMIN + Sales Manager (standalone page)
+    (admin || salesMgr) && { to: '/crm/coal-orders', label: 'Coal Orders', icon: FiLayers },
+
+    // 10. My Profile — Common to all
     { to: '/crm/profile', label: 'My Profile', icon: FiUser },
 
     // ── REMAINING OPTIONS ──

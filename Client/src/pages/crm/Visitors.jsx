@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { distributorApi } from '../../api/distributor';
+import { softLeadsApi } from '../../api/leads';
 import { toast } from 'react-hot-toast';
 import {
     FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiSearch, FiChevronDown, 
@@ -26,6 +27,7 @@ export default function Visitors() {
 
     const [visitors, setVisitors] = useState([]);
     const [proposals, setProposals] = useState([]);
+    const [softLeads, setSoftLeads] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedVisitorId, setExpandedVisitorId] = useState(null);
@@ -38,9 +40,10 @@ export default function Visitors() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [distRes, propRes] = await Promise.all([
+            const [distRes, propRes, softRes] = await Promise.all([
                 distributorApi.getDistributors(),
-                distributorApi.getActiveProposalsAdmin()
+                distributorApi.getActiveProposalsAdmin(),
+                softLeadsApi.listSoftLeads({ division, limit: 500 })
             ]);
 
             if (distRes && distRes.success) {
@@ -54,6 +57,9 @@ export default function Visitors() {
             }
             if (propRes && propRes.success) {
                 setProposals(propRes.data || []);
+            }
+            if (softRes && softRes.success) {
+                setSoftLeads(softRes.data?.leads || softRes.leads || []);
             }
         } catch (err) {
             console.error("Failed to fetch buyer visitor data:", err);
@@ -154,6 +160,27 @@ export default function Visitors() {
 
     const todayCount = divisionVisitors.filter(v => isSameDay(getVisitorLatestDate(v), getLocalDateStr(new Date()))).length;
     const repeatVisitorsCount = divisionVisitors.filter(v => (v.visitCount || 1) > 1).length;
+
+    // Merge soft lead data (phone, requirement) into visitors by email
+    const mergedVisitors = filteredVisitors.map(visitor => {
+        const soft = softLeads.find(sl => sl.email?.toLowerCase() === visitor.email?.toLowerCase());
+        if (!soft) return visitor;
+        return {
+            ...visitor,
+            // Prefer soft lead phone if visitor mobile is placeholder
+            mobile: (visitor.mobile === '0000000000' || !visitor.mobile) && soft.phone ? soft.phone : visitor.mobile,
+            // Attach soft lead requirement summary without duplicating existing fields
+            softLead: {
+                product: soft.product,
+                quantity: soft.quantity,
+                quantityUnit: soft.quantityUnit,
+                destination: soft.destination,
+                timeline: soft.timeline,
+                leadId: soft.leadId,
+                createdAt: soft.createdAt,
+            }
+        };
+    });
 
     return (
         <div className="min-h-screen bg-[var(--crm-bg-sunken)] font-sans antialiased text-[var(--crm-ink-soft)] p-4 sm:p-8 pt-24">
@@ -292,10 +319,10 @@ export default function Visitors() {
                     <div className="space-y-4">
                         <DivisionSection
                             title={meta.title}
-                            count={filteredVisitors.length}
+                            count={mergedVisitors.length}
                             emptyLabel="No visitor gate submissions found for this filter criteria."
                         >
-                            {filteredVisitors.map((visitor) => {
+                            {mergedVisitors.map((visitor) => {
                                 const visitorProposals = proposals.filter(p =>
                                     (p.distributorId?._id || p.distributorId) === visitor._id
                                 );
@@ -426,6 +453,23 @@ export default function Visitors() {
                                                 {visitorProposals.map((proposal) => (
                                                     <ProposalCard key={proposal._id} proposal={proposal} showActions={false} />
                                                 ))}
+                                            </div>
+                                        )}
+
+                                        {/* Soft Lead Details Dropdown */}
+                                        {isExpanded && visitor.softLead && (
+                                            <div className="pt-2 space-y-2 border-t border-[var(--crm-ink-soft)]/10 mt-2 bg-[var(--crm-bg)]/40 p-3 rounded">
+                                                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
+                                                    <FiCheckCircle size={12} /> Soft Lead Enquiry Details:
+                                                </div>
+                                                <div className="space-y-1 font-mono text-[11px] text-[var(--crm-ink-soft)]">
+                                                    <div><strong>Product:</strong> {visitor.softLead.product}</div>
+                                                    <div><strong>Quantity:</strong> {visitor.softLead.quantity} {visitor.softLead.quantityUnit || ''}</div>
+                                                    <div><strong>Destination:</strong> {visitor.softLead.destination}</div>
+                                                    <div><strong>Timeline:</strong> {visitor.softLead.timeline}</div>
+                                                    <div><strong>Lead ID:</strong> {visitor.softLead.leadId}</div>
+                                                    <div><strong>Created:</strong> {new Date(visitor.softLead.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

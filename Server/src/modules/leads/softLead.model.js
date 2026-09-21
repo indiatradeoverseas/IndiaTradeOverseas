@@ -147,6 +147,11 @@ const softLeadSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    distributorId: {
+      type: String,
+      default: '',
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -9,6 +9,14 @@ export const distributorApi = {
     return response.data;
   },
 
+  /**
+   * Submit Coal Quote (Public) - Creates distributor + proposal
+   */
+  submitCoalQuote: async (formData) => {
+    const response = await axiosInstance.post('/distributors/coal-quote', formData);
+    return response.data;
+  },
+
   resendOtp: async (emailOrId) => {
     const payload = emailOrId.includes('@')
       ? { email: emailOrId }
