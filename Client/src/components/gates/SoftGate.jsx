@@ -13,7 +13,8 @@ export default function SoftGate({
   theme, 
   onSuccess, 
   onClose,
-  onProgressiveDetails 
+  onProgressiveDetails,
+  distributorId
 }) {
   const [step, setStep] = useState('phone'); // 'phone' | 'success' | 'progressive'
   const [phone, setPhone] = useState('');
@@ -73,6 +74,7 @@ export default function SoftGate({
         eligibility: requirement.eligibility,
         phone: phone.replace(/\D/g, ''),
         consent: true,
+        distributorId: distributorId || '',
         attribution: {
           utm_source: new URLSearchParams(window.location.search).get('utm_source') || '',
           utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || '',

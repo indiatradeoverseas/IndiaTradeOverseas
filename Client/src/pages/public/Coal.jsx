@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import { pushDataLayerEvent } from '../../utils/analytics';
+import { distributorApi } from '../../api/distributor';
+import { toast } from 'react-hot-toast';
 
 const HERO_IMAGES = [
   '/images/coal-images/coal-1.png',
@@ -451,27 +453,50 @@ function CoalQuoteForm({ onSubmit }) {
     notes: '', privacy: false
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!formData.privacy) {
+      toast.error('Please accept the privacy policy to continue.');
+      return;
+    }
+
+    setIsSubmitting(true);
     pushDataLayerEvent('submit_coal_quote', { origin: formData.origin, coalType: formData.coalType });
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 6000);
-    e.target.reset();
-    setFormData({
-      fullName: '', company: '', email: '', phone: '', buyerType: '',
-      industry: '', plant: '', use: '',
-      origin: '', coalType: '', gcv: '', basis: '', rejVal: '',
-      ash: '', sulphur: '', tm: '', vm: '', fc: '', hgiAft: '',
-      orderQty: '', trialQty: '', monthly: '',
-      dest: '', tMode: '', incoterm: '', reqDate: '',
-      notes: '', privacy: false
-    });
+
+    try {
+      const response = await distributorApi.submitCoalQuote(formData);
+      
+      if (response.success) {
+        setSubmitted(true);
+        setTimeout(() => setSubmitted(false), 6000);
+        e.target.reset();
+        setFormData({
+          fullName: '', company: '', email: '', phone: '', buyerType: '',
+          industry: '', plant: '', use: '',
+          origin: '', coalType: '', gcv: '', basis: '', rejVal: '',
+          ash: '', sulphur: '', tm: '', vm: '', fc: '', hgiAft: '',
+          orderQty: '', trialQty: '', monthly: '',
+          dest: '', tMode: '', incoterm: '', reqDate: '',
+          notes: '', privacy: false
+        });
+        toast.success('Quote request submitted successfully! Our team will review and respond shortly.');
+      } else {
+        toast.error(response.message || 'Failed to submit quote request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Coal quote submission error:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit quote request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -544,7 +569,9 @@ function CoalQuoteForm({ onSubmit }) {
         </label>
       </fieldset>
 
-      <button type="submit" className="w-full bg-[#D4A84F] text-[#F4F0E7] py-4 rounded font-bold text-lg hover:brightness-110 transition">SUBMIT QUOTE REQUEST</button>
+      <button type="submit" disabled={isSubmitting} className="w-full bg-[#D4A84F] text-[#F4F0E7] py-4 rounded font-bold text-lg hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
+      {isSubmitting ? 'SUBMITTING...' : 'SUBMIT QUOTE REQUEST'}
+    </button>
 
       {submitted && (
         <p id="formMsg" className="text-center text-[#D4A84F] font-medium" role="status">

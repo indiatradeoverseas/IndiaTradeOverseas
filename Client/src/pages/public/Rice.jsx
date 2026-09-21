@@ -490,8 +490,11 @@ export default function RicePage() {
     // New Soft Gate / Requirement Builder State
     const [showRequirementBuilder, setShowRequirementBuilder] = useState(false);
     const [builtRequirement, setBuiltRequirement] = useState(null);
+    const [showPersonalDetails, setShowPersonalDetails] = useState(false);
+    const [personalDetails, setPersonalDetails] = useState({ fullName: '', email: '', city: '', state: '' });
     const [showSoftGate, setShowSoftGate] = useState(false);
     const [softGateLeadId, setSoftGateLeadId] = useState(null);
+    const [linkedDistributorId, setLinkedDistributorId] = useState(null);
 
 
     /* =====================================================
@@ -970,7 +973,43 @@ export default function RicePage() {
     const handleRequirementComplete = (requirement) => {
         setBuiltRequirement(requirement);
         setShowRequirementBuilder(false);
-        setShowSoftGate(true);
+        setShowPersonalDetails(true);
+    };
+
+    const handlePersonalDetailsSubmit = async (e) => {
+        e.preventDefault();
+        const { fullName, email, city, state } = personalDetails;
+        if (!fullName?.trim() || !email?.trim() || !city?.trim() || !state?.trim()) {
+            toast.error('Please fill all required fields.');
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error('Please enter a valid email address.');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('name', fullName);
+            formData.append('email', email);
+            formData.append('mobile', '0000000000'); // placeholder, will be updated in soft gate
+            formData.append('city', city);
+            formData.append('state', state);
+            formData.append('division', 'RICE');
+            formData.append('registrationSource', 'QUICK_GATE');
+
+            const res = await distributorApi.registerDistributor(formData);
+            if (res.success) {
+                setLinkedDistributorId(res.data?.distributorId || null);
+                setShowPersonalDetails(false);
+                setShowSoftGate(true);
+                toast.success('Details saved! Now enter your phone to get pricing.');
+            }
+        } catch (err) {
+            console.error('Quick gate registration failed:', err);
+            toast.error(err.response?.data?.message || 'Failed to save details. Please try again.');
+        }
     };
 
     const navigate = useNavigate();
@@ -4447,6 +4486,88 @@ export default function RicePage() {
                 )}
             </AnimatePresence>
 
+            {/* Personal Details Modal */}
+            <AnimatePresence>
+                {showPersonalDetails && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                        onClick={() => setShowPersonalDetails(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+                            onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+                                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+                                    Enter Your Details
+                                </h3>
+                                <button onClick={() => setShowPersonalDetails(false)}
+                                    className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
+                                    <FiX size={24} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handlePersonalDetailsSubmit} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                                    <input
+                                        type="text"
+                                        value={personalDetails.fullName}
+                                        onChange={(e) => setPersonalDetails(prev => ({ ...prev, fullName: e.target.value }))}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                        placeholder="Enter your full name"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                                    <input
+                                        type="email"
+                                        value={personalDetails.email}
+                                        onChange={(e) => setPersonalDetails(prev => ({ ...prev, email: e.target.value }))}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                        placeholder="Enter your email"
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                                        <input
+                                            type="text"
+                                            value={personalDetails.city}
+                                            onChange={(e) => setPersonalDetails(prev => ({ ...prev, city: e.target.value }))}
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                            placeholder="City"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                                        <input
+                                            type="text"
+                                            value={personalDetails.state}
+                                            onChange={(e) => setPersonalDetails(prev => ({ ...prev, state: e.target.value }))}
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                            placeholder="State"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
+                                    style={{ backgroundColor: RICE_GATE_THEME.accent, color: RICE_GATE_THEME.accentText }}
+                                >
+                                    <span>Continue to Phone Verification</span>
+                                    <FiArrowRight size={14} />
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* Soft Gate Modal */}
             <AnimatePresence>
                 {showSoftGate && builtRequirement && (
@@ -4456,6 +4577,7 @@ export default function RicePage() {
                         theme={RICE_GATE_THEME}
                         onSuccess={handleSoftGateSuccess}
                         onClose={handleSoftGateClose}
+                        distributorId={linkedDistributorId}
                     />
                 )}
             </AnimatePresence>
