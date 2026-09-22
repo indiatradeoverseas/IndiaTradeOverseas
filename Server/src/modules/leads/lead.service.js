@@ -896,10 +896,21 @@ function getLeadDisplay(lead, user) {
   }
 
   if (!leadObj.targetDate) {
-    const rawDate =
-      leadObj.originalPayload?.targetDate ||
-      leadObj.originalPayload?.requiredDate ||
-      leadObj.originalPayload?.timeline;
+    const rawDate = leadObj.originalPayload?.targetDate || leadObj.originalPayload?.requiredDate || leadObj.originalPayload?.targetTimeline || leadObj.originalPayload?.timeline;
+    if (rawDate) {
+      const parsed = parseFlexibleDate(rawDate);
+      if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;
+    } else {
+      const txt = leadObj.chatSummary || leadObj.remarks || '';
+      if (txt) {
+        const match = txt.match(/(?:Requirement Date|Target Date|Timeline)[^\n:]*[:—]\s*([^\n,]+)/i);
+        if (match && match[1] && match[1].trim() !== 'Not specified' && match[1].trim() !== '—') {
+          const parsed = parseFlexibleDate(match[1].trim());
+          if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;
+        }
+      }
+    }
+  }
 
     if (rawDate) {
       const parsed =

@@ -420,7 +420,6 @@ const apiRoutes = [
   { path: '/ai', router: aiRoutes },
   { path: '/sales-trial', router: salesTrialRoutes },
   { path: '/itoads', router: itoAdsRoutes },
-  { path: '/rice-visitors', router: riceVisitorRoutes },
   { path: '/employee-activity', router: employeeActivityRoutes }
 
   {

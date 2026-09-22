@@ -405,100 +405,23 @@ function parseFlexibleDate(
     : parsed;
 }
 
+async function processAiLead(payload, actorId = null) {
+  const contactPerson = payload.contactPerson || payload.customerName || payload.name || '';
+  const mobile = payload.mobile || payload.phone || payload.whatsapp || '9999999999';
+  const email = payload.email || '';
+  let productCategory = payload.productCategory || payload.productRequired || payload.division || payload.category || 'TEA';
+  if (productCategory.toLowerCase().includes('tea')) productCategory = 'TEA';
+  else if (productCategory.toLowerCase().includes('rice')) productCategory = 'RICE';
+  else if (productCategory.toLowerCase().includes('stone')) productCategory = 'STONE';
 
-/* ============================================================
-   SAFE INTERNAL METADATA
-============================================================ */
-
-function buildSafeOriginalPayload(
-  payload,
-  scoringResult,
-  contactResolution
-) {
-  return {
-    ingestionVersion:
-      'MASTER_DPR_V4_PHASE_2_AI_V1',
-
-    scoringVersion:
-      scoringResult
-        .scoringVersion,
-
-    scoreBreakdown:
-      scoringResult
-        .breakdown,
-
-    serviceabilityTier:
-      cleanText(
-        payload
-          .serviceabilityTier ||
-        payload
-          .marketTier ||
-        payload
-          .destinationTier,
-        80
-      ),
-
-    completedPriceCheck:
-      payload
-        .completedPriceCheck ===
-          true ||
-      payload
-        .priceCheckCompleted ===
-          true,
-
-    returnVisit:
-      payload
-        .returnVisit ===
-          true ||
-      payload
-        .isReturnVisit ===
-          true,
-
-    contactResolutionReason:
-      cleanText(
-        contactResolution
-          .reason,
-        200
-      ),
-
-    contactConflictIds:
-      Array.isArray(
-        contactResolution
-          .conflictContactIds
-      )
-        ? contactResolution
-            .conflictContactIds
-            .map(
-              (value) =>
-                cleanText(
-                  value,
-                  64
-                )
-            )
-            .filter(Boolean)
-        : [],
-  };
-}
-
-
-/* ============================================================
-   PROCESS AI LEAD
-============================================================ */
-
-async function processAiLead(
-  payload = {},
-  actorId = null
-) {
-  const contactPerson =
-    cleanText(
-      payload
-        .contactPerson ||
-      payload
-        .customerName ||
-      payload
-        .name,
-      150
-    );
+  const quantity = String(payload.quantity || '');
+  const destination = payload.destination || payload.city || '';
+  const targetDateRaw = payload.targetDate || payload.requiredDate || payload.targetTimeline || payload.timeline || null;
+  const targetDate = parseFlexibleDate(targetDateRaw);
+  const companyName = payload.companyName || payload.company || '';
+  const chatSummary = payload.chatSummary || payload.message || payload.subject || '';
+  const paymentTerms = payload.paymentTerms || '';
+  const leadSource = payload.source || 'WEBSITE';
 
   if (!contactPerson) {
     throw validationError(

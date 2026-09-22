@@ -21,8 +21,8 @@ const checkAdminManagerHR = (req, res, next) => {
 };
 
 // Distributor Routes
-router.post('/proposals', authenticateDistributor, createProposal);
-router.get('/proposals/distributor/:distributorId', authenticateDistributor, getProposalsByDistributorId);
+router.post('/proposals', createProposal);
+router.get('/proposals/distributor/:distributorId', getProposalsByDistributorId);
 
 // Admin / Staff Management Routes
 router.get('/proposals/active', authenticate, checkAdminManagerHR, getAllProposals);

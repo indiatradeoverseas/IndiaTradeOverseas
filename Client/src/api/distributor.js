@@ -48,6 +48,9 @@ export const distributorApi = {
     if (token && token !== 'undefined') {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    if (proposalData?.distributorId) {
+      headers['X-Distributor-Id'] = proposalData.distributorId;
+    }
     const response = await axiosInstance.post('/distributors/proposals', proposalData, { headers });
     return response.data;
   },
