@@ -215,6 +215,19 @@ const BHUTAN_TYPE_KEYS = [
   'black4060'
 ];
 
+const BHUTAN_TYPE_LABELS = {
+  dust: 'Stone Dust (0 MM)',
+  white10: 'Bhutan White 10 MM',
+  white20: 'Bhutan White 20 MM',
+  white3040: 'Bhutan White 30/40 MM',
+  white30: 'Bhutan White 30 MM',
+  white4060: 'Bhutan White 40/60 MM',
+  black10: 'Bhutan Black 10 MM (Kamji)',
+  black20: 'Bhutan Black 20 MM (Kamji)',
+  black30: 'Bhutan Black 30 MM (Kamji)',
+  black4060: 'Bhutan Black 40/60 MM (Kamji)'
+};
+
 
 
 // Official Bhutan Stone Material Rate Card — location -> [Dust, 10 White, 20 White, 30/40 White, 30 White, 40/60 White, 10 Black Kamji, 20 Black Kamji, 30 Black Kamji, 40/60 Black Kamji]
