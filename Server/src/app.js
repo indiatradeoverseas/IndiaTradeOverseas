@@ -3,6 +3,38 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
+const { rateLimiter } = require('./middlewares/rateLimit.middleware');
+const { errorHandler } = require('./middlewares/error.middleware');
+const authRoutes = require('./modules/auth/auth.routes');
+const adminAuthRoutes = require('./modules/admin-auth/adminAuth.routes');
+const userRoutes = require('./modules/users/user.routes');
+const leadRoutes = require('./modules/leads/lead.routes');
+const softLeadRoutes = require('./modules/leads/softLead.routes');
+const quotationRoutes = require('./modules/quotations/quotation.routes');
+const dispatchRoutes = require('./modules/dispatch/dispatch.routes');
+const paymentRoutes = require('./modules/payments/payment.routes');
+const productRoutes = require('./modules/products/product.routes');
+const documentRoutes = require('./modules/documents/document.routes');
+const reportRoutes = require('./modules/reports/report.routes');
+const dailyReportRoutes = require('./modules/daily-reports/dailyReport.routes');
+const auditRoutes = require('./modules/security-audit/audit.routes');
+const notificationRoutes = require('./modules/notifications/notification.routes');
+const chatRoutes = require('./modules/chat/chat.routes');
+const careerRoutes = require('./modules/careers/career.routes');
+const distributorRoutes = require('./modules/distributors/distributor.routes');
+const riceVisitorRoutes = require('./modules/distributors/riceVisitor.routes');
+const attendanceRoutes = require('./modules/attendance/attendance.routes');
+const ticketRoutes = require('./modules/tickets/ticket.routes');
+const leaveRoutes = require('./modules/leave/leave.routes');
+const salesRoutes = require('./modules/sales/sales.routes');
+const employeeRoutes = require('./modules/employee/employee.routes');
+const taskRoutes = require('./modules/task/task.routes');
+const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
+const payslipRoutes = require('./modules/payslip/payslip.routes');
+const aiRoutes = require('./modules/ai/ai.routes');
+const salesTrialRoutes = require('./modules/sales-trial/salesTrial.routes');
+const itoAdsRoutes = require('./modules/itoads/itoads.routes');
+const employeeActivityRoutes = require('./modules/employee-activity/employeeActivity.routes');
 const crypto = require('crypto');
 const path = require('path');
 
@@ -354,6 +386,42 @@ app.get(
  * of the DPR-specific endpoints first.
  */
 const apiRoutes = [
+  { path: '/auth', router: authRoutes },
+  { path: '/admin-auth', router: adminAuthRoutes },
+  { path: '/users', router: userRoutes },
+  { path: '/leads', router: leadRoutes },
+  { path: '/ai/leads', router: leadRoutes },
+  { path: '/soft-leads', router: softLeadRoutes },
+  { path: '/quotations', router: quotationRoutes },
+  { path: '/dispatches', router: dispatchRoutes },
+  { path: '/dispatch', router: dispatchRoutes },
+  { path: '/payments', router: paymentRoutes },
+  { path: '/products', router: productRoutes },
+  { path: '/documents', router: documentRoutes },
+  { path: '/reports', router: reportRoutes },
+  { path: '/dashboard', router: notificationRoutes },
+  { path: '/daily-reports', router: dailyReportRoutes },
+  { path: '/security', router: auditRoutes },
+  { path: '/security-audit', router: auditRoutes },
+  { path: '/chat', router: chatRoutes },
+  { path: '/careers', router: careerRoutes },
+  { path: '/distributors', router: distributorRoutes },
+  { path: '/rice-visitors', router: riceVisitorRoutes },
+  { path: '/attendance', router: attendanceRoutes },
+  { path: '/tickets', router: ticketRoutes },
+  { path: '/leaves', router: leaveRoutes },
+  { path: '/leave', router: leaveRoutes },
+  { path: '/sales', router: salesRoutes },
+  { path: '/employee', router: employeeRoutes },
+  { path: '/employees', router: employeeRoutes },
+  { path: '/tasks', router: taskRoutes },
+  { path: '/shared-files', router: sharedFileRoutes },
+  { path: '/payslips', router: payslipRoutes },
+  { path: '/ai', router: aiRoutes },
+  { path: '/sales-trial', router: salesTrialRoutes },
+  { path: '/itoads', router: itoAdsRoutes },
+  { path: '/rice-visitors', router: riceVisitorRoutes },
+  { path: '/employee-activity', router: employeeActivityRoutes }
 
   {
     path: '/sales-policy',
