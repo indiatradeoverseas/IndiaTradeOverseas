@@ -32,6 +32,7 @@ const sharedFileRoutes = require('./modules/shared-files/sharedFile.routes');
 const payslipRoutes = require('./modules/payslip/payslip.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
 const salesTrialRoutes = require('./modules/sales-trial/salesTrial.routes');
+const itoAdsRoutes = require('./modules/itoads/itoads.routes');
 const employeeActivityRoutes = require('./modules/employee-activity/employeeActivity.routes');
 
 
@@ -133,6 +134,7 @@ const apiRoutes = [
   { path: '/payslips', router: payslipRoutes },
   { path: '/ai', router: aiRoutes },
   { path: '/sales-trial', router: salesTrialRoutes },
+  { path: '/itoads', router: itoAdsRoutes }
   { path: '/employee-activity', router: employeeActivityRoutes }
 ];
 

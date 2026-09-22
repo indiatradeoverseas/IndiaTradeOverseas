@@ -349,7 +349,10 @@ export function getCrmMainNavItems(user) {
     // 9. Coal Orders — ADMIN + Sales Manager (standalone page)
     (admin || salesMgr) && { to: '/crm/coal-orders', label: 'Coal Orders', icon: FiLayers },
 
-    // 10. My Profile — Common to all
+    // 10. ITO Ads Orders — ADMIN + Sales Manager (standalone page)
+    (admin || salesMgr) && { to: '/crm/itoads-orders', label: 'ITO Ads Orders', icon: FiCreditCard },
+
+    // 11. My Profile — Common to all
     { to: '/crm/profile', label: 'My Profile', icon: FiUser },
 
     // ── REMAINING OPTIONS ──
