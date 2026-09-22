@@ -1,4 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
+import CommercialRequirement from './components/CommercialRequirement';
+
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,7 +14,11 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
 import ScrollToTop from './utils/ScrollToTop';
-import { pushDataLayerEvent, initActivityTracking } from './utils/analytics';
+import {
+  DPR_EVENTS,
+  pushDataLayerEvent,
+  pushDprEvent
+} from './utils/analytics';
 import { isPricingRoute } from './utils/routeHelpers';
 
 import Home from './pages/public/Home';
@@ -37,6 +43,7 @@ import EmployeeSignup from './pages/public/EmployeeSignup';
 import DevicePending from './pages/public/DevicePending';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ForgotPassword from './pages/public/ForgotPassword';
+
 const ITOAds = lazy(() => import('./pages/public/ITOAds'));
 
 import Dashboard from './pages/crm/Dashboard';
@@ -70,6 +77,7 @@ import SalesPerformance from './pages/crm/SalesPerformance';
 import SalesDashboard from './pages/crm/SalesDashboard';
 import Followup from './pages/crm/Followup';
 import TrialDashboard from './pages/crm/TrialDashboard';
+import ControlledCampaigns from './pages/crm/ControlledCampaigns';
 
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
@@ -82,12 +90,12 @@ import DriverMobileView from './pages/crm/transport/DriverMobileView';
 import ManagerChatSupport from './pages/crm/ManagerChatSupport';
 import ItDashboard from './pages/crm/ItDashboard';
 
-
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
 import { VoiceAssistantProvider } from './context/VoiceAssistantContext';
 import Footer from './components/Layout/Footer';
 import ChatWidget from './components/Chat/ChatWidget';
+import TrackingConsentBanner from './components/privacy/TrackingConsentBanner';
 import Prakriti from './pages/public/Prakriti';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
@@ -99,10 +107,135 @@ import StonePricing from './pages/public/StonePricing';
 import RicePricing from './pages/public/RicePricing';
 import TeaPricing from './pages/public/TeaPricing';
 
+import SecurityGuard from './components/security/SecurityGuard';
 
+
+/* =========================================================
+   MASTER DPR v4.0 — PHASE 1 ROUTE TRACKING
+
+   External acquisition analytics is intentionally limited to
+   known public website routes. Internal CRM/auth routes can contain
+   identifiers or operational context and must not be sent to GTM/GA4/Meta.
+
+   `virtual_page_view` is a diagnostic/navigation event.
+   `landing_page_view` is the canonical DPR acquisition event and is
+   emitted only for commercial landing experiences.
+========================================================= */
+
+const PUBLIC_PAGE_META = Object.freeze({
+  '/': {
+    page_type: 'homepage'
+  },
+
+  '/products': {
+    page_type: 'product_index'
+  },
+
+  '/about': {
+    page_type: 'corporate'
+  },
+
+  '/contact': {
+    page_type: 'contact'
+  },
+
+  '/careers': {
+    page_type: 'careers'
+  },
+
+  '/quote-request': {
+    page_type: 'commercial_enquiry'
+  },
+
+  '/our-services': {
+    page_type: 'services'
+  },
+
+  '/prakriti/tea': {
+    page_type: 'commercial_landing',
+    vertical: 'tea',
+    landing_page_type: 'product'
+  },
+
+  '/prakriti/rice': {
+    page_type: 'commercial_landing',
+    vertical: 'rice',
+    landing_page_type: 'product'
+  },
+
+  '/stone': {
+    page_type: 'commercial_landing',
+    vertical: 'stone',
+    landing_page_type: 'product'
+  },
+
+  '/ito-ads': {
+    page_type: 'commercial_landing',
+    vertical: 'ito_ads',
+    landing_page_type: 'service'
+  },
+
+  '/privacy-policy': {
+    page_type: 'legal'
+  },
+
+  '/terms': {
+    page_type: 'legal'
+  },
+
+  '/terms-and-conditions': {
+    page_type: 'legal'
+  },
+
+  '/fraud-payment-policy': {
+    page_type: 'legal'
+  },
+
+  '/disclaimer': {
+    page_type: 'legal'
+  }
+});
+
+
+function getPublicPageMeta(pathname) {
+  if (PUBLIC_PAGE_META[pathname]) {
+    return PUBLIC_PAGE_META[pathname];
+  }
+
+  if (pathname.startsWith('/products/')) {
+    return {
+      page_type: 'product_detail'
+    };
+  }
+
+  return null;
+}
+
+
+function getCommercialLandingMeta(pathname) {
+  const pageMeta =
+    getPublicPageMeta(pathname);
+
+  if (
+    !pageMeta ||
+    pageMeta.page_type !== 'commercial_landing'
+  ) {
+    return null;
+  }
+
+  return pageMeta;
+}
+
+
+/* =========================================================
+   ROUTE ACCESS HELPERS
+========================================================= */
 
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
 
   if (loading) {
     return (
@@ -113,7 +246,12 @@ function ProtectedRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   return children;
@@ -121,15 +259,40 @@ function ProtectedRoute({ children }) {
 
 
 function isAdminUser(user) {
-  if (!user) return false;
-  const role = (user.role || '').toUpperCase();
-  const position = (user.position || '').toLowerCase();
-  const email = (user.email || '').toLowerCase();
+  if (!user) {
+    return false;
+  }
+
+  const role =
+    String(
+      user.role || ''
+    ).toUpperCase();
+
+  const department =
+    String(
+      user.department || ''
+    ).toUpperCase();
+
+  const position =
+    String(
+      user.position || ''
+    ).toLowerCase();
+
+  const email =
+    String(
+      user.email || ''
+    ).toLowerCase();
 
   return (
-    ['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) ||
-    user?.department === 'ADMIN' ||
-    user?.department === 'MANAGEMENT' ||
+    [
+      'ADMIN',
+      'FOUNDER',
+      'CEO',
+      'SUPER_ADMIN',
+      'CO_FOUNDER'
+    ].includes(role) ||
+    department === 'ADMIN' ||
+    department === 'MANAGEMENT' ||
     position.includes('admin') ||
     position.includes('founder') ||
     position.includes('ceo') ||
@@ -142,8 +305,60 @@ function isAdminUser(user) {
 }
 
 
-function AdminRoute({ children }) {
-  const { user, loading } = useAuth();
+function isControlledCampaignUser(user) {
+  if (!user) {
+    return false;
+  }
+
+  const role =
+    String(
+      user?.role || ''
+    )
+      .trim()
+      .toUpperCase();
+
+  const department =
+    String(
+      user?.department || ''
+    )
+      .trim()
+      .toUpperCase();
+
+  const position =
+    String(
+      user?.position || ''
+    )
+      .trim()
+      .toUpperCase();
+
+  const isManagement =
+    role === 'ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'SUPER_ADMIN' ||
+    role.includes('FOUNDER') ||
+    department === 'ADMIN' ||
+    department === 'MANAGEMENT' ||
+    position.includes('ADMIN') ||
+    position.includes('FOUNDER') ||
+    position.includes('CEO') ||
+    position.includes('DIRECTOR') ||
+    position.includes('OWNER');
+
+  return (
+    isManagement ||
+    department === 'MARKETING' ||
+    department === 'OPERATIONS' ||
+    department === 'IT'
+  );
+}
+
+
+function ManagementRoute({ children }) {
+  const {
+    user,
+    loading
+  } = useAuth();
 
   if (loading) {
     return (
@@ -153,19 +368,76 @@ function AdminRoute({ children }) {
     );
   }
 
-  if (!user || !isAdminUser(user)) {
-    return <Navigate to="/crm/dashboard" />;
+  if (
+    !user ||
+    !isAdminUser(user)
+  ) {
+    return (
+      <Navigate
+        to="/crm/dashboard"
+        replace
+      />
+    );
   }
 
   return children;
 }
 
+
+function AdminRoute({ children }) {
+  const {
+    user,
+    loading
+  } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (
+    !user ||
+    !isAdminUser(user)
+  ) {
+    return (
+      <Navigate
+        to="/crm/dashboard"
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+
 function isCEOUser(user) {
-  if (!user) return false;
-  const role = (user.role || '').toUpperCase();
-  const position = (user.position || '').toLowerCase();
-  const email = (user.email || '').toLowerCase();
-  const empId = (user.employeeId || '').toUpperCase();
+  if (!user) {
+    return false;
+  }
+
+  const role =
+    String(
+      user.role || ''
+    ).toUpperCase();
+
+  const position =
+    String(
+      user.position || ''
+    ).toLowerCase();
+
+  const email =
+    String(
+      user.email || ''
+    ).toLowerCase();
+
+  const empId =
+    String(
+      user.employeeId || ''
+    ).toUpperCase();
 
   return (
     role === 'CEO' ||
@@ -176,15 +448,42 @@ function isCEOUser(user) {
   );
 }
 
-function isFounderUser(user) {
-  if (!user) return false;
-  if (isCEOUser(user)) return false;
 
-  const role = (user.role || '').toUpperCase();
-  const position = (user.position || '').toLowerCase();
-  const email = (user.email || '').toLowerCase();
-  const empId = (user.employeeId || '').toUpperCase();
-  const name = (user.name || user.fullName || '').toLowerCase();
+function isFounderUser(user) {
+  if (!user) {
+    return false;
+  }
+
+  if (isCEOUser(user)) {
+    return false;
+  }
+
+  const role =
+    String(
+      user.role || ''
+    ).toUpperCase();
+
+  const position =
+    String(
+      user.position || ''
+    ).toLowerCase();
+
+  const email =
+    String(
+      user.email || ''
+    ).toLowerCase();
+
+  const empId =
+    String(
+      user.employeeId || ''
+    ).toUpperCase();
+
+  const name =
+    String(
+      user.name ||
+      user.fullName ||
+      ''
+    ).toLowerCase();
 
   return (
     role === 'FOUNDER' ||
@@ -196,8 +495,12 @@ function isFounderUser(user) {
   );
 }
 
+
 function FounderRoute({ children }) {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
 
   if (loading) {
     return (
@@ -207,15 +510,27 @@ function FounderRoute({ children }) {
     );
   }
 
-  if (!user || !isFounderUser(user)) {
-    return <Navigate to="/crm/dashboard" replace />;
+  if (
+    !user ||
+    !isFounderUser(user)
+  ) {
+    return (
+      <Navigate
+        to="/crm/dashboard"
+        replace
+      />
+    );
   }
 
   return children;
 }
+
 
 function CEORoute({ children }) {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
 
   if (loading) {
     return (
@@ -225,16 +540,33 @@ function CEORoute({ children }) {
     );
   }
 
-  if (!user || (!isCEOUser(user) && !isFounderUser(user))) {
-    return <Navigate to="/crm/dashboard" replace />;
+  if (
+    !user ||
+    (
+      !isCEOUser(user) &&
+      !isFounderUser(user)
+    )
+  ) {
+    return (
+      <Navigate
+        to="/crm/dashboard"
+        replace
+      />
+    );
   }
 
   return children;
 }
 
 
-function RoleProtectedRoute({ children, allowedRoles }) {
-  const { user, loading } = useAuth();
+function RoleProtectedRoute({
+  children,
+  allowedRoles
+}) {
+  const {
+    user,
+    loading
+  } = useAuth();
 
   if (loading) {
     return (
@@ -244,8 +576,18 @@ function RoleProtectedRoute({ children, allowedRoles }) {
     );
   }
 
-  if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/crm/dashboard" />;
+  if (
+    !user ||
+    !allowedRoles.includes(
+      user.role
+    )
+  ) {
+    return (
+      <Navigate
+        to="/crm/dashboard"
+        replace
+      />
+    );
   }
 
   return children;
@@ -253,7 +595,10 @@ function RoleProtectedRoute({ children, allowedRoles }) {
 
 
 function HRRedirectGate() {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
 
   if (loading) {
     return (
@@ -264,38 +609,152 @@ function HRRedirectGate() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
-  if (['ADMIN', 'MANAGER', 'HR_MANAGER'].includes(user.role)) {
-    return <Navigate to="/crm/hr/manager" replace />;
-  } else if (['HR_EXECUTIVE', 'HR'].includes(user.role)) {
-    return <Navigate to="/crm/hr/executive" replace />;
-  } else {
-    return <Navigate to="/crm/dashboard" replace />;
+  if (
+    [
+      'ADMIN',
+      'MANAGER',
+      'HR_MANAGER'
+    ].includes(
+      user.role
+    )
+  ) {
+    return (
+      <Navigate
+        to="/crm/hr/manager"
+        replace
+      />
+    );
   }
+
+  if (
+    [
+      'HR_EXECUTIVE',
+      'HR'
+    ].includes(
+      user.role
+    )
+  ) {
+    return (
+      <Navigate
+        to="/crm/hr/executive"
+        replace
+      />
+    );
+  }
+
+  return (
+    <Navigate
+      to="/crm/dashboard"
+      replace
+    />
+  );
 }
 
 
+/* =========================================================
+   APP LAYOUT
+========================================================= */
+
 function AppLayout() {
-  const { user, loading } = useAuth();
-  const location = useLocation();
+  const {
+    user,
+    loading
+  } = useAuth();
 
-  useEffect(() => {
-    pushDataLayerEvent('virtual_page_view', {
-      page_path: location.pathname + location.search,
-      page_location: window.location.href,
-      page_title: document.title
-    });
-  }, [location.pathname, location.search]);
+  const location =
+    useLocation();
 
 
-  useEffect(() => {
-    initActivityTracking();
-  }, []);
+  useEffect(
+    () => {
+      if (loading) {
+        return undefined;
+      }
+
+      const pageMeta =
+        getPublicPageMeta(
+          location.pathname
+        );
+
+      /*
+       * Do not send CRM, employee/auth, transport or other internal
+       * application routes to external acquisition analytics.
+       */
+      if (!pageMeta) {
+        return undefined;
+      }
+
+      /*
+       * Let the route render first so page-level SEO/meta hooks have an
+       * opportunity to update document.title before we capture it.
+       */
+      const frameId =
+        window.requestAnimationFrame(
+          () => {
+            const basePayload = {
+              page_path:
+                location.pathname,
+
+              page_title:
+                document.title,
+
+              page_type:
+                pageMeta.page_type
+            };
+
+            pushDataLayerEvent(
+              'virtual_page_view',
+              basePayload
+            );
+
+            const landingMeta =
+              getCommercialLandingMeta(
+                location.pathname
+              );
+
+            if (landingMeta) {
+              pushDprEvent(
+                DPR_EVENTS.LANDING_PAGE_VIEWED,
+                {
+                  ...basePayload,
+
+                  vertical:
+                    landingMeta.vertical,
+
+                  landing_page_type:
+                    landingMeta.landing_page_type
+                }
+              );
+            }
+          }
+        );
+
+      return () => {
+        window.cancelAnimationFrame(
+          frameId
+        );
+      };
+    },
+    [
+      loading,
+      location.pathname
+    ]
+  );
 
 
-  const isCRM = location.pathname.startsWith('/crm');
+  const isCRM =
+    location.pathname.startsWith(
+      '/crm'
+    );
+
 
   const isAuth = [
     '/login',
@@ -310,7 +769,9 @@ function AppLayout() {
     '/device-pending',
     '/verify-email',
     '/forgot-password'
-  ].includes(location.pathname);
+  ].includes(
+    location.pathname
+  );
 
 
   if (loading) {
@@ -332,67 +793,92 @@ function AppLayout() {
         <ScrollToTop />
 
         <Routes>
-
           <Route
             path="/login"
-            element={<ClientLogin />}
+            element={
+              <ClientLogin />
+            }
           />
 
           <Route
             path="/client-login"
-            element={<Navigate to="/login" replace />}
+            element={
+              <Navigate
+                to="/login"
+                replace
+              />
+            }
           />
 
           <Route
             path="/employee-login"
-            element={<EmployeeLogin />}
+            element={
+              <EmployeeLogin />
+            }
           />
 
           <Route
             path="/admin-login"
-            element={<AdminLogin />}
+            element={
+              <AdminLogin />
+            }
           />
 
           <Route
             path="/trial-login"
-            element={<TrialLogin />}
+            element={
+              <TrialLogin />
+            }
           />
 
           <Route
             path="/trial-signup"
-            element={<TrialSignUp />}
+            element={
+              <TrialSignUp />
+            }
           />
 
           <Route
             path="/signup"
-            element={<Signup />}
+            element={
+              <Signup />
+            }
           />
 
           <Route
             path="/client-signup"
-            element={<ClientSignup />}
+            element={
+              <ClientSignup />
+            }
           />
 
           <Route
             path="/employee-signup"
-            element={<EmployeeSignup />}
+            element={
+              <EmployeeSignup />
+            }
           />
 
           <Route
             path="/device-pending"
-            element={<DevicePending />}
+            element={
+              <DevicePending />
+            }
           />
 
           <Route
             path="/verify-email"
-            element={<VerifyEmail />}
+            element={
+              <VerifyEmail />
+            }
           />
 
           <Route
             path="/forgot-password"
-            element={<ForgotPassword />}
+            element={
+              <ForgotPassword />
+            }
           />
-
         </Routes>
       </>
     );
@@ -403,53 +889,71 @@ function AppLayout() {
      CRM ROUTES
   ========================= */
 
-  if (isCRM && user) {
-
+  if (
+    isCRM &&
+    user
+  ) {
     const isClient =
       user.employeeId &&
-      user.employeeId.startsWith('CL_');
+      user.employeeId.startsWith(
+        'CL_'
+      );
 
     if (isClient) {
-      return <Navigate to="/" replace />;
+      return (
+        <Navigate
+          to="/"
+          replace
+        />
+      );
     }
 
     return (
       <VoiceAssistantProvider>
-
         <PortalLayout>
-
           <ScrollToTop />
 
           <Routes>
-
             <Route
               path="/crm/dashboard"
-              element={<Dashboard />}
+              element={
+                <Dashboard />
+              }
             />
 
             <Route
               path="/crm/notifications"
-              element={<Notifications />}
+              element={
+                <Notifications />
+              }
             />
 
             <Route
               path="/crm/attendance"
-              element={<Attendance />}
+              element={
+                <Attendance />
+              }
             />
 
             <Route
               path="/crm/leave"
-              element={<Leave />}
+              element={
+                <Leave />
+              }
             />
 
             <Route
               path="/crm/profile"
-              element={<EmployeeProfile />}
+              element={
+                <EmployeeProfile />
+              }
             />
 
             <Route
               path="/crm/tickets"
-              element={<Tickets />}
+              element={
+                <Tickets />
+              }
             />
 
             <Route
@@ -479,10 +983,11 @@ function AppLayout() {
               }
             />
 
-
             <Route
               path="/crm/sales"
-              element={<SalesPerformance />}
+              element={
+                <SalesPerformance />
+              }
             />
 
             <Route
@@ -533,12 +1038,16 @@ function AppLayout() {
 
             <Route
               path="/crm/distributors/:division"
-              element={<Distributors />}
+              element={
+                <Distributors />
+              }
             />
 
             <Route
               path="/crm/coal-orders"
-              element={<CoalOrders />}
+              element={
+                <CoalOrders />
+              }
             />
 
             <Route
@@ -558,7 +1067,9 @@ function AppLayout() {
 
             <Route
               path="/crm/visitors/:division"
-              element={<Visitors />}
+              element={
+                <Visitors />
+              }
             />
 
             <Route
@@ -570,16 +1081,21 @@ function AppLayout() {
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
                     'HR'
-                  ].includes(user?.role) ||
-                  user?.department === 'HR'
-                ) ? (
-                  <CareerLeads />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  ) ||
+                  user?.department ===
+                    'HR'
                 )
+                  ? (
+                      <CareerLeads />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -596,16 +1112,21 @@ function AppLayout() {
                     'SALES_MANAGER',
                     'SALES_EXECUTIVE',
                     'SALES_TRIAL'
-                  ].includes(user?.role) ||
-                  user?.leadPermission === true
-                ) ? (
-                  <Leads />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  ) ||
+                  user?.leadPermission ===
+                    true
                 )
+                  ? (
+                      <Leads />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -622,17 +1143,23 @@ function AppLayout() {
                     'SALES_MANAGER',
                     'SALES_EXECUTIVE',
                     'SALES_TRIAL'
-                  ].includes(user?.role) ||
-                  user?.leadPermission === true ||
-                  user?.taskPermission === true
-                ) ? (
-                  <LeadDetail />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  ) ||
+                  user?.leadPermission ===
+                    true ||
+                  user?.taskPermission ===
+                    true
                 )
+                  ? (
+                      <LeadDetail />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -647,26 +1174,35 @@ function AppLayout() {
                     'ADMIN',
                     'FOUNDER',
                     'CO_FOUNDER'
-                  ].includes(user?.role)
-                ) ? (
-                  <Quotations />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  )
                 )
+                  ? (
+                      <Quotations />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
+              }
+            />
+
+
+            <Route
+              path="/crm/dispatches"
+              element={
+                <Dispatches />
               }
             />
 
             <Route
-              path="/crm/dispatches"
-              element={<Dispatches />}
-            />
-
-            <Route
               path="/crm/payments"
-              element={<Payments />}
+              element={
+                <Payments />
+              }
             />
 
             <Route
@@ -683,18 +1219,25 @@ function AppLayout() {
                     'ADMIN',
                     'FOUNDER',
                     'CO_FOUNDER'
-                  ].includes(user?.role) ||
-                  user?.department === 'HR' ||
-                  user?.documentPermission === true ||
-                  user?.permissions?.document === true
-                ) ? (
-                  <Documents />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  ) ||
+                  user?.department ===
+                    'HR' ||
+                  user?.documentPermission ===
+                    true ||
+                  user?.permissions?.document ===
+                    true
                 )
+                  ? (
+                      <Documents />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -709,7 +1252,9 @@ function AppLayout() {
 
             <Route
               path="/crm/products"
-              element={<ProductUpload />}
+              element={
+                <ProductUpload />
+              }
             />
 
             <Route
@@ -729,19 +1274,27 @@ function AppLayout() {
                     'HR_MANAGER',
                     'TRANSPORT',
                     'FINANCE'
-                  ].includes(user?.role) ||
-                  !!user?.department ||
-                  user?.taskPermission === true ||
-                  user?.permissions?.task === true ||
-                  !!user
-                ) ? (
-                  <Tasks />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  ) ||
+                  Boolean(
+                    user?.department
+                  ) ||
+                  user?.taskPermission ===
+                    true ||
+                  user?.permissions?.task ===
+                    true ||
+                  Boolean(user)
                 )
+                  ? (
+                      <Tasks />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -756,15 +1309,19 @@ function AppLayout() {
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
                     'HR'
-                  ].includes(user?.role)
-                ) ? (
-                  <Employees />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  )
                 )
+                  ? (
+                      <Employees />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -779,21 +1336,26 @@ function AppLayout() {
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
                     'HR'
-                  ].includes(user?.role) ||
+                  ].includes(
+                    user?.role
+                  ) ||
                   (
                     user &&
                     window.location.pathname.endsWith(
-                      '/' + user._id
+                      '/' +
+                      user._id
                     )
                   )
-                ) ? (
-                  <EmployeeProfile />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
                 )
+                  ? (
+                      <EmployeeProfile />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -845,9 +1407,9 @@ function AppLayout() {
             <Route
               path="/crm/founder"
               element={
-                <FounderRoute>
+                <ManagementRoute>
                   <FounderDashboard />
-                </FounderRoute>
+                </ManagementRoute>
               }
             />
 
@@ -867,15 +1429,19 @@ function AppLayout() {
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
                     'HR'
-                  ].includes(user?.role)
-                ) ? (
-                  <Applications />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  )
                 )
+                  ? (
+                      <Applications />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
@@ -894,22 +1460,29 @@ function AppLayout() {
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
                     'HR'
-                  ].includes(user?.role) ||
-                  user?.jobPermission === true
-                ) ? (
-                  <Jobs />
-                ) : (
-                  <Navigate
-                    to="/crm/dashboard"
-                    replace
-                  />
+                  ].includes(
+                    user?.role
+                  ) ||
+                  user?.jobPermission ===
+                    true
                 )
+                  ? (
+                      <Jobs />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
               }
             />
 
             <Route
               path="/crm/hr"
-              element={<HRRedirectGate />}
+              element={
+                <HRRedirectGate />
+              }
             />
 
             <Route
@@ -945,6 +1518,7 @@ function AppLayout() {
             />
 
             {/* Finance Routes */}
+
             <Route
               path="/crm/finance/manager"
               element={
@@ -963,16 +1537,88 @@ function AppLayout() {
               }
             />
 
-            <Route path="/crm/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
-
             {/* Transport Module Routes */}
-            <Route path="/crm/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
-            <Route path="/transport/manager" element={<ProtectedRoute><TransportManager /></ProtectedRoute>} />
-            <Route path="/crm/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
-            <Route path="/transport/executive" element={<ProtectedRoute><TransportExecutive /></ProtectedRoute>} />
-            <Route path="/crm/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-            <Route path="/transport/driver" element={<ProtectedRoute><DriverMobileView /></ProtectedRoute>} />
-            <Route path="/founder" element={<AdminRoute><FounderDashboard /></AdminRoute>} />
+
+            <Route
+              path="/crm/transport/manager"
+              element={
+                <ProtectedRoute>
+                  <TransportManager />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/transport/manager"
+              element={
+                <ProtectedRoute>
+                  <TransportManager />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/transport/executive"
+              element={
+                <ProtectedRoute>
+                  <TransportExecutive />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/transport/executive"
+              element={
+                <ProtectedRoute>
+                  <TransportExecutive />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/transport/driver"
+              element={
+                <ProtectedRoute>
+                  <DriverMobileView />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/transport/driver"
+              element={
+                <ProtectedRoute>
+                  <DriverMobileView />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/founder"
+              element={
+                <ManagementRoute>
+                  <FounderDashboard />
+                </ManagementRoute>
+              }
+            />
+
+            <Route
+              path="/crm/controlled-campaigns"
+              element={
+                isControlledCampaignUser(
+                  user
+                )
+                  ? (
+                      <ControlledCampaigns />
+                    )
+                  : (
+                      <Navigate
+                        to="/crm/dashboard"
+                        replace
+                      />
+                    )
+              }
+            />
 
             <Route
               path="*"
@@ -983,70 +1629,273 @@ function AppLayout() {
                 />
               }
             />
-
           </Routes>
-
         </PortalLayout>
-
       </VoiceAssistantProvider>
     );
   }
+
 
   /* =========================
      CRM WITHOUT LOGIN
   ========================= */
 
-  if (isCRM && !user) {
-    return <Navigate to="/login" replace />;
+  if (
+    isCRM &&
+    !user
+  ) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
+
 
   /* =========================
      PUBLIC WEBSITE ROUTES
   ========================= */
 
-  const isITOAds = location.pathname === '/ito-ads';
-  const isOnion = location.pathname === '/nashik-onion';
+  const isITOAds =
+    location.pathname ===
+    '/ito-ads';
+
+  const isOnion =
+    location.pathname ===
+    '/nashik-onion';
+
+  const hidePublicChrome =
+    isITOAds ||
+    isOnion ||
+    isPricingRoute(
+      location.pathname
+    );
+
 
   return (
     <div>
       <ScrollToTop />
-      {!isITOAds && !isOnion && !isPricingRoute(location.pathname) && <Navbar />}
+
+      {!hidePublicChrome && (
+        <Navbar />
+      )}
+
       <main>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/careers" element={<Careers />} />
-          <Route path="/quote-request" element={<QuoteRequest />} />
-          <Route path="/our-services" element={<OurServices />} />
-          <Route path="/coal" element={<Coal />} />
-          <Route path="/prakriti" element={<Navigate to="/prakriti/tea" replace />} />
-          <Route path="/prakriti/tea" element={<Prakriti />} />
-          <Route path="/prakriti/rice" element={<Rice />} />
-          <Route path="/stone" element={<Stone />} />
-<Route path="/stone/pricing" element={<StonePricing />} />
-          <Route path="/rice/pricing" element={<RicePricing />} />
-          <Route path="/tea/pricing" element={<TeaPricing />} />
-          <Route path="/ito-ads" element={<ITOAds />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/terms-and-conditions" element={<Terms />} />
-          <Route path="/fraud-payment-policy" element={<FraudPaymentPolicy />} />
-          <Route path="/disclaimer" element={<Disclaimer />} />
-          <Route path="/nashik-onion" element={<Onion />} />
+          <Route
+            path="/"
+            element={
+              <Home />
+            }
+          />
+
+          <Route
+            path="/products"
+            element={
+              <Products />
+            }
+          />
+
+          <Route
+            path="/products/:id"
+            element={
+              <ProductDetail />
+            }
+          />
+
+          <Route
+            path="/about"
+            element={
+              <About />
+            }
+          />
+
+          <Route
+            path="/contact"
+            element={
+              <Contact />
+            }
+          />
+
+          <Route
+            path="/careers"
+            element={
+              <Careers />
+            }
+          />
+
+          <Route
+            path="/quote-request"
+            element={
+              <QuoteRequest />
+            }
+          />
+
+
+          <Route
+            path="/our-services"
+            element={
+              <OurServices />
+            }
+          />
+
+          <Route
+            path="/coal"
+            element={
+              <Coal />
+            }
+          />
+
+          <Route
+            path="/prakriti"
+            element={
+              <Navigate
+                to="/prakriti/tea"
+                replace
+              />
+            }
+          />
+
+          <Route
+            path="/prakriti/tea"
+            element={
+              <Prakriti />
+            }
+          />
+
+          <Route
+            path="/prakriti/rice"
+            element={
+              <Rice />
+            }
+          />
+
+          <Route
+            path="/stone"
+            element={
+              <Stone />
+            }
+          />
+
+          <Route
+            path="/stone/pricing"
+            element={
+              <StonePricing />
+            }
+          />
+
+          <Route
+            path="/rice/pricing"
+            element={
+              <RicePricing />
+            }
+          />
+
+          <Route
+            path="/tea/pricing"
+            element={
+              <TeaPricing />
+            }
+          />
+
+          <Route
+            path="/ito-ads"
+            element={
+              <Suspense
+                fallback={
+                  <div className="flex min-h-[50vh] items-center justify-center">
+                    <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500"></div>
+                  </div>
+                }
+              >
+                <ITOAds />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="/privacy-policy"
+            element={
+              <PrivacyPolicy />
+            }
+          />
+
+          <Route
+            path="/terms"
+            element={
+              <Terms />
+            }
+          />
+
+          <Route
+            path="/terms-and-conditions"
+            element={
+              <Terms />
+            }
+          />
+
+          <Route
+            path="/fraud-payment-policy"
+            element={
+              <FraudPaymentPolicy />
+            }
+          />
+
+          <Route
+            path="/disclaimer"
+            element={
+              <Disclaimer />
+            }
+          />
+
+          <Route
+            path="/nashik-onion"
+            element={
+              <Onion />
+            }
+          />
         </Routes>
       </main>
-      {!isITOAds && !isOnion && !isPricingRoute(location.pathname) && <Footer />}
 
-      {!isITOAds && !isOnion && <ChatWidget />}
+
+      {isITOAds && (
+        <CommercialRequirement
+          key={
+            location.pathname
+          }
+          category="ITO_ADS"
+        />
+      )}
+
+
+      {!hidePublicChrome && (
+        <Footer />
+      )}
+
+
+      {!isITOAds &&
+        !isOnion && (
+          <ChatWidget />
+        )}
+
+
+      {/*
+        Master DPR v4.0 — Phase 1 consent management.
+
+        This is intentionally rendered only on the public website.
+        CRM/auth/employee routes are excluded from acquisition analytics,
+        so they do not need the customer-facing tracking banner.
+      */}
+      <TrackingConsentBanner />
     </div>
   );
 }
 
 
-import SecurityGuard from './components/security/SecurityGuard';
+/* =========================================================
+   APP ROOT
+========================================================= */
 
 function App() {
   return (
@@ -1055,26 +1904,49 @@ function App() {
         <Toaster
           position="top-right"
           toastOptions={{
-            duration: 4000,
+            duration:
+              4000,
+
             style: {
-              background: '#23262C',
-              color: '#ECECEC',
-              fontSize: '11px',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              border: '1px solid rgba(197, 203, 211, 0.15)',
-              borderRadius: '2px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+              background:
+                '#23262C',
+
+              color:
+                '#ECECEC',
+
+              fontSize:
+                '11px',
+
+              fontFamily:
+                'Inter, system-ui, sans-serif',
+
+              border:
+                '1px solid rgba(197, 203, 211, 0.15)',
+
+              borderRadius:
+                '2px',
+
+              boxShadow:
+                '0 4px 12px rgba(0, 0, 0, 0.2)'
             },
+
             success: {
               iconTheme: {
-                primary: '#56A587',
-                secondary: '#23262C'
+                primary:
+                  '#56A587',
+
+                secondary:
+                  '#23262C'
               }
             },
+
             error: {
               iconTheme: {
-                primary: '#C96A57',
-                secondary: '#23262C'
+                primary:
+                  '#C96A57',
+
+                secondary:
+                  '#23262C'
               }
             }
           }}
@@ -1083,11 +1955,10 @@ function App() {
         <SecurityGuard>
           <AppLayout />
         </SecurityGuard>
-
       </AuthProvider>
-
     </Router>
   );
 }
+
 
 export default App;

@@ -152,21 +152,21 @@ export default function PortalLayout({ children }) {
 
   return (
     <div
-      className={`crm-portal min-h-screen antialiased ${theme === 'light' ? 'light-theme' : ''}`}
+      className={`crm-portal min-h-screen antialiased overflow-x-hidden ${theme === 'light' ? 'light-theme' : ''}`}
       style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)', fontFamily: 'var(--crm-font-body)' }}
     >
 
       {/* MOBILE TOP BAR */}
       <div
-        className="md:hidden backdrop-blur-md fixed top-0 left-0 right-0 z-[52] border-b"
+        className="md:hidden fixed top-0 left-0 right-0 z-[52] border-b shadow-sm backdrop-blur-xl"
         style={{ background: 'color-mix(in srgb, var(--crm-nav-bg) 92%, transparent)', borderColor: 'var(--crm-line)' }}
       >
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex min-h-[60px] items-center justify-between gap-2 px-3 sm:px-4 py-2.5">
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
-            className="inline-flex items-center justify-center rounded-sm p-2 transition duration-200 focus:outline-none"
-            style={{ color: 'var(--crm-ink)' }}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition duration-200 focus:outline-none"
+            style={{ color: 'var(--crm-ink)', borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
             aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
           >
             <AnimatePresence mode="wait" initial={false}>
@@ -183,12 +183,12 @@ export default function PortalLayout({ children }) {
             </AnimatePresence>
           </button>
           <div
-            className="text-sm font-medium uppercase tracking-wider"
+            className="min-w-0 flex-1 truncate text-center text-[12px] font-semibold uppercase tracking-[0.14em]"
             style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}
           >
             India Trade Center
           </div>
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
             {user && (
               <div className="flex items-center gap-1.5 mr-1 font-mono">
                 {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
@@ -243,7 +243,8 @@ export default function PortalLayout({ children }) {
             <button
               type="button"
               onClick={toggleTheme}
-              className="text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer p-1"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer"
+              style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
               aria-label="Toggle Theme"
             >
               {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
@@ -254,11 +255,11 @@ export default function PortalLayout({ children }) {
         </div>
       </div>
 
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen md:h-screen">
 
         {/* PORTAL SIDEBAR BRAND CONTEXT CONTAINER */}
         <div
-          className={`fixed inset-y-0 left-0 z-[60] w-64 sm:w-72 transform border-r transition-all duration-300 ease-in-out shadow-2xl md:static md:translate-x-0 md:shadow-none ${
+          className={`fixed inset-y-0 left-0 z-[60] w-64 sm:w-72 transform border-r transition-all duration-300 ease-in-out shadow-2xl md:sticky md:top-0 md:h-screen md:flex-shrink-0 md:translate-x-0 md:shadow-none ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
           style={{ borderColor: 'var(--crm-line)' }}
@@ -285,15 +286,26 @@ export default function PortalLayout({ children }) {
         </AnimatePresence>
 
         {/* Core Main Viewport Workspace Terminal Container */}
-        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden" style={{ background: 'var(--crm-bg)' }}>
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden md:h-screen" style={{ background: 'var(--crm-bg)' }}>
           {/* Buffer spacer block to balance mobile fixed top bar overlay */}
-          <div className="md:hidden h-[57px]" />
+          <div className="md:hidden h-[60px] shrink-0" />
 
           {/* Desktop utility bar */}
           <div
-            className="hidden md:flex items-center justify-end gap-3 px-8 py-3 border-b"
-            style={{ borderColor: 'var(--crm-line)' }}
+            className="hidden md:flex min-h-[56px] shrink-0 items-center justify-between gap-4 border-b px-5 lg:px-8 py-2.5 backdrop-blur-xl"
+            style={{ borderColor: 'var(--crm-line)', background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)' }}
           >
+            <div className="min-w-0">
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>
+                India Trade Overseas
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
+                <span className="font-semibold" style={{ color: 'var(--crm-heading)' }}>CRM Workspace</span>
+                {user && <span className="hidden lg:inline">· {user.department || user.role || 'Authenticated user'}</span>}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-3">
             {user && (
               <div className="flex items-center gap-2 mr-4 font-mono">
                 {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
@@ -374,10 +386,11 @@ export default function PortalLayout({ children }) {
             </button>
             <VoiceStatusPill />
             <CommandPalette />
+            </div>
           </div>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:p-8 pt-6 md:pt-8 min-w-0">
-            <div className="max-w-7xl mx-auto min-w-0">
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-5 sm:py-6 md:px-6 md:py-7 lg:px-8 scroll-smooth">
+            <div className="mx-auto w-full max-w-[1800px] min-w-0">
               {children}
             </div>
           </main>

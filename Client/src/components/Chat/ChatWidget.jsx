@@ -5,6 +5,7 @@ import { chatApi } from '../../api/chat';
 import { leadsApi } from '../../api/leads';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { pushDataLayerEvent } from '../../utils/analytics';
 
 // -----------------------------------------------------------------------------
 // Guided lead-collection steps (bot asks these one-by-one instead of hardcoding).
@@ -148,10 +149,12 @@ export default function ChatWidget() {
         prevMsgCountRef.current = 0;
         toast.success('Chat session started');
 
-        // GA4 tracking — chat started
-        if (typeof window !== 'undefined' && window.gtag) {
-          window.gtag('event', 'chat_started', { method: 'chat_widget' });
-        }
+        // Master DPR Phase 1: route diagnostic tracking through the
+        // single GTM/dataLayer abstraction instead of calling gtag directly.
+        pushDataLayerEvent('chat_started', {
+          method: 'chat_widget',
+          channel: 'website_chat'
+        });
       }
     } catch (error) {
       console.error('Error starting chat session:', error);
@@ -274,10 +277,16 @@ export default function ChatWidget() {
       });
 
       if (response.success) {
-        // GA4 tracking — chat lead converted to CRM
-        if (typeof window !== 'undefined' && window.gtag) {
-          window.gtag('event', 'chat_lead', { method: 'chat_widget' });
-        }
+        // The API only returns success after the current backend create flow
+        // completes. Keep this as a diagnostic event during Phase 1. The
+        // canonical DPR lead_created event will be wired to the hardened,
+        // idempotent persistence/event ledger in the backend tracking step.
+        pushDataLayerEvent('chat_lead_api_success', {
+          method: 'chat_widget',
+          channel: 'website_chat',
+          lead_source: 'AI_AGENT',
+          product_category: finalData.productCategory
+        });
 
         toast.success('CRM Lead generated successfully from this chat!', {
           icon: '🚀',

@@ -23,7 +23,7 @@ async function recordAudit({
     });
     return log;
   } catch (error) {
-    console.error('Failed to create audit log:', error.message);
+    console.error('Failed to create audit log:', error.code || error.name);
   }
 }
 

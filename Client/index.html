@@ -137,12 +137,159 @@
   </script>
 
   <!-- =========================================================
-       GOOGLE TAG MANAGER
+       MASTER DPR v4.0 — CONSENT MODE BOOTSTRAP
+
+       This runs BEFORE Google Tag Manager so analytics and
+       advertising storage are denied by default until the user
+       grants consent.
+
+       If a previous consent choice exists in localStorage,
+       it is restored before GTM starts.
+
+       Storage key must stay synchronized with:
+       Client/src/utils/analytics.js
   ========================================================== -->
 
   <script>
-    (function(w,d,s,l,i){
+    (function () {
+      window.dataLayer = window.dataLayer || [];
+
+      /*
+       * Define gtag before GTM loads.
+       *
+       * gtag commands are pushed into dataLayer and will be
+       * processed when the Google tag / GTM becomes available.
+       */
+      window.gtag = window.gtag || function () {
+        window.dataLayer.push(arguments);
+      };
+
+      /*
+       * Privacy-safe default.
+       *
+       * Analytics and advertising storage remain denied until
+       * consent is explicitly granted.
+       *
+       * Functionality/security storage remains available because
+       * these are required for normal website operation and
+       * security rather than advertising profiling.
+       */
+      var defaultConsent = {
+        analytics_storage: 'denied',
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        functionality_storage: 'granted',
+        security_storage: 'granted',
+        wait_for_update: 500
+      };
+
+      window.gtag(
+        'consent',
+        'default',
+        defaultConsent
+      );
+
+      /*
+       * Reduce advertising-data exposure while consent
+       * architecture is being enforced.
+       */
+      window.gtag(
+        'set',
+        'ads_data_redaction',
+        true
+      );
+
+      /*
+       * Restore a previous user choice if one exists.
+       *
+       * analytics.js stores:
+       *
+       * {
+       *   analytics: true/false,
+       *   advertising: true/false,
+       *   updated_at: "..."
+       * }
+       */
+      try {
+        var rawConsent =
+          window.localStorage.getItem(
+            'ito_analytics_consent'
+          );
+
+        if (!rawConsent) {
+          return;
+        }
+
+        var savedConsent =
+          JSON.parse(rawConsent);
+
+        if (
+          !savedConsent ||
+          typeof savedConsent !== 'object'
+        ) {
+          return;
+        }
+
+        var analyticsGranted =
+          savedConsent.analytics === true;
+
+        var advertisingGranted =
+          savedConsent.advertising === true;
+
+        window.gtag(
+          'consent',
+          'update',
+          {
+            analytics_storage:
+              analyticsGranted
+                ? 'granted'
+                : 'denied',
+
+            ad_storage:
+              advertisingGranted
+                ? 'granted'
+                : 'denied',
+
+            ad_user_data:
+              advertisingGranted
+                ? 'granted'
+                : 'denied',
+
+            ad_personalization:
+              advertisingGranted
+                ? 'granted'
+                : 'denied'
+          }
+        );
+      } catch (error) {
+        /*
+         * Fail closed.
+         *
+         * If localStorage is unavailable or saved JSON is
+         * corrupted, analytics/advertising consent stays denied.
+         *
+         * Website rendering must never fail because of tracking.
+         */
+      }
+    })();
+  </script>
+
+  <!-- =========================================================
+       GOOGLE TAG MANAGER
+
+       IMPORTANT:
+       Existing container preserved exactly:
+       GTM-MZKBG5Z5
+  ========================================================== -->
+
+  <script>
+    window.__itoLoadGtm = function () {
+      if (window.__itoGtmLoaded) return;
+      window.__itoGtmLoaded = true;
+      (function(w,d,s,l,i){
       w[l]=w[l]||[];
+
       w[l].push({
         'gtm.start': new Date().getTime(),
         event:'gtm.js'
@@ -150,30 +297,38 @@
 
       var f=d.getElementsByTagName(s)[0],
           j=d.createElement(s),
-          dl=l!='dataLayer' ? '&l='+l : '';
+          dl=l!='dataLayer'
+            ? '&l='+l
+            : '';
 
       j.async=true;
-      j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+
+      j.src=
+        'https://www.googletagmanager.com/gtm.js?id='
+        +i
+        +dl;
 
       f.parentNode.insertBefore(j,f);
 
-    })(window,document,'script','dataLayer','GTM-MZKBG5Z5');
+    })(
+      window,
+      document,
+      'script',
+      'dataLayer',
+      'GTM-MZKBG5Z5'
+    );
+    };
+    try {
+      var savedConsent = JSON.parse(localStorage.getItem('ito_analytics_consent') || 'null');
+      if (savedConsent && (savedConsent.analytics === true || savedConsent.advertising === true)) window.__itoLoadGtm();
+    } catch (_) { /* Consent remains denied. */ }
   </script>
 
 </head>
 
 <body>
 
-  <!-- Google Tag Manager (noscript) -->
-  <noscript>
-    <iframe
-      src="https://www.googletagmanager.com/ns.html?id=GTM-MZKBG5Z5"
-      height="0"
-      width="0"
-      style="display:none;visibility:hidden">
-    </iframe>
-  </noscript>
-  <!-- End Google Tag Manager (noscript) -->
+  <!-- Tracking requires a consent-capable browser; no unconsented noscript tracker. -->
 
   <div id="root"></div>
 

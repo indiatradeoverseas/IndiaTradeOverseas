@@ -1,3 +1,4 @@
+import AcquisitionReport from '../../components/crm/AcquisitionReport';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +8,7 @@ import { leaveApi } from '../../api/leave';
 import { salesApi } from '../../api/sales';
 import { careersApi } from '../../api/careers';
 import { employeeSignupApi } from '../../api/employee-signup';
+import controlledCampaignApi from '../../api/controlledCampaigns';
 import {
   FiUsers, FiTrendingUp, FiCalendar, FiBriefcase, FiDollarSign, FiSearch,
   FiCheckCircle, FiXCircle, FiArrowRight, FiAlertCircle, FiTarget,
@@ -107,7 +109,33 @@ const CHART_COLORS = [
   '#ec4899'
 ];
 
-const fmtCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
+const fmtCurrency = (val, currency = 'INR') => {
+  if (
+    val === null ||
+    val === undefined ||
+    val === '' ||
+    Number.isNaN(Number(val))
+  ) {
+    return 'Unavailable';
+  }
+
+  const code = String(currency || '').trim().toUpperCase();
+
+  if (!code) {
+    return Number(val).toLocaleString('en-IN');
+  }
+
+  try {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 2
+    }).format(Number(val));
+  } catch {
+    return `${code} ${Number(val).toLocaleString('en-IN')}`;
+  }
+};
+
 const fmtNumber = (val) => Number(val || 0).toLocaleString('en-IN');
 
 export default function FounderDashboard() {
@@ -127,6 +155,7 @@ export default function FounderDashboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [pipelineData, setPipelineData] = useState([]);
   const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
+  const [controlledCampaignSnapshot, setControlledCampaignSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -162,9 +191,67 @@ export default function FounderDashboard() {
     role: 'EMPLOYEE', status: 'ACTIVE', salary: 0, joiningDate: new Date().toISOString().split('T')[0]
   });
 
+  const fetchControlledCampaignSnapshot = async () => {
+    try {
+      const listResponse = await controlledCampaignApi.list();
+      const listData = listResponse?.data ?? listResponse ?? {};
+      const rows = Array.isArray(listData?.campaigns)
+        ? listData.campaigns
+        : [];
+
+      if (rows.length === 0) {
+        setControlledCampaignSnapshot(null);
+        return;
+      }
+
+      const latest = rows[0];
+      const campaignId = latest?.campaign?._id;
+      let metrics = null;
+
+      if (campaignId) {
+        try {
+          const metricsResponse =
+            await controlledCampaignApi.getMetrics(campaignId);
+
+          metrics =
+            metricsResponse?.data ??
+            metricsResponse ??
+            null;
+        } catch (metricsError) {
+          console.warn(
+            'Controlled campaign metrics are not available yet:',
+            metricsError?.message || metricsError
+          );
+        }
+      }
+
+      setControlledCampaignSnapshot({
+        campaign: latest?.campaign || null,
+        readiness: latest?.readiness || null,
+        metrics
+      });
+    } catch (campaignError) {
+      console.warn(
+        'Controlled campaign snapshot could not be loaded:',
+        campaignError?.message || campaignError
+      );
+
+      setControlledCampaignSnapshot(null);
+    }
+  };
+
   useEffect(() => {
     fetchAll();
-  }, [dateRange, customStartDate, customEndDate]);
+  }, [
+    dateRange,
+    customStartDate,
+    customEndDate,
+    perfPeriod
+  ]);
+
+  useEffect(() => {
+    fetchControlledCampaignSnapshot();
+  }, []);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -345,13 +432,69 @@ export default function FounderDashboard() {
     return pipelineData.reduce((sum, item) => sum + (item.total || 0), 0);
   }, [pipelineData]);
 
-  const activeLeadsCount = summary?.activeLeads !== undefined ? summary.activeLeads : (summary?.totalLeads || 0);
-  const completedDeliveredCount = summary?.completedLeads !== undefined ? summary.completedLeads : (summary?.deliveredLeads || summary?.transport?.delivered || 0);
-  const paymentReceivedCount = summary?.revenue?.totalCollected !== undefined ? summary.revenue.totalCollected : (summary?.paidLeads || 0);
-  const quotationsSentCount = summary?.quotations?.sent !== undefined ? summary.quotations.sent : (summary?.quotations?.total || 1);
-  const ordersConfirmedCount = (summary?.ordersConfirmed !== undefined && summary?.ordersConfirmed > 0) 
-    ? summary.ordersConfirmed 
-    : Math.max(summary?.completedLeads || 0, summary?.transport?.delivered || 0);
+  const activeLeadsCount =
+    summary?.activeLeads !== undefined
+      ? summary.activeLeads
+      : (summary?.totalLeads || 0);
+
+  const completedDeliveredCount =
+    summary?.completedLeads !== undefined
+      ? summary.completedLeads
+      : (
+          summary?.deliveredLeads ||
+          summary?.transport?.delivered ||
+          0
+        );
+
+  const quotationsSentCount =
+    summary?.quotations?.sent !== undefined
+      ? summary.quotations.sent
+      : (summary?.quotations?.total || 0);
+
+  const ordersConfirmedCount =
+    (
+      summary?.ordersConfirmed !== undefined &&
+      summary?.ordersConfirmed > 0
+    )
+      ? summary.ordersConfirmed
+      : Math.max(
+          summary?.completedLeads || 0,
+          summary?.transport?.delivered || 0
+        );
+
+  const revenueByCurrency =
+    Array.isArray(summary?.revenue?.byCurrency)
+      ? summary.revenue.byCurrency
+      : [];
+
+  const revenueDisplay =
+    summary?.revenue?.totalCollected !== null &&
+    summary?.revenue?.totalCollected !== undefined &&
+    summary?.revenue?.currency
+      ? fmtCurrency(
+          summary.revenue.totalCollected,
+          summary.revenue.currency
+        )
+      : revenueByCurrency.length > 1
+        ? 'Mixed currencies'
+        : revenueByCurrency.length === 1
+          ? fmtCurrency(
+              revenueByCurrency[0]?.collected,
+              revenueByCurrency[0]?._id
+            )
+          : 'Unavailable';
+
+  const revenueSubtitle =
+    revenueByCurrency.length > 1
+      ? revenueByCurrency
+          .map((row) =>
+            fmtCurrency(
+              row?.collected,
+              row?._id
+            )
+          )
+          .join(' · ')
+      : 'Finance-verified revenue collected';
 
   // Total Conversion % = Orders Confirmed / Quotations Sent * 100
   const totalConversionPercent = useMemo(() => {
@@ -365,7 +508,10 @@ export default function FounderDashboard() {
     return summary?.conversionRate || 0;
   }, [ordersConfirmedCount, completedDeliveredCount, summary, quotationsSentCount, activeLeadsCount]);
 
-  const pendingPaymentsAmount = summary?.payments?.pendingOrdersValue || summary?.payments?.pendingValue || 0;
+  const pendingPaymentsAmount =
+    summary?.payments?.pendingOrdersValue ??
+    summary?.payments?.pendingValue ??
+    null;
   const presentTodayCount = summary?.presentToday ?? 0;
   const newLeadsCount = summary?.newLeads ?? summary?.pendingLeads ?? 0;
   const assignedLeadsCount = summary?.assignedLeads ?? 0;
@@ -378,10 +524,10 @@ export default function FounderDashboard() {
     { title: 'New Leads', value: fmtNumber(newLeadsCount), subtitle: 'Fresh pipeline entries', icon: FiPlus, color: '#0284c7' },
     { title: 'Assigned Leads', value: fmtNumber(assignedLeadsCount), subtitle: 'Delegated to sales staff', icon: FiUserPlus, color: '#a855f7' },
     { title: 'Completed & Delivered', value: fmtNumber(completedDeliveredCount), subtitle: 'Orders fulfilled', icon: FiCheckCircle, color: 'var(--crm-positive)' },
-    { title: 'Payment Received', value: fmtCurrency(paymentReceivedCount), subtitle: 'Revenue collected', icon: FiCreditCard, color: 'var(--crm-positive)' },
+    { title: 'Payment Received', value: revenueDisplay, subtitle: revenueSubtitle, icon: FiCreditCard, color: 'var(--crm-positive)' },
     { title: 'Quotations Sent', value: fmtNumber(quotationsSentCount), subtitle: `${summary?.quotations?.approved || 0} approved`, icon: FiFileText, color: '#a855f7' },
     { title: 'Orders Confirmed', value: fmtNumber(ordersConfirmedCount), subtitle: `${summary?.pendingOrders || 0} pending pipeline`, icon: FiCheckSquare, color: 'var(--crm-positive)' },
-    { title: 'Pending Payments', value: fmtCurrency(pendingPaymentsAmount), subtitle: `${summary?.payments?.pendingOrdersCount || summary?.payments?.pendingCount || 0} orders pending delivery`, icon: FiAlertCircle, color: 'var(--crm-danger)' }
+    { title: 'Pending Payments', value: fmtCurrency(pendingPaymentsAmount), subtitle: `${summary?.payments?.pendingOrdersCount || summary?.payments?.pendingCount || 0} records pending`, icon: FiAlertCircle, color: 'var(--crm-danger)' }
   ];
 
   // ComposedChart Data for Combined Business Overview
@@ -469,7 +615,7 @@ export default function FounderDashboard() {
       ['Active Staff', activeEmployees.length],
       ['Active Leads', activeLeadsCount],
       ['Completed & Delivered', completedDeliveredCount],
-      ['Payment Received', fmtCurrency(paymentReceivedCount)],
+      ['Payment Received', revenueDisplay],
       ['Quotations Sent', quotationsSentCount],
       ['Orders Confirmed', ordersConfirmedCount],
       ['Total Conversion %', `${totalConversionPercent}%`],
@@ -505,122 +651,542 @@ export default function FounderDashboard() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-screen overflow-x-hidden font-sans" style={{ background: 'var(--crm-bg)' }}>
       {/* Top Header Bar */}
-      <div className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-500 font-sans">
-              Founder Oversight & Enterprise Command
-            </span>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase flex items-center gap-2 font-sans" style={{ color: 'var(--crm-heading)' }}>
-              <FiShield className="text-cyan-500" /> Founder Command Center
-            </h1>
+      <div
+        className="sticky top-0 z-20 w-full border-b px-4 py-4 sm:px-6 sm:py-5"
+        style={{
+          borderColor: 'var(--crm-line)',
+          background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)',
+          backdropFilter: 'blur(14px)'
+        }}
+      >
+        <div className="mx-auto max-w-[1700px] space-y-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+                  style={{
+                    borderColor: 'var(--crm-line)',
+                    background: 'var(--crm-bg-sunken)',
+                    color: 'var(--crm-accent)'
+                  }}
+                >
+                  <FiShield size={17} />
+                </div>
+
+                <div className="min-w-0">
+                  <span
+                    className="block text-[9px] font-bold uppercase tracking-[0.22em]"
+                    style={{ color: 'var(--crm-accent)' }}
+                  >
+                    Founder Oversight · Enterprise Command
+                  </span>
+
+                  <h1
+                    className="mt-0.5 truncate text-xl font-semibold tracking-tight sm:text-2xl"
+                    style={{ color: 'var(--crm-heading)' }}
+                  >
+                    Founder Command Center
+                  </h1>
+                </div>
+              </div>
+
+              <p
+                className="mt-2 max-w-3xl text-xs leading-5 sm:text-sm"
+                style={{ color: 'var(--crm-ink-faint)' }}
+              >
+                Executive oversight across acquisition, workforce, operations, sales and enterprise controls.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/crm/manager-chat"
+                className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                style={{
+                  borderColor: 'var(--crm-line)',
+                  background: 'var(--crm-bg-sunken)',
+                  color: 'var(--crm-heading)'
+                }}
+              >
+                <FiMessageSquare size={12} />
+                Manager Chat
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  fetchAll();
+                  fetchControlledCampaignSnapshot();
+                }}
+                className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                style={{
+                  borderColor: 'var(--crm-line)',
+                  background: 'var(--crm-bg-sunken)',
+                  color: 'var(--crm-heading)'
+                }}
+              >
+                <FiRefreshCw size={12} />
+                Refresh
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="inline-flex min-h-[38px] items-center gap-2 rounded-lg px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                style={{
+                  background: 'var(--crm-accent)',
+                  color: '#fff'
+                }}
+              >
+                <FiDownload size={12} />
+                Export Report
+              </button>
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 font-sans">
-            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
-              <FiMessageSquare size={12} /> 
-            </Link>
-           
-            <button onClick={fetchAll} className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
-              <FiRefreshCw size={12} /> 
-            </button>
-            <button onClick={handleExportCSV} className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
-              <FiDownload size={12} /> 
-            </button>
-          </div>
-        </div>
+          <div
+            className="flex items-center gap-2 overflow-x-auto border-t pt-3 pb-1 scrollbar-none"
+            style={{ borderColor: 'var(--crm-line)' }}
+          >
+            {[
+              { id: 'ALL', label: 'All Modules' },
+              { id: 'OVERVIEW', label: 'Overview' },
+              { id: 'ACQUISITION', label: 'Acquisition & Campaigns' },
+              { id: 'FILES', label: 'File Sharing' },
+              { id: 'WORKFORCE', label: 'Workforce & Targets' },
+              { id: 'ATTENDANCE', label: 'Attendance & Telemetry' },
+              { id: 'TRANSPORT', label: 'Transport Map' },
+              { id: 'ALERTS', label: 'Alerts & Approvals' }
+            ].map((tab) => {
+              const active = activeTab === tab.id;
 
-        {/* Module Navigation Tabs Row */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-800/80 pb-1 scrollbar-none">
-          {[
-            { id: 'ALL', label: 'All Modules' },
-            { id: 'OVERVIEW', label: 'Overview Chart' },
-            { id: 'FILES', label: 'File Sharing' },
-            { id: 'WORKFORCE', label: 'Workforce & Targets' },
-            { id: 'SALES', label: 'Sales & Leaderboard' },
-            { id: 'ATTENDANCE', label: 'Attendance & Telemetry' },
-            { id: 'TRANSPORT', label: 'Transport Map' },
-            { id: 'HIRING', label: 'Recruitment & Hiring' },
-            { id: 'ALERTS', label: 'Alerts & Approvals' }
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-1.5 text-[10px] uppercase font-sans font-bold rounded-md transition-all whitespace-nowrap ${
-                activeTab === t.id
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className="whitespace-nowrap rounded-lg border px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                  style={{
+                    borderColor: active
+                      ? 'var(--crm-accent)'
+                      : 'var(--crm-line)',
+                    background: active
+                      ? 'var(--crm-accent-bg)'
+                      : 'var(--crm-bg-sunken)',
+                    color: active
+                      ? 'var(--crm-accent)'
+                      : 'var(--crm-ink-faint)'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 py-6 space-y-8">
+      <div className="mx-auto w-full max-w-[1700px] space-y-8 px-4 py-6 sm:px-6">
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-xl border p-4 text-sm"
+            style={{
+              borderColor: 'var(--crm-danger)',
+              background: 'var(--crm-danger-bg)',
+              color: 'var(--crm-danger)'
+            }}
+          >
+            <FiAlertCircle className="mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* =========================================================================
+            MASTER DPR v4.0 — ACQUISITION & CONTROLLED CAMPAIGN OVERSIGHT
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'ACQUISITION') && (
+          <div className="space-y-6">
+            <motion.div
+              initial={{ y: 12, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="overflow-hidden rounded-2xl border"
+              style={CARD_STYLE}
+            >
+              <div
+                className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                style={{
+                  borderColor: 'var(--crm-line)',
+                  background: 'var(--crm-bg-raised)'
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+                    style={{
+                      borderColor: 'var(--crm-line)',
+                      background: 'var(--crm-bg-sunken)',
+                      color: 'var(--crm-accent)'
+                    }}
+                  >
+                    <FiTarget size={16} />
+                  </div>
+
+                  <div>
+                    <span
+                      className="text-[9px] font-bold uppercase tracking-[0.18em]"
+                      style={{ color: 'var(--crm-accent)' }}
+                    >
+                      ADS & ACQUISITION
+                    </span>
+
+                    <h2
+                      className="mt-0.5 text-sm font-semibold sm:text-base"
+                      style={{ color: 'var(--crm-heading)' }}
+                    >
+                      Controlled Campaign Oversight
+                    </h2>
+
+                    <p
+                      className="mt-1 text-xs leading-5"
+                      style={{ color: 'var(--crm-ink-faint)' }}
+                    >
+                      Governed acquisition test status, approvals, readiness and downstream CRM outcomes.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  to="/crm/controlled-campaigns"
+                  className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                  style={{
+                    background: 'var(--crm-accent)',
+                    color: '#fff'
+                  }}
+                >
+                  Open Workbench
+                  <FiArrowRight size={12} />
+                </Link>
+              </div>
+
+              {!controlledCampaignSnapshot?.campaign ? (
+                <div className="p-4 sm:p-5">
+                  <div
+                    className="flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+                    style={CARD_SUNKEN}
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+                        style={{
+                          borderColor: 'var(--crm-line)',
+                          background: 'var(--crm-bg-raised)',
+                          color: 'var(--crm-ink-faint)'
+                        }}
+                      >
+                        <FiTarget size={18} />
+                      </div>
+
+                      <div>
+                        <div
+                          className="text-sm font-semibold"
+                          style={{ color: 'var(--crm-heading)' }}
+                        >
+                          No controlled campaign defined
+                        </div>
+
+                        <p
+                          className="mt-1 max-w-3xl text-xs leading-5"
+                          style={{ color: 'var(--crm-ink-faint)' }}
+                        >
+                          Create the governed one-product, one-market campaign in the workbench using verified operational inputs.
+                        </p>
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/crm/controlled-campaigns"
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide"
+                      style={{
+                        borderColor: 'var(--crm-line)',
+                        background: 'var(--crm-bg-raised)',
+                        color: 'var(--crm-accent)'
+                      }}
+                    >
+                      Configure Campaign
+                      <FiArrowRight size={11} />
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className="rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide"
+                          style={{
+                            color:
+                              controlledCampaignSnapshot?.readiness?.ready
+                                ? 'var(--crm-positive)'
+                                : 'var(--crm-warning)',
+                            background:
+                              controlledCampaignSnapshot?.readiness?.ready
+                                ? 'var(--crm-positive-bg)'
+                                : 'var(--crm-warning-bg)'
+                          }}
+                        >
+                          {controlledCampaignSnapshot?.readiness?.ready
+                            ? 'Configuration Ready'
+                            : 'Configuration Blocked'}
+                        </span>
+
+                        <span
+                          className="rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide"
+                          style={{
+                            color: 'var(--crm-info)',
+                            background: 'var(--crm-info-bg)'
+                          }}
+                        >
+                          Controlled Acquisition
+                        </span>
+                      </div>
+
+                      <div
+                        className="break-words text-base font-semibold sm:text-lg"
+                        style={{ color: 'var(--crm-heading)' }}
+                      >
+                        {controlledCampaignSnapshot.campaign?.marketSelection?.product ||
+                          'Product not set'}
+                      </div>
+
+                      <div
+                        className="mt-1 text-[10px] sm:text-xs"
+                        style={LABEL_MONO}
+                      >
+                        {controlledCampaignSnapshot.campaign?.marketSelection?.targetMarket?.type ||
+                          'Market type not set'}
+                        {' · '}
+                        {controlledCampaignSnapshot.campaign?.marketSelection?.targetMarket?.name ||
+                          'Market not set'}
+                      </div>
+                    </div>
+
+                    <div
+                      className="min-w-0 rounded-lg border px-3 py-2 xl:max-w-[320px]"
+                      style={CARD_SUNKEN}
+                    >
+                      <div className="text-[8px] font-bold uppercase tracking-wider" style={LABEL_MONO}>
+                        UTM Campaign
+                      </div>
+
+                      <div
+                        className="mt-1 break-all font-mono text-[10px] sm:text-xs"
+                        style={{ color: 'var(--crm-heading)' }}
+                      >
+                        {controlledCampaignSnapshot.campaign?.utm?.campaign || '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                    {[
+                      {
+                        label: 'Priority',
+                        value:
+                          controlledCampaignSnapshot.campaign?.marketSelection?.priority ||
+                          '—'
+                      },
+                      {
+                        label: 'Operations',
+                        value:
+                          controlledCampaignSnapshot.campaign?.operationsInputsConfirmedAt
+                            ? 'Confirmed'
+                            : 'Pending'
+                      },
+                      {
+                        label: 'Management',
+                        value:
+                          controlledCampaignSnapshot.campaign?.managementApprovalAt
+                            ? 'Approved'
+                            : 'Pending'
+                      },
+                      {
+                        label: 'Qualified Leads',
+                        value:
+                          controlledCampaignSnapshot.metrics?.observed?.overall?.qualifiedLeads ??
+                          '—'
+                      },
+                      {
+                        label: 'Phase 4 Exit',
+                        value:
+                          controlledCampaignSnapshot.metrics?.phase4?.exitCriterionAchieved
+                            ? 'Achieved'
+                            : 'Not Yet'
+                      }
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="min-w-0 rounded-xl border p-3.5"
+                        style={CARD_SUNKEN}
+                      >
+                        <div
+                          className="truncate text-[9px] font-bold uppercase tracking-wide"
+                          style={LABEL_MONO}
+                        >
+                          {item.label}
+                        </div>
+
+                        <div
+                          className="mt-2 break-words text-sm font-semibold"
+                          style={{ color: 'var(--crm-heading)' }}
+                        >
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {controlledCampaignSnapshot?.readiness?.reasons?.length > 0 && (
+                    <div
+                      className="rounded-xl border p-3.5"
+                      style={{
+                        borderColor: 'var(--crm-warning)',
+                        background: 'var(--crm-warning-bg)'
+                      }}
+                    >
+                      <div
+                        className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wide"
+                        style={{ color: 'var(--crm-warning)' }}
+                      >
+                        <FiAlertCircle size={12} />
+                        Current readiness blockers
+                      </div>
+
+                      <div
+                        className="mt-2 text-[10px] leading-5 sm:text-xs"
+                        style={{ color: 'var(--crm-ink-soft)' }}
+                      >
+                        {controlledCampaignSnapshot.readiness.reasons
+                          .map((reason) =>
+                            String(reason).replace(/_/g, ' ')
+                          )
+                          .join(' · ')}
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    className="flex items-start gap-2 text-[10px] leading-5"
+                    style={LABEL_MONO}
+                  >
+                    <FiActivity className="mt-0.5 shrink-0" size={12} />
+                    <span>
+                      Configuration readiness does not itself prove campaign success. DPR exit remains based on observed qualified-lead outcomes.
+                    </span>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 15, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+            >
+              <AcquisitionReport />
+            </motion.div>
+          </div>
+        )}
         
         {/* =========================================================================
             SECTION 2: BUSINESS OVERVIEW SECTION (8 KPI CARDS + RECHARTS COMPOSED CHART + DATE RANGE)
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'OVERVIEW') && (
-          <motion.div initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="border rounded-sm overflow-hidden space-y-6 p-4 sm:p-6" style={CARD_STYLE}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: 'var(--crm-line)' }}>
+          <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="overflow-hidden rounded-2xl border p-4 sm:p-6" style={CARD_STYLE}>
+            <div className="mb-5 flex flex-col gap-4 border-b pb-5 xl:flex-row xl:items-end xl:justify-between" style={{ borderColor: 'var(--crm-line)' }}>
               <div>
-                <span className="text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>Core Enterprise Telemetry</span>
-                <h2 className="text-lg uppercase font-bold text-[var(--crm-heading)] flex items-center gap-2">
-                  <FiBarChart2 className="text-[var(--crm-accent)]" /> Founder Business Overview & Combined Performance
+                <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>Core Enterprise Telemetry</span>
+                <h2 className="mt-1 flex items-center gap-2 text-base font-semibold sm:text-lg" style={{ color: 'var(--crm-heading)' }}>
+                  <FiBarChart2 className="text-[var(--crm-accent)]" /> Founder Business Overview
                 </h2>
+                <p className="mt-1 text-xs leading-5" style={{ color: 'var(--crm-ink-faint)' }}>
+                  Executive view of workforce, pipeline, fulfilment, quotation and revenue signals.
+                </p>
               </div>
 
               {/* Date Range Filter Selector */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] uppercase font-sans text-[var(--crm-ink-faint)]">Range:</span>
-                {['ALL', 'Today', '7d', '30d', '90d', 'Custom'].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setDateRange(r)}
-                    className={`px-3 py-1 text-[10px] font-sans uppercase rounded-sm border transition-all ${
-                      dateRange === r
-                        ? 'border-[var(--crm-accent)] bg-[var(--crm-accent)] text-[var(--crm-bg)] font-bold'
-                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
+                <span className="mr-1 text-[9px] font-bold uppercase tracking-wide" style={LABEL_MONO}>Range</span>
+
+                {['ALL', 'Today', '7d', '30d', '90d', 'Custom'].map((range) => {
+                  const active = dateRange === range;
+
+                  return (
+                    <button
+                      key={range}
+                      type="button"
+                      onClick={() => setDateRange(range)}
+                      className="rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase transition"
+                      style={{
+                        borderColor: active
+                          ? 'var(--crm-accent)'
+                          : 'var(--crm-line)',
+                        background: active
+                          ? 'var(--crm-accent-bg)'
+                          : 'var(--crm-bg-sunken)',
+                        color: active
+                          ? 'var(--crm-accent)'
+                          : 'var(--crm-ink-faint)'
+                      }}
+                    >
+                      {range}
+                    </button>
+                  );
+                })}
 
                 {dateRange === 'Custom' && (
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                    <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded" />
-                    <span className="text-[10px] text-[var(--crm-ink-faint)]">to</span>
-                    <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded" />
+                  <div className="mt-2 flex w-full items-center gap-2 sm:mt-0 sm:w-auto">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[10px] outline-none sm:flex-none"
+                      style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}
+                    />
+                    <span className="text-[10px]" style={LABEL_MONO}>to</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[10px] outline-none sm:flex-none"
+                      style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}
+                    />
                   </div>
                 )}
               </div>
             </div>
 
             {/* 10 Business Overview Telemetry KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
               {kpiCards.map((card, i) => (
-                <motion.div key={i} whileHover={{ y: -3 }} className="border p-4 rounded-sm flex flex-col justify-between" style={CARD_SUNKEN}>
+                <motion.div key={i} whileHover={{ y: -2 }} className="flex min-h-[118px] flex-col justify-between rounded-xl border p-4" style={CARD_SUNKEN}>
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] uppercase tracking-wider font-bold font-sans text-[var(--crm-ink-faint)]">{card.title}</span>
-                    <div className="p-1.5 border rounded-sm flex-shrink-0" style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg)' }}>
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--crm-ink-faint)]">{card.title}</span>
+                    <div className="flex-shrink-0 rounded-lg border p-2" style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg-raised)' }}>
                       <card.icon size={14} />
                     </div>
                   </div>
                   <div className="mt-3">
-                    <div className="text-2xl font-bold font-sans text-[var(--crm-heading)]">{card.value}</div>
-                    <div className="text-[10px] mt-1 font-sans text-[var(--crm-ink-faint)]">{card.subtitle}</div>
+                    <div className="break-words text-xl font-semibold text-[var(--crm-heading)] sm:text-2xl">{card.value}</div>
+                    <div className="mt-1 text-[10px] leading-4 text-[var(--crm-ink-faint)]">{card.subtitle}</div>
                   </div>
                 </motion.div>
               ))}
             </div>
 
             {/* Recharts ComposedChart Section */}
-            <div className="border rounded-sm p-4 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+            <div className="mt-5 rounded-xl border p-4 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
               <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <div>
                   <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
@@ -662,9 +1228,9 @@ export default function FounderDashboard() {
             </div>
 
             {/* Stage Distribution & Monthly Trends Section (matching Reports.jsx) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-12">
               {/* Stage Distribution (Donut Chart + Grid Badges Legend) */}
-              <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+              <div className="space-y-4 rounded-xl border p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
                     <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
@@ -732,7 +1298,7 @@ export default function FounderDashboard() {
               </div>
 
               {/* Monthly Trends (Leads, Won & Lost) Line Chart */}
-              <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+              <div className="space-y-4 rounded-xl border p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
                     <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
@@ -792,58 +1358,16 @@ export default function FounderDashboard() {
         {(activeTab === 'ALL' || activeTab === 'WORKFORCE') && (
           <div className="space-y-6">
             {/* Workforce Directory */}
-            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
-              <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+            <div className="overflow-hidden rounded-2xl border" style={CARD_STYLE}>
+              <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
                   <FiUsers className="text-[var(--crm-heading)]" /> Workforce Directory Management ({employees.length})
                 </h3>
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* HR Letter Dropdown Button in Toolbar */}
-                  <div className="relative inline-block text-left">
-                    <button
-                      onClick={() => setOpenHeaderLetterDropdown(!openHeaderLetterDropdown)}
-                      className="px-3 py-1.5 text-[9px] font-sans uppercase font-bold rounded-sm border flex items-center gap-1.5 transition-all bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300 shadow-sm cursor-pointer"
-                    >
-                      <FiFileText size={12} /> Issue HR Letter <FiChevronDown size={11} className={`transition-transform ${openHeaderLetterDropdown ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {openHeaderLetterDropdown && (
-                      <div className="absolute right-0 mt-1.5 w-60 rounded-md bg-[#0b1329] border border-cyan-500/30 shadow-2xl z-50 py-1 font-sans text-xs">
-                        <div className="px-3 py-1.5 border-b border-slate-800 text-[8px] uppercase tracking-wider text-cyan-400 font-bold">
-                          Select Letter to Issue:
-                        </div>
-                        <button
-                          onClick={() => { setLetterModal({ open: true, type: 'WARNING', employee: null }); setOpenHeaderLetterDropdown(false); }}
-                          className="w-full text-left px-3 py-2 text-slate-200 hover:bg-amber-950/60 hover:text-amber-300 flex items-center gap-2 font-semibold transition-colors cursor-pointer"
-                        >
-                          <FiAlertTriangle className="text-amber-400" size={14} /> Warning Letter
-                        </button>
-                        <button
-                          onClick={() => { setLetterModal({ open: true, type: 'TERMINATION', employee: null }); setOpenHeaderLetterDropdown(false); }}
-                          className="w-full text-left px-3 py-2 text-slate-200 hover:bg-rose-950/60 hover:text-rose-300 flex items-center gap-2 font-semibold transition-colors cursor-pointer"
-                        >
-                          <FiUserX className="text-rose-400" size={14} /> Termination Letter
-                        </button>
-                        <button
-                          onClick={() => { setLetterModal({ open: true, type: 'PI', employee: null }); setOpenHeaderLetterDropdown(false); }}
-                          className="w-full text-left px-3 py-2 text-slate-200 hover:bg-purple-950/60 hover:text-purple-300 flex items-center gap-2 font-semibold transition-colors cursor-pointer"
-                        >
-                          <FiTrendingUp className="text-purple-400" size={14} /> Performance Plan (PIP / PI)
-                        </button>
-                        <button
-                          onClick={() => { setLetterModal({ open: true, type: 'EXPERIENCE', employee: null }); setOpenHeaderLetterDropdown(false); }}
-                          className="w-full text-left px-3 py-2 text-slate-200 hover:bg-cyan-950/60 hover:text-cyan-300 flex items-center gap-2 font-semibold transition-colors cursor-pointer"
-                        >
-                          <FiAward className="text-cyan-400" size={14} /> Experience Letter
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button onClick={() => setShowFilters(!showFilters)} className="px-3 py-1.5 text-[9px] font-sans uppercase rounded-sm border flex items-center gap-1 transition-all bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300 font-bold">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[9px] font-semibold uppercase transition" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                     <FiFilter size={10} /> Filters {showFilters ? <FiChevronUp size={10} /> : <FiChevronDown size={10} />}
                   </button>
-                  <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 py-1.5 text-[9px] font-sans uppercase rounded-sm border flex items-center gap-1 transition-all bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300 font-bold cursor-pointer">
+                  <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[9px] font-semibold uppercase" style={{ background: 'var(--crm-accent)', color: '#fff' }}>
                     <FiPlus size={10} /> Add Staff
                   </button>
                 </div>
@@ -856,25 +1380,25 @@ export default function FounderDashboard() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div className="relative">
                         <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2" size={11} style={{ color: 'var(--crm-ink-faint)' }} />
-                        <input type="text" placeholder="Search name, ID, email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="text-[10px] pl-7 pr-3 py-2 rounded-sm border outline-none w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                        <input type="text" placeholder="Search name, ID, email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="text-[10px] pl-7 pr-3 py-2 rounded-lg border outline-none w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                       </div>
                       <div>
                         <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Department</label>
-                        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-lg border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                           <option value="ALL">All Departments</option>
                           {EMPLOYEE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                         </select>
                       </div>
                       <div>
                         <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Role</label>
-                        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-lg border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                           <option value="ALL">All Roles</option>
                           {EMPLOYEE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
                       </div>
                       <div>
                         <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Status</label>
-                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-lg border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                           <option value="ALL">All Status</option>
                           <option value="ACTIVE">ACTIVE</option>
                           <option value="INACTIVE">INACTIVE</option>
@@ -991,7 +1515,7 @@ export default function FounderDashboard() {
 
             {/* Target Assignment */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="border rounded-sm overflow-hidden p-5 space-y-3" style={CARD_STYLE}>
+              <div className="space-y-3 overflow-hidden rounded-2xl border p-5" style={CARD_STYLE}>
                 <div className="border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
                     <FiTarget className="text-amber-400" /> Assign Monthly Sales Targets
@@ -1000,7 +1524,7 @@ export default function FounderDashboard() {
                 <form onSubmit={handleAssignTarget} className="space-y-3 text-xs">
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Sales Employee *</label>
-                    <select required value={targetForm.employeeId} onChange={(e) => setTargetForm({ ...targetForm, employeeId: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                    <select required value={targetForm.employeeId} onChange={(e) => setTargetForm({ ...targetForm, employeeId: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                       <option value="">Select sales staff...</option>
                       {salesEmployees.map((e) => (
                         <option key={e._id} value={e._id}>{e.name} ({e.employeeId}) — {e.position || e.role}</option>
@@ -1010,11 +1534,11 @@ export default function FounderDashboard() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Target Amount (₹) *</label>
-                      <input type="number" required placeholder="Target revenue..." value={targetForm.targetValue} onChange={(e) => setTargetForm({ ...targetForm, targetValue: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                      <input type="number" required placeholder="Target revenue..." value={targetForm.targetValue} onChange={(e) => setTargetForm({ ...targetForm, targetValue: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                     </div>
                     <div>
                       <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Deals Target</label>
-                      <input type="number" placeholder="Deals count..." value={targetForm.targetDeals} onChange={(e) => setTargetForm({ ...targetForm, targetDeals: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                      <input type="number" placeholder="Deals count..." value={targetForm.targetDeals} onChange={(e) => setTargetForm({ ...targetForm, targetDeals: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                     </div>
                   </div>
                   <button type="submit" disabled={submittingTarget} className="w-full py-2 text-[10px] font-sans uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
@@ -1024,7 +1548,7 @@ export default function FounderDashboard() {
               </div>
 
               {/* Department & Role Workforce Charts */}
-              <div className="border rounded-sm p-4 space-y-4" style={CARD_STYLE}>
+              <div className="space-y-4 rounded-2xl border p-4" style={CARD_STYLE}>
                 <h3 className="text-xs uppercase font-bold tracking-widest border-b pb-2 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
                   <FiPieChart className="text-sky-400" /> Workforce Distribution
                 </h3>
@@ -1161,7 +1685,7 @@ export default function FounderDashboard() {
             <ScreenshotAlertsWidget />
 
             {/* Leave Approvals */}
-            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
+            <div className="overflow-hidden rounded-2xl border" style={CARD_STYLE}>
               <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
                   <FiClock className="text-amber-400" /> Pending Leave Approvals ({leaves.length})
@@ -1200,7 +1724,7 @@ export default function FounderDashboard() {
       <AnimatePresence>
         {showEmployeeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-lg border rounded-sm p-6 space-y-4 font-sans" style={CARD_STYLE}>
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} className="w-full max-w-lg space-y-4 rounded-2xl border p-5 font-sans sm:p-6" style={CARD_STYLE}>
               <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <h3 className="text-sm uppercase font-bold font-sans text-[var(--crm-heading)]">
                   {editingEmployee ? 'Edit Staff Member' : 'Add New Employee'}
@@ -1214,35 +1738,35 @@ export default function FounderDashboard() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Full Name *</label>
-                    <input required type="text" value={employeeForm.name} onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    <input required type="text" value={employeeForm.name} onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Email *</label>
-                    <input required type="email" value={employeeForm.email} onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    <input required type="email" value={employeeForm.email} onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Phone</label>
-                    <input type="text" value={employeeForm.phone} onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    <input type="text" value={employeeForm.phone} onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Position</label>
-                    <input type="text" value={employeeForm.position} onChange={(e) => setEmployeeForm({ ...employeeForm, position: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    <input type="text" value={employeeForm.position} onChange={(e) => setEmployeeForm({ ...employeeForm, position: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Department</label>
-                    <select value={employeeForm.department} onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })} className="w-full text-[10px] px-2 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                    <select value={employeeForm.department} onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })} className="w-full text-[10px] px-2 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                       {EMPLOYEE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Role</label>
-                    <select value={employeeForm.role} onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.target.value })} className="w-full text-[10px] px-2 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                    <select value={employeeForm.role} onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.target.value })} className="w-full text-[10px] px-2 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                       {EMPLOYEE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>

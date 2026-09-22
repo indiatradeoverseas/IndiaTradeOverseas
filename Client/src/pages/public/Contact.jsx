@@ -1,3 +1,5 @@
+import QuickEnquiry from '../../components/QuickEnquiry';
+import { BUSINESS_WHATSAPP, BUSINESS_WHATSAPP_DISPLAY } from '../../config/business';
 import React, { useState } from 'react';
 
 import {
@@ -15,15 +17,7 @@ import { pushDataLayerEvent } from '../../utils/analytics';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import axiosInstance from '../../api/axiosInstance';
 
-/*
- * IMPORTANT:
- * Replace this with the company's confirmed WhatsApp number.
- * Format: country code + number, without +, spaces or dashes.
- *
- * Example:
- * const WHATSAPP_NUMBER = '919876543210';
- */
-const WHATSAPP_NUMBER = '';
+const WHATSAPP_NUMBER = BUSINESS_WHATSAPP;
 
 export default function Contact() {
   useDocumentMeta({
@@ -327,6 +321,7 @@ export default function Contact() {
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden">
 
+      <QuickEnquiry/>
       {/* =====================================================
           TOP BORDER
       ===================================================== */}
@@ -519,7 +514,7 @@ export default function Contact() {
                   onClick={handleWhatsApp}
                   className="shrink-0 px-4 h-[40px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-all"
                 >
-                  WhatsApp
+                  WhatsApp {BUSINESS_WHATSAPP_DISPLAY}
                 </button>
 
               </div>
