@@ -74,7 +74,17 @@ export default function StonePricing() {
       if (!orderResult.success) throw new Error(orderResult.message || 'Failed to create Razorpay order');
 
       const { orderId, keyId } = orderResult.data;
-      await loadRazorpayScript();
+      try {
+        await loadRazorpayScript();
+      } catch (loadErr) {
+        console.error(loadErr);
+        toast.error('Unable to load payment gateway. Please try again.');
+        return;
+      }
+      if (!window.Razorpay) {
+        toast.error('Payment gateway failed to initialise.');
+        return;
+      }
 
       const options = {
         key: keyId,
