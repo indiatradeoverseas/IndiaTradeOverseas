@@ -26,7 +26,8 @@ const {
   rejectEmployee,
   uploadEmployeeDocument,
   getMyEmployeeDocuments,
-  getEmployeeDocuments
+  getEmployeeDocuments,
+  sendEmployeeLetter
 } = require('./employee.controller');
 const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
@@ -84,5 +85,8 @@ router.get('/', authenticate, listEmployees);
 router.get('/count', authenticate, getEmployeesCount);
 router.get('/:id/status', authenticate, getEmployeeStatus);
 router.post('/:id/status', authenticate, updateEmployeeStatus);
+
+// HR Letters (Warning, Termination, PIP/PI) dispatch endpoint
+router.post('/send-letter', authenticate, sendEmployeeLetter);
 
 module.exports = router;

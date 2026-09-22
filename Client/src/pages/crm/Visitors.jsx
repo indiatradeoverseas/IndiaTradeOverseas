@@ -156,80 +156,81 @@ export default function Visitors() {
     const repeatVisitorsCount = divisionVisitors.filter(v => (v.visitCount || 1) > 1).length;
 
     return (
-        <div className="min-h-screen bg-[var(--crm-bg-sunken)] font-sans antialiased text-[var(--crm-ink-soft)] p-4 sm:p-8 pt-24">
+        <div className="min-h-screen font-sans antialiased p-4 sm:p-6 lg:p-8" style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
 
                 {/* Header Title Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--crm-ink-soft)]/10 pb-5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b" style={{ borderColor: 'var(--crm-line)' }}>
                     <div className="space-y-1 text-left">
-                        <div className="flex items-center gap-2 text-[var(--crm-ink-faint)] font-mono text-[9px] uppercase font-bold tracking-[0.2em]">
-                            BUYER GATE TELEMETRY & REPEAT VISIT LOGS
+                        <div className="flex items-center gap-2 font-mono text-xs uppercase font-extrabold tracking-widest" style={{ color: 'var(--crm-accent)' }}>
+                            <FiLayers size={14} /> BUYER GATE TELEMETRY & REPEAT VISIT LOGS
                         </div>
-                        <h1 className="text-3xl font-serif text-[var(--crm-heading)] uppercase tracking-wide font-normal">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold font-sans uppercase tracking-tight flex items-center gap-3" style={{ color: 'var(--crm-heading)' }}>
                             {meta.title}
+                            <span className="text-xs font-sans font-bold normal-case px-3 py-1 rounded-full border" style={{ background: 'var(--crm-accent-bg)', color: 'var(--crm-accent)', borderColor: 'var(--crm-accent)' }}>
+                                {meta.badge}
+                            </span>
                         </h1>
-                        <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-1">
-                            Tracks everyone who submitted or re-submitted the entry gate form on {meta.badge} with date & time timestamps.
+                        <p className="text-xs mt-1 font-medium" style={{ color: 'var(--crm-ink-faint)' }}>
+                            Tracks everyone who submitted or re-submitted the entry gate form on <span className="font-bold" style={{ color: 'var(--crm-heading)' }}>{meta.badge}</span> with date & time timestamps.
                         </p>
                     </div>
 
+                    {/* Quick Stat Pill Cards */}
                     <div className="flex items-center gap-3">
-                        <div className="bg-[var(--crm-bg)]/40 px-4 py-2 rounded-sm border border-[var(--crm-ink-soft)]/10 text-center">
-                            <span className="block text-[var(--crm-ink-faint)] font-bold uppercase tracking-wider text-[9px]">Total Visitors</span>
-                            <span className="text-lg font-bold text-[var(--crm-heading)]">{divisionVisitors.length}</span>
+                        <div className="px-4 py-2.5 rounded-xl border text-center shadow-xs min-w-[105px]" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                            <span className="block font-bold uppercase tracking-wider text-[10px] mb-0.5" style={{ color: 'var(--crm-ink-faint)' }}>Total Visitors</span>
+                            <span className="text-2xl font-extrabold" style={{ color: 'var(--crm-heading)' }}>{divisionVisitors.length}</span>
                         </div>
-                        <div className="bg-[var(--crm-bg)]/40 px-4 py-2 rounded-sm border border-[var(--crm-ink-soft)]/10 text-center">
-                            <span className="block text-teal-400 font-bold uppercase tracking-wider text-[9px]">Visited Today</span>
-                            <span className="text-lg font-bold text-teal-400">{todayCount}</span>
+                        <div className="px-4 py-2.5 rounded-xl border text-center shadow-xs min-w-[105px]" style={{ background: 'var(--crm-positive-bg)', borderColor: 'var(--crm-positive)' }}>
+                            <span className="block font-bold uppercase tracking-wider text-[10px] mb-0.5" style={{ color: 'var(--crm-positive)' }}>Visited Today</span>
+                            <span className="text-2xl font-extrabold" style={{ color: 'var(--crm-positive)' }}>{todayCount}</span>
                         </div>
-                        <div className="bg-[var(--crm-bg)]/40 px-4 py-2 rounded-sm border border-[var(--crm-ink-soft)]/10 text-center">
-                            <span className="block text-sky-400 font-bold uppercase tracking-wider text-[9px]">Repeat Buyers</span>
-                            <span className="text-lg font-bold text-sky-400">{repeatVisitorsCount}</span>
+                        <div className="px-4 py-2.5 rounded-xl border text-center shadow-xs min-w-[105px]" style={{ background: 'var(--crm-info-bg)', borderColor: 'var(--crm-info)' }}>
+                            <span className="block font-bold uppercase tracking-wider text-[10px] mb-0.5" style={{ color: 'var(--crm-info)' }}>Repeat Buyers</span>
+                            <span className="text-2xl font-extrabold" style={{ color: 'var(--crm-info)' }}>{repeatVisitorsCount}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Calendar Date Filter Bar */}
-                <div className="bg-[var(--crm-bg)]/40 border border-[var(--crm-ink-soft)]/10 p-3 sm:p-4 rounded-sm shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
-                    <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
-                        <FiCalendar className="text-teal-400 animate-pulse" size={16} />
-                        <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+                <div className="p-4 rounded-xl border shadow-xs text-xs flex flex-wrap justify-between items-center gap-3" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                    <div className="flex items-center gap-2 font-extrabold" style={{ color: 'var(--crm-heading)' }}>
+                        <FiCalendar size={16} style={{ color: 'var(--crm-accent)' }} />
+                        <span className="text-xs uppercase tracking-wider font-sans">Date & Calendar Filter:</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 font-sans">
                         <button
                             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-                            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-                                dateFilterMode === 'ALL'
-                                    ? 'bg-teal-600 text-white font-black shadow'
-                                    : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                            }`}
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer border"
+                            style={dateFilterMode === 'ALL'
+                                ? { background: 'var(--crm-accent)', color: 'var(--crm-bg)', borderColor: 'var(--crm-accent)' }
+                                : { background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-soft)', borderColor: 'var(--crm-line)' }}
                         >
                             All Dates
                         </button>
                         <button
                             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-                            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-                                dateFilterMode === 'TODAY'
-                                    ? 'bg-teal-600 text-white font-black shadow'
-                                    : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                            }`}
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer border"
+                            style={dateFilterMode === 'TODAY'
+                                ? { background: 'var(--crm-accent)', color: 'var(--crm-bg)', borderColor: 'var(--crm-accent)' }
+                                : { background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-soft)', borderColor: 'var(--crm-line)' }}
                         >
                             Today
                         </button>
                         <button
                             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-                            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-                                dateFilterMode === 'YESTERDAY'
-                                    ? 'bg-teal-600 text-white font-black shadow'
-                                    : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                            }`}
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer border"
+                            style={dateFilterMode === 'YESTERDAY'
+                                ? { background: 'var(--crm-accent)', color: 'var(--crm-bg)', borderColor: 'var(--crm-accent)' }
+                                : { background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-soft)', borderColor: 'var(--crm-line)' }}
                         >
                             Yesterday
                         </button>
 
-                        <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 px-2.5 py-1 rounded-sm">
-                            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
+                            <span className="text-[10px] uppercase font-bold" style={{ color: 'var(--crm-ink-faint)' }}>Pick Date:</span>
                             <input
                                 type="date"
                                 value={selectedDate}
@@ -237,55 +238,59 @@ export default function Visitors() {
                                     setSelectedDate(e.target.value);
                                     setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
                                 }}
-                                className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+                                className="bg-transparent font-bold text-xs outline-none cursor-pointer font-sans"
+                                style={{ color: 'var(--crm-heading)' }}
                             />
                         </div>
 
                         {dateFilterMode !== 'ALL' && (
                             <button
                                 onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-                                className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+                                className="text-xs uppercase font-extrabold underline ml-1 cursor-pointer transition-colors"
+                                style={{ color: 'var(--crm-danger)' }}
                             >
                                 Clear Filter
                             </button>
                         )}
                     </div>
 
-                    <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-                        Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
-                        &bull; ({filteredVisitors.length} Visitors Matched)
+                    <div className="text-xs font-bold font-sans" style={{ color: 'var(--crm-ink-faint)' }}>
+                        Showing: <strong className="font-extrabold" style={{ color: 'var(--crm-accent)' }}>{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+                        &nbsp;&bull;&nbsp; (<span className="font-extrabold" style={{ color: 'var(--crm-heading)' }}>{filteredVisitors.length}</span> Visitors Matched)
                     </div>
                 </div>
 
-                {/* Search Bar & Division info */}
-                <div className="bg-[var(--crm-bg)]/20 border border-[var(--crm-ink-soft)]/10 rounded-sm p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                {/* Search Bar & Division Controls */}
+                <div className="rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between border shadow-xs" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
                     <div className="relative w-full md:w-96">
-                        <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--crm-ink-faint)] text-sm" />
+                        <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--crm-ink-faint)' }} />
                         <input
                             type="text"
                             placeholder="Search by name, email, mobile, city, or state..."
-                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 pl-10 pr-4 py-2 rounded-sm text-xs text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)] focus:outline-none focus:border-[var(--crm-ink-soft)]/30 transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all border"
+                            style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
                         <button 
                             onClick={fetchData}
-                            className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] px-3 py-1.5 rounded-sm border border-[var(--crm-ink-soft)]/10 text-xs font-mono text-[var(--crm-heading)] hover:bg-[var(--crm-bg)] transition cursor-pointer"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition cursor-pointer shadow-xs"
+                            style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
                         >
-                            <FiRefreshCw size={11} className={`${isLoading ? 'animate-spin' : ''}`} /> Refresh
+                            <FiRefreshCw size={12} className={`${isLoading ? 'animate-spin' : ''}`} style={{ color: 'var(--crm-accent)' }} /> Refresh
                         </button>
-                        <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] px-3 py-1.5 rounded-sm border border-[var(--crm-ink-soft)]/10 text-xs font-mono shrink-0">
-                            <FiLayers className="text-[var(--crm-ink-faint)]" />
-                            <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold">Sector:</span>
-                            <span className="font-bold text-[var(--crm-heading)]">{meta.badge}</span>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl border text-xs shrink-0" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
+                            <FiLayers size={14} style={{ color: 'var(--crm-accent)' }} />
+                            <span className="text-[10px] uppercase font-bold" style={{ color: 'var(--crm-ink-faint)' }}>Sector:</span>
+                            <span className="font-extrabold uppercase" style={{ color: 'var(--crm-heading)' }}>{meta.badge}</span>
                         </div>
                     </div>
                 </div>
 
                 {isLoading ? (
-                    <div className="p-12 text-center font-mono text-xs text-[var(--crm-ink-faint)] animate-pulse">
+                    <div className="p-12 text-center font-sans text-xs font-bold text-slate-600 dark:text-slate-400 animate-pulse">
                         Auditing gate submissions and visit telemetry logs...
                     </div>
                 ) : (
@@ -316,103 +321,127 @@ export default function Visitors() {
                                 return (
                                     <div
                                         key={visitor._id}
-                                        className="bg-[var(--crm-bg-sunken)]/80 border border-[var(--crm-ink-soft)]/10 hover:border-[var(--crm-ink-soft)]/20 rounded-sm p-4 space-y-3 transition-all"
+                                        className="rounded-xl p-4 sm:p-5 space-y-3.5 transition-all shadow-xs border"
+                                        style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}
                                     >
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                            <div className="space-y-1.5 text-xs text-left">
-                                                <div className="flex flex-wrap items-center gap-2 font-bold text-[var(--crm-heading)] uppercase tracking-wide">
-                                                    <FiUser size={13} className="text-teal-400" />
-                                                    <span className="text-sm font-semibold">{visitor.name}</span>
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div className="space-y-2 text-left flex-1 min-w-0">
+                                                {/* Top row with name and status badges */}
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <div className="p-2 rounded-lg border flex-shrink-0" style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-accent)' }}>
+                                                        <FiUser size={16} />
+                                                    </div>
+                                                    <h4 className="text-base font-extrabold uppercase tracking-wide truncate" style={{ color: 'var(--crm-heading)' }}>
+                                                        {visitor.name}
+                                                    </h4>
 
-                                                    {/* Repeat Visitor Badge */}
+                                                    {/* Repeat Visitor / First Visit Badge */}
                                                     {visitCount > 1 ? (
-                                                        <span className="bg-sky-950/60 text-sky-300 border border-sky-800/40 text-[9px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                                                            <FiRepeat size={10} /> Repeat Visitor ({visitCount} Visits)
+                                                        <span className="text-xs font-sans font-extrabold px-3 py-1 rounded-full flex items-center gap-1 border" style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
+                                                            <FiRepeat size={12} style={{ color: 'var(--crm-accent)' }} /> Repeat Visitor ({visitCount} Visits)
                                                         </span>
                                                     ) : (
-                                                        <span className="bg-teal-950/40 text-teal-300 border border-teal-800/30 text-[9px] font-mono font-bold px-2 py-0.5 rounded">
+                                                        <span className="text-xs font-sans font-extrabold px-3 py-1 rounded-full border" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
                                                             1st Visit
                                                         </span>
                                                     )}
 
-                                                    {/* Today / Yesterday Pill Badge */}
+                                                    {/* Today / Yesterday Badge */}
                                                     {isToday && (
-                                                        <span className="bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 text-[9px] font-mono font-bold px-2 py-0.5 rounded animate-pulse">
-                                                            Visited Today
+                                                        <span className="text-xs font-sans font-extrabold px-3 py-1 rounded-full flex items-center gap-1 border animate-pulse" style={{ background: 'var(--crm-positive-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
+                                                            <FiCheckCircle size={12} style={{ color: 'var(--crm-positive)' }} /> Visited Today
                                                         </span>
                                                     )}
                                                     {isYesterday && (
-                                                        <span className="bg-blue-950/80 text-blue-300 border border-blue-800/50 text-[9px] font-mono font-bold px-2 py-0.5 rounded">
+                                                        <span className="text-xs font-sans font-extrabold px-3 py-1 rounded-full border" style={{ background: 'var(--crm-info-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
                                                             Visited Yesterday
                                                         </span>
                                                     )}
                                                 </div>
 
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[var(--crm-ink-faint)] font-mono text-[11px]">
-                                                    <span className="flex items-center gap-1 text-[var(--crm-heading)]"><FiMail size={11} className="text-teal-400" /> {visitor.email}</span>
-                                                    <span className="flex items-center gap-1"><FiPhone size={11} /> {visitor.mobile}</span>
-                                                    <span className="flex items-center gap-1"><FiMapPin size={11} /> {visitor.city || 'N/A'}, {visitor.state || 'N/A'}</span>
-                                                    <span className="flex items-center gap-1 font-bold text-teal-400">
-                                                        <FiCalendar size={11} /> 
-                                                        Last Visit: {new Date(latestVisitDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                {/* Details row: Email, Mobile, Location, Last Visit */}
+                                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-sans pt-1">
+                                                    <span className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--crm-heading)' }}>
+                                                        <FiMail size={13} className="shrink-0" style={{ color: 'var(--crm-accent)' }} />
+                                                        <span className="truncate">{visitor.email || 'No email provided'}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--crm-heading)' }}>
+                                                        <FiPhone size={13} className="shrink-0" style={{ color: 'var(--crm-ink-faint)' }} />
+                                                        <span>{visitor.mobile || 'N/A'}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--crm-heading)' }}>
+                                                        <FiMapPin size={13} className="shrink-0" style={{ color: 'var(--crm-ink-faint)' }} />
+                                                        <span>{visitor.city || 'N/A'}{visitor.state ? `, ${visitor.state}` : ''}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 font-extrabold px-2.5 py-1 rounded border" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
+                                                        <FiCalendar size={13} className="shrink-0" style={{ color: 'var(--crm-accent)' }} />
+                                                        <span>Last Visit: {new Date(latestVisitDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                                     </span>
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                                {/* Visit History Toggle Button */}
+                                            {/* Action buttons on the right */}
+                                            <div className="flex items-center gap-2 flex-wrap shrink-0">
+                                                {/* History Toggle Button */}
                                                 {(Array.isArray(visitor.visitHistory) && visitor.visitHistory.length > 0) && (
                                                     <button
                                                         onClick={() => setExpandedHistoryId(isHistoryExpanded ? null : visitor._id)}
-                                                        className="text-sky-400 font-mono text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 bg-sky-950/30 px-2 py-1 border border-sky-800/40 rounded-sm cursor-pointer hover:bg-sky-900/40 transition"
+                                                        className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 border transition cursor-pointer shadow-xs"
+                                                        style={{ background: 'var(--crm-info-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
                                                     >
-                                                        <FiClock size={11} />
-                                                        History ({visitor.visitHistory.length}) 
-                                                        <FiChevronDown className={`transition-transform ${isHistoryExpanded ? 'rotate-180' : ''}`} size={11} />
+                                                        <FiClock size={13} style={{ color: 'var(--crm-info)' }} />
+                                                        History ({visitor.visitHistory.length})
+                                                        <FiChevronDown className={`transition-transform duration-200 ${isHistoryExpanded ? 'rotate-180' : ''}`} size={13} />
                                                     </button>
                                                 )}
 
-                                                {/* Proposals / Orders Toggle Button */}
+                                                {/* Orders Toggle Button */}
                                                 {visitorProposals.length > 0 && (
                                                     <button
                                                         onClick={() => setExpandedVisitorId(isExpanded ? null : visitor._id)}
-                                                        className="text-[var(--crm-positive)] font-mono text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 bg-[var(--crm-bg)] px-2 py-1 border border-[var(--crm-positive-bg)] rounded-sm cursor-pointer"
+                                                        className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 border transition cursor-pointer shadow-xs"
+                                                        style={{ background: 'var(--crm-positive-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}
                                                     >
-                                                        Orders ({visitorProposals.length}) <FiChevronDown className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} size={11} />
+                                                        Orders ({visitorProposals.length})
+                                                        <FiChevronDown className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} size={13} />
                                                     </button>
                                                 )}
 
+                                                {/* Delete button */}
                                                 <button
                                                     onClick={() => handleDeleteVisitor(visitor._id)}
                                                     title="Delete Visitor Record"
-                                                    className="p-1.5 text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] rounded-sm transition-all cursor-pointer"
+                                                    className="p-2 border rounded-lg transition-all cursor-pointer"
+                                                    style={{ color: 'var(--crm-danger)', borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}
                                                 >
-                                                    <FiTrash2 size={13} />
+                                                    <FiTrash2 size={15} />
                                                 </button>
                                             </div>
                                         </div>
 
-                                        {/* Visit History Timeline Dropdown */}
+                                        {/* Expanded History Timeline Panel */}
                                         {isHistoryExpanded && Array.isArray(visitor.visitHistory) && visitor.visitHistory.length > 0 && (
-                                            <div className="pt-3 pb-1 border-t border-[var(--crm-ink-soft)]/10 mt-2 space-y-2 text-left bg-[var(--crm-bg)]/40 p-3 rounded">
-                                                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                                                    <FiClock size={12} /> Detailed Visit Telemetry Logs ({visitor.visitHistory.length} Total Visits):
+                                            <div className="pt-3 border-t mt-3 space-y-2.5 text-left p-4 rounded-xl" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
+                                                <div className="text-xs font-sans font-extrabold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--crm-heading)' }}>
+                                                    <FiClock size={14} style={{ color: 'var(--crm-accent)' }} /> Detailed Visit Telemetry Logs ({visitor.visitHistory.length} Total Visits):
                                                 </div>
-                                                <div className="space-y-1.5 font-mono text-[11px]">
+                                                <div className="space-y-2 font-sans text-xs">
                                                     {visitor.visitHistory.slice().reverse().map((vh, idx) => (
-                                                        <div key={idx} className="flex flex-wrap items-center justify-between bg-[var(--crm-bg-sunken)] p-2 rounded border border-[var(--crm-ink-soft)]/10 gap-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-bold bg-sky-950 text-sky-300 px-1.5 py-0.5 rounded">
+                                                        <div key={idx} className="flex flex-wrap items-center justify-between p-3 rounded-lg border gap-2" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                                                            <div className="flex items-center gap-2.5">
+                                                                <span className="text-xs font-extrabold px-2.5 py-1 rounded-md border" style={{ background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
                                                                     Visit #{visitor.visitHistory.length - idx}
                                                                 </span>
-                                                                <span className="text-[var(--crm-heading)] font-semibold">
+                                                                <span className="font-extrabold" style={{ color: 'var(--crm-heading)' }}>
                                                                     {new Date(vh.visitedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                                 </span>
                                                             </div>
-                                                            <div className="text-[var(--crm-ink-faint)] text-[10px] flex items-center gap-3">
-                                                                <span>Mobile: {vh.mobile || visitor.mobile}</span>
-                                                                <span>Location: {vh.city || 'N/A'}, {vh.state || 'N/A'}</span>
-                                                                <span className="text-teal-400 font-bold">{vh.registrationSource || 'QUICK_GATE'}</span>
+                                                            <div className="text-xs font-bold flex flex-wrap items-center gap-4" style={{ color: 'var(--crm-heading)' }}>
+                                                                <span>Mobile: <strong style={{ color: 'var(--crm-heading)' }}>{vh.mobile || visitor.mobile}</strong></span>
+                                                                <span>Location: <strong style={{ color: 'var(--crm-heading)' }}>{vh.city || 'N/A'}, {vh.state || 'N/A'}</strong></span>
+                                                                <span className="font-extrabold px-2 py-0.5 rounded border text-[10px]" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)', color: 'var(--crm-heading)' }}>
+                                                                    {vh.registrationSource || 'QUICK_GATE'}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -420,9 +449,9 @@ export default function Visitors() {
                                             </div>
                                         )}
 
-                                        {/* Orders / Proposals Dropdown */}
+                                        {/* Expanded Orders Panel */}
                                         {isExpanded && visitorProposals.length > 0 && (
-                                            <div className="pt-2 space-y-2 border-t border-[var(--crm-ink-soft)]/10 mt-2">
+                                            <div className="pt-3 space-y-2.5 border-t mt-3" style={{ borderColor: 'var(--crm-line)' }}>
                                                 {visitorProposals.map((proposal) => (
                                                     <ProposalCard key={proposal._id} proposal={proposal} showActions={false} />
                                                 ))}
@@ -438,3 +467,4 @@ export default function Visitors() {
         </div>
     );
 }
+
