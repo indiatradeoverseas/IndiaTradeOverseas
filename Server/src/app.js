@@ -22,6 +22,7 @@ const notificationRoutes = require('./modules/notifications/notification.routes'
 const chatRoutes = require('./modules/chat/chat.routes');
 const careerRoutes = require('./modules/careers/career.routes');
 const distributorRoutes = require('./modules/distributors/distributor.routes');
+const riceVisitorRoutes = require('./modules/distributors/riceVisitor.routes');
 const attendanceRoutes = require('./modules/attendance/attendance.routes');
 const ticketRoutes = require('./modules/tickets/ticket.routes');
 const leaveRoutes = require('./modules/leave/leave.routes');
@@ -122,6 +123,7 @@ const apiRoutes = [
   { path: '/chat', router: chatRoutes },
   { path: '/careers', router: careerRoutes },
   { path: '/distributors', router: distributorRoutes },
+  { path: '/rice-visitors', router: riceVisitorRoutes },
   { path: '/attendance', router: attendanceRoutes },
   { path: '/tickets', router: ticketRoutes },
   { path: '/leaves', router: leaveRoutes },
@@ -134,7 +136,8 @@ const apiRoutes = [
   { path: '/payslips', router: payslipRoutes },
   { path: '/ai', router: aiRoutes },
   { path: '/sales-trial', router: salesTrialRoutes },
-  { path: '/itoads', router: itoAdsRoutes }
+  { path: '/itoads', router: itoAdsRoutes },
+  { path: '/rice-visitors', router: riceVisitorRoutes },
   { path: '/employee-activity', router: employeeActivityRoutes }
 ];
 
