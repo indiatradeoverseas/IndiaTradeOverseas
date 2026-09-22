@@ -453,6 +453,20 @@ export default function CEODashboard() {
     };
   }, [jobs, applications]);
 
+  const salesAndTransportLeaderboard = useMemo(() => {
+    return (leaderboard || []).filter((item) => {
+      const dept = String(item.department || '').toUpperCase();
+      const role = String(item.role || '').toUpperCase();
+      return (
+        dept.includes('SALES') ||
+        dept.includes('TRANSPORT') ||
+        role.includes('SALES') ||
+        role.includes('TRANSPORT') ||
+        role.includes('DRIVER')
+      );
+    });
+  }, [leaderboard]);
+
   // CSV Report Generator
   const handleExportCSV = () => {
     const rows = [
@@ -854,7 +868,76 @@ export default function CEODashboard() {
           </motion.div>
         )}
 
+        {/* =========================================================================
+            EXECUTIVE SALES PERFORMANCE & LEADERBOARD MODULE
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'SALES') && (
+          <div className="space-y-6">
+            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                  <FiTrendingUp className="text-emerald-400" /> Executive Sales & Transport Leaderboard ({salesAndTransportLeaderboard.length} Executives)
+                </h3>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                  Live Revenue Streams
+                </span>
+              </div>
 
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                      <th className="py-2.5 px-3">Sales Executive</th>
+                      <th className="py-2.5 px-3">Department</th>
+                      <th className="py-2.5 px-3">Revenue Achieved</th>
+                      <th className="py-2.5 px-3">Won Deals</th>
+                      <th className="py-2.5 px-3">Conversion Rate</th>
+                      <th className="py-2.5 px-3">Rank / Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs divide-y font-mono" style={{ borderColor: 'var(--crm-line)' }}>
+                    {salesAndTransportLeaderboard.length === 0 ? (
+                      <tr><td colSpan="6" className="text-center py-8 text-[var(--crm-ink-faint)] font-mono">No sales or transport leaderboard data available for selected period.</td></tr>
+                    ) : (
+                      salesAndTransportLeaderboard.map((item, idx) => {
+                        const wonCount = item.wonDeals || item.dealsWon || 0;
+                        const totalCount = item.totalLeads || 0;
+                        let convPct = item.conversionRate !== undefined && item.conversionRate !== null && item.conversionRate > 0
+                          ? item.conversionRate
+                          : (totalCount > 0 ? Math.round((wonCount / totalCount) * 100) : (wonCount > 0 ? 100 : 0));
+                        if (convPct > 100) convPct = 100;
+
+                        return (
+                          <tr key={item._id || item.employeeId || idx} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
+                            <td className="py-3 px-3">
+                              <div className="font-bold text-[var(--crm-heading)]">{item.fullName || item.name || item.employeeName || 'Sales Executive'}</div>
+                              <div className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{item.email || item.employeeCode || (item.employeeId && item.employeeId.length < 20 ? item.employeeId : '') || 'SALES EXECUTIVE'}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400">
+                                {item.department || 'SALES'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-bold text-emerald-400">{fmtCurrency(item.revenue || item.totalRevenue || 0)}</td>
+                            <td className="py-3 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
+                            <td className="py-3 px-3 font-bold text-pink-400">{convPct}%</td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${
+                                idx === 0 ? 'bg-amber-950 border-amber-800 text-amber-300' : 'bg-slate-900 border-slate-700 text-slate-300'
+                              }`}>
+                                #{idx + 1} {idx === 0 ? '🏆 TOP PERFORMER' : 'ACTIVE'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* =========================================================================
             MODULE 3 & 4: TEAM ATTENDANCE & ACTIVE/INACTIVE TELEMETRY
@@ -902,40 +985,126 @@ export default function CEODashboard() {
             MODULE 6: JOB HIRING & APPLICATIONS PIPELINE
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'HIRING') && (
-          <div className="border rounded-sm p-5 space-y-4" style={CARD_STYLE}>
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-              <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                <FiBriefcase className="text-amber-400" /> Recruitment & Job Applications Pipeline
-              </h3>
-              <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 border border-amber-800 px-2 py-0.5 rounded">
-                Avg Time-to-Hire: {hiringPipeline.timeToHire}
-              </span>
+          <div className="space-y-6">
+            <div className="border rounded-sm p-5 space-y-4" style={CARD_STYLE}>
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                  <FiBriefcase className="text-amber-400" /> Recruitment & Job Applications Pipeline
+                </h3>
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 border border-amber-800 px-2 py-0.5 rounded">
+                  Avg Time-to-Hire: {hiringPipeline.timeToHire}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-center">
+                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Open Positions</span>
+                  <span className="text-lg font-light text-amber-400 mt-1 block">{hiringPipeline.openPositions}</span>
+                </div>
+                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Applications</span>
+                  <span className="text-lg font-light text-sky-400 mt-1 block">{hiringPipeline.applicationsReceived}</span>
+                </div>
+                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Shortlisted</span>
+                  <span className="text-lg font-light text-purple-400 mt-1 block">{hiringPipeline.shortlisted}</span>
+                </div>
+                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Interviewed</span>
+                  <span className="text-lg font-light text-indigo-400 mt-1 block">{hiringPipeline.interviewed}</span>
+                </div>
+                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Offers Rolled</span>
+                  <span className="text-lg font-light text-emerald-400 mt-1 block">{hiringPipeline.offersRolled}</span>
+                </div>
+                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Hired</span>
+                  <span className="text-lg font-light text-emerald-500 mt-1 block">{hiringPipeline.hired}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-center">
-              <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Open Positions</span>
-                <span className="text-lg font-light text-amber-400 mt-1 block">{hiringPipeline.openPositions}</span>
+            {/* Job Openings & Candidate Applications Tables */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Active Job Postings */}
+              <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
+                <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                  <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                    <FiBriefcase className="text-amber-400" /> Active Job Postings ({jobs.length})
+                  </h3>
+                </div>
+                <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                  <table className="w-full text-left border-collapse min-w-[450px]">
+                    <thead>
+                      <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                        <th className="py-2.5 px-3">Job Position</th>
+                        <th className="py-2.5 px-3">Department</th>
+                        <th className="py-2.5 px-3">Type</th>
+                        <th className="py-2.5 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs divide-y font-mono" style={{ borderColor: 'var(--crm-line)' }}>
+                      {jobs.length === 0 ? (
+                        <tr><td colSpan="4" className="text-center py-6 text-[var(--crm-ink-faint)]">No active job postings found.</td></tr>
+                      ) : (
+                        jobs.map((job) => (
+                          <tr key={job._id} className="hover:bg-[var(--crm-bg-sunken)]/50">
+                            <td className="py-2.5 px-3 font-bold text-[var(--crm-heading)]">{job.title}</td>
+                            <td className="py-2.5 px-3 text-[10px] text-cyan-400">{job.department}</td>
+                            <td className="py-2.5 px-3 text-[10px] text-[var(--crm-ink-soft)]">{job.jobType || 'Full-time'}</td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${job.isActive ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                                {job.isActive ? 'OPEN' : 'CLOSED'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Applications</span>
-                <span className="text-lg font-light text-sky-400 mt-1 block">{hiringPipeline.applicationsReceived}</span>
-              </div>
-              <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Shortlisted</span>
-                <span className="text-lg font-light text-purple-400 mt-1 block">{hiringPipeline.shortlisted}</span>
-              </div>
-              <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Interviewed</span>
-                <span className="text-lg font-light text-indigo-400 mt-1 block">{hiringPipeline.interviewed}</span>
-              </div>
-              <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Offers Rolled</span>
-                <span className="text-lg font-light text-emerald-400 mt-1 block">{hiringPipeline.offersRolled}</span>
-              </div>
-              <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Hired</span>
-                <span className="text-lg font-light text-emerald-500 mt-1 block">{hiringPipeline.hired}</span>
+
+              {/* Recent Candidate Applications */}
+              <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
+                <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                  <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                    <FiUsers className="text-sky-400" /> Candidate Applications ({applications.length})
+                  </h3>
+                </div>
+                <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                    <thead>
+                      <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                        <th className="py-2.5 px-3">Candidate</th>
+                        <th className="py-2.5 px-3">Position</th>
+                        <th className="py-2.5 px-3">Applied Date</th>
+                        <th className="py-2.5 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs divide-y font-mono" style={{ borderColor: 'var(--crm-line)' }}>
+                      {applications.length === 0 ? (
+                        <tr><td colSpan="4" className="text-center py-6 text-[var(--crm-ink-faint)]">No candidate applications received yet.</td></tr>
+                      ) : (
+                        applications.slice(0, 15).map((app) => (
+                          <tr key={app._id} className="hover:bg-[var(--crm-bg-sunken)]/50">
+                            <td className="py-2.5 px-3">
+                              <div className="font-bold text-[var(--crm-heading)]">{app.fullName || app.name || 'Candidate'}</div>
+                              <div className="text-[9px] text-[var(--crm-ink-faint)]">{app.email}</div>
+                            </td>
+                            <td className="py-2.5 px-3 text-[10px] text-[var(--crm-heading)]">{app.position || app.jobTitle || 'Applicant'}</td>
+                            <td className="py-2.5 px-3 text-[10px] text-[var(--crm-ink-faint)]">{new Date(app.createdAt || app.appliedAt || Date.now()).toLocaleDateString('en-IN')}</td>
+                            <td className="py-2.5 px-3">
+                              <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase border border-sky-800 bg-sky-950 text-sky-300">
+                                {app.status || 'APPLIED'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

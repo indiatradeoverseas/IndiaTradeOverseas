@@ -254,8 +254,10 @@ export default function CoalOrders() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[var(--crm-ink-soft)] font-mono">
                                         <div>Region: <span className="text-[var(--crm-heading)] font-bold">{selectedProposal.region}</span></div>
                                         <div>Quantity: <span className="text-[var(--crm-positive)] font-bold">{selectedProposal.quantity?.toLocaleString()} MT</span></div>
+                                        <div>Target Quantity: <span className="text-[var(--crm-positive)] font-bold">{selectedProposal.targetQuantity?.toLocaleString()} MT</span></div>
                                         <div>Base Price: <span className="text-[var(--crm-heading)] font-bold">INR {selectedProposal.basePrice}</span></div>
                                         <div>Estimated Value: <span className="text-[var(--crm-positive)] font-bold">INR {selectedProposal.estimatedValue?.toLocaleString()}</span></div>
+                                        <div>Estimated Valuation: <span className="text-[var(--crm-positive)] font-bold">INR {selectedProposal.estimatedValuation?.toLocaleString()}</span></div>
                                         {selectedProposal.paymentTerm && <div>Payment Term: <span className="text-[var(--crm-heading)] font-bold">{selectedProposal.paymentTerm.replace('_', ' ')}</span></div>}
                                         <div>Status: <span className="text-[var(--crm-heading)] font-bold uppercase">{selectedProposal.status}</span></div>
                                         <div className="sm:col-span-2">Requested On: <span className="text-[var(--crm-heading)] font-bold">{selectedProposal.createdAt ? new Date(selectedProposal.createdAt).toLocaleString() : 'N/A'}</span></div>

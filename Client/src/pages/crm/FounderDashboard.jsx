@@ -16,7 +16,7 @@ import {
   FiCheckSquare, FiX, FiFileText, FiTruck, FiSettings, FiRefreshCw,
   FiPlus, FiEdit, FiTrash2, FiEye, FiActivity, FiGlobe, FiLock, FiBell,
   FiMessageSquare, FiZap, FiDownload, FiFilter, FiUserCheck, FiUserX,
-  FiClock, FiChevronDown, FiChevronUp, FiSliders, FiCheck, FiUpload
+  FiClock, FiChevronDown, FiChevronUp, FiSliders, FiCheck, FiUpload, FiAlertTriangle
 } from 'react-icons/fi';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -28,6 +28,10 @@ import FounderTransportWidget from './transport/FounderTransportWidget';
 import ScreenshotAlertsWidget from '../../components/crm/ScreenshotAlertsWidget';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
+import WarningLetterModal from '../../components/crm/warning';
+import TerminationLetterModal from '../../components/crm/Termination';
+import PiLetterModal from '../../components/crm/Pi';
+import ExperienceLetterModal from '../../components/crm/Experience';
 
 const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT'];
 const EMPLOYEE_ROLES = [
@@ -160,6 +164,9 @@ export default function FounderDashboard() {
   const [submittingTarget, setSubmittingTarget] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [letterModal, setLetterModal] = useState({ open: false, type: null, employee: null });
+  const [openHeaderLetterDropdown, setOpenHeaderLetterDropdown] = useState(false);
+  const [openRowDropdownId, setOpenRowDropdownId] = useState(null);
 
   // Search & Filter state for Workforce Directory
   const [searchTerm, setSearchTerm] = useState('');
@@ -582,6 +589,20 @@ export default function FounderDashboard() {
     });
     return result;
   }, [employees, searchTerm, deptFilter, roleFilter, statusFilter, sortBy, sortOrder]);
+
+  const salesAndTransportLeaderboard = useMemo(() => {
+    return (leaderboard || []).filter((item) => {
+      const dept = String(item.department || '').toUpperCase();
+      const role = String(item.role || '').toUpperCase();
+      return (
+        dept.includes('SALES') ||
+        dept.includes('TRANSPORT') ||
+        role.includes('SALES') ||
+        role.includes('TRANSPORT') ||
+        role.includes('DRIVER')
+      );
+    });
+  }, [leaderboard]);
 
   const handleExportCSV = () => {
     const rows = [
@@ -1428,14 +1449,58 @@ export default function FounderDashboard() {
                           </td>
                           <td className="py-3 px-3 text-[10px] text-[var(--crm-ink-soft)]">{emp.position || '—'}</td>
                           <td className="py-3 px-3">
-                            <div className="flex items-center gap-1.5">
-                              <Link to={`/crm/employees/${emp._id}`} className="text-[9px] uppercase p-1.5 rounded-md bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] hover:underline border border-cyan-800" title="View">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Link to={`/crm/employees/${emp._id}`} className="text-[9px] uppercase p-1.5 rounded-md bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] hover:underline border border-cyan-800" title="View Profile">
                                 <FiEye size={11} />
                               </Link>
-                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-md bg-sky-950 text-sky-400 border border-sky-800 cursor-pointer" title="Edit">
+
+                              {/* Per-Employee Row Letter Dropdown */}
+                              <div className="relative inline-block text-left">
+                                <button
+                                  onClick={() => setOpenRowDropdownId(openRowDropdownId === emp._id ? null : emp._id)}
+                                  className="px-2 py-1 text-[9px] font-sans uppercase font-bold rounded bg-amber-950/80 text-amber-300 border border-amber-800 hover:bg-amber-900 cursor-pointer flex items-center gap-1 transition-colors"
+                                  title="Issue Official HR Letter"
+                                >
+                                  <FiFileText size={10} /> Letter <FiChevronDown size={10} className={`transition-transform ${openRowDropdownId === emp._id ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {openRowDropdownId === emp._id && (
+                                  <div className="absolute right-0 mt-1 w-52 rounded-md bg-[#090f1f] border border-cyan-500/40 shadow-2xl z-50 py-1 font-sans text-xs">
+                                    <div className="px-2.5 py-1 border-b border-slate-800 text-[8px] uppercase tracking-wider text-cyan-400 font-bold truncate">
+                                      Issue for {emp.name}:
+                                    </div>
+                                    <button
+                                      onClick={() => { setLetterModal({ open: true, type: 'WARNING', employee: emp }); setOpenRowDropdownId(null); }}
+                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-amber-950/70 hover:text-amber-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                    >
+                                      <FiAlertTriangle className="text-amber-400" size={12} /> Warning Letter
+                                    </button>
+                                    <button
+                                      onClick={() => { setLetterModal({ open: true, type: 'TERMINATION', employee: emp }); setOpenRowDropdownId(null); }}
+                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-rose-950/70 hover:text-rose-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                    >
+                                      <FiUserX className="text-rose-400" size={12} /> Termination Letter
+                                    </button>
+                                    <button
+                                      onClick={() => { setLetterModal({ open: true, type: 'PI', employee: emp }); setOpenRowDropdownId(null); }}
+                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-purple-950/70 hover:text-purple-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                    >
+                                      <FiTrendingUp className="text-purple-400" size={12} /> PIP / PI Letter
+                                    </button>
+                                    <button
+                                      onClick={() => { setLetterModal({ open: true, type: 'EXPERIENCE', employee: emp }); setOpenRowDropdownId(null); }}
+                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-cyan-950/70 hover:text-cyan-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                    >
+                                      <FiAward className="text-cyan-400" size={12} /> Experience Letter
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-md bg-sky-950 text-sky-400 border border-sky-800 cursor-pointer" title="Edit Employee">
                                 <FiEdit size={11} />
                               </button>
-                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-md bg-rose-950 text-rose-400 border border-rose-800 cursor-pointer" title="Delete">
+                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-md bg-rose-950 text-rose-400 border border-rose-800 cursor-pointer" title="Delete Employee">
                                 <FiTrash2 size={11} />
                               </button>
                             </div>
@@ -1498,6 +1563,109 @@ export default function FounderDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            SALES LEADERBOARD & PERFORMANCE MODULE
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'SALES') && (
+          <div className="border rounded-sm overflow-hidden space-y-4 p-5" style={CARD_STYLE}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+              <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                <FiTrendingUp className="text-emerald-400" /> Executive Sales & Transport Leaderboard ({salesAndTransportLeaderboard.length} Executives)
+              </h3>
+              <span className="text-[10px] font-sans text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                Live Sales Revenue
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b text-[9px] uppercase font-sans" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                    <th className="py-2.5 px-3">Sales Staff</th>
+                    <th className="py-2.5 px-3">Department</th>
+                    <th className="py-2.5 px-3">Revenue Achieved</th>
+                    <th className="py-2.5 px-3">Won Deals</th>
+                    <th className="py-2.5 px-3">Conversion %</th>
+                    <th className="py-2.5 px-3">Rank</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                  {salesAndTransportLeaderboard.length === 0 ? (
+                    <tr><td colSpan="6" className="text-center py-8 text-[var(--crm-ink-faint)]">No sales or transport leaderboard data recorded for selected period.</td></tr>
+                  ) : (
+                    salesAndTransportLeaderboard.map((item, idx) => {
+                      const wonCount = item.wonDeals || item.dealsWon || 0;
+                      const totalCount = item.totalLeads || 0;
+                      let convPct = item.conversionRate !== undefined && item.conversionRate !== null && item.conversionRate > 0
+                        ? item.conversionRate
+                        : (totalCount > 0 ? Math.round((wonCount / totalCount) * 100) : (wonCount > 0 ? 100 : 0));
+                      if (convPct > 100) convPct = 100;
+
+                      return (
+                        <tr key={item._id || item.employeeId || idx} className="hover:bg-[var(--crm-bg-sunken)]/50">
+                          <td className="py-3 px-3 font-bold text-[var(--crm-heading)]">{item.name || item.employeeName || item.fullName || 'Sales Executive'}</td>
+                          <td className="py-3 px-3"><span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400">{item.department || 'SALES'}</span></td>
+                          <td className="py-3 px-3 font-bold text-emerald-400">{fmtCurrency(item.revenue || item.totalRevenue || 0)}</td>
+                          <td className="py-3 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
+                          <td className="py-3 px-3 font-bold text-pink-400">{convPct}%</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${idx === 0 ? 'bg-amber-950 border border-amber-800 text-amber-300' : 'bg-slate-900 border border-slate-700 text-slate-300'}`}>
+                              #{idx + 1} {idx === 0 ? '🏆 TOP' : 'ACTIVE'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            RECRUITMENT & HIRING PIPELINE MODULE
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'HIRING') && (
+          <div className="border rounded-sm overflow-hidden space-y-4 p-5" style={CARD_STYLE}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+              <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                <FiBriefcase className="text-amber-400" /> Active Job Postings ({jobs.length})
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[500px]">
+                <thead>
+                  <tr className="border-b text-[9px] uppercase font-sans" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                    <th className="py-2.5 px-3">Job Position</th>
+                    <th className="py-2.5 px-3">Department</th>
+                    <th className="py-2.5 px-3">Type</th>
+                    <th className="py-2.5 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                  {jobs.length === 0 ? (
+                    <tr><td colSpan="4" className="text-center py-6 text-[var(--crm-ink-faint)]">No active job postings found.</td></tr>
+                  ) : (
+                    jobs.map((job) => (
+                      <tr key={job._id} className="hover:bg-[var(--crm-bg-sunken)]/50">
+                        <td className="py-2.5 px-3 font-bold text-[var(--crm-heading)]">{job.title}</td>
+                        <td className="py-2.5 px-3 text-[10px] text-cyan-400">{job.department}</td>
+                        <td className="py-2.5 px-3 text-[10px] text-[var(--crm-ink-soft)]">{job.jobType || 'Full-time'}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${job.isActive ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                            {job.isActive ? 'OPEN' : 'CLOSED'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -1617,6 +1785,43 @@ export default function FounderDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* HR Action Letter Modals (Warning, Termination, PIP) */}
+      {letterModal.open && letterModal.type === 'WARNING' && (
+        <WarningLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
+
+      {letterModal.open && letterModal.type === 'TERMINATION' && (
+        <TerminationLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
+
+      {letterModal.open && letterModal.type === 'PI' && (
+        <PiLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
+
+      {letterModal.open && letterModal.type === 'EXPERIENCE' && (
+        <ExperienceLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
     </motion.div>
   );
 }

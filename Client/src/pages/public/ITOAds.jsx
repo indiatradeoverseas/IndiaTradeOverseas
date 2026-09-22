@@ -26,6 +26,7 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import SmokeyCursor from '../../components/lightswind/smokey-cursor';
 import { loadRazorpayScript } from '../../utils/razorpay';
 import { paymentsApi } from '../../api/payments';
+import { distributorApi } from '../../api/distributor';
 import { toast } from 'react-hot-toast';
 
 // ============================================================================
@@ -392,6 +393,29 @@ export default function ITOAds() {
       });
 
       if (verifyResult?.success) {
+        // Save order in CRM
+        try {
+          await distributorApi.submitItoAdsOrder({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            company: formData.company,
+            billingAddress: formData.billingAddress,
+            billingState: formData.billingState,
+            gstin: formData.gstin,
+            plan: pkg.name,
+            amount,
+            currency: 'INR',
+            razorpayOrderId: razorpayResponse.razorpay_order_id,
+            razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+            razorpaySignature: razorpayResponse.razorpay_signature,
+            consent: formData.consent,
+            notes: `Package: ${pkg.name}, Leads: ${pkg.leads}`
+          });
+        } catch (orderErr) {
+          console.warn('Failed to record ITO Ads order in CRM:', orderErr);
+        }
+
         toast.success(`Payment successful! ${pkg.name} package activated.`);
         setIsProcessingPayment(false);
         setIsCheckoutOpen(false);

@@ -345,10 +345,16 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
   if (department && department !== 'ALL') {
     const d = String(department).toUpperCase();
     if (d === 'SALES' || d === 'SALES_TRIAL') {
-      empFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
-      userFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
+      empFilter.$or = [
+        { department: { $in: ['SALES', 'SALES_TRIAL', 'Sales', 'sales'] } },
+        { role: { $in: ['SALES', 'SALES_TRIAL', 'SALES_EXECUTIVE', 'SALES_MANAGER'] } }
+      ];
+      userFilter.$or = [
+        { department: { $in: ['SALES', 'SALES_TRIAL', 'Sales', 'sales'] } },
+        { role: { $in: ['SALES', 'SALES_TRIAL', 'SALES_EXECUTIVE', 'SALES_MANAGER'] } }
+      ];
       trialFilter.$or = [
-        { department: { $in: ['SALES', 'SALES_TRIAL'] } },
+        { department: { $in: ['SALES', 'SALES_TRIAL', 'Sales', 'sales'] } },
         { department: { $exists: false } },
         { department: null },
         { department: '' }
@@ -359,8 +365,21 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
       trialFilter.department = department;
     }
   } else {
-    empFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
-    userFilter.department = { $in: ['SALES', 'SALES_TRIAL'] };
+    // Default filter: Include ONLY Sales and Transport personnel (filtering out Admin, HR, Management, IT, etc.)
+    empFilter.$or = [
+      { department: { $in: ['SALES', 'SALES_TRIAL', 'Sales', 'sales', 'TRANSPORT', 'Transport', 'transport'] } },
+      { role: { $in: ['SALES', 'SALES_TRIAL', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'TRANSPORT', 'TRANSPORT_MANAGER', 'TRANSPORT_EXECUTIVE', 'DRIVER'] } }
+    ];
+    userFilter.$or = [
+      { department: { $in: ['SALES', 'SALES_TRIAL', 'Sales', 'sales', 'TRANSPORT', 'Transport', 'transport'] } },
+      { role: { $in: ['SALES', 'SALES_TRIAL', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'TRANSPORT', 'TRANSPORT_MANAGER', 'TRANSPORT_EXECUTIVE', 'DRIVER'] } }
+    ];
+    trialFilter.$or = [
+      { department: { $in: ['SALES', 'SALES_TRIAL', 'Sales', 'sales', 'TRANSPORT', 'Transport', 'transport'] } },
+      { department: { $exists: false } },
+      { department: null },
+      { department: '' }
+    ];
   }
 
   const employees = await Employee.find(empFilter);
@@ -371,49 +390,57 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
 
   // Add users first
   users.forEach(u => {
-    if (u.email) {
-      const emailKey = u.email.toLowerCase();
-      repMap.set(emailKey, {
-        employeeId: u._id.toString(),
-        fullName: u.fullName || u.name,
-        employeeCode: u.employeeId || String(u._id),
-        department: u.department || 'SALES',
-        email: emailKey,
-        isTrial: u.role === 'SALES_TRIAL' || u.department === 'SALES_TRIAL',
-        userIds: [u._id.toString()]
-      });
-    }
+    const key = u.email ? u.email.toLowerCase() : u._id.toString();
+    const name = u.fullName || u.name || u.email || 'Sales Executive';
+    repMap.set(key, {
+      employeeId: u._id.toString(),
+      fullName: name,
+      name: name,
+      employeeName: name,
+      employeeCode: u.employeeId || String(u._id),
+      department: u.department || 'SALES',
+      email: u.email || '',
+      isTrial: u.role === 'SALES_TRIAL' || u.department === 'SALES_TRIAL',
+      userIds: [u._id.toString()]
+    });
   });
 
   // Add/merge employees
   employees.forEach(e => {
-    if (e.email) {
-      const emailKey = e.email.toLowerCase();
-      const existing = repMap.get(emailKey);
-      if (existing) {
-        if (!existing.userIds.includes(e._id.toString())) {
-          existing.userIds.push(e._id.toString());
-        }
-      } else {
-        repMap.set(emailKey, {
-          employeeId: e._id.toString(),
-          fullName: e.name || e.fullName,
-          employeeCode: e.employeeId || String(e._id),
-          department: e.department || 'SALES',
-          email: emailKey,
-          isTrial: e.role === 'SALES_TRIAL' || e.department === 'SALES_TRIAL',
-          userIds: [e._id.toString()]
-        });
+    const key = e.email ? e.email.toLowerCase() : e._id.toString();
+    const existing = repMap.get(key);
+    const name = e.name || e.fullName || e.email || 'Sales Executive';
+    if (existing) {
+      if (!existing.userIds.includes(e._id.toString())) {
+        existing.userIds.push(e._id.toString());
       }
+      if (name && name !== 'Sales Executive') {
+        existing.fullName = name;
+        existing.name = name;
+        existing.employeeName = name;
+      }
+    } else {
+      repMap.set(key, {
+        employeeId: e._id.toString(),
+        fullName: name,
+        name: name,
+        employeeName: name,
+        employeeCode: e.employeeId || String(e._id),
+        department: e.department || 'SALES',
+        email: e.email || '',
+        isTrial: e.role === 'SALES_TRIAL' || e.department === 'SALES_TRIAL',
+        userIds: [e._id.toString()]
+      });
     }
   });
 
   // Add/merge Sales Trial Users
   trialUsers.forEach(t => {
-    const emailKey = t.email ? t.email.toLowerCase() : String(t._id);
-    const existing = repMap.get(emailKey);
+    const key = t.email ? t.email.toLowerCase() : String(t._id);
+    const existing = repMap.get(key);
     const tIdStr = t._id ? t._id.toString() : '';
     const tCodeStr = t.trialId || t.employeeId || tIdStr;
+    const name = t.fullName || t.name || 'Sales Trial Executive';
 
     if (existing) {
       if (tIdStr && !existing.userIds.includes(tIdStr)) {
@@ -422,22 +449,63 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
       if (tCodeStr && !existing.userIds.includes(tCodeStr)) {
         existing.userIds.push(tCodeStr);
       }
+      if (name && name !== 'Sales Trial Executive') {
+        existing.fullName = name;
+        existing.name = name;
+        existing.employeeName = name;
+      }
     } else {
       const ids = [];
       if (tIdStr) ids.push(tIdStr);
       if (tCodeStr && tCodeStr !== tIdStr) ids.push(tCodeStr);
 
-      repMap.set(emailKey, {
+      repMap.set(key, {
         employeeId: tIdStr || tCodeStr,
-        fullName: t.fullName || t.name || 'Sales Trial Executive',
+        fullName: name,
+        name: name,
+        employeeName: name,
         employeeCode: tCodeStr,
         department: t.department || 'SALES_TRIAL',
-        email: emailKey,
+        email: t.email || '',
         isTrial: true,
         userIds: ids
       });
     }
   });
+
+  // Resolve any missing assignedTo IDs present in lead aggregations
+  const mappedUserIds = new Set();
+  repMap.forEach(rep => {
+    rep.userIds.forEach(id => mappedUserIds.add(id));
+  });
+
+  const missingAssignedIds = Object.keys(leadsByEmployee).filter(id => id && !mappedUserIds.has(id));
+
+  for (const missingId of missingAssignedIds) {
+    let resolvedUser = await User.findById(missingId).lean().catch(() => null);
+    if (!resolvedUser) {
+      resolvedUser = await Employee.findById(missingId).lean().catch(() => null);
+    }
+    if (!resolvedUser) {
+      resolvedUser = await SalesTrialUser.findById(missingId).lean().catch(() => null);
+    }
+
+    if (resolvedUser) {
+      const name = resolvedUser.fullName || resolvedUser.name || resolvedUser.email || 'Sales Executive';
+      const key = resolvedUser.email ? resolvedUser.email.toLowerCase() : missingId;
+      repMap.set(key, {
+        employeeId: missingId,
+        fullName: name,
+        name: name,
+        employeeName: name,
+        employeeCode: resolvedUser.employeeId || resolvedUser.trialId || missingId,
+        department: resolvedUser.department || 'SALES',
+        email: resolvedUser.email || '',
+        isTrial: resolvedUser.role === 'SALES_TRIAL' || resolvedUser.department === 'SALES_TRIAL',
+        userIds: [missingId]
+      });
+    }
+  }
 
   const repsList = Array.from(repMap.values());
 
@@ -482,22 +550,58 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
         }
       });
 
+      // Compute conversion rate accurately
+      const won = dealsWon || 0;
+      const total = totalLeads || 0;
+      let conversionRate = 0;
+      if (total > 0) {
+        conversionRate = Math.round((won / total) * 100);
+      } else if (won > 0) {
+        conversionRate = 100;
+      }
+      if (conversionRate > 100) conversionRate = 100;
+
+      const winRate = (dealsWon + dealsLost) > 0
+        ? Math.round((dealsWon / (dealsWon + dealsLost)) * 100)
+        : conversionRate;
+
       return {
         employeeId: rep.employeeId,
         fullName: rep.fullName,
+        name: rep.fullName || rep.name,
+        employeeName: rep.fullName || rep.name,
+        email: rep.email || '',
         employeeCode: rep.employeeCode,
         department: rep.department,
         isTrial: rep.isTrial || false,
         totalLeads,
         dealsWon,
+        wonDeals: dealsWon,
         dealsLost,
         revenue,
+        conversionRate,
+        winRate,
         activityCount,
         completedTasksCount,
         targetValue,
         targetDeals,
         isTargetAchieved: targetValue > 0 ? revenue >= targetValue : false
       };
+    })
+    .filter(row => {
+      // If user passed a specific non-Sales/Transport department filter, respect it
+      if (department && department !== 'ALL' && !['SALES', 'SALES_TRIAL', 'TRANSPORT'].includes(String(department).toUpperCase())) {
+        return true;
+      }
+      const d = String(row.department || '').toUpperCase();
+      const r = String(row.role || '').toUpperCase();
+      return (
+        d.includes('SALES') ||
+        d.includes('TRANSPORT') ||
+        r.includes('SALES') ||
+        r.includes('TRANSPORT') ||
+        r.includes('DRIVER')
+      );
     })
     .sort((a, b) => b.revenue - a.revenue || b.dealsWon - a.dealsWon || b.completedTasksCount - a.completedTasksCount || b.activityCount - a.activityCount);
 

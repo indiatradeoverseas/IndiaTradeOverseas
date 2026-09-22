@@ -27,7 +27,11 @@ const proposalSchema = new mongoose.Schema({
   quantity: {
     type: Number,
     required: true,
-    min: 200
+    min: 40
+  },
+  targetQuantity: {
+    type: Number,
+    default: 0
   },
   basePrice: {
     type: Number,
@@ -41,6 +45,10 @@ const proposalSchema = new mongoose.Schema({
   estimatedValue: {
     type: Number,
     required: true
+  },
+  estimatedValuation: {
+    type: Number,
+    default: 0
   },
   status: {
     type: String,

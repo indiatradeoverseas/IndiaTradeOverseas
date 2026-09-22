@@ -58,6 +58,7 @@ import SharedFilesPage from './pages/crm/SharedFilesPage';
 import Employees from './pages/crm/Employees';
 import Distributors from './pages/crm/Distributors';
 import CoalOrders from './pages/crm/CoalOrders';
+import ITOAdsOrders from './pages/crm/ITOAdsOrders';
 import Visitors from './pages/crm/Visitors';
 import Security from './pages/crm/Security';
 import Reports from './pages/crm/Reports';
@@ -1047,6 +1048,11 @@ function AppLayout() {
               element={
                 <CoalOrders />
               }
+            />
+
+            <Route
+              path="/crm/itoads-orders"
+              element={<ITOAdsOrders />}
             />
 
             <Route

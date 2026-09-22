@@ -189,9 +189,9 @@ textarea {
   --crm-heading: #000000;
   --crm-line: rgba(0, 0, 0, 0.15);
   --crm-line-strong: rgba(0, 0, 0, 0.25);
-  --crm-accent: #C89A54;
-  --crm-accent-soft: #9A7639;
-  --crm-accent-bg: rgba(200, 154, 84, 0.1);
+  --crm-accent: #D97706;
+  --crm-accent-soft: #FEF3C7;
+  --crm-accent-bg: #FEF3C7;
   --crm-positive: #10B981;
   --crm-positive-bg: rgba(16, 185, 129, 0.1);
   --crm-warning: #F59E0B;
@@ -215,9 +215,9 @@ textarea {
   --crm-heading: #000000;
   --crm-line: rgba(0, 0, 0, 0.2);
   --crm-line-strong: rgba(0, 0, 0, 0.3);
-  --crm-accent: #B45309;
-  --crm-accent-soft: #78350F;
-  --crm-accent-bg: rgba(180, 83, 9, 0.1);
+  --crm-accent: #D97706;
+  --crm-accent-soft: #FEF3C7;
+  --crm-accent-bg: #FEF3C7;
   --crm-positive: #15803D;
   --crm-positive-bg: rgba(21, 128, 61, 0.1);
   --crm-warning: #B45309;
@@ -231,7 +231,9 @@ textarea {
   color-scheme: light;
 }
 
-/* High-Contrast Light Mode Utility Overrides — Solid Black Text (#000000) */
+/* High-Contrast Light Mode Utility Overrides — Solid Dark Text (#0F172A) */
+.crm-portal.light-theme .text-white,
+.crm-portal.light-theme .text-slate-50,
 .crm-portal.light-theme .text-slate-100,
 .crm-portal.light-theme .text-slate-200,
 .crm-portal.light-theme .text-slate-300,
@@ -239,6 +241,7 @@ textarea {
 .crm-portal.light-theme .text-slate-500,
 .crm-portal.light-theme .text-slate-600,
 .crm-portal.light-theme .text-slate-700,
+.crm-portal.light-theme .text-gray-100,
 .crm-portal.light-theme .text-gray-200,
 .crm-portal.light-theme .text-gray-300,
 .crm-portal.light-theme .text-gray-400,
@@ -249,7 +252,7 @@ textarea {
 .crm-portal.light-theme input,
 .crm-portal.light-theme select,
 .crm-portal.light-theme textarea {
-  color: #000000 !important;
+  color: #0F172A !important;
 }
 
 .crm-portal.light-theme .text-red-400,
@@ -289,29 +292,33 @@ textarea {
   color: #0369A1 !important;
 }
 
-/* Light Mode — Workforce Directory Management Badges & Actions (Matching Image 1 Employee ID Style) */
+/* Light Mode — Correct Badge Backgrounds (Cyan, Emerald, Sky, Rose) */
 .crm-portal.light-theme .bg-cyan-950,
-.crm-portal[data-theme='light'] .bg-cyan-950,
-.crm-portal.light-theme .bg-emerald-950,
-.crm-portal[data-theme='light'] .bg-emerald-950,
-.crm-portal.light-theme .bg-rose-950,
-.crm-portal[data-theme='light'] .bg-rose-950,
-.crm-portal.light-theme .bg-sky-950,
-.crm-portal[data-theme='light'] .bg-sky-950 {
-  background-color: #FEE2E2 !important;
-  border-color: #FCA5A5 !important;
-  color: #991B1B !important;
+.crm-portal[data-theme='light'] .bg-cyan-950 {
+  background-color: #E0F2FE !important;
+  border-color: #7DD3FC !important;
+  color: #0369A1 !important;
 }
 
-.crm-portal.light-theme td .bg-cyan-950,
-.crm-portal.light-theme td .bg-emerald-950,
-.crm-portal.light-theme td .bg-rose-950,
-.crm-portal.light-theme td .bg-sky-950,
-.crm-portal.light-theme td button,
-.crm-portal.light-theme td a {
-  background-color: #FEE2E2 !important;
-  border: 1px solid #FCA5A5 !important;
-  color: #991B1B !important;
+.crm-portal.light-theme .bg-emerald-950,
+.crm-portal[data-theme='light'] .bg-emerald-950 {
+  background-color: #D1FAE5 !important;
+  border-color: #6EE7B7 !important;
+  color: #047857 !important;
+}
+
+.crm-portal.light-theme .bg-sky-950,
+.crm-portal[data-theme='light'] .bg-sky-950 {
+  background-color: #E0F2FE !important;
+  border-color: #7DD3FC !important;
+  color: #0369A1 !important;
+}
+
+.crm-portal.light-theme .bg-rose-950,
+.crm-portal[data-theme='light'] .bg-rose-950 {
+  background-color: #FFE4E6 !important;
+  border-color: #FDA4AF !important;
+  color: #BE123C !important;
 }
 
 .crm-portal.light-theme .text-purple-400,

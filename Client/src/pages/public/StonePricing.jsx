@@ -18,6 +18,7 @@ export default function StonePricing() {
   const quantity = searchParams.get('quantity') || '';
   const timeline = searchParams.get('timeline') || '';
   const type = searchParams.get('type') || '';
+  const ratePaymentTerm = searchParams.get('paymentTerm') || 'ADVANCE_100';
 
   useDocumentMeta({
     title: `${material} – ${location} – Stone Pricing | India Trade Overseas`,
@@ -43,8 +44,25 @@ export default function StonePricing() {
       return;
     }
 
-    const qty = parseInt(quantity.replace(/\D/g, '')) || 1;
-    const estimatedValue = qty * price;
+    // Convert truck codes to MT (server requires minimum 40 MT)
+    const truckToMT = {
+      '1_TRUCK': 30,
+      '2_5_TRUCKS': 80,
+      '6_10_TRUCKS': 200,
+      '10_PLUS_TRUCKS': 400,
+    };
+    const qty = truckToMT[quantity] || parseInt(quantity.replace(/\D/g, '')) || 40;
+    if (qty < 40) {
+      toast.error('Minimum order quantity is 40 MT (one truckload).');
+      return;
+    }
+    // price may be an object with adv100/adv50/cod for PAKUR
+    const basePrice = typeof price === 'object' ? (price[ratePaymentTerm] ?? price.adv100) : price;
+    if (basePrice == null) {
+      toast.error('Price not available for selected payment term');
+      return;
+    }
+    const estimatedValue = qty * basePrice;
 
     // Create proposal (approved) first
     const proposalPayload = {
@@ -54,8 +72,8 @@ export default function StonePricing() {
       region: location,
       grade: material,
       quantity: qty,
-      basePrice: price,
-      paymentTerm: 'ADVANCE_100',
+      basePrice,
+      paymentTerm: ratePaymentTerm,
       estimatedValue,
       status: 'approved',
     };
@@ -74,7 +92,17 @@ export default function StonePricing() {
       if (!orderResult.success) throw new Error(orderResult.message || 'Failed to create Razorpay order');
 
       const { orderId, keyId } = orderResult.data;
-      await loadRazorpayScript();
+      try {
+        await loadRazorpayScript();
+      } catch (loadErr) {
+        console.error(loadErr);
+        toast.error('Unable to load payment gateway. Please try again.');
+        return;
+      }
+      if (!window.Razorpay) {
+        toast.error('Payment gateway failed to initialise.');
+        return;
+      }
 
       const options = {
         key: keyId,

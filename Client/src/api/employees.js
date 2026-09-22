@@ -26,5 +26,10 @@ export const employeesApi = {
     const queryString = new URLSearchParams(params).toString();
     const response = await axiosInstance.get(`/employees/count${queryString ? `?${queryString}` : ''}`);
     return response.data;
+  },
+
+  async sendLetter(payload) {
+    const response = await axiosInstance.post('/employees/send-letter', payload);
+    return response.data;
   }
 };
