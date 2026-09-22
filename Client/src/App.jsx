@@ -47,6 +47,7 @@ import Quotations from './pages/crm/Quotations';
 import Dispatches from './pages/crm/Dispatches';
 import Payments from './pages/crm/Payments';
 import Documents from './pages/crm/Documents';
+import SharedFilesPage from './pages/crm/SharedFilesPage';
 import Employees from './pages/crm/Employees';
 import Distributors from './pages/crm/Distributors';
 import CoalOrders from './pages/crm/CoalOrders';
@@ -73,12 +74,14 @@ import TrialDashboard from './pages/crm/TrialDashboard';
 import HrManagerDashboard from './pages/crm/HrManagerDashboard';
 import HrExecutiveDashboard from './pages/crm/HrExecutiveDashboard';
 import FounderDashboard from './pages/crm/FounderDashboard';
+import CEODashboard from './pages/crm/CEODashboard';
 import FinanceManagerDashboard from './pages/crm/FinanceManagerDashboard';
 import TransportManager from './pages/crm/transport/TransportManager';
 import TransportExecutive from './pages/crm/transport/TransportExecutive';
 import DriverMobileView from './pages/crm/transport/DriverMobileView';
-import FinanceDashboard from './pages/crm/FinanceDashboard';
 import ManagerChatSupport from './pages/crm/ManagerChatSupport';
+import ItDashboard from './pages/crm/ItDashboard';
+
 
 import Navbar from './components/Layout/Navbar';
 import PortalLayout from './components/Layout/PortalLayout';
@@ -119,11 +122,22 @@ function ProtectedRoute({ children }) {
 
 function isAdminUser(user) {
   if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
 
   return (
-    user?.role === 'ADMIN' ||
+    ['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) ||
     user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'))
+    user?.department === 'MANAGEMENT' ||
+    position.includes('admin') ||
+    position.includes('founder') ||
+    position.includes('ceo') ||
+    position.includes('chief executive') ||
+    role.includes('FOUNDER') ||
+    role.includes('CEO') ||
+    email.startsWith('ceo@') ||
+    email.startsWith('founder@')
   );
 }
 
@@ -141,6 +155,78 @@ function AdminRoute({ children }) {
 
   if (!user || !isAdminUser(user)) {
     return <Navigate to="/crm/dashboard" />;
+  }
+
+  return children;
+}
+
+function isCEOUser(user) {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
+  const empId = (user.employeeId || '').toUpperCase();
+
+  return (
+    role === 'CEO' ||
+    position.includes('chief executive') ||
+    position === 'ceo' ||
+    empId.includes('CEO') ||
+    email.startsWith('ceo@')
+  );
+}
+
+function isFounderUser(user) {
+  if (!user) return false;
+  if (isCEOUser(user)) return false;
+
+  const role = (user.role || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
+  const empId = (user.employeeId || '').toUpperCase();
+  const name = (user.name || user.fullName || '').toLowerCase();
+
+  return (
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    position.includes('founder') ||
+    empId.includes('FOUNDER') ||
+    email.startsWith('founder@') ||
+    name.includes('founder')
+  );
+}
+
+function FounderRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user || !isFounderUser(user)) {
+    return <Navigate to="/crm/dashboard" replace />;
+  }
+
+  return children;
+}
+
+function CEORoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user || (!isCEOUser(user) && !isFounderUser(user))) {
+    return <Navigate to="/crm/dashboard" replace />;
   }
 
   return children;
@@ -367,6 +453,24 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/it"
+              element={
+                <ProtectedRoute>
+                  <ItDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/crm/it-dashboard"
+              element={
+                <ProtectedRoute>
+                  <ItDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/crm/manager-chat"
               element={
                 <ProtectedRoute>
@@ -374,6 +478,7 @@ function AppLayout() {
                 </ProtectedRoute>
               }
             />
+
 
             <Route
               path="/crm/sales"
@@ -594,6 +699,15 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/shared-files"
+              element={
+                <ProtectedRoute>
+                  <SharedFilesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/crm/products"
               element={<ProductUpload />}
             />
@@ -711,25 +825,50 @@ function AppLayout() {
             />
 
             <Route
+              path="/crm/ceo"
+              element={
+                <CEORoute>
+                  <CEODashboard />
+                </CEORoute>
+              }
+            />
+
+            <Route
+              path="/ceo"
+              element={
+                <CEORoute>
+                  <CEODashboard />
+                </CEORoute>
+              }
+            />
+
+            <Route
               path="/crm/founder"
               element={
-                <AdminRoute>
+                <FounderRoute>
                   <FounderDashboard />
-                </AdminRoute>
+                </FounderRoute>
               }
             />
 
             <Route
               path="/crm/applications"
               element={
-                [
-                  'ADMIN',
-                  'MANAGER',
-                  'SALES_MANAGER',
-                  'HR_MANAGER',
-                  'HR_EXECUTIVE',
-                  'HR'
-                ].includes(user?.role) ? (
+                (
+                  isAdminUser(user) ||
+                  [
+                    'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER',
+                    'CEO',
+                    'SUPER_ADMIN',
+                    'MANAGER',
+                    'SALES_MANAGER',
+                    'HR_MANAGER',
+                    'HR_EXECUTIVE',
+                    'HR'
+                  ].includes(user?.role)
+                ) ? (
                   <Applications />
                 ) : (
                   <Navigate
@@ -744,8 +883,13 @@ function AppLayout() {
               path="/crm/jobs"
               element={
                 (
+                  isAdminUser(user) ||
                   [
                     'ADMIN',
+                    'FOUNDER',
+                    'CO_FOUNDER',
+                    'CEO',
+                    'SUPER_ADMIN',
                     'MANAGER',
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
@@ -814,7 +958,7 @@ function AppLayout() {
               path="/crm/finance/executive"
               element={
                 <ProtectedRoute>
-                  <FinanceDashboard />
+                  <FinanceManagerDashboard />
                 </ProtectedRoute>
               }
             />
@@ -902,33 +1046,31 @@ function AppLayout() {
 }
 
 
+import SecurityGuard from './components/security/SecurityGuard';
+
 function App() {
   return (
     <Router>
-
       <AuthProvider>
-
         <Toaster
           position="top-right"
           toastOptions={{
+            duration: 4000,
             style: {
               background: '#23262C',
-              color: '#E7E3D9',
-              border: '1px solid rgba(231,227,217,0.16)',
-              borderRadius: '6px',
-              fontSize: '13px',
-              padding: '10px 14px',
-              boxShadow:
-                '0 20px 44px -20px rgba(0,0,0,0.5)'
+              color: '#ECECEC',
+              fontSize: '11px',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              border: '1px solid rgba(197, 203, 211, 0.15)',
+              borderRadius: '2px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
             },
-
             success: {
               iconTheme: {
                 primary: '#56A587',
                 secondary: '#23262C'
               }
             },
-
             error: {
               iconTheme: {
                 primary: '#C96A57',
@@ -938,13 +1080,14 @@ function App() {
           }}
         />
 
-        <AppLayout />
+        <SecurityGuard>
+          <AppLayout />
+        </SecurityGuard>
 
       </AuthProvider>
 
     </Router>
   );
 }
-
 
 export default App;

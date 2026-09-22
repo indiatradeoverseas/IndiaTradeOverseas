@@ -6,16 +6,32 @@ import { adminApi } from '../../api/admin';
 import { employeesApi } from '../../api/employees';
 import { taskApi } from '../../api/task';
 import { salesTrialApi } from '../../api/salesTrialApi';
+import SalesCalculatorModal from '../../components/crm/SalesCalculatorModal';
+import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
+
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
   FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2
 } from 'react-icons/fi';
+import { BsCalculator } from 'react-icons/bs';
 import { useAuth } from '../../hooks/useAuth';
 import { API_URL, getFileUrl } from '../../config/env';
 import toast from 'react-hot-toast';
-import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend 
+} from 'recharts';
 
 // Staggered animation configurations
 const containerVariants = {
@@ -56,6 +72,82 @@ export default function Leads() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [leadTab, setLeadTab] = useState('ACTIVE'); // 'ACTIVE' | 'COMPLETED' | 'WORKLOAD' | 'ALL'
   const [filterPriority, setFilterPriority] = useState('ALL'); // 'ALL' | 'HOT' | 'WARM' | 'COLD'
+  const [showAnalyticsGraph, setShowAnalyticsGraph] = useState(true);
+  const [graphViewMode, setGraphViewMode] = useState('BAR'); // 'BAR' | 'PIE' | 'ALL'
+
+  const pipelineAnalytics = useMemo(() => {
+    const totalLeads = leads.length;
+    let totalGrossValue = 0;
+    let totalWonValue = 0;
+    let totalLostValue = 0;
+    let activeValue = 0;
+
+    let wonCount = 0;
+    let lostCount = 0;
+    let activeCount = 0;
+    let newLeadCount = 0;
+    let inDiscussionCount = 0;
+
+    const categoryTotals = {};
+
+    leads.forEach(l => {
+      const val = Number(l.leadValue) || 0;
+      const st = String(l.stage || '').toUpperCase();
+      const cat = String(l.productCategory || 'Uncategorized').toUpperCase();
+
+      totalGrossValue += val;
+
+      if (['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'COMPLETED'].includes(st)) {
+        wonCount++;
+        totalWonValue += val;
+      } else if (['CLOSED_LOST', 'DEAD', 'LOST', 'CANCELLED', 'EXPIRED'].includes(st)) {
+        lostCount++;
+        totalLostValue += val;
+      } else {
+        activeCount++;
+        activeValue += val;
+        if (st.includes('NEW')) newLeadCount++;
+        else inDiscussionCount++;
+      }
+
+      if (!categoryTotals[cat]) {
+        categoryTotals[cat] = { name: cat, count: 0, value: 0 };
+      }
+      categoryTotals[cat].count += 1;
+      categoryTotals[cat].value += val;
+    });
+
+    const conversionRate = totalLeads > 0 ? Math.round((wonCount / totalLeads) * 100) : 0;
+
+    const stageChartData = [
+      { name: 'New Lead', count: newLeadCount, value: leads.filter(l => (l.stage || '').toUpperCase().includes('NEW')).reduce((s, x) => s + Number(x.leadValue || 0), 0), fill: '#06b6d4' },
+      { name: 'In Discussion', count: inDiscussionCount, value: leads.filter(l => !(l.stage || '').toUpperCase().includes('NEW') && !['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAD', 'LOST'].includes((l.stage || '').toUpperCase())).reduce((s, x) => s + Number(x.leadValue || 0), 0), fill: '#6366f1' },
+      { name: 'Deals Won', count: wonCount, value: totalWonValue, fill: '#10b981' },
+      { name: 'Lost/Dead', count: lostCount, value: totalLostValue, fill: '#f43f5e' }
+    ];
+
+    const categoryChartData = Object.values(categoryTotals).map(c => ({
+      name: c.name,
+      value: c.value,
+      count: c.count
+    }));
+
+    return {
+      totalLeads,
+      totalGrossValue,
+      totalWonValue,
+      totalLostValue,
+      activeValue,
+      activeCount,
+      wonCount,
+      lostCount,
+      conversionRate,
+      pendingRemindersCount: reminders.length,
+      stageChartData,
+      categoryChartData
+    };
+  }, [leads, reminders]);
+
 
   const isAssignedToMe = (lead) => {
     if (!user || !lead || !lead.assignedTo) return false;
@@ -116,8 +208,9 @@ export default function Leads() {
   const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
 
-  // Call Recording Modal State
+  // Call Recording & Sales Calculator Modal State
   const [showCallModal, setShowCallModal] = useState(false);
+  const [showSalesCalc, setShowSalesCalc] = useState(false);
 
   // Calendar Date Filtering & LOI State
   const [dateFilterMode, setDateFilterMode] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'PICK_DATE'
@@ -236,11 +329,18 @@ export default function Leads() {
   ];
 
   const isManagerOrAdmin = 
-    user?.role === 'ADMIN' ||
-    user?.role === 'MANAGER' ||
-    user?.role === 'SALES_MANAGER' ||
+    ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((user?.role || '').toUpperCase()) ||
+    (user?.role && user.role.toUpperCase().endsWith('_MANAGER')) ||
+    (user?.role && user.role.toLowerCase().includes('manager')) ||
+    (user?.role && user.role.toUpperCase().includes('CEO')) ||
     user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'));
+    user?.department === 'MANAGEMENT' ||
+    (user?.position && (
+      user.position.toLowerCase().includes('admin') ||
+      user.position.toLowerCase().includes('manager') ||
+      user.position.toLowerCase().includes('founder') ||
+      user.position.toLowerCase().includes('ceo')
+    ));
 
   useEffect(() => {
     fetchLeads();
@@ -270,7 +370,7 @@ export default function Leads() {
     let targetPhone = '';
     let targetLead = null;
 
-    if (eOrPhone && typeof eOrPhone === 'object' && eOrPhone.stopPropagation) {
+    if (eOrPhone && typeof eOrPhone === 'object' && (eOrPhone.stopPropagation || eOrPhone.nativeEvent)) {
       e = eOrPhone;
       targetPhone = phone;
       targetLead = lead;
@@ -279,7 +379,10 @@ export default function Leads() {
       targetLead = phone;
     }
 
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
 
     let num = (targetPhone || targetLead?.whatsAppNumber || targetLead?.phone || '').replace(/[^0-9]/g, '');
     if (!num) {
@@ -296,7 +399,7 @@ export default function Leads() {
     let targetEmail = '';
     let targetLead = null;
 
-    if (eOrEmail && typeof eOrEmail === 'object' && eOrEmail.stopPropagation) {
+    if (eOrEmail && typeof eOrEmail === 'object' && (eOrEmail.stopPropagation || eOrEmail.nativeEvent)) {
       e = eOrEmail;
       targetEmail = email;
       targetLead = lead;
@@ -305,16 +408,37 @@ export default function Leads() {
       targetLead = email;
     }
 
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
 
-    const clientEmail = targetEmail || targetLead?.email || targetLead?.customerEmail || targetLead?.emailMasked || (targetLead?.customerName ? `${targetLead.customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@indiatradeoverseas.com` : '');
+    const clientEmail = (
+      targetEmail ||
+      targetLead?.email ||
+      targetLead?.customerEmail ||
+      targetLead?.emailMasked ||
+      (targetLead?.customerName ? `${targetLead.customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@indiatradeoverseas.com` : '')
+    );
+
     if (!clientEmail) {
       return toast.error('No email address available for this client');
     }
+
     const subject = encodeURIComponent(`India Trade Overseas - Lead Communication (${targetLead?.leadCode || targetLead?.customerName || 'Inquiry'})`);
-    const body = encodeURIComponent(`Hello ${targetLead?.customerName || 'Client'},\n\nWe are following up regarding your inquiry (Reference: ${targetLead?.leadCode || 'N/A'})...\n\nBest regards,\nIndia Trade Overseas`);
-    
-    window.location.href = `mailto:${clientEmail}?subject=${subject}&body=${body}`;
+    const body = encodeURIComponent(`Hello ${targetLead?.customerName || 'Client'},\n\nWe are following up regarding your inquiry with India Trade Overseas (Reference: ${targetLead?.leadCode || 'N/A'})...\n\nBest regards,\nIndia Trade Overseas`);
+
+    const mailtoUrl = `mailto:${clientEmail}?subject=${subject}&body=${body}`;
+
+    const link = document.createElement('a');
+    link.href = mailtoUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    toast.success(`Opening email client for ${clientEmail}...`, { id: 'email-toast' });
   };
 
   const fetchReminders = async () => {
@@ -404,6 +528,19 @@ export default function Leads() {
   };
 
   const handleExportLeads = async () => {
+    const role = (user?.role || '').toUpperCase();
+    const isFounderOrAdmin =
+      ['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes(role) ||
+      user?.department === 'ADMIN' ||
+      user?.department === 'MANAGEMENT' ||
+      (user?.position && (user.position.toLowerCase().includes('admin') || user.position.toLowerCase().includes('founder') || user.position.toLowerCase().includes('ceo')));
+    const canExport = isFounderOrAdmin || user?.exportPermission === true;
+
+    if (!canExport) {
+      toast.error("Export Restricted: Managers cannot export database unless granted permission by Founder!");
+      return;
+    }
+
     try {
       const deviceHash = localStorage.getItem('deviceHash') || 'dev-device-hash';
 
@@ -706,7 +843,7 @@ export default function Leads() {
   const isWonOrDelivered = (stage) => {
     if (!stage) return false;
     const s = String(stage).toUpperCase().replace(/\s+/g, '_');
-    return ['CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
+    return ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON', 'DELIVERED', 'COMPLETED'].includes(s);
   };
 
   const isOrderConfirmedStage = (stage) => {
@@ -737,7 +874,10 @@ export default function Leads() {
     return ['CLOSED_LOST', 'DEAL_LOST'].includes(s);
   };
 
-  const completedStages = ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED'];
+  const completedStages = [
+    'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED',
+    'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'
+  ];
 
   const activeLeads = leads.filter(l => !completedStages.includes((l.stage || '').toUpperCase()));
   const completedLeads = leads.filter(l => completedStages.includes((l.stage || '').toUpperCase()));
@@ -761,12 +901,24 @@ export default function Leads() {
 
     if (filterPriority !== 'ALL') {
       const pUpper = (lead.priority || 'WARM').toUpperCase();
-      if (pUpper !== filterPriority) return false;
+      const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !completedStages.includes((lead.stage || '').toUpperCase());
+
+      if (filterPriority === 'DEAD') {
+        if (pUpper !== 'DEAD' && !isDateExpired) return false;
+      } else {
+        if (isDateExpired || pUpper === 'DEAD') return false;
+        if (pUpper !== filterPriority) return false;
+      }
     }
 
     if (filterCategory !== 'ALL') {
       const catUpper = String(lead.productCategory || '').toUpperCase();
-      if (!catUpper.includes(filterCategory)) return false;
+      const mainCategories = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'];
+      if (filterCategory === 'OTHERS') {
+        if (mainCategories.some(c => catUpper.includes(c))) return false;
+      } else {
+        if (!catUpper.includes(filterCategory)) return false;
+      }
     }
 
     if (filterAssignee === 'MY') {
@@ -888,18 +1040,16 @@ export default function Leads() {
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Leads & Global Inquiries</h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto font-sans">
           {/* Table Badge */}
-          <div className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 px-2.5 py-1 rounded-sm font-mono text-[10px] font-bold text-[var(--crm-heading)] flex items-center gap-1">
-            <FiList size={11} /> Table
-          </div>
+        
 
           <DownloadButton
             action={handleExportLeads}
-            className="bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] border border-[var(--crm-ink-soft)]/20 text-[10px] uppercase tracking-wider font-semibold h-[30px] px-2.5 rounded-sm transition-all hover:bg-[var(--crm-bg-raised)] disabled:cursor-default"
+            className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm transition-all disabled:cursor-default"
             icon={FiDownload}
             iconSize={11}
-            idleLabel="Export"
+           
             busyLabel="Exporting..."
             doneLabel="Exported"
           />
@@ -907,46 +1057,53 @@ export default function Leads() {
           {isManagerOrAdmin && (
             <button 
               onClick={() => setShowImportModal(true)} 
-              className="bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border border-[var(--crm-ink-soft)]/20 text-[10px] uppercase tracking-wider font-bold h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
+              className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
             >
-              <FiUpload size={11} /> <span>Import</span>
+              <FiUpload size={11} /> 
             </button>
           )}
 
           <button
             onClick={() => setShowLOIModal(true)}
-            className="bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 text-[10px] uppercase tracking-wider font-bold h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
+            className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
           >
-            <FiFileText size={11} className="text-teal-400" /> <span>Upload LOI</span>
+            <FiFileText size={11} className="text-teal-600" /> <span>Upload LOI</span>
           </button>
 
           <button
             onClick={() => setShowCallModal(true)}
-            className="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-[10px] uppercase tracking-wider font-bold h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
+            className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
           >
-            <FiMic size={11} className="animate-pulse text-rose-400" /> <span>Upload Recording</span>
+            <FiMic size={11} className="animate-pulse text-rose-600" /> <span>Upload Recording</span>
           </button>
 
-          <button onClick={() => setShowCreateModal(true)} className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all hover:bg-[var(--crm-ink-soft)] cursor-pointer">
-            <FiPlus size={12} /> <span>New Lead</span>
+          <button
+            onClick={() => setShowSalesCalc(true)}
+            className="bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
+          >
+            <BsCalculator size={12} /> <span>Sales Calculator 🧮</span>
+          </button>
+
+          <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm">
+            <FiPlus size={12} /> 
           </button>
         </div>
       </motion.div>
 
       {/* Calendar Date Filter Bar */}
-      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 p-3 sm:p-4 rounded-sm shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left mx-4 md:mx-8 mt-4">
+      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-sm shadow-sm font-sans text-xs flex flex-wrap justify-between items-center gap-3 text-left mx-4 md:mx-8 mt-4">
         <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
-          <FiCalendar className="text-teal-400 animate-pulse" size={16} />
-          <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+          <FiCalendar className="text-teal-500 animate-pulse" size={16} />
+          <span className="text-[11px] uppercase tracking-wider font-sans">Date & Calendar Filter:</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 font-sans">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
             className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
               dateFilterMode === 'ALL'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             All Dates
@@ -955,8 +1112,8 @@ export default function Leads() {
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
             className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
               dateFilterMode === 'TODAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             Today
@@ -965,15 +1122,15 @@ export default function Leads() {
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
             className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
               dateFilterMode === 'YESTERDAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
+                : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
             }`}
           >
             Yesterday
           </button>
 
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 px-2.5 py-1 rounded-sm">
-            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-sm">
+            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold font-sans">Pick Date:</span>
             <input
               type="date"
               value={selectedDate}
@@ -981,56 +1138,310 @@ export default function Leads() {
                 setSelectedDate(e.target.value);
                 setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
               }}
-              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-sans cursor-pointer"
             />
           </div>
 
           {dateFilterMode !== 'ALL' && (
             <button
               onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+              className="text-[9px] uppercase font-bold text-rose-500 hover:text-rose-400 underline ml-1 cursor-pointer font-sans"
             >
               Clear Filter
             </button>
           )}
         </div>
 
-        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+        <div className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
+          Showing: <strong className="text-teal-600 dark:text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
           &bull; ({getFilteredByDate(leads).length} Leads Matched)
         </div>
       </motion.div>
 
       {/* Main Container Content */}
-      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)] min-w-0 overflow-x-hidden">
+      <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-5 bg-[var(--crm-bg)] min-w-0 overflow-x-hidden font-sans">
 
-        {/* Module 4: Sales Performance Metrics Sub-Header */}
-        <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 rounded-sm font-mono text-xs">
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Active Pipeline</span>
-            <span className="text-base font-bold text-[var(--crm-heading)]">{leads.length} Records</span>
+        {/* Module 4: Sales Performance Metrics & Graph Analytics Section */}
+        <motion.div variants={blockVariants} className="space-y-4 font-sans">
+          
+          {/* Header Controls for Analytics & Graph */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--crm-bg-raised)] p-3 border border-[var(--crm-line)] rounded-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wide text-[var(--crm-heading)]">
+                SALES PIPELINE ANALYTICS & VISUAL GRAPH
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold border border-cyan-500/20">
+                LIVE METRICS
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              {showAnalyticsGraph && (
+                <div className="flex items-center bg-[var(--crm-bg-sunken)] p-0.5 rounded border border-[var(--crm-line)]">
+                  <button
+                    onClick={() => setGraphViewMode('BAR')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      graphViewMode === 'BAR'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    📊 
+                  </button>
+                  <button
+                    onClick={() => setGraphViewMode('PIE')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      graphViewMode === 'PIE'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    🥧 
+                  </button>
+                  <button
+                    onClick={() => setGraphViewMode('ALL')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
+                      graphViewMode === 'ALL'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                    }`}
+                  >
+                    📈 Both Graphs
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowAnalyticsGraph(!showAnalyticsGraph)}
+                className="px-3 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-line)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>{showAnalyticsGraph ? '🙈 Hide Graph' : '👁️ Show Graph'}</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Gross Valuation</span>
-            <span className="text-base font-bold text-[var(--crm-positive)]">
-              ₹{leads.reduce((sum, l) => sum + (l.leadValue || 0), 0).toLocaleString('en-IN')}
-            </span>
+
+          {/* 7 Core Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            
+            {/* 1. Active Pipeline */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-cyan-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Active Pipeline
+              </span>
+              <span className="text-sm font-extrabold text-[var(--crm-heading)] block">
+                {pipelineAnalytics.activeCount} Leads
+              </span>
+              <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold block mt-0.5">
+                ₹{pipelineAnalytics.activeValue.toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            {/* 2. Gross Valuation */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-emerald-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Gross Valuation
+              </span>
+              <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 block truncate">
+                ₹{pipelineAnalytics.totalGrossValue.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-[var(--crm-ink-faint)] font-semibold block mt-0.5">
+                {pipelineAnalytics.totalLeads} Total Records
+              </span>
+            </div>
+
+            {/* 3. Pending Follow-ups */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-amber-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Pending Follow-ups
+              </span>
+              <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400 block">
+                {pipelineAnalytics.pendingRemindersCount} Due
+              </span>
+              <span className="text-[10px] text-amber-500/80 font-semibold block mt-0.5">
+                Action Items
+              </span>
+            </div>
+
+            {/* 4. Conversion Rate */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-sky-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Conversion Rate
+              </span>
+              <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 block">
+                {pipelineAnalytics.conversionRate}%
+              </span>
+              <span className="text-[10px] text-sky-500/80 font-semibold block mt-0.5">
+                {pipelineAnalytics.wonCount} / {pipelineAnalytics.totalLeads} Won
+              </span>
+            </div>
+
+            {/* 5. Total Earnings (Won Revenue) */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-emerald-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Total Earning
+              </span>
+              <span className="text-sm font-extrabold text-emerald-500 block truncate">
+                ₹{pipelineAnalytics.totalWonValue.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-emerald-600/80 font-semibold block mt-0.5">
+                Closed Deals ₹
+              </span>
+            </div>
+
+            {/* 6. Total Lead Completed */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-teal-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Total Lead Complete
+              </span>
+              <span className="text-sm font-extrabold text-teal-600 dark:text-teal-400 block">
+                {pipelineAnalytics.wonCount} Completed
+              </span>
+              <span className="text-[10px] text-teal-500/80 font-semibold block mt-0.5">
+                Deals Won
+              </span>
+            </div>
+
+            {/* 7. Lost / Dead Leads */}
+            <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-rose-500/50 transition">
+              <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
+                Lost / Dead
+              </span>
+              <span className="text-sm font-extrabold text-rose-500 block">
+                {pipelineAnalytics.lostCount} Lose
+              </span>
+              <span className="text-[10px] text-rose-400/80 font-semibold block mt-0.5 truncate">
+                ₹{pipelineAnalytics.totalLostValue.toLocaleString('en-IN')}
+              </span>
+            </div>
+
           </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Pending Follow-ups</span>
-            <span className="text-base font-bold text-[var(--crm-warning)]">{reminders.length} Due</span>
-          </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] block">Conversion Rate</span>
-            <span className="text-base font-bold text-[var(--crm-info)]">
-              {leads.length > 0 ? Math.round((leads.filter(l => ['CLOSED_WON', 'DEAL_WON'].includes(l.stage)).length / leads.length) * 100) : 0}%
-            </span>
-          </div>
+
+          {/* Interactive Recharts Graph Visualizations */}
+          <AnimatePresence>
+            {showAnalyticsGraph && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <div className={`grid gap-4 ${graphViewMode === 'ALL' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                  
+                  {/* BAR CHART: Pipeline Stage Valuation */}
+                  {(graphViewMode === 'BAR' || graphViewMode === 'ALL') && (
+                    <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-sm">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--crm-line)]">
+                        <h4 className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>📊 Stage Valuation & Lead Distribution</span>
+                        </h4>
+                        <span className="text-[10px] text-[var(--crm-ink-faint)]">Valuation in ₹ INR</span>
+                      </div>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart data={pipelineAnalytics.stageChartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--crm-ink-faint)' }} />
+                            <YAxis
+                              tick={{ fontSize: 10, fill: 'var(--crm-ink-faint)' }}
+                              tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0];
+                                  return (
+                                    <div className="bg-slate-900 border border-slate-700 p-2.5 rounded shadow-xl text-xs font-sans text-slate-100">
+                                      <p className="font-bold text-teal-400 mb-1">{label}</p>
+                                      <p className="text-slate-300">
+                                        Valuation: <span className="font-bold text-emerald-400">₹{Number(item.value || 0).toLocaleString('en-IN')}</span>
+                                      </p>
+                                      <p className="text-slate-400 text-[11px]">
+                                        Leads Count: <span className="font-bold text-sky-300">{item.payload.count}</span>
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                              {pipelineAnalytics.stageChartData.map((entry, idx) => (
+                                <Cell key={`cell-${idx}`} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PIE CHART: Product Category Distribution */}
+                  {(graphViewMode === 'PIE' || graphViewMode === 'ALL') && (
+                    <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-sm">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--crm-line)]">
+                        <h4 className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>🥧 Category Distribution & Value Share</span>
+                        </h4>
+                        <span className="text-[10px] text-[var(--crm-ink-faint)]">Product Categories</span>
+                      </div>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <PieChart>
+                            <Pie
+                              data={pipelineAnalytics.categoryChartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={85}
+                              paddingAngle={4}
+                              dataKey="value"
+                            >
+                              {pipelineAnalytics.categoryChartData.map((entry, index) => {
+                                const colors = ['#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#64748b'];
+                                return <Cell key={`pie-cell-${index}`} fill={colors[index % colors.length]} />;
+                              })}
+                            </Pie>
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0];
+                                  return (
+                                    <div className="bg-slate-900 border border-slate-700 p-2.5 rounded shadow-xl text-xs font-sans text-slate-100">
+                                      <p className="font-bold text-cyan-400 mb-1">{item.name}</p>
+                                      <p className="text-slate-300">
+                                        Valuation: <span className="font-bold text-emerald-400">₹{Number(item.value || 0).toLocaleString('en-IN')}</span>
+                                      </p>
+                                      <p className="text-slate-400 text-[11px]">
+                                        Leads Count: <span className="font-bold text-sky-300">{item.payload.count}</span>
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Legend
+                              formatter={(value) => <span className="text-[11px] text-[var(--crm-heading)] font-semibold">{value}</span>}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
         </motion.div>
+
 
         {/* Follow-up Reminder Stream */}
         {reminders.length > 0 && (
-          <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-warning-bg)] border border-[var(--crm-warning)]/20 flex justify-between items-center rounded-sm text-xs font-mono text-[var(--crm-warning)]">
+          <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-warning-bg)] border border-[var(--crm-warning)]/30 flex justify-between items-center rounded-sm text-xs font-sans text-[var(--crm-warning)]">
             <div className="flex items-center space-x-2.5">
               <FiClock className="text-[var(--crm-warning)] animate-pulse" size={14} />
               <span>System logs track <strong>{reminders.length} follow-up records</strong> targeting execution today.</span>
@@ -1039,18 +1450,20 @@ export default function Leads() {
         )}
 
         {/* Lead Section Tab Switcher */}
-        <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-ink-soft)]/15 pb-2 font-mono">
+        <motion.div variants={blockVariants} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-line)] pb-2 font-sans">
           <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
             <button
               onClick={() => setLeadTab('ALL')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ALL'
-                  ? 'bg-teal-950/80 text-teal-300 border-teal-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>All Lead</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-teal-900/60 text-teal-200 border border-teal-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'ALL' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.length}
               </span>
             </button>
@@ -1059,12 +1472,14 @@ export default function Leads() {
               onClick={() => setLeadTab('WON_DELIVERED')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WON_DELIVERED'
-                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-emerald-600 text-white border-emerald-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
-              <span>DEAL WON, DELIVERED, CLOSED WON</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-200 border border-emerald-700/40">
+              <span>DEAL WON</span>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'WON_DELIVERED' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.filter(l => isWonOrDelivered(l.stage)).length}
               </span>
             </button>
@@ -1073,12 +1488,14 @@ export default function Leads() {
               onClick={() => setLeadTab('ORDER_CONFIRM')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'ORDER_CONFIRM'
-                  ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>order Confirm</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-900/60 text-cyan-200 border border-cyan-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'ORDER_CONFIRM' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.filter(l => isOrderConfirmedStage(l.stage)).length}
               </span>
             </button>
@@ -1087,12 +1504,14 @@ export default function Leads() {
               onClick={() => setLeadTab('NEW_LEAD')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'NEW_LEAD'
-                  ? 'bg-amber-950/90 text-amber-300 border-amber-500/50 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>New Lead</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-900/60 text-amber-200 border border-amber-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'NEW_LEAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {leads.filter(l => isNewOrAssignedLead(l.stage)).length}
               </span>
             </button>
@@ -1101,60 +1520,64 @@ export default function Leads() {
               onClick={() => setLeadTab('WORKLOAD')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
                 leadTab === 'WORKLOAD'
-                  ? 'bg-sky-950/90 text-sky-300 border-sky-800/90 shadow-sm'
-                  : 'bg-[var(--crm-bg-raised)]/30 text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               <span>👥 Employee Workload</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-900/60 text-sky-200 border border-sky-700/40">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                leadTab === 'WORKLOAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+              }`}>
                 {executiveWorkloadSummary.list.length} Members
               </span>
             </button>
           </div>
 
           {leadTab === 'COMPLETED' && (
-            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider bg-emerald-950/40 border border-emerald-900/30 px-3 py-1 rounded">
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded">
               ✓ Total Completed Valuation: ₹{completedLeads.reduce((s, l) => s + (l.leadValue || 0), 0).toLocaleString('en-IN')}
             </span>
           )}
         </motion.div>
 
         {/* Employee Lead Allocation Ribbon Matrix */}
-        <motion.div variants={blockVariants} className="p-3 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-ink-soft)]/15 rounded-sm font-mono text-xs shadow-sm space-y-2">
+        <motion.div variants={blockVariants} className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm font-sans text-xs shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FiUsers className="text-sky-400" size={14} />
-              <span className="text-[10px] text-[var(--crm-heading)] uppercase font-bold tracking-wider">
+              <FiUsers className="text-sky-500" size={14} />
+              <span className="text-[10px] text-[var(--crm-heading)] uppercase font-bold tracking-wider font-sans">
                 {isManagerOrAdmin ? 'Employee Lead Distribution Summary' : 'My Assigned Leads Summary'}
               </span>
-              <span className="text-[9px] text-[var(--crm-ink-faint)] hidden sm:inline">
+              <span className="text-[9px] text-[var(--crm-ink-faint)] hidden sm:inline font-sans">
                 {isManagerOrAdmin ? '(Click any employee to filter their assigned leads)' : '(Filtered for your assigned workspace)'}
               </span>
             </div>
-            {filterAssignee !== 'ALL' && (
+            {(filterAssignee !== 'ALL' || filterCategory !== 'ALL') && (
               <button
-                onClick={() => setFilterAssignee('ALL')}
-                className="text-[9px] text-rose-400 hover:underline uppercase font-bold cursor-pointer"
+                onClick={() => { setFilterAssignee('ALL'); setFilterCategory('ALL'); }}
+                className="text-[9px] text-rose-500 hover:underline uppercase font-bold cursor-pointer font-sans"
               >
-                Clear Filter (Show All)
+                Clear Filters (Show All)
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar font-sans">
             {/* Unassigned Pill - Only for Sales Manager / Admin */}
             {isManagerOrAdmin && (
               <button
                 onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
-                className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
                   filterAssignee === 'UNASSIGNED'
-                    ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-md ring-1 ring-amber-500'
-                    : 'bg-amber-950/30 text-amber-400/90 border-amber-800/40 hover:bg-amber-950/60'
+                    ? 'bg-amber-600 text-white border-amber-700 font-black shadow-md'
+                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200 font-black'
                 }`}
               >
-                <FiAlertCircle size={12} />
+                <FiAlertCircle size={14} className={filterAssignee === 'UNASSIGNED' ? 'text-white' : 'text-amber-600 dark:text-amber-400'} />
                 <span>❓ Unassigned Pool</span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-900/80 text-amber-200 font-mono font-bold">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                  filterAssignee === 'UNASSIGNED' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'
+                }`}>
                   {executiveWorkloadSummary.unassigned.totalCount} Leads
                 </span>
               </button>
@@ -1163,15 +1586,17 @@ export default function Leads() {
             {/* Logged-in User Pill */}
             <button
               onClick={() => setFilterAssignee(filterAssignee === 'MY' ? 'ALL' : 'MY')}
-              className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
                 filterAssignee === 'MY'
-                  ? 'bg-emerald-950 text-emerald-300 border-emerald-600 shadow-md ring-1 ring-emerald-500'
-                  : 'bg-emerald-950/30 text-emerald-400/90 border-emerald-800/40 hover:bg-emerald-950/60'
+                  ? 'bg-emerald-600 text-white border-emerald-700 font-black shadow-md'
+                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 font-black'
               }`}
             >
-              <FiUser size={12} />
+              <FiUser size={14} className={filterAssignee === 'MY' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'} />
               <span>👤 Assigned to Me</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-900/80 text-emerald-200 font-mono font-bold">
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                filterAssignee === 'MY' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'
+              }`}>
                 {myLeadsCount} Leads
               </span>
             </button>
@@ -1183,20 +1608,18 @@ export default function Leads() {
                 <button
                   key={emp.id}
                   onClick={() => setFilterAssignee(isSelected ? 'ALL' : emp.id)}
-                  className={`px-3 py-1.5 rounded-sm border text-[10px] font-bold uppercase transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
                     isSelected
-                      ? 'bg-sky-950 text-sky-300 border-sky-600 shadow-md ring-1 ring-sky-500'
-                      : emp.totalCount > 0
-                      ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] border-[var(--crm-ink-soft)]/20 hover:border-sky-500/50'
-                      : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-[var(--crm-ink-soft)]/10 opacity-60'
+                      ? 'bg-cyan-600 text-white border-cyan-700 font-black shadow-md'
+                      : 'bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-200 border-sky-300 dark:border-sky-700 hover:bg-sky-200 font-black'
                   }`}
                 >
-                  <FiUserCheck size={12} className={emp.totalCount > 0 ? "text-sky-400" : "text-[var(--crm-ink-faint)]"} />
+                  <FiUserCheck size={14} className={isSelected ? "text-white" : "text-sky-600 dark:text-sky-400"} />
                   <span>{emp.name}</span>
-                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
-                    emp.totalCount > 0 ? 'bg-sky-950 text-sky-300 border border-sky-800/60' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]'
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                    isSelected ? 'bg-white/25 text-white' : 'bg-cyan-600 text-white'
                   }`}>
-                    {emp.totalCount} Leads
+                    {emp.totalCount}
                   </span>
                 </button>
               );
@@ -1205,26 +1628,49 @@ export default function Leads() {
         </motion.div>
 
         {/* Search & Filter Controls */}
-        <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm flex flex-col md:flex-row gap-4 items-center">
-          <div className="flex-1 w-full relative">
-            <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
-            <input
-              type="text"
-              placeholder="Search leads by customer, code, or company..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/15 text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-[var(--crm-heading)]/40 placeholder-[var(--crm-ink-faint)]"
-            />
+        <motion.div variants={blockVariants} className="p-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm flex flex-col md:flex-row gap-4 items-center font-sans">
+          <div className="flex-1 w-full flex flex-col sm:flex-row gap-3 items-center">
+            <div className="relative flex-1 w-full">
+              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--crm-ink-faint)]" size={14} />
+              <input
+                type="text"
+                placeholder="Search leads by customer, code, or company..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs rounded-sm outline-none text-[var(--crm-heading)] focus:border-cyan-500 placeholder-[var(--crm-ink-faint)] font-sans"
+              />
+            </div>
+
+            {/* Category Filter Dropdown */}
+            <div className="w-full sm:w-auto shrink-0 flex items-center gap-2 font-sans">
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className={`w-full sm:w-auto px-3.5 py-2.5 text-xs font-sans font-bold rounded-sm border outline-none cursor-pointer transition shadow-sm ${
+                  filterCategory !== 'ALL'
+                    ? 'bg-amber-600 text-white border-amber-400 font-bold'
+                    : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)] hover:border-cyan-400'
+                }`}
+              >
+                <option value="ALL" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">All Categories</option>
+                <option value="STONE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Stone</option>
+                <option value="COAL" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Coal</option>
+                <option value="TEA" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Tea</option>
+                <option value="RICE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Rice</option>
+                <option value="TRANSPORT" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Transport</option>
+                <option value="OTHERS" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Others</option>
+              </select>
+            </div>
           </div>
 
           {/* Temperature Filters */}
-          <div className="flex items-center gap-1.5 font-mono text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 font-sans text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setFilterPriority('ALL')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${
                 filterPriority === 'ALL'
-                  ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80 shadow-sm'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-[var(--crm-heading)]'
+                  ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               🌐 ALL LEADS (Date Wise)
@@ -1233,8 +1679,8 @@ export default function Leads() {
               onClick={() => setFilterPriority('HOT')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
                 filterPriority === 'HOT'
-                  ? 'bg-rose-950/80 text-rose-400 border-rose-800/80'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-rose-400'
+                  ? 'bg-rose-600 text-white border-rose-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               🔥 Hot
@@ -1243,8 +1689,8 @@ export default function Leads() {
               onClick={() => setFilterPriority('WARM')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
                 filterPriority === 'WARM'
-                  ? 'bg-amber-950/80 text-amber-400 border-amber-800/80'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-amber-400'
+                  ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               ⚡ Warm
@@ -1253,11 +1699,21 @@ export default function Leads() {
               onClick={() => setFilterPriority('COLD')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
                 filterPriority === 'COLD'
-                  ? 'bg-cyan-950/80 text-cyan-400 border-cyan-800/80'
-                  : 'bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] border-transparent hover:text-cyan-400'
+                  ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
               }`}
             >
               ❄️ Cold
+            </button>
+            <button
+              onClick={() => setFilterPriority('DEAD')}
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                filterPriority === 'DEAD'
+                  ? 'bg-zinc-800 text-zinc-100 border-zinc-600 font-bold shadow-sm'
+                  : 'bg-zinc-300 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 border border-zinc-400 dark:border-zinc-700 hover:bg-zinc-400 font-bold'
+              }`}
+            >
+              💀 Dead (Expired Date)
             </button>
           </div>
         </motion.div>
@@ -1366,27 +1822,27 @@ export default function Leads() {
                             <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
                               {lead.customerName}
                             </Link>
-                            {lead.priority === 'HOT' && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
-                            )}
-                            {lead.priority === 'WARM' && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-amber-950/80 text-amber-400 border border-amber-800/50">WARM ⚡</span>
-                            )}
-                            {lead.priority === 'COLD' && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">COLD ❄️</span>
+                            {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
+                            ) : lead.priority === 'HOT' ? (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
+                            ) : lead.priority === 'WARM' ? (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                             )}
                           </div>
                           <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
                         </td>
                         <td className="py-3.5 px-5">
-                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm mr-2">
+                          <span className="px-2.5 py-1 text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md border border-slate-300 dark:border-slate-700 shadow-xs mr-2">
                             {lead.productCategory}
                           </span>
                           <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.country || 'IN'}</span>
                         </td>
                         <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
                           {lead.targetDate ? (
-                            <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-amber-950/60 border-amber-800/60 text-amber-300 rounded-xs">
+                            <span className="text-[11px] font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
                               📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </span>
                           ) : (
@@ -1397,9 +1853,9 @@ export default function Leads() {
                           {getLeadValuationDisplay(lead)}
                         </td>
                         <td className="py-3.5 px-5 text-center">
-                          {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
+                          {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
                             <span className="px-2.5 py-1 border text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-950/80 border-emerald-800 text-emerald-400 rounded shadow-sm">
-                              🏆 CLOSED WON
+                              ✓ {lead.stage?.replace(/_/g, ' ')}
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[var(--crm-bg-sunken)]/60 border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
@@ -1408,12 +1864,12 @@ export default function Leads() {
                           )}
                         </td>
                         <td className="py-3.5 px-5 text-center font-mono text-[11px]">
-                          {['CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
+                          {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
                             <div className="space-y-0.5">
                               <span className="text-emerald-400 font-bold block">
                                 ✓ {execName}
                               </span>
-                              <span className="text-[8px] text-emerald-500/80 uppercase font-mono block">Completed Deal Owner</span>
+                              <span className="text-[8px] text-emerald-500/80 uppercase font-mono block">Completed Sales Owner</span>
                             </div>
                           ) : (
                             <span className="text-[var(--crm-heading)] font-semibold">
@@ -1538,14 +1994,14 @@ export default function Leads() {
                         </div>
 
                         <div className="shrink-0 flex items-center gap-1.5">
-                          {lead.priority === 'HOT' && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-rose-950/80 text-rose-400 border border-rose-800/50">HOT 🔥</span>
-                          )}
-                          {lead.priority === 'WARM' && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-amber-950/80 text-amber-400 border border-amber-800/50">WARM ⚡</span>
-                          )}
-                          {lead.priority === 'COLD' && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">COLD ❄️</span>
+                          {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
+                          ) : lead.priority === 'HOT' ? (
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
+                          ) : lead.priority === 'WARM' ? (
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                           )}
                         </div>
                       </div>
@@ -1916,10 +2372,11 @@ export default function Leads() {
                     </span>
                     <div className="flex items-center gap-2 flex-wrap">
                       {[
-                        { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/80' },
-                        { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-950/60 text-rose-400 border-rose-800/60' },
-                        { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-950/60 text-amber-400 border-amber-800/60' },
-                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-950/60 text-cyan-400 border-cyan-800/60' }
+                        { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-600 text-white border-indigo-700 font-bold' },
+                        { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-600 text-white border-rose-700 font-bold' },
+                        { value: 'WARM', label: 'WARM ⚡', style: 'bg-amber-500 text-white border-amber-600 font-bold' },
+                        { value: 'COLD', label: 'COLD ❄️', style: 'bg-cyan-600 text-white border-cyan-700 font-bold' },
+                        { value: 'DEAD', label: 'DEAD 💀', style: 'bg-zinc-800 text-zinc-200 border-zinc-700 font-bold' }
                       ].map(t => (
                         <button
                           key={t.value}
@@ -2202,6 +2659,12 @@ export default function Leads() {
           </div>
         </div>
       )}
+
+      {/* SALES CALCULATOR MODAL */}
+      <SalesCalculatorModal
+        isOpen={showSalesCalc}
+        onClose={() => setShowSalesCalc(false)}
+      />
     </motion.div>
   );
 }

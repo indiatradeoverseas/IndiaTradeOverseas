@@ -31,8 +31,10 @@ import { adminApi } from '../../api/admin';
 import { documentsApi } from '../../api/documents';
 import { careersApi } from '../../api/careers';
 import {
-  FiDownload
+  FiDownload,
+  FiPaperclip
 } from 'react-icons/fi';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -444,17 +446,10 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
     try {
       const res = await ticketsApi.getTickets().catch(() => null);
       const ticketsFromDb = res?.data?.tickets || res?.tickets || [];
-      if (Array.isArray(ticketsFromDb) && ticketsFromDb.length > 0) {
-        setTicketsList(ticketsFromDb);
-      } else {
-        const mockTickets = [
-          { _id: 't_1', ticketCode: 'GRI-2026-09', title: 'Salary Discrepancy - Leave Deductions', description: 'My salary check for July had an extra day leave deduction though it was approved.', status: 'OPEN', priority: 'HIGH', createdBy: { fullName: 'Sunil Kumar' }, createdAt: new Date(Date.now() - 86400000).toISOString(), comments: [] },
-          { _id: 't_2', ticketCode: 'GRI-2026-10', title: 'Policy Doubt - Paternity Leave', description: 'Seeking details on paid paternity leave durations for new fathers.', status: 'OPEN', priority: 'MEDIUM', createdBy: { fullName: 'Neha Sharma' }, createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), comments: [] }
-        ];
-        setTicketsList(mockTickets);
-      }
+      setTicketsList(Array.isArray(ticketsFromDb) ? ticketsFromDb : []);
     } catch (err) {
       console.error(err);
+      setTicketsList([]);
     }
   };
 
@@ -875,6 +870,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
         <nav className="flex space-x-6 min-w-max">
           {[
             { id: 'tasks', label: `My Tasks (${pendingTasksCount})`, icon: FiCheckSquare },
+            { id: 'shared-files', label: 'Received Shared Files', icon: FiPaperclip },
             { id: 'interviews', label: `Interview Board (${pendingInterviewsCount})`, icon: FiCalendar },
             { id: 'telemetry', label: 'Documents Telemetry', icon: FiShield },
             { id: 'helpdesk', label: `Helpdesk Grievances (${ticketsList.filter(t => t.status === 'OPEN').length})`, icon: FiMessageSquare }
@@ -905,6 +901,13 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
           transition={{ duration: 0.2 }}
           className="space-y-6 text-left"
         >
+          {/* TAB: SHARED FILES */}
+          {activeTab === 'shared-files' && (
+            <div className="space-y-6">
+              <FileSharingWidget initialTab="RECEIVED" />
+            </div>
+          )}
+
           {/* MY TASKS PANEL */}
           {activeTab === 'tasks' && (
             <div className="space-y-6">

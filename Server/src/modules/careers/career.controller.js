@@ -7,13 +7,28 @@ const { ok, fail } = require('../../utils/response');
 const { resolveUploadPath, getRelativePath, proxyFromProduction } = require('../../utils/file');
 
 
+const isExecutiveOrAdmin = (user) => {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toUpperCase();
+  const pos = (user.position || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
+
+  return (
+    ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN'].includes(role) ||
+    dept === 'ADMIN' || dept === 'MANAGEMENT' ||
+    pos.includes('founder') || pos.includes('ceo') || pos.includes('admin') ||
+    email.startsWith('ceo@') || email.startsWith('founder@')
+  );
+};
+
 const hasHROrAdminAccess = (user) => {
   if (!user) return false;
+  if (isExecutiveOrAdmin(user)) return true;
   const role = (user.role || '').toUpperCase();
   const dept = (user.department || '').toUpperCase();
   const position = (user.position || '').toLowerCase();
 
-  if (['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(role) || dept === 'ADMIN') return true;
   if (['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(role) || dept === 'HR' || position.includes('hr')) return true;
   if (user.jobPermission === true) return true;
 
@@ -22,7 +37,8 @@ const hasHROrAdminAccess = (user) => {
 
 const hasJobPermission = (user) => {
   if (!user) return false;
-  if (['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes((user.role || '').toUpperCase())) return true;
+  if (isExecutiveOrAdmin(user)) return true;
+  if (['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes((user.role || '').toUpperCase())) return true;
   return user.jobPermission === true;
 };
 

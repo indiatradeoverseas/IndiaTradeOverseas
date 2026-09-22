@@ -2,6 +2,11 @@ import axiosInstance from './axiosInstance';
 import { API_URL } from '../config/env';
 
 export const sharedFilesApi = {
+  async getRecipients() {
+    const response = await axiosInstance.get('/shared-files/recipients');
+    return response.data;
+  },
+
   async shareFile(formData) {
     const response = await axiosInstance.post('/shared-files', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }

@@ -113,8 +113,11 @@ async function getDueReminders(req, res, next) {
       nextFollowupAt: { $gte: today, $lte: tomorrow }
     };
 
-    // Filter by ownership if not Admin/Manager/HR
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
+    // Filter by ownership if not Admin/Manager/HR/Founder/CEO
+    const roleUpper = (req.user?.role || '').toUpperCase();
+    const posLower = (req.user?.position || '').toLowerCase();
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(roleUpper) ||
+      roleUpper.endsWith('_MANAGER') || roleUpper.includes('MANAGER') || posLower.includes('founder') || posLower.includes('ceo') || posLower.includes('manager');
     if (!isManagerOrAdmin) {
       filter.assignedTo = req.user._id;
     }
@@ -231,6 +234,13 @@ async function addActivity(req, res, next) {
       }
     });
 
+    // Record Genuine Employee Activity in background
+    try {
+      const employeeActivityService = require('../employee-activity/employeeActivity.service');
+      const actionCat = (actionType === 'CALL_LOGGED' || actionType === 'CALL') ? 'CALL_LOGGED' : (nextFollowupAt ? 'FOLLOWUP_COMPLETED' : 'NOTE_ADDED');
+      employeeActivityService.recordCrmAction(req.user, actionCat, note).catch(() => {});
+    } catch (e) {}
+
     return ok(res, { activity }, 'Activity logged successfully', 201, req);
   } catch (error) {
     next(error);
@@ -308,7 +318,10 @@ async function logEmailActivity(req, res, next) {
 async function getSalesMetrics(req, res, next) {
   try {
     const filter = {};
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(req.user.role) || req.user.role.endsWith('_MANAGER') || req.user.role.toLowerCase().includes('manager');
+    const roleUpper = (req.user?.role || '').toUpperCase();
+    const posLower = (req.user?.position || '').toLowerCase();
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(roleUpper) ||
+      roleUpper.endsWith('_MANAGER') || roleUpper.includes('MANAGER') || posLower.includes('founder') || posLower.includes('ceo') || posLower.includes('manager');
     if (!isManagerOrAdmin) {
       filter.assignedTo = req.user._id;
     }
@@ -465,6 +478,12 @@ async function uploadCallRecording(req, res, next) {
       console.warn('[CallRecording] Google Drive upload notice:', driveErr.message);
     }
 
+    // Record Genuine Employee Activity
+    try {
+      const employeeActivityService = require('../employee-activity/employeeActivity.service');
+      employeeActivityService.recordCrmAction(req.user, 'RECORDING_UPLOADED', `Uploaded call recording: ${req.file.originalname}`).catch(() => {});
+    } catch (e) {}
+
     return ok(res, { callRecording }, 'Call recording uploaded and saved to Google Drive & Server successfully', 201, req);
   } catch (error) {
     next(error);
@@ -477,8 +496,10 @@ async function getCallRecordings(req, res, next) {
     const filter = {};
     const { executiveId, leadId, priority } = req.query;
 
-    const role = req.user?.role || '';
-    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR'].includes(role) || role.endsWith('_MANAGER') || role.toLowerCase().includes('manager');
+    const role = (req.user?.role || '').toUpperCase();
+    const posLower = (req.user?.position || '').toLowerCase();
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'HR', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(role) ||
+      role.endsWith('_MANAGER') || role.includes('MANAGER') || posLower.includes('founder') || posLower.includes('ceo') || posLower.includes('manager');
 
     if (!isManagerOrAdmin) {
       const mongoose = require('mongoose');

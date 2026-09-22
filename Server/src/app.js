@@ -33,6 +33,7 @@ const payslipRoutes = require('./modules/payslip/payslip.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
 const salesTrialRoutes = require('./modules/sales-trial/salesTrial.routes');
 const itoAdsRoutes = require('./modules/itoads/itoads.routes');
+const employeeActivityRoutes = require('./modules/employee-activity/employeeActivity.routes');
 
 
 const app = express();
@@ -117,6 +118,7 @@ const apiRoutes = [
   { path: '/dashboard', router: notificationRoutes },
   { path: '/daily-reports', router: dailyReportRoutes },
   { path: '/security', router: auditRoutes },
+  { path: '/security-audit', router: auditRoutes },
   { path: '/chat', router: chatRoutes },
   { path: '/careers', router: careerRoutes },
   { path: '/distributors', router: distributorRoutes },
@@ -133,6 +135,7 @@ const apiRoutes = [
   { path: '/ai', router: aiRoutes },
   { path: '/sales-trial', router: salesTrialRoutes },
   { path: '/itoads', router: itoAdsRoutes }
+  { path: '/employee-activity', router: employeeActivityRoutes }
 ];
 
 apiRoutes.forEach(route => {
@@ -153,7 +156,7 @@ const { authenticate } = require('./middlewares/auth.middleware');
 adminFallbackRouter.patch('/leads/:leadId/assign', authenticate, rbac('ADMIN', 'MANAGER', 'HR'), require('./modules/leads/lead.controller').assignLead);
 adminFallbackRouter.get('/users', authenticate, rbac('ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'), require('./modules/users/user.controller').listUsers);
 
-adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR'));
+adminFallbackRouter.use(authenticate, rbac('ADMIN', 'MANAGER', 'HR_MANAGER', 'HR', 'CEO', 'FOUNDER', 'SUPER_ADMIN'));
 adminFallbackRouter.get('/dashboard/summary', require('./modules/reports/report.controller').getAdminSummary);
 adminFallbackRouter.get('/dashboard/pipeline', require('./modules/reports/report.controller').getPipelineReport);
 adminFallbackRouter.get('/dashboard/employee-performance', require('./modules/reports/report.controller').getPerformanceReport);
@@ -177,7 +180,9 @@ adminFallbackRouter.patch('/users/:id/activate', require('./modules/users/user.c
 adminFallbackRouter.patch('/users/:id/deactivate', require('./modules/users/user.controller').deactivateUser);
 adminFallbackRouter.patch('/users/:id/role', require('./modules/users/user.controller').updateUserRole);
 adminFallbackRouter.patch('/users/:id/department', require('./modules/users/user.controller').updateUserDepartment);
+adminFallbackRouter.patch('/users/:id/permissions', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.patch('/users/:id/export-permission', require('./modules/users/user.controller').updateUserPermissions);
+adminFallbackRouter.patch('/users/:id/import-permission', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.patch('/users/:id/product-upload-permission', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.patch('/users/:id/lead-permission', require('./modules/users/user.controller').updateUserPermissions);
 adminFallbackRouter.patch('/users/:id/document-permission', require('./modules/users/user.controller').updateUserPermissions);

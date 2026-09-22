@@ -31,8 +31,123 @@ async function getLogs(req, res, next) {
 
 async function getAlerts(req, res, next) {
   try {
-    const alerts = await SecurityAlert.find().sort({ createdAt: -1 }).limit(Number(req.query.limit || 100));
+    const rawAlerts = await SecurityAlert.find()
+      .populate('actorId', 'fullName name username employeeId email phone mobile role department')
+      .sort({ createdAt: -1 })
+      .limit(Number(req.query.limit || 100));
+
+    const User = require('../users/user.model');
+    const Admin = require('../admin-auth/admin.model');
+    const Employee = require('../employee/employee.model');
+
+    const alerts = await Promise.all(
+      rawAlerts.map(async (alertDoc) => {
+        const alert = alertDoc.toObject();
+        if (!alert.actorId && alertDoc.actorId) {
+          const rawId = alertDoc.actorId;
+          let found = await User.findById(rawId).select('fullName name username employeeId email phone mobile role department');
+          if (!found) {
+            found = await Admin.findById(rawId).select('fullName name username employeeId email phone mobile role department');
+          }
+          if (!found) {
+            found = await Employee.findById(rawId).select('fullName name username employeeId email phone mobile role department');
+          }
+          if (found) {
+            alert.actorId = found.toObject();
+          }
+        }
+        return alert;
+      })
+    );
+
     return ok(res, { alerts }, 'Security alerts list', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function reportScreenshotAttempt(req, res, next) {
+  try {
+    const { pageUrl = '', detectionType = 'PRINTSCREEN_KEY' } = req.body;
+    const user = req.user;
+
+    const empName = user.fullName || user.name || user.username || (user.email ? user.email.split('@')[0] : '') || 'System User';
+    const empId = user.employeeId || user.trialId || (user._id ? String(user._id).slice(-6).toUpperCase() : 'N/A');
+    const empPhone = user.phone || user.mobile || user.phoneNumber || 'N/A';
+    const empRole = user.role || 'USER';
+
+    const alertMessage = `📸 SCREENSHOT ATTEMPT: Employee ${empName} (${empId}, Phone: ${empPhone}) attempted a screenshot on page "${pageUrl}"`;
+
+    // 1. Raise CRITICAL Security Alert
+    const alert = await raiseAlert({
+      actorId: user._id,
+      alertType: 'SCREENSHOT_ATTEMPT',
+      severity: 'CRITICAL',
+      message: alertMessage,
+      metadata: {
+        employeeId: empId,
+        fullName: empName,
+        email: user.email,
+        phone: empPhone,
+        role: empRole,
+        department: user.department || 'GENERAL',
+        pageUrl,
+        detectionType,
+        ipAddress: req.ip
+      }
+    });
+
+    // 2. Audit Log Entry
+    await recordAudit({
+      actorId: user._id,
+      actionType: 'SCREENSHOT_ATTEMPTED',
+      entityType: 'SECURITY',
+      entityId: empId,
+      severity: 'CRITICAL',
+      ipAddress: req.ip,
+      metadata: { pageUrl, detectionType }
+    });
+
+    // 3. Create In-App Notification for ADMIN / Founder
+    try {
+      const Notification = require('../notifications/notification.model');
+      await Notification.create({
+        targetRole: 'ADMIN',
+        message: alertMessage,
+        type: 'SECURITY_ALERT',
+        metadata: {
+          employeeId: empId,
+          fullName: empName,
+          phone: empPhone,
+          role: empRole,
+          pageUrl
+        }
+      });
+    } catch (nErr) {
+      console.warn('Failed to create in-app notification for screenshot attempt:', nErr.message);
+    }
+
+    // 4. Emit WebSockets event to connected admins
+    try {
+      const socketService = require('../../services/socket.service');
+      if (socketService.io) {
+        socketService.io.emit('security_alert', {
+          alertType: 'SCREENSHOT_ATTEMPT',
+          severity: 'CRITICAL',
+          message: alertMessage,
+          employeeId: empId,
+          fullName: empName,
+          phone: empPhone,
+          role: empRole,
+          pageUrl,
+          createdAt: new Date()
+        });
+      }
+    } catch (sErr) {
+      console.warn('Failed to broadcast screenshot socket alert:', sErr.message);
+    }
+
+    return ok(res, { success: true }, 'Screenshot security attempt recorded', 200, req);
   } catch (error) {
     next(error);
   }
@@ -211,25 +326,28 @@ async function revealSensitiveData(req, res, next) {
 async function interceptBulkExportAttempt(req, res, next) {
   try {
     const { deviceHash = '', metadata = {} } = req.body;
-    const hasPermission = req.user.exportPermission === true || req.user.role === 'ADMIN';
+    const user = req.user || {};
+    const empName = user.fullName || user.name || user.username || (user.email ? user.email.split('@')[0] : '') || 'Employee';
+    const empId = user.employeeId || user.trialId || (user._id ? String(user._id).slice(-6).toUpperCase() : 'N/A');
+    const hasPermission = user.exportPermission === true || ['ADMIN', 'FOUNDER', 'SUPER_ADMIN'].includes((user.role || '').toUpperCase());
 
     await recordAudit({
-      actorId: req.user._id,
+      actorId: user._id,
       actionType: 'EXPORT_ATTEMPT',
       entityType: 'SYSTEM',
       entityId: 'BULK_DATA',
       severity: hasPermission ? 'LOW' : 'CRITICAL',
       deviceHash,
-      metadata: { ...metadata, hasPermission }
+      metadata: { ...metadata, fullName: empName, employeeId: empId, email: user.email, role: user.role, hasPermission }
     });
 
     if (!hasPermission) {
       await raiseAlert({
-        actorId: req.user._id,
+        actorId: user._id,
         alertType: 'BULK_EXPORT_DENIED',
         severity: 'CRITICAL',
-        message: `${req.user.fullName} (${req.user.employeeId}) tried to export leads database without export permission.`,
-        metadata: { deviceHash, ...metadata }
+        message: `${empName} (${empId}) tried to export leads database without export permission.`,
+        metadata: { deviceHash, fullName: empName, employeeId: empId, email: user.email, role: user.role, ...metadata }
       });
       return fail(res, 403, 'EXPORT_DENIED', 'Security Interdiction Target: Bulk records processing export sequence structurally blocked.', [], req);
     }
@@ -245,5 +363,6 @@ module.exports = {
   getAlerts,
   resolveAlert,
   revealSensitiveData,
-  interceptBulkExportAttempt
+  interceptBulkExportAttempt,
+  reportScreenshotAttempt
 };

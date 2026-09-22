@@ -210,8 +210,8 @@ export default function Visitors() {
                             <span className="text-lg font-bold text-teal-400">{todayCount}</span>
                         </div>
                         <div className="bg-[var(--crm-bg)]/40 px-4 py-2 rounded-sm border border-[var(--crm-ink-soft)]/10 text-center">
-                            <span className="block text-amber-400 font-bold uppercase tracking-wider text-[9px]">Repeat Buyers</span>
-                            <span className="text-lg font-bold text-amber-400">{repeatVisitorsCount}</span>
+                            <span className="block text-sky-400 font-bold uppercase tracking-wider text-[9px]">Repeat Buyers</span>
+                            <span className="text-lg font-bold text-sky-400">{repeatVisitorsCount}</span>
                         </div>
                     </div>
                 </div>
@@ -353,7 +353,7 @@ export default function Visitors() {
 
                                                     {/* Repeat Visitor Badge */}
                                                     {visitCount > 1 ? (
-                                                        <span className="bg-amber-950/60 text-amber-300 border border-amber-800/40 text-[9px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                                                        <span className="bg-sky-950/60 text-sky-300 border border-sky-800/40 text-[9px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1">
                                                             <FiRepeat size={10} /> Repeat Visitor ({visitCount} Visits)
                                                         </span>
                                                     ) : (
@@ -391,7 +391,7 @@ export default function Visitors() {
                                                 {(Array.isArray(visitor.visitHistory) && visitor.visitHistory.length > 0) && (
                                                     <button
                                                         onClick={() => setExpandedHistoryId(isHistoryExpanded ? null : visitor._id)}
-                                                        className="text-amber-400 font-mono text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 bg-amber-950/30 px-2 py-1 border border-amber-800/40 rounded-sm cursor-pointer hover:bg-amber-900/40 transition"
+                                                        className="text-sky-400 font-mono text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 bg-sky-950/30 px-2 py-1 border border-sky-800/40 rounded-sm cursor-pointer hover:bg-sky-900/40 transition"
                                                     >
                                                         <FiClock size={11} />
                                                         History ({visitor.visitHistory.length}) 
@@ -422,14 +422,14 @@ export default function Visitors() {
                                         {/* Visit History Timeline Dropdown */}
                                         {isHistoryExpanded && Array.isArray(visitor.visitHistory) && visitor.visitHistory.length > 0 && (
                                             <div className="pt-3 pb-1 border-t border-[var(--crm-ink-soft)]/10 mt-2 space-y-2 text-left bg-[var(--crm-bg)]/40 p-3 rounded">
-                                                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
                                                     <FiClock size={12} /> Detailed Visit Telemetry Logs ({visitor.visitHistory.length} Total Visits):
                                                 </div>
                                                 <div className="space-y-1.5 font-mono text-[11px]">
                                                     {visitor.visitHistory.slice().reverse().map((vh, idx) => (
                                                         <div key={idx} className="flex flex-wrap items-center justify-between bg-[var(--crm-bg-sunken)] p-2 rounded border border-[var(--crm-ink-soft)]/10 gap-2">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-bold bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded">
+                                                                <span className="text-[9px] font-bold bg-sky-950 text-sky-300 px-1.5 py-0.5 rounded">
                                                                     Visit #{visitor.visitHistory.length - idx}
                                                                 </span>
                                                                 <span className="text-[var(--crm-heading)] font-semibold">

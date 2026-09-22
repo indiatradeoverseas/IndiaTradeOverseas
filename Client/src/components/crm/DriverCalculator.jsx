@@ -222,7 +222,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
   };
 
   return (
-    <div className="border border-[var(--crm-line)] rounded-sm p-4 font-mono space-y-4 bg-[var(--crm-bg-raised)] shadow-sm text-left">
+    <div className="border border-[var(--crm-line)] rounded-xl p-4 font-sans space-y-4 bg-[var(--crm-bg-raised)] shadow-sm text-left flex flex-col justify-between h-full min-h-[480px]">
       {/* Header */}
       <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
         <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
@@ -231,7 +231,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
       </div>
 
       {/* Form Fields Grid matching sketch */}
-      <div className="space-y-4 text-xs font-mono">
+      <div className="space-y-4 text-xs font-sans">
         {/* ROW 1: DriverName, Vehical Number, Number of Trip, Date */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
@@ -243,7 +243,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               value={driverName}
               onChange={(e) => setDriverName(e.target.value)}
               placeholder="Driver Name"
-              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-mono rounded-sm outline-none focus:border-teal-500/60"
+              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-sans rounded-xl outline-none focus:border-teal-500/60"
             />
           </div>
 
@@ -256,7 +256,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               value={vehicleNumber}
               onChange={(e) => setVehicleNumber(e.target.value)}
               placeholder="Vehicle Number"
-              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-mono rounded-sm outline-none focus:border-teal-500/60 uppercase"
+              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-sans rounded-xl outline-none focus:border-teal-500/60 uppercase"
             />
           </div>
 
@@ -270,7 +270,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               value={numberOfTrips}
               onChange={(e) => setNumberOfTrips(e.target.value)}
               placeholder="1"
-              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-mono rounded-sm outline-none focus:border-teal-500/60"
+              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-sans rounded-xl outline-none focus:border-teal-500/60"
             />
           </div>
 
@@ -282,13 +282,13 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               type="date"
               value={calcDate}
               onChange={(e) => setCalcDate(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-mono rounded-sm outline-none focus:border-teal-500/60 cursor-pointer"
+              className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-[var(--crm-heading)] font-sans rounded-xl outline-none focus:border-teal-500/60 cursor-pointer"
             />
           </div>
         </div>
 
         {/* ROW 2: KM * rate = Total Rupess */}
-        <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm space-y-3">
+        <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
             {/* KM Input */}
             <div className="flex-1 min-w-[90px]">
@@ -301,12 +301,12 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
                 value={km}
                 onChange={(e) => setKm(e.target.value)}
                 placeholder="KM"
-                className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-xs text-amber-400 font-bold font-mono rounded-sm outline-none focus:border-amber-500"
+                className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-amber-600 dark:text-amber-400 font-extrabold font-sans rounded-xl outline-none focus:border-amber-500"
               />
             </div>
 
             {/* Multiply Symbol */}
-            <div className="self-end pb-2 text-base font-bold text-amber-400">
+            <div className="self-end pb-2 text-base font-bold text-amber-500 dark:text-amber-400">
               *
             </div>
 
@@ -321,12 +321,12 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
                 placeholder="rate"
-                className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-xs text-amber-400 font-bold font-mono rounded-sm outline-none focus:border-amber-500"
+                className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs text-amber-600 dark:text-amber-400 font-extrabold font-sans rounded-xl outline-none focus:border-amber-500"
               />
             </div>
 
             {/* Equals Symbol */}
-            <div className="self-end pb-2 text-base font-bold text-emerald-400">
+            <div className="self-end pb-2 text-base font-bold text-emerald-500 dark:text-emerald-400">
               =
             </div>
 
@@ -335,10 +335,10 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
                 Total Rupess
               </label>
-              <div className="w-full px-3 py-2 bg-emerald-950/50 border border-emerald-800 text-emerald-400 font-extrabold text-sm font-mono rounded-sm flex items-center justify-between">
+              <div className="w-full px-3.5 py-2.5 bg-emerald-700 dark:bg-emerald-950/80 border border-emerald-600 dark:border-emerald-800 text-white dark:text-emerald-300 font-black text-sm font-sans rounded-xl flex items-center justify-between shadow-xs">
                 <span>₹{(Number(totalRupees) || 0).toLocaleString('en-IN')}</span>
                 {numTrips > 1 && (
-                  <span className="text-[9px] text-emerald-300/80 font-normal">
+                  <span className="text-[10px] text-emerald-100 dark:text-emerald-300/80 font-semibold">
                     ({numTrips} Trips)
                   </span>
                 )}
@@ -352,7 +352,7 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
               type="button"
               disabled={loading}
               onClick={handleSubmitCalculation}
-              className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold font-mono text-[11px] uppercase tracking-wider px-4 py-2 rounded-sm shadow transition cursor-pointer flex items-center gap-1.5"
+              className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-extrabold font-sans text-[11px] uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5"
             >
               <FiCheckCircle size={14} /> {loading ? 'Saving to MongoDB...' : 'Submit Fare Calculation'}
             </button>
@@ -367,13 +367,13 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
           </div>
 
           {submittedHistory.length === 0 ? (
-            <div className="p-3 border border-dashed border-[var(--crm-line)] rounded-sm text-center text-[var(--crm-ink-faint)] text-[11px]">
+            <div className="p-3 border border-dashed border-[var(--crm-line)] rounded-xl text-center text-[var(--crm-ink-faint)] text-[11px]">
               No fare calculations recorded. Fill KM & Rate above and click Submit.
             </div>
           ) : (
             <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
               {submittedHistory.map((item) => (
-                <div key={item.id} className="p-2 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] rounded-sm text-[11px] flex items-center justify-between font-mono hover:border-emerald-500/40 transition">
+                <div key={item.id} className="p-2 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] rounded-xl text-[11px] flex items-center justify-between font-sans hover:border-emerald-500/40 transition">
                   <div>
                     <strong className="text-[var(--crm-heading)]">{item.driverName || 'Driver'}</strong>
                     <span className="text-[var(--crm-ink-faint)] ml-1">({item.vehicleNumber || 'Unassigned'})</span>
@@ -382,8 +382,8 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
                     </div>
                   </div>
                   <div className="text-right">
-                    <strong className="text-emerald-400 text-xs block">₹{(Number(item.totalRupees) || 0).toLocaleString('en-IN')}</strong>
-                    <span className="text-[9px] text-[var(--crm-ink-faint)] block font-mono">
+                    <strong className="text-emerald-700 dark:text-emerald-400 text-xs block font-sans font-extrabold">₹{(Number(item.totalRupees) || 0).toLocaleString('en-IN')}</strong>
+                    <span className="text-[9px] text-[var(--crm-ink-faint)] block font-sans">
                       📅 {formatSafeDateDisplay(item.dateStr, item.timestamp)}
                     </span>
                   </div>

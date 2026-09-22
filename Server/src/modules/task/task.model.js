@@ -40,12 +40,10 @@ const taskSchema = new mongoose.Schema(
     },
     department: {
       type: String,
-      enum: ['SALES', 'SALES_TRIAL', 'HR', 'IT', 'ADMIN', 'GENERAL'],
       default: 'GENERAL'
     },
     category: {
       type: String,
-      enum: ['GENERAL', 'RECRUITMENT', 'FOLLOW_UP', 'DOCUMENT', 'CALL', 'MEETING'],
       default: 'GENERAL'
     },
     fileUrl: {

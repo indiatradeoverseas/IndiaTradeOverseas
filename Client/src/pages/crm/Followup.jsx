@@ -61,11 +61,17 @@ export default function Followup() {
   const [submittingTask, setSubmittingTask] = useState(false);
 
   const isManagerOrAdmin = 
-    user?.role === 'ADMIN' ||
-    user?.role === 'MANAGER' ||
-    user?.role === 'SALES_MANAGER' ||
+    ['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER'].includes((user?.role || '').toUpperCase()) ||
+    (user?.role && user.role.toUpperCase().endsWith('_MANAGER')) ||
+    (user?.role && user.role.toLowerCase().includes('manager')) ||
     user?.department === 'ADMIN' ||
-    (user?.position && user.position.toLowerCase().includes('admin'));
+    user?.department === 'MANAGEMENT' ||
+    (user?.position && (
+      user.position.toLowerCase().includes('admin') ||
+      user.position.toLowerCase().includes('manager') ||
+      user.position.toLowerCase().includes('founder') ||
+      user.position.toLowerCase().includes('ceo')
+    ));
 
   useEffect(() => {
     loadData();
@@ -499,24 +505,24 @@ export default function Followup() {
 
           <button
             onClick={() => setStatusFilter('PENDING')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 border shadow-xs ${
               statusFilter === 'PENDING'
-                ? 'bg-amber-600 text-white shadow-sm font-black'
-                : 'text-amber-400/80 hover:text-amber-300'
+                ? 'bg-amber-600 text-white border-amber-700 shadow-md'
+                : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200'
             }`}
           >
-            ⏱️ Followup Pending <span className="px-1.5 py-0.2 text-[9px] bg-black/40 rounded-full text-amber-300">{pendingCount}</span>
+            ⏱️ Followup Pending <span className={`px-2 py-0.5 text-[9px] rounded-full font-black ${statusFilter === 'PENDING' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'}`}>{pendingCount}</span>
           </button>
 
           <button
             onClick={() => setStatusFilter('COMPLETED')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 border shadow-xs ${
               statusFilter === 'COMPLETED'
-                ? 'bg-emerald-600 text-white shadow-sm font-black'
-                : 'text-emerald-400/80 hover:text-emerald-300'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md'
+                : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200'
             }`}
           >
-            ✓ Followup Complete <span className="px-1.5 py-0.2 text-[9px] bg-black/40 rounded-full text-emerald-300">{completedCount}</span>
+            ✓ Followup Complete <span className={`px-2 py-0.5 text-[9px] rounded-full font-black ${statusFilter === 'COMPLETED' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'}`}>{completedCount}</span>
           </button>
         </div>
 
@@ -542,6 +548,7 @@ export default function Followup() {
             <option value="HOT">🔥 HOT</option>
             <option value="WARM">⚡ WARM</option>
             <option value="COLD">❄️ COLD</option>
+            <option value="DEAD">💀 DEAD</option>
           </select>
 
           <button
@@ -601,22 +608,23 @@ export default function Followup() {
                   <div className="flex flex-wrap justify-between items-center bg-[var(--crm-bg-sunken)]/60 px-3 py-2 rounded border border-[var(--crm-line)]/50 gap-2">
                     <div className="flex items-center gap-2">
                       {isCompleted ? (
-                        <span className="px-2.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1 shadow-xs">
+                        <span className="px-2.5 py-1 rounded text-[9px] font-black uppercase font-mono bg-emerald-600 text-white border border-emerald-700 flex items-center gap-1 shadow-xs">
                           <FiCheckCircle size={10} /> FOLLOWUP COMPLETE
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1 shadow-xs animate-pulse">
+                        <span className="px-2.5 py-1 rounded text-[9px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 flex items-center gap-1 shadow-xs">
                           <FiClock size={10} /> FOLLOWUP PENDING
                         </span>
                       )}
 
                       {rec.leadPriority && (
-                        <span className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase border ${
-                          rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/40' :
-                          rec.leadPriority === 'WARM' ? 'bg-amber-950/60 text-amber-400 border-amber-800/40' :
-                          'bg-cyan-950/60 text-cyan-400 border-cyan-800/40'
+                        <span className={`text-[8px] font-black px-2 py-1 rounded uppercase shadow-xs ${
+                          rec.leadPriority === 'DEAD' ? 'bg-zinc-800 text-zinc-200 border border-zinc-600' :
+                          rec.leadPriority === 'HOT' ? 'bg-rose-600 text-white border border-rose-700' :
+                          rec.leadPriority === 'WARM' ? 'bg-amber-500 text-white border border-amber-600' :
+                          'bg-cyan-600 text-white border border-cyan-700'
                         }`}>
-                          {rec.leadPriority === 'HOT' ? 'HOT 🔥' : rec.leadPriority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
+                          {rec.leadPriority === 'DEAD' ? 'DEAD 💀' : rec.leadPriority === 'HOT' ? 'HOT 🔥' : rec.leadPriority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
                         </span>
                       )}
                     </div>
@@ -625,10 +633,10 @@ export default function Followup() {
                       type="button"
                       onClick={() => handleToggleStatus(rec._id, rec.status)}
                       disabled={togglingStatusId === rec._id}
-                      className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded border transition cursor-pointer disabled:opacity-50 ${
+                      className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-lg border transition cursor-pointer shadow-xs disabled:opacity-50 ${
                         isCompleted
-                          ? 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                          : 'bg-emerald-900/60 hover:bg-emerald-800 border-emerald-700 text-emerald-300'
+                          ? 'bg-slate-700 hover:bg-slate-800 text-white border-slate-600'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700'
                       }`}
                     >
                       {togglingStatusId === rec._id ? 'Updating...' : isCompleted ? 'Re-open Followup' : '✓ Mark as Complete'}
@@ -636,21 +644,21 @@ export default function Followup() {
                   </div>
 
                   {/* People Section: Who did Follow-up & Who is assigned for Next Stage */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] bg-black/40 p-2.5 rounded border border-[var(--crm-line)]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] bg-slate-100 dark:bg-slate-800/90 p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs font-mono">
                     <div className="space-y-0.5">
-                      <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
                         👤 FOLLOW-UP DONE BY:
                       </span>
-                      <strong className="text-teal-400 text-xs font-bold block truncate">
+                      <strong className="text-teal-700 dark:text-teal-300 text-xs font-black block truncate">
                         {rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
 
-                    <div className="space-y-0.5 sm:border-l border-[var(--crm-line)] sm:pl-2.5">
-                      <span className="text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block">
+                    <div className="space-y-0.5 sm:border-l border-slate-300 dark:border-slate-700 sm:pl-2.5">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
                         🎯 NEXT STAGE CUSTODIAN:
                       </span>
-                      <strong className="text-emerald-400 text-xs font-bold block truncate">
+                      <strong className="text-emerald-700 dark:text-emerald-300 text-xs font-black block truncate">
                         {rec.assignedToName || rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
@@ -662,11 +670,11 @@ export default function Followup() {
                       {leadObjId ? (
                         <Link
                           to={`/crm/leads/${leadObjId}`}
-                          className="font-serif font-bold text-sm text-[var(--crm-heading)] hover:text-teal-400 hover:underline flex items-center gap-1.5 cursor-pointer transition"
+                          className="font-serif font-bold text-sm text-[var(--crm-heading)] hover:text-teal-500 hover:underline flex items-center gap-1.5 cursor-pointer transition"
                         >
                           {rec.customerName}
                           {rec.contactRole && (
-                            <span className="text-[9px] font-mono font-normal text-teal-400 border border-teal-900/40 px-1.5 py-0.2 rounded bg-teal-950/30">
+                            <span className="text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-md">
                               {rec.contactRole}
                             </span>
                           )}
@@ -675,7 +683,7 @@ export default function Followup() {
                         <h4 className="font-serif font-bold text-sm text-[var(--crm-heading)] flex items-center gap-1.5">
                           {rec.customerName}
                           {rec.contactRole && (
-                            <span className="text-[9px] font-mono font-normal text-teal-400 border border-teal-900/40 px-1.5 py-0.2 rounded bg-teal-950/30">
+                            <span className="text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-md">
                               {rec.contactRole}
                             </span>
                           )}
@@ -686,7 +694,7 @@ export default function Followup() {
                     {rec.leadCode && leadObjId && (
                       <Link
                         to={`/crm/leads/${leadObjId}`}
-                        className="text-[10px] font-bold text-teal-400 hover:text-teal-300 hover:underline uppercase tracking-wider bg-teal-950/40 border border-teal-900/60 px-2 py-1 rounded cursor-pointer transition flex items-center gap-1"
+                        className="text-[10px] font-mono font-black text-white bg-teal-600 hover:bg-teal-700 uppercase tracking-wider px-2.5 py-1 rounded-md shadow-xs cursor-pointer transition flex items-center gap-1"
                       >
                         {rec.leadCode} →
                       </Link>
@@ -720,22 +728,22 @@ export default function Followup() {
                   )}
 
                   {/* Lead Specifications Grid */}
-                  <div className="grid grid-cols-2 gap-2 text-[10px] text-[var(--crm-ink-soft)] bg-[var(--crm-bg-sunken)]/40 p-2.5 rounded border border-[var(--crm-line)]/50">
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-900 dark:text-slate-100 font-mono font-bold bg-slate-100 dark:bg-slate-800/90 p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs">
                     {rec.mobileNumber && rec.mobileNumber !== '—' ? (
-                      <a href={`tel:${rec.mobileNumber}`} className="hover:text-emerald-400 hover:underline cursor-pointer flex items-center">
-                        <FiPhone size={10} className="inline text-emerald-400 mr-1 shrink-0" /> Phone: <strong className="text-[var(--crm-heading)] ml-1">{rec.mobileNumber} 📞</strong>
+                      <a href={`tel:${rec.mobileNumber}`} className="hover:text-emerald-500 hover:underline cursor-pointer flex items-center">
+                        <FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1 shrink-0" /> Phone: <strong className="text-slate-900 dark:text-slate-100 font-black ml-1">{rec.mobileNumber} 📞</strong>
                       </a>
                     ) : (
-                      <p><FiPhone size={10} className="inline text-emerald-400 mr-1" /> Phone: <strong className="text-[var(--crm-heading)]">—</strong></p>
+                      <p><FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1" /> Phone: <strong className="text-slate-900 dark:text-slate-100 font-black">—</strong></p>
                     )}
-                    <p><FiMapPin size={10} className="inline text-amber-400 mr-1" /> Location: <strong className="text-[var(--crm-heading)]">{rec.location || '—'}</strong></p>
-                    <p><FiPackage size={10} className="inline text-cyan-400 mr-1" /> Material: <strong className="text-[var(--crm-heading)]">{rec.material || '—'}</strong></p>
-                    <p><FiHash size={10} className="inline text-teal-400 mr-1" /> Quantity: <strong className="text-[var(--crm-heading)]">{rec.quantity || '—'}</strong></p>
+                    <p><FiMapPin size={10} className="inline text-amber-600 dark:text-amber-400 mr-1" /> Location: <strong className="text-slate-900 dark:text-slate-100 font-black">{rec.location || '—'}</strong></p>
+                    <p><FiPackage size={10} className="inline text-cyan-600 dark:text-cyan-400 mr-1" /> Material: <strong className="text-slate-900 dark:text-slate-100 font-black">{rec.material || '—'}</strong></p>
+                    <p><FiHash size={10} className="inline text-teal-600 dark:text-teal-400 mr-1" /> Quantity: <strong className="text-slate-900 dark:text-slate-100 font-black">{rec.quantity || '—'}</strong></p>
                   </div>
 
                   {/* Notes / Talk Summary */}
                   {rec.notes && (
-                    <div className="text-[11px] font-sans text-[var(--crm-ink-soft)] italic bg-[var(--crm-bg-sunken)]/20 p-2.5 rounded border-l-2 border-teal-500 leading-relaxed">
+                    <div className="text-[11px] font-sans text-slate-900 dark:text-slate-100 font-bold bg-slate-100 dark:bg-slate-800/90 p-3 rounded-lg border border-slate-300 dark:border-slate-700 italic border-l-4 border-l-teal-500 shadow-xs leading-relaxed">
                       "{rec.notes}"
                     </div>
                   )}

@@ -16,6 +16,11 @@ export const careersApi = {
     return response.data;
   },
 
+  getAllApplications: async () => {
+    const response = await axiosInstance.get('/careers');
+    return response.data;
+  },
+
   // Buyer-entry-gate leads: everyone who filled the Careers page gate form,
   // whether or not they went on to submit a full job application.
   submitGateLead: async ({ fullName, email, phone }) => {

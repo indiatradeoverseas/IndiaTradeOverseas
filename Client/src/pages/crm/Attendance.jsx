@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiClock, FiLogIn, FiLogOut, FiFilter, FiUsers, FiCheckCircle, FiAlertCircle, FiXCircle, FiTrash2, FiCoffee } from 'react-icons/fi';
+import { FiClock, FiLogIn, FiLogOut, FiFilter, FiUsers, FiUser, FiCheckCircle, FiAlertCircle, FiXCircle, FiTrash2, FiCoffee, FiBarChart2 } from 'react-icons/fi';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
 import { useAuth } from '../../hooks/useAuth';
@@ -97,6 +98,23 @@ const formatTimeDisplay = (timeStr, dateVal) => {
   return '—';
 };
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 rounded-lg shadow-xl text-xs font-sans">
+        <p className="font-bold text-[var(--crm-heading)] mb-1.5 border-b border-[var(--crm-line)] pb-1">{label} Department</p>
+        {payload.map((entry, index) => (
+          <div key={`item-${index}`} className="flex items-center justify-between gap-4 py-0.5 font-medium">
+            <span style={{ color: entry.color }}>{entry.name}:</span>
+            <span className="font-bold text-[var(--crm-heading)]">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Attendance() {
   const { user, logout } = useAuth();
   const [today, setToday] = useState(null);
@@ -105,6 +123,8 @@ export default function Attendance() {
   const [report, setReport] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
   const [filters, setFilters] = useState(getTodayBounds);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [lunchLoading, setLunchLoading] = useState(false);
   const [lunchElapsed, setLunchElapsed] = useState(0);
@@ -123,8 +143,21 @@ export default function Attendance() {
   });
   const [manualSubmitting, setManualSubmitting] = useState(false);
 
-  const isManagerTier = ['ADMIN', 'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(user?.role);
-  const isAdmin = user?.role === 'ADMIN';
+  const userRole = (user?.role || '').toUpperCase();
+  const userPos = (user?.position || '').toLowerCase();
+  const userDept = (user?.department || '').toUpperCase();
+
+  const isManagerTier = [
+    'ADMIN', 'SUPER_ADMIN', 'FOUNDER', 'CO_FOUNDER', 'CEO',
+    'MANAGER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'
+  ].includes(userRole) ||
+    userDept === 'ADMIN' || userDept === 'MANAGEMENT' ||
+    userPos.includes('founder') || userPos.includes('ceo') || userPos.includes('admin') || userPos.includes('manager');
+
+  const isAdmin = [
+    'ADMIN', 'SUPER_ADMIN', 'FOUNDER', 'CO_FOUNDER', 'CEO'
+  ].includes(userRole) ||
+    userPos.includes('founder') || userPos.includes('ceo') || userPos.includes('admin');
 
   useEffect(() => {
     if (isManagerTier) {
@@ -331,8 +364,111 @@ export default function Attendance() {
     }
   };
 
+  const allDepartmentsList = useMemo(() => {
+    const set = new Set(DEPARTMENTS);
+    (employeesList || []).forEach(e => { if (e.department) set.add(e.department.toUpperCase()); });
+    (report || []).forEach(r => { if (r.employeeId?.department) set.add(r.employeeId.department.toUpperCase()); });
+    return Array.from(set).sort();
+  }, [employeesList, report]);
+
+  const availableEmployees = useMemo(() => {
+    const map = new Map();
+    (employeesList || []).forEach(emp => {
+      const id = emp._id || emp.employeeId;
+      if (id) {
+        map.set(id, {
+          id,
+          name: emp.fullName || emp.name || 'Unknown',
+          employeeId: emp.employeeId || '',
+          dept: emp.department || '—',
+          role: emp.role || '—'
+        });
+      }
+    });
+
+    (report || []).forEach(rec => {
+      const empObj = rec.employeeId;
+      const id = empObj?._id || empObj?.employeeId || empObj?.name;
+      if (id && !map.has(id)) {
+        map.set(id, {
+          id,
+          name: empObj?.fullName || empObj?.name || 'Unknown',
+          employeeId: empObj?.employeeId || '',
+          dept: empObj?.department || '—',
+          role: empObj?.role || '—'
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [employeesList, report]);
+
+  const filteredReport = useMemo(() => {
+    return report.filter((rec) => {
+      if (selectedEmployeeId) {
+        const id = rec.employeeId?._id || rec.employeeId?.employeeId || rec.employeeId?.name;
+        if (id !== selectedEmployeeId) return false;
+      }
+      if (employeeSearch) {
+        const empName = (rec.employeeId?.fullName || rec.employeeId?.name || '').toLowerCase();
+        const search = employeeSearch.toLowerCase();
+        const matchName = empName.includes(search);
+        const matchId = (rec.employeeId?.employeeId || '').toLowerCase().includes(search);
+        if (!matchName && !matchId) return false;
+      }
+      return true;
+    });
+  }, [report, selectedEmployeeId, employeeSearch]);
+
+  const selectedEmployeeMetrics = useMemo(() => {
+    if (!selectedEmployeeId) return null;
+
+    const empInfo = availableEmployees.find(e => e.id === selectedEmployeeId) || {
+      name: 'Selected Employee',
+      dept: '—',
+      role: '—',
+      employeeId: ''
+    };
+
+    const empRecords = report.filter(rec => {
+      const id = rec.employeeId?._id || rec.employeeId?.employeeId || rec.employeeId?.name;
+      return id === selectedEmployeeId;
+    });
+
+    const present = empRecords.filter(r => r.status === 'PRESENT').length;
+    const late = empRecords.filter(r => r.status === 'LATE').length;
+    const halfDay = empRecords.filter(r => r.status === 'HALF_DAY').length;
+    const absent = empRecords.filter(r => r.status === 'ABSENT').length;
+    const total = empRecords.length;
+
+    const effectiveDays = present + late + (halfDay * 0.5);
+    const rate = total > 0 ? Math.min(100, Math.round((effectiveDays / total) * 100)) : 0;
+
+    let totalHours = 0;
+    let hoursCount = 0;
+    empRecords.forEach(r => {
+      if (r.workingHours) {
+        totalHours += Number(r.workingHours);
+        hoursCount++;
+      }
+    });
+    const avgHours = hoursCount > 0 ? (totalHours / hoursCount).toFixed(1) : '0';
+
+    return {
+      empInfo,
+      present,
+      late,
+      halfDay,
+      absent,
+      total,
+      rate,
+      avgHours,
+      recordsCount: empRecords.length
+    };
+  }, [selectedEmployeeId, report, availableEmployees]);
+
   const summary = useMemo(() => {
-    return report.reduce(
+    return filteredReport.reduce(
       (acc, rec) => {
         if (rec.status === 'PRESENT') acc.present += 1;
         else if (rec.status === 'LATE') acc.late += 1;
@@ -342,11 +478,36 @@ export default function Attendance() {
       },
       { present: 0, late: 0, halfDay: 0, absent: 0 }
     );
-  }, [report]);
+  }, [filteredReport]);
+
+  const departmentChartData = useMemo(() => {
+    const map = new Map();
+    allDepartmentsList.forEach(dept => {
+      map.set(dept, { department: dept, Present: 0, Late: 0, HalfDay: 0, Absent: 0, Total: 0 });
+    });
+
+    filteredReport.forEach((rec) => {
+      const dept = (rec.employeeId?.department || 'OTHER').toUpperCase();
+      if (!map.has(dept)) {
+        map.set(dept, { department: dept, Present: 0, Late: 0, HalfDay: 0, Absent: 0, Total: 0 });
+      }
+      const item = map.get(dept);
+      item.Total += 1;
+      if (rec.status === 'PRESENT') item.Present += 1;
+      else if (rec.status === 'LATE') item.Late += 1;
+      else if (rec.status === 'HALF_DAY') item.HalfDay += 1;
+      else if (rec.status === 'ABSENT') item.Absent += 1;
+    });
+
+    const activeList = Array.from(map.values()).filter(item => item.Total > 0 || (filters.department && filters.department === item.department));
+    return activeList.length > 0 ? activeList : [
+      { department: 'ADMIN', Present: summary.present, Late: summary.late, HalfDay: summary.halfDay, Absent: summary.absent }
+    ];
+  }, [filteredReport, filters.department, summary, allDepartmentsList]);
 
   const displayRows = useMemo(
-    () => buildDisplayRows(report, filters.startDate, filters.endDate),
-    [report, filters.startDate, filters.endDate]
+    () => buildDisplayRows(filteredReport, filters.startDate, filters.endDate),
+    [filteredReport, filters.startDate, filters.endDate]
   );
 
   const myHistoryRows = useMemo(
@@ -356,32 +517,32 @@ export default function Attendance() {
 
   const statusColor = (status) => {
     const colors = {
-      PRESENT: 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20',
-      LATE: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/20',
-      HALF_DAY: 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/20',
-      ABSENT: 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/20'
+      PRESENT: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-bold',
+      LATE: 'bg-amber-500/10 text-amber-500 border-amber-500/20 font-bold',
+      HALF_DAY: 'bg-sky-500/10 text-sky-500 border-sky-500/20 font-bold',
+      ABSENT: 'bg-rose-500/10 text-rose-500 border-rose-500/20 font-bold'
     };
-    return colors[status] || 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-faint)] border-[var(--crm-ink-soft)]/10';
+    return colors[status] || 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-faint)] border-[var(--crm-line)]';
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--crm-bg)] flex items-center justify-center">
-        <div className="w-12 h-[1px] bg-[var(--crm-ink-soft)]/40 animate-pulse" />
+      <div className="min-h-screen bg-[var(--crm-bg)] flex items-center justify-center font-sans">
+        <div className="w-12 h-1 bg-[var(--crm-line)] rounded animate-pulse" />
       </div>
     );
   }
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] pb-12">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-heading)] font-sans pb-12">
 
-      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-3 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-line)] py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-3 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div>
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MODULE 02 // EMPLOYEE ATTENDANCE</span>
-          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Attendance</h1>
+          <span className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block font-sans">MODULE 02 // EMPLOYEE ATTENDANCE</span>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--crm-heading)] tracking-tight font-sans">Attendance Dashboard</h1>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--crm-ink-faint)] bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 px-3 py-1.5 uppercase tracking-wide rounded-sm self-start md:self-auto">
-          <FiClock size={12} />
+        <div className="flex items-center gap-2 text-xs font-sans text-[var(--crm-heading)] bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] px-3 py-1.5 rounded-lg self-start md:self-auto font-medium shadow-sm">
+          <FiClock size={14} className="text-blue-500" />
           <span>Official Shift &nbsp;09:00 AM &ndash; 06:00 PM</span>
         </div>
       </motion.div>
@@ -389,39 +550,39 @@ export default function Attendance() {
       <div className="w-full px-3 sm:px-6 md:px-8 py-6 space-y-6 min-w-0 overflow-x-hidden">
 
         {/* Check-in / Check-out card */}
-        <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/20 rounded-sm p-6 shadow-xl">
+        <motion.div variants={blockVariants} className="border border-[var(--crm-line)] bg-[var(--crm-bg-raised)] rounded-xl p-6 shadow-md">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
             <div>
-              <p className="text-sm font-serif text-[var(--crm-heading)]">{user?.fullName}</p>
-              <p className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono mt-0.5">{user?.department} &bull; {user?.role} &bull; {user?.employeeId}</p>
+              <p className="text-lg font-bold text-[var(--crm-heading)]">{user?.fullName}</p>
+              <p className="text-xs uppercase tracking-wider text-[var(--crm-ink-faint)] font-medium mt-0.5">{user?.department} &bull; {user?.role} &bull; {user?.employeeId}</p>
 
-              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold font-mono block mt-4 mb-2">Today's Status</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mt-4 mb-2">Today's Status</span>
               {today?.checkInAt || today?.checkInTime ? (
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className={`inline-block px-2.5 py-0.5 border text-[10px] font-bold tracking-wider uppercase rounded ${statusColor(today.status)}`}>
+                  <span className={`inline-block px-2.5 py-1 border text-xs font-bold uppercase rounded-md ${statusColor(today.status)}`}>
                     {today.status.replace('_', ' ')}
                   </span>
-                  <span className="text-xs text-[var(--crm-ink-soft)] font-mono">In: {formatTimeDisplay(today.checkInTime, today.checkInAt)}</span>
+                  <span className="text-xs text-[var(--crm-heading)] font-semibold">In: {formatTimeDisplay(today.checkInTime, today.checkInAt)}</span>
                   {today.checkOutAt || today.checkOutTime ? (
                     <>
-                      <span className="text-xs text-[var(--crm-ink-soft)] font-mono">Out: {formatTimeDisplay(today.checkOutTime, today.checkOutAt)}</span>
-                      <span className="text-xs text-[var(--crm-positive)] font-mono">{today.workingHours}h worked</span>
+                      <span className="text-xs text-[var(--crm-heading)] font-semibold">Out: {formatTimeDisplay(today.checkOutTime, today.checkOutAt)}</span>
+                      <span className="text-xs text-emerald-500 font-bold">{today.workingHours}h worked</span>
                       {today.overtimeHours > 0 && (
-                        <span className="text-xs text-[var(--crm-info)] font-mono">+{today.overtimeHours}h overtime</span>
+                        <span className="text-xs text-sky-400 font-bold">+{today.overtimeHours}h overtime</span>
                       )}
                     </>
                   ) : (
-                    <span className="text-xs text-[var(--crm-ink-faint)] font-mono">Expected check-out: 06:00 PM</span>
+                    <span className="text-xs text-[var(--crm-ink-faint)] font-medium">Expected check-out: 06:00 PM</span>
                   )}
                   {today.lunchEndAt && (
-                    <span className="text-xs text-[var(--crm-warning)] font-mono">Lunch: {today.lunchDurationMinutes}m</span>
+                    <span className="text-xs text-amber-500 font-semibold">Lunch: {today.lunchDurationMinutes}m</span>
                   )}
                   {today.lunchStartAt && !today.lunchEndAt && (
-                    <span className="text-xs text-[var(--crm-warning)] font-mono animate-pulse">On lunch: {formatElapsed(lunchElapsed)}</span>
+                    <span className="text-xs text-amber-500 font-bold animate-pulse">On lunch: {formatElapsed(lunchElapsed)}</span>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-[var(--crm-ink-faint)] font-light">You have not checked in today.</p>
+                <p className="text-sm text-[var(--crm-ink-faint)] font-normal">You have not checked in today.</p>
               )}
             </div>
 
@@ -430,9 +591,9 @@ export default function Attendance() {
                 <button
                   onClick={handleCheckIn}
                   disabled={actionLoading}
-                  className="flex items-center gap-2 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
-                  <FiLogIn size={14} /> Check In
+                  <FiLogIn size={16} /> Check In
                 </button>
               )}
               {today?.checkInAt && !today?.checkOutAt && (
@@ -441,40 +602,40 @@ export default function Attendance() {
                     <button
                       onClick={handleLunchStart}
                       disabled={lunchLoading}
-                      className="flex items-center gap-2 bg-transparent border border-[var(--crm-warning)]/30 hover:bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm transition-all disabled:opacity-50"
+                      className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-500 text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
                     >
-                      <FiCoffee size={14} /> Lunch Time
+                      <FiCoffee size={16} /> Lunch Time
                     </button>
                   )}
                   {today?.lunchStartAt && !today?.lunchEndAt && (
                     <button
                       onClick={handleLunchEnd}
                       disabled={lunchLoading}
-                      className="flex items-center gap-2 bg-[var(--crm-warning-bg)] border border-[var(--crm-warning)]/30 hover:bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm transition-all disabled:opacity-50"
+                      className="flex items-center gap-2 bg-amber-500 text-white hover:bg-amber-600 text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg transition-all shadow-md disabled:opacity-50 cursor-pointer"
                     >
-                      <FiCoffee size={14} /> Back to Work <span className="font-mono">{formatElapsed(lunchElapsed)}</span>
+                      <FiCoffee size={16} /> Back to Work <span className="font-mono">{formatElapsed(lunchElapsed)}</span>
                     </button>
                   )}
                   {today?.lunchEndAt && (
                     <button
                       disabled
                       title={`Lunch taken: ${today.lunchDurationMinutes} min`}
-                      className="flex items-center gap-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-faint)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm opacity-50 cursor-not-allowed"
+                      className="flex items-center gap-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg opacity-50 cursor-not-allowed"
                     >
-                      <FiCoffee size={14} /> Lunch Taken ({today.lunchDurationMinutes}m)
+                      <FiCoffee size={16} /> Lunch Taken ({today.lunchDurationMinutes}m)
                     </button>
                   )}
                   <button
                     onClick={handleCheckOut}
                     disabled={actionLoading}
-                    className="flex items-center gap-2 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
                   >
-                    <FiLogOut size={14} /> Check Out
+                    <FiLogOut size={16} /> Check Out
                   </button>
                 </>
               )}
               {today?.checkOutAt && (
-                <span className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono self-center">Day complete</span>
+                <span className="text-xs uppercase tracking-wider text-emerald-500 font-bold self-center">Day Complete ✓</span>
               )}
             </div>
           </div>
@@ -486,80 +647,216 @@ export default function Attendance() {
             {/* Summary stat row */}
             <motion.div variants={blockVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Present', val: summary.present, icon: FiCheckCircle, color: 'text-[var(--crm-positive)] bg-[var(--crm-positive-bg)]' },
-                { label: 'Late', val: summary.late, icon: FiAlertCircle, color: 'text-[var(--crm-warning)] bg-[var(--crm-warning-bg)]' },
-                { label: 'Half Day', val: summary.halfDay, icon: FiClock, color: 'text-[var(--crm-info)] bg-[var(--crm-info-bg)]' },
-                { label: 'Absent', val: summary.absent, icon: FiXCircle, color: 'text-[var(--crm-danger)] bg-[var(--crm-danger-bg)]' }
+                { label: 'Present', val: summary.present, icon: FiCheckCircle, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' },
+                { label: 'Late', val: summary.late, icon: FiAlertCircle, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
+                { label: 'Half Day', val: summary.halfDay, icon: FiClock, color: 'text-sky-500 bg-sky-500/10 border-sky-500/20' },
+                { label: 'Absent', val: summary.absent, icon: FiXCircle, color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' }
               ].map((card, idx) => (
-                <div key={idx} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-4 rounded-sm flex items-center justify-between shadow-lg">
+                <div key={idx} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex items-center justify-between shadow-sm">
                   <div>
-                    <p className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold font-mono">{card.label}</p>
-                    <p className="text-xl font-serif font-light text-[var(--crm-heading)] mt-1">{card.val}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">{card.label}</p>
+                    <p className="text-2xl font-bold text-[var(--crm-heading)] mt-1">{card.val}</p>
                   </div>
-                  <div className={`p-2 rounded-sm ${card.color}`}><card.icon size={14} /></div>
+                  <div className={`p-2.5 rounded-lg border ${card.color}`}><card.icon size={18} /></div>
                 </div>
               ))}
             </motion.div>
 
-            <motion.div variants={blockVariants} className="p-2.5 bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-md flex flex-wrap items-center justify-between gap-2 shadow-sm text-xs font-mono">
+            {/* BAR CHART SECTION */}
+            <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
+                <div className="flex items-center gap-2">
+                  <FiBarChart2 className="text-blue-500" size={18} />
+                  <h3 className="text-sm font-bold text-[var(--crm-heading)] uppercase tracking-wider font-sans">
+                    Attendance Analytics Overview
+                  </h3>
+                </div>
+                <span className="text-[11px] font-medium text-[var(--crm-ink-faint)]">
+                  Grouped by Department
+                </span>
+              </div>
+              
+              <div className="w-full h-72 min-h-[250px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+                  <BarChart data={departmentChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.5} />
+                    <XAxis dataKey="department" stroke="var(--crm-heading)" tick={{ fontSize: 11, fill: 'var(--crm-heading)' }} />
+                    <YAxis stroke="var(--crm-heading)" tick={{ fontSize: 11, fill: 'var(--crm-heading)' }} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} />
+                    <Bar dataKey="Present" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="Late" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="HalfDay" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="Absent" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+
+            {/* Selected Employee Detailed Analytics Card */}
+            {selectedEmployeeMetrics && (
+              <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-blue-500/30 rounded-xl p-5 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--crm-line)] pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 font-bold text-base">
+                      <FiUser size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--crm-heading)]">{selectedEmployeeMetrics.empInfo.name}</h3>
+                      <p className="text-xs text-[var(--crm-ink-faint)] font-medium">
+                        {selectedEmployeeMetrics.empInfo.dept} &bull; {selectedEmployeeMetrics.empInfo.role} {selectedEmployeeMetrics.empInfo.employeeId ? `(${selectedEmployeeMetrics.empInfo.employeeId})` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedEmployeeId('')}
+                    className="px-3 py-1.5 bg-blue-200 text-blue-950 hover:bg-blue-300 border border-blue-300 text-xs font-bold uppercase tracking-wider rounded-md transition cursor-pointer self-start sm:self-auto"
+                  >
+                    Clear Employee Selection
+                  </button>
+                </div>
+
+                {/* Grid of employee metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div className="bg-[var(--crm-bg)] border border-emerald-500/30 p-3 rounded-lg text-center">
+                    <p className="text-[10px] uppercase font-bold text-emerald-500">Present</p>
+                    <p className="text-xl font-bold text-emerald-500 mt-1">{selectedEmployeeMetrics.present}</p>
+                    <p className="text-[10px] text-[var(--crm-ink-faint)] font-medium">days</p>
+                  </div>
+                  <div className="bg-[var(--crm-bg)] border border-amber-500/30 p-3 rounded-lg text-center">
+                    <p className="text-[10px] uppercase font-bold text-amber-500">Late</p>
+                    <p className="text-xl font-bold text-amber-500 mt-1">{selectedEmployeeMetrics.late}</p>
+                    <p className="text-[10px] text-[var(--crm-ink-faint)] font-medium">days</p>
+                  </div>
+                  <div className="bg-[var(--crm-bg)] border border-sky-500/30 p-3 rounded-lg text-center">
+                    <p className="text-[10px] uppercase font-bold text-sky-400">Half Day / Leave</p>
+                    <p className="text-xl font-bold text-sky-400 mt-1">{selectedEmployeeMetrics.halfDay}</p>
+                    <p className="text-[10px] text-[var(--crm-ink-faint)] font-medium">days</p>
+                  </div>
+                  <div className="bg-[var(--crm-bg)] border border-rose-500/30 p-3 rounded-lg text-center">
+                    <p className="text-[10px] uppercase font-bold text-rose-500">Absent</p>
+                    <p className="text-xl font-bold text-rose-500 mt-1">{selectedEmployeeMetrics.absent}</p>
+                    <p className="text-[10px] text-[var(--crm-ink-faint)] font-medium">days</p>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] p-3 rounded-lg text-center">
+                    <p className="text-[10px] uppercase font-bold text-[var(--crm-heading)]">Attendance Score</p>
+                    <p className="text-xl font-bold text-blue-400 mt-1">{selectedEmployeeMetrics.rate}%</p>
+                    <div className="w-full bg-[var(--crm-line)] h-1.5 rounded-full mt-1.5 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${selectedEmployeeMetrics.rate >= 85 ? 'bg-emerald-500' : selectedEmployeeMetrics.rate >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                        style={{ width: `${selectedEmployeeMetrics.rate}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-[var(--crm-ink-faint)] font-medium pt-1">
+                  <span>Total Days Logged: <strong className="text-[var(--crm-heading)]">{selectedEmployeeMetrics.total}</strong></span>
+                  <span>Avg Work Hours: <strong className="text-emerald-500">{selectedEmployeeMetrics.avgHours} hrs/day</strong></span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Filter Bar with Dept & Employee Dropdowns */}
+            <motion.div variants={blockVariants} className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm text-xs font-sans">
               <div className="flex flex-wrap items-center gap-2">
-                {/* Department Dropdown */}
+                {/* Clean Department Dropdown */}
                 <select
                   value={filters.department}
                   onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] cursor-pointer text-[var(--crm-heading)] font-mono"
+                  className="px-3 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-md outline-none text-xs cursor-pointer text-[var(--crm-heading)] font-medium"
                 >
-                  <option value="">All Depts</option>
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  <option value="" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-sans">All Depts</option>
+                  {allDepartmentsList.map((d) => (
+                    <option key={d} value={d} className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-sans">{d}</option>
+                  ))}
                 </select>
+
+                {/* All Employees Dropdown */}
+                <select
+                  value={selectedEmployeeId}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                  className="px-3 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-md outline-none text-xs cursor-pointer text-[var(--crm-heading)] font-medium max-w-[210px] truncate"
+                >
+                  <option value="" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-sans">All Employees ({availableEmployees.length})</option>
+                  {availableEmployees.map((emp) => (
+                    <option key={emp.id} value={emp.id} className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-sans">
+                      {emp.name} {emp.dept ? `(${emp.dept})` : ''}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Employee Search Input */}
+                <input
+                  type="text"
+                  placeholder="Search Employee..."
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  className="px-3 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-md outline-none text-xs text-[var(--crm-heading)] font-medium w-36"
+                />
 
                 {/* Compact Date Range Pickers */}
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                  className="px-2 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono"
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-md outline-none text-xs text-[var(--crm-heading)] font-medium"
                 />
-                <span className="text-slate-500 text-[10px]">&ndash;</span>
+                <span className="text-[var(--crm-ink-faint)] font-bold">&ndash;</span>
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                  className="px-2 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 focus:border-[var(--crm-heading)]/40 rounded outline-none text-[11px] text-[var(--crm-heading)] font-mono"
+                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-md outline-none text-xs text-[var(--crm-heading)] font-medium"
                 />
 
-                {/* Apply Filter Button */}
+                {/* Apply Filter Button - blue-200 styled */}
                 <button
                   onClick={handleApplyFilter}
-                  className="px-3 py-1.5 bg-[var(--crm-bg-raised)] hover:bg-[#1e3b61]/40 border border-[var(--crm-ink-soft)]/25 text-[var(--crm-heading)] text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  className="px-3 py-1.5 bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 text-xs font-bold uppercase tracking-wider rounded-md transition cursor-pointer"
                 >
                   Filter
                 </button>
 
-                {/* Today Only Button */}
+                {/* Today Only Button - blue-200 styled */}
                 <button
                   onClick={() => {
                     const todayStr = formatLocalDate(new Date());
-                    const todayF = { startDate: todayStr, endDate: todayStr, department: '' };
+                    const todayF = { startDate: todayStr, endDate: todayStr, department: filters.department };
                     setFilters(todayF);
                     if (isManagerTier) fetchReport(todayF);
                     else fetchMyHistory(todayF);
                   }}
-                  className="px-2.5 py-1.5 bg-[var(--crm-bg)] border border-[#c9a84c]/40 hover:bg-[#c9a84c]/10 text-[#c9a84c] text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                  className="px-3 py-1.5 bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 text-xs font-bold uppercase tracking-wider rounded-md transition cursor-pointer"
                   title="Reset to today's date"
                 >
                   Today
                 </button>
+
+                {/* This Month Button - blue-200 styled */}
+                <button
+                  onClick={() => {
+                    const monthF = getCurrentMonthBounds();
+                    monthF.department = filters.department;
+                    setFilters(monthF);
+                    if (isManagerTier) fetchReport(monthF);
+                    else fetchMyHistory(monthF);
+                  }}
+                  className="px-3 py-1.5 bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 text-xs font-bold uppercase tracking-wider rounded-md transition cursor-pointer"
+                  title="Filter full current month"
+                >
+                  This Month
+                </button>
               </div>
 
-              {/* Right Side Action Buttons */}
+              {/* Right Actions */}
               <div className="flex items-center gap-2">
                 {isManagerTier && (
                   <button
                     onClick={() => setShowManualModal(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 text-[10px] uppercase tracking-wider font-bold rounded transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-md transition shadow-sm cursor-pointer"
                   >
-                    <FiLogIn size={11} /> Manual Mark
+                    <FiLogIn size={13} /> Manual Mark
                   </button>
                 )}
 
@@ -568,19 +865,20 @@ export default function Attendance() {
                     onClick={handleCleanupOrphaned}
                     disabled={cleanupLoading}
                     title="Clean invalid records"
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-transparent border border-rose-900/40 hover:bg-rose-950/50 text-rose-400 text-[10px] uppercase tracking-wider font-bold rounded transition disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-500 text-xs font-bold uppercase tracking-wider rounded-md transition disabled:opacity-50 cursor-pointer"
                   >
-                    <FiTrash2 size={11} /> {cleanupLoading ? '...' : 'Clean'}
+                    <FiTrash2 size={13} /> {cleanupLoading ? '...' : 'Clean'}
                   </button>
                 )}
               </div>
             </motion.div>
 
-            <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/10 rounded-sm overflow-hidden shadow-xl">
+            {/* Daily Logs Table View */}
+            <motion.div variants={blockVariants} className="border border-[var(--crm-line)] bg-[var(--crm-bg-raised)] rounded-xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[1000px]">
+                <table className="w-full text-left border-collapse min-w-[1000px] font-sans">
                   <thead>
-                    <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold">
+                    <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-xs uppercase tracking-wider font-bold border-b border-[var(--crm-line)]">
                       <th className="py-3.5 px-5">Employee</th>
                       <th className="py-3.5 px-5">Department</th>
                       <th className="py-3.5 px-5">Date</th>
@@ -591,27 +889,51 @@ export default function Attendance() {
                       <th className="py-3.5 px-5 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
+                  <tbody className="divide-y divide-[var(--crm-line)] text-xs font-medium">
                     {reportLoading ? (
-                      <tr><td colSpan="8" className="text-center py-12 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">Loading...</td></tr>
-                    ) : report.length === 0 ? (
-                      <tr><td colSpan="8" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No attendance records found.</td></tr>
+                      <tr><td colSpan="8" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-wider text-xs">Loading records...</td></tr>
+                    ) : filteredReport.length === 0 ? (
+                      <tr><td colSpan="8" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-wider text-xs">No attendance records found.</td></tr>
                     ) : (
-                      report.map((record) => (
-                        <tr key={record._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                          <td className="py-3 px-5 text-[var(--crm-heading)]">{record.employeeId?.fullName || record.employeeId?.name || 'Unknown'}</td>
-                          <td className="py-3 px-5">
-                            <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">
+                      filteredReport.map((record) => (
+                        <tr key={record._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
+                          <td className="py-3.5 px-5 font-semibold text-[var(--crm-heading)]">{record.employeeId?.fullName || record.employeeId?.name || 'Unknown'}</td>
+                          <td className="py-3.5 px-5">
+                            <span className="px-2 py-0.5 text-[10px] font-bold bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-md">
                               {record.employeeId?.department || '—'}
                             </span>
                           </td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(record.date).toLocaleDateString()}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(record.checkInTime, record.checkInAt)}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(record.checkOutTime, record.checkOutAt)}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{record.workingHours || 0}h</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{record.lunchDurationMinutes ? `${record.lunchDurationMinutes}m` : '—'}</td>
-                          <td className="py-3 px-5 text-center">
-                            <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(record.status)}`}>
+                          <td className="py-3.5 px-5 text-[var(--crm-heading)]">{new Date(record.date).toLocaleDateString()}</td>
+                          <td className="py-3.5 px-5 text-[var(--crm-heading)]">{formatTimeDisplay(record.checkInTime, record.checkInAt)}</td>
+                          <td className="py-3.5 px-5 text-[var(--crm-heading)]">{formatTimeDisplay(record.checkOutTime, record.checkOutAt)}</td>
+                          <td className="py-3.5 px-5 text-emerald-500 font-bold">
+                            <div>
+                              {record.workingHours
+                                ? `${record.workingHours}h`
+                                : (record.checkInAt && !record.checkOutAt
+                                    ? `${((Date.now() - new Date(record.checkInAt).getTime()) / (1000 * 60 * 60)).toFixed(2)}h`
+                                    : '0h')}
+                            </div>
+                            {record.checkInAt && !record.checkOutAt && (
+                              <span className="text-[10px] text-emerald-500 font-bold block mt-0.5">🟢 Active Now</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-amber-500 font-semibold">
+                            {record.lunchStartAt ? (
+                              <div>
+                                <div className="text-xs font-bold">
+                                  {formatTimeDisplay(null, record.lunchStartAt)} &ndash; {record.lunchEndAt ? formatTimeDisplay(null, record.lunchEndAt) : 'On Lunch'}
+                                </div>
+                                <div className="text-[10px] text-[var(--crm-ink-faint)]">
+                                  ({record.lunchDurationMinutes || 0} min total)
+                                </div>
+                              </div>
+                            ) : (
+                              record.lunchDurationMinutes ? `${record.lunchDurationMinutes}m` : '—'
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 border text-[10px] font-bold tracking-wider uppercase rounded-md ${statusColor(record.status)}`}>
                               {record.status.replace('_', ' ')}
                             </span>
                           </td>
@@ -626,14 +948,14 @@ export default function Attendance() {
         )}
 
         {!isManagerTier && (
-          <motion.div variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/10 rounded-sm overflow-hidden shadow-xl">
-            <div className="px-5 py-3.5 border-b border-[var(--crm-ink-soft)]/10">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold font-mono">Your Attendance History &bull; This Month</span>
+          <motion.div variants={blockVariants} className="border border-[var(--crm-line)] bg-[var(--crm-bg-raised)] rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-3.5 border-b border-[var(--crm-line)]">
+              <span className="text-xs uppercase tracking-wider text-[var(--crm-heading)] font-bold font-sans">Your Attendance History &bull; This Month</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[700px]">
+              <table className="w-full text-left border-collapse min-w-[700px] font-sans">
                 <thead>
-                  <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold">
+                  <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-xs uppercase tracking-wider font-bold border-b border-[var(--crm-line)]">
                     <th className="py-3.5 px-5">Date</th>
                     <th className="py-3.5 px-5">Check In</th>
                     <th className="py-3.5 px-5">Check Out</th>
@@ -642,28 +964,28 @@ export default function Attendance() {
                     <th className="py-3.5 px-5 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-xs">
+                <tbody className="divide-y divide-[var(--crm-line)] text-xs font-medium">
                   {myHistoryLoading ? (
-                    <tr><td colSpan="6" className="text-center py-12 text-[var(--crm-ink-faint)] font-mono uppercase tracking-widest text-[10px]">Loading...</td></tr>
+                    <tr><td colSpan="6" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-wider text-xs">Loading records...</td></tr>
                   ) : myHistoryRows.length === 0 ? (
-                    <tr><td colSpan="6" className="text-center py-16 opacity-40 font-mono uppercase tracking-widest text-[10px]">No attendance records found.</td></tr>
+                    <tr><td colSpan="6" className="text-center py-16 text-[var(--crm-ink-faint)] uppercase tracking-wider text-xs">No attendance records found.</td></tr>
                   ) : (
                     myHistoryRows.map((row) =>
                       row.isSunday ? (
                         <tr key={row.date.toDateString()} className="bg-[var(--crm-bg-sunken)]/40">
-                          <td colSpan="6" className="text-center py-3 text-[10px] uppercase tracking-[0.3em] font-mono font-bold text-[var(--crm-ink-faint)]">
+                          <td colSpan="6" className="text-center py-3 text-xs uppercase tracking-widest font-bold text-[var(--crm-ink-faint)]">
                             Sunday &bull; {row.date.toLocaleDateString()}
                           </td>
                         </tr>
                       ) : (
-                        <tr key={row.record._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-faint)]">{new Date(row.record.date).toLocaleDateString()}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(row.record.checkInTime, row.record.checkInAt)}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-ink-soft)]">{formatTimeDisplay(row.record.checkOutTime, row.record.checkOutAt)}</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-positive)]">{row.record.workingHours || 0}h</td>
-                          <td className="py-3 px-5 font-mono text-[var(--crm-warning)]">{row.record.lunchDurationMinutes ? `${row.record.lunchDurationMinutes}m` : '—'}</td>
-                          <td className="py-3 px-5 text-center">
-                            <span className={`inline-block px-2 py-0.5 border text-[9px] font-bold tracking-wider uppercase rounded ${statusColor(row.record.status)}`}>
+                        <tr key={row.record._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
+                          <td className="py-3.5 px-5 text-[var(--crm-heading)]">{new Date(row.record.date).toLocaleDateString()}</td>
+                          <td className="py-3.5 px-5 text-[var(--crm-heading)]">{formatTimeDisplay(row.record.checkInTime, row.record.checkInAt)}</td>
+                          <td className="py-3.5 px-5 text-[var(--crm-heading)]">{formatTimeDisplay(row.record.checkOutTime, row.record.checkOutAt)}</td>
+                          <td className="py-3.5 px-5 text-emerald-500 font-bold">{row.record.workingHours || 0}h</td>
+                          <td className="py-3.5 px-5 text-amber-500 font-semibold">{row.record.lunchDurationMinutes ? `${row.record.lunchDurationMinutes}m` : '—'}</td>
+                          <td className="py-3.5 px-5 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 border text-[10px] font-bold tracking-wider uppercase rounded-md ${statusColor(row.record.status)}`}>
                               {row.record.status.replace('_', ' ')}
                             </span>
                           </td>

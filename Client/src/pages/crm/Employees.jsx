@@ -15,7 +15,11 @@ import {
   FiUser,
   FiEdit,
   FiEye,
-  FiShield
+  FiShield,
+  FiUsers,
+  FiLayers,
+  FiFileText,
+  FiCheckSquare
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/admin';
@@ -34,6 +38,22 @@ export default function Employees() {
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [editingEmpId, setEditingEmpId] = useState(null);
+
+  // Granular Security & Access Permissions Modal State
+  const [permModalEmp, setPermModalEmp] = useState(null);
+  const [savingPerms, setSavingPerms] = useState(false);
+  const [permForm, setPermForm] = useState({
+    leadPermission: false,
+    exportPermission: false,
+    importPermission: false,
+    productUploadPermission: false,
+    documentPermission: false,
+    taskPermission: false,
+    dispatchPermission: false,
+    paymentPermission: false,
+    quotationPermission: false,
+    jobPermission: false,
+  });
 
   // Profile Master Data persistence
   const [profilesData, setProfilesData] = useState(() => {
@@ -129,15 +149,16 @@ export default function Employees() {
   ];
 
   const roleOptions = [
-    { value: 'ADMIN', label: 'Admin' },
-    { value: 'MANAGER', label: 'Manager' },
-    { value: 'SALES', label: 'Sales' },
-    { value: 'PROCUREMENT', label: 'Procurement' },
-    { value: 'ACCOUNTS', label: 'Accounts' },
-    { value: 'HR', label: 'HR' },
-    { value: 'FINANCE', label: 'Finance' },
-    { value: 'IT', label: 'IT' },
-    { value: 'SOFTWARE_ENGINEER', label: 'Software Engineer' }
+    { value: 'SALES_EXECUTIVE', label: 'Sales Executive (SALES_EXECUTIVE)' },
+    { value: 'SALES_MANAGER', label: 'Sales Manager (SALES_MANAGER)' },
+    { value: 'HR_EXECUTIVE', label: 'HR Executive (HR_EXECUTIVE)' },
+    { value: 'HR_MANAGER', label: 'HR Manager (HR_MANAGER)' },
+    { value: 'TRANSPORT_MANAGER', label: 'Transport Manager (TRANSPORT_MANAGER)' },
+    { value: 'TRANSPORT_EXECUTIVE', label: 'Transport Executive (TRANSPORT_EXECUTIVE)' },
+    { value: 'DRIVER', label: 'Driver (DRIVER)' },
+    { value: 'CEO', label: 'CEO' },
+    { value: 'ADMIN', label: 'Admin (ADMIN)' },
+    { value: 'SALES_TRIAL', label: 'Sales Trial (SALES_TRIAL)' }
   ];
 
   useEffect(() => {
@@ -220,6 +241,166 @@ export default function Employees() {
       }
     }
   };
+
+  const openPermissionModal = (emp) => {
+    setPermModalEmp(emp);
+    setPermForm({
+      leadPermission: Boolean(emp.leadPermission),
+      exportPermission: Boolean(emp.exportPermission),
+      importPermission: Boolean(emp.importPermission),
+      productUploadPermission: Boolean(emp.productUploadPermission),
+      documentPermission: Boolean(emp.documentPermission),
+      taskPermission: Boolean(emp.taskPermission),
+      dispatchPermission: Boolean(emp.dispatchPermission),
+      paymentPermission: Boolean(emp.paymentPermission),
+      quotationPermission: Boolean(emp.quotationPermission),
+      jobPermission: Boolean(emp.jobPermission),
+    });
+  };
+
+  const handleSelectAllPerms = () => {
+    setPermForm({
+      leadPermission: true,
+      exportPermission: true,
+      importPermission: true,
+      productUploadPermission: true,
+      documentPermission: true,
+      taskPermission: true,
+      dispatchPermission: true,
+      paymentPermission: true,
+      quotationPermission: true,
+      jobPermission: true,
+    });
+    toast.success('Selected ALL permissions! Checkboxes marked.');
+  };
+
+  const handleDeselectAllPerms = () => {
+    setPermForm({
+      leadPermission: false,
+      exportPermission: false,
+      importPermission: false,
+      productUploadPermission: false,
+      documentPermission: false,
+      taskPermission: false,
+      dispatchPermission: false,
+      paymentPermission: false,
+      quotationPermission: false,
+      jobPermission: false,
+    });
+    toast('Deselected all permissions');
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permModalEmp) return;
+    setSavingPerms(true);
+    try {
+      const response = await adminApi.updatePermissions(permModalEmp._id, permForm);
+      if (response && response.success) {
+        toast.success(`Access permissions updated for ${permModalEmp.fullName || 'Employee'}! 🎉`);
+        setPermModalEmp(null);
+        fetchData();
+      } else {
+        toast.error('Failed to update permissions');
+      }
+    } catch (err) {
+      console.error('Error updating permissions:', err);
+      toast.error(err.response?.data?.message || 'Failed to update permissions');
+    } finally {
+      setSavingPerms(false);
+    }
+  };
+
+  const getActivePermissionCount = (emp) => {
+    const keys = [
+      'leadPermission', 'exportPermission', 'importPermission',
+      'productUploadPermission', 'documentPermission', 'taskPermission',
+      'dispatchPermission', 'paymentPermission', 'quotationPermission', 'jobPermission'
+    ];
+    return keys.filter(k => Boolean(emp[k])).length;
+  };
+
+  const PERMISSION_CONFIG = [
+    {
+      key: 'leadPermission',
+      title: 'Leads Access',
+      label: 'View & Manage Leads',
+      description: 'Allows viewing, updating & assigning sales leads',
+      icon: FiUsers,
+      badge: 'CRM Core'
+    },
+    {
+      key: 'exportPermission',
+      title: 'Export Leads',
+      label: 'Export Leads & Reports',
+      description: 'Allows downloading lead database & Excel reports',
+      icon: FiDatabase,
+      badge: 'Export'
+    },
+    {
+      key: 'importPermission',
+      title: 'Import Leads',
+      label: 'Import Leads Data',
+      description: 'Allows uploading bulk leads via Excel/CSV',
+      icon: FiFileText,
+      badge: 'Import'
+    },
+    {
+      key: 'productUploadPermission',
+      title: 'Product Upload',
+      label: 'Product Catalogue Upload',
+      description: 'Allows adding and editing product listings',
+      icon: FiPackage,
+      badge: 'Inventory'
+    },
+    {
+      key: 'documentPermission',
+      title: 'Documents Access',
+      label: 'Shared Documents Vault',
+      description: 'Allows accessing central company files & PDFs',
+      icon: FiLayers,
+      badge: 'Files'
+    },
+    {
+      key: 'taskPermission',
+      title: 'Tasks Board',
+      label: 'Task Management Board',
+      description: 'Allows creating, viewing & assigning daily tasks',
+      icon: FiCheckCircle,
+      badge: 'Workflows'
+    },
+    {
+      key: 'dispatchPermission',
+      title: 'Logistics & Dispatch',
+      label: 'Logistics & Shipping',
+      description: 'Allows managing shipments & dispatch orders',
+      icon: FiBriefcase,
+      badge: 'Logistics'
+    },
+    {
+      key: 'paymentPermission',
+      title: 'Payments & Billing',
+      label: 'Payments & Financial Ledger',
+      description: 'Allows viewing payment receipts & ledger entries',
+      icon: FiShield,
+      badge: 'Finance'
+    },
+    {
+      key: 'quotationPermission',
+      title: 'Quotations Engine',
+      label: 'Quotations & Price Quotes',
+      description: 'Allows creating & approving client quotations',
+      icon: FiFileText,
+      badge: 'Sales'
+    },
+    {
+      key: 'jobPermission',
+      title: 'Careers & Hiring',
+      label: 'Careers Node & Job Posts',
+      description: 'Allows managing job vacancies & applicant resumes',
+      icon: FiBriefcase,
+      badge: 'Recruitment'
+    }
+  ];
 
   const togglePermission = async (id, type, currentValue) => {
     try {
@@ -386,15 +567,14 @@ export default function Employees() {
                 <th className="py-4 px-6 font-medium">Employee Operator</th>
                 <th className="py-4 px-6 font-medium">Sector Deployment</th>
                 <th className="py-4 px-6 text-center font-medium">Operational Status</th>
-                <th className="py-4 px-6 font-medium">Security Access Permissions</th>
-                <th className="py-4 px-6 font-medium">Pipeline Metrics</th>
-                <th className="py-4 px-6 text-center font-medium">Purge Action</th>
+                <th className="py-4 px-6 text-center font-medium">Security Access Permissions</th>
+                <th className="py-4 px-6 text-center font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--crm-ink-soft)]/10 text-sm">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-16 text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] bg-[var(--crm-bg)]/40">
+                  <td colSpan="5" className="text-center py-16 text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] bg-[var(--crm-bg)]/40">
                     No verified operators found matching the active cluster matrices.
                   </td>
                 </tr>
@@ -461,72 +641,19 @@ export default function Employees() {
                         </button>
                       </td>
 
-                      {/* Granular Permissions Mapping Grid */}
-                      <td className="py-4 px-6">
-                        <div className="flex flex-col gap-2 min-w-[200px]">
-
-                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-[var(--crm-ink-faint)] gap-2 hover:text-[var(--crm-ink-soft)]">
-                            <input
-                              type="checkbox"
-                              checked={emp.productUploadPermission || false}
-                              onChange={() => togglePermission(emp._id, 'upload', emp.productUploadPermission)}
-                              className="rounded text-[var(--crm-heading)] focus:ring-[var(--crm-heading)]/40 border-[var(--crm-ink-soft)]/30 w-3.5 h-3.5 cursor-pointer accent-[var(--crm-heading)]"
-                            />
-                            <span className="flex items-center gap-1">
-                              <FiPackage className="text-[var(--crm-ink-faint)]" size={12} />
-                              Product Listing Authority
-                            </span>
-                          </label>
-
-                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-[var(--crm-ink-faint)] gap-2 hover:text-[var(--crm-ink-soft)]">
-                            <input
-                              type="checkbox"
-                              checked={emp.exportPermission || false}
-                              onChange={() => togglePermission(emp._id, 'export', emp.exportPermission)}
-                              className="rounded text-[var(--crm-heading)] focus:ring-[var(--crm-heading)]/40 border-[var(--crm-ink-soft)]/30 w-3.5 h-3.5 cursor-pointer accent-[var(--crm-heading)]"
-                            />
-                            <span className="flex items-center gap-1">
-                              <FiDatabase className="text-[var(--crm-ink-faint)]" size={12} />
-                              Database Export Rights
-                            </span>
-                          </label>
-
-                          <label className="inline-flex items-center cursor-pointer text-[11px] font-medium text-[var(--crm-ink-faint)] gap-2 hover:text-[var(--crm-ink-soft)]">
-                            <input
-                              type="checkbox"
-                              checked={emp.jobPermission || false}
-                              onChange={() => togglePermission(emp._id, 'job', emp.jobPermission)}
-                              className="rounded text-[var(--crm-heading)] focus:ring-[var(--crm-heading)]/40 border-[var(--crm-ink-soft)]/30 w-3.5 h-3.5 cursor-pointer accent-[var(--crm-heading)]"
-                            />
-                            <span className="flex items-center gap-1">
-                              <FiBriefcase className="text-[var(--crm-ink-faint)]" size={12} />
-                              Careers Node Access
-                            </span>
-                          </label>
-
-                        </div>
-                      </td>
-
-                      {/* Performance Indicators & Dynamic Trackers */}
-                      <td className="py-4 px-6">
-                        <div className="space-y-2 max-w-[160px]">
-                          <div className="flex justify-between items-center text-[11px] text-[var(--crm-ink-faint)] font-medium">
-                            <span>Leads: <strong className="text-[var(--crm-heading)]">{perf.leads}</strong></span>
-                            <span className="text-[var(--crm-positive)]">Won: {perf.won}</span>
-                          </div>
-
-                          <div className="w-full bg-[#2B3440] rounded-full h-[4px] overflow-hidden">
-                            <div
-                              className="bg-[var(--crm-info)] h-full rounded-full transition-all duration-500"
-                              style={{ width: `${perf.rate}%` }}
-                            ></div>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-[10px] text-[var(--crm-info)] tracking-wider font-bold uppercase">
-                            <FiTrendingUp className="text-[var(--crm-info)]" size={12} />
-                            <span>{perf.rate}% Conversion Matrix</span>
-                          </div>
-                        </div>
+                      {/* Access Permissions Button Trigger */}
+                      <td className="py-4 px-6 text-center">
+                        <button
+                          onClick={() => openPermissionModal(emp)}
+                          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-heading)] hover:text-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-heading)] transition-all duration-200 shadow-sm active:scale-95 cursor-pointer group"
+                          title="Manage Access & Permissions"
+                        >
+                          <FiShield size={14} className="text-[var(--crm-accent)] group-hover:text-[var(--crm-bg-sunken)] transition-colors" />
+                          <span>Manage Permissions</span>
+                          <span className="bg-[var(--crm-bg-raised)] text-[10px] px-1.5 py-0.5 rounded border border-[var(--crm-ink-soft)]/20 font-mono font-bold group-hover:bg-[var(--crm-bg-sunken)] group-hover:text-[var(--crm-heading)]">
+                            {getActivePermissionCount(emp)} / 10
+                          </span>
+                        </button>
                       </td>
 
                       {/* Action Triggers */}
@@ -947,6 +1074,138 @@ export default function Employees() {
           </div>
         );
       })()}
+
+      {/* Granular System Access & Permissions Management Pop Window Modal */}
+      <AnimatePresence>
+        {permModalEmp && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 overflow-y-auto">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4 my-8 max-h-[90vh] flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] font-mono">
+                      {permModalEmp.fullName}
+                    </h3>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-bold uppercase">
+                      {permModalEmp.employeeId}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono uppercase block mt-0.5 font-medium">
+                    Configure Access Permissions • <strong className="text-[var(--crm-heading)]">{permModalEmp.role}</strong> ({permModalEmp.department || 'HQ'})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPermModalEmp(null)}
+                  className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Action Toolbar: Select All / Deselect All */}
+              <div className="flex flex-wrap items-center justify-between gap-3 py-3 px-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] font-mono">Quick Actions:</span>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllPerms}
+                    className="px-3.5 py-1.5 font-mono text-xs font-bold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition active:scale-95 cursor-pointer"
+                  >
+                    Select All / Mark All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeselectAllPerms}
+                    className="px-3 py-1.5 font-mono text-xs font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition active:scale-95 cursor-pointer"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+                <div className="text-xs font-mono font-bold text-teal-400 bg-teal-950/60 border border-teal-800/60 px-2.5 py-1 rounded-md">
+                  {Object.values(permForm).filter(Boolean).length} / {PERMISSION_CONFIG.length} Enabled
+                </div>
+              </div>
+
+              {/* Permissions 2-Column Toggle Grid */}
+              <div className="overflow-y-auto pr-1.5 flex-1 max-h-[50vh] min-h-[280px] space-y-3 custom-scrollbar">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+                  {PERMISSION_CONFIG.map((item) => {
+                    const isChecked = Boolean(permForm[item.key]);
+                    return (
+                      <div
+                        key={item.key}
+                        onClick={() => setPermForm(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                        className={`p-3.5 rounded-xl border transition-all duration-200 cursor-pointer flex items-start gap-3 select-none ${
+                          isChecked
+                            ? 'bg-[var(--crm-bg-sunken)] border-teal-500/50 shadow-sm'
+                            : 'bg-[var(--crm-bg)] border-[var(--crm-line)] hover:border-[var(--crm-ink-soft)]/30 hover:bg-[var(--crm-bg-sunken)]/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setPermForm(prev => ({ ...prev, [item.key]: e.target.checked }));
+                          }}
+                          className="mt-1 rounded border-[var(--crm-line)] w-4 h-4 accent-teal-500 cursor-pointer shrink-0"
+                        />
+                        <div className="space-y-1 flex-1 min-w-0 font-mono">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`text-xs font-bold truncate ${isChecked ? 'text-[var(--crm-heading)]' : 'text-[var(--crm-ink-soft)]'}`}>
+                              {item.label}
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] shrink-0 uppercase">
+                              {item.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[var(--crm-ink-faint)] font-mono leading-snug">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--crm-line)] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPermModalEmp(null)}
+                  className="py-2.5 px-5 text-xs font-mono font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={savingPerms}
+                  onClick={handleSavePermissions}
+                  className="py-2.5 px-6 text-xs font-mono font-bold uppercase tracking-wider rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingPerms ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-[var(--crm-bg-sunken)] border-t-transparent rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Permissions</span>
+                  )}
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

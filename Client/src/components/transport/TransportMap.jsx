@@ -112,28 +112,31 @@ export default function TransportMap({
       className="relative rounded-sm border overflow-hidden flex flex-col font-mono text-xs select-none w-full"
       style={{
         height,
-        background: '#090c10',
+        background: 'var(--crm-bg-sunken)',
         borderColor: 'var(--crm-line)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+        boxShadow: 'var(--crm-shadow)'
       }}
     >
       {/* Header Bar */}
-      <div className="px-4 py-2.5 bg-[#0d1117] border-b border-[#21262d] flex items-center justify-between z-10 shrink-0 flex-wrap gap-2">
+      <div 
+        className="px-4 py-2.5 border-b flex items-center justify-between z-10 shrink-0 flex-wrap gap-2"
+        style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}
+      >
         <div className="flex items-center gap-2">
-          <FiNavigation className="text-sky-400 animate-pulse" size={15} />
-          <h3 className="text-xs uppercase font-serif font-bold tracking-wider text-[#f0f6fc]">
+          <FiNavigation className="text-sky-500 animate-pulse" size={15} />
+          <h3 className="text-xs uppercase font-serif font-bold tracking-wider text-[var(--crm-heading)]">
             GOOGLE MAP LIVE TELEMETRY
           </h3>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap font-sans">
           <button
             type="button"
             onClick={() => setShowRoutePath(!showRoutePath)}
             className={`px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm border ${
               showRoutePath
-                ? 'bg-amber-950/90 text-amber-300 border-amber-600 font-black'
-                : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border-emerald-700/60'
+                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border-amber-500/50 font-black'
+                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
             }`}
             title="Toggle Driving Route Path Trajectory line from Pickup to Delivery"
           >
@@ -144,24 +147,24 @@ export default function TransportMap({
             href={`https://www.google.com/maps/dir/?api=1&origin=${mapCenter.lat},${mapCenter.long}&destination=${encodeURIComponent(destCity)}&travelmode=driving`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1 bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-700/60 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
+            className="px-3 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-700 dark:text-sky-300 border border-sky-500/40 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
             title="Open Turn-by-Turn Driving Navigation in Google Maps from Live GPS"
           >
-            <FiNavigation size={12} className="text-sky-400" /> Start GPS Nav
+            <FiNavigation size={12} className="text-sky-500" /> Start GPS Nav
           </a>
 
           <button
             type="button"
             onClick={handleRecenter}
-            className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/60 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
+            className="px-3 py-1 bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
           >
-            <FiCrosshair size={12} className="text-sky-400" /> Recenter GPS
+            <FiCrosshair size={12} className="text-sky-600" /> Recenter GPS
           </button>
         </div>
       </div>
 
       {/* Main Google Maps Viewport */}
-      <div className="relative flex-1 w-full overflow-hidden bg-[#0d1117]">
+      <div className="relative flex-1 w-full overflow-hidden" style={{ background: 'var(--crm-bg-sunken)' }}>
         <iframe
           title="Google Map Live Radar"
           width="100%"
@@ -173,18 +176,21 @@ export default function TransportMap({
         />
 
         {/* Live Status Floating Badge (Top Left Overlay) */}
-        <div className="absolute top-3 left-3 border p-3 rounded bg-[#0d1117]/90 backdrop-blur-md border-[#30363d] shadow-2xl text-[10px] space-y-1 z-10 max-w-xs">
-          <div className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider text-[9px]">
+        <div 
+          className="absolute top-3 left-3 border p-3 rounded backdrop-blur-md shadow-2xl text-[10px] space-y-1 z-10 max-w-xs"
+          style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}
+        >
+          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider text-[9px] font-sans">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
             ● LIVE GPS TELEMETRY LOCKED
           </div>
-          <div className="text-[#c9d1d9] font-bold font-mono">
-            {activeDriverName} <span className="text-sky-400">({activeVehicleNo})</span>
+          <div className="text-[var(--crm-heading)] font-bold font-sans">
+            {activeDriverName} <span className="text-sky-500">({activeVehicleNo})</span>
           </div>
-          <div className="text-amber-400 font-mono text-[10px] font-bold">
+          <div className="text-amber-500 font-sans text-[10px] font-bold">
             📍 Location: {getCityFromCoords(mapCenter.lat, mapCenter.long)}
           </div>
-          <div className="text-[#8b949e] font-mono text-[9px]">
+          <div className="text-[var(--crm-ink-faint)] font-mono text-[9px]">
             GPS Pos: {mapCenter.lat.toFixed(4)}° N, {mapCenter.long.toFixed(4)}° E
           </div>
         </div>
@@ -198,13 +204,13 @@ export default function TransportMap({
                 <button
                   key={drv._id || drv.driverId || idx}
                   onClick={() => handleSelectDriver(drv)}
-                  className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider border shadow transition cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider border shadow transition cursor-pointer flex items-center gap-1.5 font-sans ${
                     isSelected
-                      ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600'
-                      : 'bg-[#161b22]/90 text-[#c9d1d9] border-[#30363d] hover:bg-[#21262d]'
+                      ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500'
+                      : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink)] border-[var(--crm-line)] hover:bg-[var(--crm-bg-sunken)]'
                   }`}
                 >
-                  <FiTruck size={10} className={isSelected ? 'text-emerald-400' : 'text-slate-400'} />
+                  <FiTruck size={10} className={isSelected ? 'text-emerald-500' : 'text-slate-400'} />
                   <span>{drv.driverName || drv.fullName || 'Driver'}</span>
                 </button>
               );
@@ -214,16 +220,23 @@ export default function TransportMap({
       </div>
 
       {/* Footer Manifest & Active Route Status Bar */}
-      <div className="px-3.5 py-2 bg-[#0d1117] border-t border-[#21262d] flex flex-wrap gap-2 items-center justify-between text-[9px] z-10 shrink-0">
-        <div className="flex items-center gap-2 text-[#8b949e] font-bold uppercase tracking-wider">
-          <FiActivity className="text-emerald-400" size={12} />
+      <div 
+        className="px-3.5 py-2 border-t flex flex-wrap gap-2 items-center justify-between text-[9px] z-10 shrink-0"
+        style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}
+      >
+        <div className="flex items-center gap-2 text-[var(--crm-ink-faint)] font-bold uppercase tracking-wider font-sans">
+          <FiActivity className="text-emerald-500" size={12} />
           <span>Active Radar: {activeDrivers.length} Online Drivers • {trips.length} Dispatches</span>
         </div>
 
         <div className="flex items-center gap-2">
           {trips.slice(0, 2).map((t, idx) => (
-            <span key={t._id || idx} className="px-2 py-0.5 bg-[#161b22] border border-[#30363d] text-[#c9d1d9] rounded flex items-center gap-1 font-mono text-[9px]">
-              <FiMapPin size={9} className="text-sky-400" />
+            <span 
+              key={t._id || idx} 
+              className="px-2 py-0.5 border rounded flex items-center gap-1 font-mono text-[9px]"
+              style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', color: 'var(--crm-ink)' }}
+            >
+              <FiMapPin size={9} className="text-sky-500" />
               {t.originCity || t.origin || 'Origin'} &rarr; {t.destCity || t.destination || 'Destination'}
             </span>
           ))}

@@ -3,7 +3,7 @@ const { authenticate } = require('../../middlewares/auth.middleware');
 const rbac = require('../../middlewares/rbac.middleware');
 const { getAdminSummary, getPipelineReport, getPerformanceReport } = require('./report.controller');
 
-router.use(authenticate, rbac('ADMIN', 'MANAGER'));
+router.use(authenticate, rbac('ADMIN', 'MANAGER', 'CEO', 'FOUNDER', 'SUPER_ADMIN'));
 
 router.get('/admin-summary', getAdminSummary);
 router.get('/employee-performance', getPerformanceReport);

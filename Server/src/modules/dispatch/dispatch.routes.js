@@ -8,7 +8,7 @@ router.use(authenticate);
 
 // Comprehensive Role List for Dispatch Operations
 const DISPATCH_READ_WRITE_ROLES = [
-  'ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 
+  'FOUNDER', 'CO_FOUNDER', 'CEO', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'PROCUREMENT', 'LOGISTICS_MANAGER', 'DRIVER', 'TRANSPORT', 
   'LOGISTICS', 'EMPLOYEE', 'TRANSPORT_EXECUTIVE', 'SALES', 'CRM', 'IT', 'FINANCE',
   'Admin', 'LogisticsManager', 'SalesManager', 'HRManager', 'Driver', 'HR', 
   'Employee', 'TransportExecutive', 'SalesExecutive'

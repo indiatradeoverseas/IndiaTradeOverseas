@@ -40,7 +40,10 @@ import {
   Cell
 } from 'recharts';
 import toast from 'react-hot-toast';
+import { adminApi } from '../../api/admin';
+import { employeeSignupApi } from '../../api/employee-signup';
 import { useAuth } from '../../hooks/useAuth';
+import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 
 // Framer motion variants matching other system dashboards
 const containerVariants = {
@@ -61,86 +64,89 @@ export default function FinanceManagerDashboard() {
   const [loading, setLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState('THIS_MONTH');
 
-  // Real-time Cash Balance State (updates on salary payout or approvals)
-  const [cashBalance, setCashBalance] = useState(15748290);
-  const [bankBalance, setBankBalance] = useState(128450000);
+  // Real-time Cash Balance State
+  const [cashBalance, setCashBalance] = useState(1500000);
+  const [bankBalance, setBankBalance] = useState(12500000);
 
-  // --- MOCK DATA FOR CHARTS & TABLES ---
-  
-  // P&L Trend (Revenue vs Expense)
-  const [plTrendData, setPlTrendData] = useState([
-    { name: 'Jan', Revenue: 8500000, Expense: 6100000, Profit: 2400000 },
-    { name: 'Feb', Revenue: 9200000, Expense: 6300000, Profit: 2900000 },
-    { name: 'Mar', Revenue: 10500000, Expense: 7100000, Profit: 3400000 },
-    { name: 'Apr', Revenue: 11200000, Expense: 7400000, Profit: 3800000 },
-    { name: 'May', Revenue: 12500000, Expense: 8000000, Profit: 4500000 },
-    { name: 'Jun', Revenue: 14100000, Expense: 8900000, Profit: 5200000 },
-    { name: 'Jul', Revenue: 13800000, Expense: 8700000, Profit: 5100000 },
-  ]);
-
-  // Department Budget Allocations
-  const [budgetAllocation, setBudgetAllocation] = useState([
-    { dept: 'Sales', allocated: 2500000, spent: 1850000, color: '#C89A54' },
-    { dept: 'HR', allocated: 800000, spent: 750000, color: '#56A587' },
-    { dept: 'IT/Tech', allocated: 4500000, spent: 4100000, color: '#5B9BB8' },
-    { dept: 'Operations', allocated: 3500000, spent: 2950000, color: '#C96A57' },
-    { dept: 'Marketing', allocated: 1500000, spent: 1200000, color: '#9D4EDD' }
-  ]);
-
-  // Aging Analysis
-  const agingData = [
-    { name: '0-30 Days', value: 4500000 },
-    { name: '31-60 Days', value: 2100000 },
-    { name: '61-90 Days', value: 850000 },
-    { name: '90+ Days', value: 450000 }
-  ];
-
-  // Employee Salary Register
-  const [salaryRegister, setSalaryRegister] = useState([
-    { id: 'EMP001', name: 'Manjeet Singh', role: 'IT Manager', basic: 120000, allowances: 25000, tds: 14500, pt: 200, status: 'UNPAID' },
-    { id: 'EMP002', name: 'Amit Sharma', role: 'Sales Executive', basic: 60000, allowances: 18000, tds: 7800, pt: 200, status: 'UNPAID' },
-    { id: 'EMP003', name: 'Pooja Verma', role: 'HR Manager', basic: 95000, allowances: 20000, tds: 11500, pt: 200, status: 'UNPAID' },
-    { id: 'EMP004', name: 'Rajesh Kumar', role: 'Operations Lead', basic: 85000, allowances: 15000, tds: 10000, pt: 200, status: 'PAID' },
-    { id: 'EMP005', name: 'Sneha Patel', role: 'Procurement Specialist', basic: 55000, allowances: 12000, tds: 6700, pt: 200, status: 'UNPAID' }
-  ]);
-
-  // Petty Cash Requests
-  const [pettyCashRequests, setPettyCashRequests] = useState([
-    { id: 'PC-104', date: '2026-08-25', applicant: 'Sanjay Dutt', department: 'Operations', amount: 4500, category: 'Courier & Freight', description: 'Emergency cargo dispatch courier fees to warehouse', status: 'PENDING' },
-    { id: 'PC-105', date: '2026-08-24', applicant: 'Priya Sen', department: 'HR', amount: 1850, category: 'Office Stationery', description: 'Purchase of marker boards and whiteboard duster pens', status: 'PENDING' },
-    { id: 'PC-106', date: '2026-08-24', applicant: 'Vikram Rao', department: 'IT', amount: 12500, category: 'Hardware Replacement', description: 'Network switch power supply failure replacement part', status: 'PENDING' },
-    { id: 'PC-102', date: '2026-08-20', applicant: 'Pooja Verma', department: 'HR', amount: 3200, category: 'Refreshments', description: 'Catering for team alignment meeting', status: 'APPROVED', approvedBy: 'Finance Manager' },
-    { id: 'PC-103', date: '2026-08-21', applicant: 'Rahul Dev', department: 'Sales', amount: 1500, category: 'Travel Reimbursement', description: 'Auto rickshaw fare for local client visit', status: 'REJECTED', approvedBy: 'Finance Manager', remarks: 'Missing invoice attachment' }
-  ]);
-
-  // Tax Compliance Timelines
-  const [taxCompliance, setTaxCompliance] = useState([
-    { id: 'TX-01', taxType: 'GST Filing (GSTR-1)', period: 'July 2026', payable: 845200, dueDate: '2026-09-11', status: 'UNPAID' },
-    { id: 'TX-02', taxType: 'TDS Payment (Section 194)', period: 'August 2026', payable: 145000, dueDate: '2026-09-07', status: 'UNPAID' },
-    { id: 'TX-03', taxType: 'Professional Tax (PT)', period: 'August 2026', payable: 12400, dueDate: '2026-09-15', status: 'UNPAID' },
-    { id: 'TX-04', taxType: 'Income Tax Advance Tax', period: 'Q2 FY 2026-27', payable: 1850000, dueDate: '2026-09-15', status: 'PAID' }
-  ]);
-
-  // Sales Commissions Payable
-  const [commissions, setCommissions] = useState([
-    { id: 'COM-089', executive: 'Amit Sharma', dealName: 'Coal Supply Order - Acme Ltd', dealValue: 4500000, commissionRate: '1.5%', commissionAmount: 67500, status: 'PENDING' },
-    { id: 'COM-090', executive: 'Sumit Joshi', dealName: 'Basmati Rice Export - Al-Bayan Corp', dealValue: 12000000, commissionRate: '1.2%', commissionAmount: 144000, status: 'PENDING' },
-    { id: 'COM-091', executive: 'Karan Malhotra', dealName: 'Tea Consignment - EuroFoods', dealValue: 3500000, commissionRate: '2.0%', commissionAmount: 70000, status: 'DISBURSED', date: '2026-08-20' },
-    { id: 'COM-092', executive: 'Amit Sharma', dealName: 'Stone Aggregates - RailTech', dealValue: 5800000, commissionRate: '1.5%', commissionAmount: 87000, status: 'PENDING' }
-  ]);
-
-  // General Ledger journal simulation
-  const [recentJournalLogs, setRecentJournalLogs] = useState([
-    { id: 'JV-879', date: '2026-08-25', description: 'Petty cash disbursement for PC-102', accountDebit: 'Office Expenses A/C', accountCredit: 'Petty Cash A/C', amount: 3200 },
-    { id: 'JV-878', date: '2026-08-22', description: 'Customer Invoice payment received - INV-190', accountDebit: 'Bank Account A/C', accountCredit: 'Sundry Debtors A/C', amount: 1450000 }
-  ]);
+  // Dynamic Finance Ledger Data
+  const [plTrendData, setPlTrendData] = useState([]);
+  const [budgetAllocation, setBudgetAllocation] = useState([]);
+  const [agingData, setAgingData] = useState([]);
+  const [salaryRegister, setSalaryRegister] = useState([]);
+  const [pettyCashRequests, setPettyCashRequests] = useState([]);
+  const [taxCompliance, setTaxCompliance] = useState([]);
+  const [commissions, setCommissions] = useState([]);
+  const [recentJournalLogs, setRecentJournalLogs] = useState([]);
 
   const loadData = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const [summaryRes, usersRes, empRes] = await Promise.all([
+        adminApi.getDashboardSummary().catch(() => null),
+        adminApi.getUsers().catch(() => null),
+        employeeSignupApi.getAllEmployees().catch(() => null)
+      ]);
+
+      const usersList = usersRes?.data?.users || usersRes?.users || [];
+      const empList = empRes?.data?.employees || empRes?.employees || [];
+      const allUsersMap = new Map();
+
+      (Array.isArray(usersList) ? usersList : []).forEach(u => {
+        const idKey = u._id || u.employeeId;
+        if (idKey) allUsersMap.set(String(idKey), u);
+      });
+      (Array.isArray(empList) ? empList : []).forEach(e => {
+        const idKey = e._id || e.employeeId;
+        if (idKey && !allUsersMap.has(String(idKey))) {
+          allUsersMap.set(String(idKey), e);
+        }
+      });
+
+      const combinedUsers = Array.from(allUsersMap.values());
+
+      if (combinedUsers.length > 0) {
+        const dynamicRegister = combinedUsers.map(emp => {
+          const sal = emp.salary || 60000;
+          const basic = Math.round(sal * 0.7);
+          const allowances = Math.round(sal * 0.3);
+          const tds = Math.round(sal * 0.1);
+          const pt = 200;
+          return {
+            id: emp.employeeId || String(emp._id).slice(-6).toUpperCase(),
+            name: emp.fullName || emp.name || 'Employee',
+            role: emp.role || emp.position || 'Staff',
+            basic,
+            allowances,
+            tds,
+            pt,
+            status: 'UNPAID'
+          };
+        });
+        setSalaryRegister(dynamicRegister);
+      } else {
+        setSalaryRegister([]);
+      }
+
+      if (summaryRes?.success && summaryRes?.data?.summary) {
+        const sum = summaryRes.data.summary;
+        if (sum.revenue?.totalCollected) {
+          setBankBalance(sum.revenue.totalCollected);
+        }
+        if (sum.revenue?.monthlyTrend && sum.revenue.monthlyTrend.length > 0) {
+          const trend = sum.revenue.monthlyTrend.map(m => ({
+            name: m.month,
+            Revenue: m.collected || 0,
+            Expense: Math.round((m.collected || 0) * 0.6),
+            Profit: Math.round((m.collected || 0) * 0.4)
+          }));
+          setPlTrendData(trend);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading dynamic finance metrics:', err);
+    } finally {
       setLoading(false);
-      toast.success('Finance metrics synchronized with Sales & HR modules');
-    }, 600);
+    }
   };
 
   useEffect(() => {
@@ -396,6 +402,7 @@ export default function FinanceManagerDashboard() {
         <nav className="flex space-x-8 min-w-max">
           {[
             { id: 'overview', label: 'Financial Overview', icon: FiActivity },
+            { id: 'finance_activity_monitor', label: 'Finance Activity & Hours', icon: FiActivity },
             { id: 'payroll', label: 'HR Payroll Liability', icon: FiUsers },
             { id: 'pettycash', label: 'Petty Cash Approvals', icon: FiCreditCard },
             { id: 'commissions', label: 'Sales Commissions', icon: FiPercent },
@@ -433,6 +440,11 @@ export default function FinanceManagerDashboard() {
             transition={{ duration: 0.2 }}
             className="px-6 space-y-6"
           >
+            {/* TAB: FINANCE ACTIVITY & WORKING HOURS MONITOR */}
+            {activeTab === 'finance_activity_monitor' && (
+              <EmployeeActivityMonitor scopeDepartment="FINANCE" showLunchTiming={true} title="Finance & Accounts Department Activity Monitor" />
+            )}
+
             {/* TAB 1: FINANCIAL OVERVIEW */}
             {activeTab === 'overview' && (
               <div className="space-y-6">

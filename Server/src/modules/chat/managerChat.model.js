@@ -7,6 +7,13 @@ const managerChatSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    senderEmail: {
+      type: String,
+      default: '',
+      lowercase: true,
+      trim: true,
+      index: true
+    },
     senderName: {
       type: String,
       required: true,
@@ -22,9 +29,17 @@ const managerChatSchema = new mongoose.Schema(
       default: 'GENERAL',
       trim: true
     },
+    senderAllIds: [String],
     recipientId: {
       type: String,
       default: 'GENERAL', // 'GENERAL' for leadership hub, or user ID for 1-on-1 direct chat
+      index: true
+    },
+    recipientEmail: {
+      type: String,
+      default: '',
+      lowercase: true,
+      trim: true,
       index: true
     },
     recipientName: {
@@ -32,6 +47,7 @@ const managerChatSchema = new mongoose.Schema(
       default: 'General Leadership Hub',
       trim: true
     },
+    recipientAllIds: [String],
     message: {
       type: String,
       required: true,
@@ -50,11 +66,7 @@ const managerChatSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    readBy: [
-      {
-        type: String
-      }
-    ]
+    readBy: [String]
   },
   {
     timestamps: true
@@ -63,5 +75,16 @@ const managerChatSchema = new mongoose.Schema(
 
 managerChatSchema.index({ recipientId: 1, createdAt: 1 });
 managerChatSchema.index({ senderId: 1, recipientId: 1 });
+managerChatSchema.index({ senderEmail: 1, recipientEmail: 1 });
+managerChatSchema.index({ senderAllIds: 1 });
+managerChatSchema.index({ recipientAllIds: 1 });
 
-module.exports = mongoose.model('ManagerChat', managerChatSchema);
+const ManagerChat = mongoose.model('ManagerChat', managerChatSchema);
+
+// Auto-drop broken legacy compound index if it exists in MongoDB collection catalog
+try {
+  ManagerChat.collection.dropIndex('senderAllIds_1_recipientAllIds_1').catch(() => {});
+} catch (e) {}
+
+module.exports = ManagerChat;
+

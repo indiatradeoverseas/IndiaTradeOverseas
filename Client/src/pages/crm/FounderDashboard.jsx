@@ -10,271 +10,129 @@ import { employeeSignupApi } from '../../api/employee-signup';
 import {
   FiUsers, FiTrendingUp, FiCalendar, FiBriefcase, FiDollarSign, FiSearch,
   FiCheckCircle, FiXCircle, FiArrowRight, FiAlertCircle, FiTarget,
-  FiUserPlus, FiExternalLink, FiAward, FiShield, FiBarChart2,
-  FiPieChart, FiCreditCard, FiCheckSquare,FiX,
-  FiFileText, FiTruck, FiSettings, FiGrid,
-  FiRefreshCw, FiPlus, FiEdit, FiTrash2, FiEye,
-  FiActivity, FiDatabase, FiGlobe, FiLock, FiBell,
-  FiMessageSquare, FiZap, FiDownload, FiUpload,
-  FiFilter, FiColumns, FiList, FiArrowUpRight,
-  FiUserX, FiUserCheck, FiHome, FiChevronDown, FiChevronUp
+  FiUserPlus, FiAward, FiShield, FiBarChart2, FiPieChart, FiCreditCard,
+  FiCheckSquare, FiX, FiFileText, FiTruck, FiSettings, FiRefreshCw,
+  FiPlus, FiEdit, FiTrash2, FiEye, FiActivity, FiGlobe, FiLock, FiBell,
+  FiMessageSquare, FiZap, FiDownload, FiFilter, FiUserCheck, FiUserX,
+  FiClock, FiChevronDown, FiChevronUp, FiSliders, FiCheck, FiUpload
 } from 'react-icons/fi';
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, LineChart
+} from 'recharts';
 import { SkeletonStatGrid, SkeletonListCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import FounderTransportWidget from './transport/FounderTransportWidget';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import ScreenshotAlertsWidget from '../../components/crm/ScreenshotAlertsWidget';
+import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
+import FileSharingWidget from '../../components/crm/FileSharingWidget';
 
 const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT'];
-const EMPLOYEE_ROLES = ['EMPLOYEE', 'HR_EXECUTIVE', 'HR_MANAGER', 'ADMIN', 'MANAGER', 'HR', 'SALES_EXECUTIVE', 'SALES_MANAGER', 'PROCUREMENT', 'ACCOUNTS', 'IT', 'TRANSPORT'];
+const EMPLOYEE_ROLES = [
+  'SALES_EXECUTIVE',
+  'SALES_MANAGER',
+  'HR_EXECUTIVE',
+  'HR_MANAGER',
+  'TRANSPORT_MANAGER',
+  'TRANSPORT_EXECUTIVE',
+  'DRIVER',
+  'CEO',
+  'ADMIN',
+  'SALES_TRIAL'
+];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.1 } }
-};
-
-const blockVariants = {
-  hidden: { opacity: 0, y: 15, scale: 0.99 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 100, damping: 18, mass: 1 } }
-};
-
-const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
-const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
-const LABEL_MONO = { fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' };
-const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
-
-const toneColor = (tone) => ({
-  ink: 'var(--crm-heading)',
-  info: 'var(--crm-info)',
-  warning: 'var(--crm-warning)',
-  positive: 'var(--crm-positive)',
-  danger: 'var(--crm-danger)',
-  accent: 'var(--crm-accent)'
-}[tone]);
-
-const toneBg = (tone) => ({
-  ink: 'var(--crm-bg-sunken)',
-  info: 'var(--crm-info-bg)',
-  warning: 'var(--crm-warning-bg)',
-  positive: 'var(--crm-positive-bg)',
-  danger: 'var(--crm-danger-bg)',
-  accent: 'var(--crm-accent-bg)'
-}[tone]);
-
 const now = new Date();
-const CHART_COLORS = ['var(--crm-accent)', 'var(--crm-info)', 'var(--crm-positive)', 'var(--crm-warning)', 'var(--crm-danger)'];
 
-const STATUS_STYLES = {
-  ACTIVE: { color: 'var(--crm-positive)', bg: 'var(--crm-positive-bg)', border: 'var(--crm-positive-bg)' },
-  INACTIVE: { color: 'var(--crm-ink-faint)', bg: 'var(--crm-bg-sunken)', border: 'var(--crm-line)' },
-  PENDING: { color: 'var(--crm-warning)', bg: 'var(--crm-warning-bg)', border: 'var(--crm-warning-bg)' },
-  APPROVED: { color: 'var(--crm-positive)', bg: 'var(--crm-positive-bg)', border: 'var(--crm-positive-bg)' },
-  REJECTED: { color: 'var(--crm-danger)', bg: 'var(--crm-danger-bg)', border: 'var(--crm-danger-bg)' }
+const STAGE_COLORS = [
+  '#0284c7', // cyan/sky
+  '#a855f7', // purple
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#f43f5e', // rose
+  '#3b82f6', // blue
+  '#ec4899', // pink
+  '#84cc16', // lime
+  '#6366f1', // indigo
+  '#64748b'  // slate
+];
+
+const AXIS_TICK_STYLE = { fill: 'var(--crm-ink-faint)', fontSize: 11, fontFamily: 'var(--crm-font-body)', fontWeight: 500 };
+const XAXIS_TICK_STYLE = { fill: 'var(--crm-heading)', fontSize: 11, fontFamily: 'var(--crm-font-body)', fontWeight: 600 };
+const CHART_GRID_STROKE = 'rgba(197,203,211,0.12)';
+const CHART_TOOLTIP_STYLE = {
+  backgroundColor: 'var(--crm-bg-raised)',
+  border: '1px solid var(--crm-line)',
+  borderRadius: '8px',
+  fontSize: '11px',
+  fontFamily: 'var(--crm-font-body)',
+  color: 'var(--crm-heading)',
+  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)'
+};
+const CHART_TOOLTIP_LABEL_STYLE = { color: 'var(--crm-heading)', fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', fontFamily: 'var(--crm-font-body)' };
+const CHART_TOOLTIP_ITEM_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-body)', padding: '2px 0' };
+const CHART_LEGEND_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)', paddingTop: '10px' };
+
+const CARD_STYLE = {
+  borderColor: 'var(--crm-line)',
+  background: 'var(--crm-bg-raised)',
+  boxShadow: 'var(--crm-shadow)'
 };
 
-const fmtCurrency = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
-const fmtNumber = (val) => (val || 0).toLocaleString('en-IN');
-const formatDate = (d) => d.toISOString().slice(0, 10);
-
-const handleExportReport = (summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs, perfPeriod = 'monthly') => {
-  if (!summary) {
-    toast.error('No data to export. Please refresh the dashboard.');
-    return;
-  }
-  const rows = [
-    ['ITO Founder Command Center — Executive Report', `Generated: ${new Date().toLocaleString('en-IN')}`],
-    [''],
-    ['ORGANIZATIONAL HEALTH'],
-    ['Metric', 'Value'],
-    ['Total Employees (All)', summary.totalEmployees || employees.length],
-    ['Active Employees', summary.activeEmployees || employees.filter(e => e.status === 'ACTIVE').length],
-    ['Present Today', summary.presentToday || 0],
-    ['Open Tickets', summary.openTickets || 0],
-    ['Pending Leave Requests', leaves.length],
-    ['Department Coverage', `${Object.keys(deptCounts).length} / ${EMPLOYEE_DEPARTMENTS.length}`],
-    [''],
-    ['LEADS & PIPELINE'],
-    ['Metric', 'Value'],
-    ['Total Leads', summary.totalLeads || 0],
-    ['Active Leads', summary.activeLeads || 0],
-    ['Pending Leads (NEW_LEAD)', summary.pendingLeads || 0],
-    ['Today\'s New Leads', summary.todayLeads || 0],
-    ['AI-Generated Leads', summary.aiGeneratedLeads || 0],
-    ['Hot Leads', summary.hotLeads || 0],
-    ['Follow-ups Due Today', summary.followUpsDueToday || 0],
-    ['Missed Follow-ups', summary.missedFollowUps || 0],
-    [''],
-    ['QUOTATIONS & ORDERS'],
-    ['Metric', 'Value'],
-    ['Total Quotations', summary.quotations?.total || 0],
-    ['Pending Quotations', summary.quotations?.pending || 0],
-    ['Pending Quotes Value', fmtCurrency(summary.quotations?.pendingValue || 0)],
-    ['Quotations Sent', summary.quotations?.sent || 0],
-    ['Quotations Approved', summary.quotations?.approved || 0],
-    ['Orders Confirmed', summary.ordersConfirmed || 0],
-    ['Pending Orders (Pipeline)', summary.pendingOrders || 0],
-    [''],
-    ['REVENUE & PAYMENTS'],
-    ['Metric', 'Value'],
-    ['Total Revenue Collected (All Time)', fmtCurrency(summary.revenue?.totalCollected || 0)],
-    ['Pending Payments Count', summary.payments?.pendingCount || 0],
-    ['Pending Payments Value', fmtCurrency(summary.payments?.pendingValue || 0)],
-    [''],
-    ['MONTHLY REVENUE TREND'],
-    ['Month', 'Collected (₹)'],
-    ...(summary.revenue?.monthlyTrend || []).map(m => [m.month, fmtCurrency(m.collected)]),
-    [''],
-    ['TRANSPORT & LOGISTICS'],
-    ['Metric', 'Value'],
-    ['Total Dispatches', summary.transport?.total || 0],
-    ['In Transit', summary.transport?.inTransit || 0],
-    ['Delivered', summary.transport?.delivered || 0],
-    ['Pending (Assigned/Loading)', summary.transport?.pending || 0],
-    ['Issues Raised', summary.transport?.issueRaised || 0],
-    [''],
-    ['DEPARTMENT PERFORMANCE'],
-    ['Department', 'Total Leads', 'Won', 'Win Rate (%)'],
-    ...(summary.departmentPerformance || []).map(d => [
-      d.department,
-      d.totalLeads,
-      d.won,
-      d.totalLeads > 0 ? ((d.won / d.totalLeads) * 100).toFixed(1) : '0.0'
-    ]),
-    [''],
-    ['TOP PERFORMING EMPLOYEES'],
-    ['Name', 'Employee ID', 'Total Leads', 'Conversions', 'Conversion Rate (%)'],
-    ...(summary.topEmployees || []).map(e => [
-      e.fullName,
-      e.employeeId,
-      e.totalLeads,
-      e.conversions,
-      e.totalLeads > 0 ? ((e.conversions / e.totalLeads) * 100).toFixed(1) : '0.0'
-    ]),
-    [''],
-    ['WORKFORCE DISTRIBUTION — BY DEPARTMENT'],
-    ['Department', 'Count'],
-    ...Object.entries(deptCounts).map(([name, value]) => [name, value]),
-    [''],
-    ['WORKFORCE DISTRIBUTION — BY ROLE'],
-    ['Role', 'Count'],
-    ...Object.entries(roleCounts).map(([name, value]) => [name, value]),
-    [''],
-    ['LEAVE REQUESTS PENDING'],
-    ['Employee', 'Department', 'Type', 'From', 'To', 'Days', 'Reason'],
-    ...leaves.map(lv => [
-      lv.employeeName || lv.employeeId?.fullName || lv.employeeId?.name || (typeof lv.employeeId === 'object' ? (lv.employeeId?.email || lv.employeeId?.employeeId || lv.employeeId?._id) : lv.employeeId) || 'Employee',
-      lv.employeeId?.department || '—',
-      lv.leaveType?.replace('_', ' ') || '—',
-      new Date(lv.fromDate).toLocaleDateString(),
-      new Date(lv.toDate).toLocaleDateString(),
-      lv.numberOfDays,
-      lv.reason || '—'
-    ]),
-    [''],
-    ['HIRING PIPELINE — OPEN REQUISITIONS'],
-    ['Title', 'Department', 'Location'],
-    ...openJobs.map(job => [job.title, job.department, job.location]),
-    [''],
-    [`EMPLOYEE PERFORMANCE TELEMETRY (${perfPeriod.toUpperCase()})`],
-    ['Rank', 'Name', 'Department', 'Deals Won', 'Total Leads', 'Revenue (₹)', 'Activities', 'Completed Tasks', 'Target Status'],
-    ...leaderboard.map((row, idx) => [
-      idx + 1,
-      row.fullName,
-      row.department || 'SALES',
-      row.dealsWon,
-      row.totalLeads || 0,
-      fmtCurrency(row.revenue),
-      row.activityCount || 0,
-      row.completedTasksCount || 0,
-      row.targetValue > 0 ? (row.isTargetAchieved ? 'Target Achieved' : `Target: ${fmtCurrency(row.targetValue)}`) : 'No Target Set'
-    ]),
-    [''],
-    ['SECURITY'],
-    ['Metric', 'Value'],
-    ['Active Security Alerts', summary.securityAlerts || 0],
-    [''],
-    ['Export generated by ITO CRM Founder Dashboard', `Timestamp: ${new Date().toISOString()}`]
-  ];
-
-  const csvContent = rows
-    .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `founder-command-center-report-${formatDate(new Date())}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  toast.success('Founder report exported successfully');
+const CARD_SUNKEN = {
+  borderColor: 'var(--crm-line)',
+  background: 'var(--crm-bg-sunken)'
 };
 
-function StatusBadge({ status }) {
-  const s = STATUS_STYLES[status] || STATUS_STYLES.INACTIVE;
-  return (
-    <span className="px-2 py-0.5 rounded-sm text-[9px] uppercase font-bold border whitespace-nowrap" style={{ color: s.color, background: s.bg, borderColor: s.border }}>
-      {status}
-    </span>
-  );
-}
+const LABEL_MONO = {
+  fontFamily: 'var(--crm-font-body)',
+  color: 'var(--crm-ink-faint)'
+};
 
-function SectionHeader({ icon: Icon, title, count, action, children }) {
-  return (
-    <div className="p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)' }}>
-      <h3 className="text-xs uppercase tracking-widest font-bold flex items-center gap-2" style={LABEL_MONO}>
-        {Icon && <Icon size={14} style={{ color: 'var(--crm-heading)' }} />}{title}
-      </h3>
-      <div className="flex flex-wrap items-center gap-2">
-        {count !== undefined && (
-          <span className="px-2 py-0.5 border rounded-sm text-[9px] uppercase tracking-wide whitespace-nowrap" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
-            {count}
-          </span>
-        )}
-        {action && <div className="flex items-center gap-2">{action}</div>}
-        {children}
-      </div>
-    </div>
-  );
-}
+const HEADING_STYLE = {
+  fontFamily: 'var(--crm-font-body)',
+  color: 'var(--crm-heading)'
+};
 
-function StatCard({ title, value, subtitle, icon: Icon, tone, trend }) {
-  return (
-    <motion.div whileHover={{ y: -4 }} className="border p-4 sm:p-5 transition-all duration-300 rounded-sm flex flex-col justify-between h-full min-w-0" style={CARD}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-wider font-bold leading-tight font-mono text-[var(--crm-ink-faint)]" style={LABEL_MONO}>{title}</span>
-        <div className="p-2 border rounded-sm flex-shrink-0" style={{ borderColor: 'var(--crm-line)', color: toneColor(tone), background: toneBg(tone) }}>
-          {Icon && <Icon size={14} />}
-        </div>
-      </div>
-      <div className="flex flex-col mt-3 min-w-0">
-        <span className="text-2xl sm:text-3xl font-light tracking-tight font-serif text-[var(--crm-heading)]" style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}>{value}</span>
-        {subtitle && <span className="text-[10px] mt-1 font-mono text-[var(--crm-ink-faint)]" style={LABEL_MONO}>{subtitle}</span>}
-        {trend && <span className="text-[10px] mt-1 flex items-center gap-1 font-mono" style={{ color: 'var(--crm-positive)' }}><FiTrendingUp size={10} />{trend}</span>}
-      </div>
-    </motion.div>
-  );
-}
+const CHART_COLORS = [
+  'var(--crm-accent)',
+  'var(--crm-info)',
+  'var(--crm-positive)',
+  'var(--crm-warning)',
+  'var(--crm-danger)',
+  '#a855f7',
+  '#ec4899'
+];
+
+const fmtCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
+const fmtNumber = (val) => Number(val || 0).toLocaleString('en-IN');
 
 export default function FounderDashboard() {
+  // Navigation active tab
+  const [activeTab, setActiveTab] = useState('ALL');
+
+  // Date Range State for Business Overview Chart
+  const [dateRange, setDateRange] = useState('30d');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  // Data states
   const [summary, setSummary] = useState(null);
   const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [pipelineData, setPipelineData] = useState([]);
+  const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [perfPeriod, setPerfPeriod] = useState('monthly');
-  const [perfLoading, setPerfLoading] = useState(false);
-
   const [reviewingLeaveId, setReviewingLeaveId] = useState(null);
   const [submittingTarget, setSubmittingTarget] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
 
+  // Search & Filter state for Workforce Directory
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [roleFilter, setRoleFilter] = useState('ALL');
@@ -283,6 +141,7 @@ export default function FounderDashboard() {
   const [sortOrder, setSortOrder] = useState('asc');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Forms
   const [targetForm, setTargetForm] = useState({
     employeeId: '',
     month: now.getMonth() + 1,
@@ -296,48 +155,64 @@ export default function FounderDashboard() {
     role: 'EMPLOYEE', status: 'ACTIVE', salary: 0, joiningDate: new Date().toISOString().split('T')[0]
   });
 
-  useEffect(() => { fetchAll(); }, []);
-
-  const fetchLeaderboard = async (period) => {
-    setPerfLoading(true);
-    try {
-      const res = await salesApi.getLeaderboard({ period });
-      if (res && res.success) {
-        setLeaderboard(res.data.leaderboard || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch performance leaderboard:', err);
-      toast.error('Failed to load performance period data');
-    } finally {
-      setPerfLoading(false);
-    }
-  };
-
-  const handlePeriodChange = (period) => {
-    setPerfPeriod(period);
-    fetchLeaderboard(period);
-  };
+  useEffect(() => {
+    fetchAll();
+  }, [dateRange, customStartDate, customEndDate]);
 
   const fetchAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, leavesRes, empRes, jobsRes, leaderboardRes] = await Promise.all([
-        adminApi.getDashboardSummary(),
-        leaveApi.getLeaves({ status: 'PENDING' }),
-        employeeSignupApi.getAllEmployees(),
-        careersApi.getAllJobs(),
-        salesApi.getLeaderboard({ period: perfPeriod })
+      const params = { range: dateRange };
+      if (dateRange === 'Custom' && customStartDate && customEndDate) {
+        params.startDate = customStartDate;
+        params.endDate = customEndDate;
+      }
+
+      const [summaryRes, leavesRes, empRes, jobsRes, leaderboardRes, pipelineRes] = await Promise.all([
+        adminApi.getDashboardSummary(params).catch(() => ({ success: false })),
+        leaveApi.getLeaves({ status: 'PENDING' }).catch(() => ({ success: false })),
+        employeeSignupApi.getAllEmployees().catch(() => ({ success: false })),
+        careersApi.getAllJobs().catch(() => ({ success: false })),
+        salesApi.getLeaderboard({ period: perfPeriod }).catch(() => ({ success: false })),
+        adminApi.getPipeline().catch(() => ({ success: false }))
       ]);
-      if (summaryRes.success) setSummary(summaryRes.data.summary);
-      if (leavesRes.success) setLeaves(leavesRes.data.leaves || []);
-      if (empRes.success) setEmployees(empRes.data.employees || []);
-      if (jobsRes.success) setJobs(jobsRes.data.jobs || []);
-      if (leaderboardRes.success) setLeaderboard(leaderboardRes.data.leaderboard || []);
-    } catch (error) {
-      console.error('Failed to load founder dashboard data:', error);
-      setError(error.message);
-      toast.error('Failed to load founder dashboard data.');
+
+      if (summaryRes?.success && summaryRes.data?.summary) {
+        setSummary(summaryRes.data.summary);
+      } else if (summaryRes?.summary) {
+        setSummary(summaryRes.summary);
+      } else {
+        setSummary({});
+      }
+
+      if (leavesRes?.success) setLeaves(leavesRes.data?.leaves || leavesRes.leaves || []);
+      if (empRes?.success) setEmployees(empRes.data?.employees || empRes.employees || []);
+      if (jobsRes?.success) setJobs(jobsRes.data?.jobs || jobsRes.jobs || []);
+      if (leaderboardRes?.success) setLeaderboard(leaderboardRes.data?.leaderboard || leaderboardRes.leaderboard || []);
+
+      const pResData = pipelineRes?.data?.data || pipelineRes?.data || pipelineRes || {};
+      let pData = [];
+      let mData = [];
+      if (Array.isArray(pResData.pipeline)) {
+        pData = pResData.pipeline;
+      } else if (pResData.pipeline && Array.isArray(pResData.pipeline.pipeline)) {
+        pData = pResData.pipeline.pipeline;
+      } else if (Array.isArray(pResData)) {
+        pData = pResData;
+      }
+
+      if (Array.isArray(pResData.monthly)) {
+        mData = pResData.monthly;
+      } else if (pResData.pipeline && Array.isArray(pResData.pipeline.monthly)) {
+        mData = pResData.pipeline.monthly;
+      }
+
+      setPipelineData(pData);
+      setMonthlyLeadsData(mData);
+    } catch (err) {
+      console.error('Failed to load founder dashboard data:', err);
+      setError(err.message || 'Failed to fetch founder dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -355,7 +230,6 @@ export default function FounderDashboard() {
         toast.error(res?.message || 'Failed to update leave request.');
       }
     } catch (error) {
-      console.error('Failed to review leave request:', error);
       toast.error('Failed to update leave request.');
     } finally {
       setReviewingLeaveId(null);
@@ -388,7 +262,6 @@ export default function FounderDashboard() {
         toast.error(res?.message || 'Failed to assign target.');
       }
     } catch (error) {
-      console.error('Failed to assign sales target:', error);
       toast.error('Failed to assign target.');
     } finally {
       setSubmittingTarget(false);
@@ -418,7 +291,6 @@ export default function FounderDashboard() {
         toast.error(res?.message || 'Failed to save employee.');
       }
     } catch (error) {
-      console.error('Failed to save employee:', error);
       toast.error('Failed to save employee.');
     }
   };
@@ -444,25 +316,104 @@ export default function FounderDashboard() {
         toast.error(res?.message || 'Failed to delete employee.');
       }
     } catch (error) {
-      console.error('Failed to delete employee:', error);
       toast.error('Failed to delete employee.');
     }
   };
 
-  const salesEmployees = useMemo(() => employees.filter((e) => e.department === 'SALES' && e.status === 'ACTIVE'), [employees]);
-  const activeEmployees = useMemo(() => employees.filter((e) => e.status === 'ACTIVE'), [employees]);
+  // Computed Business Overview Numbers matching CEO Dashboard
+  const activeEmployeesCount = useMemo(() => {
+    const activeFromEmp = employees.filter((e) => ['ACTIVE', 'Active'].includes(e.status)).length;
+    return Math.max(activeFromEmp, summary?.activeEmployees || 0);
+  }, [employees, summary]);
+
+  const activeEmployees = useMemo(() => employees.filter((e) => ['ACTIVE', 'Active'].includes(e.status)), [employees]);
+  const salesEmployees = useMemo(() => employees.filter((e) => e.department === 'SALES' && ['ACTIVE', 'Active'].includes(e.status)), [employees]);
+
+  const totalEmployeesCount = useMemo(() => {
+    const rawTotal = Math.max(summary?.totalEmployees || 0, employees.length || 0);
+    return Math.max(rawTotal, activeEmployeesCount);
+  }, [summary, employees, activeEmployeesCount]);
+
+  const totalPipelineLeads = useMemo(() => {
+    return pipelineData.reduce((sum, item) => sum + (item.total || 0), 0);
+  }, [pipelineData]);
+
+  const activeLeadsCount = summary?.activeLeads !== undefined ? summary.activeLeads : (summary?.totalLeads || 0);
+  const completedDeliveredCount = summary?.completedLeads !== undefined ? summary.completedLeads : (summary?.deliveredLeads || summary?.transport?.delivered || 0);
+  const paymentReceivedCount = summary?.revenue?.totalCollected !== undefined ? summary.revenue.totalCollected : (summary?.paidLeads || 0);
+  const quotationsSentCount = summary?.quotations?.sent !== undefined ? summary.quotations.sent : (summary?.quotations?.total || 1);
+  const ordersConfirmedCount = (summary?.ordersConfirmed !== undefined && summary?.ordersConfirmed > 0) 
+    ? summary.ordersConfirmed 
+    : Math.max(summary?.completedLeads || 0, summary?.transport?.delivered || 0);
+
+  // Total Conversion % = Orders Confirmed / Quotations Sent * 100
+  const totalConversionPercent = useMemo(() => {
+    const totalWonOrConfirmed = Math.max(ordersConfirmedCount, completedDeliveredCount, summary?.completedLeads || 0);
+    if (quotationsSentCount > 0) {
+      return Math.round((totalWonOrConfirmed / quotationsSentCount) * 100);
+    }
+    if (activeLeadsCount + totalWonOrConfirmed > 0) {
+      return Math.round((totalWonOrConfirmed / (activeLeadsCount + totalWonOrConfirmed)) * 100);
+    }
+    return summary?.conversionRate || 0;
+  }, [ordersConfirmedCount, completedDeliveredCount, summary, quotationsSentCount, activeLeadsCount]);
+
+  const pendingPaymentsAmount = summary?.payments?.pendingOrdersValue || summary?.payments?.pendingValue || 0;
+  const presentTodayCount = summary?.presentToday ?? 0;
+  const newLeadsCount = summary?.newLeads ?? summary?.pendingLeads ?? 0;
+  const assignedLeadsCount = summary?.assignedLeads ?? 0;
+
+  // 10 Main Business Overview KPI Cards
+  const kpiCards = [
+    { title: 'Total Employees', value: fmtNumber(totalEmployeesCount), subtitle: `${activeEmployeesCount} active staff · ${totalEmployeesCount} total`, icon: FiUsers, color: 'var(--crm-info)' },
+    { title: 'Present Employees', value: fmtNumber(presentTodayCount), subtitle: 'Checked-in staff today', icon: FiUserCheck, color: 'var(--crm-positive)' },
+    { title: 'Active Leads', value: fmtNumber(activeLeadsCount), subtitle: 'Pipeline in progress', icon: FiTrendingUp, color: 'var(--crm-accent)' },
+    { title: 'New Leads', value: fmtNumber(newLeadsCount), subtitle: 'Fresh pipeline entries', icon: FiPlus, color: '#0284c7' },
+    { title: 'Assigned Leads', value: fmtNumber(assignedLeadsCount), subtitle: 'Delegated to sales staff', icon: FiUserPlus, color: '#a855f7' },
+    { title: 'Completed & Delivered', value: fmtNumber(completedDeliveredCount), subtitle: 'Orders fulfilled', icon: FiCheckCircle, color: 'var(--crm-positive)' },
+    { title: 'Payment Received', value: fmtCurrency(paymentReceivedCount), subtitle: 'Revenue collected', icon: FiCreditCard, color: 'var(--crm-positive)' },
+    { title: 'Quotations Sent', value: fmtNumber(quotationsSentCount), subtitle: `${summary?.quotations?.approved || 0} approved`, icon: FiFileText, color: '#a855f7' },
+    { title: 'Orders Confirmed', value: fmtNumber(ordersConfirmedCount), subtitle: `${summary?.pendingOrders || 0} pending pipeline`, icon: FiCheckSquare, color: 'var(--crm-positive)' },
+    { title: 'Pending Payments', value: fmtCurrency(pendingPaymentsAmount), subtitle: `${summary?.payments?.pendingOrdersCount || summary?.payments?.pendingCount || 0} orders pending delivery`, icon: FiAlertCircle, color: 'var(--crm-danger)' }
+  ];
+
+  // ComposedChart Data for Combined Business Overview
+  const composedChartData = useMemo(() => {
+    if (summary?.businessTrend && Array.isArray(summary.businessTrend) && summary.businessTrend.length > 0) {
+      return summary.businessTrend;
+    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonthIdx = new Date().getMonth();
+    const result = [];
+    for (let i = 5; i >= 0; i--) {
+      const idx = (currentMonthIdx - i + 12) % 12;
+      result.push({
+        period: months[idx],
+        'Total Employees': totalEmployeesCount,
+        'Active Leads': activeLeadsCount,
+        'Completed & Delivered': completedDeliveredCount,
+        'Quotations Sent': quotationsSentCount,
+        'Orders Confirmed': ordersConfirmedCount,
+        'Conversion %': totalConversionPercent
+      });
+    }
+    return result;
+  }, [summary, totalEmployeesCount, activeLeadsCount, completedDeliveredCount, quotationsSentCount, ordersConfirmedCount, totalConversionPercent]);
 
   const deptCounts = useMemo(() => {
     const counts = {};
-    activeEmployees.forEach(e => { counts[e.department] = (counts[e.department] || 0) + 1; });
+    activeEmployees.forEach((e) => { counts[e.department] = (counts[e.department] || 0) + 1; });
     return counts;
   }, [activeEmployees]);
 
   const roleCounts = useMemo(() => {
     const counts = {};
-    activeEmployees.forEach(e => { counts[e.role] = (counts[e.role] || 0) + 1; });
+    activeEmployees.forEach((e) => { counts[e.role] = (counts[e.role] || 0) + 1; });
     return counts;
   }, [activeEmployees]);
+
+  const deptChartData = useMemo(() => Object.entries(deptCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [deptCounts]);
+  const roleChartData = useMemo(() => Object.entries(roleCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [roleCounts]);
 
   const filteredEmployees = useMemo(() => {
     let result = employees;
@@ -486,526 +437,611 @@ export default function FounderDashboard() {
     return result;
   }, [employees, searchTerm, deptFilter, roleFilter, statusFilter, sortBy, sortOrder]);
 
-  const openJobs = jobs.filter((j) => j.isActive);
-
-  const stats = [
-    { title: 'Total Employees', value: activeEmployees.length, subtitle: `${employees.length} total staff`, icon: FiUsers, tone: 'ink' },
-    { title: 'Active Leads', value: summary?.activeLeads || 0, subtitle: 'Pipeline in progress', icon: FiTrendingUp, tone: 'info' },
-    { title: 'Completed & Delivered', value: summary?.completedLeads || 0, subtitle: `${summary?.deliveredLeads || 0} delivered`, icon: FiCheckCircle, tone: 'positive' },
-    { title: 'Payment Received', value: summary?.paidLeads || 0, subtitle: `${fmtCurrency(summary?.revenue?.totalCollected)} total`, icon: FiCreditCard, tone: 'positive' },
-    { title: 'Quotations Sent', value: summary?.quotations?.sent || summary?.quotations?.total || 0, subtitle: `${summary?.quotations?.approved || 0} approved`, icon: FiFileText, tone: 'accent' },
-    { title: 'Orders Confirmed', value: summary?.ordersConfirmed || 0, subtitle: `${summary?.pendingOrders || 0} pending pipeline`, icon: FiCheckSquare, tone: 'positive' },
-    { title: 'Total Conversion %', value: `${summary?.conversionRate || (summary?.totalLeads > 0 ? Math.round(((summary?.completedLeads || 0) / summary?.totalLeads) * 100) : 0)}%`, subtitle: `${summary?.completedLeads || 0} / ${summary?.totalLeads || 0} won`, icon: FiZap, tone: 'positive' },
-    { title: 'Pending Payments', value: fmtCurrency(summary?.payments?.pendingValue), subtitle: `${summary?.payments?.pendingCount || 0} invoices due`, icon: FiAlertCircle, tone: 'danger' }
-  ];
-
-  const deptChartData = useMemo(() => Object.entries(deptCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [deptCounts]);
-  const roleChartData = useMemo(() => Object.entries(roleCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [roleCounts]);
+  const handleExportCSV = () => {
+    const rows = [
+      ['ITO FOUNDER COMMAND CENTER — EXECUTIVE REPORT'],
+      [`Generated At: ${new Date().toLocaleString('en-IN')}`],
+      ['Date Range Filter:', dateRange],
+      [''],
+      ['ORGANIZATIONAL HEALTH'],
+      ['Total Employees', totalEmployeesCount],
+      ['Active Staff', activeEmployees.length],
+      ['Active Leads', activeLeadsCount],
+      ['Completed & Delivered', completedDeliveredCount],
+      ['Payment Received', fmtCurrency(paymentReceivedCount)],
+      ['Quotations Sent', quotationsSentCount],
+      ['Orders Confirmed', ordersConfirmedCount],
+      ['Total Conversion %', `${totalConversionPercent}%`],
+      ['Pending Payments', fmtCurrency(pendingPaymentsAmount)],
+      ['Pending Leaves', leaves.length]
+    ];
+    const csvContent = rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Founder-Report-${dateRange}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Founder report exported successfully.');
+  };
 
   if (loading) {
     return (
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-6 p-6">
         <div className="w-full border-b py-6" style={{ borderColor: 'var(--crm-line)' }}>
           <div className="crm-skeleton h-3 w-56 rounded-sm mb-3" style={{ background: 'var(--crm-bg-sunken)' }} />
-          <div className="crm-skeleton h-7 w-72 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+          <div className="crm-skeleton h-8 w-80 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
         </div>
         <SkeletonStatGrid count={8} />
         <SkeletonListCard />
-        <SkeletonListCard />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full py-16 text-center px-4">
-        <FiAlertCircle size={48} style={{ color: 'var(--crm-danger)', marginBottom: 16 }} />
-        <h3 className="text-lg font-medium" style={{ color: 'var(--crm-heading)' }}>Failed to load dashboard</h3>
-        <p className="text-sm mt-2" style={{ color: 'var(--crm-ink-soft)' }}>{error}</p>
-        <button onClick={fetchAll} className="mt-4 px-4 py-2 rounded-sm text-sm font-mono uppercase" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
-          Retry
-        </button>
       </div>
     );
   }
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="w-full min-h-screen overflow-x-hidden" style={{ background: 'var(--crm-bg)' }}>
-      {/* Header */}
-      <motion.div variants={blockVariants} className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
-        <div className="space-y-1 text-left min-w-max">
-          <span className="text-[9px] uppercase tracking-[0.25em] font-bold block" style={LABEL_MONO}>Founder Oversight</span>
-          <h1 className="text-xl sm:text-2xl font-normal tracking-tight uppercase whitespace-nowrap" style={HEADING}>Founder Command Center</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link to="/crm/manager-chat" className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30">
-            <FiMessageSquare size={12} /> <span>Executive Chat</span>
-          </Link>
-          <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
-            <FiPlus size={12} /> <span>Add Employee</span>
-          </button>
-          <button onClick={fetchAll} className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)', border: '1px solid', borderColor: 'var(--crm-line)' }}>
-            <FiRefreshCw size={12} /> <span>Refresh</span>
-          </button>
-          <button
-            onClick={() => handleExportReport(summary, leaves, employees, jobs, leaderboard, deptCounts, roleCounts, openJobs, perfPeriod)}
-            className="px-3 sm:px-4 py-2 text-[10px] font-mono uppercase rounded-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-positive)', color: 'var(--crm-bg)' }}
-          >
-            <FiDownload size={12} /> <span>Export Report</span>
-          </button>
-        </div>
-      </motion.div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-screen overflow-x-hidden font-sans" style={{ background: 'var(--crm-bg)' }}>
+      {/* Top Header Bar */}
+      <div className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-500 font-sans">
+              Founder Oversight & Enterprise Command
+            </span>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase flex items-center gap-2 font-sans" style={{ color: 'var(--crm-heading)' }}>
+              <FiShield className="text-cyan-500" /> Founder Command Center
+            </h1>
+          </div>
 
-      <div className="w-full px-4 sm:px-6 py-4 sm:py-6 space-y-6">
-        {/* KPI Grid - Responsive: 1 col mobile, 2 tablet, 4 desktop */}
-        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {stats.map((stat, i) => (
-            <StatCard key={i} {...stat} />
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 font-sans">
+            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiMessageSquare size={12} /> 
+            </Link>
+           
+            <button onClick={fetchAll} className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiRefreshCw size={12} /> 
+            </button>
+            <button onClick={handleExportCSV} className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
+              <FiDownload size={12} /> 
+            </button>
+          </div>
+        </div>
+
+        {/* Module Navigation Tabs Row */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-800/80 pb-1 scrollbar-none">
+          {[
+            { id: 'ALL', label: 'All Modules' },
+            { id: 'OVERVIEW', label: 'Overview Chart' },
+            { id: 'FILES', label: 'File Sharing' },
+            { id: 'WORKFORCE', label: 'Workforce & Targets' },
+            { id: 'ATTENDANCE', label: 'Attendance & Telemetry' },
+            { id: 'TRANSPORT', label: 'Transport Map' },
+            { id: 'ALERTS', label: 'Alerts & Approvals' }
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`px-4 py-1.5 text-[10px] uppercase font-sans font-bold rounded-md transition-all whitespace-nowrap ${
+                activeTab === t.id
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300'
+              }`}
+            >
+              {t.label}
+            </button>
           ))}
-        </motion.div>
-
-        {/* Phase 4: Founder Transport & Logistics Overview Widget */}
-        <motion.div variants={blockVariants}>
-          <FounderTransportWidget summary={summary} />
-        </motion.div>
-
-
-
-        {/* Charts Row - Stack on mobile, side-by-side on desktop */}
-        <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden lg:col-span-1" style={CARD}>
-            <SectionHeader icon={FiPieChart} title="Workforce by Department" />
-            <div className="p-4 sm:p-5 h-64 sm:h-72">
-              {deptChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={deptChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} fill="#8884d8" dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                      {deptChartData.map((_, i) => <Cell key={`cell-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(value) => [value, 'Employees']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState title="No employee data" description="Employee directory will appear once staff are onboarded." />
-              )}
-            </div>
-          </motion.div>
-
-          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden lg:col-span-2" style={CARD}>
-            <SectionHeader icon={FiBarChart2} title="Workforce by Role" />
-            <div className="p-4 sm:p-5 h-64 sm:h-72">
-              {roleChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={roleChartData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" />
-                    <XAxis type="number" tickLine={false} axisLine={false} tick={{ fill: 'var(--crm-ink-faint)', fontSize: 10 }} />
-                    <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--crm-heading)', fontSize: 10 }} width={100} />
-                    <Tooltip formatter={(value) => [value, 'Employees']} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} fill="var(--crm-accent)" maxBarSize={30} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState title="No role data" description="Role distribution will appear once staff are onboarded." />
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Main Content - Stacked full-width sections */}
-        <div className="space-y-6">
-          {/* Leave Approvals */}
-          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-            <SectionHeader icon={FiCalendar} title="Leave Approvals" count={leaves.length} />
-            <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-              {leaves.length === 0 ? (
-                <EmptyState title="No pending leave requests" description="Everything is up to date." className="py-8 sm:py-12" />
-              ) : (
-                leaves.map((lv) => (
-                  <div key={lv._id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={CARD_SUNKEN}>
-                    <div className="space-y-1.5 text-xs sm:text-sm min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate" style={{ color: 'var(--crm-heading)' }}>
-                          {lv.employeeName || lv.employeeId?.fullName || lv.employeeId?.name || (typeof lv.employeeId === 'object' ? (lv.employeeId?.email || lv.employeeId?.employeeId || lv.employeeId?._id) : lv.employeeId) || 'Employee'}
-                        </span>
-                        {lv.employeeId?.department && (
-                          <span className="text-[9px] sm:text-[10px] whitespace-nowrap" style={LABEL_MONO}>({lv.employeeId.department})</span>
-                        )}
-                      </div>
-                      <p className="text-[10px] sm:text-[11px]" style={LABEL_MONO}>
-                        {new Date(lv.fromDate).toLocaleDateString()} – {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} day{lv.numberOfDays === 1 ? '' : 's'}) · {lv.leaveType.replace('_', ' ')}
-                      </p>
-                      <p className="text-[10px] sm:text-[11px] italic truncate" style={{ color: 'var(--crm-ink-soft)' }}>"{lv.reason}"</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                      <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-3 py-1.5 text-[9px] sm:text-[10px] font-mono uppercase rounded-sm border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default flex items-center gap-1" style={{ borderColor: 'var(--crm-positive-bg)', color: 'var(--crm-positive)', background: 'var(--crm-positive-bg)' }}>
-                        <FiCheckCircle size={10} sm:size={11} /> <span className="hidden sm:inline">Approve</span>
-                      </button>
-                      <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-3 py-1.5 text-[9px] sm:text-[10px] font-mono uppercase rounded-sm border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default flex items-center gap-1" style={{ borderColor: 'var(--crm-danger-bg)', color: 'var(--crm-danger)', background: 'var(--crm-danger-bg)' }}>
-                        <FiXCircle size={10} sm:size={11} /> <span className="hidden sm:inline">Reject</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </motion.div>
-
-          {/* Workforce Directory */}
-          <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-            <SectionHeader 
-              icon={FiUsers} 
-              title="Workforce Directory" 
-              action={
-                <button onClick={() => setShowFilters(!showFilters)} className="px-3 py-1.5 text-[9px] font-mono uppercase rounded-sm border flex items-center gap-1 transition-all" style={{ borderColor: 'var(--crm-line)', color: 'var(--crm-heading)', background: 'var(--crm-bg-sunken)' }}>
-                  <FiFilter size={10} /> Filters {showFilters ? <FiChevronUp size={10} /> : <FiChevronDown size={10} />}
-                </button>
-              }
-            />
-            
-            {/* Collapsible Filters */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-4 border-b overflow-hidden" style={{ borderColor: 'var(--crm-line)' }}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="relative">
-                      <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2" size={11} style={{ color: 'var(--crm-ink-faint)' }} />
-                      <input type="text" placeholder="Search name, ID, email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="text-[10px] sm:text-[11px] pl-7 pr-3 py-2 rounded-sm border outline-none w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Department</label>
-                      <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="text-[10px] sm:text-[11px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
-                        <option value="ALL">All Departments</option>
-                        {EMPLOYEE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Role</label>
-                      <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="text-[10px] sm:text-[11px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
-                        <option value="ALL">All Roles</option>
-                        {EMPLOYEE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Status</label>
-                      <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-[10px] sm:text-[11px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
-                        <option value="ALL">All Status</option>
-                        <option value="ACTIVE">ACTIVE</option>
-                        <option value="INACTIVE">INACTIVE</option>
-                      </select>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Table with horizontal scroll on mobile */}
-            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead className="sticky top-0">
-                  <tr className="border-b text-[8px] sm:text-[9px] uppercase tracking-wider" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
-                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80 whitespace-nowrap" onClick={() => { setSortBy('employeeId'); setSortOrder(sortBy === 'employeeId' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Employee {sortBy === 'employeeId' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80 whitespace-nowrap" onClick={() => { setSortBy('department'); setSortOrder(sortBy === 'department' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Dept {sortBy === 'department' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80 whitespace-nowrap" onClick={() => { setSortBy('role'); setSortOrder(sortBy === 'role' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Role {sortBy === 'role' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80 whitespace-nowrap" onClick={() => { setSortBy('status'); setSortOrder(sortBy === 'status' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Status {sortBy === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th className="py-2.5 px-3 cursor-pointer hover:opacity-80 whitespace-nowrap" onClick={() => { setSortBy('position'); setSortOrder(sortBy === 'position' && sortOrder === 'asc' ? 'desc' : 'asc'); }}>Position {sortBy === 'position' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs sm:text-sm divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-                  {filteredEmployees.length === 0 ? (
-                    <tr><td colSpan="6" className="text-center py-8 sm:py-12" style={LABEL_MONO}>No employees match this filter.</td></tr>
-                  ) : (
-                    filteredEmployees.map((emp) => (
-                      <tr key={emp._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <div style={{ color: 'var(--crm-heading)' }}>{emp.name}</div>
-                          <div className="text-[9px] sm:text-[10px]" style={LABEL_MONO}>{emp.employeeId} · {emp.email}</div>
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap" style={LABEL_MONO}>
-                          <span className="px-2 py-0.5 rounded-sm text-[8px] sm:text-[9px] uppercase font-bold border" style={{ color: 'var(--crm-accent)', background: 'var(--crm-accent-bg)', borderColor: 'var(--crm-accent-bg)' }}>
-                            {emp.department}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap" style={LABEL_MONO}>{emp.role}</td>
-                        <td className="py-3 px-3 whitespace-nowrap"><StatusBadge status={emp.status} /></td>
-                        <td className="py-3 px-3 text-[9px] sm:text-[10px] truncate max-w-[150px]" style={{ color: 'var(--crm-ink-soft)' }}>{emp.position || '—'}</td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <Link to={`/crm/employees/${emp._id}`} className="text-[9px] sm:text-[10px] uppercase flex items-center gap-1 hover:underline p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-accent)', background: 'var(--crm-accent-bg)' }}>
-                              <FiEye size={10} /> <span className="hidden sm:inline">View</span>
-                            </Link>
-                            <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-info)', background: 'var(--crm-info-bg)' }} title="Edit">
-                              <FiEdit size={11} />
-                            </button>
-                            <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-sm transition-colors" style={{ color: 'var(--crm-danger)', background: 'var(--crm-danger-bg)' }} title="Delete">
-                              <FiTrash2 size={11} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {filteredEmployees.length > 0 && (
-              <div className="p-3 border-t text-right text-[9px] sm:text-[10px]" style={{ borderColor: 'var(--crm-line)', ...LABEL_MONO }}>
-                Showing {filteredEmployees.length} of {employees.length} employees
-              </div>
-            )}
-          </motion.div>
-
-          {/* Sales Target + Leaderboard - Stacked on mobile */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <SectionHeader icon={FiTarget} title="Assign Sales Target" />
-              <form onSubmit={handleAssignTarget} className="p-4 sm:p-5 space-y-3 text-xs sm:text-sm">
-                <div>
-                  <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Sales Employee *</label>
-                  <select required value={targetForm.employeeId} onChange={(e) => setTargetForm({ ...targetForm, employeeId: e.target.value })} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none cursor-pointer" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
-                    <option value="">Select employee...</option>
-                    {salesEmployees.map((e) => (
-                      <option key={e._id} value={e._id}>{e.name} ({e.employeeId}) — {e.position || e.role}</option>
-                    ))}
-                  </select>
-                  {salesEmployees.length === 0 && (
-                    <p className="text-[9px] sm:text-[10px] mt-1" style={{ color: 'var(--crm-warning)' }}>No active SALES-department employees found.</p>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Month</label>
-                    <select value={targetForm.month} onChange={(e) => setTargetForm({ ...targetForm, month: e.target.value })} className="w-full text-[10px] sm:text-[11px] px-2 py-2 rounded-sm border outline-none cursor-pointer" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
-                      {MONTHS.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Year</label>
-                    <input type="number" value={targetForm.year} onChange={(e) => setTargetForm({ ...targetForm, year: e.target.value })} className="w-full text-[10px] sm:text-[11px] px-2 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Target Value (₹) *</label>
-                  <input type="number" required min="1" placeholder="e.g. 500000" value={targetForm.targetValue} onChange={(e) => setTargetForm({ ...targetForm, targetValue: e.target.value })} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                </div>
-                <div>
-                  <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Target Deals (optional)</label>
-                  <input type="number" min="0" placeholder="e.g. 10" value={targetForm.targetDeals} onChange={(e) => setTargetForm({ ...targetForm, targetDeals: e.target.value })} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                </div>
-                <button type="submit" disabled={submittingTarget} className="w-full py-2.5 rounded-sm text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
-                  {submittingTarget ? 'Assigning...' : 'Assign Target'}
-                </button>
-              </form>
-            </motion.div>
-
-            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <SectionHeader 
-                icon={FiAward} 
-                title={`Employee Performance — ${perfPeriod.toUpperCase()}`}
-                action={
-                  <div className="flex items-center gap-1 bg-[var(--crm-bg-sunken)] p-1 rounded-sm border border-[var(--crm-line)] font-mono text-[9px] uppercase font-bold">
-                    <button
-                      onClick={() => handlePeriodChange('daily')}
-                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer ${
-                        perfPeriod === 'daily' 
-                          ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]' 
-                          : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                      }`}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      onClick={() => handlePeriodChange('weekly')}
-                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer ${
-                        perfPeriod === 'weekly' 
-                          ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]' 
-                          : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                      }`}
-                    >
-                      Weekly
-                    </button>
-                    <button
-                      onClick={() => handlePeriodChange('monthly')}
-                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer ${
-                        perfPeriod === 'monthly' 
-                          ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]' 
-                          : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                      }`}
-                    >
-                      Monthly
-                    </button>
-                  </div>
-                }
-              />
-              <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-                {perfLoading ? (
-                  <div className="p-8 text-center font-mono text-xs text-[var(--crm-ink-faint)] animate-pulse">
-                    Calculating {perfPeriod} employee performance metrics...
-                  </div>
-                ) : leaderboard.length === 0 ? (
-                  <EmptyState title={`No sales activity (${perfPeriod})`} description="Performance metrics appear once deals or activities are logged for this period." className="p-6 sm:p-8" />
-                ) : (
-                  leaderboard.map((row, idx) => (
-                    <div key={row.employeeId} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-[var(--crm-bg-sunken)]/40" style={idx % 2 === 0 ? CARD_SUNKEN : {}}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-[10px] font-mono font-bold w-6 h-6 rounded-full bg-[var(--crm-bg)] border border-[var(--crm-line)] flex items-center justify-center shrink-0" style={{ color: 'var(--crm-heading)' }}>
-                          #{idx + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="font-medium text-xs sm:text-sm truncate flex items-center gap-2" style={{ color: 'var(--crm-heading)' }}>
-                            <span>{row.fullName}</span>
-                            <span className="px-1.5 py-0.5 rounded-sm text-[8px] font-mono font-bold uppercase border bg-[var(--crm-bg)] text-[var(--crm-ink-faint)]" style={{ borderColor: 'var(--crm-line)' }}>
-                              {row.department || 'SALES'}
-                            </span>
-                          </div>
-                          <div className="text-[9px] sm:text-[10px] flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5" style={LABEL_MONO}>
-                            <span>ID: {row.employeeCode || row.employeeId}</span>
-                            <span>• {row.dealsWon} Won / {row.totalLeads} Leads</span>
-                            <span>• {row.activityCount || 0} Activities</span>
-                            <span>• {row.completedTasksCount || 0} Tasks</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 shrink-0 font-mono">
-                        <span className="font-bold text-xs sm:text-sm" style={{ color: 'var(--crm-positive)' }}>
-                          {fmtCurrency(row.revenue)}
-                        </span>
-                        {row.targetValue > 0 && (
-                          <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-sm border ${
-                            row.isTargetAchieved 
-                              ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive-bg)]' 
-                              : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning-bg)]'
-                          }`}>
-                            {row.isTargetAchieved ? 'Target Achieved' : `Target: ${fmtCurrency(row.targetValue)}`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Hiring Pipeline + Quick Actions - Stacked on mobile */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <SectionHeader 
-                icon={FiBriefcase} 
-                title="Hiring Pipeline" 
-                action={<Link to="/crm/jobs" className="text-[9px] sm:text-[10px] uppercase flex items-center gap-1 hover:underline" style={{ color: 'var(--crm-accent)' }}>Manage <FiExternalLink size={10} /></Link>}
-              />
-              <div className="divide-y" style={{ borderColor: 'var(--crm-line)' }}>
-                {openJobs.length === 0 ? (
-                  <EmptyState title="No open requisitions" description="Post a job from Manage Jobs to see it here." className="p-6 sm:p-8" />
-                ) : (
-                  openJobs.map((job) => (
-                    <div key={job._id} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2" style={CARD_SUNKEN}>
-                      <div className="min-w-0">
-                        <div className="truncate" style={{ color: 'var(--crm-heading)' }}>{job.title}</div>
-                        <div className="text-[8px] sm:text-[9px]" style={LABEL_MONO}>{job.department} · {job.location}</div>
-                      </div>
-                      <FiUserPlus size={12} style={{ color: 'var(--crm-ink-faint)' }} className="shrink-0" />
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-
-            <motion.div variants={blockVariants} className="border rounded-sm overflow-hidden" style={CARD}>
-              <SectionHeader icon={FiZap} title="Quick Actions" />
-              <div className="p-4 sm:p-5 space-y-2">
-                {[
-                  { to: '/crm/hr/manager', label: 'HR Manager Dashboard', icon: FiAward },
-                  { to: '/crm/sales', label: 'Sales Performance', icon: FiTrendingUp },
-                  { to: '/crm/reports', label: 'Reports', icon: FiBarChart2 },
-                  { to: '/crm/security', label: 'Security', icon: FiShield },
-                  { to: '/crm/leads', label: 'Leads Management', icon: FiUsers },
-                  { to: '/crm/documents', label: 'Documents', icon: FiFileText },
-                  { to: '/crm/employees', label: 'All Employees', icon: FiUsers },
-                  { to: '/crm/jobs', label: 'Manage Jobs', icon: FiBriefcase },
-                  { to: '/crm/tasks', label: 'Task Board', icon: FiCheckSquare },
-                  { to: '/crm/admin', label: 'Admin Panel', icon: FiSettings },
-                  { to: '/crm/career-leads', label: 'Career Leads', icon: FiUserPlus },
-                  { to: '/crm/founder', label: 'Founder Dashboard', icon: FiHome },
-                ].map((link) => (
-                  <Link key={link.to} to={link.to} className="flex items-center justify-between p-2.5 border rounded-sm text-[9px] sm:text-xs transition-colors hover:opacity-80" style={CARD_SUNKEN}>
-                    <span className="flex items-center gap-2 min-w-0" style={{ color: 'var(--crm-heading)' }}>
-                      <link.icon size={12} style={{ color: 'var(--crm-ink-faint)' }} /> <span className="truncate">{link.label}</span>
-                    </span>
-                    <FiArrowRight size={10} sm:size={11} style={{ color: 'var(--crm-ink-faint)' }} className="shrink-0" />
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-          </div>
         </div>
       </div>
 
-      {/* Add/Edit Employee Modal - Full screen on mobile */}
+      <div className="w-full px-4 sm:px-6 py-6 space-y-8">
+        
+        {/* =========================================================================
+            SECTION 2: BUSINESS OVERVIEW SECTION (8 KPI CARDS + RECHARTS COMPOSED CHART + DATE RANGE)
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'OVERVIEW') && (
+          <motion.div initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="border rounded-sm overflow-hidden space-y-6 p-4 sm:p-6" style={CARD_STYLE}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: 'var(--crm-line)' }}>
+              <div>
+                <span className="text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>Core Enterprise Telemetry</span>
+                <h2 className="text-lg uppercase font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiBarChart2 className="text-[var(--crm-accent)]" /> Founder Business Overview & Combined Performance
+                </h2>
+              </div>
+
+              {/* Date Range Filter Selector */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] uppercase font-sans text-[var(--crm-ink-faint)]">Range:</span>
+                {['ALL', 'Today', '7d', '30d', '90d', 'Custom'].map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setDateRange(r)}
+                    className={`px-3 py-1 text-[10px] font-sans uppercase rounded-sm border transition-all ${
+                      dateRange === r
+                        ? 'border-[var(--crm-accent)] bg-[var(--crm-accent)] text-[var(--crm-bg)] font-bold'
+                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+
+                {dateRange === 'Custom' && (
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                    <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded" />
+                    <span className="text-[10px] text-[var(--crm-ink-faint)]">to</span>
+                    <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 10 Business Overview Telemetry KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {kpiCards.map((card, i) => (
+                <motion.div key={i} whileHover={{ y: -3 }} className="border p-4 rounded-sm flex flex-col justify-between" style={CARD_SUNKEN}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] uppercase tracking-wider font-bold font-sans text-[var(--crm-ink-faint)]">{card.title}</span>
+                    <div className="p-1.5 border rounded-sm flex-shrink-0" style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg)' }}>
+                      <card.icon size={14} />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-2xl font-bold font-sans text-[var(--crm-heading)]">{card.value}</div>
+                    <div className="text-[10px] mt-1 font-sans text-[var(--crm-ink-faint)]">{card.subtitle}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Recharts ComposedChart Section */}
+            <div className="border rounded-sm p-4 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+              <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                <div>
+                  <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
+                    Core Enterprise Telemetry
+                  </span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
+                    <FiActivity className="text-emerald-400 animate-pulse" /> Combined Business Performance (Bars: Volume/Revenue, Line: Total Conversion %)
+                  </h3>
+                </div>
+                <span className="text-[9px] font-sans uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                  Founder Command Feed
+                </span>
+              </div>
+
+              <div className="h-80 sm:h-96 w-full">
+                <ResponsiveContainer width="100%" height={320}>
+                  <ComposedChart data={composedChartData} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                    <XAxis dataKey="period" tick={XAXIS_TICK_STYLE} />
+                    <YAxis yAxisId="left" tick={AXIS_TICK_STYLE} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 11, fontFamily: 'var(--crm-font-mono)' }} unit="%" />
+                    <Tooltip
+                      contentStyle={CHART_TOOLTIP_STYLE}
+                      labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                      itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                    />
+                    <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+
+                    <Bar yAxisId="left" dataKey="Total Employees" fill="var(--crm-info)" opacity={0.7} maxBarSize={20} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Active Leads" fill="var(--crm-accent)" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Completed & Delivered" fill="var(--crm-positive)" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Quotations Sent" fill="#a855f7" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Orders Confirmed" fill="#38bdf8" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
+
+                    <Line yAxisId="right" type="monotone" dataKey="Conversion %" stroke="#ec4899" strokeWidth={3} dot={{ r: 5, fill: '#ec4899' }} activeDot={{ r: 8 }} name="Total Conversion %" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Stage Distribution & Monthly Trends Section (matching Reports.jsx) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Stage Distribution (Donut Chart + Grid Badges Legend) */}
+              <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+                <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                  <div>
+                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
+                      <FiPieChart className="text-purple-400" /> Stage Distribution ({totalPipelineLeads} Total Leads)
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                  <div className="sm:col-span-5 h-64 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie
+                          data={pipelineData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          dataKey="total"
+                          nameKey="_id"
+                        >
+                          {pipelineData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={STAGE_COLORS[index % STAGE_COLORS.length]} stroke="var(--crm-bg)" strokeWidth={2} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={CHART_TOOLTIP_STYLE}
+                          labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                          itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                          formatter={(val, name) => [`${val} Leads`, String(name).replace(/_/g, ' ')]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="sm:col-span-7 grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1">
+                    {pipelineData.map((entry, index) => {
+                      const pct = totalPipelineLeads > 0 ? Math.round(((entry.total || 0) / totalPipelineLeads) * 100) : 0;
+                      const color = STAGE_COLORS[index % STAGE_COLORS.length];
+                      return (
+                        <div
+                          key={entry._id || index}
+                          className="flex items-center justify-between p-2 rounded border bg-[var(--crm-bg-sunken)] transition-colors hover:bg-[var(--crm-bg)]"
+                          style={{ borderColor: 'var(--crm-line)' }}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                            <span className="text-[10px] font-sans font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
+                              {String(entry._id || 'STAGE').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 font-sans text-xs flex-shrink-0">
+                            <span className="font-bold text-[var(--crm-heading)]">{entry.total || 0}</span>
+                            <span className="text-[9px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Monthly Trends (Leads, Won & Lost) Line Chart */}
+              <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+                <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                  <div>
+                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
+                      <FiTrendingUp className="text-emerald-400" /> Monthly Trends (Leads, Won & Lost)
+                    </h3>
+                  </div>
+                  <span className="text-[9px] font-sans uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
+                    Telemetry Stream
+                  </span>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={monthlyLeadsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                      <XAxis dataKey="month" tick={XAXIS_TICK_STYLE} />
+                      <YAxis tick={AXIS_TICK_STYLE} />
+                      <Tooltip
+                        contentStyle={CHART_TOOLTIP_STYLE}
+                        labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                      />
+                      <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                      <Line type="monotone" dataKey="leads" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#38bdf8' }} activeDot={{ r: 6 }} name="Total Leads" />
+                      <Line type="monotone" dataKey="won" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} name="Won" />
+                      <Line type="monotone" dataKey="lost" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#f43f5e' }} activeDot={{ r: 6 }} name="Lost" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* =========================================================================
+            SECTION 3: ENTERPRISE FILE SHARING MODULE (FOUNDER, CEO, ADMIN -> STAFF)
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'FILES') && (
+          <motion.div initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+            <FileSharingWidget initialTab="ALL_AUDIT" />
+          </motion.div>
+        )}
+
+        {/* =========================================================================
+            ATTENDANCE & ACTIVE/INACTIVE USER TELEMETRY
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'ATTENDANCE') && (
+          <div className="space-y-6">
+            <EmployeeActivityMonitor title="Employee Activity & Working Hours Monitor" />
+          </div>
+        )}
+
+        {/* =========================================================================
+            WORKFORCE MANAGEMENT & SALES TARGET ASSIGNMENT
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'WORKFORCE') && (
+          <div className="space-y-6">
+            {/* Workforce Directory */}
+            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
+              <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                  <FiUsers className="text-[var(--crm-heading)]" /> Workforce Directory Management ({employees.length})
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setShowFilters(!showFilters)} className="px-3 py-1.5 text-[9px] font-sans uppercase rounded-sm border flex items-center gap-1 transition-all bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300 font-bold">
+                    <FiFilter size={10} /> Filters {showFilters ? <FiChevronUp size={10} /> : <FiChevronDown size={10} />}
+                  </button>
+                  <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="px-3 py-1.5 text-[9px] font-mono uppercase rounded-sm flex items-center gap-1 cursor-pointer" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+                    <FiPlus size={10} /> Add Staff
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-4 border-b overflow-hidden" style={{ borderColor: 'var(--crm-line)' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="relative">
+                        <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2" size={11} style={{ color: 'var(--crm-ink-faint)' }} />
+                        <input type="text" placeholder="Search name, ID, email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="text-[10px] pl-7 pr-3 py-2 rounded-sm border outline-none w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Department</label>
+                        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                          <option value="ALL">All Departments</option>
+                          {EMPLOYEE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Role</label>
+                        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                          <option value="ALL">All Roles</option>
+                          {EMPLOYEE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Status</label>
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-[10px] px-2 py-2 rounded-sm border outline-none cursor-pointer w-full" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                          <option value="ALL">All Status</option>
+                          <option value="ACTIVE">ACTIVE</option>
+                          <option value="INACTIVE">INACTIVE</option>
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Employee Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="border-b text-[9px] uppercase font-sans" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
+                      <th className="py-2.5 px-3">Employee</th>
+                      <th className="py-2.5 px-3">Dept</th>
+                      <th className="py-2.5 px-3">Role</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Position</th>
+                      <th className="py-2.5 px-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs divide-y" style={{ borderColor: 'var(--crm-line)' }}>
+                    {filteredEmployees.length === 0 ? (
+                      <tr><td colSpan="6" className="text-center py-8 font-sans text-[var(--crm-ink-faint)]">No employees found.</td></tr>
+                    ) : (
+                      filteredEmployees.map((emp) => (
+                        <tr key={emp._id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-[var(--crm-heading)]">{emp.name}</div>
+                            <div className="text-[9px] font-sans text-[var(--crm-ink-faint)]">{emp.employeeId} · {emp.email}</div>
+                          </td>
+                          <td className="py-3 px-3 font-sans">
+                            <span className="px-2.5 py-1 rounded-full text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400 font-sans shadow-xs">
+                              {emp.department}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-sans text-[var(--crm-heading)]">{emp.role}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold border uppercase ${
+                              emp.status === 'ACTIVE'
+                                ? 'border-emerald-800 bg-emerald-950 text-emerald-400'
+                                : 'border-rose-800 bg-rose-950 text-rose-400'
+                            }`}>
+                              {emp.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-[10px] text-[var(--crm-ink-soft)]">{emp.position || '—'}</td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-1.5">
+                              <Link to={`/crm/employees/${emp._id}`} className="text-[9px] uppercase p-1.5 rounded-md bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] hover:underline border border-cyan-800" title="View">
+                                <FiEye size={11} />
+                              </Link>
+                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-md bg-sky-950 text-sky-400 border border-sky-800 cursor-pointer" title="Edit">
+                                <FiEdit size={11} />
+                              </button>
+                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-md bg-rose-950 text-rose-400 border border-rose-800 cursor-pointer" title="Delete">
+                                <FiTrash2 size={11} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Target Assignment */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="border rounded-sm overflow-hidden p-5 space-y-3" style={CARD_STYLE}>
+                <div className="border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                  <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                    <FiTarget className="text-amber-400" /> Assign Monthly Sales Targets
+                  </h3>
+                </div>
+                <form onSubmit={handleAssignTarget} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Sales Employee *</label>
+                    <select required value={targetForm.employeeId} onChange={(e) => setTargetForm({ ...targetForm, employeeId: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                      <option value="">Select sales staff...</option>
+                      {salesEmployees.map((e) => (
+                        <option key={e._id} value={e._id}>{e.name} ({e.employeeId}) — {e.position || e.role}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Target Amount (₹) *</label>
+                      <input type="number" required placeholder="Target revenue..." value={targetForm.targetValue} onChange={(e) => setTargetForm({ ...targetForm, targetValue: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Deals Target</label>
+                      <input type="number" placeholder="Deals count..." value={targetForm.targetDeals} onChange={(e) => setTargetForm({ ...targetForm, targetDeals: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={submittingTarget} className="w-full py-2 text-[10px] font-sans uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+                    {submittingTarget ? 'Assigning...' : 'Assign Target'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Department & Role Workforce Charts */}
+              <div className="border rounded-sm p-4 space-y-4" style={CARD_STYLE}>
+                <h3 className="text-xs uppercase font-bold tracking-widest border-b pb-2 flex items-center gap-2" style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)' }}>
+                  <FiPieChart className="text-sky-400" /> Workforce Distribution
+                </h3>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={deptChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {deptChartData.map((_, i) => <Cell key={`c-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            LIVE TRANSPORT RADAR MAP
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'TRANSPORT') && (
+          <FounderTransportWidget summary={summary} />
+        )}
+
+        {/* =========================================================================
+            ALERTS & APPROVALS
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'ALERTS') && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ScreenshotAlertsWidget />
+
+            {/* Leave Approvals */}
+            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
+                  <FiClock className="text-amber-400" /> Pending Leave Approvals ({leaves.length})
+                </h3>
+              </div>
+              <div className="divide-y max-h-80 overflow-y-auto" style={{ borderColor: 'var(--crm-line)' }}>
+                {leaves.length === 0 ? (
+                  <EmptyState title="No pending leave requests" description="All requests are processed." className="py-8" />
+                ) : (
+                  leaves.map((lv) => (
+                    <div key={lv._id} className="p-4 flex items-center justify-between gap-3 bg-[var(--crm-bg-sunken)]">
+                      <div className="space-y-1 text-xs">
+                        <div className="font-bold text-[var(--crm-heading)]">{lv.employeeName || lv.employeeId?.fullName || 'Employee'}</div>
+                        <div className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
+                          {new Date(lv.fromDate).toLocaleDateString()} – {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} Days)
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900">
+                          Approve
+                        </button>
+                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-rose-950 text-rose-400 border border-rose-800 hover:bg-rose-900">
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add / Edit Employee Modal */}
       <AnimatePresence>
         {showEmployeeModal && (
-          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-4">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="bg-[var(--crm-bg-raised)] rounded-sm w-full max-w-lg sm:max-w-2xl overflow-hidden border border-[var(--crm-ink-soft)]/15 shadow-2xl max-h-[95vh] flex flex-col">
-              <div className="p-4 sm:p-5 border-b flex justify-between items-center" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
-                <div className="min-w-0">
-                  <span className="text-[8px] sm:text-[9px] font-mono uppercase tracking-[0.2em] font-bold block" style={LABEL_MONO}>{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</span>
-                  <h3 className="text-sm sm:text-base font-serif text-[var(--crm-heading)] uppercase tracking-wide mt-1 truncate">{editingEmployee ? editingEmployee.name : 'Create Employee Record'}</h3>
-                </div>
-                <button onClick={() => { setShowEmployeeModal(false); setEditingEmployee(null); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-2 rounded-sm hover:bg-[var(--crm-bg-raised)] transition-all flex-shrink-0"><FiX size={18} /></button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-lg border rounded-sm p-6 space-y-4 font-sans" style={CARD_STYLE}>
+              <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                <h3 className="text-sm uppercase font-bold font-sans text-[var(--crm-heading)]">
+                  {editingEmployee ? 'Edit Staff Member' : 'Add New Employee'}
+                </h3>
+                <button onClick={() => setShowEmployeeModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white">
+                  <FiX size={18} />
+                </button>
               </div>
-              <form onSubmit={handleEmployeeSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Full Name *</label>
-                    <input required value={employeeForm.name} onChange={(e) => setEmployeeForm({...employeeForm, name: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+
+              <form onSubmit={handleEmployeeSubmit} className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Full Name *</label>
+                    <input required type="text" value={employeeForm.name} onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
                   <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Email *</label>
-                    <input required type="email" value={employeeForm.email} onChange={(e) => setEmployeeForm({...employeeForm, email: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Email *</label>
+                    <input required type="email" value={employeeForm.email} onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Phone</label>
+                    <input type="text" value={employeeForm.phone} onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
                   <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Phone *</label>
-                    <input required value={employeeForm.phone} onChange={(e) => setEmployeeForm({...employeeForm, phone: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Position</label>
+                    <input type="text" value={employeeForm.position} onChange={(e) => setEmployeeForm({ ...employeeForm, position: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Department *</label>
-                    <select value={employeeForm.department} onChange={(e) => setEmployeeForm({...employeeForm, department: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none cursor-pointer" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Department</label>
+                    <select value={employeeForm.department} onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })} className="w-full text-[10px] px-2 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                       {EMPLOYEE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Position *</label>
-                    <input required value={employeeForm.position} onChange={(e) => setEmployeeForm({...employeeForm, position: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Role *</label>
-                    <select value={employeeForm.role} onChange={(e) => setEmployeeForm({...employeeForm, role: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none cursor-pointer" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
+                    <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Role</label>
+                    <select value={employeeForm.role} onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.target.value })} className="w-full text-[10px] px-2 py-2 rounded border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                       {EMPLOYEE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Status *</label>
-                    <select value={employeeForm.status} onChange={(e) => setEmployeeForm({...employeeForm, status: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none cursor-pointer" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="INACTIVE">INACTIVE</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Salary (₹)</label>
-                    <input type="number" min="0" value={employeeForm.salary} onChange={(e) => setEmployeeForm({...employeeForm, salary: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Joining Date *</label>
-                    <input type="date" required value={employeeForm.joiningDate} onChange={(e) => setEmployeeForm({...employeeForm, joiningDate: e.target.value})} className="w-full text-[10px] sm:text-[11px] px-3 py-2 rounded-sm border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
-                  </div>
                 </div>
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
-                  <button type="submit" className="flex-1 py-2.5 bg-[var(--crm-accent)] hover:bg-[var(--crm-heading)] text-[var(--crm-bg)] text-[9px] sm:text-xs font-bold uppercase tracking-wider rounded-sm transition-all">
-                    {editingEmployee ? 'Update Employee' : 'Create Employee'}
-                  </button>
-                  <button type="button" onClick={() => { setShowEmployeeModal(false); setEditingEmployee(null); }} className="flex-1 py-2.5 bg-[var(--crm-bg)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-[9px] sm:text-xs font-bold uppercase tracking-wider rounded-sm transition-all">
+
+                <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
+                  <button type="button" onClick={() => setShowEmployeeModal(false)} className="px-4 py-2 text-[10px] font-sans uppercase rounded border border-[var(--crm-line)] text-[var(--crm-heading)]">
                     Cancel
+                  </button>
+                  <button type="submit" className="px-4 py-2 text-[10px] font-sans uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+                    Save Staff
                   </button>
                 </div>
               </form>

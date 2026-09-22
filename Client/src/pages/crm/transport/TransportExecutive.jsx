@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiTruck, FiCheckCircle, FiClock, FiUser, FiMapPin, 
@@ -27,6 +28,7 @@ import { dispatchesApi } from '../../../api/dispatches';
 import { employeeSignupApi } from '../../../api/employee-signup';
 import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
+import FileSharingWidget from '../../../components/crm/FileSharingWidget';
 
 export default function TransportExecutive() {
   const { user } = useAuth();
@@ -381,7 +383,20 @@ export default function TransportExecutive() {
             >
               <FiPieChart size={10} /> Analytics
             </button>
+            <button
+              onClick={() => setViewMode('FILES')}
+              className={`px-2.5 py-1 text-[9px] uppercase font-bold rounded-xs transition flex items-center gap-1 ${viewMode === 'FILES' ? 'bg-[#c9a84c] text-black' : 'text-[var(--crm-ink-faint)] hover:text-white'}`}
+            >
+              Shared Files
+            </button>
           </div>
+
+          <Link
+            to="/crm/manager-chat"
+            className="px-3 py-2 border border-teal-700 bg-teal-950/60 hover:bg-teal-900 text-teal-300 rounded-sm text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <FiMessageSquare size={12} /> Executive & Founder Chat
+          </Link>
 
           <button
             onClick={fetchAssignedTrips}
@@ -680,6 +695,13 @@ export default function TransportExecutive() {
           </table>
         </div>
       </div>
+
+      {/* SHARED FILES WIDGET */}
+      {(viewMode === 'FILES' || viewMode === 'ALL') && (
+        <div className="mt-6">
+          <FileSharingWidget initialTab="RECEIVED" />
+        </div>
+      )}
 
       {/* MODAL: ASSIGN DRIVER TO TASK / TRIP */}
       <AnimatePresence>
