@@ -1488,6 +1488,145 @@ async function getEmployeeDocuments(req, res, next) {
   }
 }
 
+async function sendEmployeeLetter(req, res, next) {
+  try {
+    const { employeeId, letterType, subject, refNo, letterData, htmlContent, updateStatusToInactive } = req.body;
+
+    if (!employeeId || !letterType) {
+      return fail(res, 400, 'BAD_REQUEST', 'Missing employeeId or letterType', [], req);
+    }
+
+    const Notification = require('../notifications/notification.model');
+
+    const isObjId = mongoose.isValidObjectId(employeeId);
+    const query = {
+      $or: [
+        ...(isObjId ? [{ _id: employeeId }, { _id: new mongoose.Types.ObjectId(employeeId) }] : []),
+        { employeeId: employeeId },
+        { email: String(employeeId).toLowerCase() }
+      ]
+    };
+
+    let employee = await Employee.findOne(query);
+    if (!employee) {
+      const userDoc = await User.findOne(query);
+      if (userDoc) {
+        employee = {
+          _id: userDoc._id,
+          employeeId: userDoc.employeeId || 'EMP',
+          name: userDoc.fullName || userDoc.name,
+          email: userDoc.email,
+          role: userDoc.role || 'EMPLOYEE',
+          department: userDoc.department || 'GENERAL',
+          position: userDoc.position || 'Staff'
+        };
+      }
+    }
+
+    if (!employee || !employee.email) {
+      return fail(res, 404, 'NOT_FOUND', 'Target employee or email not found', [], req);
+    }
+
+    const defaultSubject = subject || `${letterType.toUpperCase()} LETTER — India Trade Overseas Private Limited`;
+    const docRefNo = refNo || `ITO/HR/${letterType.toUpperCase()}/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`;
+
+    const emailHtml = htmlContent || `
+      <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 24px; border: 1px solid #cbd5e1; border-radius: 8px; background-color: #ffffff; color: #1e293b;">
+        <div style="text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="color: #0f172a; margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 1px;">INDIA TRADE OVERSEAS PRIVATE LIMITED</h2>
+          <p style="color: #0284c7; font-style: italic; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Where Quality Meets Global Demand</p>
+        </div>
+        <div style="background-color: #f8fafc; padding: 14px 18px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #0284c7;">
+          <h3 style="color: #dc2626; margin: 0 0 8px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">${defaultSubject}</h3>
+          <p style="margin: 3px 0; color: #475569; font-size: 12px;"><strong>Ref. No.:</strong> ${docRefNo}</p>
+          <p style="margin: 3px 0; color: #475569; font-size: 12px;"><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}</p>
+          <p style="margin: 3px 0; color: #475569; font-size: 12px;"><strong>To:</strong> ${employee.name} (${employee.employeeId || 'Staff'}) — ${employee.position || ''}, ${employee.department || ''}</p>
+        </div>
+        <div style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 24px; white-space: pre-line;">
+          ${letterData?.formattedBody || letterData?.reason || 'Please review the official HR letter issued to you below.'}
+        </div>
+        <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+          <p style="margin: 0; font-weight: bold; color: #0f172a;">Sincerely,</p>
+          <p style="margin: 4px 0 0 0; font-weight: bold; color: #0f172a;">For India Trade Overseas Private Limited</p>
+          <p style="margin: 10px 0 2px 0; font-weight: bold; color: #0284c7;">Md Ramiz Raza Khan</p>
+          <p style="margin: 0; color: #64748b; font-size: 12px;">Founder & Proprietor</p>
+        </div>
+      </div>
+    `;
+
+    // 1. Send Email to employee
+    let emailStatus = 'SENT';
+    try {
+      await sendEmail(
+        employee.email,
+        defaultSubject,
+        `Official ${letterType} Letter issued. Ref: ${docRefNo}`,
+        emailHtml
+      );
+    } catch (mailErr) {
+      console.warn('[SendLetter] Mail sending warning:', mailErr.message);
+      emailStatus = 'EMAIL_DISPATCH_WARNING';
+    }
+
+    // 2. Create in-app Notification for employee
+    let targetUserId = employee._id;
+    const linkedUser = await User.findOne({ email: employee.email.toLowerCase() });
+    if (linkedUser) {
+      targetUserId = linkedUser._id;
+    }
+
+    const notifMessage = `⚠️ Formal HR Notice: ${defaultSubject} (Ref: ${docRefNo})`;
+    await Notification.create({
+      targetUserId: targetUserId,
+      targetRole: employee.role,
+      targetDepartment: employee.department,
+      message: notifMessage,
+      type: 'HR_LETTER',
+      metadata: {
+        letterType,
+        refNo: docRefNo,
+        subject: defaultSubject,
+        date: new Date(),
+        issuedBy: req.user ? (req.user.fullName || req.user.name || 'Founder & Management') : 'Management'
+      }
+    });
+
+    // 3. Status update if termination
+    if (letterType === 'TERMINATION' && updateStatusToInactive) {
+      if (mongoose.isValidObjectId(employee._id)) {
+        await Employee.findByIdAndUpdate(employee._id, { status: 'INACTIVE' }).catch(() => {});
+      }
+      if (linkedUser) {
+        await User.findByIdAndUpdate(linkedUser._id, { isActive: false }).catch(() => {});
+      }
+    }
+
+    // 4. Record document metadata if possible
+    if (mongoose.isValidObjectId(employee._id)) {
+      await Employee.findByIdAndUpdate(employee._id, {
+        $push: {
+          uploadedDocuments: {
+            fileName: `${letterType}_LETTER_${docRefNo.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+            fileUrl: '',
+            docCategory: 'hr_letter',
+            uploadedBy: req.user ? (req.user.fullName || req.user.name || 'Founder') : 'Founder',
+            uploadedByRole: 'FOUNDER',
+            createdAt: new Date()
+          }
+        }
+      }).catch(e => console.warn('[SendLetter] Document record log warning:', e.message));
+    }
+
+    return ok(res, {
+      employee: { _id: employee._id, name: employee.name, email: employee.email },
+      refNo: docRefNo,
+      emailStatus
+    }, `Official ${letterType} letter sent to ${employee.email} and in-app notification delivered successfully`, 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -1511,5 +1650,7 @@ module.exports = {
   rejectEmployee,
   uploadEmployeeDocument,
   getMyEmployeeDocuments,
-  getEmployeeDocuments
+  getEmployeeDocuments,
+  sendEmployeeLetter
 };
+
