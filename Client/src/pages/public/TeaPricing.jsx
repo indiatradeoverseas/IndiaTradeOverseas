@@ -51,8 +51,16 @@ export default function TeaPricing() {
       toast.error('Please select variety, location and ensure price is available');
       return;
     }
+    const kgToMT = {
+      '100KG': 0.1,
+      '500KG': 0.5,
+      '1000KG': 1,
+      '5000KG': 5,
+      '10000KG': 10,
+    };
     const qtyNum = parseInt(selectedQuantity.replace(/\D/g, '')) || 1;
-    const lineTotal = price * qtyNum;
+    const itemMT = kgToMT[selectedQuantity] || (qtyNum / 1000);
+    const lineTotal = price * qtyNum; // price is per KG, qtyNum is KG
     const newItem = {
       id: Date.now(),
       variety: selectedVariety,
@@ -61,6 +69,7 @@ export default function TeaPricing() {
       timeline: selectedTimeline,
       unitPrice: price,
       lineTotal,
+      itemMT,  // store MT for later use
     };
     setCart(prev => [...prev, newItem]);
     toast.success('Added to cart');
@@ -83,18 +92,39 @@ export default function TeaPricing() {
       return;
     }
 
-    const proposalPayloads = cart.map(item => ({
-      distributorId,
-      division: 'TEA',
-      lotId: `${item.variety}-${item.location}`,
-      region: item.location,
-      grade: item.variety,
-      quantity: parseInt(item.quantity.replace(/\D/g, '')) || 1,
-      basePrice: item.unitPrice,
-      paymentTerm: 'ADVANCE_100',
-      estimatedValue: item.lineTotal,
-      status: 'approved',
-    }));
+// Convert KG codes to MT (server requires minimum 40 MT = 40,000 KG)
+    const kgToMT = {
+      '100KG': 0.1,
+      '500KG': 0.5,
+      '1000KG': 1,
+      '5000KG': 5,
+      '10000KG': 10,
+    };
+    // Validate each cart item meets minimum 40 MT = 40,000 KG
+    for (const item of cart) {
+      const itemMT = kgToMT[item.quantity] || (parseInt(item.quantity.replace(/\D/g, '')) / 1000) || 0;
+      if (itemMT < 40) {
+        toast.error(`Minimum order quantity is 40 MT (40,000 KG). "${item.quantity}" = ${itemMT} MT.`);
+        return;
+      }
+    }
+
+    const proposalPayloads = cart.map(item => {
+      const itemMT = item.itemMT || kgToMT[item.quantity] || (parseInt(item.quantity.replace(/\D/g, '')) / 1000) || 0;
+      const itemQtyKG = itemMT * 1000;
+      return {
+        distributorId,
+        division: 'TEA',
+        lotId: `${item.variety}-${item.location}`,
+        region: item.location,
+        grade: item.variety,
+        quantity: itemMT,  // server expects MT
+        basePrice: item.unitPrice * 1000, // convert price per KG to price per MT
+        paymentTerm: 'ADVANCE_100',
+        estimatedValue: itemMT * (item.unitPrice * 1000),
+        status: 'approved',
+      };
+    });
 
     try {
       const proposals = await Promise.all(
@@ -106,7 +136,7 @@ export default function TeaPricing() {
       const orderResult = await distributorApi.createRazorpayOrder({
         amount: total,
         lotId: proposalIds.join(','),
-        quantity: cart.reduce((s, p) => s + (parseInt(p.quantity.replace(/\D/g, '')) || 0), 0),
+        quantity: cart.reduce((s, p) => s + (kgToMT[p.quantity] || (parseInt(p.quantity.replace(/\D/g, '')) / 1000) || 0), 0),
       });
       if (!orderResult.success) throw new Error(orderResult.message || 'Failed to create Razorpay order');
 

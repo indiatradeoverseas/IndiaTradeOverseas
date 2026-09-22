@@ -78,19 +78,38 @@ export default function RicePricing() {
       return;
     }
 
+    // Convert truck codes to MT (server requires minimum 40 MT)
+    const truckToMT = {
+      '1_TRUCK': 20,
+      '2_5_TRUCKS': 60,
+      '6_10_TRUCKS': 160,
+      '10_PLUS_TRUCKS': 300,
+    };
+    // Validate each cart item meets minimum 40 MT
+    for (const item of cart) {
+      const itemQty = truckToMT[item.quantity] || parseInt(item.quantity.replace(/\D/g, '')) || 0;
+      if (itemQty < 40) {
+        toast.error(`Minimum order quantity is 40 MT. "${item.quantity}" = ${itemQty} MT.`);
+        return;
+      }
+    }
+
     // Create proposals for each cart item
-    const proposalPayloads = cart.map(item => ({
-      distributorId,
-      division: 'RICE',
-      lotId: `${item.variety}-${item.location}`,
-      region: item.location,
-      grade: item.variety,
-      quantity: parseInt(item.quantity.replace(/\D/g, '')) || 1,
-      basePrice: item.unitPrice,
-      paymentTerm: 'ADVANCE_100',
-      estimatedValue: item.lineTotal,
-      status: 'approved',
-    }));
+    const proposalPayloads = cart.map(item => {
+      const itemQty = truckToMT[item.quantity] || parseInt(item.quantity.replace(/\D/g, '')) || 40;
+      return {
+        distributorId,
+        division: 'RICE',
+        lotId: `${item.variety}-${item.location}`,
+        region: item.location,
+        grade: item.variety,
+        quantity: itemQty,
+        basePrice: item.unitPrice,
+        paymentTerm: 'ADVANCE_100',
+        estimatedValue: itemQty * item.unitPrice,
+        status: 'approved',
+      };
+    });
 
     try {
       const proposals = await Promise.all(
@@ -103,7 +122,7 @@ export default function RicePricing() {
       const orderResult = await distributorApi.createRazorpayOrder({
         amount: total,
         lotId: proposalIds.join(','),
-        quantity: cart.reduce((s, p) => s + (parseInt(p.quantity.replace(/\D/g, '')) || 0), 0),
+        quantity: cart.reduce((s, p) => s + (truckToMT[p.quantity] || parseInt(p.quantity.replace(/\D/g, '')) || 0), 0),
       });
       if (!orderResult.success) throw new Error(orderResult.message || 'Failed to create Razorpay order');
 
