@@ -2,9 +2,9 @@ import React from 'react';
 import { FiTrash2 } from 'react-icons/fi';
 
 const STATUS_STYLES = {
-    pending: 'text-[var(--crm-warning)] border-[var(--crm-warning-bg)]',
-    approved: 'text-[var(--crm-positive)] border-[var(--crm-positive-bg)]',
-    disapproved: 'text-[var(--crm-danger)] border-[var(--crm-danger-bg)]'
+    pending: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800',
+    approved: 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800',
+    disapproved: 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800'
 };
 
 export default function ProposalCard({ proposal, onApprove, onDisapprove, onDelete, onClick, showActions = false }) {
@@ -14,37 +14,37 @@ export default function ProposalCard({ proposal, onApprove, onDisapprove, onDele
 
     return (
         <div
-            className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--crm-bg-sunken)]/80 p-4 border border-[var(--crm-ink-soft)]/10 rounded-sm font-mono text-[11px] ${onClick ? 'cursor-pointer hover:bg-[var(--crm-bg-raised)]/25 transition-colors' : ''}`}
+            className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--crm-bg-raised)] p-4 border border-[var(--crm-line)] rounded-xl font-sans text-xs ${onClick ? 'cursor-pointer hover:border-cyan-500/40 transition-colors' : ''}`}
             onClick={onClick}
         >
             <div className="space-y-1 text-left">
-                <div className="text-[var(--crm-ink-soft)]">
-                    <span className="text-[var(--crm-heading)] font-bold">{distributorLabel}</span>
-                    {" | "} Lot Target: <span className="text-white font-bold">{proposal.lotId} ({proposal.grade})</span>
-                    {" | "} Volume: <span className="text-[var(--crm-positive)] font-bold">{proposal.quantity?.toLocaleString()} {unit}</span>
-                    {" | "} Base: <span className="text-[var(--crm-ink-soft)]">INR {proposal.basePrice}/{unit}</span>
-                    {proposal.paymentTerm && <>{" | "} Terms: <span className="text-[var(--crm-ink-soft)]">{proposal.paymentTerm.replace('_', ' ')}</span></>}
-                    {" | "} Gross Value: <span className="text-[var(--crm-positive)] font-bold">INR {proposal.estimatedValue?.toLocaleString()}</span>
+                <div className="text-[var(--crm-heading)] leading-relaxed">
+                    <span className="text-[var(--crm-heading)] font-bold text-sm">{distributorLabel}</span>
+                    <span className="text-slate-400 px-1">|</span> Lot Target: <span className="text-[var(--crm-heading)] font-bold">{proposal.lotId} ({proposal.grade})</span>
+                    <span className="text-slate-400 px-1">|</span> Volume: <span className="text-emerald-700 dark:text-emerald-400 font-bold">{proposal.quantity?.toLocaleString()} {unit}</span>
+                    <span className="text-slate-400 px-1">|</span> Base: <span className="text-[var(--crm-heading)] font-semibold">INR {proposal.basePrice}/{unit}</span>
+                    {proposal.paymentTerm && <><span className="text-slate-400 px-1">|</span> Terms: <span className="text-[var(--crm-heading)] font-semibold">{proposal.paymentTerm.replace('_', ' ')}</span></>}
+                    <span className="text-slate-400 px-1">|</span> Gross Value: <span className="text-emerald-700 dark:text-emerald-400 font-bold">INR {proposal.estimatedValue?.toLocaleString()}</span>
                 </div>
-                <div className="text-[var(--crm-ink-faint)] text-[10px]">
+                <div className="text-[var(--crm-ink-faint)] text-[11px] font-medium">
                     {proposal.region} {proposal.createdAt ? `· ${new Date(proposal.createdAt).toLocaleDateString()}` : ''}
                 </div>
             </div>
             <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-sm text-[10px] font-mono uppercase font-bold tracking-tight bg-[var(--crm-bg)] border ${STATUS_STYLES[statusKey] || 'text-[var(--crm-ink-faint)] border-[var(--crm-ink-soft)]/20'}`}>
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-sans uppercase font-bold tracking-wider border ${STATUS_STYLES[statusKey] || 'text-[var(--crm-heading)] border-[var(--crm-line)]'}`}>
                     {proposal.status}
                 </span>
                 {showActions && statusKey === 'pending' && (
                     <>
                         <button
                             onClick={() => onDisapprove?.(proposal._id)}
-                            className="bg-[var(--crm-danger-bg)] border border-[var(--crm-danger-bg)] text-[var(--crm-danger)] px-3 py-1.5 rounded-sm font-bold uppercase tracking-wide hover:bg-[var(--crm-danger-bg)] transition-all cursor-pointer text-[10px]"
+                            className="bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 px-3 py-1.5 rounded-lg font-bold uppercase tracking-wide hover:bg-rose-100 transition-all cursor-pointer text-[10px]"
                         >
                             Disapprove
                         </button>
                         <button
                             onClick={() => onApprove?.(proposal._id)}
-                            className="bg-[var(--crm-positive-bg)] border border-[var(--crm-positive-bg)] text-[var(--crm-positive)] px-3 py-1.5 rounded-sm font-bold uppercase tracking-wide hover:bg-[var(--crm-positive-bg)] transition-all cursor-pointer text-[10px]"
+                            className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-lg font-bold uppercase tracking-wide hover:bg-emerald-100 transition-all cursor-pointer text-[10px]"
                         >
                             Approve & Issue Invoice
                         </button>
@@ -54,12 +54,13 @@ export default function ProposalCard({ proposal, onApprove, onDisapprove, onDele
                     <button
                         onClick={() => onDelete(proposal._id)}
                         title="Delete Sourcing Request"
-                        className="p-1.5 text-[var(--crm-ink-faint)] hover:text-[var(--crm-danger)] rounded-sm transition-all cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-all cursor-pointer"
                     >
-                        <FiTrash2 size={13} />
+                        <FiTrash2 size={14} />
                     </button>
                 )}
             </div>
         </div>
     );
 }
+

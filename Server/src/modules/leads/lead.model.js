@@ -1,9 +1,296 @@
 const mongoose = require("mongoose");
 
+const {
+  CRM_STATUSES,
+  LOST_REASONS,
+} = require("./lead.constants");
+
+/**
+ * India Trade Overseas — Master DPR v4.0
+ * Phase 2.2: Lead / Opportunity persistence model
+ *
+ * Master DPR principles implemented here:
+ * - ITO database remains the durable source of truth.
+ * - Every opportunity has an immutable internal Lead ID / leadCode.
+ * - A resolved Contact can have multiple Lead opportunities.
+ * - Canonical CRM lifecycle is stored separately from the richer legacy stage.
+ * - CRM synchronization / notification delivery have durable retry state.
+ * - Lost reasons use the fixed DPR dictionary.
+ * - Attribution, ownership, commercial and response-time fields are retained.
+ * - Existing application fields are preserved for compatibility.
+ */
+
+const CRM_DELIVERY_STATUS = Object.freeze([
+  "NOT_REQUIRED",
+  "PENDING",
+  "PROCESSING",
+  "SYNCED",
+  "FAILED",
+  "MANUAL_RECOVERY",
+]);
+
+const NOTIFICATION_DELIVERY_STATUS = Object.freeze([
+  "NOT_REQUIRED",
+  "PENDING",
+  "PROCESSING",
+  "SENT",
+  "FAILED",
+  "MANUAL_RECOVERY",
+]);
+
+const CONTACT_RESOLUTION_STATUS = Object.freeze([
+  "UNRESOLVED",
+  "MATCHED",
+  "CREATED",
+  "AMBIGUOUS",
+]);
+
+const CONTACT_RESOLUTION_METHOD = Object.freeze([
+  "NONE",
+  "PHONE",
+  "EMAIL",
+  "PHONE_AND_EMAIL",
+]);
+
+const crmSyncSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: CRM_DELIVERY_STATUS,
+      default: "PENDING",
+      index: true,
+    },
+
+    externalCrmId: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 200,
+      index: true,
+    },
+
+    attempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    nextAttemptAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    lastAttemptAt: {
+      type: Date,
+      default: null,
+    },
+
+    syncedAt: {
+      type: Date,
+      default: null,
+    },
+
+    lastError: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    manualRecoveryRequired: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    manualRecoveryReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const notificationStateSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: NOTIFICATION_DELIVERY_STATUS,
+      default: "NOT_REQUIRED",
+      index: true,
+    },
+
+    attempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    nextAttemptAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    lastAttemptAt: {
+      type: Date,
+      default: null,
+    },
+
+    sentAt: {
+      type: Date,
+      default: null,
+    },
+
+    lastError: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const requirementDetailsSchema = new mongoose.Schema(
+  {
+    /**
+     * Form/intake context is stored separately from the generic Lead fields so
+     * CRM can show category-specific buyer requirements without reading
+     * arbitrary legacy payload blobs.
+     */
+    captureMode: {
+      type: String,
+      enum: [
+        "",
+        "QUICK",
+        "REQUIREMENT_BUILDER",
+        "COMMERCIAL_ENQUIRY",
+        "QUOTE_REQUEST",
+        "REPEAT_ORDER",
+      ],
+      default: "",
+      index: true,
+    },
+
+    sourcePreference: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 250,
+    },
+
+    packaging: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    tradeType: {
+      type: String,
+      enum: ["", "DOMESTIC", "EXPORT"],
+      default: "",
+      index: true,
+    },
+
+    incoterm: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100,
+    },
+
+    qualityRequirement: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    privateLabelRequirement: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    businessCategory: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 250,
+    },
+
+    objective: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 250,
+    },
+
+    /**
+     * Keep ad budget as buyer-supplied text at intake time.
+     * Do not manufacture currency conversion or treat it as actual ad spend.
+     */
+    monthlyAdBudget: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 250,
+    },
+
+    budgetCurrency: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 20,
+    },
+
+    marketingStatus: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    paymentTerms: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    documentationRequirement: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    buyerType: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const leadSchema = new mongoose.Schema(
   {
     // ============================================================
-    // MASTER DPR v4.0 — LEAD IDENTITY / IDEMPOTENCY
+    // MASTER DPR v4.0 — LEAD / OPPORTUNITY IDENTITY
     // ============================================================
 
     leadCode: {
@@ -11,10 +298,10 @@ const leadSchema = new mongoose.Schema(
       unique: true,
       required: true,
       index: true,
+      trim: true,
     },
 
-    // Prevents duplicate website leads when the same browser
-    // submission is retried because of timeout/network failure.
+    // Idempotency key for public website submission retries.
     submissionId: {
       type: String,
       trim: true,
@@ -23,14 +310,49 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
+    /**
+     * A Lead document represents one commercial opportunity.
+     * contactId resolves the person/company identity independently so the
+     * same contact may own multiple opportunities across Stone/Rice/Tea etc.
+     */
+    contactId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Contact",
+      default: null,
+      index: true,
+    },
+
+    contactResolution: {
+      status: {
+        type: String,
+        enum: CONTACT_RESOLUTION_STATUS,
+        default: "UNRESOLVED",
+        index: true,
+      },
+
+      method: {
+        type: String,
+        enum: CONTACT_RESOLUTION_METHOD,
+        default: "NONE",
+      },
+
+      resolvedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
     // ============================================================
     // LEAD SOURCE
     // ============================================================
 
+    // Phase 4: keep Meta Instant Form distinct from WEBSITE so the
+    // two DPR acquisition paths can be compared without corrupting source data.
     source: {
       type: String,
       enum: [
         "WEBSITE",
+        "META_INSTANT_FORM",
         "AI_AGENT",
         "WHATSAPP",
         "INDIAMART",
@@ -57,17 +379,17 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
-    // More specific than source.
-    // Example:
-    // source = WEBSITE
-    // leadOrigin = REQUIREMENT_BUILDER
     leadOrigin: {
       type: String,
       enum: [
         "GENERAL_ENQUIRY",
+        "COMMERCIAL_ENQUIRY",
+        "QUICK_ENQUIRY",
+        "META_INSTANT_FORM",
         "SOFT_GATE",
         "REQUIREMENT_BUILDER",
         "QUOTE_REQUEST",
+        "REPEAT_ORDER",
         "AI_AGENT",
         "MANUAL",
         "IMPORT",
@@ -77,12 +399,9 @@ const leadSchema = new mongoose.Schema(
     },
 
     // ============================================================
-    // CONTACT
+    // CONTACT SNAPSHOT
     // ============================================================
 
-    // MASTER DPR:
-    // Name is optional at initial phone-first soft gate.
-    // It can be collected later through progressive qualification.
     customerName: {
       type: String,
       default: "",
@@ -101,7 +420,6 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Canonical protected phone storage
     phoneEncrypted: {
       type: String,
       required: true,
@@ -134,9 +452,45 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Existing compatibility field.
-    // New website soft-gate leads should NOT populate this
-    // with plaintext phone data.
+    // GST is optional and protected when supplied.
+    gstEncrypted: {
+      type: String,
+      default: "",
+    },
+
+    gstMasked: {
+      type: String,
+      default: "",
+    },
+
+    gstHash: {
+      type: String,
+      default: "",
+      index: true,
+    },
+
+    /**
+     * A buyer may provide a WhatsApp number that differs from the primary
+     * phone. New public flows persist that value only in protected form.
+     */
+    whatsAppEncrypted: {
+      type: String,
+      default: "",
+    },
+
+    whatsAppMasked: {
+      type: String,
+      default: "",
+    },
+
+    whatsAppHash: {
+      type: String,
+      default: "",
+      index: true,
+    },
+
+    // Legacy compatibility field for existing records/UI only. New public
+    // flows must not place plaintext phone/WhatsApp numbers here.
     whatsAppNumber: {
       type: String,
       default: "",
@@ -155,7 +509,7 @@ const leadSchema = new mongoose.Schema(
     },
 
     // ============================================================
-    // PRODUCT / REQUIREMENT
+    // REQUIREMENT / OPPORTUNITY
     // ============================================================
 
     productCategory: {
@@ -164,36 +518,36 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Canonical product name.
-    // Example: "20 MM Stone Chips"
     product: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Example: PAKUR / BHUTAN / BLACK / WHITE
     productVariant: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Example: 20 MM / 40 MM / Stone Dust / WMM
     grade: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Legacy/free-text quantity retained for compatibility.
+    specification: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
     quantity: {
       type: String,
       default: "",
     },
 
-    // Canonical numeric quantity for analytics,
-    // scoring and CRM reporting.
     quantityValue: {
       type: Number,
       default: 0,
@@ -205,11 +559,6 @@ const leadSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Example:
-    // BELOW_40_MT
-    // 40_99_MT
-    // 100_499_MT
-    // 500_PLUS_MT
     quantityBand: {
       type: String,
       default: "",
@@ -223,15 +572,22 @@ const leadSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Human/business timeline value.
-    // Example: WITHIN_7_DAYS
     timeline: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Parsed Date equivalent where available.
+    /**
+     * Product/form-specific qualification fields from Master DPR dynamic
+     * forms. Generic requirement fields above remain the canonical CRM
+     * summary; this subdocument preserves the additional buyer inputs.
+     */
+    requirementDetails: {
+      type: requirementDetailsSchema,
+      default: () => ({}),
+    },
+
     targetDate: {
       type: Date,
       default: null,
@@ -264,23 +620,35 @@ const leadSchema = new mongoose.Schema(
     // ============================================================
 
     consent: {
-      // Permission to contact the buyer about this enquiry.
       contactAllowed: {
         type: Boolean,
         default: false,
       },
 
-      // Separate, optional promotional marketing permission.
       marketingAllowed: {
         type: Boolean,
         default: false,
       },
 
-      // Version of Privacy Policy / notice accepted.
       privacyVersion: {
         type: String,
         default: "",
         trim: true,
+      },
+
+      analyticsAllowed: {
+        type: Boolean,
+        default: false,
+      },
+
+      advertisingAllowed: {
+        type: Boolean,
+        default: false,
+      },
+
+      trackingConsentCapturedAt: {
+        type: Date,
+        default: null,
       },
 
       capturedAt: {
@@ -354,6 +722,18 @@ const leadSchema = new mongoose.Schema(
         trim: true,
       },
 
+      creativeId: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+
+      creative: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+
       landingPage: {
         type: String,
         default: "",
@@ -375,14 +755,23 @@ const leadSchema = new mongoose.Schema(
     },
 
     // ============================================================
-    // QUALIFICATION / CRM
+    // MASTER DPR v4.0 — QUALIFICATION / CRM LIFECYCLE
     // ============================================================
 
+    /**
+     * Canonical DPR score classification:
+     * HOT / WARM / NURTURE / LOW.
+     *
+     * COLD / FAKE / INCOMPLETE remain temporarily valid for backward
+     * compatibility with existing CRM records and UI.
+     */
     priority: {
       type: String,
       enum: [
         "HOT",
         "WARM",
+        "NURTURE",
+        "LOW",
         "COLD",
         "DEAD",
         "FAKE",
@@ -392,11 +781,42 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
+    score: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    /**
+     * Exact Master DPR management lifecycle.
+     * This is intentionally separate from the richer operational stage below.
+     */
+    crmStatus: {
+      type: String,
+      enum: CRM_STATUSES,
+      default: "NEW",
+      required: true,
+      index: true,
+    },
+
+    crmStatusChangedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    crmStatusChangedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // Existing detailed operational pipeline retained for compatibility.
     stage: {
       type: String,
       enum: [
         "NEW_LEAD",
         "ASSIGNED",
+        "CONTACT_ATTEMPTED",
         "CONTACTED",
         "LEAD_QUALIFICATION",
         "FOLLOW_UP",
@@ -417,8 +837,6 @@ const leadSchema = new mongoose.Schema(
         "CLOSED_LOST",
         "DELIVERED",
         "COMPLETED",
-
-        // Existing/newer stages
         "REQUIREMENT_RECEIVED",
         "QUOTATION_SENT",
         "SAMPLE_SENT",
@@ -427,10 +845,27 @@ const leadSchema = new mongoose.Schema(
         "PO_RECEIVED",
         "DEAL_WON",
         "DEAL_LOST",
+        "WON",
+        "LOST",
       ],
       default: "NEW_LEAD",
       index: true,
     },
+
+    stageChangedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    stageChangedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // ============================================================
+    // MASTER DPR v4.0 — OWNERSHIP
+    // ============================================================
 
     assignedTo: {
       type: mongoose.Schema.Types.Mixed,
@@ -466,26 +901,186 @@ const leadSchema = new mongoose.Schema(
       default: null,
     },
 
+    territory: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    assignedTeam: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+
+    assignmentSource: {
+      type: String,
+      enum: [
+        "UNASSIGNED",
+        "AUTO_ROUTING",
+        "MANUAL",
+        "IMPORT",
+        "SYSTEM_RECOVERY",
+      ],
+      default: "UNASSIGNED",
+    },
+
+    assignmentReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
     // ============================================================
-    // LEAD COMMERCIAL VALUE
+    // MASTER DPR v4.0 — ACTIVITY / SLA FIELDS
     // ============================================================
+
+    firstResponseAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    lastContactAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    nextFollowupAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    // ============================================================
+    // MASTER DPR v4.0 — COMMERCIAL FIELDS
+    // ============================================================
+
+    customerAccountId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+
+    customerAccountType: {
+      type: String,
+      enum: ["", "USER", "DISTRIBUTOR"],
+      default: "",
+    },
+
+    customerAccountEvidence: {
+      reference: String,
+      verifiedAt: Date,
+      verifiedBy: mongoose.Schema.Types.ObjectId,
+    },
+
+    crmHistory: {
+      type: [
+        {
+          fromStatus: String,
+          toStatus: String,
+          occurredAt: Date,
+          actorId: mongoose.Schema.Types.ObjectId,
+        },
+      ],
+      default: [],
+    },
+
+    commercialOutcome: {
+      type: new mongoose.Schema(
+        {
+          currency: String,
+          revenue: {
+            type: Number,
+            default: null,
+          },
+          grossProfit: {
+            type: Number,
+            default: null,
+          },
+          orderReference: String,
+          evidenceReference: String,
+          recordedAt: Date,
+          recordedBy: mongoose.Schema.Types.ObjectId,
+        },
+        {
+          _id: false,
+        }
+      ),
+      default: null,
+    },
 
     leadValue: {
       type: Number,
       default: 0,
     },
 
-    score: {
+    quoteId: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+      index: true,
+    },
+
+    quoteAmount: {
       type: Number,
       default: 0,
+      min: 0,
+    },
+
+    expectedMarginBand: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100,
+    },
+
+    orderAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     // ============================================================
-    // MASTER DPR v4.0 — AUTOMATION / RECOVERY STATE
+    // MASTER DPR v4.0 — OUTCOME / LOST REASON
     // ============================================================
 
-    // Local persistence happens first.
-    // Routing/audit/activity automation runs after persistence.
+    lostReason: {
+      type: String,
+      enum: ["", ...LOST_REASONS],
+      default: "",
+      index: true,
+    },
+
+    lostReasonNotes: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    lostAt: {
+      type: Date,
+      default: null,
+    },
+
+    wonAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ============================================================
+    // MASTER DPR v4.0 — WEBSITE POST-PERSISTENCE AUTOMATION
+    // ============================================================
+
     automationStatus: {
       type: String,
       enum: [
@@ -501,16 +1096,43 @@ const leadSchema = new mongoose.Schema(
     automationAttempts: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
     automationLastError: {
       type: String,
       default: "",
+      maxlength: 500,
     },
 
     automationLastAttemptAt: {
       type: Date,
       default: null,
+    },
+
+    // ============================================================
+    // MASTER DPR v4.0 — ASYNC CRM SYNC / MANUAL RECOVERY
+    // ============================================================
+
+    crmSync: {
+      type: crmSyncSchema,
+      default: () => ({}),
+    },
+
+    // ============================================================
+    // MASTER DPR v4.0 — NOTIFICATION DELIVERY VISIBILITY
+    // ============================================================
+
+    notificationDelivery: {
+      salesAlert: {
+        type: notificationStateSchema,
+        default: () => ({}),
+      },
+
+      itAlert: {
+        type: notificationStateSchema,
+        default: () => ({}),
+      },
     },
 
     // ============================================================
@@ -596,9 +1218,15 @@ const leadSchema = new mongoose.Schema(
     ],
 
     // ============================================================
-    // DUPLICATE / ACTIVITY CONTEXT
+    // LEGACY DUPLICATE / ACTIVITY CONTEXT
     // ============================================================
 
+    /**
+     * Retained for existing records/UI only.
+     * New Phase 2 contact resolution must NOT treat the same contact as a
+     * duplicate opportunity. It should resolve contactId and still create a
+     * separate Lead opportunity.
+     */
     duplicateOf: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lead",
@@ -611,20 +1239,10 @@ const leadSchema = new mongoose.Schema(
       default: "",
     },
 
-    // Legacy compatibility.
-    //
-    // IMPORTANT:
-    // New website requirement-builder leads should NOT store
-    // plaintext phone/email/contact PII here.
+    // Legacy compatibility. New public flows must not store plaintext PII here.
     originalPayload: {
       type: Object,
       default: {},
-    },
-
-    nextFollowupAt: {
-      type: Date,
-      default: null,
-      index: true,
     },
 
     remarks: {
@@ -681,7 +1299,6 @@ const leadSchema = new mongoose.Schema(
   }
 );
 
-
 // ============================================================
 // EXISTING CRM QUERY INDEX
 // ============================================================
@@ -695,10 +1312,26 @@ leadSchema.index({
   createdAt: -1,
 });
 
+// ============================================================
+// MASTER DPR — CANONICAL CRM PIPELINE INDEX
+// ============================================================
+
+leadSchema.index({
+  crmStatus: 1,
+  assignedTo: 1,
+  productCategory: 1,
+  priority: 1,
+  createdAt: -1,
+});
 
 // ============================================================
-// DUPLICATE / CONTACT RESOLUTION INDEX
+// CONTACT RESOLUTION / MULTI-OPPORTUNITY INDEXES
 // ============================================================
+
+leadSchema.index({
+  contactId: 1,
+  createdAt: -1,
+});
 
 leadSchema.index({
   phoneHash: 1,
@@ -707,9 +1340,13 @@ leadSchema.index({
   productCategory: 1,
 });
 
+leadSchema.index({
+  gstHash: 1,
+  createdAt: -1,
+});
 
 // ============================================================
-// MASTER DPR v4.0 — AUTOMATION RECOVERY INDEX
+// WEBSITE AUTOMATION RECOVERY INDEX
 // ============================================================
 
 leadSchema.index({
@@ -717,9 +1354,35 @@ leadSchema.index({
   automationLastAttemptAt: 1,
 });
 
+// ============================================================
+// CRM SYNC WORKER INDEX
+// ============================================================
+
+leadSchema.index({
+  "crmSync.status": 1,
+  "crmSync.nextAttemptAt": 1,
+  "crmSync.attempts": 1,
+  createdAt: 1,
+});
+
+leadSchema.index({
+  "crmSync.manualRecoveryRequired": 1,
+  "crmSync.status": 1,
+  updatedAt: -1,
+});
 
 // ============================================================
-// MASTER DPR v4.0 — ACQUISITION REPORTING INDEX
+// FOLLOW-UP / SLA INDEX
+// ============================================================
+
+leadSchema.index({
+  crmStatus: 1,
+  nextFollowupAt: 1,
+  assignedTo: 1,
+});
+
+// ============================================================
+// ACQUISITION REPORTING INDEX
 // ============================================================
 
 leadSchema.index({
@@ -729,9 +1392,8 @@ leadSchema.index({
   createdAt: -1,
 });
 
-
 // ============================================================
-// MASTER DPR v4.0 — ATTRIBUTION REPORTING INDEX
+// ATTRIBUTION REPORTING INDEX
 // ============================================================
 
 leadSchema.index({
@@ -741,6 +1403,16 @@ leadSchema.index({
   createdAt: -1,
 });
 
+// ============================================================
+// LOST-REASON REPORTING INDEX
+// ============================================================
+
+leadSchema.index({
+  crmStatus: 1,
+  lostReason: 1,
+  productCategory: 1,
+  updatedAt: -1,
+});
 
 module.exports = mongoose.model(
   "Lead",

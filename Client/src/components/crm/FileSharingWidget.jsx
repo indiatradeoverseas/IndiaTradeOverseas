@@ -520,7 +520,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </div>
 
                 {/* Recipient Selection Scroll List */}
-                <div className="h-56 overflow-y-auto border rounded p-2 space-y-1.5 bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                <div className="h-56 overflow-y-auto custom-scrollbar border rounded p-2 space-y-1.5 bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
                   {loadingRecipients ? (
                     <div className="text-center py-8 text-xs font-sans text-[var(--crm-ink-faint)] flex items-center justify-center gap-2">
                       <FiRefreshCw className="animate-spin" /> Loading employee directory...
@@ -635,7 +635,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
                 {filteredFiles.map((fileObj) => {
                   const typeMeta = getFileIcon(fileObj.mimeType, fileObj.originalName);
                   const IconComp = typeMeta.icon;
@@ -748,9 +748,9 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="max-h-[420px] overflow-y-auto overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse min-w-[900px]">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-[var(--crm-bg-sunken)] backdrop-blur-md">
                     <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-sans font-bold border-b border-[var(--crm-line)]">
                       <th className="py-3.5 px-4">File Name</th>
                       <th className="py-3.5 px-4">Sent By (Executive)</th>

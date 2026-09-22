@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { FiSend, FiCheckCircle, FiAnchor, FiCalendar } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { pushDataLayerEvent } from '../../utils/analytics';
+import {
+  DPR_EVENTS,
+  getAnalyticsConsent,
+  getFirstPartyAttribution,
+  getOrCreateAnalyticsSessionId,
+  pushDprEvent
+} from '../../utils/analytics';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 
 export default function QuoteRequest() {
@@ -22,14 +28,21 @@ export default function QuoteRequest() {
     whatsAppNumber: '',
     email: '',
     productCategory: '',
+    product: '',
     quantity: '',
     destination: '',
     targetDate: '',
     estimatedValue: '',
-    message: ''
+    message: '',
+    contactConsent: false,
+    marketingConsent: false
   });
+  const [submissionId, setSubmissionId] = useState(
+    () => `quote_${crypto.randomUUID()}`
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [savedLeadCode, setSavedLeadCode] = useState('');
 
   useEffect(() => {
     const categoryParam = searchParams.get('category');
@@ -51,56 +64,129 @@ export default function QuoteRequest() {
       setFormData(prev => ({
         ...prev,
         productCategory: mappedCategory || prev.productCategory,
-        message: productNameParam 
-          ? `I am interested in requesting a quote for "${productNameParam}". Please provide CIF/FOB pricing and availability details.`
-          : prev.message
+        product: productNameParam || prev.product
       }));
     }
   }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.contactConsent) {
+      toast.error('Please accept the enquiry-contact consent to continue.');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      const numericVal = Number((formData.estimatedValue || '').replace(/[^0-9.]/g, '')) || undefined;
-      const response = await leadsApi.createLead({
-        ...formData,
-        whatsAppNumber: formData.whatsAppNumber || formData.phone,
-        leadValue: numericVal,
-        source: 'WEBSITE'
+      const trackingConsent = getAnalyticsConsent();
+      const attribution = getFirstPartyAttribution();
+
+      const specification = [
+        formData.message.trim(),
+        formData.estimatedValue.trim()
+          ? `Buyer-stated estimated valuation / budget: ${formData.estimatedValue.trim()}`
+          : ''
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const response = await leadsApi.createWebsiteLead({
+        submissionId,
+        captureMode: 'QUOTE_REQUEST',
+        customerName: formData.customerName.trim(),
+        companyName: formData.companyName.trim(),
+        phone: formData.phone.trim(),
+        whatsappNumber: (formData.whatsAppNumber || formData.phone).trim(),
+        email: formData.email.trim(),
+        productCategory: formData.productCategory,
+        product: formData.product.trim(),
+        quantity: formData.quantity.trim(),
+        destination: formData.destination.trim(),
+        timeline: formData.targetDate,
+        specification,
+        consent: {
+          contactAllowed: true,
+          marketingAllowed: formData.marketingConsent === true,
+          analyticsAllowed: trackingConsent.analytics === true,
+          advertisingAllowed: trackingConsent.advertising === true,
+          privacyVersion: 'privacy-policy-2026-09',
+          trackingConsentCapturedAt: trackingConsent.updated_at || null
+        },
+        attribution: {
+          ...attribution,
+          landing_page: window.location.pathname,
+          landing_page_type: 'QUOTE_REQUEST',
+          analytics_session_id: getOrCreateAnalyticsSessionId()
+        },
+        metadata: {
+          builderVersion: 'QUOTE_REQUEST_V1'
+        }
       });
-      if (response.success) {
-        setSubmitted(true);
-        toast.success('Quote request submitted successfully! Our team will contact you soon.', {
-          style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3', fontSize: '12px' }
-        });
-        pushDataLayerEvent('generate_lead', {
-          lead_type: 'quote_request',
-          product_category: formData.productCategory || undefined
-        });
-        setTimeout(() => {
-          setSubmitted(false);
-          setFormData({
-            customerName: '',
-            companyName: '',
-            phone: '',
-            whatsAppNumber: '',
-            email: '',
-            productCategory: '',
-            quantity: '',
-            destination: '',
-            targetDate: '',
-            estimatedValue: '',
-            message: ''
-          });
-        }, 3000);
+
+      const saved = response?.data;
+
+      if (
+        !saved?.persisted ||
+        !saved?.leadId ||
+        !saved?.leadCode ||
+        !saved?.leadCreatedEventId
+      ) {
+        throw new Error('The server did not confirm durable lead persistence.');
       }
+
+      pushDprEvent(
+        DPR_EVENTS.LEAD_CREATED,
+        {
+          product_vertical: formData.productCategory,
+          product_category: formData.productCategory,
+          product: formData.product.trim(),
+          landing_page_type: 'QUOTE_REQUEST',
+          lead_id: saved.leadCode,
+          submission_id: submissionId
+        },
+        {
+          eventId: saved.leadCreatedEventId
+        }
+      );
+
+      setSavedLeadCode(saved.leadCode);
+      setSubmitted(true);
+
+      toast.success('Quote request saved successfully. Our sales team will review it.', {
+        style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3', fontSize: '12px' }
+      });
+
+      setTimeout(() => {
+        setSubmitted(false);
+        setSavedLeadCode('');
+        setSubmissionId(`quote_${crypto.randomUUID()}`);
+        setFormData({
+          customerName: '',
+          companyName: '',
+          phone: '',
+          whatsAppNumber: '',
+          email: '',
+          productCategory: '',
+          product: '',
+          quantity: '',
+          destination: '',
+          targetDate: '',
+          estimatedValue: '',
+          message: '',
+          contactConsent: false,
+          marketingConsent: false
+        });
+      }, 3000);
     } catch (error) {
       console.error('Error submitting quote request:', error);
-      toast.error('Failed to submit request. Please try again.', {
-        style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444', fontSize: '12px' }
-      });
+      toast.error(
+        error?.message || 'We could not confirm that your quote request was saved. Please retry.',
+        {
+          style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444', fontSize: '12px' }
+        }
+      );
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +218,7 @@ export default function QuoteRequest() {
           </div>
           <h2 className="text-xl font-serif font-normal text-[#F2F4F7] tracking-wide mb-2 uppercase">Request Transmitted</h2>
           <p className="text-[#C5CBD3] text-xs leading-relaxed font-light opacity-90">
-            Thank you for your interest. Our logistics compliance team will evaluate your dossier parameters within 24 hours.
+            Your quote request has been saved in our system{savedLeadCode ? ` as ${savedLeadCode}` : ''}. Our sales team will review the submitted commercial requirement.
           </p>
         </motion.div>
       </div>
@@ -263,8 +349,8 @@ export default function QuoteRequest() {
               </div>
             </div>
 
-            {/* Row 3: Product Category and Quantity */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Row 3: Product / Service and Quantity */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
                   Product Category <span className="text-red-500">*</span>
@@ -294,10 +380,24 @@ export default function QuoteRequest() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
-                  Target Quantity
+                  Product / Service <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  required
+                  value={formData.product}
+                  onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+                  className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
+                  placeholder="Product / grade / service required"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6D7886] mb-1.5 font-mono">
+                  Target Quantity <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
@@ -314,6 +414,7 @@ export default function QuoteRequest() {
                 </label>
                 <input
                   type="text"
+                  required
                   value={formData.destination}
                   onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
                   className="block w-full border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 px-3.5 py-2.5 text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
@@ -327,6 +428,7 @@ export default function QuoteRequest() {
                 </label>
                 <input
                   type="date"
+                  required
                   min={todayString}
                   value={formData.targetDate}
                   onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
@@ -361,9 +463,33 @@ export default function QuoteRequest() {
               />
             </div>
 
-            {/* Consent Notice Parameter Block */}
-            <div className="p-3.5 bg-[#040A12]/60 border border-[#C5CBD3]/10 text-[#b5bdc8] text-[11px] font-light leading-relaxed rounded-sm">
-              <strong>Notice:</strong> Documented specifications must align with verifiable enterprise routing criteria before formal validation manifests within the logistics loop.
+            {/* Master DPR — enquiry consent and optional marketing consent */}
+            <div className="space-y-3 p-3.5 bg-[#040A12]/60 border border-[#C5CBD3]/10 text-[#b5bdc8] text-[11px] font-light leading-relaxed rounded-sm">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  required
+                  checked={formData.contactConsent}
+                  onChange={(e) => setFormData({ ...formData, contactConsent: e.target.checked })}
+                  className="mt-0.5"
+                />
+                <span>
+                  I agree to be contacted by India Trade Overseas regarding this commercial enquiry and acknowledge the{' '}
+                  <Link to="/privacy-policy" className="underline text-[#F2F4F7]">
+                    Privacy Policy
+                  </Link>.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.marketingConsent}
+                  onChange={(e) => setFormData({ ...formData, marketingConsent: e.target.checked })}
+                  className="mt-0.5"
+                />
+                <span>Optional: send me relevant promotional or marketing updates.</span>
+              </label>
             </div>
 
             {/* Submit Trigger */}
