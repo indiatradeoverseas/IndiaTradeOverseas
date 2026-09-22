@@ -2,22 +2,53 @@ const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { authenticate } = require('../../middlewares/auth.middleware');
-const rbac = require('../../middlewares/rbac.middleware');
-const checkPermission = require('../../middlewares/permission.middleware');
+
+const {
+  authenticate,
+} = require('../../middlewares/auth.middleware');
+
+const rbac =
+  require('../../middlewares/rbac.middleware');
+
+const checkPermission =
+  require('../../middlewares/permission.middleware');
+
+
 const {
   createWebsiteLead,
+  updateWebsiteLeadProfile,
   getLeadsList,
   getLeadDetails,
+  changeLeadCrmStatus,
   changeLeadStage,
   changeLeadPriority,
   assignLead,
   assignLeadsBulk,
   bulkImportLeads,
-  deleteLead
+  deleteLead,
 } = require('./lead.controller');
-const {getSalesMetrics} = require('./leadManagement.controller.js');
-const { createFromChat } = require('./ai-agent/aiLead.controller');
+
+
+const {
+  getSalesMetrics,
+} = require('./leadManagement.controller.js');
+
+
+const {
+  getSalesSlaDashboardController,
+} = require('./leadSla.controller');
+
+
+const {
+  getLeadRecoveryDashboardController,
+  requeueLeadRecoveryController,
+} = require('./leadRecovery.controller');
+
+
+const {
+  createFromChat,
+} = require('./ai-agent/aiLead.controller');
+
 
 const {
   createManualLead,
@@ -33,148 +64,859 @@ const {
   updateCallRecordingRemark,
   updateCallRecordingStatus,
   uploadLOIDocument,
-  streamLOIDocument
+  streamLOIDocument,
 } = require('./leadManagement.controller');
 
-// Multer setup for LOI documents
-const loiStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'loi_documents');
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    cb(null, destDir);
-  },
-  filename: (req, file, cb) => {
-    const safeName = `loi-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, safeName);
-  }
-});
 
-const uploadLOIFile = multer({
-  storage: loiStorage,
-  limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for LOI files
-});
+// ============================================================
+// MULTER — LOI DOCUMENTS
+// ============================================================
 
-// Multer setup for lead voice notes
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'voice_notes');
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    cb(null, destDir);
-  },
-  filename: (req, file, cb) => {
-    const safeName = `${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, safeName);
-  }
-});
+const loiStorage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      cb
+    ) => {
+      const destDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'loi_documents'
+        );
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for audio clips
-});
+      if (
+        !fs.existsSync(
+          destDir
+        )
+      ) {
+        fs.mkdirSync(
+          destDir,
+          {
+            recursive: true,
+          }
+        );
+      }
 
-// Public route: used by the unauthenticated Quote Request form (Client/src/pages/public/QuoteRequest.jsx)
-// and the public chat widget. Must stay above router.use(authenticate) below.
-router.post('/from-chat', createFromChat);
-// MASTER DPR v4.0
-// Public requirement-builder lead persistence.
-// MUST remain above router.use(authenticate).
+      cb(
+        null,
+        destDir
+      );
+    },
+
+    filename: (
+      req,
+      file,
+      cb
+    ) => {
+      const safeName =
+        `loi-${Date.now()}-${file.originalname}`
+          .replace(
+            /[^a-zA-Z0-9._-]/g,
+            '_'
+          );
+
+      cb(
+        null,
+        safeName
+      );
+    },
+  });
+
+
+const uploadLOIFile =
+  multer({
+    storage: loiStorage,
+
+    limits: {
+      fileSize:
+        25 *
+        1024 *
+        1024,
+    },
+  });
+
+
+// ============================================================
+// MULTER — LEAD VOICE NOTES
+// ============================================================
+
+const storage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      cb
+    ) => {
+      const destDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'voice_notes'
+        );
+
+      if (
+        !fs.existsSync(
+          destDir
+        )
+      ) {
+        fs.mkdirSync(
+          destDir,
+          {
+            recursive: true,
+          }
+        );
+      }
+
+      cb(
+        null,
+        destDir
+      );
+    },
+
+    filename: (
+      req,
+      file,
+      cb
+    ) => {
+      const safeName =
+        `${Date.now()}-${file.originalname}`
+          .replace(
+            /[^a-zA-Z0-9._-]/g,
+            '_'
+          );
+
+      cb(
+        null,
+        safeName
+      );
+    },
+  });
+
+
+const upload =
+  multer({
+    storage,
+
+    limits: {
+      fileSize:
+        10 *
+        1024 *
+        1024,
+    },
+  });
+
+
+// ============================================================
+// PUBLIC ROUTES
+// ============================================================
+
+/**
+ * Public chat / quote-request ingestion.
+ *
+ * MUST remain above router.use(authenticate).
+ */
+router.post(
+  '/from-chat',
+  createFromChat
+);
+
+
+/**
+ * Master DPR v4.0
+ * Public Requirement Builder persistence.
+ *
+ * MUST remain above router.use(authenticate).
+ */
 router.post(
   '/website',
   createWebsiteLead
 );
-router.get('/call-recordings/:recordingId/stream', streamCallRecording);
 
-router.use(authenticate);
 
-// Multer setup for Call Recordings
-const callRecordingStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const destDir = path.join(process.cwd(), 'uploads', 'call_recordings');
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
+/**
+ * Master DPR v4.0
+ * Progressive profile after phone capture.
+ *
+ * Lead must already exist before this route is called.
+ * Protected by immutable Lead ID + original submissionId pairing.
+ * No OTP is introduced by default.
+ */
+router.patch(
+  '/website/profile',
+  updateWebsiteLeadProfile
+);
+
+
+// ============================================================
+// AUTHENTICATED ROUTES FROM THIS POINT
+// ============================================================
+
+router.use(
+  authenticate
+);
+
+
+// ============================================================
+// MULTER — CALL RECORDINGS
+// ============================================================
+
+const callRecordingStorage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      cb
+    ) => {
+      const destDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'call_recordings'
+        );
+
+      if (
+        !fs.existsSync(
+          destDir
+        )
+      ) {
+        fs.mkdirSync(
+          destDir,
+          {
+            recursive: true,
+          }
+        );
+      }
+
+      cb(
+        null,
+        destDir
+      );
+    },
+
+    filename: (
+      req,
+      file,
+      cb
+    ) => {
+      const safeName =
+        `call-${Date.now()}-${file.originalname}`
+          .replace(
+            /[^a-zA-Z0-9._-]/g,
+            '_'
+          );
+
+      cb(
+        null,
+        safeName
+      );
+    },
+  });
+
+
+const uploadCallAudio =
+  multer({
+    storage:
+      callRecordingStorage,
+
+    limits: {
+      fileSize:
+        30 *
+        1024 *
+        1024,
+    },
+  });
+
+
+// ============================================================
+// STATIC SUB-ROUTES
+//
+// IMPORTANT:
+// These routes MUST remain above dynamic /:id routes.
+// ============================================================
+
+
+// ============================================================
+// MASTER DPR v4.0 — MANAGEMENT / SLA / RECOVERY
+// ============================================================
+
+router.get(
+  '/management/sla',
+  getSalesSlaDashboardController
+);
+
+
+router.get(
+  '/management/recovery',
+  getLeadRecoveryDashboardController
+);
+
+
+router.post(
+  '/management/recovery/:id/requeue',
+  requeueLeadRecoveryController
+);
+
+
+// ============================================================
+// CALL RECORDINGS
+// ============================================================
+
+/**
+ * Call recordings are internal CRM evidence.
+ *
+ * They must never be exposed before authentication.
+ * Record-level ownership enforcement is handled
+ * in the controller/service layer.
+ */
+
+router.get(
+  '/call-recordings/:recordingId/stream',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  streamCallRecording
+);
+
+
+router.post(
+  '/score',
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const {
+        score,
+        priority,
+        classification,
+        action,
+        breakdown,
+        scoringVersion,
+      } =
+        require(
+          './ai-agent/leadScoring.service'
+        )
+          .scoreAndClassifyLead(
+            req.body
+          );
+
+      return require(
+        '../../utils/response'
+      ).ok(
+        res,
+        {
+          score,
+          priority,
+          classification,
+          action,
+          breakdown,
+          scoringVersion,
+        },
+        'Lead scored successfully',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(
+        error
+      );
     }
-    cb(null, destDir);
-  },
-  filename: (req, file, cb) => {
-    const safeName = `call-${Date.now()}-${file.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, safeName);
   }
-});
+);
 
-const uploadCallAudio = multer({
-  storage: callRecordingStorage,
-  limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit
-});
 
-// 1. Static Sub-Routes (MUST stay above dynamic /:id routes to avoid CastError)
-router.post('/score', async (req, res, next) => {
-  try {
-    const { score, priority } = require('./ai-agent/leadScoring.service').scoreAndClassifyLead(req.body);
-    return require('../../utils/response').ok(res, { score, priority }, 'Lead scored successfully', 200, req);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get(
+  '/call-recordings',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  getCallRecordings
+);
 
-router.get('/call-recordings', getCallRecordings);
-router.post('/call-recordings', uploadCallAudio.single('file'), uploadCallRecording);
-router.patch('/call-recordings/:recordingId/remark', updateCallRecordingRemark);
-router.patch('/call-recordings/:recordingId/status', updateCallRecordingStatus);
 
-router.get('/unassigned', rbac('ADMIN', 'MANAGER', 'HR'), checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
-  try {
-    const Lead = require('./lead.model');
-    const { getLeadDisplay } = require('./lead.service');
-    const leads = await Lead.find({ assignedTo: null }).sort({ createdAt: -1 });
-    return require('../../utils/response').ok(res, { leads: leads.map(l => getLeadDisplay(l, req.user)) }, 'Unassigned leads list', 200, req);
-  } catch (error) {
-    next(error);
-  }
-});
+router.post(
+  '/call-recordings',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  uploadCallAudio.single(
+    'file'
+  ),
+  uploadCallRecording
+);
 
-router.get('/reminders/due', checkPermission('leadPermission', 'taskPermission'), getDueReminders);
-router.get('/metrics', checkPermission('leadPermission', 'taskPermission'), getSalesMetrics);
 
-router.get('/count', checkPermission('leadPermission', 'taskPermission'), async (req, res, next) => {
-  try {
-    const Lead = require('./lead.model');
-    const { status } = req.query;
-    let filter = {};
-    if (status === 'won') {
-      filter.stage = { $in: ['CLOSED_WON', 'DEAL_WON'] };
-    } else if (status === 'pending') {
-      filter.stage = { $nin: ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'] };
+router.patch(
+  '/call-recordings/:recordingId/remark',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  updateCallRecordingRemark
+);
+
+
+router.patch(
+  '/call-recordings/:recordingId/status',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  updateCallRecordingStatus
+);
+
+
+// ============================================================
+// UNASSIGNED LEADS
+// ============================================================
+
+router.get(
+  '/unassigned',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'HR'
+  ),
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const Lead =
+        require(
+          './lead.model'
+        );
+
+      const {
+        getLeadDisplay,
+      } =
+        require(
+          './lead.service'
+        );
+
+      const leads =
+        await Lead
+          .find({
+            assignedTo:
+              null,
+          })
+          .sort({
+            createdAt:
+              -1,
+          });
+
+      return require(
+        '../../utils/response'
+      ).ok(
+        res,
+        {
+          leads:
+            leads.map(
+              (
+                lead
+              ) =>
+                getLeadDisplay(
+                  lead,
+                  req.user
+                )
+            ),
+        },
+        'Unassigned leads list',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(
+        error
+      );
     }
-    const count = await Lead.countDocuments(filter);
-    return require('../../utils/response').ok(res, { count }, 'Leads count retrieved successfully', 200, req);
-  } catch (error) {
-    next(error);
   }
-});
+);
 
-router.post('/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLeadsBulk);
-router.post('/bulk-import', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), bulkImportLeads);
-router.get('/', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadsList);
-router.post('/', checkPermission('leadPermission', 'taskPermission'), createManualLead);
 
-// 2. Dynamic /:id Sub-Routes
-router.post('/:id/assign', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), assignLead);
-router.post('/:id/activity', checkPermission('leadPermission', 'taskPermission'), addActivity);
-router.post('/:id/voice-note', checkPermission('leadPermission', 'taskPermission'), upload.single('voiceNote'), uploadVoiceNote);
-router.get('/:id/voice-note/:index', checkPermission('leadPermission', 'taskPermission'), streamVoiceNote);
-router.post('/:id/log-whatsapp', checkPermission('leadPermission', 'taskPermission'), logWhatsAppActivity);
-router.post('/:id/send-email', checkPermission('leadPermission', 'taskPermission'), logEmailActivity);
-router.post('/:id/loi', checkPermission('leadPermission', 'taskPermission'), uploadLOIFile.single('file'), uploadLOIDocument);
-router.get('/:id/loi/:index', checkPermission('leadPermission', 'taskPermission'), streamLOIDocument);
+// ============================================================
+// REMINDERS
+// ============================================================
 
-router.get('/:id', checkPermission('leadPermission', 'taskPermission', 'paymentPermission', 'dispatchPermission', 'quotationPermission'), getLeadDetails);
-router.patch('/:id/stage', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);
-router.patch('/:id/priority', checkPermission('leadPermission', 'taskPermission'), changeLeadPriority);
-router.patch('/:id', checkPermission('leadPermission', 'taskPermission'), changeLeadStage);  
-router.delete('/:id', rbac('ADMIN', 'MANAGER', 'SALES_MANAGER'), deleteLead);
+router.get(
+  '/reminders/due',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  getDueReminders
+);
 
-module.exports = router;
+
+// ============================================================
+// SALES / LEAD METRICS
+// ============================================================
+
+router.get(
+  '/metrics',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  getSalesMetrics
+);
+
+
+// ============================================================
+// LEAD COUNTS
+// ============================================================
+
+router.get(
+  '/count',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const Lead =
+        require(
+          './lead.model'
+        );
+
+      const {
+        status,
+      } =
+        req.query;
+
+      let filter =
+        {};
+
+      if (
+        status ===
+        'won'
+      ) {
+        filter.crmStatus =
+          'WON';
+
+      } else if (
+        status ===
+        'lost'
+      ) {
+        filter.crmStatus =
+          'LOST';
+
+      } else if (
+        status ===
+        'pending'
+      ) {
+        filter.crmStatus =
+          {
+            $nin: [
+              'WON',
+              'LOST',
+            ],
+          };
+      }
+
+      const count =
+        await Lead
+          .countDocuments(
+            filter
+          );
+
+      return require(
+        '../../utils/response'
+      ).ok(
+        res,
+        {
+          count,
+        },
+        'Leads count retrieved successfully',
+        200,
+        req
+      );
+
+    } catch (error) {
+      next(
+        error
+      );
+    }
+  }
+);
+
+
+// ============================================================
+// BULK ASSIGN
+// ============================================================
+
+router.post(
+  '/assign',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  assignLeadsBulk
+);
+
+
+// ============================================================
+// BULK IMPORT
+// ============================================================
+
+router.post(
+  '/bulk-import',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  bulkImportLeads
+);
+
+
+// ============================================================
+// LEAD COLLECTION
+// ============================================================
+
+router.get(
+  '/',
+  checkPermission(
+    'leadPermission',
+    'taskPermission',
+    'paymentPermission',
+    'dispatchPermission',
+    'quotationPermission'
+  ),
+  getLeadsList
+);
+
+
+router.post(
+  '/',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  createManualLead
+);
+
+
+// ============================================================
+// DYNAMIC /:id SUB-ROUTES
+//
+// IMPORTANT:
+// Keep these below all static lead routes.
+// ============================================================
+
+
+// ============================================================
+// ASSIGN SINGLE LEAD
+// ============================================================
+
+router.post(
+  '/:id/assign',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  assignLead
+);
+
+
+// ============================================================
+// LEAD ACTIVITY
+// ============================================================
+
+router.post(
+  '/:id/activity',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  addActivity
+);
+
+
+// ============================================================
+// VOICE NOTES
+// ============================================================
+
+router.post(
+  '/:id/voice-note',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  upload.single(
+    'voiceNote'
+  ),
+  uploadVoiceNote
+);
+
+
+router.get(
+  '/:id/voice-note/:index',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  streamVoiceNote
+);
+
+
+// ============================================================
+// WHATSAPP ACTIVITY
+// ============================================================
+
+router.post(
+  '/:id/log-whatsapp',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  logWhatsAppActivity
+);
+
+
+// ============================================================
+// EMAIL ACTIVITY
+// ============================================================
+
+router.post(
+  '/:id/send-email',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  logEmailActivity
+);
+
+
+// ============================================================
+// LOI DOCUMENT
+// ============================================================
+
+router.post(
+  '/:id/loi',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  uploadLOIFile.single(
+    'file'
+  ),
+  uploadLOIDocument
+);
+
+
+router.get(
+  '/:id/loi/:index',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  streamLOIDocument
+);
+
+
+// ============================================================
+// MASTER DPR v4.0 — CANONICAL CRM LIFECYCLE
+// ============================================================
+
+router.patch(
+  '/:id/status',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadCrmStatus
+);
+
+
+// ============================================================
+// EXISTING LEAD DETAIL / OPERATIONAL PIPELINE
+// ============================================================
+
+router.get(
+  '/:id',
+  checkPermission(
+    'leadPermission',
+    'taskPermission',
+    'paymentPermission',
+    'dispatchPermission',
+    'quotationPermission'
+  ),
+  getLeadDetails
+);
+
+
+router.patch(
+  '/:id/stage',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadStage
+);
+
+
+router.patch(
+  '/:id/priority',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadPriority
+);
+
+
+/**
+ * Compatibility route.
+ *
+ * Existing clients may still PATCH /leads/:id.
+ *
+ * crmStatus must continue to be handled through
+ * /:id/status so canonical lifecycle rules are not bypassed.
+ */
+router.patch(
+  '/:id',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  changeLeadStage
+);
+
+
+// ============================================================
+// DELETE LEAD
+// ============================================================
+
+router.delete(
+  '/:id',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  deleteLead
+);
+
+
+module.exports =
+  router;

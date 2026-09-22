@@ -153,7 +153,7 @@ async function authenticateDistributor(req, res, next) {
 
     return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Distributor is invalid or not registered', [], req);
   } catch (error) {
-    console.error(`[AUTH ERROR] JWT verify failed for token "${token ? token.substring(0, 15) : 'NULL'}...": ${error.message} (name: ${error.name})`);
+    console.error('[AUTH ERROR] Distributor authentication failed:', error.name);
     if (error.name === 'TokenExpiredError') {
       return fail(res, 401, 'AUTH_TOKEN_EXPIRED', 'Token has expired', [], req);
     }

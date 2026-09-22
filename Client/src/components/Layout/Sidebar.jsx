@@ -88,7 +88,7 @@ export default function Sidebar({ onClose }) {
 
   return (
     <aside
-      className="h-full w-full flex flex-col select-none border-r"
+      className="flex h-full w-full select-none flex-col overflow-hidden border-r"
       style={{
         fontFamily: 'var(--crm-font-body)',
         background: 'linear-gradient(180deg, var(--crm-nav-bg) 0%, var(--crm-nav-bg-to) 100%)',
@@ -98,29 +98,29 @@ export default function Sidebar({ onClose }) {
     >
       {/* Sidebar Header Block */}
       <div
-        className="p-6 border-b flex items-center justify-between"
+        className="flex min-h-[92px] items-center justify-between gap-3 border-b px-4 py-4 sm:px-5"
         style={{ borderColor: 'var(--crm-line)' }}
       >
-        <div className="text-left">
+        <div className="min-w-0 flex-1 text-left">
           <h1
-            className="text-lg font-normal uppercase tracking-wide"
+            className="truncate text-[15px] font-semibold uppercase tracking-[0.08em]"
             style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}
           >
             India Trade Center
           </h1>
           <p
-            className="text-[9px] font-bold mt-1.5 uppercase tracking-[0.2em]"
+            className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em]"
             style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-accent)' }}
           >
-            Role // {user?.role}
+            <span>Role</span><span style={{ color: 'var(--crm-heading)' }}>· {user?.role || 'USER'}</span>{user?.department && <><span>·</span><span>{user.department}</span></>}
           </p>
         </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden rounded-sm p-1.5 transition-all cursor-pointer"
-            style={{ color: 'var(--crm-ink-faint)' }}
+            className="md:hidden inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all cursor-pointer"
+            style={{ color: 'var(--crm-ink-faint)', borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
             aria-label="Close Sidebar"
           >
             <FiX size={18} />
@@ -128,16 +128,48 @@ export default function Sidebar({ onClose }) {
         )}
       </div>
 
+      <div className="px-3 pt-3">
+        <div
+          className="rounded-xl border px-3 py-2.5"
+          style={{
+            borderColor: 'var(--crm-line)',
+            background: 'var(--crm-bg-sunken)'
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div
+                className="truncate text-[10px] font-semibold"
+                style={{ color: 'var(--crm-heading)' }}
+              >
+                {user?.name || user?.fullName || user?.email || 'Authenticated user'}
+              </div>
+              <div
+                className="mt-0.5 truncate text-[9px] uppercase tracking-[0.12em]"
+                style={{ color: 'var(--crm-ink-faint)' }}
+              >
+                {user?.department || 'CRM'} workspace
+              </div>
+            </div>
+            <FiLayers
+              size={15}
+              className="shrink-0"
+              style={{ color: 'var(--crm-accent)' }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Navigation Stream Matrix */}
-      <nav className="flex-1 py-6 overflow-y-auto custom-scrollbar space-y-6 px-3">
+      <nav className="custom-scrollbar flex-1 space-y-5 overflow-y-auto px-3 py-4 sm:py-5">
         {/* Main Section */}
-        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
-          <div className="px-4 mb-2 text-left">
+        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1.5">
+          <div className="mb-2 px-3 text-left">
             <p
-              className="text-[9px] uppercase tracking-[0.25em] font-bold"
+              className="text-[9px] font-bold uppercase tracking-[0.2em]"
               style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
             >
-              Main Core
+              Workspace
             </p>
           </div>
           {menuItems.map((item) => {
@@ -148,19 +180,19 @@ export default function Sidebar({ onClose }) {
               const isOpen = manualToggle[item.to] ?? routeActive;
 
               return (
-                <motion.div key={item.to} variants={navItem} className="space-y-1">
+                <motion.div key={item.to} variants={navItem} className="space-y-1.5">
                   <div
-                    className="flex items-center rounded-md transition-colors duration-200"
-                    style={{ background: routeActive ? 'var(--crm-accent-bg)' : 'transparent' }}
+                    className="flex items-center rounded-xl border transition-all duration-200"
+                    style={{ background: routeActive ? 'var(--crm-accent-bg)' : 'transparent', borderColor: routeActive ? 'color-mix(in srgb, var(--crm-accent) 30%, var(--crm-line))' : 'transparent' }}
                   >
                     <NavLink
                       to={item.to}
                       end
                       onClick={onClose}
-                      className="flex-1 flex items-center space-x-3 px-4 py-3 text-xs font-medium tracking-wide uppercase relative group min-w-0"
+                      className="group relative flex min-w-0 flex-1 items-center gap-3 px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
                     >
                       <item.icon
-                        size={16}
+                        size={15}
                         style={{ color: routeActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
                         className="transition-colors group-hover:opacity-100 shrink-0"
                       />
@@ -173,7 +205,7 @@ export default function Sidebar({ onClose }) {
                       {routeActive && (
                         <motion.span
                           layoutId="activeIndicator"
-                          className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
                           style={{ background: 'var(--crm-accent)' }}
                           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                         />
@@ -182,7 +214,7 @@ export default function Sidebar({ onClose }) {
                     <button
                       type="button"
                       onClick={() => setManualToggle((prev) => ({ ...prev, [item.to]: !isOpen }))}
-                      className="px-3 py-3 cursor-pointer transition-colors"
+                      className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer transition-colors"
                       style={{ color: 'var(--crm-ink-faint)' }}
                       aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.label}`}
                       aria-expanded={isOpen}
@@ -204,10 +236,10 @@ export default function Sidebar({ onClose }) {
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                        className="overflow-hidden ml-[26px] pl-3 border-l"
+                        className="ml-5 overflow-hidden border-l pl-3"
                         style={{ borderColor: 'var(--crm-line)' }}
                       >
-                        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1 py-1">
+                        <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1 py-1.5">
                           {item.children.map((child) => {
                             const childActive = isNavItemActive(child);
                             return (
@@ -215,20 +247,20 @@ export default function Sidebar({ onClose }) {
                                 <NavLink
                                   to={child.to}
                                   onClick={onClose}
-                                  className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-[11px] font-medium tracking-wide uppercase transition-all duration-200 relative group ${
+                                  className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] transition-all duration-200 ${
                                     childActive
                                       ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
                                       : 'text-[var(--crm-ink-faint)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
                                   }`}
                                 >
                                   <span
-                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    className="h-1.5 w-1.5 shrink-0 rounded-full"
                                     style={{ background: child.dotColor || 'var(--crm-accent)' }}
                                   />
-                                  <span>{child.label}</span>
+                                  <span className="min-w-0 flex-1 truncate">{child.label}</span>
                                   {childActive && (
                                     <span
-                                      className="absolute right-0 top-1 bottom-1 w-[2.5px] rounded-l-full"
+                                      className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full"
                                       style={{ background: 'var(--crm-accent)' }}
                                     />
                                   )}
@@ -249,27 +281,27 @@ export default function Sidebar({ onClose }) {
                 <NavLink
                   to={item.to}
                   onClick={onClose}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-md text-xs font-medium tracking-wide uppercase transition-all duration-200 relative group ${
+                  className={`group relative flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] transition-all duration-200 ${
                     isActive
-                      ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
-                      : 'text-[var(--crm-ink-soft)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                      ? 'border-[var(--crm-line)] bg-[var(--crm-accent-bg)] text-[var(--crm-heading)]'
+                      : 'border-transparent text-[var(--crm-ink-soft)] hover:border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
                   }`}
                 >
                   <item.icon
-                    size={16}
+                    size={15}
                     style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                    className="transition-colors group-hover:opacity-100"
+                    className="shrink-0 transition-colors group-hover:opacity-100"
                   />
-                  <span>{item.label}</span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {item.to === '/crm/notifications' && unreadCount > 0 && (
-                    <span className="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono bg-rose-500 text-white animate-pulse">
+                    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
                       {unreadCount}
                     </span>
                   )}
                   {isActive && (
                     <motion.span
                       layoutId="activeIndicator"
-                      className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                      className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
                       style={{ background: 'var(--crm-accent)' }}
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     />
@@ -282,10 +314,10 @@ export default function Sidebar({ onClose }) {
 
         {/* Administration Section */}
         {showAdminMenu && (
-          <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1">
-            <div className="px-4 mb-2 text-left">
+          <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1.5">
+            <div className="mb-2 px-3 text-left">
               <p
-                className="text-[9px] uppercase tracking-[0.25em] font-bold"
+                className="text-[9px] font-bold uppercase tracking-[0.2em]"
                 style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
               >
                 Administration
@@ -298,21 +330,21 @@ export default function Sidebar({ onClose }) {
                   <NavLink
                     to={item.to}
                     onClick={onClose}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-md text-xs font-medium tracking-wide uppercase transition-all duration-200 relative group ${
+                    className={`group relative flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] transition-all duration-200 ${
                       isActive
-                        ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
-                        : 'text-[var(--crm-ink-soft)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                        ? 'border-[var(--crm-line)] bg-[var(--crm-accent-bg)] text-[var(--crm-heading)]'
+                        : 'border-transparent text-[var(--crm-ink-soft)] hover:border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
                     }`}
                   >
                     <item.icon
-                      size={16}
+                      size={15}
                       style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
                     />
-                    <span>{item.label}</span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {isActive && (
                       <motion.span
                         layoutId="activeIndicator"
-                        className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full"
+                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
                         style={{ background: 'var(--crm-accent)' }}
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       />
@@ -325,10 +357,10 @@ export default function Sidebar({ onClose }) {
         )}
 
         {/* Action Bottom Section Layer */}
-        <div className="pt-4 border-t px-1" style={{ borderColor: 'var(--crm-line)' }}>
+        <div className="mt-1 border-t px-1 pt-3" style={{ borderColor: 'var(--crm-line)' }}>
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-3 w-full px-4 py-3 rounded-md font-medium text-xs uppercase tracking-wider transition-colors text-left cursor-pointer group"
+            className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] transition-all cursor-pointer hover:border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)]"
             style={{ color: 'var(--crm-danger)' }}
           >
             <FiLogOut size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
