@@ -1,3 +1,4 @@
+import LeadCommercialPanel from '../../components/crm/LeadCommercialPanel';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -475,6 +476,7 @@ export default function LeadDetail() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12">
       
+      <LeadCommercialPanel lead={lead} user={user} onSaved={() => window.location.reload()} />
       {/* Top Context Header Section */}
       <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="flex items-start space-x-4">
@@ -531,6 +533,83 @@ export default function LeadDetail() {
             </div>
           ))}
         </motion.div>
+
+        {/* Master DPR — persisted buyer requirement + acquisition context */}
+        {(() => {
+          const details = lead.requirementDetails || {};
+          const attribution = lead.attribution || {};
+
+          const requirementRows = [
+            ['Product', lead.product],
+            ['Variant / Size', lead.productVariant],
+            ['Grade / Type', lead.grade],
+            ['Specification', lead.specification],
+            ['Quantity', lead.quantity],
+            ['Unit', lead.quantityUnit],
+            ['Destination', lead.destination],
+            ['Timeline', lead.timeline],
+            ['Packaging', details.packaging],
+            ['Domestic / Export', details.tradeType],
+            ['Source Preference', details.sourcePreference],
+            ['Incoterm', details.incoterm],
+            ['Quality Requirement', details.qualityRequirement],
+            ['Private Label Requirement', details.privateLabelRequirement],
+          ].filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
+
+          const attributionRows = [
+            ['Source', attribution.utmSource || lead.source],
+            ['Medium', attribution.utmMedium],
+            ['Campaign', attribution.utmCampaign],
+            ['Creative', attribution.utmContent || attribution.creative],
+            ['Landing Page', attribution.landingPage],
+          ].filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
+
+          if (!requirementRows.length && !attributionRows.length) return null;
+
+          return (
+            <motion.section variants={blockVariants} className="border border-[var(--crm-ink-soft)]/15 bg-[var(--crm-bg-raised)]/20 rounded-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <FiFileText size={15} className="text-[var(--crm-accent)]" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)]">
+                  Buyer Requirement & Acquisition Context
+                </h2>
+              </div>
+
+              {requirementRows.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {requirementRows.map(([label, value]) => (
+                    <div key={label} className="border border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/50 p-3 rounded-sm">
+                      <span className="block text-[9px] uppercase tracking-wider font-mono font-bold text-[var(--crm-ink-faint)]">
+                        {label}
+                      </span>
+                      <p className="mt-1 text-xs text-[var(--crm-heading)] whitespace-pre-wrap break-words">
+                        {String(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {attributionRows.length > 0 && (
+                <details className="mt-4 border-t border-[var(--crm-ink-soft)]/10 pt-3">
+                  <summary className="cursor-pointer text-[10px] uppercase tracking-wider font-mono font-bold text-[var(--crm-ink-faint)]">
+                    Acquisition attribution
+                  </summary>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                    {attributionRows.map(([label, value]) => (
+                      <div key={label} className="border border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/50 p-3 rounded-sm">
+                        <span className="block text-[9px] uppercase tracking-wider font-mono font-bold text-[var(--crm-ink-faint)]">
+                          {label}
+                        </span>
+                        <p className="mt-1 text-xs text-[var(--crm-heading)] break-words">{String(value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </motion.section>
+          );
+        })()}
 
         {/* Closed Lost Audit & Reason Display */}
         {(isClosedLost || lead.lostReason) && (

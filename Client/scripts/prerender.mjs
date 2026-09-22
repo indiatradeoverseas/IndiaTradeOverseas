@@ -32,6 +32,8 @@ const ROUTES = [
   '/careers',
   '/quote-request',
   '/prakriti',
+  '/prakriti/tea',
+  '/our-services',
   '/prakriti/rice',
   '/stone'
 ];
@@ -95,7 +97,7 @@ async function prerenderRoute(browser, route) {
     }
   });
 
-  await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
   // networkidle0 only tracks network activity - framer-motion entrance
   // animations (fade/slide-in on mount) are still mid-transition at that
   // point, which would otherwise bake opacity:0 / transformed elements
@@ -132,7 +134,7 @@ async function run() {
       console.log(`Prerendered ${route} -> ${outPath.replace(DIST, 'dist')}`);
     }
   } finally {
-    await browser.close();
+    await browser?.close();
     server.close();
   }
 
@@ -144,7 +146,7 @@ async function run() {
 // without it (that's the state it was in before this script existed). Log
 // it loudly so it's visible in the Vercel build log, but always exit 0.
 run().catch((error) => {
-  console.error('Prerendering failed - continuing deploy WITHOUT prerendered pages:');
+  console.error('Prerendering failed:');
   console.error(error);
-  process.exitCode = 0;
+  process.exitCode = 1;
 });
