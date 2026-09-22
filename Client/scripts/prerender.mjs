@@ -97,7 +97,7 @@ async function prerenderRoute(browser, route) {
     }
   });
 
-  await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
   // networkidle0 only tracks network activity - framer-motion entrance
   // animations (fade/slide-in on mount) are still mid-transition at that
   // point, which would otherwise bake opacity:0 / transformed elements
