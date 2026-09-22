@@ -150,5 +150,27 @@ export const adminApi = {
   async logExportAttempt(exportData) {
     const response = await axiosInstance.post('/security/export-attempt', exportData);
     return response.data;
+  },
+
+  // ITO Ads Orders
+  async getItoAdsOrders() {
+    const response = await axiosInstance.get('/itoads/orders', {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
+    return response.data;
+  },
+
+  async updateItoAdsOrderStatus(orderId, status) {
+    const response = await axiosInstance.patch(`/itoads/orders/${orderId}/status`, { status }, {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
+    return response.data;
+  },
+
+  async deleteItoAdsOrder(orderId) {
+    const response = await axiosInstance.delete(`/itoads/orders/${orderId}`, {
+      headers: { 'X-Portal-Context': 'admin' }
+    });
+    return response.data;
   }
 };

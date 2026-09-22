@@ -17,6 +17,14 @@ export const distributorApi = {
     return response.data;
   },
 
+  /**
+   * Submit ITO Ads Order (Public) - after payment verification
+   */
+  submitItoAdsOrder: async (orderData) => {
+    const response = await axiosInstance.post('/itoads/orders', orderData);
+    return response.data;
+  },
+
   resendOtp: async (emailOrId) => {
     const payload = emailOrId.includes('@')
       ? { email: emailOrId }
