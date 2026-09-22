@@ -43,6 +43,10 @@ const createProposal = async (req, res, next) => {
 
   } catch (error) {
     console.error("Error creating procurement proposal:", error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message).join(', ');
+      return fail(res, 400, 'VALIDATION_ERROR', messages, [], req);
+    }
     next(error);
   }
 };
