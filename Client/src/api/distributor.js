@@ -43,9 +43,12 @@ export const distributorApi = {
   },
 
   createProposal: async (proposalData) => {
-    const response = await axiosInstance.post('/distributors/proposals', proposalData, {
-      headers: { 'X-Portal-Context': 'customer' }
-    });
+    const token = localStorage.getItem('distributor_token');
+    const headers = { 'X-Portal-Context': 'customer' };
+    if (token && token !== 'undefined') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const response = await axiosInstance.post('/distributors/proposals', proposalData, { headers });
     return response.data;
   },
 
@@ -105,17 +108,22 @@ export const distributorApi = {
         quantity: quantityArg 
       };
     }
-
-    const response = await axiosInstance.post('/distributors/payments/razorpay/create-order', payload, {
-      headers: { 'X-Portal-Context': 'customer' }
-    });
+    const token = localStorage.getItem('distributor_token');
+    const headers = { 'X-Portal-Context': 'customer' };
+    if (token && token !== 'undefined') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const response = await axiosInstance.post('/distributors/payments/razorpay/create-order', payload, { headers });
     return response.data;
   },
   
   verifyRazorpayPayment: async (paymentPayload) => {
-    const response = await axiosInstance.post('/distributors/payments/razorpay/verify-payment', paymentPayload, {
-      headers: { 'X-Portal-Context': 'customer' }
-    });
+    const token = localStorage.getItem('distributor_token');
+    const headers = { 'X-Portal-Context': 'customer' };
+    if (token && token !== 'undefined') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const response = await axiosInstance.post('/distributors/payments/razorpay/verify-payment', paymentPayload, { headers });
     return response.data;
   },
 
