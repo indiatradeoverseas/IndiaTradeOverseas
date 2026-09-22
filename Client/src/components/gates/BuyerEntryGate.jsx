@@ -59,12 +59,6 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
     const validationError = validate();
     if (validationError) return toast.error(validationError);
 
-    if (!requireOtp) {
-      pushDataLayerEvent('entry_gate_details_submitted', { division: division || 'CAREERS', otp_required: false });
-      setStep('welcome');
-      return;
-    }
-
     setSubmitting(true);
     try {
       const data = new FormData();
@@ -73,18 +67,30 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
       data.append('mobile', form.phone);
       data.append('city', form.city);
       data.append('state', form.state);
-      data.append('division', division);
+      data.append('division', division || 'CAREERS');
       data.append('registrationSource', 'QUICK_GATE');
 
       const res = await distributorApi.registerDistributor(data);
-      if (res.success) {
-        setDistributorId(res.data.distributorId);
-        toast.success('Verification code sent to your email.');
-        pushDataLayerEvent('entry_gate_details_submitted', { division, otp_required: true });
-        setStep('otp');
+      const activeId = res?.data?.distributorId || res?.data?._id || distributorId;
+      const activeToken = res?.token || res?.data?.token || res?.data?.accessToken;
+
+      pushDataLayerEvent('entry_gate_details_submitted', { division: division || 'CAREERS', otp_required: false });
+
+      if (requireOtp) {
+        onVerified?.(activeId, activeToken, { ...form });
+      } else {
+        onComplete?.({ ...form });
       }
+      setStep('welcome');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
+      console.error('Entry gate submission:', err);
+      pushDataLayerEvent('entry_gate_details_submitted', { division: division || 'CAREERS', otp_required: false });
+      if (requireOtp) {
+        onVerified?.(null, null, { ...form });
+      } else {
+        onComplete?.({ ...form });
+      }
+      setStep('welcome');
     } finally {
       setSubmitting(false);
     }

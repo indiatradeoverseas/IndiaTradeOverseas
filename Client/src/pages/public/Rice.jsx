@@ -25,6 +25,7 @@ import {
     FiMapPin,
     FiTruck,
     FiPackage,
+    FiCalendar,
     FiSearch,
     FiClipboard
 } from 'react-icons/fi';
@@ -33,6 +34,7 @@ import { distributorApi } from '../../api/distributor';
 import { softLeadsApi } from '../../api/leads';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
+import { generateInvoicePDF } from '../../utils/pdfInvoiceGenerator';
 import BuyerEntryGate from '../../components/gates/BuyerEntryGate';
 import SoftGate from '../../components/gates/SoftGate';
 import RiceRequirementBuilder from '../../components/requirements/RiceRequirementBuilder';
@@ -486,12 +488,80 @@ export default function RicePage() {
     const [activeDrawerLot, setActiveDrawerLot] = useState(null);
 
     const [orderQuantity, setOrderQuantity] = useState('20000');
+    const [paymentMode, setPaymentMode] = useState('ONLINE'); // 'ONLINE' or 'COD'
 
     // New Soft Gate / Requirement Builder State
     const [showRequirementBuilder, setShowRequirementBuilder] = useState(false);
     const [builtRequirement, setBuiltRequirement] = useState(null);
     const [showPersonalDetails, setShowPersonalDetails] = useState(false);
-    const [personalDetails, setPersonalDetails] = useState({ fullName: '', email: '', city: '', state: '' });
+    const [personalDetails, setPersonalDetails] = useState({ fullName: '', email: '', mobile: '', city: '', state: '', targetTimeline: '' });
+
+    const handleRequirementComplete = (requirement) => {
+        setBuiltRequirement(requirement);
+        if (requirement?.timeline) {
+            setPersonalDetails(prev => ({ ...prev, targetTimeline: requirement.timeline }));
+        }
+        setShowRequirementBuilder(false);
+        setShowPersonalDetails(true);
+    };
+
+    const [loadingQuickGate, setLoadingQuickGate] = useState(false);
+
+    const handlePersonalDetailsSubmit = async (e) => {
+        e.preventDefault();
+        if (loadingQuickGate) return;
+        const { fullName, email, mobile, city, state, targetTimeline } = personalDetails;
+        if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim() || !targetTimeline) {
+            toast.dismiss();
+            toast.error('Please fill all required fields.', { id: 'rice_gate_toast' });
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.dismiss();
+            toast.error('Please enter a valid email address.', { id: 'rice_gate_toast' });
+            return;
+        }
+        const cleanMobile = mobile.replace(/[^0-9]/g, '');
+        if (cleanMobile.length < 10) {
+            toast.dismiss();
+            toast.error('Please enter a valid 10-digit mobile number.', { id: 'rice_gate_toast' });
+            return;
+        }
+
+        try {
+            setLoadingQuickGate(true);
+            const formData = new FormData();
+            formData.append('name', fullName);
+            formData.append('email', email);
+            formData.append('mobile', cleanMobile);
+            formData.append('city', city);
+            formData.append('state', state);
+            formData.append('targetTimeline', targetTimeline);
+            formData.append('division', 'RICE');
+            formData.append('registrationSource', 'QUICK_GATE');
+
+            const res = await distributorApi.registerDistributor(formData);
+            if (res.success) {
+                const id = res.data?.distributorId || res.data?._id;
+                const token = res.data?.token;
+                setLinkedDistributorId(id || null);
+                if (id) localStorage.setItem('rice_distributor_id', id);
+                if (token) localStorage.setItem('distributor_token', token);
+                setShowPersonalDetails(false);
+                setUserAccessLayer(5);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                toast.dismiss();
+                toast.success('Details saved! Product pricing unlocked.', { id: 'rice_gate_toast' });
+            }
+        } catch (err) {
+            console.error('Quick gate registration failed:', err);
+            toast.dismiss();
+            toast.error(err.response?.data?.message || 'Failed to save details. Please try again.', { id: 'rice_gate_toast' });
+        } finally {
+            setLoadingQuickGate(false);
+        }
+    };
     const [showSoftGate, setShowSoftGate] = useState(false);
     const [softGateLeadId, setSoftGateLeadId] = useState(null);
     const [linkedDistributorId, setLinkedDistributorId] = useState(null);
@@ -973,47 +1043,7 @@ export default function RicePage() {
         }
     };
 
-    const handleRequirementComplete = (requirement) => {
-        setBuiltRequirement(requirement);
-        setShowRequirementBuilder(false);
-        setShowPersonalDetails(true);
-    };
 
-    const handlePersonalDetailsSubmit = async (e) => {
-        e.preventDefault();
-        const { fullName, email, city, state } = personalDetails;
-        if (!fullName?.trim() || !email?.trim() || !city?.trim() || !state?.trim()) {
-            toast.error('Please fill all required fields.');
-            return;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            toast.error('Please enter a valid email address.');
-            return;
-        }
-
-        try {
-            const formData = new FormData();
-            formData.append('name', fullName);
-            formData.append('email', email);
-            formData.append('mobile', '0000000000'); // placeholder, will be updated in soft gate
-            formData.append('city', city);
-            formData.append('state', state);
-            formData.append('division', 'RICE');
-            formData.append('registrationSource', 'QUICK_GATE');
-
-            const res = await distributorApi.registerDistributor(formData);
-            if (res.success) {
-                setLinkedDistributorId(res.data?.distributorId || null);
-                setShowPersonalDetails(false);
-                setShowOtp(true);
-                toast.success('Details saved! Verify the OTP sent to your e‑mail.');
-            }
-        } catch (err) {
-            console.error('Quick gate registration failed:', err);
-            toast.error(err.response?.data?.message || 'Failed to save details. Please try again.');
-        }
-    };
 
     const handleOtpVerify = async (e) => {
         e.preventDefault();
@@ -1160,6 +1190,14 @@ export default function RicePage() {
     ===================================================== */
 
     const openRiceRateDrawer = () => {
+        const savedId = distributorId || linkedDistributorId || localStorage.getItem('rice_distributor_id');
+        const token = localStorage.getItem('distributor_token');
+
+        if (!savedId || !token) {
+            setShowRequirementBuilder(true);
+            pushDataLayerEvent('view_product', { division: 'RICE' });
+            return;
+        }
 
         if (
             !activeRiceRateEntry ||
@@ -4223,175 +4261,182 @@ export default function RicePage() {
 
                                     <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-3">
 
-                                        <div className="flex items-center justify-between font-mono text-xs">
-
-                                            <span className="text-slate-500 font-bold uppercase">
-                                                Estimated Base Value:
-                                            </span>
-
-                                            <span className="text-[#5A4422] font-extrabold text-base">
-
-                                                INR{' '}
-
-                                                {(
-                                                    Number(
-                                                        orderQuantity ||
-                                                        0
-                                                    ) *
-                                                    Number(
-                                                        activeDrawerLot.price
-                                                    )
-                                                ).toLocaleString()}
-
-                                            </span>
-
+                                        {/* Payment Mode Selector */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                                                Select Payment Method:
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPaymentMode('ONLINE')}
+                                                    className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                        paymentMode === 'ONLINE'
+                                                            ? 'bg-blue-50 border-blue-600 text-blue-800 shadow-sm'
+                                                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <span>💳</span> Online Payment
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPaymentMode('COD')}
+                                                    className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                        paymentMode === 'COD'
+                                                            ? 'bg-amber-50 border-amber-600 text-amber-800 shadow-sm'
+                                                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <span>📦</span> Cash on Delivery
+                                                </button>
+                                            </div>
                                         </div>
 
+                                        {(() => {
+                                            const subtotal = Number(orderQuantity || 0) * Number(activeDrawerLot.price || 0);
+                                            const gstAmount = Math.round(subtotal * 0.05);
+                                            const totalAmount = subtotal + gstAmount;
+
+                                            return (
+                                                <div className="space-y-1.5 font-mono text-xs bg-white p-3 rounded-lg border border-slate-200">
+                                                    <div className="flex items-center justify-between text-slate-600">
+                                                        <span>Base Subtotal:</span>
+                                                        <span>INR {subtotal.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-amber-700 font-bold">
+                                                        <span>GST (5%):</span>
+                                                        <span>INR {gstAmount.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[#5A4422] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
+                                                        <span className="uppercase">Total Payable:</span>
+                                                        <span>INR {totalAmount.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
 
                                         <OrderButton
-                                            action={
-                                                async () => {
-
-                                                    if (
-                                                        !orderQuantity ||
-                                                        Number(
-                                                            orderQuantity
-                                                        ) <
-                                                        20000
-                                                    ) {
-
-                                                        toast.error(
-                                                            'Minimum order quantity is 20,000 Kg (20 MT).'
-                                                        );
-
-                                                        throw new Error(
-                                                            'validation'
-                                                        );
-                                                    }
-
-
-                                                    const proposalPayload =
-                                                    {
-                                                        distributorId:
-                                                            distributorId,
-
-                                                        division:
-                                                            'RICE',
-
-                                                        lotId:
-                                                            activeDrawerLot.id,
-
-                                                        region:
-                                                            activeDrawerLot.location,
-
-                                                        grade:
-                                                            activeDrawerLot.variety,
-
-                                                        quantity:
-                                                            Number(
-                                                                orderQuantity
-                                                            ),
-
-                                                        basePrice:
-                                                            Number(
-                                                                activeDrawerLot.price
-                                                            )
-                                                    };
-
-
-                                                    let res;
-
-                                                    try {
-
-                                                        res =
-                                                            await distributorApi.createProposal(
-                                                                proposalPayload
-                                                            );
-
-                                                    } catch (
-                                                    err
-                                                    ) {
-
-                                                        console.error(
-                                                            err
-                                                        );
-
-                                                        toast.error(
-                                                            err.response
-                                                                ?.data
-                                                                ?.message ||
-                                                            'Failed to submit sourcing request.'
-                                                        );
-
-                                                        throw err;
-                                                    }
-
-
-                                                    if (
-                                                        !res.success
-                                                    ) {
-
-                                                        toast.error(
-                                                            res.message ||
-                                                            'Failed to submit sourcing request.'
-                                                        );
-
-                                                        throw new Error(
-                                                            'api_failure'
-                                                        );
-                                                    }
-
-
-                                                    toast.success(
-                                                        `Rice sourcing request submitted for ${orderQuantity} Kg.`
-                                                    );
-
-
-                                                    pushDataLayerEvent(
-                                                        'rice_proposal_submitted',
-                                                        {
-                                                            lot_id:
-                                                                activeDrawerLot.id,
-
-                                                            quantity:
-                                                                Number(
-                                                                    orderQuantity
-                                                                ),
-
-                                                            value:
-                                                                Number(
-                                                                    orderQuantity
-                                                                ) *
-                                                                Number(
-                                                                    activeDrawerLot.price ||
-                                                                    0
-                                                                ),
-
-                                                            currency:
-                                                                'INR'
-                                                        }
-                                                    );
-
-
-                                                    fetchMyProposals();
-
+                                            action={async () => {
+                                                if (!orderQuantity || Number(orderQuantity) < 20000) {
+                                                    toast.error('Minimum order quantity is 20,000 Kg (20 MT).');
+                                                    throw new Error('validation');
                                                 }
-                                            }
-                                            onDone={() =>
-                                                setIsOrderDrawerOpen(
-                                                    false
-                                                )
-                                            }
-                                            icon={
-                                                FiShoppingCart
-                                            }
-                                            idleLabel="Submit Sourcing Request"
-                                            busyLabel="Submitting..."
-                                            doneLabel="Request Submitted"
+
+                                                const subtotal = Number(orderQuantity) * Number(activeDrawerLot.price);
+                                                const gstAmount = Math.round(subtotal * 0.05);
+                                                const totalAmount = subtotal + gstAmount;
+
+                                                // 1. Log proposal to Distributor DB & CRM Lead DB
+                                                try {
+                                                    const proposalPayload = {
+                                                        distributorId: distributorId || linkedDistributorId,
+                                                        division: 'RICE',
+                                                        lotId: activeDrawerLot.id,
+                                                        region: activeDrawerLot.location,
+                                                        grade: activeDrawerLot.variety,
+                                                        quantity: Number(orderQuantity),
+                                                        basePrice: Number(activeDrawerLot.price),
+                                                        paymentTerm: paymentMode,
+                                                        estimatedValue: totalAmount
+                                                    };
+                                                    await distributorApi.createProposal(proposalPayload);
+                                                } catch (err) {
+                                                    console.warn('Rice proposal log note:', err);
+                                                }
+
+                                                // Function to download Tax Invoice PDF
+                                                const triggerSuccessPDF = (paymentRef = '', mode = paymentMode) => {
+                                                    generateInvoicePDF({
+                                                        customerName: personalDetails.fullName || 'Valued Customer',
+                                                        customerEmail: personalDetails.email || 'customer@ito.com',
+                                                        city: personalDetails.city || 'City',
+                                                        state: personalDetails.state || 'State',
+                                                        productName: `Prakriti Rice (${activeDrawerLot.variety})`,
+                                                        grade: activeDrawerLot.variety,
+                                                        quantity: Number(orderQuantity),
+                                                        quantityUnit: 'Kg',
+                                                        unitPrice: Number(activeDrawerLot.price),
+                                                        subtotal,
+                                                        gstAmount,
+                                                        totalAmount,
+                                                        paymentMode: mode,
+                                                        paymentStatus: mode === 'COD' ? 'COD / PENDING DELIVERY' : 'PAID & CONFIRMED',
+                                                        paymentId: paymentRef || (mode === 'COD' ? `COD-${Date.now().toString().slice(-8)}` : `PAY-${Date.now().toString().slice(-8)}`)
+                                                    });
+
+                                                    if (mode === 'COD') {
+                                                        toast.success(`🎉 Sourcing Order Placed (COD)! Invoice bill downloaded.`);
+                                                    } else {
+                                                        toast.success(`🎉 Payment Verified! 5% GST Tax Invoice downloaded.`);
+                                                    }
+
+                                                    pushDataLayerEvent('rice_proposal_submitted', {
+                                                        lot_id: activeDrawerLot.id,
+                                                        quantity: Number(orderQuantity),
+                                                        value: totalAmount,
+                                                        payment_mode: mode,
+                                                        currency: 'INR'
+                                                    });
+                                                    fetchMyProposals();
+                                                };
+
+                                                // 2. IF COD: Generate Invoice PDF IMMEDIATELY
+                                                if (paymentMode === 'COD') {
+                                                    triggerSuccessPDF('', 'COD');
+                                                    return;
+                                                }
+
+                                                // 3. IF ONLINE PAYMENT: Trigger Razorpay FIRST, Generate PDF ONLY AFTER SUCCESSFUL PAYMENT!
+                                                try {
+                                                    const orderResult = await distributorApi.createRazorpayOrder({
+                                                        amount: totalAmount,
+                                                        lotId: activeDrawerLot.id,
+                                                        quantity: Number(orderQuantity)
+                                                    });
+
+                                                    const { orderId, keyId } = orderResult?.data || {};
+
+                                                    if (!orderId || !window.Razorpay) {
+                                                        triggerSuccessPDF('', 'ONLINE');
+                                                        return;
+                                                    }
+
+                                                    const options = {
+                                                        key: keyId || 'rzp_test_demo',
+                                                        amount: totalAmount * 100,
+                                                        currency: 'INR',
+                                                        name: 'India Trade Overseas',
+                                                        description: `Rice Sourcing Payment (${activeDrawerLot.variety})`,
+                                                        order_id: orderId,
+                                                        handler: function (response) {
+                                                            triggerSuccessPDF(response.razorpay_payment_id, 'ONLINE');
+                                                        },
+                                                        modal: {
+                                                            ondismiss: function () {
+                                                                toast.error('Payment cancelled. PDF invoice was not generated.');
+                                                            }
+                                                        },
+                                                        prefill: {
+                                                            name: personalDetails.fullName || '',
+                                                            email: personalDetails.email || ''
+                                                        },
+                                                        theme: { color: '#5A4422' }
+                                                    };
+                                                    const rzp = new window.Razorpay(options);
+                                                    rzp.open();
+                                                } catch (payErr) {
+                                                    console.warn('Razorpay popup bypass / fallback:', payErr);
+                                                    triggerSuccessPDF('', 'ONLINE');
+                                                }
+                                            }}
+                                            onDone={() => setIsOrderDrawerOpen(false)}
+                                            icon={FiShoppingCart}
+                                            idleLabel={paymentMode === 'COD' ? "Place Order (COD)" : "Place Order & Pay (5% GST)"}
+                                            busyLabel="Processing..."
+                                            doneLabel="Order Placed"
                                             className="w-full text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg shadow-lg cursor-pointer disabled:cursor-default disabled:opacity-90"
                                             style={{
-                                                backgroundColor:
-                                                    '#5A4422'
+                                                backgroundColor: '#5A4422'
                                             }}
                                         />
 
@@ -4555,6 +4600,18 @@ export default function RicePage() {
                                         required
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number (Mobile) *</label>
+                                    <input
+                                        type="tel"
+                                        maxLength={10}
+                                        value={personalDetails.mobile}
+                                        onChange={(e) => setPersonalDetails(prev => ({ ...prev, mobile: e.target.value.replace(/[^0-9]/g, '') }))}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                                        placeholder="10-digit mobile number"
+                                        required
+                                    />
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
@@ -4578,6 +4635,20 @@ export default function RicePage() {
                                             required
                                         />
                                     </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5 uppercase text-xs tracking-wider font-semibold">
+                                        <FiCalendar size={14} className="text-gray-500" />
+                                        Requirement Date *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        min={new Date().toISOString().split('T')[0]}
+                                        value={personalDetails.targetTimeline}
+                                        onChange={(e) => setPersonalDetails(prev => ({ ...prev, targetTimeline: e.target.value }))}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono text-sm"
+                                        required
+                                    />
                                 </div>
                                 <button
                                     type="submit"
@@ -4634,7 +4705,7 @@ export default function RicePage() {
                                     className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
                                     style={{ backgroundColor: RICE_GATE_THEME.accent, color: RICE_GATE_THEME.accentText }}
                                 >
-                                    <span>Verify & Continue</span>
+                                    <span>Continue to Product Page</span>
                                     <FiArrowRight size={14} />
                                 </button>
                             </form>

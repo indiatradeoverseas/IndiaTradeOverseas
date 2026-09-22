@@ -70,16 +70,32 @@ export default function SoftGate({
         requirement.teaType ??
         '';
 
+      const dischargePortCity = requirement.dischargePort || requirement.destination?.location || requirement.destination?.city || requirement.destination || '';
+      const pinCode = requirement.destination?.pin || requirement.pin || '';
+      const estBudget = requirement.budget || requirement.estimatedValue || requirement.productDetails?.budget || '';
+      const reqDate = requirement.requiredDate || requirement.targetDate || requirement.timeline || '';
+
       const payload = {
         division,
         product: productKey,
-        productDetails: requirement.productDetails || requirement,
-        quantity: requirement.quantity,
-        quantityUnit: requirement.quantityUnit,
-        destination: requirement.destination?.location || requirement.destination?.city || requirement.destination || '',
-        pin: requirement.destination?.pin || requirement.pin || '',
-        timeline: requirement.timeline,
-        eligibility: requirement.eligibility,
+        productDetails: {
+          ...requirement,
+          dischargePort: dischargePortCity,
+          pin: pinCode,
+          budget: estBudget,
+          requiredDate: reqDate,
+        },
+        quantity: String(requirement.quantity || ''),
+        quantityUnit: requirement.quantityUnit || 'MT',
+        destination: dischargePortCity,
+        dischargePort: dischargePortCity,
+        pin: pinCode,
+        timeline: reqDate,
+        requiredDate: reqDate,
+        targetDate: reqDate,
+        budget: estBudget,
+        estimatedValue: estBudget,
+        eligibility: requirement.eligibility || 'SUPPORTED',
         phone: phone.replace(/\D/g, ''),
         consent: true,
         distributorId: distributorId || '',

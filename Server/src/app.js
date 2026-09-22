@@ -134,7 +134,7 @@ const apiRoutes = [
   { path: '/payslips', router: payslipRoutes },
   { path: '/ai', router: aiRoutes },
   { path: '/sales-trial', router: salesTrialRoutes },
-  { path: '/itoads', router: itoAdsRoutes }
+  { path: '/itoads', router: itoAdsRoutes },
   { path: '/employee-activity', router: employeeActivityRoutes }
 ];
 

@@ -159,7 +159,7 @@ function getLeadDisplay(lead, user) {
 
   // Smart fallback for targetDate if empty
   if (!leadObj.targetDate) {
-    const rawDate = leadObj.originalPayload?.targetDate || leadObj.originalPayload?.requiredDate || leadObj.originalPayload?.timeline;
+    const rawDate = leadObj.originalPayload?.targetDate || leadObj.originalPayload?.requiredDate || leadObj.originalPayload?.targetTimeline || leadObj.originalPayload?.timeline;
     if (rawDate) {
       const parsed = parseFlexibleDate(rawDate);
       if (parsed && !isNaN(parsed.getTime())) leadObj.targetDate = parsed;

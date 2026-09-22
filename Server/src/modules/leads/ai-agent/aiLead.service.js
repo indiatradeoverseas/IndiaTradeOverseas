@@ -62,7 +62,7 @@ async function processAiLead(payload, actorId = null) {
 
   const quantity = String(payload.quantity || '');
   const destination = payload.destination || payload.city || '';
-  const targetDateRaw = payload.targetDate || payload.requiredDate || payload.timeline || null;
+  const targetDateRaw = payload.targetDate || payload.requiredDate || payload.targetTimeline || payload.timeline || null;
   const targetDate = parseFlexibleDate(targetDateRaw);
   const companyName = payload.companyName || payload.company || '';
   const chatSummary = payload.chatSummary || payload.message || payload.subject || '';

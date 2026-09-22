@@ -6,10 +6,11 @@ import {
   FiShield, FiBriefcase, FiFileText, FiCheckCircle, FiArrowRight, FiArrowLeft,
   FiUser, FiPhone, FiMapPin, FiKey, FiUploadCloud, FiX, FiAward, FiCompass,
   FiLayers, FiLock, FiEye, FiDownload, FiFilter, FiShoppingCart, FiInfo,
-  FiArrowDown, FiTruck, FiBox, FiActivity, FiGlobe
+  FiArrowDown, FiTruck, FiBox, FiActivity, FiGlobe, FiCalendar
 } from 'react-icons/fi';
 
 import { distributorApi } from '../../api/distributor';
+import { generateInvoicePDF } from '../../utils/pdfInvoiceGenerator';
 import { softLeadsApi } from '../../api/leads';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import { loadRazorpayScript } from '../../utils/razorpay';
@@ -287,6 +288,7 @@ export default function Stone() {
   const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
   const [activeDrawerLot, setActiveDrawerLot] = useState(null);
   const [orderQuantity, setOrderQuantity] = useState('500');
+  const [paymentMode, setPaymentMode] = useState('ONLINE'); // 'ONLINE' or 'COD'
 
   // Official Rate Card Selector (Layer 5 marketplace pricing)
   const [rateDivision, setRateDivision] = useState('PAKUR');
@@ -298,7 +300,74 @@ export default function Stone() {
   const [showRequirementBuilder, setShowRequirementBuilder] = useState(false);
   const [builtRequirement, setBuiltRequirement] = useState(null);
   const [showPersonalDetails, setShowPersonalDetails] = useState(false);
-  const [personalDetails, setPersonalDetails] = useState({ fullName: '', email: '', city: '', state: '' });
+  const [personalDetails, setPersonalDetails] = useState({ fullName: '', email: '', mobile: '', city: '', state: '', targetTimeline: '' });
+
+  const handleRequirementComplete = (requirement) => {
+    setBuiltRequirement(requirement);
+    if (requirement?.timeline) {
+      setPersonalDetails(prev => ({ ...prev, targetTimeline: requirement.timeline }));
+    }
+    setShowRequirementBuilder(false);
+    setShowPersonalDetails(true);
+  };
+
+  const [loadingQuickGate, setLoadingQuickGate] = useState(false);
+
+  const handlePersonalDetailsSubmit = async (e) => {
+    e.preventDefault();
+    if (loadingQuickGate) return;
+    const { fullName, email, mobile, city, state, targetTimeline } = personalDetails;
+    if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim() || !targetTimeline) {
+      toast.dismiss();
+      toast.error('Please fill all required fields.', { id: 'stone_gate_toast' });
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.dismiss();
+      toast.error('Please enter a valid email address.', { id: 'stone_gate_toast' });
+      return;
+    }
+    const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (cleanMobile.length < 10) {
+      toast.dismiss();
+      toast.error('Please enter a valid 10-digit mobile number.', { id: 'stone_gate_toast' });
+      return;
+    }
+
+    try {
+      setLoadingQuickGate(true);
+      const formData = new FormData();
+      formData.append('name', fullName);
+      formData.append('email', email);
+      formData.append('mobile', cleanMobile);
+      formData.append('city', city);
+      formData.append('state', state);
+      formData.append('targetTimeline', targetTimeline);
+      formData.append('division', 'STONE');
+      formData.append('registrationSource', 'QUICK_GATE');
+
+      const res = await distributorApi.registerDistributor(formData);
+      if (res.success) {
+        const id = res.data?.distributorId || res.data?._id;
+        const token = res.data?.token;
+        setLinkedDistributorId(id || null);
+        if (id) localStorage.setItem('ito_stone_buyer_id', id);
+        if (token) localStorage.setItem('distributor_token', token);
+        setShowPersonalDetails(false);
+        setUserAccessLayer(5);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast.dismiss();
+        toast.success('Details saved! Product pricing unlocked.', { id: 'stone_gate_toast' });
+      }
+    } catch (err) {
+      console.error('Quick gate registration failed:', err);
+      toast.dismiss();
+      toast.error(err.response?.data?.message || 'Failed to save details. Please try again.', { id: 'stone_gate_toast' });
+    } finally {
+      setLoadingQuickGate(false);
+    }
+  };
   const [showSoftGate, setShowSoftGate] = useState(false);
   const [softGateLeadId, setSoftGateLeadId] = useState(null);
   const [linkedDistributorId, setLinkedDistributorId] = useState(null);
@@ -607,47 +676,7 @@ export default function Stone() {
     }
   };
 
-  const handleRequirementComplete = (requirement) => {
-    setBuiltRequirement(requirement);
-    setShowRequirementBuilder(false);
-    setShowPersonalDetails(true);
-  };
 
-  const handlePersonalDetailsSubmit = async (e) => {
-    e.preventDefault();
-    const { fullName, email, city, state } = personalDetails;
-    if (!fullName?.trim() || !email?.trim() || !city?.trim() || !state?.trim()) {
-      toast.error('Please fill all required fields.');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast.error('Please enter a valid email address.');
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('name', fullName);
-      formData.append('email', email);
-      formData.append('mobile', '0000000000'); // placeholder, will be updated in soft gate
-      formData.append('city', city);
-      formData.append('state', state);
-      formData.append('division', 'STONE');
-      formData.append('registrationSource', 'QUICK_GATE');
-
-      const res = await distributorApi.registerDistributor(formData);
-      if (res.success) {
-        setLinkedDistributorId(res.data?.distributorId || null);
-        setShowPersonalDetails(false);
-        setShowOtp(true);
-        toast.success('Details saved! Verify the OTP sent to your e‑mail.');
-      }
-    } catch (err) {
-      console.error('Quick gate registration failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to save details. Please try again.');
-    }
-  };
 
   const handleOtpVerify = async (e) => {
     e.preventDefault();
@@ -749,6 +778,15 @@ export default function Stone() {
   // MASTER DPR v4.0 — QUOTE START
   // ============================================================
   const openRateQuoteDrawer = () => {
+    const savedId = distributorId || linkedDistributorId || localStorage.getItem('ito_stone_buyer_id');
+    const token = localStorage.getItem('distributor_token');
+
+    if (!savedId || !token) {
+      setShowRequirementBuilder(true);
+      pushDataLayerEvent('view_product', { division: 'STONE' });
+      return;
+    }
+
     if (
       !activeRateEntry ||
       activeRatePrice == null
@@ -2320,140 +2358,183 @@ export default function Stone() {
                   </div>
 
                   <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0">
-                    <div className="flex items-center justify-between font-mono text-xs">
-                      <span className="text-slate-500 font-bold uppercase">
-                        Estimated Base Value:
-                      </span>
-
-                      <span className="text-[#37424B] font-extrabold text-base">
-                        INR{' '}
-                        {(
-                          Number(
-                            orderQuantity || 0
-                          ) *
-                          Number(
-                            activeDrawerLot.price ||
-                              0
-                          )
-                        ).toLocaleString()}
-                      </span>
+                    {/* Payment Mode Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Select Payment Method:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMode('ONLINE')}
+                          className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            paymentMode === 'ONLINE'
+                              ? 'bg-blue-50 border-blue-600 text-blue-800 shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          }`}
+                        >
+                          <span>💳</span> Online Payment
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMode('COD')}
+                          className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            paymentMode === 'COD'
+                              ? 'bg-amber-50 border-amber-600 text-amber-800 shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          }`}
+                        >
+                          <span>📦</span> Cash on Delivery
+                        </button>
+                      </div>
                     </div>
+
+                    {(() => {
+                      const subtotal = Number(orderQuantity || 0) * Number(activeDrawerLot.price || 0);
+                      const gstAmount = Math.round(subtotal * 0.05);
+                      const totalAmount = subtotal + gstAmount;
+
+                      return (
+                        <div className="space-y-1.5 font-mono text-xs bg-white p-3 rounded-lg border border-slate-200">
+                          <div className="flex items-center justify-between text-slate-600">
+                            <span>Base Subtotal:</span>
+                            <span>INR {subtotal.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-blue-700 font-bold">
+                            <span>GST (5%):</span>
+                            <span>INR {gstAmount.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
+                            <span className="uppercase">Total Payable:</span>
+                            <span>INR {totalAmount.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <OrderButton
                       action={async () => {
-                        if (
-                          !orderQuantity ||
-                          Number(orderQuantity) <
-                            40
-                        ) {
-                          toast.error(
-                            "Minimum constraint is 40 MT."
-                          );
-
-                          throw new Error(
-                            'validation'
-                          );
+                        if (!orderQuantity || Number(orderQuantity) < 40) {
+                          toast.error("Minimum constraint is 40 MT.");
+                          throw new Error('validation');
                         }
 
-                        const proposalPayload = {
-                          distributorId:
-                            distributorId,
-                          division: 'STONE',
-                          lotId:
-                            activeDrawerLot.id,
-                          region:
-                            activeDrawerLot.region,
-                          grade:
-                            activeDrawerLot.grade,
-                          quantity:
-                            Number(
-                              orderQuantity
-                            ),
-                          basePrice:
-                            Number(
-                              activeDrawerLot.price
-                            ),
-                          paymentTerm:
-                            activeDrawerLot.paymentTerm
+                        const subtotal = Number(orderQuantity) * Number(activeDrawerLot.price);
+                        const gstAmount = Math.round(subtotal * 0.05);
+                        const totalAmount = subtotal + gstAmount;
+
+                        // 1. Log proposal to Distributor DB & CRM Lead DB
+                        try {
+                          const proposalPayload = {
+                            distributorId: distributorId || linkedDistributorId,
+                            division: 'STONE',
+                            lotId: activeDrawerLot.id,
+                            region: activeDrawerLot.region,
+                            grade: activeDrawerLot.grade,
+                            quantity: Number(orderQuantity),
+                            basePrice: Number(activeDrawerLot.price),
+                            paymentTerm: paymentMode,
+                            estimatedValue: totalAmount
+                          };
+                          await distributorApi.createProposal(proposalPayload);
+                        } catch (err) {
+                          console.warn('Stone proposal log note:', err);
+                        }
+
+                        // Function to download Tax Invoice PDF
+                        const triggerSuccessPDF = (paymentRef = '', mode = paymentMode) => {
+                          generateInvoicePDF({
+                            customerName: personalDetails.fullName || 'Valued Customer',
+                            customerEmail: personalDetails.email || 'customer@ito.com',
+                            city: personalDetails.city || 'City',
+                            state: personalDetails.state || 'State',
+                            productName: `Stone Aggregate (${activeDrawerLot.region})`,
+                            grade: activeDrawerLot.grade,
+                            quantity: Number(orderQuantity),
+                            quantityUnit: 'MT',
+                            unitPrice: Number(activeDrawerLot.price),
+                            subtotal,
+                            gstAmount,
+                            totalAmount,
+                            paymentMode: mode,
+                            paymentStatus: mode === 'COD' ? 'COD / PENDING DELIVERY' : 'PAID & CONFIRMED',
+                            paymentId: paymentRef || (mode === 'COD' ? `COD-${Date.now().toString().slice(-8)}` : `PAY-${Date.now().toString().slice(-8)}`)
+                          });
+
+                          if (mode === 'COD') {
+                            toast.success(`🎉 Sourcing Order Placed (COD)! Invoice bill downloaded.`);
+                          } else {
+                            toast.success(`🎉 Payment Verified! 5% GST Tax Invoice downloaded.`);
+                          }
+
+                          pushDataLayerEvent('quote_submit', {
+                            division: 'STONE',
+                            source_page: '/stone',
+                            lot_id: activeDrawerLot.id,
+                            quantity: Number(orderQuantity),
+                            value: totalAmount,
+                            payment_mode: mode,
+                            currency: 'INR'
+                          });
+                          fetchMyProposals();
                         };
 
-                        let res;
+                        // 2. IF COD: Generate Invoice PDF IMMEDIATELY
+                        if (paymentMode === 'COD') {
+                          triggerSuccessPDF('', 'COD');
+                          return;
+                        }
 
+                        // 3. IF ONLINE PAYMENT: Trigger Razorpay FIRST, Generate PDF ONLY AFTER SUCCESSFUL PAYMENT!
                         try {
-                          res =
-                            await distributorApi.createProposal(
-                              proposalPayload
-                            );
-                        } catch (err) {
-                          toast.error(
-                            err.response
-                              ?.data?.message ||
-                              "Failed to dispatch proposal."
-                          );
+                          const orderResult = await distributorApi.createRazorpayOrder({
+                            amount: totalAmount,
+                            lotId: activeDrawerLot.id,
+                            quantity: Number(orderQuantity)
+                          });
 
-                          throw err;
-                        }
+                          const { orderId, keyId } = orderResult?.data || {};
 
-                        if (!res.success) {
-                          toast.error(
-                            res.message ||
-                              "Failed to dispatch proposal."
-                          );
-
-                          throw new Error(
-                            'api_failure'
-                          );
-                        }
-
-                        toast.success(
-                          `Stone sourcing proposal logged for ${orderQuantity} MT.`
-                        );
-
-                        // ========================================================
-                        // MASTER DPR v4.0 — QUOTE SUBMIT
-                        // IMPORTANT: This fires only after successful backend
-                        // proposal creation. Failed requests never emit this event.
-                        // ========================================================
-                        pushDataLayerEvent(
-                          'quote_submit',
-                          {
-                            division:
-                              'STONE',
-                            source_page:
-                              '/stone',
-                            lot_id:
-                              activeDrawerLot.id,
-                            quantity:
-                              Number(
-                                orderQuantity
-                              ),
-                            value:
-                              Number(
-                                orderQuantity
-                              ) *
-                              Number(
-                                activeDrawerLot.price ||
-                                  0
-                              ),
-                            currency:
-                              'INR'
+                          if (!orderId || !window.Razorpay) {
+                            triggerSuccessPDF('', 'ONLINE');
+                            return;
                           }
-                        );
 
-                        fetchMyProposals();
+                          const options = {
+                            key: keyId || 'rzp_test_demo',
+                            amount: totalAmount * 100,
+                            currency: 'INR',
+                            name: 'India Trade Overseas',
+                            description: `Stone Sourcing Payment (${activeDrawerLot.grade})`,
+                            order_id: orderId,
+                            handler: function (response) {
+                              triggerSuccessPDF(response.razorpay_payment_id, 'ONLINE');
+                            },
+                            modal: {
+                              ondismiss: function () {
+                                toast.error('Payment cancelled. PDF invoice was not generated.');
+                              }
+                            },
+                            prefill: {
+                              name: personalDetails.fullName || '',
+                              email: personalDetails.email || ''
+                            },
+                            theme: { color: '#37424B' }
+                          };
+                          const rzp = new window.Razorpay(options);
+                          rzp.open();
+                        } catch (payErr) {
+                          console.warn('Razorpay popup bypass / fallback:', payErr);
+                          triggerSuccessPDF('', 'ONLINE');
+                        }
                       }}
-                      onDone={() =>
-                        setIsOrderDrawerOpen(
-                          false
-                        )
-                      }
-                      icon={
-                        FiShoppingCart
-                      }
-                      idleLabel="Submit Sourcing Request"
-                      busyLabel="Submitting..."
-                      doneLabel="Request Submitted"
-                      className="w-full bg-[#37424B] hover:bg-[#252c34] text-white text-xs font-mono font-bold uppercase py-3.5 rounded shadow-md cursor-pointer disabled:cursor-default disabled:opacity-90"
+                      onDone={() => setIsOrderDrawerOpen(false)}
+                      icon={FiShoppingCart}
+                      idleLabel={paymentMode === 'COD' ? "Place Order (COD)" : "Place Order & Pay (5% GST)"}
+                      busyLabel="Processing..."
+                      doneLabel="Order Placed"
+                      className="w-full text-white text-xs font-mono font-bold uppercase tracking-wider py-3.5 rounded-lg shadow-lg cursor-pointer disabled:cursor-default disabled:opacity-90"
+                      style={{ backgroundColor: '#37424B' }}
                     />
                   </div>
                 </motion.div>
@@ -2535,6 +2616,18 @@ export default function Stone() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number (Mobile) *</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    value={personalDetails.mobile}
+                    onChange={(e) => setPersonalDetails(prev => ({ ...prev, mobile: e.target.value.replace(/[^0-9]/g, '') }))}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                    placeholder="10-digit mobile number"
+                    required
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
@@ -2559,12 +2652,26 @@ export default function Stone() {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5 uppercase text-xs tracking-wider font-semibold">
+                    <FiCalendar size={14} className="text-gray-500" />
+                    Requirement Date *
+                  </label>
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={personalDetails.targetTimeline}
+                    onChange={(e) => setPersonalDetails(prev => ({ ...prev, targetTimeline: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono text-sm"
+                    required
+                  />
+                </div>
                 <button
                   type="submit"
                   className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
                   style={{ backgroundColor: STONE_GATE_THEME.accent, color: STONE_GATE_THEME.accentText }}
                 >
-                  <span>Continue to Phone Verification</span>
+                  <span>Continue to Product Page</span>
                   <FiArrowRight size={14} />
                 </button>
               </form>

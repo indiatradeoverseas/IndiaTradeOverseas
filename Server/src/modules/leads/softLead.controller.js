@@ -100,16 +100,27 @@ const createSoftLead = async (req, res, next) => {
 
     try {
       const { processAiLead } = require('../leads/ai-agent/aiLead.service');
+      const estBudget = req.body.budget || req.body.estimatedValue || softLead.productDetails?.budget || softLead.productDetails?.estimatedValue || '';
+      const reqDate = req.body.requiredDate || req.body.targetDate || softLead.timeline || '';
+      const dischargePortCity = req.body.dischargePort || softLead.destination || '';
+      const pinCode = req.body.pin || softLead.pin || '';
+
+      const summaryText = `Soft gate lead (${division}): ${product} | Quantity: ${quantity} ${quantityUnit} | Discharge Port/City: ${dischargePortCity} (PIN: ${pinCode}) | Requirement Date: ${reqDate} | Budget: ${estBudget}`;
+
       await processAiLead({
-        customerName: softLead.progressiveDetails.name || 'Soft Lead',
-        email: softLead.progressiveDetails.email || '',
+        customerName: softLead.progressiveDetails?.name || 'Soft Lead',
+        email: softLead.progressiveDetails?.email || '',
         phone: softLead.phone,
-        city: softLead.destination || '',
+        city: dischargePortCity,
         state: '',
-        companyName: softLead.progressiveDetails.company || `Soft Lead (${division})`,
+        companyName: softLead.progressiveDetails?.company || `Soft Lead (${division})`,
         productCategory: division,
         source: 'WEBSITE_SOFT_GATE',
-        chatSummary: `Soft gate lead: ${product} - ${quantity} ${quantityUnit} to ${destination}`,
+        quantity: softLead.quantity,
+        destination: dischargePortCity,
+        targetDate: reqDate,
+        estimatedValue: estBudget,
+        chatSummary: summaryText,
       });
       softLead.crmSynced = true;
       await softLead.save();
