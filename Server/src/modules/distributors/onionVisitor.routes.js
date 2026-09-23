@@ -54,6 +54,10 @@ router.post(
   createOnionVisitor
 );
 
+/*
+ * IMPORTANT:
+ * /crm/list must appear before /:visitorId.
+ */
 router.get(
   "/crm/list",
   authenticate,

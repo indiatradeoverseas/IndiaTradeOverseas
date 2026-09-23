@@ -5,6 +5,10 @@ const morgan = require('morgan');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const path = require('path');
+const coalVisitorRoutes =
+  require('./modules/distributors/coalVisitor.routes');
+const onionVisitorRoutes =
+  require('./modules/distributors/onionVisitor.routes');
 
 const corsOptions = require('./config/cors');
 
@@ -375,6 +379,10 @@ const apiRoutes = [
   {
     path: '/coal-visitors',
     router: coalVisitorRoutes
+  },
+  {
+    path: '/onion-visitors',
+    router: onionVisitorRoutes
   },
 
   {

@@ -1,58 +1,68 @@
-import axiosInstance from './axiosInstance';
+import axiosInstance from "./axiosInstance";
 
 export const coalVisitorApi = {
-  create: async (payload) =>
-    (
+  create: async (payload) => {
+    const response =
       await axiosInstance.post(
-        '/coal-visitors',
+        "/coal-visitors",
         payload
-      )
-    ).data,
+      );
 
-  get: async (visitorId) =>
-    (
+    return response.data;
+  },
+
+  get: async (visitorId) => {
+    const response =
       await axiosInstance.get(
         `/coal-visitors/${encodeURIComponent(
           visitorId
         )}`
-      )
-    ).data,
+      );
+
+    return response.data;
+  },
 
   createRazorpayOrder: async (
     visitorId
-  ) =>
-    (
+  ) => {
+    const response =
       await axiosInstance.post(
         `/coal-visitors/${encodeURIComponent(
           visitorId
         )}/payments/razorpay/create-order`,
         {}
-      )
-    ).data,
+      );
+
+    return response.data;
+  },
 
   verifyPayment: async (
     visitorId,
     payload
-  ) =>
-    (
+  ) => {
+    const response =
       await axiosInstance.post(
         `/coal-visitors/${encodeURIComponent(
           visitorId
         )}/payments/razorpay/verify-payment`,
         payload
-      )
-    ).data,
+      );
 
-  list: async (limit = 500) =>
-    (
+    return response.data;
+  },
+
+  list: async (limit = 500) => {
+    const response =
       await axiosInstance.get(
         `/coal-visitors/crm/list?limit=${limit}`,
         {
           headers: {
-            'X-Portal-Context':
-              'admin',
+            "X-Portal-Context":
+              "admin",
           },
         }
-      )
-    ).data,
+      );
+
+    return response.data;
+  },
 };
