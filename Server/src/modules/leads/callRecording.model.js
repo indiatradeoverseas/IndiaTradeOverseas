@@ -40,8 +40,13 @@ function normalizePriorityForStorage(value) {
     .trim()
     .toUpperCase();
 
-  if (normalized === 'COLD') {
+  if (normalized === 'COLD' || normalized === 'DEAD') {
     return 'LOW';
+  }
+
+  // If the value is not in the allowed enum, fallback to WARM
+  if (!CALL_RECORDING_PRIORITIES.includes(normalized)) {
+    return 'WARM';
   }
 
   return normalized;
@@ -259,9 +264,18 @@ callRecordingSchema.pre(
   'validate',
   function normalizeLegacyPriority(next) {
     if (
-      this.leadPriority === 'COLD'
+      this.leadPriority === 'COLD' ||
+      this.leadPriority === 'DEAD'
     ) {
       this.leadPriority = 'LOW';
+    }
+
+    // Fallback: if priority is not in the allowed enum, default to WARM
+    if (
+      this.leadPriority &&
+      !CALL_RECORDING_PRIORITIES.includes(this.leadPriority)
+    ) {
+      this.leadPriority = 'WARM';
     }
 
     next();

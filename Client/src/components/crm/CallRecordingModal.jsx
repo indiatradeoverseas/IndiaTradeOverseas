@@ -207,7 +207,6 @@ export default function CallRecordingModal({ isOpen, onClose, leads = [], initia
                 Select Lead (Follow-Up Target) *
               </label>
               <select
-                required
                 value={selectedLeadId}
                 onChange={handleLeadSelect}
                 className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"

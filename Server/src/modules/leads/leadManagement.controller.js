@@ -3316,8 +3316,6 @@ async function uploadCallRecording(
           normalizedPriority;
       }
 
-      await lead.save();
-
       const normalizedOutcome =
         getContactOutcomeFromActivity(
           'CALL',
@@ -3346,6 +3344,12 @@ async function uploadCallRecording(
             ) ||
             'Call recording uploaded.',
         });
+
+      const earlyStages = ['NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'CONTACT_ATTEMPTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP'];
+      if (earlyStages.includes(String(lead.stage || '').toUpperCase())) {
+        lead.stage = 'REQUIREMENT_CAPTURED';
+        await lead.save();
+      }
 
       await LeadActivity.create({
         leadId:
@@ -3610,45 +3614,25 @@ async function uploadCallRecording(
           recordingPriority,
       });
 
-    try {
-      const {
-        uploadToGoogleDrive,
-      } =
-        require(
-          '../../services/googleDrive.service'
-        );
-
-      const driveResult =
-        await uploadToGoogleDrive(
+    // Trigger Google Drive upload asynchronously in background to ensure instant API response
+    (async () => {
+      try {
+        const { uploadToGoogleDrive } = require('../../services/googleDrive.service');
+        const driveResult = await uploadToGoogleDrive(
           req.file.path,
           req.file.originalname,
           req.file.mimetype
         );
-
-      if (
-        driveResult &&
-        driveResult.fileId
-      ) {
-        callRecording.driveFileId =
-          driveResult.fileId;
-
-        callRecording.driveWebViewLink =
-          driveResult.webViewLink ||
-          '';
-
-        callRecording.driveWebContentLink =
-          driveResult.webContentLink ||
-          '';
-
-        await callRecording.save();
+        if (driveResult && driveResult.fileId) {
+          callRecording.driveFileId = driveResult.fileId;
+          callRecording.driveWebViewLink = driveResult.webViewLink || '';
+          callRecording.driveWebContentLink = driveResult.webContentLink || '';
+          await callRecording.save();
+        }
+      } catch (error) {
+        console.warn('[CallRecording] Background Google Drive upload notice:', error.message);
       }
-
-    } catch (error) {
-      console.warn(
-        '[CallRecording] Google Drive upload notice:',
-        error.message
-      );
-    }
+    })();
 
     await auditEvidenceSuccess(
       req,
@@ -3751,6 +3735,19 @@ async function uploadCallRecording(
     );
 
   } catch (error) {
+    console.error(
+      '[CallRecording] Upload error:',
+      error?.message || error,
+      error?.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : ''
+    );
+
+    // Clean up uploaded file on error
+    if (req.file) {
+      removeUploadedFileQuietly(
+        req.file
+      );
+    }
+
     if (
       [
         'VALIDATION_FAILED',
@@ -3766,6 +3763,53 @@ async function uploadCallRecording(
         400,
         'VALIDATION_FAILED',
         error.message
+      );
+    }
+
+    // Mongoose ValidationError (e.g. enum mismatch, required field missing)
+    if (
+      error?.name === 'ValidationError'
+    ) {
+      const firstMessage =
+        Object.values(
+          error.errors || {}
+        )
+          .map(
+            (e) => e.message
+          )
+          .join('; ') ||
+        error.message;
+
+      return fail(
+        res,
+        400,
+        'VALIDATION_FAILED',
+        firstMessage
+      );
+    }
+
+    // Mongoose CastError (e.g. invalid ObjectId)
+    if (
+      error?.name === 'CastError'
+    ) {
+      return fail(
+        res,
+        400,
+        'VALIDATION_FAILED',
+        `Invalid value for ${error.path || 'field'}: ${error.value}`
+      );
+    }
+
+    // Duplicate key error (e.g. unique index conflict)
+    if (
+      error?.code === 11000 ||
+      error?.code === 11001
+    ) {
+      return fail(
+        res,
+        409,
+        'DUPLICATE_RECORD',
+        'A duplicate call recording entry was detected.'
       );
     }
 

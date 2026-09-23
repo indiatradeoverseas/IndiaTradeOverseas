@@ -380,7 +380,8 @@ export default function Followup() {
 
   const getAudioUrl = (recording) => {
     if (!recording || recording.isVirtual || !recording._id || String(recording._id).startsWith('virtual_')) return '';
-    return `${API_URL}/leads/call-recordings/${recording._id}/stream`;
+    const token = localStorage.getItem('token') || '';
+    return `${API_URL}/leads/call-recordings/${recording._id}/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
   };
 
   // Counts
@@ -914,12 +915,19 @@ export default function Followup() {
         )}
       </AnimatePresence>
 
-      {/* Call Recording Upload Modal */}
       <CallRecordingModal
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
         leads={leads}
-        onSuccess={loadData}
+        onSuccess={async (recording) => {
+          try {
+            if (recording?.leadId) {
+              const lId = typeof recording.leadId === 'object' ? recording.leadId._id : recording.leadId;
+              await leadsApi.updateStage(lId, { newStage: 'REQUIREMENT_CAPTURED' });
+            }
+          } catch (err) { }
+          await loadData();
+        }}
       />
     </motion.div>
   );
