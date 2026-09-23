@@ -1,40 +1,74 @@
-const express = require("express");
+const router = require('express').Router();
+
+const rateLimit = require('express-rate-limit');
 
 const {
-  createVisitor,
-  getVisitor,
-  listVisitors,
+  authenticate,
+} = require('../../middlewares/auth.middleware');
+
+const {
+  createCoalVisitor,
+  getCoalVisitor,
   createRazorpayOrder,
-  verifyRazorpayPayment,
-} = require("./coalVisitor.controller");
+  verifyPayment,
+  listCoalVisitors,
+} = require('./coalVisitor.controller');
 
-const router = express.Router();
+const publicLimiter =
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
 
-/*
-  IMPORTANT:
-  Keep /crm/list before /:visitorId.
-*/
+    message: {
+      success: false,
+      errorCode: 'RATE_LIMITED',
+      message:
+        'Too many submissions. Please try again later.',
+    },
+  });
 
-router.post("/", createVisitor);
+const paymentLimiter =
+  rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 20,
 
+    message: {
+      success: false,
+      errorCode: 'RATE_LIMITED',
+      message:
+        'Too many payment attempts. Please try again later.',
+    },
+  });
+
+router.post(
+  '/',
+  publicLimiter,
+  createCoalVisitor
+);
+
+// IMPORTANT:
+// This must come BEFORE /:visitorId
 router.get(
-  "/crm/list",
-  listVisitors
+  '/crm/list',
+  authenticate,
+  listCoalVisitors
 );
 
 router.get(
-  "/:visitorId",
-  getVisitor
+  '/:visitorId',
+  getCoalVisitor
 );
 
 router.post(
-  "/:visitorId/payments/razorpay/create-order",
+  '/:visitorId/payments/razorpay/create-order',
+  paymentLimiter,
   createRazorpayOrder
 );
 
 router.post(
-  "/:visitorId/payments/razorpay/verify-payment",
-  verifyRazorpayPayment
+  '/:visitorId/payments/razorpay/verify-payment',
+  paymentLimiter,
+  verifyPayment
 );
 
 module.exports = router;
