@@ -1,18 +1,27 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import { motion, AnimatePresence } from "framer-motion";
+
+import OnionRequirementBuilder from "../../components/requirements/OnionRequirementBuilder";
+import { onionVisitorApi } from "../../api/onionVisitor";
 
 /*
   Onion.jsx — Nashik Onion Vertical
   India Trade Overseas
-  
-  Scroll-linked cinematic frame sequence (240 frames) with full DPR content.
-  Frames at: public/images/onion-frames/frames/ezgif-frame-001.jpg ... ezgif-frame-240.jpg
+
+  Premium Tea-style hero carousel with the existing full DPR content.
+  Hero images are served from public/images/onion-images/.
 */
 
-const TOTAL_FRAMES = 240;
-
-const FRAME_BASE = "/images/onion-frames/frames";
-const FRAME_NAME = (index) =>
-  `${FRAME_BASE}/ezgif-frame-${String(index + 1).padStart(3, "0")}.jpg`;
+const HERO_IMAGES = [
+  "/images/onion-images/onion-1.png",
+  "/images/onion-images/onion-2.png",
+  "/images/onion-images/onion-4.png",
+  "/images/onion-images/onion-5.png",
+];
 
 const COLORS = {
   burgundy: "#4A101C",
@@ -170,6 +179,28 @@ const DOMESTIC_COST_COMPONENTS = [
   { component: "Commercial total", requirement: "Total basis, validity and dispatch window" },
 ];
 
+const ONION_RATE_CHART = {
+  date: "22/09/2026",
+  product: "Red Onion",
+  variety: "NEW CROP",
+  export: [
+    { market: "Dubai", size: "55mm+", rate: "₹50.50/kg", packing: "20 KG Mesh Bag" },
+    { market: "Malaysia", size: "45mm+", rate: "₹43.50/kg", packing: "9 KG Mesh Bag" },
+    { market: "Sri Lanka", size: "45mm+", rate: "₹48.50/kg", packing: "25 KG Jute Bag" },
+    { market: "Bangladesh", size: "40mm+", rate: "₹45.50/kg", packing: "50 KG Jute Bag" },
+    { market: "Vietnam", size: "35mm+", rate: "₹38.50/kg", packing: "10 KG Mesh Bag" },
+    { market: "Nepal", size: "45mm+", rate: "₹47.80/kg", packing: "50 KG Mesh Bag" },
+  ],
+  domestic: [
+    { size: "40mm+", rate: "₹46.50/kg" },
+    { size: "45mm+", rate: "₹47.50/kg" },
+    { size: "50mm+", rate: "₹49.00/kg" },
+  ],
+  domesticPacking: "50 KG Mesh Bag",
+  jnpt: "₹1.30/kg Extra",
+  transport: "As applicable",
+};
+
 const EXPORT_WORKFLOW = [
   { stage: "1. RFQ", control: "Capture importer identity, destination, specification, quantity, timeline and payment instrument." },
   { stage: "2. Feasibility", control: "Review crop, destination rules, documentation, logistics and commercial viability." },
@@ -204,214 +235,140 @@ const CRM_STAGES = [
   "Closed lost",
 ];
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function scrollToFrameProgress(t) {
-  // The old ease-in/out kept the first part of the sequence almost frozen.
-  // This curve deliberately advances the animation much earlier so the onion
-  // peeling begins during the second major scroll instead of several scrolls later.
-  const stops = [
-    [0, 0],
-    [0.16, 0.28],
-    [0.36, 0.55],
-    [0.62, 0.79],
-    [1, 1],
-  ];
-
-  for (let i = 1; i < stops.length; i += 1) {
-    const [x1, y1] = stops[i - 1];
-    const [x2, y2] = stops[i];
-    if (t <= x2) {
-      const local = (t - x1) / (x2 - x1);
-      return y1 + (y2 - y1) * local;
-    }
-  }
-
-  return 1;
-}
-
-function useMediaQuery(query) {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, [query]);
-
-  return matches;
-}
-
 export default function Onion() {
-  const canvasRef = useRef(null);
-  const stageRef = useRef(null);
-  const framesRef = useRef([]);
-  const rafRef = useRef(0);
-  const targetFrameRef = useRef(0);
-  const renderedFrameRef = useRef(-1);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [showRequirementBuilder, setShowRequirementBuilder] =
+    useState(false);
 
-  const [loaded, setLoaded] = useState(0);
-  const [activeFrame, setActiveFrame] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [navOpen, setNavOpen] = useState(false);
+  const [showRateChart, setShowRateChart] = useState(false);
 
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const [showPersonalDetails, setShowPersonalDetails] =
+    useState(false);
 
-  const frameUrls = useMemo(
-    () => Array.from({ length: TOTAL_FRAMES }, (_, i) => FRAME_NAME(i)),
-    []
-  );
+  const [builtRequirement, setBuiltRequirement] =
+    useState(null);
 
-  // Preload the full sequence once. Drawing remains canvas-only while scrolling.
-  useEffect(() => {
-    let cancelled = false;
-    const frames = new Array(TOTAL_FRAMES);
-    let completed = 0;
+  const [submittingPersonalDetails, setSubmittingPersonalDetails] =
+    useState(false);
 
-    frameUrls.forEach((src, index) => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = src;
-
-      image.onload = () => {
-        if (cancelled) return;
-        frames[index] = image;
-        completed += 1;
-        setLoaded(completed);
-      };
-
-      image.onerror = () => {
-        if (cancelled) return;
-        completed += 1;
-        setLoaded(completed);
-      };
+  const [personalDetails, setPersonalDetails] =
+    useState({
+      fullName: "",
+      email: "",
+      mobile: "",
+      city: "",
+      state: "",
+      targetTimeline: "",
     });
 
-    framesRef.current = frames;
-
-    return () => {
-      cancelled = true;
-      framesRef.current = [];
-    };
-  }, [frameUrls]);
-
-  // Canvas setup and high-DPI rendering.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const stage = stageRef.current;
-    if (!canvas || !stage) return;
+    const timer = setTimeout(() => {
+      setHeroIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 6000);
 
-    const ctx = canvas.getContext("2d", { alpha: false });
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
+    return () => clearTimeout(timer);
+  }, [heroIndex]);
 
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const openRequirementBuilder = () => {
+    setShowRequirementBuilder(true);
+  };
 
-      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
+  const handleRequirementComplete = (
+    requirement
+  ) => {
+    setBuiltRequirement(requirement);
 
-      drawFrame(renderedFrameRef.current >= 0 ? renderedFrameRef.current : 0);
-    };
+    setPersonalDetails((previous) => ({
+      ...previous,
 
-    const observer = new ResizeObserver(resize);
-    observer.observe(stage);
-    resize();
+      targetTimeline:
+        requirement.timeline || "",
+    }));
 
-    function drawFrame(index) {
-      const frame = framesRef.current[index];
-      const rect = canvas.getBoundingClientRect();
-      if (!frame || !rect.width || !rect.height) return;
+    setShowRequirementBuilder(false);
 
-      // Cinematic "cover" fit without stretching the source image.
-      const scale = Math.max(
-        rect.width / frame.naturalWidth,
-        rect.height / frame.naturalHeight
-      );
+    setShowPersonalDetails(true);
+  };
 
-      const drawWidth = frame.naturalWidth * scale;
-      const drawHeight = frame.naturalHeight * scale;
-      const x = (rect.width - drawWidth) / 2;
-      const y = (rect.height - drawHeight) / 2;
+  const handlePersonalDetailsSubmit =
+    async (event) => {
+      event.preventDefault();
 
-      ctx.fillStyle = COLORS.ivory;
-      ctx.fillRect(0, 0, rect.width, rect.height);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(frame, 0, 0, frame.naturalWidth, frame.naturalHeight, x, y, drawWidth, drawHeight);
+      if (
+        submittingPersonalDetails ||
+        !builtRequirement
+      ) {
+        return;
+      }
 
-      renderedFrameRef.current = index;
-    }
+      try {
+        setSubmittingPersonalDetails(true);
 
-    window.__drawOnionFrame = drawFrame;
+        const {
+          fullName,
+          email,
+          mobile,
+          city,
+          state,
+          targetTimeline,
+        } = personalDetails;
 
-    return () => {
-      observer.disconnect();
-      delete window.__drawOnionFrame;
-    };
-  }, []);
-
-  // Scroll -> frame index. The entire page controls one cinematic pinned sequence.
-  useEffect(() => {
-    const update = () => {
-      const stage = stageRef.current;
-      if (!stage) return;
-
-      // Map the 240-frame sequence to the ENTIRE document, not just the hero.
-      // Frame 001 is shown at the top of the page and Frame 240 is reached
-      // at the absolute bottom of the page.
-      const documentHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight
-      );
-      const travel = Math.max(documentHeight - window.innerHeight, 1);
-      const raw = clamp(window.scrollY / travel, 0, 1);
-      const frameProgress = scrollToFrameProgress(raw);
-
-      setScrollProgress(frameProgress);
-
-      const frame = reducedMotion
-        ? 0
-        : Math.round(frameProgress * (TOTAL_FRAMES - 1));
-
-      targetFrameRef.current = frame;
-      setActiveFrame(frame);
-
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        if (window.__drawOnionFrame) {
-          window.__drawOnionFrame(targetFrameRef.current);
+        if (
+          !fullName.trim() ||
+          !email.trim() ||
+          !mobile.trim() ||
+          !city.trim() ||
+          !state.trim() ||
+          !targetTimeline
+        ) {
+          throw new Error(
+            "Please complete all personal details."
+          );
         }
-      });
+
+        const response =
+          await onionVisitorApi.create({
+            fullName,
+            email,
+            mobile,
+            city,
+            state,
+
+            timeline:
+              targetTimeline,
+
+            requirement:
+              builtRequirement,
+          });
+
+        if (!response?.success) {
+          throw new Error(
+            response?.message ||
+            "Unable to register your requirement."
+          );
+        }
+
+        setShowPersonalDetails(false);
+
+        window.location.assign(
+          `/nashik-onion/pricing?visitorId=${encodeURIComponent(
+            response.data.visitorId
+          )}`
+        );
+      } catch (error) {
+        console.error(
+          "Onion visitor registration error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Unable to submit your requirement. Please try again."
+        );
+      } finally {
+        setSubmittingPersonalDetails(false);
+      }
     };
-
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [reducedMotion]);
-
-  // If the first frames finish loading after mount, paint immediately.
-  useEffect(() => {
-    if (loaded > 0 && window.__drawOnionFrame) {
-      window.__drawOnionFrame(targetFrameRef.current);
-    }
-  }, [loaded]);
-
-  const loadPercent = Math.round((loaded / TOTAL_FRAMES) * 100);
 
   return (
     <main id="top" className="ito-onion-page">
@@ -448,164 +405,138 @@ export default function Onion() {
           letter-spacing: -0.035em;
         }
 
-        .ito-nav {
-          position: fixed;
-          z-index: 50;
-          top: 0;
-          left: 0;
+        
+
+        .ito-hero {
+          position: relative;
           width: 100%;
+          min-height: 100vh;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 22px clamp(20px, 4vw, 64px);
-          mix-blend-mode: normal;
-          pointer-events: none;
-        }
-
-        .ito-brand {
-          color: var(--burgundy);
-          font-size: 12px;
-          font-weight: 800;
-          letter-spacing: .16em;
-          text-transform: uppercase;
-          pointer-events: auto;
-        }
-
-        .ito-nav-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 9px;
-          border: 1px solid rgba(74, 16, 28, .18);
-          border-radius: 999px;
-          padding: 9px 14px;
-          color: var(--burgundy);
-          background: rgba(247,243,234,.72);
-          backdrop-filter: blur(12px);
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: .08em;
-          text-transform: uppercase;
-          pointer-events: auto;
-        }
-
-        .ito-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--onion-red);
-          box-shadow: 0 0 0 4px rgba(122,35,50,.10);
-        }
-
-        .ito-sequence {
-          position: relative;
-          height: 100vh;
-          min-height: 640px;
-        }
-
-        .ito-sticky {
-          position: fixed;
-          z-index: 0;
-          inset: 0;
-          width: 100%;
-          height: 100vh;
-          min-height: 640px;
           overflow: hidden;
-          display: grid;
-          place-items: center;
-          background: var(--ivory);
-          pointer-events: none;
+          background: var(--burgundy);
         }
 
-        .ito-canvas {
+        .ito-hero-background {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+        }
+
+        .ito-hero-image {
           position: absolute;
           inset: 0;
           width: 100%;
           height: 100%;
+          object-fit: cover;
+          object-position: center;
           display: block;
         }
 
-        .ito-vignette {
+        .ito-hero-overlay {
           position: absolute;
           inset: 0;
-          z-index: 1;
           pointer-events: none;
-          /* Cinematic charcoal vignette around the onion frames — darkens all four edges while keeping the center visible. */
-          background:
-            radial-gradient(ellipse at center,
-              rgba(34,33,31,0) 34%,
-              rgba(34,33,31,.10) 52%,
-              rgba(34,33,31,.30) 72%,
-              rgba(34,33,31,.58) 100%),
-            linear-gradient(90deg,
-              rgba(34,33,31,.28) 0%,
-              rgba(34,33,31,0) 18%,
-              rgba(34,33,31,0) 82%,
-              rgba(34,33,31,.28) 100%),
-            linear-gradient(180deg,
-              rgba(34,33,31,.24) 0%,
-              rgba(34,33,31,0) 18%,
-              rgba(34,33,31,0) 82%,
-              rgba(34,33,31,.34) 100%);
         }
 
-        .ito-hero-copy {
+        .ito-hero-overlay-horizontal {
+          background: linear-gradient(
+            90deg,
+            rgba(74, 16, 28, 0.90) 0%,
+            rgba(74, 16, 28, 0.62) 38%,
+            rgba(74, 16, 28, 0.22) 72%,
+            rgba(74, 16, 28, 0.04) 100%
+          );
+        }
+
+        .ito-hero-overlay-bottom {
+          background: linear-gradient(
+            0deg,
+            rgba(34, 33, 31, 0.60) 0%,
+            rgba(34, 33, 31, 0.08) 48%,
+            rgba(34, 33, 31, 0.10) 100%
+          );
+        }
+
+        .ito-hero-inner {
           position: relative;
           z-index: 2;
-          width: min(1180px, calc(100% - 40px));
+          width: min(1180px, 100%);
           margin: 0 auto;
-          padding: 6vh 32px 4vh;
-          border-radius: 20px;
-          background: rgba(247,243,234,.95);
-          box-shadow: 0 20px 60px rgba(34,33,31,.1);
-          border: 1px solid var(--sand);
-          pointer-events: none;
+          padding: 7.5rem 32px 5rem;
+          display: grid;
+          grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+          align-items: center;
+          min-height: 100vh;
         }
 
-        .ito-kicker {
+        .ito-hero-text {
+          max-width: 850px;
+          color: var(--white);
+          text-align: left;
+        }
+
+        .ito-hero-kicker {
           display: inline-flex;
           align-items: center;
-          gap: 10px;
-          margin-bottom: 18px;
-          color: var(--olive);
-          font-size: 11px;
+          gap: 9px;
+          margin-bottom: 22px;
+          padding: 7px 13px;
+          border: 1px solid rgba(181, 150, 90, 0.42);
+          border-radius: 999px;
+          background: rgba(74, 16, 28, 0.30);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          color: var(--ivory);
+          font-size: 10px;
           font-weight: 800;
-          letter-spacing: .17em;
+          letter-spacing: .14em;
           text-transform: uppercase;
-          
         }
 
-        .ito-kicker::before {
-          content: "";
-          width: 34px;
-          height: 1px;
+        .ito-hero-kicker-dot {
+          width: 7px;
+          height: 7px;
+          flex: 0 0 auto;
+          border-radius: 50%;
+          background: var(--gold);
+          box-shadow: 0 0 0 4px rgba(181,150,90,.13);
+        }
+
+        .ito-hero-text .ito-hero-title {
+          max-width: 850px;
+          margin: 0;
+          color: var(--white);
+          font-size: clamp(48px, 7vw, 96px);
+          line-height: .92;
+          text-shadow: 0 10px 35px rgba(0,0,0,.28);
+        }
+
+        .ito-hero-accent-line {
+          height: 2px;
+          margin: 28px 0 0;
           background: var(--gold);
         }
 
-        .ito-hero-title {
-          max-width: 720px;
-          margin: 0;
-          color: var(--burgundy);
-          font-size: clamp(48px, 7vw, 96px);
-          line-height: .92;
-        }
-
         .ito-hero-subtitle {
-          max-width: 560px;
+          max-width: 650px;
           margin: 25px 0 0;
-          color: rgba(34,33,31,.78);
+          color: rgba(247,243,234,.94);
           font-size: clamp(15px, 1.6vw, 20px);
           line-height: 1.65;
+          text-shadow: 0 5px 22px rgba(0,0,0,.28);
         }
 
         .ito-trust-line {
           display: flex;
           flex-wrap: wrap;
-          gap: 40px;
-          margin-top: 40px;
-          color: rgba(34,33,31,.85);
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: .06em;
+          gap: 14px 30px;
+          margin-top: 34px;
+          color: rgba(247,243,234,.96);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: .05em;
+          text-shadow: 0 4px 16px rgba(0,0,0,.3);
         }
 
         .ito-trust-line span {
@@ -620,83 +551,6 @@ export default function Onion() {
           height: 6px;
           border-radius: 50%;
           background: var(--gold);
-        }
-
-        .ito-scroll-note {
-          position: absolute;
-          z-index: 3;
-          left: clamp(20px, 4vw, 64px);
-          bottom: 28px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: rgba(34,33,31,.85);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: .14em;
-          text-transform: uppercase;
-        }
-
-        .ito-scroll-line {
-          width: 54px;
-          height: 1px;
-          background: var(--gold);
-        }
-
-        .ito-progress {
-          position: absolute;
-          z-index: 4;
-          right: clamp(20px, 4vw, 64px);
-          bottom: 28px;
-          width: 150px;
-          height: 2px;
-          overflow: hidden;
-          background: rgba(74,16,28,.14);
-        }
-
-        .ito-progress > span {
-          display: block;
-          height: 100%;
-          transform-origin: left center;
-          background: var(--onion-red);
-        }
-
-        .ito-frame-counter {
-          position: absolute;
-          z-index: 4;
-          right: clamp(20px, 4vw, 64px);
-          bottom: 38px;
-          color: var(--burgundy);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: .12em;
-        }
-
-        .ito-loading {
-          position: absolute;
-          z-index: 10;
-          inset: auto 50% 24px auto;
-          transform: translateX(50%);
-          color: var(--burgundy);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: .12em;
-          text-transform: uppercase;
-          opacity: ${loaded === TOTAL_FRAMES ? 0 : 1};
-          transition: opacity .35s ease;
-        }
-
-        .ito-section {
-          position: relative;
-          z-index: 2;
-          padding: clamp(90px, 11vw, 160px) clamp(20px, 6vw, 96px);
-          /* The fixed Canvas remains visible through the entire page. */
-          background: transparent;
-        }
-
-        .ito-section.ito-dark,
-        .ito-section.ito-cta {
-          background: transparent;
         }
 
         .ito-section-inner {
@@ -961,7 +815,7 @@ export default function Onion() {
         .ito-cta {
           padding-top: 52px;
           padding-bottom: 72px;
-          background: transparent;
+          background: var(--burgundy);
           color: var(--ivory);
         }
 
@@ -1146,8 +1000,7 @@ export default function Onion() {
           padding-bottom: clamp(52px, 5vw, 72px);
         }
 
-        /* Compact export operating model — keep the section visually short so the
-           scroll-linked onion remains visible across the page. */
+        /* Compact export operating model. */
         .ito-export-grid {
           display: grid;
           grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
@@ -1401,60 +1254,99 @@ export default function Onion() {
           letter-spacing: .10em;
           text-transform: uppercase;
         }
+        }
 
-        /* Keep the hero kicker clear of the fixed navigation on desktop. */
+        /* Desktop / laptop hero remains left-aligned.
+           Mobile-only centering is applied inside the breakpoint below. */
         @media (min-width: 801px) {
-          .ito-hero-copy .ito-kicker {
-            margin-top: 24px;
+          .ito-hero-inner {
+            grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+          }
+
+          .ito-hero-text {
+            margin: 0;
+            max-width: 850px;
+            text-align: left;
+          }
+
+          .ito-hero-kicker {
+            justify-content: flex-start;
+          }
+
+          .ito-hero-accent-line {
+            margin-left: 0;
+            margin-right: 0;
+          }
+
+          .ito-hero-subtitle {
+            margin-left: 0;
+            margin-right: 0;
+            text-align: left;
+          }
+
+          .ito-trust-line {
+            justify-content: flex-start;
+            text-align: left;
           }
         }
 
         @media (max-width: 800px) {
-          .ito-sequence {
-            height: 100vh;
-            min-height: 560px;
+          .ito-hero {
+            min-height: 100svh;
           }
 
-          .ito-sticky {
-            min-height: 560px;
+          .ito-hero-inner {
+            grid-template-columns: 1fr;
+            min-height: 100svh;
+            padding: 7.5rem 20px 4rem;
           }
 
-          .ito-vignette {
-            /* Same all-side charcoal vignette on mobile; keep the frame readable in the center. */
-            background:
-              radial-gradient(ellipse at center,
-                rgba(34,33,31,0) 28%,
-                rgba(34,33,31,.12) 48%,
-                rgba(34,33,31,.34) 70%,
-                rgba(34,33,31,.62) 100%),
-              linear-gradient(90deg,
-                rgba(34,33,31,.30) 0%,
-                rgba(34,33,31,0) 22%,
-                rgba(34,33,31,0) 78%,
-                rgba(34,33,31,.30) 100%),
-              linear-gradient(180deg,
-                rgba(34,33,31,.26) 0%,
-                rgba(34,33,31,0) 20%,
-                rgba(34,33,31,0) 80%,
-                rgba(34,33,31,.38) 100%);
+          .ito-hero-text {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            text-align: center;
           }
 
-          /* Top branding/nav stays fixed; give hero copy room beneath it */
-          .ito-nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 60;
-            background: rgba(247,243,234,.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--sand);
+          .ito-hero-text .ito-hero-title,
+          .ito-hero-subtitle {
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
           }
 
-          .ito-hero-copy {
-            padding-top: calc(6vh + 100px); /* space for fixed nav + extra breathing room */
-            width: min(1180px, calc(100% - 24px));
+          .ito-hero-kicker {
+            justify-content: center;
+            font-size: 8px;
+            letter-spacing: .10em;
           }
+
+          .ito-hero-text .ito-hero-title {
+            font-size: clamp(43px, 13vw, 68px);
+            line-height: .94;
+          }
+
+          .ito-hero-accent-line {
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .ito-hero-subtitle {
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 14px;
+            line-height: 1.55;
+          }
+
+          .ito-trust-line {
+            justify-content: center;
+            gap: 10px 18px;
+            font-size: 10px;
+          }
+
+
 
           .ito-hero-title {
             max-width: 100%;
@@ -1472,30 +1364,25 @@ export default function Onion() {
           .ito-trust-line {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
             margin-top: 16px;
             gap: 10px;
             font-size: 12px;
+            text-align: center;
           }
 
           .ito-trust-line span {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+            width: 100%;
+            text-align: center;
           }
 
-          .ito-scroll-note {
-            bottom: 16px;
-            left: clamp(16px, 4vw, 24px);
-          }
-
-          .ito-frame-counter,
-          .ito-progress {
-            right: clamp(16px, 4vw, 24px);
-            bottom: 16px;
-          }
-
-          .ito-intro,
+            .ito-intro,
           .ito-cta-inner,
           .ito-export-grid {
             grid-template-columns: 1fr;
@@ -1556,18 +1443,66 @@ export default function Onion() {
           }
         }
 
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-table {
+            width: 100%;
+            table-layout: fixed;
+            font-size: 13px;
+          }
+
+          .ito-onion-page .ito-table th,
+          .ito-onion-page .ito-table td {
+            padding: 11px 10px;
+            line-height: 1.55;
+            overflow-wrap: anywhere;
+          }
+
+          .ito-onion-page .ito-table th:first-child,
+          .ito-onion-page .ito-table td:first-child {
+            width: 32%;
+          }
+
+          .ito-onion-page .ito-table th:last-child,
+          .ito-onion-page .ito-table td:last-child {
+            width: 68%;
+          }
+
+          /* Never let a table become wider than its section card. */
+          .ito-onion-page .ito-section-inner {
+            min-width: 0;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page .ito-table {
+            font-size: 12px;
+          }
+
+          .ito-onion-page .ito-table th,
+          .ito-onion-page .ito-table td {
+            padding: 10px 8px;
+          }
+
+          .ito-onion-page .ito-table th:first-child,
+          .ito-onion-page .ito-table td:first-child {
+            width: 34%;
+          }
+
+          .ito-onion-page .ito-table th:last-child,
+          .ito-onion-page .ito-table td:last-child {
+            width: 66%;
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .ito-button {
             transition: none;
           }
         }
 
-        /*
-         * READABILITY FIRST: Every text block gets a solid reading surface.
-         * The canvas stays visible but dimmed; content panels are opaque.
-         */
+        /* Readability surfaces for the existing DPR sections. */
         .ito-section {
-          background: transparent;
+          background: var(--ivory);
         }
 
         .ito-section-inner {
@@ -1876,14 +1811,6 @@ export default function Onion() {
 
         .ito-cta-copy {
           color: rgba(34,33,31,.9) !important;
-        }
-
-        .ito-frame-counter {
-          background: rgba(247,243,234,.9);
-          padding: 4px 8px;
-          border: 1px solid var(--sand);
-          border-radius: 5px;
-          color: var(--burgundy);
         }
 
         /* Light sections: burgundy text */
@@ -2452,10 +2379,6 @@ export default function Onion() {
           .ito-mobile-menu .ito-mobile-menu-cta:focus-visible {
             background: var(--onion-red);
           }
-
-          .ito-hero-copy {
-            padding-top: 92px;
-          }
         }
 
         @media (max-width: 430px) {
@@ -2583,94 +2506,1211 @@ export default function Onion() {
           }
         }
 
+
+        /* =========================================================
+           FINAL RESPONSIVE + CONTENT ALIGNMENT PASS
+           ========================================================= */
+
+        /* Keep normal body copy centered inside content cards/divs.
+           Headings remain independently left-aligned. */
+        .ito-onion-page .ito-spec,
+        .ito-onion-page .ito-card,
+        .ito-onion-page .ito-pack-card,
+        .ito-onion-page .ito-persona-card,
+        .ito-onion-page .ito-split-card,
+        .ito-onion-page .ito-quote-box,
+        .ito-onion-page .ito-export-docs,
+        .ito-onion-page .ito-process-item,
+        .ito-onion-page .ito-export-step,
+        .ito-onion-page .ito-market,
+        .ito-onion-page .ito-cta-copy {
+          text-align: center;
+        }
+
+        /* Headings intentionally stay left aligned. */
+        .ito-onion-page h1,
+        .ito-onion-page h2,
+        .ito-onion-page h3,
+        .ito-onion-page h4,
+        .ito-onion-page .ito-section-title,
+        .ito-onion-page .ito-section-heading,
+        .ito-onion-page .ito-crm-heading,
+        .ito-onion-page .ito-sub-heading,
+        .ito-onion-page .ito-display {
+          text-align: left;
+        }
+
+        .ito-onion-page .ito-spec strong,
+        .ito-onion-page .ito-spec span,
+        .ito-onion-page .ito-card p,
+        .ito-onion-page .ito-pack-card p,
+        .ito-onion-page .ito-persona-card .need,
+        .ito-onion-page .ito-split-card p,
+        .ito-onion-page .ito-quote-box,
+        .ito-onion-page .ito-export-step .ito-process-control,
+        .ito-onion-page .ito-process-item span {
+          text-align: center;
+        }
+
+        /* =========================================================
+           TABLE LAYOUT FIX
+           The previous responsive rule changed the actual <table> to
+           display:block and then targeted a nested <table> that does not
+           exist. That made the cells shrink to their content and left a
+           large empty white area inside the table surface.
+
+           Keep the table as a real table at every viewport width.
+           Columns are allowed to wrap naturally so the table fills the
+           available section width without creating horizontal dead space.
+           ========================================================= */
+        .ito-onion-page .ito-table {
+          display: table;
+          width: 100%;
+          max-width: 100%;
+          table-layout: fixed;
+          border-collapse: collapse;
+          overflow: visible;
+        }
+
+        .ito-onion-page .ito-table th,
+        .ito-onion-page .ito-table td {
+          min-width: 0;
+          max-width: none;
+          overflow-wrap: break-word;
+          word-break: normal;
+          white-space: normal;
+          vertical-align: middle;
+        }
+
+        .ito-onion-page .ito-table th:first-child,
+        .ito-onion-page .ito-table td:first-child {
+          width: 28%;
+        }
+
+        .ito-onion-page .ito-table th:last-child,
+        .ito-onion-page .ito-table td:last-child {
+          width: 72%;
+        }
+
+        /* Keep the table surface clean on desktop and mobile. */
+        .ito-onion-page .ito-table tr {
+          width: 100%;
+        }
+
+        .ito-onion-page img {
+          max-width: 100%;
+        }
+
+        .ito-onion-page input,
+        .ito-onion-page textarea,
+        .ito-onion-page select,
+        .ito-onion-page button {
+          max-width: 100%;
+        }
+
+        /* Requirement / personal-details modal responsiveness. */
+        .ito-onion-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          overflow-y: auto;
+          background: rgba(20, 12, 14, 0.62);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .ito-onion-personal-modal {
+          width: min(760px, 100%);
+          max-height: min(900px, calc(100svh - 48px));
+          overflow-y: auto;
+          border: 1px solid rgba(74, 16, 28, 0.16);
+          border-radius: 22px;
+          background: #F7F3EA;
+          box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+        }
+
+        .ito-onion-personal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 28px 30px 22px;
+          border-bottom: 1px solid rgba(74, 16, 28, 0.12);
+        }
+
+        .ito-onion-personal-header small {
+          display: block;
+          margin-bottom: 8px;
+          color: #566044;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: .12em;
+          text-transform: uppercase;
+          text-align: left;
+        }
+
+        .ito-onion-personal-header h2 {
+          margin: 0;
+          color: #4A101C;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(30px, 4vw, 46px);
+          line-height: 1;
+          font-weight: 500;
+          text-align: left;
+        }
+
+        .ito-onion-modal-close {
+          flex: 0 0 auto;
+          width: 40px;
+          height: 40px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(74, 16, 28, 0.18);
+          border-radius: 50%;
+          background: transparent;
+          color: #4A101C;
+          font-size: 24px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .ito-onion-personal-body {
+          padding: 26px 30px 30px;
+        }
+
+        .ito-onion-requirement-summary {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+          margin-bottom: 24px;
+        }
+
+        .ito-onion-requirement-summary > div {
+          min-width: 0;
+          padding: 14px;
+          border: 1px solid rgba(74, 16, 28, 0.12);
+          border-radius: 12px;
+          background: #FFFFFF;
+          text-align: center;
+        }
+
+        .ito-onion-requirement-summary span {
+          display: block;
+          margin-bottom: 6px;
+          color: #566044;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: .1em;
+          text-transform: uppercase;
+        }
+
+        .ito-onion-requirement-summary strong {
+          display: block;
+          color: #4A101C;
+          font-size: 12px;
+          line-height: 1.45;
+          overflow-wrap: anywhere;
+        }
+
+        .ito-onion-form-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .ito-onion-field {
+          min-width: 0;
+        }
+
+        .ito-onion-field.full {
+          grid-column: 1 / -1;
+        }
+
+        .ito-onion-field label {
+          display: block;
+          margin-bottom: 7px;
+          color: #4A101C;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+          text-align: left;
+        }
+
+        .ito-onion-field input,
+        .ito-onion-field textarea,
+        .ito-onion-field select {
+          width: 100%;
+          min-height: 48px;
+          padding: 12px 14px;
+          border: 1px solid rgba(74, 16, 28, 0.16);
+          border-radius: 10px;
+          outline: none;
+          background: #FFFFFF;
+          color: #22211F;
+          font: inherit;
+          font-size: 14px;
+        }
+
+        .ito-onion-field input:focus,
+        .ito-onion-field textarea:focus,
+        .ito-onion-field select:focus {
+          border-color: #8E3347;
+          box-shadow: 0 0 0 3px rgba(142, 51, 71, 0.10);
+        }
+
+        .ito-onion-form-note {
+          margin: 20px 0 0;
+          color: rgba(34, 33, 31, .72);
+          font-size: 12px;
+          line-height: 1.6;
+          text-align: center;
+        }
+
+        .ito-onion-form-actions {
+          display: flex;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 22px;
+        }
+
+        /* Laptop / tablet widths. */
+        @media (max-width: 1100px) {
+          .ito-onion-page .ito-section-inner {
+            width: min(100% - 40px, 1100px);
+          }
+
+          .ito-onion-page .ito-hero-inner {
+            width: min(100% - 40px, 1100px);
+            padding-left: 20px;
+            padding-right: 20px;
+          }
+
+          .ito-onion-page .ito-spec-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-onion-page .ito-grade-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-onion-page .ito-persona-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-onion-page .ito-export-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        /* Phones. */
+        @media (max-width: 800px) {
+          .ito-onion-page {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+          }
+
+          .ito-onion-page .ito-section {
+            width: 100%;
+            overflow: hidden;
+          }
+
+          .ito-onion-page .ito-section .ito-section-inner {
+            width: calc(100% - 24px);
+            max-width: none;
+            margin-left: 12px;
+            margin-right: 12px;
+            padding: 26px 18px;
+            border-radius: 16px;
+          }
+
+          .ito-onion-page .ito-hero-inner {
+            width: 100%;
+            padding: 7rem 18px 3.5rem;
+          }
+
+          .ito-onion-page .ito-hero-text {
+            width: 100%;
+            max-width: 100%;
+            text-align: center;
+          }
+
+          .ito-onion-page .ito-hero-title,
+          .ito-onion-page .ito-hero-subtitle {
+            max-width: 100%;
+          }
+
+          .ito-onion-page .ito-intro,
+          .ito-onion-page .ito-cta-inner,
+          .ito-onion-page .ito-export-grid,
+          .ito-onion-page .ito-split-grid {
+            grid-template-columns: 1fr;
+            gap: 28px;
+          }
+
+          .ito-onion-page .ito-spec-grid {
+            grid-template-columns: 1fr;
+            margin-top: 36px;
+          }
+
+          .ito-onion-page .ito-grade-grid,
+          .ito-onion-page .ito-process,
+          .ito-onion-page .ito-packaging,
+          .ito-onion-page .ito-persona-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-process-item {
+            grid-template-columns: 42px 1fr;
+            gap: 12px;
+            text-align: center;
+          }
+
+          .ito-onion-page .ito-process-item span {
+            min-width: 0;
+          }
+
+          .ito-onion-page .ito-export-workflow {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-export-step {
+            grid-template-columns: 48px minmax(0, 1fr);
+            gap: 10px;
+          }
+
+          .ito-onion-page .ito-export-docs,
+          .ito-onion-page .ito-pack-card,
+          .ito-onion-page .ito-persona-card,
+          .ito-onion-page .ito-split-card,
+          .ito-onion-page .ito-quote-box {
+            padding: 20px 16px;
+          }
+
+          .ito-onion-page .ito-markets {
+            justify-content: center;
+          }
+
+          .ito-onion-page .ito-market {
+            max-width: 100%;
+            overflow-wrap: anywhere;
+          }
+
+          .ito-onion-page .ito-table {
+            margin-left: 0;
+            margin-right: 0;
+          }
+
+          .ito-onion-page .ito-cta-inner > div:first-child,
+          .ito-onion-page .ito-cta-inner > div:last-child {
+            padding: 20px 18px;
+          }
+
+          .ito-onion-page .ito-actions {
+            justify-content: center;
+          }
+
+          .ito-onion-page .ito-button {
+            width: 100%;
+            max-width: 100%;
+          }
+
+          .ito-onion-page .ito-footer {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+
+          .ito-onion-modal-backdrop {
+            align-items: flex-start;
+            padding: 12px;
+          }
+
+          .ito-onion-personal-modal {
+            width: 100%;
+            max-height: calc(100svh - 24px);
+            border-radius: 16px;
+          }
+
+          .ito-onion-personal-header {
+            padding: 20px 18px 18px;
+          }
+
+          .ito-onion-personal-body {
+            padding: 20px 18px 22px;
+          }
+
+          .ito-onion-requirement-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-onion-form-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-field.full {
+            grid-column: auto;
+          }
+
+          .ito-onion-form-actions {
+            flex-direction: column-reverse;
+          }
+
+          .ito-onion-form-actions .ito-button {
+            width: 100%;
+          }
+
+          /* Content copy is centered on mobile; section headings remain left. */
+          .ito-onion-page .ito-lead,
+          .ito-onion-page .ito-pack-card p,
+          .ito-onion-page .ito-persona-card .need,
+          .ito-onion-page .ito-split-card p,
+          .ito-onion-page .ito-quote-box,
+          .ito-onion-page .ito-cta-copy {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .ito-onion-page .ito-section-title,
+          .ito-onion-page .ito-section-heading,
+          .ito-onion-page .ito-crm-heading,
+          .ito-onion-page .ito-sub-heading {
+            width: 100%;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+          }
+        }
+
+        /* Small phones. */
+        @media (max-width: 430px) {
+          .ito-onion-page .ito-section .ito-section-inner {
+            width: calc(100% - 16px);
+            margin-left: 8px;
+            margin-right: 8px;
+            padding: 22px 14px;
+          }
+
+          .ito-onion-page .ito-section-title {
+            font-size: clamp(34px, 11vw, 48px);
+          }
+
+          .ito-onion-page .ito-card {
+            min-height: auto;
+            padding: 22px 16px;
+          }
+
+          .ito-onion-page .ito-card h3 {
+            margin-top: 34px;
+            font-size: 26px;
+          }
+
+          .ito-onion-page .ito-spec {
+            min-height: auto;
+            padding: 22px 16px;
+          }
+
+          .ito-onion-page .ito-process-item,
+          .ito-onion-page .ito-export-step {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: center;
+          }
+
+          .ito-onion-page .ito-process-item::before {
+            margin-bottom: 4px;
+          }
+
+          .ito-onion-page .ito-process-stage {
+            text-align: center;
+          }
+
+          .ito-onion-page .ito-hero-inner {
+            padding-left: 14px;
+            padding-right: 14px;
+          }
+
+          .ito-onion-page .ito-hero-text {
+            width: 100%;
+            max-width: 100%;
+            text-align: left;
+          }
+
+          .ito-onion-page .ito-hero-kicker {
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            justify-content: center;
+          }
+
+          .ito-onion-page .ito-hero-title {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            font-size: clamp(35px, 10vw, 42px);
+            line-height: 0.98;
+            letter-spacing: -0.025em;
+            text-align: left;
+            white-space: normal;
+          }
+
+          .ito-onion-page .ito-hero-title-line {
+            display: block;
+            width: max-content;
+            max-width: 100%;
+            white-space: nowrap;
+          }
+
+          .ito-onion-page .ito-hero-subtitle {
+            width: 100%;
+            max-width: 100%;
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .ito-onion-page .ito-trust-line {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .ito-onion-page .ito-trust-line {
+            align-items: center;
+          }
+
+          .ito-onion-requirement-summary {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-personal-header h2 {
+            font-size: 30px;
+          }
+
+          .ito-onion-modal-close {
+            width: 36px;
+            height: 36px;
+          }
+        }
+
+        /* Large laptop / desktop: keep content comfortably centered. */
+        @media (min-width: 1400px) {
+          .ito-onion-page .ito-section .ito-section-inner {
+            max-width: 1240px;
+          }
+
+          .ito-onion-page .ito-hero-inner {
+            width: min(1240px, calc(100% - 80px));
+          }
+        }
+
+
+        /* =========================================================
+           FINAL PAGE ALIGNMENT SYSTEM
+           Desktop / laptop: hero remains intentionally left aligned.
+           Mobile: hero becomes a centered composition.
+           Other page sections use the alignment that best suits their
+           content: headings remain left-aligned while compact cards and
+           process content can use centered copy.
+           ========================================================= */
+
+        /* HERO — LAPTOP / DESKTOP */
+        .ito-onion-page .ito-hero-inner {
+          grid-template-columns: minmax(0, 1fr) !important;
+          justify-items: start;
+          width: min(1180px, calc(100% - 40px));
+        }
+
+        .ito-onion-page .ito-hero-text {
+          width: min(100%, 920px);
+          max-width: 920px;
+          margin-left: 0;
+          margin-right: auto;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-hero-kicker {
+          width: fit-content;
+          max-width: 100%;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          justify-content: flex-start;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-hero-title {
+          width: 100%;
+          max-width: 920px;
+          margin-left: 0 !important;
+          margin-right: auto !important;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-hero-title-line {
+          display: block;
+          width: fit-content;
+          max-width: 100%;
+          margin-left: 0;
+          margin-right: auto;
+          white-space: nowrap;
+          text-align: left;
+        }
+
+        .ito-onion-page .ito-hero-accent-line {
+          margin-left: 0 !important;
+          margin-right: auto !important;
+        }
+
+        .ito-onion-page .ito-hero-subtitle {
+          width: 100%;
+          max-width: 680px;
+          margin-left: 0 !important;
+          margin-right: auto !important;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-trust-line {
+          width: 100%;
+          justify-content: flex-start !important;
+          align-items: flex-start !important;
+          text-align: left !important;
+          margin-left: 0;
+          margin-right: auto;
+        }
+
+        .ito-onion-page .ito-trust-line span {
+          justify-content: flex-start;
+          text-align: left;
+        }
+
+        /* General page alignment: keep major headings readable and consistent. */
+        .ito-onion-page .ito-section-title,
+        .ito-onion-page .ito-section-heading,
+        .ito-onion-page .ito-crm-heading,
+        .ito-onion-page .ito-sub-heading,
+        .ito-onion-page .ito-display {
+          text-align: left;
+        }
+
+        .ito-onion-page .ito-lead {
+          text-align: left;
+        }
+
+        /* Cards, compact process blocks and specification copy remain centered
+           where that creates a cleaner visual hierarchy. */
+        .ito-onion-page .ito-spec,
+        .ito-onion-page .ito-card,
+        .ito-onion-page .ito-pack-card,
+        .ito-onion-page .ito-persona-card,
+        .ito-onion-page .ito-split-card,
+        .ito-onion-page .ito-quote-box,
+        .ito-onion-page .ito-export-docs,
+        .ito-onion-page .ito-process-item,
+        .ito-onion-page .ito-export-step,
+        .ito-onion-page .ito-market,
+        .ito-onion-page .ito-cta-copy {
+          text-align: center;
+        }
+
+        /* HERO — MOBILE ONLY */
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-hero-inner {
+            width: 100%;
+            grid-template-columns: 1fr !important;
+            justify-items: center;
+            padding-left: 14px;
+            padding-right: 14px;
+          }
+
+          .ito-onion-page .ito-hero-text {
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center !important;
+          }
+
+          .ito-onion-page .ito-hero-kicker {
+            width: fit-content;
+            max-width: 100%;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            justify-content: center;
+            text-align: center !important;
+          }
+
+          .ito-onion-page .ito-hero-title {
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            font-size: clamp(36px, 10.5vw, 58px);
+            line-height: 0.98;
+            text-align: center !important;
+          }
+
+          .ito-onion-page .ito-hero-title-line {
+            width: fit-content;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            white-space: nowrap;
+            text-align: center;
+          }
+
+          .ito-onion-page .ito-hero-accent-line {
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+
+          .ito-onion-page .ito-hero-subtitle {
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            text-align: center !important;
+          }
+
+          .ito-onion-page .ito-trust-line {
+            width: 100%;
+            justify-content: center !important;
+            align-items: center !important;
+            flex-direction: column;
+            text-align: center !important;
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .ito-onion-page .ito-trust-line span {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page .ito-hero-title {
+            font-size: clamp(34px, 10.2vw, 44px);
+            line-height: 1;
+          }
+
+          .ito-onion-page .ito-hero-title-line {
+            white-space: nowrap;
+          }
+
+          .ito-onion-page .ito-hero-kicker {
+            font-size: 8px;
+          }
+
+          .ito-onion-page .ito-hero-subtitle {
+            font-size: 14px;
+            line-height: 1.55;
+          }
+
+          .ito-onion-page .ito-trust-line {
+            gap: 9px;
+            font-size: 11px;
+          }
+        }
+
+        /* =========================================================
+           MOBILE HERO TYPOGRAPHY SPACING
+           Mobile only — laptop/desktop remains unchanged.
+           ========================================================= */
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-hero-text {
+            gap: 0;
+          }
+
+          .ito-onion-page .ito-hero-kicker {
+            margin-bottom: 28px !important;
+          }
+
+          .ito-onion-page .ito-hero-title {
+            margin-bottom: 28px !important;
+          }
+
+          .ito-onion-page .ito-hero-title-line + .ito-hero-title-line {
+            margin-top: 5px;
+          }
+
+          .ito-onion-page .ito-hero-accent-line {
+            margin-top: 4px !important;
+            margin-bottom: 28px !important;
+          }
+
+          .ito-onion-page .ito-hero-subtitle {
+            margin-top: 0 !important;
+            line-height: 1.8 !important;
+          }
+
+          .ito-onion-page .ito-trust-line {
+            margin-top: 28px !important;
+            gap: 14px !important;
+            line-height: 1.5 !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page .ito-hero-kicker {
+            margin-bottom: 24px !important;
+          }
+
+          .ito-onion-page .ito-hero-title {
+            margin-bottom: 24px !important;
+          }
+
+          .ito-onion-page .ito-hero-title-line + .ito-hero-title-line {
+            margin-top: 4px;
+          }
+
+          .ito-onion-page .ito-hero-accent-line {
+            margin-bottom: 24px !important;
+          }
+
+          .ito-onion-page .ito-hero-subtitle {
+            line-height: 1.75 !important;
+          }
+
+          .ito-onion-page .ito-trust-line {
+            margin-top: 24px !important;
+            gap: 12px !important;
+          }
+        }
+
+
+        /* DAILY ONION RATE CHART MODAL */
+        .ito-rate-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: rgba(20, 12, 14, 0.72);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+
+        .ito-rate-modal {
+          width: min(920px, 100%);
+          max-height: min(90vh, 900px);
+          overflow: hidden;
+          border: 1px solid rgba(181, 150, 90, 0.55);
+          border-radius: 22px;
+          background: var(--ivory);
+          color: var(--charcoal);
+          box-shadow: 0 30px 100px rgba(0,0,0,.35);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .ito-rate-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 24px 28px;
+          background: var(--burgundy);
+          color: var(--ivory);
+          border-bottom: 1px solid rgba(181,150,90,.35);
+        }
+
+        .ito-rate-modal-kicker {
+          margin-bottom: 7px;
+          color: var(--gold);
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: .16em;
+          text-transform: uppercase;
+        }
+
+        .ito-rate-modal-header h2 {
+          margin: 0;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(28px, 4vw, 42px);
+          font-weight: 500;
+          line-height: 1;
+        }
+
+        .ito-rate-modal-date {
+          margin-top: 8px;
+          color: rgba(247,243,234,.82);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .ito-rate-modal-close {
+          width: 42px;
+          height: 42px;
+          flex: 0 0 auto;
+          border: 1px solid rgba(247,243,234,.28);
+          border-radius: 50%;
+          background: rgba(255,255,255,.08);
+          color: var(--ivory);
+          font-size: 25px;
+          line-height: 1;
+          cursor: pointer;
+          transition: transform .2s ease, background .2s ease;
+        }
+
+        .ito-rate-modal-close:hover {
+          transform: rotate(4deg);
+          background: rgba(255,255,255,.16);
+        }
+
+        .ito-rate-modal-body {
+          overflow-y: auto;
+          padding: 26px 28px 30px;
+        }
+
+        .ito-rate-intro {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 22px;
+        }
+
+        .ito-rate-pill {
+          padding: 8px 12px;
+          border: 1px solid var(--sand);
+          border-radius: 999px;
+          background: rgba(74,16,28,.045);
+          color: var(--burgundy);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .ito-rate-section-title {
+          margin: 24px 0 12px;
+          color: var(--burgundy);
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 25px;
+          font-weight: 500;
+        }
+
+        .ito-rate-table-wrap {
+          width: 100%;
+          overflow-x: auto;
+          border: 1px solid var(--sand);
+          border-radius: 14px;
+          background: var(--white);
+        }
+
+        .ito-rate-table {
+          width: 100%;
+          min-width: 650px;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+
+        .ito-rate-table th,
+        .ito-rate-table td {
+          padding: 13px 14px;
+          text-align: left;
+          border-bottom: 1px solid rgba(222,209,188,.75);
+        }
+
+        .ito-rate-table th {
+          background: rgba(74,16,28,.055);
+          color: var(--burgundy);
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+        }
+
+        .ito-rate-table td {
+          color: rgba(34,33,31,.86);
+        }
+
+        .ito-rate-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+
+        .ito-rate-price {
+          color: var(--onion-red) !important;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .ito-domestic-highlight {
+          margin-top: 12px;
+          padding: 16px 18px;
+          border: 1px solid rgba(74,16,28,.18);
+          border-radius: 14px;
+          background: rgba(74,16,28,.055);
+        }
+
+        .ito-domestic-highlight strong {
+          color: var(--burgundy);
+        }
+
+        .ito-rate-notes {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-top: 16px;
+        }
+
+        .ito-rate-note {
+          padding: 14px;
+          border: 1px solid var(--sand);
+          border-radius: 12px;
+          background: var(--white);
+        }
+
+        .ito-rate-note span {
+          display: block;
+          margin-bottom: 5px;
+          color: var(--olive);
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: .1em;
+          text-transform: uppercase;
+        }
+
+        .ito-rate-note strong {
+          color: var(--burgundy);
+          font-size: 14px;
+        }
+
+        .ito-rate-disclaimer {
+          margin-top: 20px;
+          color: rgba(34,33,31,.62);
+          font-size: 11px;
+          line-height: 1.6;
+        }
+
+        @media (max-width: 800px) {
+          .ito-rate-modal-backdrop {
+            align-items: flex-start;
+            padding: 12px;
+          }
+
+          .ito-rate-modal {
+            max-height: calc(100svh - 24px);
+            border-radius: 17px;
+          }
+
+          .ito-rate-modal-header {
+            padding: 20px 18px;
+          }
+
+          .ito-rate-modal-body {
+            padding: 20px 16px 24px;
+          }
+
+          .ito-rate-notes {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-rate-modal-header h2 {
+            font-size: 30px;
+          }
+
+          .ito-rate-modal-close {
+            width: 36px;
+            height: 36px;
+            font-size: 21px;
+          }
+
+          .ito-rate-table {
+            min-width: 590px;
+          }
+        }
+
 `}</style>
 
-      <nav className="ito-nav" aria-label="Primary">
-        <a className="ito-nav-brand" href="#top" aria-label="India Trade Overseas — Nashik Onion">
-          <span className="ito-nav-mark" aria-hidden="true">ITO</span>
-          <span className="ito-nav-brand-copy">
-            <strong>India Trade Overseas</strong>
-            <small>Nashik Onion Vertical</small>
-          </span>
-        </a>
+      {/* HERO */}
+      <section className="ito-hero" aria-label="Nashik onion hero">
+        <div className="ito-hero-background" aria-hidden="true">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={heroIndex}
+              src={HERO_IMAGES[heroIndex]}
+              alt="Nashik red onion supply"
+              initial={{ opacity: 0, scale: 1.03 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="ito-hero-image"
+            />
+          </AnimatePresence>
 
-        <div className="ito-nav-links" aria-label="Page sections">
-          <a href="#specifications">Specifications</a>
-          <a href="#quality">Quality</a>
-          <a href="#process">Process</a>
-          <a href="#international">Export</a>
-          <a href="#faq">FAQ</a>
+          <div className="ito-hero-overlay ito-hero-overlay-horizontal" />
+          <div className="ito-hero-overlay ito-hero-overlay-bottom" />
         </div>
 
-        <div className="ito-nav-actions">
-          <a className="ito-nav-cta" href="#rfq">Request Supply</a>
-          <button
-            className={`ito-nav-menu ${navOpen ? "is-open" : ""}`}
-            type="button"
-            aria-label={navOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={navOpen}
-            onClick={() => setNavOpen((open) => !open)}
+        <div className="ito-hero-inner">
+          <motion.div
+            className="ito-hero-text"
+            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{
+              duration: 1.2,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.2,
+            }}
           >
-            <span />
-            <span />
-          </button>
-        </div>
+            <motion.div
+              className="ito-hero-kicker"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+            >
+              <span className="ito-hero-kicker-dot" />
+              <span>Domestic India · International Export · Bulk B2B Trade</span>
+            </motion.div>
 
-        <div className={`ito-mobile-menu ${navOpen ? "is-open" : ""}`}>
-          <a href="#specifications" onClick={() => setNavOpen(false)}>Specifications</a>
-          <a href="#quality" onClick={() => setNavOpen(false)}>Quality Control</a>
-          <a href="#process" onClick={() => setNavOpen(false)}>Process</a>
-          <a href="#international" onClick={() => setNavOpen(false)}>Export</a>
-          <a href="#faq" onClick={() => setNavOpen(false)}>FAQ</a>
-          <a className="ito-mobile-menu-cta" href="#rfq" onClick={() => setNavOpen(false)}>
-            Request Supply
-          </a>
-        </div>
-      </nav>
+            <motion.h1
+              className="ito-display ito-hero-title"
+              initial={{ scale: 0.97 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 1, ease: "easeOut", delay: 0.4 }}
+            >
+              <span className="ito-hero-title-line">Nashik Onions</span>
+              <span className="ito-hero-title-line">for Domestic</span>
+              <span className="ito-hero-title-line">&amp; Global Markets</span>
+            </motion.h1>
 
-      {/* CINEMATIC HERO SEQUENCE */}
-      <section ref={stageRef} className="ito-sequence" aria-label="Nashik onion cinematic sequence">
-        {/* The canvas is the only element pinned to the viewport. */}
-        <div className="ito-sticky" aria-hidden="true">
-          <canvas
-            ref={canvasRef}
-            className="ito-canvas"
-            aria-label="Frame-by-frame Nashik onion product sequence"
-          />
-          <div className="ito-vignette" />
-          <div className="ito-progress" aria-hidden="true">
-            <span style={{ transform: `scaleX(${scrollProgress})` }} />
-          </div>
-          <div className="ito-loading" aria-live="polite">
-            Loading sequence · {loadPercent}%
-          </div>
-        </div>
+            <motion.div
+              className="ito-hero-accent-line"
+              initial={{ width: 0 }}
+              animate={{ width: 96 }}
+              transition={{ duration: 1, delay: 0.7, ease: "easeInOut" }}
+            />
 
-        {/* Hero copy is normal document content, so it scrolls away naturally. */}
-        <div className="ito-hero-content">
-          <div className="ito-hero-copy">
-            <div className="ito-kicker">Domestic India · International Export · Bulk B2B Trade</div>
-            <h1 className="ito-display ito-hero-title">
-              Nashik Onions
-              <br />
-              for Domestic
-              <br />
-              & Global Markets
-            </h1>
-            <p className="ito-hero-subtitle">
+            <motion.p
+              className="ito-hero-subtitle"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
               Sourced with Precision. Graded to Specification. Delivered with Coordination.
-            </p>
-            <div className="ito-trust-line" role="list">
+            </motion.p>
+
+            <motion.div
+              className="ito-trust-line"
+              role="list"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+            >
               <span role="listitem">Buyer-Defined Grades</span>
               <span role="listitem">Flexible Packaging</span>
               <span role="listitem">Documented Loading</span>
               <span role="listitem">Logistics Coordination</span>
-            </div>
-          </div>
-          <div className="ito-scroll-note">
-            <span className="ito-scroll-line" />
-            Scroll to explore
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -2687,7 +3727,13 @@ export default function Onion() {
             <article className="ito-split-card">
               <h3>Domestic Supply</h3>
               <p>Bulk truckload supply for wholesalers, distributors, processors, institutional buyers and retail-chain suppliers across India. Quotations may be prepared on an Ex-Warehouse, FOR or delivered-to-destination basis.</p>
-              <a className="ito-button" href="#domestic">Get Domestic Delivered Rate</a>
+              <button
+                className="ito-button"
+                type="button"
+                onClick={() => setShowRateChart(true)}
+              >
+                Get Domestic Delivered Rate
+              </button>
             </article>
             <article className="ito-split-card">
               <h3>International Export</h3>
@@ -3069,7 +4115,13 @@ export default function Onion() {
               Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability, logistics and applicable terms before preparing the offer.
             </p>
             <div className="ito-actions">
-              <a className="ito-button" href="#rfq">Request Domestic Rate</a>
+              <button
+                className="ito-button"
+                type="button"
+                onClick={openRequirementBuilder}
+              >
+                Request Bulk Quote
+              </button>
               <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
               <a className="ito-button secondary" href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements." target="_blank" rel="noopener noreferrer">Chat with Export Sales on WhatsApp</a>
             </div>
@@ -3077,36 +4129,358 @@ export default function Onion() {
         </div>
       </section>
 
-      {/* CRM & LEAD INFO - Reference section */}
-      <section className="ito-section ito-section--pt">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Sales operations</div>
-          <h2 className="ito-display ito-section-title">CRM Pipeline and Automation</h2>
-          <p className="ito-lead">
-            The CRM pipeline tracks every lead from enquiry through to repeat order, with automated WhatsApp acknowledgement and internal response standards.
-          </p>
 
-          <h3 className="ito-crm-heading">
-            CRM Stages ({CRM_STAGES.length} stages)
-          </h3>
-          <div className="ito-markets ito-markets--mt">
-            {CRM_STAGES.map((stage, i) => (
-              <span className="ito-market ito-market--crm" key={i}>
-                {String(i + 1).padStart(2, "0")}. {stage}
-              </span>
-            ))}
-          </div>
+      {/* ONION REQUIREMENT BUILDER */}
+      <OnionRequirementBuilder
+        isOpen={showRequirementBuilder}
+        onClose={() => setShowRequirementBuilder(false)}
+        onComplete={handleRequirementComplete}
+      />
 
-          <div className="ito-quote-box ito-quote-box--mt">
-            <strong>Automated WhatsApp acknowledgement:</strong> "Welcome to India Trade Overseas. Thank you for contacting us regarding Nashik onions. Please share whether the requirement is domestic or international, your company, quantity, size, grade, packaging, destination, required date, preferred trade term and payment method. Our team will verify current availability, logistics and pricing before sharing the applicable offer."
-          </div>
-        </div>
-      </section>
+      {/* PERSONAL DETAILS */}
+      <AnimatePresence>
+        {showPersonalDetails && (
+          <motion.div
+            className="ito-onion-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !submittingPersonalDetails) {
+                setShowPersonalDetails(false);
+              }
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ito-onion-personal-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onion-personal-details-title"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <div className="ito-onion-personal-header">
+                <div>
+                  <small>Step 2 · Buyer details</small>
+                  <h2 id="onion-personal-details-title">Tell us who is buying.</h2>
+                </div>
 
-      <footer className="ito-footer">
-        <span>India Trade Overseas · Nashik Onion Vertical</span>
-        <span>Where Quality Meets Global Demand</span>
-      </footer>
+                <button
+                  type="button"
+                  className="ito-onion-modal-close"
+                  aria-label="Close"
+                  disabled={submittingPersonalDetails}
+                  onClick={() => setShowPersonalDetails(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                className="ito-onion-personal-body"
+                onSubmit={handlePersonalDetailsSubmit}
+              >
+                {builtRequirement && (
+                  <div className="ito-onion-requirement-summary">
+                    <div>
+                      <span>Trade</span>
+                      <strong>{builtRequirement.tradeType === "EXPORT" ? "International Export" : "Domestic India"}</strong>
+                    </div>
+                    <div>
+                      <span>Size</span>
+                      <strong>{builtRequirement.size}</strong>
+                    </div>
+                    <div>
+                      <span>Grade</span>
+                      <strong>{builtRequirement.grade}</strong>
+                    </div>
+                    <div>
+                      <span>Quantity</span>
+                      <strong>
+                        {Number(builtRequirement.quantityKg || 0).toLocaleString("en-IN")} kg
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Packaging</span>
+                      <strong>{builtRequirement.packaging}</strong>
+                    </div>
+                    <div>
+                      <span>Destination</span>
+                      <strong>{builtRequirement.destination}</strong>
+                    </div>
+                  </div>
+                )}
+
+                <div className="ito-onion-form-grid">
+                  <div className="ito-onion-field full">
+                    <label htmlFor="onion-full-name">Full Name</label>
+                    <input
+                      id="onion-full-name"
+                      type="text"
+                      autoComplete="name"
+                      value={personalDetails.fullName}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          fullName: event.target.value,
+                        }))
+                      }
+                      placeholder="Enter your full name"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-email">Business Email</label>
+                    <input
+                      id="onion-email"
+                      type="email"
+                      autoComplete="email"
+                      value={personalDetails.email}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          email: event.target.value,
+                        }))
+                      }
+                      placeholder="you@company.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-mobile">Mobile Number</label>
+                    <input
+                      id="onion-mobile"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={personalDetails.mobile}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          mobile: event.target.value,
+                        }))
+                      }
+                      placeholder="+91 98765 43210"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-city">City</label>
+                    <input
+                      id="onion-city"
+                      type="text"
+                      autoComplete="address-level2"
+                      value={personalDetails.city}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          city: event.target.value,
+                        }))
+                      }
+                      placeholder="City"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-state">State / Province</label>
+                    <input
+                      id="onion-state"
+                      type="text"
+                      autoComplete="address-level1"
+                      value={personalDetails.state}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          state: event.target.value,
+                        }))
+                      }
+                      placeholder="State / Province"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field full">
+                    <label htmlFor="onion-timeline">Required Timeline</label>
+                    <input
+                      id="onion-timeline"
+                      type="text"
+                      value={personalDetails.targetTimeline}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          targetTimeline: event.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Immediate, 7 days, 15 days"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <p className="ito-onion-form-note">
+                  Your requirement will be validated by the server before the pricing page is opened. No OTP is required for this Onion purchase flow.
+                </p>
+
+                <div className="ito-onion-form-actions">
+                  <button
+                    type="button"
+                    className="ito-button secondary"
+                    disabled={submittingPersonalDetails}
+                    onClick={() => {
+                      setShowPersonalDetails(false);
+                      setShowRequirementBuilder(true);
+                    }}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="ito-button"
+                    disabled={submittingPersonalDetails}
+                  >
+                    {submittingPersonalDetails ? "Saving Requirement…" : "Continue to Pricing"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DAILY DOMESTIC / EXPORT ONION RATE CHART */}
+      <AnimatePresence>
+        {showRateChart && (
+          <motion.div
+            className="ito-rate-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setShowRateChart(false);
+              }
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ito-rate-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onion-rate-chart-title"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <div className="ito-rate-modal-header">
+                <div>
+                  <div className="ito-rate-modal-kicker">Prakriti by India Trade Overseas</div>
+                  <h2 id="onion-rate-chart-title">Daily Onion Rate Chart</h2>
+                  <div className="ito-rate-modal-date">
+                    Fresh Fruits &amp; Vegetables Supply &amp; Export · {ONION_RATE_CHART.date}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="ito-rate-modal-close"
+                  aria-label="Close onion rate chart"
+                  onClick={() => setShowRateChart(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="ito-rate-modal-body">
+                <div className="ito-rate-intro">
+                  <span className="ito-rate-pill">🧅 {ONION_RATE_CHART.product}</span>
+                  <span className="ito-rate-pill">🌱 {ONION_RATE_CHART.variety}</span>
+                  <span className="ito-rate-pill">🚢 Export Quality · Ex. Godown Price</span>
+                </div>
+
+                <h3 className="ito-rate-section-title">Domestic Quality</h3>
+                <div className="ito-rate-table-wrap">
+                  <table className="ito-rate-table">
+                    <thead>
+                      <tr>
+                        <th>Size</th>
+                        <th>Rate / KG</th>
+                        <th>Packing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ONION_RATE_CHART.domestic.map((item) => (
+                        <tr key={item.size}>
+                          <td><strong>{item.size}</strong></td>
+                          <td className="ito-rate-price">{item.rate}</td>
+                          <td>{ONION_RATE_CHART.domesticPacking}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ito-domestic-highlight">
+                  <strong>🚚 Transportation:</strong> {ONION_RATE_CHART.transport}
+                </div>
+
+                <h3 className="ito-rate-section-title">Export Quality — Ex. Godown Price</h3>
+                <div className="ito-rate-table-wrap">
+                  <table className="ito-rate-table">
+                    <thead>
+                      <tr>
+                        <th>Market</th>
+                        <th>Size</th>
+                        <th>Rate / KG</th>
+                        <th>Packing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ONION_RATE_CHART.export.map((item) => (
+                        <tr key={item.market}>
+                          <td><strong>{item.market}</strong></td>
+                          <td>{item.size}</td>
+                          <td className="ito-rate-price">{item.rate}</td>
+                          <td>{item.packing}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ito-rate-notes">
+                  <div className="ito-rate-note">
+                    <span>JNPT Transportation</span>
+                    <strong>{ONION_RATE_CHART.jnpt}</strong>
+                  </div>
+                  <div className="ito-rate-note">
+                    <span>Domestic Packing</span>
+                    <strong>{ONION_RATE_CHART.domesticPacking}</strong>
+                  </div>
+                  <div className="ito-rate-note">
+                    <span>Rate Date</span>
+                    <strong>{ONION_RATE_CHART.date}</strong>
+                  </div>
+                </div>
+
+                <p className="ito-rate-disclaimer">
+                  Rates shown are the supplied rate chart for 22/09/2026. Transportation and
+                  final commercial terms are subject to the applicable destination, quantity,
+                  logistics and confirmation at the time of order.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
