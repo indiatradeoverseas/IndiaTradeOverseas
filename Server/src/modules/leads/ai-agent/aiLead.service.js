@@ -53,7 +53,7 @@ function parseFlexibleDate(dateInput) {
 
 async function processAiLead(payload, actorId = null) {
   const contactPerson = payload.contactPerson || payload.customerName || payload.name || '';
-  const mobile = payload.mobile || payload.phone || payload.whatsapp || '9999999999';
+  const mobile = payload.mobile || payload.phone || payload.whatsapp || '';
   const email = payload.email || '';
   let productCategory = payload.productCategory || payload.productRequired || payload.division || payload.category || 'TEA';
   if (productCategory.toLowerCase().includes('tea')) productCategory = 'TEA';
