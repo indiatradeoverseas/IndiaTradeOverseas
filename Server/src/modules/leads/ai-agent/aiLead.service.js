@@ -407,21 +407,6 @@ function parseFlexibleDate(
 
 async function processAiLead(payload, actorId = null) {
   const contactPerson = payload.contactPerson || payload.customerName || payload.name || '';
-  const mobile = payload.mobile || payload.phone || payload.whatsapp || '9999999999';
-  const email = payload.email || '';
-  let productCategory = payload.productCategory || payload.productRequired || payload.division || payload.category || 'TEA';
-  if (productCategory.toLowerCase().includes('tea')) productCategory = 'TEA';
-  else if (productCategory.toLowerCase().includes('rice')) productCategory = 'RICE';
-  else if (productCategory.toLowerCase().includes('stone')) productCategory = 'STONE';
-
-  const quantity = String(payload.quantity || '');
-  const destination = payload.destination || payload.city || '';
-  const targetDateRaw = payload.targetDate || payload.requiredDate || payload.targetTimeline || payload.timeline || null;
-  const targetDate = parseFlexibleDate(targetDateRaw);
-  const companyName = payload.companyName || payload.company || '';
-  const chatSummary = payload.chatSummary || payload.message || payload.subject || '';
-  const paymentTerms = payload.paymentTerms || '';
-  const leadSource = payload.source || 'WEBSITE';
 
   if (!contactPerson) {
     throw validationError(
@@ -598,16 +583,16 @@ async function processAiLead(payload, actorId = null) {
       'number'
       ? rawValuation
       : (
-          Number(
-            String(
-              rawValuation
-            ).replace(
-              /[^0-9.]/g,
-              ''
-            )
-          ) ||
-          0
-        );
+        Number(
+          String(
+            rawValuation
+          ).replace(
+            /[^0-9.]/g,
+            ''
+          )
+        ) ||
+        0
+      );
 
 
   /* ==========================================================
@@ -623,24 +608,24 @@ async function processAiLead(payload, actorId = null) {
   const emailHash =
     email
       ? hashText(
-          email
-        )
+        email
+      )
       : '';
 
 
   const companyNameHash =
     companyName
       ? hashCompanyName(
-          companyName
-        )
+        companyName
+      )
       : '';
 
 
   const gstHash =
     gst
       ? hashText(
-          gst
-        )
+        gst
+      )
       : '';
 
 
@@ -668,21 +653,21 @@ async function processAiLead(payload, actorId = null) {
       phoneVerified:
         payload
           .phoneVerified ===
-          true,
+        true,
 
       email,
 
       emailVerified:
         payload
           .emailVerified ===
-          true,
+        true,
 
       gst,
 
       gstVerified:
         payload
           .gstVerified ===
-          true,
+        true,
 
       consent:
         payload.consent ||
@@ -717,23 +702,23 @@ async function processAiLead(payload, actorId = null) {
       isImmediateRequirement:
         payload
           .isImmediateRequirement ===
-          true,
+        true,
 
       withinSevenDays:
         payload
           .withinSevenDays ===
-          true ||
+        true ||
         payload
           .within7Days ===
-          true,
+        true,
 
       isPriorityAServiceableMarket:
         payload
           .isPriorityAServiceableMarket ===
-          true ||
+        true ||
         payload
           .priorityAServiceableMarket ===
-          true,
+        true,
 
       serviceabilityTier:
         payload
@@ -750,31 +735,31 @@ async function processAiLead(payload, actorId = null) {
       gstVerified:
         payload
           .gstVerified ===
-          true,
+        true,
 
       businessVerificationProvided:
         payload
           .businessVerificationProvided ===
-          true ||
+        true ||
         payload
           .businessVerified ===
-          true,
+        true,
 
       completedPriceCheck:
         payload
           .completedPriceCheck ===
-          true ||
+        true ||
         payload
           .priceCheckCompleted ===
-          true,
+        true,
 
       returnVisit:
         payload
           .returnVisit ===
-          true ||
+        true ||
         payload
           .isReturnVisit ===
-          true,
+        true,
 
       visitCount:
         payload.visitCount ||
@@ -881,15 +866,15 @@ async function processAiLead(payload, actorId = null) {
       emailEncrypted:
         email
           ? encryptText(
-              email
-            )
+            email
+          )
           : '',
 
       emailMasked:
         email
           ? maskEmail(
-              email
-            )
+            email
+          )
           : '',
 
       emailHash,
@@ -897,15 +882,15 @@ async function processAiLead(payload, actorId = null) {
       gstEncrypted:
         gst
           ? encryptText(
-              gst
-            )
+            gst
+          )
           : '',
 
       gstMasked:
         gst
           ? maskIdentifier(
-              gst
-            )
+            gst
+          )
           : '',
 
       gstHash,
@@ -1378,7 +1363,7 @@ async function processAiLead(payload, actorId = null) {
     severity:
       contactResolution
         .status ===
-      'AMBIGUOUS'
+        'AMBIGUOUS'
         ? 'MEDIUM'
         : 'LOW',
 
@@ -1388,8 +1373,8 @@ async function processAiLead(payload, actorId = null) {
       contactId:
         lead.contactId
           ? lead
-              .contactId
-              .toString()
+            .contactId
+            .toString()
           : '',
 
       contactResolutionStatus:
@@ -1428,8 +1413,8 @@ async function processAiLead(payload, actorId = null) {
     contactId:
       lead.contactId
         ? lead
-            .contactId
-            .toString()
+          .contactId
+          .toString()
         : null,
 
     score:
@@ -1449,8 +1434,8 @@ async function processAiLead(payload, actorId = null) {
     assignedEmployee:
       routing.assignedTo
         ? routing
-            .assignedTo
-            .toString()
+          .assignedTo
+          .toString()
         : null,
 
     adminReviewRequired:
