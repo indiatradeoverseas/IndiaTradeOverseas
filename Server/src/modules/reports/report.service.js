@@ -227,10 +227,9 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
     { $group: { _id: null, collected: { $sum: '$collectedAmt' } } }
   ]);
 
-  const totalCollectedValue = Math.max(
-    deliveredRevenueAgg[0] ? deliveredRevenueAgg[0].collected : 0,
-    paymentCollectionAgg[0] ? paymentCollectionAgg[0].collected : 0
-  );
+  const val1 = (deliveredRevenueAgg && deliveredRevenueAgg[0] && typeof deliveredRevenueAgg[0].collected === 'number' && !isNaN(deliveredRevenueAgg[0].collected)) ? deliveredRevenueAgg[0].collected : 0;
+  const val2 = (paymentCollectionAgg && paymentCollectionAgg[0] && typeof paymentCollectionAgg[0].collected === 'number' && !isNaN(paymentCollectionAgg[0].collected)) ? paymentCollectionAgg[0].collected : 0;
+  const totalCollectedValue = Math.max(val1, val2, 0);
 
   const monthlyRevenueAgg = await Lead.aggregate([
     { $match: { stage: { $in: ['DELIVERED', 'COMPLETED', 'CLOSED_WON', 'DEAL_WON'] }, updatedAt: { $gte: revenueRangeStart, $lte: revenueRangeEnd } } },
@@ -451,6 +450,7 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       pendingOrders,
       revenue: {
         totalCollected: totalCollectedValue,
+        currency: 'INR',
         monthlyTrend: monthlyRevenueAgg.map((row) => ({ month: row._id, collected: row.collected }))
       },
       payments: {

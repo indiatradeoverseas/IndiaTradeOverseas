@@ -502,6 +502,10 @@ async function assignLead(req, res, next) {
       );
     }
 
+    if (error.message === 'INVALID_LEAD_ASSIGNEE') {
+      return fail(res, 400, 'INVALID_LEAD_ASSIGNEE', 'Leads can only be assigned to an active Sales Executive or Sales Trial user.');
+    }
+
     next(error);
   }
 }
@@ -566,6 +570,10 @@ async function assignLeadsBulk(req, res, next) {
         'VALIDATION_FAILED',
         'leadIds array is required'
       );
+    }
+
+    if (error.message === 'INVALID_LEAD_ASSIGNEE') {
+      return fail(res, 400, 'INVALID_LEAD_ASSIGNEE', 'Leads can only be assigned to an active Sales Executive or Sales Trial user.');
     }
 
     next(error);

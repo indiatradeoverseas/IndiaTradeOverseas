@@ -92,11 +92,11 @@ function hasOwner(value) {
       typeof value === 'object' &&
         value !== null
         ? (
-            value._id ||
-            value.employeeDbId ||
-            value.employeeId ||
-            value.email
-          )
+          value._id ||
+          value.employeeDbId ||
+          value.employeeId ||
+          value.email
+        )
         : value,
       320
     ).toLowerCase();
@@ -111,6 +111,19 @@ function hasOwner(value) {
   );
 }
 
+function isSalesOwner(user) {
+  const role = String(user?.role || '').toUpperCase();
+  const department = String(user?.department || '').toUpperCase();
+  return (
+    role === 'SALES_EXECUTIVE' ||
+    role === 'SALES_TRIAL' ||
+    (department === 'SALES_TRIAL' && role === 'SALES_TRIAL')
+  ) &&
+    user?.isActive !== false &&
+    user?.status !== 'INACTIVE' &&
+    user?.status !== 'PENDING_APPROVAL';
+}
+
 function resolveDepartment(productCategory) {
   const product =
     normalizeForMatch(
@@ -119,7 +132,7 @@ function resolveDepartment(productCategory) {
 
   for (
     const rule of
-      PRODUCT_DEPARTMENT_RULES
+    PRODUCT_DEPARTMENT_RULES
   ) {
     if (
       product.includes(
@@ -142,7 +155,7 @@ function getBuyerQualityWeight(priority) {
 
   return (
     BUYER_QUALITY_WEIGHT[
-      normalized
+    normalized
     ] ?? 0
   );
 }
@@ -170,7 +183,7 @@ function isGeographicMatch(
 
   return (
     normalizedDestination ===
-      normalizedCity ||
+    normalizedCity ||
     normalizedDestination.includes(
       normalizedCity
     ) ||
@@ -268,7 +281,7 @@ function scoreCandidate({
     Math.max(
       0,
       30 -
-        activeLoad * 3
+      activeLoad * 3
     );
 
   score +=
@@ -332,10 +345,10 @@ function scoreCandidate({
       if (
         ageMs >= 0 &&
         ageMs <=
-          24 *
-          60 *
-          60 *
-          1000
+        24 *
+        60 *
+        60 *
+        1000
       ) {
         score += 3;
 
@@ -365,12 +378,22 @@ async function findBestOwner({
     await User.find({
       department,
 
-      role:
-        'SALES',
+      role: {
+        $in: ['SALES_EXECUTIVE'],
+      },
 
       isActive:
         true,
     }).lean();
+
+  const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+  const trialCandidates = await SalesTrialUser.find({
+    status: 'ACTIVE',
+    isApproved: true,
+    role: 'SALES_TRIAL',
+  }).lean();
+
+  candidates = candidates.concat(trialCandidates);
 
   /*
    * Compatibility fallback for installations where
@@ -383,13 +406,18 @@ async function findBestOwner({
         department:
           'SALES',
 
-        role:
-          'SALES',
+        role: {
+          $in: ['SALES_EXECUTIVE'],
+        },
 
         isActive:
           true,
       }).lean();
+
+    candidates = candidates.concat(trialCandidates);
   }
+
+  candidates = candidates.filter(isSalesOwner);
 
   if (!candidates.length) {
     return null;
@@ -659,7 +687,7 @@ async function ensureAssignmentNotification({
   } else if (
     assignedDepartment &&
     assignedDepartment !==
-      'ADMIN'
+    'ADMIN'
   ) {
     targetDepartment =
       assignedDepartment;
@@ -747,8 +775,8 @@ async function ensureAssignmentNotification({
       assignedTo:
         assignedTo
           ? String(
-              assignedTo
-            )
+            assignedTo
+          )
           : '',
 
       adminReviewRequired:
@@ -1054,65 +1082,18 @@ async function autoRouteLead(
       .join('; ');
 
   } else {
-    const adminFallback =
-      await findAdminFallbackOwner(
-        lead
-      );
-
     adminReviewRequired =
       true;
-
-    if (adminFallback) {
-      assignedTo =
-        adminFallback
-          .user
-          ._id;
-
-      finalDepartment =
-        'ADMIN';
-
-      assignedTeam =
-        'ADMIN_REVIEW';
-
-      assignmentSource =
-        'SYSTEM_RECOVERY';
-
-      assignmentReason = [
-        reasonPrefix,
-
-        routingDepartment
-          ? `No active SALES owner available for ${routingDepartment}; routed to admin review.`
-          : 'Product department could not be resolved; routed to admin review.',
-      ]
-        .filter(Boolean)
-        .join('; ');
-
-    } else {
-      assignedTo =
-        null;
-
-      finalDepartment =
-        routingDepartment ||
-        'ADMIN';
-
-      assignedTeam =
-        routingDepartment
-          ? `${routingDepartment}_SALES`
-          : 'ADMIN_REVIEW';
-
-      assignmentSource =
-        'SYSTEM_RECOVERY';
-
-      assignmentReason = [
-        reasonPrefix,
-
-        routingDepartment
-          ? `No active owner available for ${routingDepartment}; department/admin review required.`
-          : 'No product routing rule or active admin owner available; admin review required.',
-      ]
-        .filter(Boolean)
-        .join('; ');
-    }
+    assignedTo = null;
+    finalDepartment = routingDepartment || 'ADMIN';
+    assignedTeam = routingDepartment ? `${routingDepartment}_SALES` : 'ADMIN_REVIEW';
+    assignmentSource = 'SYSTEM_RECOVERY';
+    assignmentReason = [
+      reasonPrefix,
+      routingDepartment
+        ? `No active Sales Executive or Sales Trial owner available for ${routingDepartment}; review required.`
+        : 'No product routing rule or eligible sales owner available; review required.',
+    ].filter(Boolean).join('; ');
   }
 
   const assignedAt =
@@ -1141,7 +1122,7 @@ async function autoRouteLead(
     Boolean(
       assignedTo &&
       currentStage ===
-        'NEW_LEAD'
+      'NEW_LEAD'
     );
 
   const set = {
@@ -1266,8 +1247,8 @@ async function autoRouteLead(
         'function'
         ? recordAudit
         : require(
-            '../security-audit/auditLog.service'
-          ).recordAudit;
+          '../security-audit/auditLog.service'
+        ).recordAudit;
 
     if (
       typeof auditFn ===
@@ -1297,8 +1278,8 @@ async function autoRouteLead(
           assignedTo:
             assignedTo
               ? String(
-                  assignedTo
-                )
+                assignedTo
+              )
               : '',
 
           assignedDepartment:
@@ -1375,4 +1356,5 @@ module.exports = {
   resolveDepartment,
   hasOwner,
   queueAssignmentNotification,
+  isSalesOwner,
 };

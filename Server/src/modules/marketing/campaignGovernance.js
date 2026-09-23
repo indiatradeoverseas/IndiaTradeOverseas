@@ -9,7 +9,18 @@ const RELEASE_CHECKS = Object.freeze([
   'QUOTATION_FLOW', 'WON_LOST_FLOW', 'MANDATORY_LOST_REASON', 'CONTACT_RESOLUTION',
   'BACKUP_RECOVERY', 'LEAD_SCORING',
 ]);
-const isManagement = user => ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN'].includes(String(user?.role || '').toUpperCase()) || ['ADMIN', 'MANAGEMENT'].includes(String(user?.department || '').toUpperCase());
+const isManagement = user => {
+  const role = String(user?.role || '').trim().toUpperCase();
+  const dept = String(user?.department || '').trim().toUpperCase();
+  const pos = String(user?.position || '').trim().toUpperCase();
+  return (
+    ['ADMIN', 'FOUNDER', 'CO_FOUNDER', 'SUPER_ADMIN', 'CEO', 'MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'LOGISTICS_MANAGER'].includes(role) ||
+    role.includes('MANAGER') || role.includes('FOUNDER') || role.includes('CEO') ||
+    ['ADMIN', 'MANAGEMENT'].includes(dept) ||
+    pos.includes('ADMIN') || pos.includes('FOUNDER') || pos.includes('CEO') || pos.includes('MANAGER') ||
+    user?.quotationPermission === true || user?.permissions?.quotation === true
+  );
+};
 const department = (user, value) => String(user?.department || '').toUpperCase() === value;
 const actor = user => user?.employeeDbId || user?._id;
 function releaseBlockers(campaign) {

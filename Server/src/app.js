@@ -34,6 +34,21 @@ const softLeadRoutes =
 const quotationRoutes =
   require('./modules/quotations/quotation.routes');
 
+const quotationCommercialRoutes =
+  require('./modules/quotations/quotationCommercial.routes');
+
+const leadCommercialRoutes =
+  require('./modules/leads/leadCommercial.routes');
+
+const salesPolicyRoutes =
+  require('./modules/leads/salesPolicy.routes');
+
+const controlledCampaignRoutes =
+  require('./modules/marketing/controlledCampaign.routes');
+
+const campaignEvidenceRoutes =
+  require('./modules/marketing/campaignEvidence.routes');
+
 const dispatchRoutes =
   require('./modules/dispatch/dispatch.routes');
 
@@ -343,6 +358,11 @@ const apiRoutes = [
 
   {
     path: '/leads',
+    router: leadCommercialRoutes
+  },
+
+  {
+    path: '/leads',
     router: leadRoutes
   },
 
@@ -354,6 +374,31 @@ const apiRoutes = [
   {
     path: '/soft-leads',
     router: softLeadRoutes
+  },
+
+  {
+    path: '/sales-policy',
+    router: salesPolicyRoutes
+  },
+
+  {
+    path: '/marketing/controlled-campaigns',
+    router: controlledCampaignRoutes
+  },
+
+  {
+    path: '/marketing',
+    router: controlledCampaignRoutes
+  },
+
+  {
+    path: '/marketing',
+    router: campaignEvidenceRoutes
+  },
+
+  {
+    path: '/quotations',
+    router: quotationCommercialRoutes
   },
 
   {

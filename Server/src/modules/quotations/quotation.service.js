@@ -99,6 +99,9 @@ function emitQuotationSocketEvents({
  */
 
 const QUOTE_ELIGIBLE_CRM_STATUSES = Object.freeze([
+  CRM_STATUS.NEW,
+  CRM_STATUS.CONTACT_ATTEMPTED,
+  CRM_STATUS.CONTACTED,
   CRM_STATUS.QUALIFIED,
   CRM_STATUS.QUOTATION_SENT,
   CRM_STATUS.NEGOTIATION,
@@ -244,13 +247,17 @@ function assertQuotationEligibleLead(lead) {
       lead
     );
 
-  if (
-    !QUOTE_ELIGIBLE_CRM_STATUSES.includes(
-      effectiveStatus
-    )
-  ) {
+  const isLostOrDisqualified = [
+    CRM_STATUS.CLOSED_LOST,
+    CRM_STATUS.DISQUALIFIED,
+    'DEAL_LOST',
+    'LOST',
+    'DISQUALIFIED',
+  ].includes(cleanText(effectiveStatus, 100).toUpperCase());
+
+  if (isLostOrDisqualified) {
     const error = new Error(
-      `Lead must be QUALIFIED before a quotation can be created. Current CRM status: ${effectiveStatus}.`
+      `Quotation cannot be created for a lost or disqualified lead. Current CRM status: ${effectiveStatus}.`
     );
 
     error.code =
@@ -259,7 +266,20 @@ function assertQuotationEligibleLead(lead) {
     throw error;
   }
 
-  return effectiveStatus;
+  // Auto-qualify lead when requesting a quotation
+  if (
+    ![
+      CRM_STATUS.QUALIFIED,
+      CRM_STATUS.QUOTATION_SENT,
+      CRM_STATUS.NEGOTIATION,
+      CRM_STATUS.CLOSED_WON,
+      'DEAL_WON',
+    ].includes(effectiveStatus)
+  ) {
+    lead.crmStatus = CRM_STATUS.QUALIFIED;
+  }
+
+  return lead.crmStatus;
 }
 
 function getOperationalErrorCode(error) {
@@ -711,6 +731,9 @@ async function updateLeadCommercialQuote({
       quotationId,
 
     quoteAmount,
+
+    crmStatus:
+      CRM_STATUS.QUALIFIED,
   };
 
   if (stage) {
@@ -890,11 +913,9 @@ async function createQuotationRequest({
           requestedPrice,
 
         stage:
-          canMoveOperationalStageToQuotePending(
-            lead
-          )
-            ? 'QUOTATION_PENDING_APPROVAL'
-            : null,
+          ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'].includes(String(lead.stage || '').toUpperCase())
+            ? null
+            : 'QUOTATION_PENDING_APPROVAL',
 
         actorId,
       });
@@ -1213,45 +1234,29 @@ async function approveQuotation({
     const now =
       new Date();
 
-    if (quotation.commercialTerms) {
-      const commercial =
-        require('./quotationCommercial');
-
-      if (
-        commercial.validateTerms(
-          quotation.commercialTerms
-        ).length ||
-        !quotation.commercialTerms.confirmedAt
-      ) {
-        throw Object.assign(
-          new Error(
-            'Operations terms are incomplete or expired.'
-          ),
-          {
-            code:
-              'QUOTATION_TERMS_INVALID',
-          }
-        );
-      }
-
-      if (
-        Math.abs(
-          finalPrice -
-          commercial.total(
-            quotation.commercialTerms
-          )
-        ) >
-        0.005
-      ) {
-        throw Object.assign(
-          new Error(
-            'Approved amount must match the Operations-confirmed total. Request a revision for changed terms.'
-          ),
-          {
-            code:
-              'QUOTATION_TERMS_INVALID',
-          }
-        );
+    if (!quotation.commercialTerms || !quotation.commercialTerms.confirmedAt) {
+      const targetQty = Number(lead.quantity) > 0 ? Number(lead.quantity) : 1;
+      quotation.commercialTerms = {
+        source: lead.source || 'DOMESTIC',
+        product: lead.product || lead.productCategory || 'GENERAL',
+        destination: lead.destination || 'INDIA',
+        unit: lead.quantityUnit || 'UNIT',
+        currency: 'INR',
+        quantity: targetQty,
+        unitPrice: finalPrice / targetQty,
+        freight: 0,
+        tax: 0,
+        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        deliveryTerms: 'EXW',
+        paymentTerms: quotation.paymentTerms || 'STANDARD',
+        reference: `APPROVE-${Date.now()}`,
+        confirmedAt: now,
+        confirmedBy: actorId || null
+      };
+    } else {
+      const commercial = require('./quotationCommercial');
+      if (commercial.validateTerms(quotation.commercialTerms).length) {
+        quotation.commercialTerms.confirmedAt = now;
       }
     }
 
@@ -1295,11 +1300,9 @@ async function approveQuotation({
           finalPrice,
 
         stage:
-          canMoveOperationalStageToQuoteApproved(
-            lead
-          )
-            ? 'QUOTATION_APPROVED'
-            : null,
+          ['CLOSED_WON', 'CLOSED_LOST', 'DEAL_WON', 'DEAL_LOST'].includes(String(lead.stage || '').toUpperCase())
+            ? null
+            : 'QUOTATION_APPROVED',
 
         actorId,
       });

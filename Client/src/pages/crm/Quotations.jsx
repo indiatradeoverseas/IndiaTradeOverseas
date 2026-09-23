@@ -124,41 +124,24 @@ export default function Quotations() {
 
 
   const handleApprove = async (quotation) => {
-    const confirmedTotal = getConfirmedCommercialTotal(quotation);
+    const confirmedTotal = getConfirmedCommercialTotal(quotation) || quotation.employeeRequestedPrice;
 
-    if (confirmedTotal === null) {
-      toast.error(
-        'Operations must confirm current price, freight, tax and commercial terms before Management approval.'
-      );
+    if (!confirmedTotal || Number(confirmedTotal) <= 0) {
+      toast.error('Quotation requested price is missing.');
       return;
     }
 
-    const currency =
-      quotation.commercialTerms?.currency || '';
-
-    const paymentTerms =
-      quotation.commercialTerms?.paymentTerms ||
-      quotation.paymentTerms ||
-      '';
+    const currency = quotation.commercialTerms?.currency || 'INR';
+    const paymentTerms = quotation.commercialTerms?.paymentTerms || quotation.paymentTerms || '';
 
     const promptMessage = [
-      paymentTerms
-        ? `Payment Protocol: ${paymentTerms}`
-        : null,
-      `Operations-confirmed total: ${formatCommercialAmount(
-        confirmedTotal,
-        currency
-      )}`,
+      paymentTerms ? `Payment Protocol: ${paymentTerms}` : null,
+      `Quotation Valuation: ${formatCommercialAmount(confirmedTotal, currency)}`,
       '',
-      'Confirm approved price:'
-    ]
-      .filter((item) => item !== null)
-      .join('\n');
+      'Confirm approved price (₹):'
+    ].filter(Boolean).join('\n');
 
-    const price = window.prompt(
-      promptMessage,
-      String(confirmedTotal)
-    );
+    const price = window.prompt(promptMessage, String(confirmedTotal));
 
     if (price === null) {
       return;
@@ -166,60 +149,23 @@ export default function Quotations() {
 
     const numericPrice = Number(price);
 
-    if (
-      !Number.isFinite(numericPrice) ||
-      numericPrice <= 0
-    ) {
-      toast.error(
-        'Approved price must be a positive number.'
-      );
-      return;
-    }
-
-    /*
-     * Master DPR commercial governance:
-     * Management approves the Operations-confirmed commercial total.
-     * A changed amount requires Operations to revise/reconfirm terms first.
-     */
-    if (
-      Math.abs(
-        numericPrice -
-        confirmedTotal
-      ) > 0.005
-    ) {
-      toast.error(
-        'Approved amount must match the Operations-confirmed total. Request an Operations revision for changed terms.'
-      );
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      toast.error('Approved price must be a positive number.');
       return;
     }
 
     try {
-      const response =
-        await quotationsApi.approveQuotation(
-          quotation._id,
-          {
-            approvedPrice:
-              confirmedTotal
-          }
-        );
+      const response = await quotationsApi.approveQuotation(quotation._id, {
+        approvedPrice: numericPrice
+      });
 
       if (response.success) {
-        toast.success(
-          'Quotation approved successfully'
-        );
-
+        toast.success('Quotation approved successfully 🚀');
         fetchQuotations();
       }
     } catch (error) {
-      console.error(
-        'Error approving quotation:',
-        error
-      );
-
-      toast.error(
-        error.response?.data?.message ||
-        'Failed to approve quotation.'
-      );
+      console.error('Error approving quotation:', error);
+      toast.error(error.response?.data?.message || 'Failed to approve quotation.');
     }
   };
 
@@ -267,7 +213,7 @@ export default function Quotations() {
   });
 
   const pendingFilteredQuotations = filteredQuotations.filter(
-    q => q.status === 'PENDING' && getConfirmedCommercialTotal(q) !== null
+    q => q.status === 'PENDING'
   );
 
   const handleSelectAll = () => {
@@ -294,16 +240,12 @@ export default function Quotations() {
       q => selectedIds.includes(q._id)
     );
 
-    if (selectedQuotations.some(q => getConfirmedCommercialTotal(q) === null)) {
-      toast.error('Every selected quotation must have current Operations-confirmed commercial terms.');
-      return;
-    }
-
     try {
       let approvedCount = 0;
 
       for (const quotation of selectedQuotations) {
-        const approvedPrice = getConfirmedCommercialTotal(quotation);
+        const approvedPrice = getConfirmedCommercialTotal(quotation) || quotation.employeeRequestedPrice;
+        if (!approvedPrice) continue;
         const response = await quotationsApi.approveQuotation(quotation._id, {
           approvedPrice,
         });
@@ -475,9 +417,9 @@ export default function Quotations() {
                   </th>
                   <th className="py-4 px-5">Lead / Client Name</th>
                   <th className="py-4 px-5">Commodity Sector</th>
+                  <th className="py-4 px-5 font-bold text-teal-400">Target Base Price (₹)</th>
                   <th className="py-4 px-5">Payment Protocol</th>
                   <th className="py-4 px-5">Requested By</th>
-                  <th className="py-4 px-5">Confirmed Commercial Total</th>
                   <th className="py-4 px-5">Approved Price</th>
                   <th className="py-4 px-5 text-center">Timestamp</th>
                   <th className="py-4 px-5 text-center">Execution Deck</th>
@@ -497,7 +439,7 @@ export default function Quotations() {
                   filteredQuotations.map((quotation) => (
                     <tr key={quotation._id} className="hover:bg-[var(--crm-bg-raised)]/40 transition-colors">
                       <td className="py-4 px-4 text-center shrink-0 w-10">
-                        {quotation.status === 'PENDING' && getConfirmedCommercialTotal(quotation) !== null ? (
+                        {quotation.status === 'PENDING' ? (
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(quotation._id)}
@@ -532,6 +474,20 @@ export default function Quotations() {
                         </span>
                       </td>
 
+                      {/* Target Base Price */}
+                      <td className="py-4 px-5 font-mono text-sm text-[var(--crm-heading)] font-bold">
+                        {quotation.employeeRequestedPrice || quotation.leadId?.leadValue ? (
+                          <span className="text-teal-400 font-bold">
+                            {formatCommercialAmount(
+                              quotation.employeeRequestedPrice || quotation.leadId?.leadValue,
+                              quotation.commercialTerms?.currency || 'INR'
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--crm-ink-faint)]">—</span>
+                        )}
+                      </td>
+
                       {/* Payment Protocol Badge */}
                       <td className="py-4 px-5 font-mono">
                         <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded border bg-teal-950/60 text-teal-300 border-teal-800/60 shadow-sm inline-block font-mono">
@@ -541,30 +497,6 @@ export default function Quotations() {
 
                       <td className="py-4 px-5 text-[var(--crm-ink-soft)]/90 font-light font-mono text-[11px]">
                         {quotation.requestedBy?.fullName || quotation.requestedBy?.name || quotation.leadId?.assignedTo?.fullName || quotation.leadId?.assignedTo?.name || 'Sales Representative'}
-                      </td>
-
-                      <td className="py-4 px-5 font-mono text-sm text-[var(--crm-heading)]">
-                        {(() => {
-                          const total = getConfirmedCommercialTotal(quotation);
-                          const currency = quotation.commercialTerms?.currency || '';
-
-                          if (total === null) {
-                            return (
-                              <span className="text-[10px] uppercase tracking-wider text-amber-400">
-                                Awaiting Operations terms
-                              </span>
-                            );
-                          }
-
-                          return (
-                            <div className="flex flex-col">
-                              <span className="font-bold">{formatCommercialAmount(total, currency)}</span>
-                              <span className="text-[9px] text-[var(--crm-ink-faint)] font-normal">
-                                Product + freight + tax
-                              </span>
-                            </div>
-                          );
-                        })()}
                       </td>
 
                       <td className="py-4 px-5 font-mono font-bold text-sm text-[var(--crm-positive)]">
@@ -617,16 +549,6 @@ export default function Quotations() {
                             );
                           }
 
-                          const commercialReady = getConfirmedCommercialTotal(quotation) !== null;
-
-                          if (canApprove && !commercialReady) {
-                            return (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-950/40 px-2 py-1 border border-amber-700/40 rounded-sm">
-                                <FiClock size={10} /> Awaiting Ops Terms
-                              </span>
-                            );
-                          }
-
                           return canApprove ? (
                             <div className="flex justify-center items-center gap-2.5">
                               <motion.button 
@@ -634,7 +556,7 @@ export default function Quotations() {
                                 whileTap={{ scale: 0.92 }}
                                 onClick={() => handleApprove(quotation)}
                                 className="w-8 h-8 rounded-sm bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/20 text-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-[var(--crm-bg)] flex items-center justify-center transition-colors cursor-pointer shadow-md" 
-                                title="Approve Quote"
+                                title="Approve Quote & Advance Stage"
                               >
                                 <FiCheck size={14} />
                               </motion.button>

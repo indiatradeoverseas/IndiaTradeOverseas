@@ -4,11 +4,12 @@ const LeadActivity = require('./leadActivity.model');
 const Quotation = require('../quotations/quotation.model');
 const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
 const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
+const { isSalesOwner } = require('./leadAssignment.service');
 
 let recordAudit;
 try {
   recordAudit = require('../security-audit/auditLog.service').recordAudit;
-} catch (e) {}
+} catch (e) { }
 
 const safeRecordAudit = async (data) => {
   try {
@@ -28,12 +29,13 @@ const safeRecordAudit = async (data) => {
 const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str.trim());
 
 const allowedStageTransitions = {
-  NEW_LEAD: ['NEW_LEAD', 'ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'DEAL_LOST'],
-  ASSIGNED: ['ASSIGNED', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
-  CONTACTED: ['CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
-  LEAD_QUALIFICATION: ['LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'DEAL_LOST'],
-  FOLLOW_UP: ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
-  REQUIREMENT_CAPTURED: ['REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+  NEW_LEAD: ['NEW_LEAD', 'ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_PENDING_APPROVAL', 'DEAL_LOST'],
+  ASSIGNED: ['ASSIGNED', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+  CONTACTED: ['CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+  CONTACT_ATTEMPTED: ['CONTACT_ATTEMPTED', 'CONTACTED', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+  LEAD_QUALIFICATION: ['LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+  FOLLOW_UP: ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
+  REQUIREMENT_CAPTURED: ['REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
   QUOTATION_REQUIRED: ['QUOTATION_REQUIRED', 'REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST', 'DEAL_LOST'],
   QUOTATION_PENDING_APPROVAL: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'CLOSED_LOST', 'DEAL_LOST'],
   QUOTATION_APPROVED: ['QUOTATION_APPROVED', 'NEGOTIATION', 'CLOSED_LOST', 'DEAL_LOST'],
@@ -50,7 +52,7 @@ const allowedStageTransitions = {
   COMPLETED: ['COMPLETED', 'DEAL_WON'],
   CLOSED_WON: ['CLOSED_WON', 'DEAL_WON'],
   CLOSED_LOST: ['CLOSED_LOST'],
-  
+
   // New pipeline transition mappings
   REQUIREMENT_RECEIVED: ['REQUIREMENT_RECEIVED', 'QUOTATION_SENT', 'DEAL_WON', 'DEAL_LOST'],
   QUOTATION_SENT: ['QUOTATION_SENT', 'NEGOTIATION', 'DEAL_WON', 'DEAL_LOST'],
@@ -351,7 +353,7 @@ async function listLeads(user, query = {}) {
       if (mongoose.Types.ObjectId.isValid(str)) {
         try {
           queryIds.push(new mongoose.Types.ObjectId(str));
-        } catch (e) {}
+        } catch (e) { }
       }
     });
 
@@ -380,7 +382,7 @@ async function listLeads(user, query = {}) {
         if (mongoose.Types.ObjectId.isValid(s)) {
           try {
             allSearchValues.push(new mongoose.Types.ObjectId(s));
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     });
@@ -393,21 +395,21 @@ async function listLeads(user, query = {}) {
           { employeeId: { $in: allSearchValues } },
           { employeeDbId: { $in: allSearchValues } }
         ]
-      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      }).select('_id fullName name email role department isActive profileImage employeeDbId employeeId').lean(),
       Employee.find({
         $or: [
           { _id: { $in: allSearchValues } },
           { email: { $in: allSearchValues } },
           { employeeId: { $in: allSearchValues } }
         ]
-      }).select('_id fullName name email role profileImage employeeId').lean(),
+      }).select('_id fullName name email role department status profileImage employeeId').lean(),
       SalesTrialUser.find({
         $or: [
           { _id: { $in: allSearchValues } },
           { email: { $in: allSearchValues } },
           { trialId: { $in: allSearchValues } }
         ]
-      }).select('_id fullName name email role profileImage trialId').lean()
+      }).select('_id fullName name email role department status isApproved profileImage trialId').lean()
     ]);
 
     const assigneeMap = new Map();
@@ -448,9 +450,9 @@ async function listLeads(user, query = {}) {
           rawVal = String(rawVal);
         }
 
-        const resolved = assigneeMap.get(rawVal) || 
-                         (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null) ||
-                         assigneeMap.get(String(rawVal));
+        const resolved = assigneeMap.get(rawVal) ||
+          (rawVal.includes('@') ? assigneeMap.get(rawVal.toLowerCase()) : null) ||
+          assigneeMap.get(String(rawVal));
 
         if (resolved) {
           l.assignedTo = resolved;
@@ -490,7 +492,7 @@ async function getLeadById(id, user) {
     try {
       leadQueries.push({ _id: new mongoose.Types.ObjectId(cleanId) });
       leadQueries.push({ _id: cleanId });
-    } catch (e) {}
+    } catch (e) { }
   }
 
   let lead = null;
@@ -553,7 +555,7 @@ async function getLeadById(id, user) {
         try {
           idQueries.push(new mongoose.Types.ObjectId(rawVal));
           idQueries.push(rawVal);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const userOr = [];
@@ -633,7 +635,7 @@ async function getLeadById(id, user) {
       try {
         validObjectIds.push(new mongoose.Types.ObjectId(idStr));
         validObjectIds.push(idStr);
-      } catch (e) {}
+      } catch (e) { }
     } else {
       stringIds.push(idStr);
     }
@@ -727,7 +729,7 @@ async function getLeadById(id, user) {
         };
       }
     }
-    
+
     if (!performer && act.actorId) {
       const idStr = String(act.actorId._id || act.actorId);
       const resolved = actorMap.get(idStr);
@@ -776,6 +778,7 @@ async function getLeadById(id, user) {
 }
 
 async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = null, lostReason = '', lostReasonNotes = '', podFileUrl, paymentProofUrl, driverProofUrl, photoUrl, paymentProof, deliveryImages, user, ipAddress, deviceHash }) {
+  newStage = String(newStage || '').trim().toUpperCase();
   console.log('[updateStage] Called with leadId:', leadId, 'newStage:', newStage, 'lostReason:', lostReason);
   console.log('[updateStage] Proof fields received:', { hasPodFileUrl: !!podFileUrl, hasPaymentProofUrl: !!paymentProofUrl, hasDriverProofUrl: !!driverProofUrl, hasPhotoUrl: !!photoUrl, hasPaymentProof: !!paymentProof, hasDeliveryImages: !!deliveryImages });
   console.log('[updateStage] User role:', user?.role, 'department:', user?.department);
@@ -817,11 +820,23 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   // 3. Strict Quotation Approval Enforcement
-  const advancedStages = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+  const advancedStages = ['QUOTATION_APPROVED', 'QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'LOI_PO_PENDING', 'PO_RECEIVED', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
   if (advancedStages.includes(newStage)) {
     const existingQuote = await Quotation.findOne({ leadId: lead._id }).sort({ createdAt: -1 });
-    if (existingQuote && (existingQuote.status === 'PENDING' || existingQuote.status === 'REJECTED')) {
-      throw new Error(`QUOTATION_NOT_APPROVED: Cannot transition to ${newStage.replace(/_/g, ' ')}. Quotation is ${existingQuote.status}. Manager approval is required first.`);
+    if (!existingQuote || existingQuote.status !== 'APPROVED') {
+      const qStatus = existingQuote ? existingQuote.status : 'NOT_CREATED';
+      throw new Error(`QUOTATION_NOT_APPROVED: Cannot transition to ${newStage.replace(/_/g, ' ')}. Quotation is ${qStatus}. Sales Manager approval is required first.`);
+    }
+  }
+
+  // 3.2. Mandatory Follow-up Call Recording Enforcement for REQUIREMENT_CAPTURED
+  if (newStage === 'REQUIREMENT_CAPTURED') {
+    const hasVoiceNotes = Array.isArray(lead.voiceNotes) && lead.voiceNotes.length > 0;
+    const hasVoiceActivity = await LeadActivity.exists({ leadId: lead._id, actionType: { $in: ['VOICE_NOTE_ADDED', 'CALL', 'FOLLOW_UP'] } });
+    const isManagerOrAdmin = ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((user?.role || '').toUpperCase());
+
+    if (!hasVoiceNotes && !hasVoiceActivity && !isManagerOrAdmin) {
+      throw new Error('FOLLOWUP_RECORDING_REQUIRED: Follow-up Call Recording & details must be uploaded before advancing to Requirement Captured.');
     }
   }
 
@@ -835,9 +850,9 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   }
 
   // 4. Stage transition check with Management Override
-  const previousStage = lead.stage;
+  const previousStage = String(lead.stage || '').trim().toUpperCase();
   const isAllowed = previousStage === newStage || allowedStageTransitions[previousStage]?.includes(newStage);
-  
+
   // Allow ADMIN, MANAGER, and DRIVER roles to override pipeline rules
   const role = user.role || '';
   const isManagerOrAdminUser =
@@ -862,7 +877,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
   lead.stage = newStage;
   if (remark) lead.remarks = remark;
   if (nextFollowupAt) lead.nextFollowupAt = nextFollowupAt;
-  
+
   if (newStage === 'CLOSED_LOST' || newStage === 'DEAL_LOST') {
     lead.lostReason = lostReason;
     lead.lostReasonNotes = lostReasonNotes || remark || '';
@@ -870,7 +885,7 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
     lead.lostBy = user._id;
     lead.lostByName = user.fullName || user.name || user.email || 'User';
   }
-  
+
   const activePodUrl = podFileUrl || paymentProofUrl || (paymentProof && paymentProof.proofImageUrl) || '';
   const activeDriverUrl = driverProofUrl || photoUrl || (deliveryImages && deliveryImages.driverSelfieUrl) || '';
 
@@ -934,11 +949,11 @@ async function updateStage({ leadId, newStage, remark = '', nextFollowupAt = nul
       toStage: newStage,
       lostReason,
       lostReasonNotes,
-      performedByName: ((user?.fullName || user?.name || user?.email) && !isHexObjectId(user?.fullName || user?.name || user?.email)) 
-        ? (user.fullName || user.name || user.email) 
+      performedByName: ((user?.fullName || user?.name || user?.email) && !isHexObjectId(user?.fullName || user?.name || user?.email))
+        ? (user.fullName || user.name || user.email)
         : (user?.role === 'SALES_TRIAL' || user?.department === 'SALES_TRIAL' || user?.modelName === 'SalesTrialUser' ? 'Sales Trial Executive' : 'Sales Executive'),
-      performedByRole: (user?.role === 'SALES_TRIAL' || user?.department === 'SALES_TRIAL' || user?.modelName === 'SalesTrialUser') 
-        ? 'SALES_TRIAL' 
+      performedByRole: (user?.role === 'SALES_TRIAL' || user?.department === 'SALES_TRIAL' || user?.modelName === 'SalesTrialUser')
+        ? 'SALES_TRIAL'
         : (user?.role || user?.position || 'SALES_EXECUTIVE')
     }
   });
@@ -1054,6 +1069,9 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
     ]);
 
     resolvedAssignee = uMatch || eMatch || tMatch;
+    if (!resolvedAssignee || !isSalesOwner(resolvedAssignee)) {
+      throw new Error('INVALID_LEAD_ASSIGNEE');
+    }
     if (resolvedAssignee) {
       targetAssignedTo = resolvedAssignee._id;
     }
@@ -1125,7 +1143,7 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
   try {
     const { emitEvent } = require('../../services/socket.service');
     emitEvent('lead_updated', { action: 'assign', leadId: lead._id });
-  } catch (socketErr) {}
+  } catch (socketErr) { }
 
   const leadObj = lead.toObject ? lead.toObject() : lead;
   if (resolvedAssignee) {
@@ -1193,7 +1211,8 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
       objectIds.push(rawVal);
     }
 
-    const [uMatch, eMatch] = await Promise.all([
+    const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+    const [uMatch, eMatch, tMatch] = await Promise.all([
       User.findOne({
         $or: [
           { _id: { $in: objectIds } },
@@ -1201,17 +1220,27 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
           { employeeId: { $in: empIdStrings } },
           { employeeDbId: { $in: objectIds } }
         ]
-      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      }).select('_id fullName name email role department isActive profileImage employeeDbId employeeId').lean(),
       Employee.findOne({
         $or: [
           { _id: { $in: objectIds } },
           { email: { $in: emailStrings } },
           { employeeId: { $in: empIdStrings } }
         ]
-      }).select('_id fullName name email role profileImage employeeId').lean()
+      }).select('_id fullName name email role department status profileImage employeeId').lean(),
+      SalesTrialUser.findOne({
+        $or: [
+          { _id: { $in: objectIds } },
+          { email: { $in: emailStrings } },
+          { trialId: { $in: empIdStrings } }
+        ]
+      }).select('_id fullName name email role department status isApproved profileImage trialId').lean()
     ]);
 
-    resolvedAssignee = uMatch || eMatch;
+    resolvedAssignee = uMatch || eMatch || tMatch;
+    if (!resolvedAssignee || !isSalesOwner(resolvedAssignee)) {
+      throw new Error('INVALID_LEAD_ASSIGNEE');
+    }
     if (resolvedAssignee) {
       targetAssignedTo = resolvedAssignee._id;
     } else if (mongoose.Types.ObjectId.isValid(rawVal)) {
@@ -1449,7 +1478,7 @@ async function updatePriority({ leadId, priority, leadValue, user }) {
   try {
     const { emitEvent } = require('../../services/socket.service');
     emitEvent('lead_updated', { action: 'priority_update', leadId: lead._id, priority: lead.priority });
-  } catch (socketErr) {}
+  } catch (socketErr) { }
 
   return getLeadDisplay(lead, user);
 }

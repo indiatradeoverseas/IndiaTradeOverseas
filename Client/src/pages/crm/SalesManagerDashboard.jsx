@@ -2647,7 +2647,7 @@ export default function SalesManagerDashboard() {
                                   controlsList="nodownload"
                                   preload="metadata"
                                   className="w-full h-8 rounded accent-teal-500 min-w-0"
-                                  src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
+                                  src={`${API_URL}/leads/call-recordings/${rec._id}/stream${localStorage.getItem('token') ? `?token=${encodeURIComponent(localStorage.getItem('token'))}` : ''}`}
                                 />
 
                                 <div className="flex justify-between items-center text-[8px] text-[var(--crm-ink-faint)]">

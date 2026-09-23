@@ -18,6 +18,7 @@ import { BsCalculator } from 'react-icons/bs';
 import { useAuth } from '../../hooks/useAuth';
 import { API_URL, getFileUrl } from '../../config/env';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
 import { 
   ResponsiveContainer, 
@@ -462,10 +463,17 @@ export default function Leads() {
           list = fallbackRes.employees;
         }
       }
-      let filteredRegular = list.filter(e => 
-        !String(e.role || '').toUpperCase().includes('MANAGER') &&
-        !String(e.position || '').toUpperCase().includes('MANAGER')
-      );
+      let filteredRegular = list.filter(e => {
+        const dept = String(e.department || '').toUpperCase().trim();
+        const role = String(e.role || '').toUpperCase().trim();
+        const name = String(e.fullName || e.name || '').toUpperCase().trim();
+
+        const isNonSales = name.includes('SYSTEM ADMIN') || name.includes('ADMINISTRATOR') || role === 'SUPER_ADMIN' || role === 'ADMIN' || dept === 'ADMIN' || dept === 'IT' || dept === 'HR' || dept === 'ACCOUNTS' || dept === 'PROCUREMENT' || dept === 'STONE' || dept === 'TRANSPORT' || dept === 'OPERATIONS';
+
+        const isSalesDept = dept === 'SALES' || dept === 'SALES_TRIAL' || dept === 'CRM' || role.includes('SALES') || role.includes('CRM');
+
+        return isSalesDept && !isNonSales && String(e.status || e.employmentStatus || 'ACTIVE').toUpperCase() !== 'INACTIVE';
+      });
 
       // Fetch active Sales Trial Users & merge with executives list
       try {
@@ -653,23 +661,53 @@ export default function Leads() {
     const file = e.target.files[0];
     if (!file) return;
 
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target.result;
-      const parsed = parseCSV(text);
-      if (parsed.length > 0) {
-        setParsedRows(parsed);
-        const auto = autoDetectMappings(parsed[0]);
-        setColumnMappings(auto);
-        toast.success(`Loaded ${parsed.length - 1} rows from spreadsheet!`);
-      } else {
-        toast.error("Spreadsheet file appears empty or unreadable.");
+      try {
+        let parsed = [];
+        if (isExcel) {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          if (!firstSheetName) {
+            return toast.error("Excel file has no visible sheets.");
+          }
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+          parsed = rawRows.map(row => 
+            Array.isArray(row) ? row.map(cell => cell !== null && cell !== undefined ? String(cell) : '') : []
+          );
+        } else {
+          const text = event.target.result;
+          parsed = parseCSV(text);
+        }
+
+        if (parsed.length > 0) {
+          setParsedRows(parsed);
+          const auto = autoDetectMappings(parsed[0]);
+          setColumnMappings(auto);
+          toast.success(`Loaded ${parsed.length - 1} rows from spreadsheet!`);
+        } else {
+          toast.error("Spreadsheet file appears empty or unreadable.");
+        }
+      } catch (err) {
+        console.error("Spreadsheet parsing error:", err);
+        toast.error("Failed to parse spreadsheet file.");
       }
     };
+
     reader.onerror = () => {
       toast.error("Error reading spreadsheet file.");
     };
-    reader.readAsText(file);
+
+    if (isExcel) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   const handleConfirmImport = async () => {
@@ -930,7 +968,13 @@ export default function Leads() {
     } else if (filterAssignee !== 'ALL') {
       const assigned = lead.assignedTo;
       const rawAssignedId = (typeof assigned === 'object' && assigned !== null) ? String(assigned._id || '') : String(assigned || '');
-      if (rawAssignedId !== String(filterAssignee)) return false;
+      const assignedName = (typeof assigned === 'object' && assigned !== null) ? (assigned.fullName || assigned.name || '') : String(assigned || '');
+      const filterStr = String(filterAssignee).toLowerCase().trim();
+
+      const matchId = rawAssignedId && rawAssignedId === String(filterAssignee);
+      const matchName = assignedName && assignedName.toLowerCase().includes(filterStr);
+
+      if (!matchId && !matchName) return false;
     }
 
     const searchLower = searchTerm.toLowerCase();
@@ -942,34 +986,71 @@ export default function Leads() {
 
     return matchesSearch;
   }).sort((a, b) => {
-    const timeA = new Date(a.targetDate || a.createdAt || a.date || 0).getTime();
-    const timeB = new Date(b.targetDate || b.createdAt || b.date || 0).getTime();
+    const timeA = new Date(a.createdAt || a.date || a.updatedAt || a.targetDate || 0).getTime();
+    const timeB = new Date(b.createdAt || b.date || b.updatedAt || b.targetDate || 0).getTime();
     return timeB - timeA;
   });
 
   const executiveWorkloadSummary = useMemo(() => {
-    const map = new Map();
+    const nameMap = new Map();
 
+    const isStrictSalesUser = (dept, role, pos, name) => {
+      const d = String(dept || '').toUpperCase().trim();
+      const r = String(role || '').toUpperCase().trim();
+      const p = String(pos || '').toUpperCase().trim();
+      const n = String(name || '').toUpperCase().trim();
+
+      if (n.includes('SYSTEM ADMIN') || n.includes('ADMINISTRATOR') || r === 'SUPER_ADMIN' || r === 'ADMIN' || d === 'ADMIN' || d === 'IT' || d === 'HR' || d === 'ACCOUNTS' || d === 'PROCUREMENT' || d === 'STONE' || d === 'TRANSPORT' || d === 'OPERATIONS') {
+        return false;
+      }
+
+      return (
+        d === 'SALES' || d === 'SALES_TRIAL' || d === 'CRM' ||
+        r.includes('SALES') || r.includes('CRM') ||
+        p.includes('SALES') || p.includes('CRM')
+      );
+    };
+
+    // 1. Pre-populate from executives list (deduplicated by clean name)
     executives.forEach(emp => {
-      const idStr = String(emp._id || '');
-      map.set(idStr, {
-        id: idStr,
-        name: emp.fullName || emp.name || 'Executive',
-        email: emp.email || '',
-        department: emp.department || 'SALES',
-        role: emp.role || 'SALES_EXECUTIVE',
-        totalCount: 0,
-        activeCount: 0,
-        completedCount: 0,
-        hotCount: 0,
-        totalValue: 0
-      });
+      const empName = (emp.fullName || emp.name || '').trim();
+      if (!empName) return;
+
+      const dept = emp.department || 'SALES';
+      const role = emp.role || 'SALES_EXECUTIVE';
+      const pos = emp.position || '';
+
+      if (!isStrictSalesUser(dept, role, pos, empName)) return;
+
+      const cleanKey = empName.toLowerCase();
+
+      if (!nameMap.has(cleanKey)) {
+        nameMap.set(cleanKey, {
+          id: emp._id || emp.employeeId || cleanKey,
+          name: empName,
+          email: emp.email || '',
+          department: dept,
+          role: role,
+          ids: new Set([String(emp._id || ''), String(emp.employeeId || ''), emp.email?.toLowerCase()].filter(Boolean)),
+          totalCount: 0,
+          activeCount: 0,
+          completedCount: 0,
+          hotCount: 0,
+          totalValue: 0
+        });
+      } else {
+        const existing = nameMap.get(cleanKey);
+        if (emp._id) existing.ids.add(String(emp._id));
+        if (emp.employeeId) existing.ids.add(String(emp.employeeId));
+        if (emp.email) existing.ids.add(emp.email.toLowerCase());
+      }
     });
 
     let unassignedCount = 0;
     let unassignedValue = 0;
     let unassignedHot = 0;
 
+    // 2. Aggregate lead counts
     leads.forEach(lead => {
       const isCompleted = completedStages.includes((lead.stage || '').toUpperCase());
       const isHot = lead.priority === 'HOT';
@@ -981,11 +1062,33 @@ export default function Leads() {
         if (isHot) unassignedHot++;
       } else {
         const assigned = lead.assignedTo;
-        const rawId = (typeof assigned === 'object' && assigned !== null) ? String(assigned._id || '') : String(assigned || '');
-        let target = map.get(rawId);
+        let assignedName = '';
+        let assignedDept = '';
+        let assignedRole = '';
 
-        if (!target && typeof assigned === 'object' && assigned !== null && assigned.email) {
-          target = Array.from(map.values()).find(e => e.email?.toLowerCase() === assigned.email.toLowerCase());
+        if (typeof assigned === 'object' && assigned !== null) {
+          assignedName = (assigned.fullName || assigned.name || assigned.email || '').trim();
+          assignedDept = assigned.department || '';
+          assignedRole = assigned.role || '';
+        } else {
+          assignedName = String(assigned || '').trim();
+        }
+
+        const rawId = (typeof assigned === 'object' && assigned !== null) ? String(assigned._id || '') : String(assigned || '');
+        const emailStr = (typeof assigned === 'object' && assigned !== null && assigned.email) ? assigned.email.toLowerCase() : '';
+
+        let target = null;
+        const cleanKey = assignedName.toLowerCase();
+
+        for (const [, entry] of nameMap) {
+          if (
+            (rawId && entry.ids.has(rawId)) ||
+            (emailStr && entry.ids.has(emailStr)) ||
+            (cleanKey && entry.name.toLowerCase() === cleanKey)
+          ) {
+            target = entry;
+            break;
+          }
         }
 
         if (target) {
@@ -994,26 +1097,29 @@ export default function Leads() {
           else target.activeCount++;
           if (isHot) target.hotCount++;
           target.totalValue += val;
-        } else {
-          const name = (typeof assigned === 'object' && assigned !== null) ? (assigned.fullName || assigned.name || assigned.email) : String(assigned || '');
-          map.set(rawId, {
-            id: rawId,
-            name: name || 'Executive',
-            email: typeof assigned === 'object' ? assigned.email : '',
-            department: 'SALES',
-            role: 'SALES_EXECUTIVE',
+        } else if (assignedName && isStrictSalesUser(assignedDept, assignedRole, '', assignedName)) {
+          const newEntry = {
+            id: rawId || cleanKey,
+            name: assignedName,
+            email: emailStr,
+            department: assignedDept || 'SALES',
+            role: assignedRole || 'SALES_EXECUTIVE',
+            ids: new Set([rawId, emailStr, cleanKey].filter(Boolean)),
             totalCount: 1,
             activeCount: isCompleted ? 0 : 1,
             completedCount: isCompleted ? 1 : 0,
             hotCount: isHot ? 1 : 0,
             totalValue: val
-          });
+          };
+          nameMap.set(cleanKey, newEntry);
         }
       }
     });
 
     return {
-      list: Array.from(map.values()).sort((a, b) => b.totalCount - a.totalCount),
+      list: Array.from(nameMap.values())
+        .filter(emp => emp.totalCount > 0 || executives.some(ex => (ex.fullName || ex.name || '').trim().toLowerCase() === emp.name.toLowerCase()))
+        .sort((a, b) => b.totalCount - a.totalCount),
       unassigned: {
         totalCount: unassignedCount,
         totalValue: unassignedValue,
@@ -1338,8 +1444,8 @@ export default function Leads() {
                         </h4>
                         <span className="text-[10px] text-[var(--crm-ink-faint)]">Valuation in ₹ INR</span>
                       </div>
-                      <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <div className="h-64 w-full min-h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
                           <BarChart data={pipelineAnalytics.stageChartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                             <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--crm-ink-faint)' }} />
@@ -1386,8 +1492,8 @@ export default function Leads() {
                         </h4>
                         <span className="text-[10px] text-[var(--crm-ink-faint)]">Product Categories</span>
                       </div>
-                      <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <div className="h-64 w-full min-h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
                           <PieChart>
                             <Pie
                               data={pipelineAnalytics.categoryChartData}
@@ -2323,7 +2429,7 @@ export default function Leads() {
       {/* Excel Spreadsheet Ingestion Modal */}
       <AnimatePresence>
         {showImportModal && (
-          <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2346,13 +2452,13 @@ export default function Leads() {
                 <div className="flex-1 py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[300px]">
                   <input
                     type="file"
-                    accept=".csv"
+                    accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <FiUpload size={32} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-3" />
-                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV spreadsheet file</p>
-                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your file here (Max: 15MB)</p>
+                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel spreadsheet file</p>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, or .xls file here (Max: 15MB)</p>
                 </div>
               ) : (
                 /* STEP 2: Spreadsheet Mapping and Grid View */
@@ -2536,12 +2642,19 @@ export default function Leads() {
         )}
       </AnimatePresence>
 
-      {/* Call Recording Modal */}
       <CallRecordingModal
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
         leads={leads}
-        onSuccess={() => fetchLeads()}
+        onSuccess={async (recording) => {
+          try {
+            if (recording?.leadId) {
+              const lId = typeof recording.leadId === 'object' ? recording.leadId._id : recording.leadId;
+              await leadsApi.updateStage(lId, { newStage: 'REQUIREMENT_CAPTURED' });
+            }
+          } catch (err) { }
+          await fetchLeads();
+        }}
       />
 
       {/* LOI UPLOAD MODAL */}
