@@ -7,6 +7,9 @@ const crypto = require('crypto');
 const path = require('path');
 
 const corsOptions = require('./config/cors');
+const coalVisitorRoutes = require(
+  "./modules/distributors/coalVisitor.routes"
+);
 
 const {
   rateLimiter
@@ -130,6 +133,11 @@ app.use(
 
     next();
   }
+);
+
+app.use(
+  "/coal-visitors",
+  coalVisitorRoutes
 );
 
 
