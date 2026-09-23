@@ -1667,7 +1667,6 @@ function AppLayout() {
 
   const hidePublicChrome =
     isITOAds ||
-    isOnion ||
     isPricingRoute(
       location.pathname
     );

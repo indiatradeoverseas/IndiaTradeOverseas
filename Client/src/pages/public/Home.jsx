@@ -1,5 +1,6 @@
 import { BUSINESS_WHATSAPP, businessWhatsAppUrl } from '../../config/business';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
@@ -7,6 +8,7 @@ import useDocumentMeta from '../../hooks/useDocumentMeta';
 import {
   FiAnchor,
   FiChevronRight,
+  FiChevronDown,
   FiCheckCircle,
   FiLayers,
   FiMail,
@@ -57,6 +59,44 @@ const CINEMATIC_CAROUSEL_BACKDROPS = [
 // MAIN COMPONENT
 // ============================================================
 
+// Dropdown component using Portal to escape stacking context
+function Dropdown({ isOpen, items, onClose, triggerRef }) {
+  if (!isOpen || !triggerRef) return null;
+
+  const rect = triggerRef.getBoundingClientRect();
+
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="fixed z-[100] pointer-events-auto"
+      style={{
+        left: rect.left + window.scrollX,
+        top: rect.bottom + window.scrollY + 4,
+        width: rect.width,
+        minWidth: 180,
+      }}
+      onMouseLeave={onClose}
+    >
+      <div className="bg-[#121D29]/95 backdrop-blur-md border border-[#C5CBD3]/24 rounded-[2px] overflow-hidden shadow-2xl">
+        {items.map((item) => (
+          <a
+            key={item.to}
+            href={item.to}
+            onClick={onClose}
+            className="block w-full px-4 py-2.5 text-[10px] font-sans font-medium tracking-wider uppercase text-[#C5CBD3] hover:bg-[#2B3440]/60 hover:text-[#F2F4F7] transition-colors whitespace-nowrap border-t border-[#C5CBD3]/10 first:border-t-0"
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+    </motion.div>,
+    document.body
+  );
+}
+
 export default function Home() {
 
   // ----------------------------------------------------------
@@ -82,6 +122,8 @@ export default function Home() {
   const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
   const [isMobileCarousel, setIsMobileCarousel] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const dropdownTriggerRefs = useRef({});
 
   // ----------------------------------------------------------
   // HERO IMAGE CAROUSEL
@@ -306,7 +348,12 @@ export default function Home() {
       title: 'Food & Agriculture',
       desc:
         'Bulk sourcing of rice, tea, spices, maize, wheat and other agricultural commodities.',
-      cta: 'Explore Food'
+      cta: 'Explore Food',
+      dropdown: [
+        { label: 'Tea', to: '/prakriti' },
+        { label: 'Rice', to: '/prakriti/rice' },
+        { label: 'Onion', to: '/nashik-onion' }
+      ]
     },
 
     {
@@ -314,7 +361,11 @@ export default function Home() {
       title: 'Building & Construction',
       desc:
         'Stone aggregates and construction materials supplied for civil and infrastructure projects.',
-      cta: 'Explore Stone'
+      cta: 'Explore Stone',
+      dropdown: [
+        { label: 'Stone', to: '/stone' },
+        { label: 'Coal', to: '/coal' }
+      ]
     },
 
     {
@@ -658,7 +709,7 @@ export default function Home() {
                       key={item.to}
                       className="absolute inset-0"
                       style={{
-                        transform: `rotateY(${i * 72}deg) translateZ(${isMobileCarousel ? 110 : 160}px)`,
+                        transform: `rotateY(${i * 72}deg) translateZ(${isMobileCarousel ? 162 : 221}px)`,
                         transformStyle: 'preserve-3d'
                       }}
                     >
@@ -1937,41 +1988,86 @@ export default function Home() {
 
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setIsSolutionsOpen(true)
-                  }
-                  className="
-                    w-full
-                    h-[42px]
-                    inline-flex
-                    items-center
-                    justify-center
-                    text-center
-                    bg-[#0E1116]
-                    hover:bg-[#2B3440]
-                    border
-                    border-[#C5CBD3]/24
-                    hover:border-[#F2F4F7]
-                    text-[#F2F4F7]
-                    font-sans
-                    text-[10px]
-                    uppercase
-                    tracking-widest
-                    font-semibold
-                    transition-colors
-                    duration-150
-                    rounded-[2px]
-                    cursor-pointer
-                  "
-                >
-                  {v.cta}
-                  <FiChevronRight
-                    className="ml-1"
-                    size={13}
-                  />
-                </button>
+                {v.dropdown ? (
+                  <>
+                    <button
+                      ref={(el) => (dropdownTriggerRefs.current[v.num] = el)}
+                      type="button"
+                      onClick={() => setOpenDropdown(openDropdown === v.num ? null : v.num)}
+                      className="
+                        w-full
+                        h-[42px]
+                        inline-flex
+                        items-center
+                        justify-center
+                        text-center
+                        bg-[#0E1116]
+                        hover:bg-[#2B3440]
+                        border
+                        border-[#C5CBD3]/24
+                        hover:border-[#F2F4F7]
+                        text-[#F2F4F7]
+                        font-sans
+                        text-[10px]
+                        uppercase
+                        tracking-widest
+                        font-semibold
+                        transition-colors
+                        duration-150
+                        rounded-[2px]
+                        cursor-pointer
+                      "
+                    >
+                      {v.cta}
+                      <FiChevronDown
+                        className={`ml-1 transition-transform duration-200 ${openDropdown === v.num ? 'rotate-180' : ''}`}
+                        size={13}
+                      />
+                    </button>
+                    <Dropdown
+                      isOpen={openDropdown === v.num}
+                      items={v.dropdown}
+                      onClose={() => setOpenDropdown(null)}
+                      triggerRef={dropdownTriggerRefs.current[v.num]}
+                    />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsSolutionsOpen(true)
+                    }
+                    className="
+                      w-full
+                      h-[42px]
+                      inline-flex
+                      items-center
+                      justify-center
+                      text-center
+                      bg-[#0E1116]
+                      hover:bg-[#2B3440]
+                      border
+                      border-[#C5CBD3]/24
+                      hover:border-[#F2F4F7]
+                      text-[#F2F4F7]
+                      font-sans
+                      text-[10px]
+                      uppercase
+                      tracking-widest
+                      font-semibold
+                      transition-colors
+                      duration-150
+                      rounded-[2px]
+                      cursor-pointer
+                    "
+                  >
+                    {v.cta}
+                    <FiChevronRight
+                      className="ml-1"
+                      size={13}
+                    />
+                  </button>
+                )}
 
               </motion.div>
 

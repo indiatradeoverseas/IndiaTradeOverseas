@@ -1,18 +1,28 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import { motion, AnimatePresence } from "framer-motion";
+
+import OnionRequirementBuilder from "../../components/requirements/OnionRequirementBuilder";
+import { onionVisitorApi } from "../../api/onionVisitor";
 
 /*
   Onion.jsx — Nashik Onion Vertical
   India Trade Overseas
-  
-  Scroll-linked cinematic frame sequence (240 frames) with full DPR content.
-  Frames at: public/images/onion-frames/frames/ezgif-frame-001.jpg ... ezgif-frame-240.jpg
+
+  Premium Tea-style hero carousel with the existing full DPR content.
+  Hero images are served from public/images/onion-images/.
 */
 
-const TOTAL_FRAMES = 240;
-
-const FRAME_BASE = "/images/onion-frames/frames";
-const FRAME_NAME = (index) =>
-  `${FRAME_BASE}/ezgif-frame-${String(index + 1).padStart(3, "0")}.jpg`;
+const HERO_IMAGES = [
+  "/images/onion-images/onion-1.png",
+  "/images/onion-images/onion-2.png",
+  "/images/onion-images/onion-3.png",
+  "/images/onion-images/onion-4.png",
+  "/images/onion-images/onion-5.png",
+];
 
 const COLORS = {
   burgundy: "#4A101C",
@@ -204,214 +214,138 @@ const CRM_STAGES = [
   "Closed lost",
 ];
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function scrollToFrameProgress(t) {
-  // The old ease-in/out kept the first part of the sequence almost frozen.
-  // This curve deliberately advances the animation much earlier so the onion
-  // peeling begins during the second major scroll instead of several scrolls later.
-  const stops = [
-    [0, 0],
-    [0.16, 0.28],
-    [0.36, 0.55],
-    [0.62, 0.79],
-    [1, 1],
-  ];
-
-  for (let i = 1; i < stops.length; i += 1) {
-    const [x1, y1] = stops[i - 1];
-    const [x2, y2] = stops[i];
-    if (t <= x2) {
-      const local = (t - x1) / (x2 - x1);
-      return y1 + (y2 - y1) * local;
-    }
-  }
-
-  return 1;
-}
-
-function useMediaQuery(query) {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, [query]);
-
-  return matches;
-}
-
 export default function Onion() {
-  const canvasRef = useRef(null);
-  const stageRef = useRef(null);
-  const framesRef = useRef([]);
-  const rafRef = useRef(0);
-  const targetFrameRef = useRef(0);
-  const renderedFrameRef = useRef(-1);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [showRequirementBuilder, setShowRequirementBuilder] =
+    useState(false);
 
-  const [loaded, setLoaded] = useState(0);
-  const [activeFrame, setActiveFrame] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [navOpen, setNavOpen] = useState(false);
+  const [showPersonalDetails, setShowPersonalDetails] =
+    useState(false);
 
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const [builtRequirement, setBuiltRequirement] =
+    useState(null);
 
-  const frameUrls = useMemo(
-    () => Array.from({ length: TOTAL_FRAMES }, (_, i) => FRAME_NAME(i)),
-    []
-  );
+  const [submittingPersonalDetails, setSubmittingPersonalDetails] =
+    useState(false);
 
-  // Preload the full sequence once. Drawing remains canvas-only while scrolling.
-  useEffect(() => {
-    let cancelled = false;
-    const frames = new Array(TOTAL_FRAMES);
-    let completed = 0;
-
-    frameUrls.forEach((src, index) => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = src;
-
-      image.onload = () => {
-        if (cancelled) return;
-        frames[index] = image;
-        completed += 1;
-        setLoaded(completed);
-      };
-
-      image.onerror = () => {
-        if (cancelled) return;
-        completed += 1;
-        setLoaded(completed);
-      };
+  const [personalDetails, setPersonalDetails] =
+    useState({
+      fullName: "",
+      email: "",
+      mobile: "",
+      city: "",
+      state: "",
+      targetTimeline: "",
     });
 
-    framesRef.current = frames;
-
-    return () => {
-      cancelled = true;
-      framesRef.current = [];
-    };
-  }, [frameUrls]);
-
-  // Canvas setup and high-DPI rendering.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const stage = stageRef.current;
-    if (!canvas || !stage) return;
+    const timer = setTimeout(() => {
+      setHeroIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 6000);
 
-    const ctx = canvas.getContext("2d", { alpha: false });
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
+    return () => clearTimeout(timer);
+  }, [heroIndex]);
 
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const openRequirementBuilder = () => {
+    setShowRequirementBuilder(true);
+  };
 
-      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
+  const handleRequirementComplete = (
+    requirement
+  ) => {
+    setBuiltRequirement(requirement);
 
-      drawFrame(renderedFrameRef.current >= 0 ? renderedFrameRef.current : 0);
-    };
+    setPersonalDetails((previous) => ({
+      ...previous,
 
-    const observer = new ResizeObserver(resize);
-    observer.observe(stage);
-    resize();
+      targetTimeline:
+        requirement.timeline || "",
+    }));
 
-    function drawFrame(index) {
-      const frame = framesRef.current[index];
-      const rect = canvas.getBoundingClientRect();
-      if (!frame || !rect.width || !rect.height) return;
+    setShowRequirementBuilder(false);
 
-      // Cinematic "cover" fit without stretching the source image.
-      const scale = Math.max(
-        rect.width / frame.naturalWidth,
-        rect.height / frame.naturalHeight
-      );
+    setShowPersonalDetails(true);
+  };
 
-      const drawWidth = frame.naturalWidth * scale;
-      const drawHeight = frame.naturalHeight * scale;
-      const x = (rect.width - drawWidth) / 2;
-      const y = (rect.height - drawHeight) / 2;
+  const handlePersonalDetailsSubmit =
+    async (event) => {
+      event.preventDefault();
 
-      ctx.fillStyle = COLORS.ivory;
-      ctx.fillRect(0, 0, rect.width, rect.height);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(frame, 0, 0, frame.naturalWidth, frame.naturalHeight, x, y, drawWidth, drawHeight);
+      if (
+        submittingPersonalDetails ||
+        !builtRequirement
+      ) {
+        return;
+      }
 
-      renderedFrameRef.current = index;
-    }
+      try {
+        setSubmittingPersonalDetails(true);
 
-    window.__drawOnionFrame = drawFrame;
+        const {
+          fullName,
+          email,
+          mobile,
+          city,
+          state,
+          targetTimeline,
+        } = personalDetails;
 
-    return () => {
-      observer.disconnect();
-      delete window.__drawOnionFrame;
-    };
-  }, []);
-
-  // Scroll -> frame index. The entire page controls one cinematic pinned sequence.
-  useEffect(() => {
-    const update = () => {
-      const stage = stageRef.current;
-      if (!stage) return;
-
-      // Map the 240-frame sequence to the ENTIRE document, not just the hero.
-      // Frame 001 is shown at the top of the page and Frame 240 is reached
-      // at the absolute bottom of the page.
-      const documentHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight
-      );
-      const travel = Math.max(documentHeight - window.innerHeight, 1);
-      const raw = clamp(window.scrollY / travel, 0, 1);
-      const frameProgress = scrollToFrameProgress(raw);
-
-      setScrollProgress(frameProgress);
-
-      const frame = reducedMotion
-        ? 0
-        : Math.round(frameProgress * (TOTAL_FRAMES - 1));
-
-      targetFrameRef.current = frame;
-      setActiveFrame(frame);
-
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        if (window.__drawOnionFrame) {
-          window.__drawOnionFrame(targetFrameRef.current);
+        if (
+          !fullName.trim() ||
+          !email.trim() ||
+          !mobile.trim() ||
+          !city.trim() ||
+          !state.trim() ||
+          !targetTimeline
+        ) {
+          throw new Error(
+            "Please complete all personal details."
+          );
         }
-      });
+
+        const response =
+          await onionVisitorApi.create({
+            fullName,
+            email,
+            mobile,
+            city,
+            state,
+
+            timeline:
+              targetTimeline,
+
+            requirement:
+              builtRequirement,
+          });
+
+        if (!response?.success) {
+          throw new Error(
+            response?.message ||
+            "Unable to register your requirement."
+          );
+        }
+
+        setShowPersonalDetails(false);
+
+        window.location.assign(
+          `/nashik-onion/pricing?visitorId=${encodeURIComponent(
+            response.data.visitorId
+          )}`
+        );
+      } catch (error) {
+        console.error(
+          "Onion visitor registration error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Unable to submit your requirement. Please try again."
+        );
+      } finally {
+        setSubmittingPersonalDetails(false);
+      }
     };
-
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [reducedMotion]);
-
-  // If the first frames finish loading after mount, paint immediately.
-  useEffect(() => {
-    if (loaded > 0 && window.__drawOnionFrame) {
-      window.__drawOnionFrame(targetFrameRef.current);
-    }
-  }, [loaded]);
-
-  const loadPercent = Math.round((loaded / TOTAL_FRAMES) * 100);
 
   return (
     <main id="top" className="ito-onion-page">
@@ -448,164 +382,138 @@ export default function Onion() {
           letter-spacing: -0.035em;
         }
 
-        .ito-nav {
-          position: fixed;
-          z-index: 50;
-          top: 0;
-          left: 0;
+        
+
+        .ito-hero {
+          position: relative;
           width: 100%;
+          min-height: 100vh;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 22px clamp(20px, 4vw, 64px);
-          mix-blend-mode: normal;
-          pointer-events: none;
-        }
-
-        .ito-brand {
-          color: var(--burgundy);
-          font-size: 12px;
-          font-weight: 800;
-          letter-spacing: .16em;
-          text-transform: uppercase;
-          pointer-events: auto;
-        }
-
-        .ito-nav-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 9px;
-          border: 1px solid rgba(74, 16, 28, .18);
-          border-radius: 999px;
-          padding: 9px 14px;
-          color: var(--burgundy);
-          background: rgba(247,243,234,.72);
-          backdrop-filter: blur(12px);
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: .08em;
-          text-transform: uppercase;
-          pointer-events: auto;
-        }
-
-        .ito-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--onion-red);
-          box-shadow: 0 0 0 4px rgba(122,35,50,.10);
-        }
-
-        .ito-sequence {
-          position: relative;
-          height: 100vh;
-          min-height: 640px;
-        }
-
-        .ito-sticky {
-          position: fixed;
-          z-index: 0;
-          inset: 0;
-          width: 100%;
-          height: 100vh;
-          min-height: 640px;
           overflow: hidden;
-          display: grid;
-          place-items: center;
-          background: var(--ivory);
-          pointer-events: none;
+          background: var(--burgundy);
         }
 
-        .ito-canvas {
+        .ito-hero-background {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+        }
+
+        .ito-hero-image {
           position: absolute;
           inset: 0;
           width: 100%;
           height: 100%;
+          object-fit: cover;
+          object-position: center;
           display: block;
         }
 
-        .ito-vignette {
+        .ito-hero-overlay {
           position: absolute;
           inset: 0;
-          z-index: 1;
           pointer-events: none;
-          /* Cinematic charcoal vignette around the onion frames — darkens all four edges while keeping the center visible. */
-          background:
-            radial-gradient(ellipse at center,
-              rgba(34,33,31,0) 34%,
-              rgba(34,33,31,.10) 52%,
-              rgba(34,33,31,.30) 72%,
-              rgba(34,33,31,.58) 100%),
-            linear-gradient(90deg,
-              rgba(34,33,31,.28) 0%,
-              rgba(34,33,31,0) 18%,
-              rgba(34,33,31,0) 82%,
-              rgba(34,33,31,.28) 100%),
-            linear-gradient(180deg,
-              rgba(34,33,31,.24) 0%,
-              rgba(34,33,31,0) 18%,
-              rgba(34,33,31,0) 82%,
-              rgba(34,33,31,.34) 100%);
         }
 
-        .ito-hero-copy {
+        .ito-hero-overlay-horizontal {
+          background: linear-gradient(
+            90deg,
+            rgba(74, 16, 28, 0.90) 0%,
+            rgba(74, 16, 28, 0.62) 38%,
+            rgba(74, 16, 28, 0.22) 72%,
+            rgba(74, 16, 28, 0.04) 100%
+          );
+        }
+
+        .ito-hero-overlay-bottom {
+          background: linear-gradient(
+            0deg,
+            rgba(34, 33, 31, 0.60) 0%,
+            rgba(34, 33, 31, 0.08) 48%,
+            rgba(34, 33, 31, 0.10) 100%
+          );
+        }
+
+        .ito-hero-inner {
           position: relative;
           z-index: 2;
-          width: min(1180px, calc(100% - 40px));
+          width: min(1180px, 100%);
           margin: 0 auto;
-          padding: 6vh 32px 4vh;
-          border-radius: 20px;
-          background: rgba(247,243,234,.95);
-          box-shadow: 0 20px 60px rgba(34,33,31,.1);
-          border: 1px solid var(--sand);
-          pointer-events: none;
+          padding: 7.5rem 32px 5rem;
+          display: grid;
+          grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+          align-items: center;
+          min-height: 100vh;
         }
 
-        .ito-kicker {
+        .ito-hero-text {
+          max-width: 850px;
+          color: var(--white);
+          text-align: left;
+        }
+
+        .ito-hero-kicker {
           display: inline-flex;
           align-items: center;
-          gap: 10px;
-          margin-bottom: 18px;
-          color: var(--olive);
-          font-size: 11px;
+          gap: 9px;
+          margin-bottom: 22px;
+          padding: 7px 13px;
+          border: 1px solid rgba(181, 150, 90, 0.42);
+          border-radius: 999px;
+          background: rgba(74, 16, 28, 0.30);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          color: var(--ivory);
+          font-size: 10px;
           font-weight: 800;
-          letter-spacing: .17em;
+          letter-spacing: .14em;
           text-transform: uppercase;
-          
         }
 
-        .ito-kicker::before {
-          content: "";
-          width: 34px;
-          height: 1px;
+        .ito-hero-kicker-dot {
+          width: 7px;
+          height: 7px;
+          flex: 0 0 auto;
+          border-radius: 50%;
+          background: var(--gold);
+          box-shadow: 0 0 0 4px rgba(181,150,90,.13);
+        }
+
+        .ito-hero-text .ito-hero-title {
+          max-width: 850px;
+          margin: 0;
+          color: var(--white);
+          font-size: clamp(48px, 7vw, 96px);
+          line-height: .92;
+          text-shadow: 0 10px 35px rgba(0,0,0,.28);
+        }
+
+        .ito-hero-accent-line {
+          height: 2px;
+          margin: 28px 0 0;
           background: var(--gold);
         }
 
-        .ito-hero-title {
-          max-width: 720px;
-          margin: 0;
-          color: var(--burgundy);
-          font-size: clamp(48px, 7vw, 96px);
-          line-height: .92;
-        }
-
         .ito-hero-subtitle {
-          max-width: 560px;
+          max-width: 650px;
           margin: 25px 0 0;
-          color: rgba(34,33,31,.78);
+          color: rgba(247,243,234,.94);
           font-size: clamp(15px, 1.6vw, 20px);
           line-height: 1.65;
+          text-shadow: 0 5px 22px rgba(0,0,0,.28);
         }
 
         .ito-trust-line {
           display: flex;
           flex-wrap: wrap;
-          gap: 40px;
-          margin-top: 40px;
-          color: rgba(34,33,31,.85);
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: .06em;
+          gap: 14px 30px;
+          margin-top: 34px;
+          color: rgba(247,243,234,.96);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: .05em;
+          text-shadow: 0 4px 16px rgba(0,0,0,.3);
         }
 
         .ito-trust-line span {
@@ -620,83 +528,6 @@ export default function Onion() {
           height: 6px;
           border-radius: 50%;
           background: var(--gold);
-        }
-
-        .ito-scroll-note {
-          position: absolute;
-          z-index: 3;
-          left: clamp(20px, 4vw, 64px);
-          bottom: 28px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: rgba(34,33,31,.85);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: .14em;
-          text-transform: uppercase;
-        }
-
-        .ito-scroll-line {
-          width: 54px;
-          height: 1px;
-          background: var(--gold);
-        }
-
-        .ito-progress {
-          position: absolute;
-          z-index: 4;
-          right: clamp(20px, 4vw, 64px);
-          bottom: 28px;
-          width: 150px;
-          height: 2px;
-          overflow: hidden;
-          background: rgba(74,16,28,.14);
-        }
-
-        .ito-progress > span {
-          display: block;
-          height: 100%;
-          transform-origin: left center;
-          background: var(--onion-red);
-        }
-
-        .ito-frame-counter {
-          position: absolute;
-          z-index: 4;
-          right: clamp(20px, 4vw, 64px);
-          bottom: 38px;
-          color: var(--burgundy);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: .12em;
-        }
-
-        .ito-loading {
-          position: absolute;
-          z-index: 10;
-          inset: auto 50% 24px auto;
-          transform: translateX(50%);
-          color: var(--burgundy);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: .12em;
-          text-transform: uppercase;
-          opacity: ${loaded === TOTAL_FRAMES ? 0 : 1};
-          transition: opacity .35s ease;
-        }
-
-        .ito-section {
-          position: relative;
-          z-index: 2;
-          padding: clamp(90px, 11vw, 160px) clamp(20px, 6vw, 96px);
-          /* The fixed Canvas remains visible through the entire page. */
-          background: transparent;
-        }
-
-        .ito-section.ito-dark,
-        .ito-section.ito-cta {
-          background: transparent;
         }
 
         .ito-section-inner {
@@ -961,7 +792,7 @@ export default function Onion() {
         .ito-cta {
           padding-top: 52px;
           padding-bottom: 72px;
-          background: transparent;
+          background: var(--burgundy);
           color: var(--ivory);
         }
 
@@ -1146,8 +977,7 @@ export default function Onion() {
           padding-bottom: clamp(52px, 5vw, 72px);
         }
 
-        /* Compact export operating model — keep the section visually short so the
-           scroll-linked onion remains visible across the page. */
+        /* Compact export operating model. */
         .ito-export-grid {
           display: grid;
           grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
@@ -1401,60 +1231,54 @@ export default function Onion() {
           letter-spacing: .10em;
           text-transform: uppercase;
         }
-
-        /* Keep the hero kicker clear of the fixed navigation on desktop. */
-        @media (min-width: 801px) {
-          .ito-hero-copy .ito-kicker {
-            margin-top: 24px;
-          }
         }
 
         @media (max-width: 800px) {
-          .ito-sequence {
-            height: 100vh;
-            min-height: 560px;
+          .ito-hero {
+            min-height: 100svh;
           }
 
-          .ito-sticky {
-            min-height: 560px;
+          .ito-hero-inner {
+            grid-template-columns: 1fr;
+            min-height: 100svh;
+            padding: 7.5rem 20px 4rem;
           }
 
-          .ito-vignette {
-            /* Same all-side charcoal vignette on mobile; keep the frame readable in the center. */
-            background:
-              radial-gradient(ellipse at center,
-                rgba(34,33,31,0) 28%,
-                rgba(34,33,31,.12) 48%,
-                rgba(34,33,31,.34) 70%,
-                rgba(34,33,31,.62) 100%),
-              linear-gradient(90deg,
-                rgba(34,33,31,.30) 0%,
-                rgba(34,33,31,0) 22%,
-                rgba(34,33,31,0) 78%,
-                rgba(34,33,31,.30) 100%),
-              linear-gradient(180deg,
-                rgba(34,33,31,.26) 0%,
-                rgba(34,33,31,0) 20%,
-                rgba(34,33,31,0) 80%,
-                rgba(34,33,31,.38) 100%);
+          .ito-hero-text {
+            text-align: center;
+            margin: 0 auto;
           }
 
-          /* Top branding/nav stays fixed; give hero copy room beneath it */
-          .ito-nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 60;
-            background: rgba(247,243,234,.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--sand);
+          .ito-hero-kicker {
+            justify-content: center;
+            font-size: 8px;
+            letter-spacing: .10em;
           }
 
-          .ito-hero-copy {
-            padding-top: calc(6vh + 100px); /* space for fixed nav + extra breathing room */
-            width: min(1180px, calc(100% - 24px));
+          .ito-hero-text .ito-hero-title {
+            font-size: clamp(43px, 13vw, 68px);
+            line-height: .94;
           }
+
+          .ito-hero-accent-line {
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .ito-hero-subtitle {
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 14px;
+            line-height: 1.55;
+          }
+
+          .ito-trust-line {
+            justify-content: center;
+            gap: 10px 18px;
+            font-size: 10px;
+          }
+
+
 
           .ito-hero-title {
             max-width: 100%;
@@ -1484,18 +1308,7 @@ export default function Onion() {
             gap: 8px;
           }
 
-          .ito-scroll-note {
-            bottom: 16px;
-            left: clamp(16px, 4vw, 24px);
-          }
-
-          .ito-frame-counter,
-          .ito-progress {
-            right: clamp(16px, 4vw, 24px);
-            bottom: 16px;
-          }
-
-          .ito-intro,
+            .ito-intro,
           .ito-cta-inner,
           .ito-export-grid {
             grid-template-columns: 1fr;
@@ -1562,12 +1375,9 @@ export default function Onion() {
           }
         }
 
-        /*
-         * READABILITY FIRST: Every text block gets a solid reading surface.
-         * The canvas stays visible but dimmed; content panels are opaque.
-         */
+        /* Readability surfaces for the existing DPR sections. */
         .ito-section {
-          background: transparent;
+          background: var(--ivory);
         }
 
         .ito-section-inner {
@@ -1876,14 +1686,6 @@ export default function Onion() {
 
         .ito-cta-copy {
           color: rgba(34,33,31,.9) !important;
-        }
-
-        .ito-frame-counter {
-          background: rgba(247,243,234,.9);
-          padding: 4px 8px;
-          border: 1px solid var(--sand);
-          border-radius: 5px;
-          color: var(--burgundy);
         }
 
         /* Light sections: burgundy text */
@@ -2452,10 +2254,6 @@ export default function Onion() {
           .ito-mobile-menu .ito-mobile-menu-cta:focus-visible {
             background: var(--onion-red);
           }
-
-          .ito-hero-copy {
-            padding-top: 92px;
-          }
         }
 
         @media (max-width: 430px) {
@@ -2585,92 +2383,89 @@ export default function Onion() {
 
 `}</style>
 
-      <nav className="ito-nav" aria-label="Primary">
-        <a className="ito-nav-brand" href="#top" aria-label="India Trade Overseas — Nashik Onion">
-          <span className="ito-nav-mark" aria-hidden="true">ITO</span>
-          <span className="ito-nav-brand-copy">
-            <strong>India Trade Overseas</strong>
-            <small>Nashik Onion Vertical</small>
-          </span>
-        </a>
+      {/* HERO */}
+      <section className="ito-hero" aria-label="Nashik onion hero">
+        <div className="ito-hero-background" aria-hidden="true">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={heroIndex}
+              src={HERO_IMAGES[heroIndex]}
+              alt="Nashik red onion supply"
+              initial={{ opacity: 0, scale: 1.03 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="ito-hero-image"
+            />
+          </AnimatePresence>
 
-        <div className="ito-nav-links" aria-label="Page sections">
-          <a href="#specifications">Specifications</a>
-          <a href="#quality">Quality</a>
-          <a href="#process">Process</a>
-          <a href="#international">Export</a>
-          <a href="#faq">FAQ</a>
+          <div className="ito-hero-overlay ito-hero-overlay-horizontal" />
+          <div className="ito-hero-overlay ito-hero-overlay-bottom" />
         </div>
 
-        <div className="ito-nav-actions">
-          <a className="ito-nav-cta" href="#rfq">Request Supply</a>
-          <button
-            className={`ito-nav-menu ${navOpen ? "is-open" : ""}`}
-            type="button"
-            aria-label={navOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={navOpen}
-            onClick={() => setNavOpen((open) => !open)}
+        <div className="ito-hero-inner">
+          <motion.div
+            className="ito-hero-text"
+            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{
+              duration: 1.2,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.2,
+            }}
           >
-            <span />
-            <span />
-          </button>
-        </div>
+            <motion.div
+              className="ito-hero-kicker"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+            >
+              <span className="ito-hero-kicker-dot" />
+              <span>Domestic India · International Export · Bulk B2B Trade</span>
+            </motion.div>
 
-        <div className={`ito-mobile-menu ${navOpen ? "is-open" : ""}`}>
-          <a href="#specifications" onClick={() => setNavOpen(false)}>Specifications</a>
-          <a href="#quality" onClick={() => setNavOpen(false)}>Quality Control</a>
-          <a href="#process" onClick={() => setNavOpen(false)}>Process</a>
-          <a href="#international" onClick={() => setNavOpen(false)}>Export</a>
-          <a href="#faq" onClick={() => setNavOpen(false)}>FAQ</a>
-          <a className="ito-mobile-menu-cta" href="#rfq" onClick={() => setNavOpen(false)}>
-            Request Supply
-          </a>
-        </div>
-      </nav>
-
-      {/* CINEMATIC HERO SEQUENCE */}
-      <section ref={stageRef} className="ito-sequence" aria-label="Nashik onion cinematic sequence">
-        {/* The canvas is the only element pinned to the viewport. */}
-        <div className="ito-sticky" aria-hidden="true">
-          <canvas
-            ref={canvasRef}
-            className="ito-canvas"
-            aria-label="Frame-by-frame Nashik onion product sequence"
-          />
-          <div className="ito-vignette" />
-          <div className="ito-progress" aria-hidden="true">
-            <span style={{ transform: `scaleX(${scrollProgress})` }} />
-          </div>
-          <div className="ito-loading" aria-live="polite">
-            Loading sequence · {loadPercent}%
-          </div>
-        </div>
-
-        {/* Hero copy is normal document content, so it scrolls away naturally. */}
-        <div className="ito-hero-content">
-          <div className="ito-hero-copy">
-            <div className="ito-kicker">Domestic India · International Export · Bulk B2B Trade</div>
-            <h1 className="ito-display ito-hero-title">
+            <motion.h1
+              className="ito-display ito-hero-title"
+              initial={{ scale: 0.97 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 1, ease: "easeOut", delay: 0.4 }}
+            >
               Nashik Onions
               <br />
               for Domestic
               <br />
-              & Global Markets
-            </h1>
-            <p className="ito-hero-subtitle">
+              &amp; Global Markets
+            </motion.h1>
+
+            <motion.div
+              className="ito-hero-accent-line"
+              initial={{ width: 0 }}
+              animate={{ width: 96 }}
+              transition={{ duration: 1, delay: 0.7, ease: "easeInOut" }}
+            />
+
+            <motion.p
+              className="ito-hero-subtitle"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
               Sourced with Precision. Graded to Specification. Delivered with Coordination.
-            </p>
-            <div className="ito-trust-line" role="list">
+            </motion.p>
+
+            <motion.div
+              className="ito-trust-line"
+              role="list"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+            >
               <span role="listitem">Buyer-Defined Grades</span>
               <span role="listitem">Flexible Packaging</span>
               <span role="listitem">Documented Loading</span>
               <span role="listitem">Logistics Coordination</span>
-            </div>
-          </div>
-          <div className="ito-scroll-note">
-            <span className="ito-scroll-line" />
-            Scroll to explore
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -3069,7 +2864,13 @@ export default function Onion() {
               Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability, logistics and applicable terms before preparing the offer.
             </p>
             <div className="ito-actions">
-              <a className="ito-button" href="#rfq">Request Domestic Rate</a>
+              <button
+                className="ito-button"
+                type="button"
+                onClick={openRequirementBuilder}
+              >
+                Request Bulk Quote
+              </button>
               <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
               <a className="ito-button secondary" href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements." target="_blank" rel="noopener noreferrer">Chat with Export Sales on WhatsApp</a>
             </div>
@@ -3102,6 +2903,232 @@ export default function Onion() {
           </div>
         </div>
       </section>
+
+
+      {/* ONION REQUIREMENT BUILDER */}
+      <OnionRequirementBuilder
+        isOpen={showRequirementBuilder}
+        onClose={() => setShowRequirementBuilder(false)}
+        onComplete={handleRequirementComplete}
+      />
+
+      {/* PERSONAL DETAILS */}
+      <AnimatePresence>
+        {showPersonalDetails && (
+          <motion.div
+            className="ito-onion-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !submittingPersonalDetails) {
+                setShowPersonalDetails(false);
+              }
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ito-onion-personal-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onion-personal-details-title"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <div className="ito-onion-personal-header">
+                <div>
+                  <small>Step 2 · Buyer details</small>
+                  <h2 id="onion-personal-details-title">Tell us who is buying.</h2>
+                </div>
+
+                <button
+                  type="button"
+                  className="ito-onion-modal-close"
+                  aria-label="Close"
+                  disabled={submittingPersonalDetails}
+                  onClick={() => setShowPersonalDetails(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                className="ito-onion-personal-body"
+                onSubmit={handlePersonalDetailsSubmit}
+              >
+                {builtRequirement && (
+                  <div className="ito-onion-requirement-summary">
+                    <div>
+                      <span>Trade</span>
+                      <strong>{builtRequirement.tradeType === "EXPORT" ? "International Export" : "Domestic India"}</strong>
+                    </div>
+                    <div>
+                      <span>Size</span>
+                      <strong>{builtRequirement.size}</strong>
+                    </div>
+                    <div>
+                      <span>Grade</span>
+                      <strong>{builtRequirement.grade}</strong>
+                    </div>
+                    <div>
+                      <span>Quantity</span>
+                      <strong>
+                        {Number(builtRequirement.quantityKg || 0).toLocaleString("en-IN")} kg
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Packaging</span>
+                      <strong>{builtRequirement.packaging}</strong>
+                    </div>
+                    <div>
+                      <span>Destination</span>
+                      <strong>{builtRequirement.destination}</strong>
+                    </div>
+                  </div>
+                )}
+
+                <div className="ito-onion-form-grid">
+                  <div className="ito-onion-field full">
+                    <label htmlFor="onion-full-name">Full Name</label>
+                    <input
+                      id="onion-full-name"
+                      type="text"
+                      autoComplete="name"
+                      value={personalDetails.fullName}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          fullName: event.target.value,
+                        }))
+                      }
+                      placeholder="Enter your full name"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-email">Business Email</label>
+                    <input
+                      id="onion-email"
+                      type="email"
+                      autoComplete="email"
+                      value={personalDetails.email}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          email: event.target.value,
+                        }))
+                      }
+                      placeholder="you@company.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-mobile">Mobile Number</label>
+                    <input
+                      id="onion-mobile"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={personalDetails.mobile}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          mobile: event.target.value,
+                        }))
+                      }
+                      placeholder="+91 98765 43210"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-city">City</label>
+                    <input
+                      id="onion-city"
+                      type="text"
+                      autoComplete="address-level2"
+                      value={personalDetails.city}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          city: event.target.value,
+                        }))
+                      }
+                      placeholder="City"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-state">State / Province</label>
+                    <input
+                      id="onion-state"
+                      type="text"
+                      autoComplete="address-level1"
+                      value={personalDetails.state}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          state: event.target.value,
+                        }))
+                      }
+                      placeholder="State / Province"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field full">
+                    <label htmlFor="onion-timeline">Required Timeline</label>
+                    <input
+                      id="onion-timeline"
+                      type="text"
+                      value={personalDetails.targetTimeline}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          targetTimeline: event.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Immediate, 7 days, 15 days"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <p className="ito-onion-form-note">
+                  Your requirement will be validated by the server before the pricing page is opened. No OTP is required for this Onion purchase flow.
+                </p>
+
+                <div className="ito-onion-form-actions">
+                  <button
+                    type="button"
+                    className="ito-button secondary"
+                    disabled={submittingPersonalDetails}
+                    onClick={() => {
+                      setShowPersonalDetails(false);
+                      setShowRequirementBuilder(true);
+                    }}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="ito-button"
+                    disabled={submittingPersonalDetails}
+                  >
+                    {submittingPersonalDetails ? "Saving Requirement…" : "Continue to Pricing"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="ito-footer">
         <span>India Trade Overseas · Nashik Onion Vertical</span>
