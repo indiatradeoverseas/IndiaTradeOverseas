@@ -5,8 +5,10 @@ const morgan = require('morgan');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const path = require('path');
+
 const coalVisitorRoutes =
   require('./modules/distributors/coalVisitor.routes');
+
 const onionVisitorRoutes =
   require('./modules/distributors/onionVisitor.routes');
 
@@ -28,9 +30,6 @@ const adminAuthRoutes =
 
 const userRoutes =
   require('./modules/users/user.routes');
-
-const coalVisitorRoutes =
-  require('./modules/distributors/coalVisitor.routes');
 
 const leadRoutes =
   require('./modules/leads/lead.routes');
@@ -365,6 +364,7 @@ const apiRoutes = [
     path: '/coal-visitors',
     router: coalVisitorRoutes
   },
+
   {
     path: '/onion-visitors',
     router: onionVisitorRoutes
