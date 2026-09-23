@@ -14,10 +14,8 @@ const { getRelativePath, resolveUploadPath } = require('../../utils/file');
 const DIVISION_LABELS = { TEA: 'Tea', RICE: 'Rice', STONE: 'Stone', COAL: 'Coal', CAREERS: 'Careers' };
 const fallbackCompanyName = (division) => `Independent ${DIVISION_LABELS[division] || 'Sourcing'} Buyer`;
 
-// 1. Register Distributor (Upload Details & Certificates + Send OTP)
 const registerDistributor = async (req, res, next) => {
   try {
-    // Destructured all parameters uploaded from the frontend form
     const {
       name,
       email,
@@ -39,185 +37,602 @@ const registerDistributor = async (req, res, next) => {
     } = req.body;
 
     if (!name || !email || !mobile) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Name, email, and mobile are required.');
+      return fail(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        'Name, email, and mobile are required.'
+      );
     }
 
-    const doc1 = req.files && req.files['doc1'] ? req.files['doc1'][0] : (req.files && req.files['primaryDocument'] ? req.files['primaryDocument'][0] : null);
-    const doc2 = req.files && req.files['doc2'] ? req.files['doc2'][0] : (req.files && req.files['secondaryDocument'] ? req.files['secondaryDocument'][0] : null);
+    const doc1 =
+      req.files?.doc1?.[0] ||
+      req.files?.primaryDocument?.[0] ||
+      null;
 
-    // Scoped by division as well as email: the same person can hold an
-    // independent record per division (Tea/Rice/Stone), so registering for
-    // a second division must create a new record instead of overwriting
-    // the first one's division/company/OTP state.
-    const lookupDivision = division || 'TEA';
-    let distributor = await Distributor.findOne({ email, division: lookupDivision });
+    const doc2 =
+      req.files?.doc2?.[0] ||
+      req.files?.secondaryDocument?.[0] ||
+      null;
 
-    const currentBusinessType = businessType || (distributor ? distributor.businessType : '1');
+    const lookupDivision =
+      division || 'TEA';
 
-    const hasDoc1 = doc1 || (distributor && (distributor.doc1Data || distributor.doc1Path));
-    const hasDoc2 = doc2 || (distributor && (distributor.doc2Data || distributor.doc2Path));
+    let distributor =
+      await Distributor.findOne({
+        email,
+        division: lookupDivision
+      });
 
+    const currentBusinessType =
+      businessType ||
+      distributor?.businessType ||
+      '1';
 
-    const isQuickGateSubmission = registrationSource === 'QUICK_GATE' &&
-      (!distributor || distributor.registrationSource === 'QUICK_GATE');
+    const hasDoc1 =
+      doc1 ||
+      distributor?.doc1Data ||
+      distributor?.doc1Path;
+
+    const hasDoc2 =
+      doc2 ||
+      distributor?.doc2Data ||
+      distributor?.doc2Path;
+
+    /*
+     * Tea / Rice / Stone direct-checkout forms use QUICK_GATE.
+     *
+     * QUICK_GATE:
+     * - no OTP generation
+     * - no OTP email
+     * - immediately approved
+     * - immediately receives distributor JWT
+     *
+     * Standard KYC registration keeps the existing OTP path.
+     */
+    const isQuickGateSubmission =
+      registrationSource === 'QUICK_GATE';
 
     if (!isQuickGateSubmission) {
-      if (['1', '2', '3'].includes(currentBusinessType) && !hasDoc1) {
-        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: GST Certificate or Udyam Registration file is required.');
+      if (
+        ['1', '2', '3'].includes(
+          currentBusinessType
+        ) &&
+        !hasDoc1
+      ) {
+        return fail(
+          res,
+          400,
+          'VALIDATION_ERROR',
+          'Compliance Enforced: GST Certificate or Udyam Registration file is required.'
+        );
       }
-      if (currentBusinessType === '4' && !hasDoc1) {
-        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: FSSAI License or GST Certificate upload is required.');
+
+      if (
+        currentBusinessType === '4' &&
+        !hasDoc1
+      ) {
+        return fail(
+          res,
+          400,
+          'VALIDATION_ERROR',
+          'Compliance Enforced: FSSAI License or GST Certificate upload is required.'
+        );
       }
-      if (['5', '6', '7'].includes(currentBusinessType) && (!hasDoc1 || !hasDoc2)) {
-        return fail(res, 400, 'VALIDATION_ERROR', 'Compliance Enforced: Dual documentation stack required for verification.');
+
+      if (
+        ['5', '6', '7'].includes(
+          currentBusinessType
+        ) &&
+        (!hasDoc1 || !hasDoc2)
+      ) {
+        return fail(
+          res,
+          400,
+          'VALIDATION_ERROR',
+          'Compliance Enforced: Dual documentation stack required for verification.'
+        );
       }
     }
 
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    /*
+     * OTP exists only for non-QUICK_GATE registrations.
+     */
+    const otpCode =
+      isQuickGateSubmission
+        ? undefined
+        : Math.floor(
+            100000 +
+            Math.random() * 900000
+          ).toString();
+
+    const otpExpires =
+      isQuickGateSubmission
+        ? undefined
+        : new Date(
+            Date.now() +
+            5 * 60 * 1000
+          );
 
     if (distributor) {
       if (doc1) {
-        distributor.doc1Data = doc1.buffer;
-        distributor.doc1Name = doc1.originalname;
-        distributor.doc1MimeType = doc1.mimetype;
-        distributor.doc1Path = `uploads/distributor_docs/${Date.now()}-${doc1.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+        distributor.doc1Data =
+          doc1.buffer;
+
+        distributor.doc1Name =
+          doc1.originalname;
+
+        distributor.doc1MimeType =
+          doc1.mimetype;
+
+        distributor.doc1Path =
+          `uploads/distributor_docs/${Date.now()}-${doc1.originalname}`
+            .replace(
+              /[^a-zA-Z0-9._-]/g,
+              '_'
+            );
       }
 
       if (doc2) {
-        distributor.doc2Data = doc2.buffer;
-        distributor.doc2Name = doc2.originalname;
-        distributor.doc2MimeType = doc2.mimetype;
-        distributor.doc2Path = `uploads/distributor_docs/${Date.now()}-${doc2.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+        distributor.doc2Data =
+          doc2.buffer;
+
+        distributor.doc2Name =
+          doc2.originalname;
+
+        distributor.doc2MimeType =
+          doc2.mimetype;
+
+        distributor.doc2Path =
+          `uploads/distributor_docs/${Date.now()}-${doc2.originalname}`
+            .replace(
+              /[^a-zA-Z0-9._-]/g,
+              '_'
+            );
       }
 
-      distributor.name = name;
-      distributor.mobile = mobile;
-      distributor.address = address || distributor.address;
-      distributor.city = city || distributor.city;
-      distributor.state = state || distributor.state;
-      distributor.country = country || distributor.country;
-      distributor.company = company || distributor.company || fallbackCompanyName(division || distributor.division || 'TEA');
-      distributor.teaType = teaType || distributor.teaType;
-      distributor.monthlyReq = monthlyReq ? Number(monthlyReq) : distributor.monthlyReq;
-      distributor.purpose = purpose || distributor.purpose;
-      distributor.businessType = businessType || distributor.businessType;
-      distributor.gstNumber = gstNumber || distributor.gstNumber;
-      distributor.division = division || distributor.division || 'TEA';
+      distributor.name =
+        name;
 
-      // Always update registrationSource to QUICK_GATE if submitted via Quick Gate form
-      if (registrationSource === 'QUICK_GATE' || isQuickGateSubmission) {
-        distributor.registrationSource = 'QUICK_GATE';
+      distributor.mobile =
+        mobile;
+
+      distributor.address =
+        address ||
+        distributor.address;
+
+      distributor.city =
+        city ||
+        distributor.city;
+
+      distributor.state =
+        state ||
+        distributor.state;
+
+      distributor.country =
+        country ||
+        distributor.country;
+
+      distributor.company =
+        company ||
+        distributor.company ||
+        fallbackCompanyName(
+          division ||
+          distributor.division ||
+          'TEA'
+        );
+
+      distributor.teaType =
+        teaType ||
+        distributor.teaType;
+
+      distributor.monthlyReq =
+        monthlyReq
+          ? Number(monthlyReq)
+          : distributor.monthlyReq;
+
+      distributor.purpose =
+        purpose ||
+        distributor.purpose;
+
+      distributor.businessType =
+        businessType ||
+        distributor.businessType;
+
+      distributor.gstNumber =
+        gstNumber ||
+        distributor.gstNumber;
+
+      distributor.division =
+        division ||
+        distributor.division ||
+        'TEA';
+
+      if (isQuickGateSubmission) {
+        distributor.registrationSource =
+          'QUICK_GATE';
       }
 
-      // Track repeat visits and timestamp telemetry
-      distributor.lastVisitedAt = new Date();
-      distributor.visitCount = (distributor.visitCount || 1) + 1;
+      distributor.lastVisitedAt =
+        new Date();
 
-      if (!Array.isArray(distributor.visitHistory)) {
+      distributor.visitCount =
+        (distributor.visitCount || 1) + 1;
+
+      if (
+        !Array.isArray(
+          distributor.visitHistory
+        )
+      ) {
         distributor.visitHistory = [];
       }
+
       distributor.visitHistory.push({
-        visitedAt: new Date(),
-        city: city || distributor.city || 'N/A',
-        state: state || distributor.state || 'N/A',
-        mobile: mobile,
-        name: name,
-        registrationSource: registrationSource || 'QUICK_GATE'
+        visitedAt:
+          new Date(),
+
+        city:
+          city ||
+          distributor.city ||
+          'N/A',
+
+        state:
+          state ||
+          distributor.state ||
+          'N/A',
+
+        mobile,
+
+        name,
+
+        registrationSource:
+          registrationSource ||
+          'QUICK_GATE'
       });
 
-      distributor.otpToken = otpCode;
-      distributor.otpExpires = otpExpires;
-      distributor.isOtpVerified = false;
-      if (distributor.approvalStatus !== 'approved') {
-        distributor.approvalStatus = 'pending';
+      if (isQuickGateSubmission) {
+        /*
+         * No OTP for direct checkout.
+         */
+        distributor.otpToken =
+          undefined;
+
+        distributor.otpExpires =
+          undefined;
+
+        distributor.isOtpVerified =
+          true;
+
+        distributor.approvalStatus =
+          'approved';
+      } else {
+        distributor.otpToken =
+          otpCode;
+
+        distributor.otpExpires =
+          otpExpires;
+
+        distributor.isOtpVerified =
+          false;
+
+        if (
+          distributor.approvalStatus !==
+          'approved'
+        ) {
+          distributor.approvalStatus =
+            'pending';
+        }
       }
+
       await distributor.save();
     } else {
-      distributor = new Distributor({
-        name,
-        email,
-        mobile,
-        address: address || '',
-        city: city || 'N/A',
-        state: state || 'N/A',
-        country: country || 'India',
-        company: company || fallbackCompanyName(division || 'TEA'),
-        teaType,
-        monthlyReq: monthlyReq ? Number(monthlyReq) : 0,
-        purpose,
-        businessType,
-        gstNumber,
-        doc1Data: doc1 ? doc1.buffer : undefined,
-        doc1Name: doc1 ? doc1.originalname : undefined,
-        doc1MimeType: doc1 ? doc1.mimetype : undefined,
-        doc1Path: doc1 ? `uploads/distributor_docs/${Date.now()}-${doc1.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_') : '',
-        doc2Data: doc2 ? doc2.buffer : undefined,
-        doc2Name: doc2 ? doc2.originalname : undefined,
-        doc2MimeType: doc2 ? doc2.mimetype : undefined,
-        doc2Path: doc2 ? `uploads/distributor_docs/${Date.now()}-${doc2.originalname}`.replace(/[^a-zA-Z0-9._-]/g, '_') : undefined,
-        otpToken: otpCode,
-        otpExpires,
-        isOtpVerified: false,
-        approvalStatus: 'pending',
-        division: division || 'TEA',
-        registrationSource: isQuickGateSubmission || registrationSource === 'QUICK_GATE' ? 'QUICK_GATE' : 'STANDARD_KYC',
-        lastVisitedAt: new Date(),
-        visitCount: 1,
-        visitHistory: [{
-          visitedAt: new Date(),
-          city: city || 'N/A',
-          state: state || 'N/A',
-          mobile,
+      distributor =
+        new Distributor({
           name,
-          registrationSource: isQuickGateSubmission || registrationSource === 'QUICK_GATE' ? 'QUICK_GATE' : 'STANDARD_KYC'
-        }]
-      });
+
+          email,
+
+          mobile,
+
+          address:
+            address || '',
+
+          city:
+            city || 'N/A',
+
+          state:
+            state || 'N/A',
+
+          country:
+            country || 'India',
+
+          company:
+            company ||
+            fallbackCompanyName(
+              division || 'TEA'
+            ),
+
+          teaType,
+
+          monthlyReq:
+            monthlyReq
+              ? Number(monthlyReq)
+              : 0,
+
+          purpose,
+
+          businessType,
+
+          gstNumber,
+
+          doc1Data:
+            doc1
+              ? doc1.buffer
+              : undefined,
+
+          doc1Name:
+            doc1
+              ? doc1.originalname
+              : undefined,
+
+          doc1MimeType:
+            doc1
+              ? doc1.mimetype
+              : undefined,
+
+          doc1Path:
+            doc1
+              ? `uploads/distributor_docs/${Date.now()}-${doc1.originalname}`
+                  .replace(
+                    /[^a-zA-Z0-9._-]/g,
+                    '_'
+                  )
+              : '',
+
+          doc2Data:
+            doc2
+              ? doc2.buffer
+              : undefined,
+
+          doc2Name:
+            doc2
+              ? doc2.originalname
+              : undefined,
+
+          doc2MimeType:
+            doc2
+              ? doc2.mimetype
+              : undefined,
+
+          doc2Path:
+            doc2
+              ? `uploads/distributor_docs/${Date.now()}-${doc2.originalname}`
+                  .replace(
+                    /[^a-zA-Z0-9._-]/g,
+                    '_'
+                  )
+              : undefined,
+
+          /*
+           * QUICK_GATE has no OTP.
+           */
+          otpToken:
+            isQuickGateSubmission
+              ? undefined
+              : otpCode,
+
+          otpExpires:
+            isQuickGateSubmission
+              ? undefined
+              : otpExpires,
+
+          isOtpVerified:
+            isQuickGateSubmission,
+
+          approvalStatus:
+            isQuickGateSubmission
+              ? 'approved'
+              : 'pending',
+
+          division:
+            division || 'TEA',
+
+          registrationSource:
+            isQuickGateSubmission
+              ? 'QUICK_GATE'
+              : 'STANDARD_KYC',
+
+          lastVisitedAt:
+            new Date(),
+
+          visitCount:
+            1,
+
+          visitHistory: [
+            {
+              visitedAt:
+                new Date(),
+
+              city:
+                city || 'N/A',
+
+              state:
+                state || 'N/A',
+
+              mobile,
+
+              name,
+
+              registrationSource:
+                isQuickGateSubmission
+                  ? 'QUICK_GATE'
+                  : 'STANDARD_KYC'
+            }
+          ]
+        });
+
       await distributor.save();
     }
 
-    // Automatically create a CRM Lead for Sales Manager
+    /*
+     * CRM Lead creation remains unchanged.
+     */
     try {
-      const { processAiLead } = require('../leads/ai-agent/aiLead.service');
+      const {
+        processAiLead
+      } =
+        require(
+          '../leads/ai-agent/aiLead.service'
+        );
+
       await processAiLead({
-        customerName: name,
+        customerName:
+          name,
+
         email,
-        phone: mobile,
+
+        phone:
+          mobile,
+
         city,
+
         state,
-        targetTimeline: targetTimeline || timeline || req.body.targetDate,
-        companyName: company || `Buyer (${division || 'TEA'})`,
-        productCategory: division || 'TEA',
-        source: 'WEBSITE',
-        chatSummary: `Inquiry registered via ${division || 'TEA'} division website form.`
+
+        targetTimeline:
+          targetTimeline ||
+          timeline ||
+          req.body.targetDate,
+
+        companyName:
+          company ||
+          `Buyer (${division || 'TEA'})`,
+
+        productCategory:
+          division || 'TEA',
+
+        source:
+          'WEBSITE',
+
+        chatSummary:
+          `Inquiry registered via ${division || 'TEA'} division website form.`
       });
     } catch (leadErr) {
-      console.error('Auto lead creation note:', leadErr.message);
+      console.error(
+        'Auto lead creation note:',
+        leadErr.message
+      );
     }
 
-    const subject = `Distributor Verification OTP - India Trade Overseas ${DIVISION_LABELS[division] || 'Prakriti Tea'} Division`;
-    const text = `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
-    const html = getOtpHtml(otpCode, email);
+    /*
+     * IMPORTANT:
+     * Only STANDARD registration sends OTP.
+     *
+     * Tea/Rice/Stone QUICK_GATE never sends one.
+     */
+    if (!isQuickGateSubmission) {
+      const subject =
+        `Distributor Verification OTP - India Trade Overseas ${
+          DIVISION_LABELS[division] ||
+          'Prakriti Tea'
+        } Division`;
 
-    global.latestOtps = global.latestOtps || {};
-    global.latestOtps[email.toLowerCase().trim()] = otpCode;
+      const emailText =
+        `Your OTP Code for distributor verification is: ${otpCode}. It will expire in 5 minutes.`;
 
-    await sendEmail(email, subject, text, html);
+      const html =
+        getOtpHtml(
+          otpCode,
+          email
+        );
 
-    // Generate JWT token for immediate authenticated session
-    const jwt = require('jsonwebtoken');
-    const env = require('../../config/env');
-    distributor.approvalStatus = 'approved';
-    distributor.isOtpVerified = true;
-    await distributor.save();
+      global.latestOtps =
+        global.latestOtps || {};
 
-    const token = jwt.sign(
-      { sub: distributor._id.toString(), role: 'DISTRIBUTOR', email: distributor.email },
-      env.JWT_SECRET,
-      { expiresIn: '365d' }
+      global.latestOtps[
+        email.toLowerCase().trim()
+      ] =
+        otpCode;
+
+      await sendEmail(
+        email,
+        subject,
+        emailText,
+        html
+      );
+    }
+
+    /*
+     * Direct-checkout buyers receive a session immediately.
+     */
+    const jwt =
+      require('jsonwebtoken');
+
+    const env =
+      require('../../config/env');
+
+    if (isQuickGateSubmission) {
+      distributor.approvalStatus =
+        'approved';
+
+      distributor.isOtpVerified =
+        true;
+
+      distributor.otpToken =
+        undefined;
+
+      distributor.otpExpires =
+        undefined;
+
+      await distributor.save();
+    }
+
+    const token =
+      jwt.sign(
+        {
+          sub:
+            distributor._id.toString(),
+
+          role:
+            'DISTRIBUTOR',
+
+          email:
+            distributor.email
+        },
+
+        env.JWT_SECRET,
+
+        {
+          expiresIn:
+            '365d'
+        }
+      );
+
+    return ok(
+      res,
+      {
+        token,
+
+        distributorId:
+          distributor._id,
+
+        email:
+          distributor.email,
+
+        approvalStatus:
+          distributor.approvalStatus,
+
+        otpRequired:
+          !isQuickGateSubmission
+      },
+
+      isQuickGateSubmission
+        ? 'Buyer details saved successfully.'
+        : 'Distributor registration initiated.',
+
+      201,
+
+      req
     );
-
-    return ok(res, { token, distributorId: distributor._id, email: distributor.email, approvalStatus: 'approved' }, 'Distributor registration initiated.', 201, req);
   } catch (error) {
     next(error);
   }
@@ -541,122 +956,340 @@ const downloadUdyamCertificate = async (req, res, next) => {
 };
 
 // Razorpay and PayPal Online Payment Integrations
+
 const getRazorpayAuth = () => {
-  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_demo';
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || 'rzp_secret_demo';
-  return Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    throw new Error(
+      'Razorpay configuration is incomplete. RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required.'
+    );
+  }
+
+  return {
+    keyId,
+    keySecret,
+    auth: Buffer.from(
+      `${keyId}:${keySecret}`
+    ).toString('base64')
+  };
 };
 
+
 /**
- * 🟢 CREATE RAZORPAY ORDER
- */
-/**
- * 🟢 CREATE RAZORPAY ORDER
+ * CREATE RAZORPAY ORDER
  */
 const createRazorpayOrder = async (req, res, next) => {
   try {
-    console.log("Incoming Razorpay Order Payload:", req.body);
-    const { amount, lotId, quantity } = req.body;
+    const {
+      amount,
+      lotId,
+      quantity
+    } = req.body;
 
-    // Standardize input parsing
-    const parsedAmount = Number(amount);
-    const parsedQuantity = Number(quantity);
+    const parsedAmount =
+      Number(amount);
 
-    if (amount === undefined || amount === null || isNaN(parsedAmount) || parsedAmount <= 0) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'A valid non-zero numerical amount is required.', [], req);
+    const parsedQuantity =
+      Number(quantity);
+
+    if (
+      amount === undefined ||
+      amount === null ||
+      !Number.isFinite(parsedAmount) ||
+      parsedAmount <= 0
+    ) {
+      return fail(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        'A valid non-zero numerical amount is required.',
+        [],
+        req
+      );
     }
 
-    if (!lotId || isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Valid lotId and non-zero quantity parameters are required.', [], req);
+    if (
+      !lotId ||
+      !Number.isFinite(parsedQuantity) ||
+      parsedQuantity <= 0
+    ) {
+      return fail(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        'Valid lotId and non-zero quantity parameters are required.',
+        [],
+        req
+      );
     }
 
-    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_demo';
+    const {
+      keyId,
+      auth
+    } = getRazorpayAuth();
 
-    // Convert amount to minimum unit sub-currency (Paise for INR)
-    const amountInPaise = Math.round(parsedAmount * 100);
+    const amountInPaise =
+      Math.round(
+        parsedAmount * 100
+      );
 
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      console.warn("Razorpay API credentials unconfigured on server. Initializing demo order mode.");
-      return ok(res, {
-        orderId: `order_demo_${Date.now()}`,
-        amount: amountInPaise,
-        keyId: 'rzp_test_demo'
-      }, 'Razorpay order created successfully (Demo Mode)', 201, req);
-    }
+    const response =
+      await fetch(
+        'https://api.razorpay.com/v1/orders',
+        {
+          method: 'POST',
 
-    const auth = getRazorpayAuth();
-    const response = await fetch('https://api.razorpay.com/v1/orders', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        amount: amountInPaise,
-        currency: 'INR',
-        receipt: `dist_rcpt_${Date.now()}`
-      })
-    });
+          headers: {
+            Authorization:
+              `Basic ${auth}`,
+
+            'Content-Type':
+              'application/json'
+          },
+
+          body: JSON.stringify({
+            amount:
+              amountInPaise,
+
+            currency:
+              'INR',
+
+            receipt:
+              `dist_rcpt_${Date.now()}`,
+
+            notes: {
+              lotId:
+                String(lotId),
+
+              quantity:
+                String(parsedQuantity),
+
+              distributorId:
+                String(
+                  req.distributor?._id ||
+                  req.user?._id ||
+                  ''
+                )
+            }
+          })
+        }
+      );
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("Razorpay Gateway API Warning/Error:", errText);
-      return ok(res, {
-        orderId: `order_demo_${Date.now()}`,
-        amount: amountInPaise,
-        keyId: 'rzp_test_demo'
-      }, 'Razorpay order initialized (Fallback Mode)', 201, req);
+      let gatewayError = null;
+
+      try {
+        gatewayError =
+          await response.json();
+      } catch {
+        gatewayError = {
+          error: {
+            description:
+              'Unable to read Razorpay error response.'
+          }
+        };
+      }
+
+      console.error(
+        'Razorpay Create Order Error:',
+        gatewayError
+      );
+
+      return fail(
+        res,
+        response.status,
+        'PAYMENT_GATEWAY_ERROR',
+        gatewayError?.error?.description ||
+          gatewayError?.error?.reason ||
+          'Razorpay rejected the order request.',
+        [],
+        req
+      );
     }
 
-    const order = await response.json();
-    return ok(res, { orderId: order.id, amount: order.amount, keyId }, 'Razorpay order created successfully', 201, req);
+    const order =
+      await response.json();
+
+    if (
+      !order?.id ||
+      !order?.amount
+    ) {
+      return fail(
+        res,
+        502,
+        'PAYMENT_GATEWAY_INVALID_RESPONSE',
+        'Razorpay returned an invalid order response.',
+        [],
+        req
+      );
+    }
+
+    return ok(
+      res,
+      {
+        orderId:
+          order.id,
+
+        amount:
+          order.amount,
+
+        currency:
+          order.currency,
+
+        keyId
+      },
+      'Razorpay order created successfully',
+      201,
+      req
+    );
   } catch (error) {
-    console.error("Razorpay Order Creation Failure:", error);
+    if (
+      error?.message?.includes(
+        'Razorpay configuration is incomplete'
+      )
+    ) {
+      return fail(
+        res,
+        500,
+        'RAZORPAY_NOT_CONFIGURED',
+        'Razorpay payment configuration is incomplete on the server.',
+        [],
+        req
+      );
+    }
+
+    console.error(
+      'Razorpay Order Creation Failure:',
+      error
+    );
+
     next(error);
   }
 };
 
+
 /**
- * 🟢 VERIFY RAZORPAY PAYMENT
+ * VERIFY RAZORPAY PAYMENT
  */
 const verifyRazorpayPayment = async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, lotId, quantity, amount } = req.body;
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !lotId || !quantity || !amount) {
-      return fail(res, 400, 'VALIDATION_ERROR', 'Missing verification parameters.', [], req);
-    }
-
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (!keySecret) {
-      return fail(res, 500, 'SERVER_ERROR', 'Missing Razorpay configuration on server.', [], req);
-    }
-
-    const hmac = crypto.createHmac('sha256', keySecret);
-    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
-    const generatedSignature = hmac.digest('hex');
-
-    if (generatedSignature !== razorpay_signature) {
-      return fail(res, 400, 'PAYMENT_VERIFICATION_FAILED', 'Invalid signature verification.', [], req);
-    }
-
-    // Record verified transaction
-    const transaction = new DistributorTransaction({
-      distributorId: req.distributor?._id || req.user?._id,
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
       lotId,
-      quantity: Number(quantity),
-      amount: Number(amount),
-      currency: 'INR',
-      paymentGateway: 'Razorpay',
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      status: 'Success'
-    });
+      quantity,
+      amount
+    } = req.body;
+
+    if (
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature ||
+      !lotId ||
+      !quantity ||
+      !amount
+    ) {
+      return fail(
+        res,
+        400,
+        'VALIDATION_ERROR',
+        'Missing verification parameters.',
+        [],
+        req
+      );
+    }
+
+    const keySecret =
+      process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keySecret) {
+      return fail(
+        res,
+        500,
+        'SERVER_ERROR',
+        'Missing Razorpay configuration on server.',
+        [],
+        req
+      );
+    }
+
+    const hmac =
+      crypto.createHmac(
+        'sha256',
+        keySecret
+      );
+
+    hmac.update(
+      `${razorpay_order_id}|${razorpay_payment_id}`
+    );
+
+    const generatedSignature =
+      hmac.digest('hex');
+
+    if (
+      generatedSignature !==
+      razorpay_signature
+    ) {
+      return fail(
+        res,
+        400,
+        'PAYMENT_VERIFICATION_FAILED',
+        'Invalid signature verification.',
+        [],
+        req
+      );
+    }
+
+    const transaction =
+      new DistributorTransaction({
+        distributorId:
+          req.distributor?._id ||
+          req.user?._id,
+
+        lotId,
+
+        quantity:
+          Number(quantity),
+
+        amount:
+          Number(amount),
+
+        currency:
+          'INR',
+
+        paymentGateway:
+          'Razorpay',
+
+        paymentId:
+          razorpay_payment_id,
+
+        orderId:
+          razorpay_order_id,
+
+        status:
+          'Success'
+      });
+
     await transaction.save();
 
-    return ok(res, { transaction }, 'Payment verified successfully and transaction recorded.', 200, req);
+    return ok(
+      res,
+      {
+        transaction
+      },
+      'Payment verified successfully and transaction recorded.',
+      200,
+      req
+    );
   } catch (error) {
-    console.error("Razorpay Verification Failure:", error);
+    console.error(
+      'Razorpay Verification Failure:',
+      error
+    );
+
     next(error);
   }
 };

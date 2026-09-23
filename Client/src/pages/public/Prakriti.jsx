@@ -370,6 +370,125 @@ const APPROVED_MARKETPLACE_DATA = [
     },
 ];
 
+const normalizeTeaText = (value) =>
+    String(value || '')
+        .trim()
+        .toLowerCase();
+
+
+const resolveTeaRequirementLot = (requirement = {}) => {
+    const sourceText = normalizeTeaText(
+        requirement.source ||
+        requirement.region ||
+        requirement.origin ||
+        requirement.teaRegion ||
+        requirement.sourcingRegion ||
+        requirement.gardenRegion
+    );
+
+    const teaText = normalizeTeaText(
+        requirement.teaType ||
+        requirement.grade ||
+        requirement.type ||
+        requirement.selectedGrade ||
+        requirement.product ||
+        requirement.productType
+    );
+
+    const pickById = (id) =>
+        APPROVED_MARKETPLACE_DATA.find(
+            (lot) => lot.id === id
+        ) || null;
+
+    // Source/region is the strongest signal when present.
+    if (sourceText.includes('darjeeling')) {
+        return pickById('PK-DJ-104');
+    }
+
+    if (sourceText.includes('dooars')) {
+        return pickById('PK-DO-072');
+    }
+
+    if (sourceText.includes('assam')) {
+        return pickById('PK-AS-091');
+    }
+
+    if (
+        sourceText.includes('siliguri') ||
+        sourceText.includes('blend')
+    ) {
+        return pickById('PK-ST-110');
+    }
+
+    // Fall back to the tea/grade selected in the requirement builder.
+    if (
+        teaText.includes('dust')
+    ) {
+        return pickById('PK-ST-110');
+    }
+
+    if (
+        teaText.includes('orthodox') ||
+        teaText.includes('tgfop') ||
+        teaText.includes('darjeeling') ||
+        teaText.includes('pekoe')
+    ) {
+        return pickById('PK-DJ-104');
+    }
+
+    if (
+        teaText.includes('bop') ||
+        teaText.includes('broken orange')
+    ) {
+        return pickById('PK-DO-072');
+    }
+
+    if (
+        teaText.includes('ctc') ||
+        teaText === 'bp' ||
+        teaText.includes('broken pekoe')
+    ) {
+        return pickById('PK-AS-091');
+    }
+
+    // Current builder historically exposes teaType/quantity/timeline.
+    // If the selected value is broader than the four live-rate lots,
+    // use the first active commercial lot rather than inventing a new rate.
+    return APPROVED_MARKETPLACE_DATA[0] || null;
+};
+
+
+const resolveTeaRequirementQuantityKg = (requirement = {}) => {
+    const candidates = [
+        requirement.exactQuantityKg,
+        requirement.quantityKg,
+        requirement.quantityValue,
+        requirement.quantity,
+    ];
+
+    for (const value of candidates) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return Math.max(200, Math.round(value));
+        }
+
+        if (typeof value === 'string') {
+            const normalized = value.replace(/,/g, '');
+            const match = normalized.match(/\d+(?:\.\d+)?/);
+
+            if (match) {
+                const parsed = Number(match[0]);
+
+                if (Number.isFinite(parsed) && parsed > 0) {
+                    return Math.max(200, Math.round(parsed));
+                }
+            }
+        }
+    }
+
+    return 500;
+};
+
+
 
 /* =========================================================
    ICON FALLBACK
@@ -563,13 +682,10 @@ export default function Prakriti() {
                             res.data.approvalStatus;
 
                         if (status === 'approved') {
-                            const savedLayer =
-                                localStorage.getItem(
-                                    ACTIVE_LAYER_KEY
-                                );
-
-                            setUserAccessLayer(
-                                savedLayer === '5' ? 5 : 1
+                            setUserAccessLayer(1);
+                            localStorage.setItem(
+                                ACTIVE_LAYER_KEY,
+                                '1'
                             );
                         } else if (status === 'pending') {
                             setUserAccessLayer(4);
@@ -640,7 +756,11 @@ export default function Prakriti() {
                             );
 
                             clearInterval(pollingTimer);
-                            setUserAccessLayer(5);
+                            setUserAccessLayer(1);
+                            localStorage.setItem(
+                                ACTIVE_LAYER_KEY,
+                                '1'
+                            );
                         } else if (
                             currentStatus === 'rejected'
                         ) {
@@ -785,23 +905,15 @@ export default function Prakriti() {
     ===================================================== */
 
     const handleExploreProducts = () => {
-        const savedId = localStorage.getItem(
-            'prakriti_distributor_id'
+        setShowRequirementBuilder(true);
+
+        pushDataLayerEvent(
+            'view_product',
+            {
+                division: 'TEA',
+                source: 'direct_checkout'
+            }
         );
-
-        const token =
-            localStorage.getItem('distributor_token');
-
-        if (!savedId || !token) {
-            setShowRequirementBuilder(true);
-            pushDataLayerEvent('view_product', { division: 'TEA' });
-        } else {
-            setUserAccessLayer(5);
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth',
-            });
-        }
     };
 
 
@@ -819,55 +931,228 @@ export default function Prakriti() {
 
     const handlePersonalDetailsSubmit = async (e) => {
         e.preventDefault();
-        if (loadingQuickGate) return;
-        const { fullName, email, mobile, city, state, targetTimeline } = personalDetails;
-        if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim() || !targetTimeline) {
-            toast.dismiss();
-            toast.error('Please fill all required fields.', { id: 'prakriti_gate_toast' });
+
+        if (loadingQuickGate) {
             return;
         }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        const {
+            fullName,
+            email,
+            mobile,
+            city,
+            state,
+            targetTimeline
+        } = personalDetails;
+
+        if (
+            !fullName?.trim() ||
+            !email?.trim() ||
+            !mobile?.trim() ||
+            !city?.trim() ||
+            !state?.trim() ||
+            !targetTimeline
+        ) {
+            toast.dismiss();
+            toast.error(
+                'Please fill all required fields.',
+                { id: 'prakriti_gate_toast' }
+            );
+            return;
+        }
+
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
         if (!emailRegex.test(email)) {
             toast.dismiss();
-            toast.error('Please enter a valid email address.', { id: 'prakriti_gate_toast' });
+            toast.error(
+                'Please enter a valid email address.',
+                { id: 'prakriti_gate_toast' }
+            );
             return;
         }
-        const cleanMobile = mobile.replace(/[^0-9]/g, '');
+
+        const cleanMobile =
+            mobile.replace(/[^0-9]/g, '');
+
         if (cleanMobile.length < 10) {
             toast.dismiss();
-            toast.error('Please enter a valid 10-digit mobile number.', { id: 'prakriti_gate_toast' });
+            toast.error(
+                'Please enter a valid 10-digit mobile number.',
+                { id: 'prakriti_gate_toast' }
+            );
             return;
         }
+
+        const matchedLot =
+            resolveTeaRequirementLot(
+                builtRequirement || {}
+            );
+
+        if (!matchedLot) {
+            toast.dismiss();
+            toast.error(
+                'No live tea rate is available for this requirement right now.',
+                { id: 'prakriti_gate_toast' }
+            );
+            return;
+        }
+
+        const quantityKg =
+            resolveTeaRequirementQuantityKg(
+                builtRequirement || {}
+            );
 
         try {
             setLoadingQuickGate(true);
-            const formData = new FormData();
-            formData.append('name', fullName);
-            formData.append('email', email);
-            formData.append('mobile', cleanMobile);
-            formData.append('city', city);
-            formData.append('state', state);
-            formData.append('targetTimeline', targetTimeline);
-            formData.append('division', 'TEA');
-            formData.append('registrationSource', 'QUICK_GATE');
 
-            const res = await distributorApi.registerDistributor(formData);
-            if (res.success) {
-                const id = res.data?.distributorId || res.data?._id;
-                const token = res.data?.token;
-                setLinkedDistributorId(id || null);
-                if (id) localStorage.setItem('prakriti_distributor_id', id);
-                if (token) localStorage.setItem('distributor_token', token);
-                setShowPersonalDetails(false);
-                setUserAccessLayer(5);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                toast.dismiss();
-                toast.success('Details saved! Product pricing and ordering unlocked.', { id: 'prakriti_gate_toast' });
+            const formData =
+                new FormData();
+
+            formData.append(
+                'name',
+                fullName.trim()
+            );
+
+            formData.append(
+                'email',
+                email.trim()
+            );
+
+            formData.append(
+                'mobile',
+                cleanMobile
+            );
+
+            formData.append(
+                'city',
+                city.trim()
+            );
+
+            formData.append(
+                'state',
+                state.trim()
+            );
+
+            formData.append(
+                'targetTimeline',
+                targetTimeline
+            );
+
+            formData.append(
+                'division',
+                'TEA'
+            );
+
+            formData.append(
+                'registrationSource',
+                'QUICK_GATE'
+            );
+
+            const res =
+                await distributorApi
+                    .registerDistributor(
+                        formData
+                    );
+
+            if (!res?.success) {
+                throw new Error(
+                    res?.message ||
+                    'Failed to save buyer details.'
+                );
             }
-        } catch (err) {
-            console.error('Quick gate registration failed:', err);
+
+            const id =
+                res.data?.distributorId ||
+                res.data?._id;
+
+            const token =
+                res.data?.token;
+
+            setLinkedDistributorId(
+                id || null
+            );
+
+            setDistributorId(
+                id || ''
+            );
+
+            if (id) {
+                localStorage.setItem(
+                    'prakriti_distributor_id',
+                    id
+                );
+            }
+
+            if (token) {
+                localStorage.setItem(
+                    'distributor_token',
+                    token
+                );
+            }
+
+            localStorage.setItem(
+                ACTIVE_LAYER_KEY,
+                '1'
+            );
+
+            setUserAccessLayer(1);
+            setShowPersonalDetails(false);
+
+            setActiveDrawerLot(
+                matchedLot
+            );
+
+            setOrderQuantity(
+                String(quantityKg)
+            );
+
+            setPaymentMode(
+                'ONLINE'
+            );
+
+            setIsOrderDrawerOpen(
+                true
+            );
+
             toast.dismiss();
-            toast.error(err.response?.data?.message || 'Failed to save details. Please try again.', { id: 'prakriti_gate_toast' });
+
+            toast.success(
+                'Details saved. Your total payable is ready.',
+                { id: 'prakriti_gate_toast' }
+            );
+
+            pushDataLayerEvent(
+                'tea_checkout_started',
+                {
+                    division: 'TEA',
+                    lot_id:
+                        matchedLot.id,
+                    quantity:
+                        quantityKg,
+                    unit_price:
+                        Number(
+                            matchedLot.price
+                        ),
+                    currency:
+                        'INR'
+                }
+            );
+        } catch (err) {
+            console.error(
+                'Quick gate registration failed:',
+                err
+            );
+
+            toast.dismiss();
+
+            toast.error(
+                err.response?.data?.message ||
+                err.message ||
+                'Failed to save details. Please try again.',
+                { id: 'prakriti_gate_toast' }
+            );
         } finally {
             setLoadingQuickGate(false);
         }
@@ -3125,11 +3410,10 @@ export default function Prakriti() {
                                                 />
 
                                                 <p className="text-[10px] text-emerald-800 font-light leading-relaxed">
-                                                    Your sourcing request
-                                                    will be sent to the
-                                                    commercial team for
-                                                    review and proposal
-                                                    confirmation.
+                                                    Review the calculated
+                                                    tea value, GST and total
+                                                    payable below, then choose
+                                                    your payment method.
                                                 </p>
 
                                             </div>
@@ -3267,43 +3551,210 @@ export default function Prakriti() {
                                                     return;
                                                 }
 
-                                                // 3. IF ONLINE PAYMENT: Trigger Razorpay FIRST, Generate PDF ONLY AFTER SUCCESSFUL PAYMENT!
+                                                // 3. IF ONLINE PAYMENT:
+                                                // Razorpay -> backend verification -> invoice.
                                                 try {
-                                                    const orderResult = await distributorApi.createRazorpayOrder({
-                                                        amount: totalAmount,
-                                                        lotId: activeDrawerLot.id,
-                                                        quantity: Number(orderQuantity)
-                                                    });
+                                                    await loadRazorpayScript();
 
-                                                    const { orderId, keyId } = orderResult?.data || {};
-                                                    await import('../../utils/razorpay').then(m => m.loadRazorpayScript());
-
-                                                    if (window.Razorpay) {
-                                                        const options = {
-                                                            key: keyId || 'rzp_test_demo',
-                                                            amount: totalAmount * 100,
-                                                            currency: 'INR',
-                                                            name: 'India Trade Overseas',
-                                                            description: `${activeDrawerLot.region} - ${activeDrawerLot.grade}`,
-                                                            order_id: orderId,
-                                                            handler: function (response) {
-                                                                // PDF GENERATES ONLY UPON SUCCESSFUL ONLINE PAYMENT!
-                                                                triggerSuccessPDF(response.razorpay_payment_id, 'ONLINE');
-                                                            },
-                                                            modal: {
-                                                                ondismiss: function () {
-                                                                    toast.error('Payment cancelled. PDF invoice was not generated.');
-                                                                }
-                                                            }
-                                                        };
-                                                        const rzp = new window.Razorpay(options);
-                                                        rzp.open();
-                                                    } else {
-                                                        triggerSuccessPDF('', 'ONLINE');
+                                                    if (!window.Razorpay) {
+                                                        throw new Error(
+                                                            'Razorpay checkout could not be loaded.'
+                                                        );
                                                     }
+
+                                                    const orderResult =
+                                                        await distributorApi
+                                                            .createRazorpayOrder({
+                                                                amount:
+                                                                    totalAmount,
+
+                                                                lotId:
+                                                                    activeDrawerLot.id,
+
+                                                                quantity:
+                                                                    Number(
+                                                                        orderQuantity
+                                                                    )
+                                                            });
+
+                                                    if (!orderResult?.success) {
+                                                        throw new Error(
+                                                            orderResult?.message ||
+                                                            'Failed to initialize Razorpay.'
+                                                        );
+                                                    }
+
+                                                    const {
+                                                        orderId,
+                                                        keyId
+                                                    } =
+                                                        orderResult?.data ||
+                                                        {};
+
+                                                    if (
+                                                        !orderId ||
+                                                        !keyId
+                                                    ) {
+                                                        throw new Error(
+                                                            'Payment gateway returned an invalid order response.'
+                                                        );
+                                                    }
+
+                                                    const options = {
+                                                        key:
+                                                            keyId,
+
+                                                        amount:
+                                                            totalAmount *
+                                                            100,
+
+                                                        currency:
+                                                            'INR',
+
+                                                        name:
+                                                            'India Trade Overseas',
+
+                                                        description:
+                                                            `${activeDrawerLot.region} - ${activeDrawerLot.grade}`,
+
+                                                        order_id:
+                                                            orderId,
+
+                                                        handler:
+                                                            async function (
+                                                                response
+                                                            ) {
+                                                                const verificationToast =
+                                                                    toast.loading(
+                                                                        'Verifying payment...'
+                                                                    );
+
+                                                                try {
+                                                                    const verifyResult =
+                                                                        await distributorApi
+                                                                            .verifyRazorpayPayment({
+                                                                                razorpay_order_id:
+                                                                                    response.razorpay_order_id,
+
+                                                                                razorpay_payment_id:
+                                                                                    response.razorpay_payment_id,
+
+                                                                                razorpay_signature:
+                                                                                    response.razorpay_signature,
+
+                                                                                lotId:
+                                                                                    activeDrawerLot.id,
+
+                                                                                quantity:
+                                                                                    Number(
+                                                                                        orderQuantity
+                                                                                    ),
+
+                                                                                amount:
+                                                                                    totalAmount
+                                                                            });
+
+                                                                    if (
+                                                                        !verifyResult?.success
+                                                                    ) {
+                                                                        throw new Error(
+                                                                            verifyResult?.message ||
+                                                                            'Payment verification failed.'
+                                                                        );
+                                                                    }
+
+                                                                    toast.dismiss(
+                                                                        verificationToast
+                                                                    );
+
+                                                                    triggerSuccessPDF(
+                                                                        response.razorpay_payment_id,
+                                                                        'ONLINE'
+                                                                    );
+
+                                                                    pushDataLayerEvent(
+                                                                        'tea_payment_success',
+                                                                        {
+                                                                            transaction_id:
+                                                                                response.razorpay_payment_id,
+
+                                                                            value:
+                                                                                totalAmount,
+
+                                                                            currency:
+                                                                                'INR',
+
+                                                                            lot_id:
+                                                                                activeDrawerLot.id,
+
+                                                                            quantity:
+                                                                                Number(
+                                                                                    orderQuantity
+                                                                                )
+                                                                        }
+                                                                    );
+                                                                } catch (
+                                                                    verifyErr
+                                                                ) {
+                                                                    toast.dismiss(
+                                                                        verificationToast
+                                                                    );
+
+                                                                    console.error(
+                                                                        'Tea payment verification failed:',
+                                                                        verifyErr
+                                                                    );
+
+                                                                    toast.error(
+                                                                        verifyErr.response?.data?.message ||
+                                                                        verifyErr.message ||
+                                                                        'Payment verification failed.'
+                                                                    );
+                                                                }
+                                                            },
+
+                                                        modal: {
+                                                            ondismiss:
+                                                                function () {
+                                                                    toast.error(
+                                                                        'Payment cancelled. Invoice was not generated.'
+                                                                    );
+                                                                }
+                                                        },
+
+                                                        prefill: {
+                                                            name:
+                                                                personalDetails.fullName ||
+                                                                '',
+
+                                                            email:
+                                                                personalDetails.email ||
+                                                                ''
+                                                        },
+
+                                                        theme: {
+                                                            color:
+                                                                '#004B3B'
+                                                        }
+                                                    };
+
+                                                    const rzp =
+                                                        new window.Razorpay(
+                                                            options
+                                                        );
+
+                                                    rzp.open();
                                                 } catch (payErr) {
-                                                    console.warn('Payment gateway fallback:', payErr);
-                                                    triggerSuccessPDF('', 'ONLINE');
+                                                    console.error(
+                                                        'Tea Razorpay checkout failed:',
+                                                        payErr
+                                                    );
+
+                                                    toast.error(
+                                                        payErr.response?.data?.message ||
+                                                        payErr.message ||
+                                                        'Unable to start payment.'
+                                                    );
                                                 }
                                             }}
                                             onDone={() => setIsOrderDrawerOpen(false)}
@@ -3482,7 +3933,7 @@ export default function Prakriti() {
                                     className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
                                     style={{ backgroundColor: PRAKRITI_GATE_THEME.accent, color: PRAKRITI_GATE_THEME.accentText }}
                                 >
-                                    <span>Continue to Phone Verification</span>
+                                    <span>View Total Payable</span>
                                     <FiArrowRight size={14} />
                                 </button>
                             </form>

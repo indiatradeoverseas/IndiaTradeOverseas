@@ -164,13 +164,15 @@ const corsOptions = {
 
 
   allowedHeaders: [
-    'Accept',
-    'Content-Type',
-    'Authorization',
-    'X-Device-Hash',
-    'X-Requested-With',
-    'X-Request-Id'
-  ],
+  'Accept',
+  'Content-Type',
+  'Authorization',
+  'X-Device-Hash',
+  'X-Requested-With',
+  'X-Request-Id',
+  'X-Distributor-Id',
+  'X-Portal-Context'
+],
 
 
   /*
