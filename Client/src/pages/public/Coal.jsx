@@ -253,6 +253,73 @@ function Coal() {
           .coal-table-wrap{overflow-x:auto;}
           .coal-table-wrap table{min-width:520px;}
         }
+        /* Mobile-only Hero alignment */
+        @media (max-width: 680px) {
+          .coal-hero-inner {
+            text-align: center;
+          }
+
+          .coal-hero-copy {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+
+          .coal-kicker {
+            justify-content: center;
+            text-align: center;
+          }
+
+          .coal-hero h1 {
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+          }
+
+          .coal-hero-lead {
+            width: 100%;
+            max-width: 620px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+          }
+
+          .coal-hero-actions {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .coal-hero-meta {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .coal-meta {
+            text-align: center;
+          }
+
+          .coal-hero-nav {
+            width: 100%;
+            max-width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 18px;
+          }
+
+          .coal-thumbs {
+            justify-content: center;
+          }
+
+          .coal-counter {
+            text-align: center;
+          }
+        }
+
       `}</style>
 
       <main className="coal-page">
