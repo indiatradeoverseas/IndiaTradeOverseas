@@ -2487,7 +2487,7 @@ export default function Stone() {
                 }
               />
 
-              <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+              <div className="fixed inset-0 flex items-end sm:items-stretch sm:justify-end">
                 <motion.div
                   initial={{
                     x: '100%'
@@ -2498,9 +2498,9 @@ export default function Stone() {
                   exit={{
                     x: '100%'
                   }}
-                  className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
+                  className="w-full sm:w-screen sm:max-w-md max-h-[94dvh] sm:max-h-none sm:h-full bg-white shadow-2xl flex flex-col justify-between rounded-t-2xl sm:rounded-none overflow-hidden"
                 >
-                  <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1">
+                  <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1 min-h-0">
                     <div className="flex items-center justify-between border-b pb-3.5">
                       <h2 className="text-base sm:text-xl font-serif text-[#37424B] uppercase">
                         Quotation Enquiry
@@ -2566,13 +2566,13 @@ export default function Stone() {
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0">
+                  <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0 max-h-[48dvh] sm:max-h-none overflow-y-auto sm:overflow-visible">
                     {/* Payment Mode Selector */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                         Select Payment Method:
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setPaymentMode('ONLINE')}
@@ -2605,15 +2605,15 @@ export default function Stone() {
 
                       return (
                         <div className="space-y-1.5 font-mono text-xs bg-white p-3 rounded-lg border border-slate-200">
-                          <div className="flex items-center justify-between text-slate-600">
+                          <div className="flex items-start justify-between gap-3 text-slate-600">
                             <span>Base Subtotal:</span>
                             <span>INR {subtotal.toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between text-blue-700 font-bold">
+                          <div className="flex items-start justify-between gap-3 text-blue-700 font-bold">
                             <span>GST (5%):</span>
                             <span>INR {gstAmount.toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
+                          <div className="flex items-start justify-between gap-3 text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
                             <span className="uppercase">Total Payable:</span>
                             <span>INR {totalAmount.toLocaleString()}</span>
                           </div>
@@ -2851,16 +2851,16 @@ export default function Stone() {
 {/* Requirement Builder Modal */}
       <AnimatePresence>
         {showRequirementBuilder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowRequirementBuilder(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Build Your Stone Requirement
                 </h3>
                 <button onClick={() => setShowRequirementBuilder(false)}
@@ -2869,7 +2869,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <StoneRequirementBuilder onComplete={handleRequirementComplete} />
               </div>
             </motion.div>
@@ -2880,16 +2880,16 @@ export default function Stone() {
       {/* Personal Details Modal */}
       <AnimatePresence>
         {showPersonalDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowPersonalDetails(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Enter Your Details
                 </h3>
                 <button onClick={() => setShowPersonalDetails(false)}
@@ -2898,7 +2898,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <form onSubmit={handlePersonalDetailsSubmit} className="p-6 space-y-4">
+              <form onSubmit={handlePersonalDetailsSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                   <input
@@ -2933,7 +2933,7 @@ export default function Stone() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
                     <input
@@ -2988,16 +2988,16 @@ export default function Stone() {
       {/* OTP Verification Modal */}
       <AnimatePresence>
         {showOtp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowOtp(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Verify OTP
                 </h3>
                 <button onClick={() => setShowOtp(false)}
@@ -3006,7 +3006,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <form onSubmit={handleOtpVerify} className="p-6 space-y-4">
+              <form onSubmit={handleOtpVerify} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
                 <p className="text-sm text-gray-600">
                   A 6‑digit code was sent to <strong>{personalDetails.email}</strong>.
                 </p>
