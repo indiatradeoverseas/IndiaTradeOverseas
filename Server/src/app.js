@@ -7,9 +7,6 @@ const crypto = require('crypto');
 const path = require('path');
 
 const corsOptions = require('./config/cors');
-const coalVisitorRoutes = require(
-  "./modules/distributors/coalVisitor.routes"
-);
 
 const {
   rateLimiter
@@ -27,6 +24,9 @@ const adminAuthRoutes =
 
 const userRoutes =
   require('./modules/users/user.routes');
+
+const coalVisitorRoutes =
+  require('./modules/distributors/coalVisitor.routes');
 
 const leadRoutes =
   require('./modules/leads/lead.routes');
@@ -135,11 +135,6 @@ app.use(
   }
 );
 
-app.use(
-  "/coal-visitors",
-  coalVisitorRoutes
-);
-
 
 app.use(
   helmet({
@@ -235,6 +230,7 @@ app.use(
     parameterLimit: 1000
   })
 );
+
 
 app.use(
   (req, res, next) => {
@@ -347,6 +343,23 @@ const apiRoutes = [
   {
     path: '/users',
     router: userRoutes
+  },
+
+  /*
+   * COAL VISITOR FLOW
+   *
+   * Mounted here so it receives:
+   * - CORS
+   * - JSON body parsing
+   * - URL encoded parsing
+   * - global rate limiting
+   *
+   * It is mounted under both /api and /api/v1 below,
+   * matching the architecture of the rest of the backend.
+   */
+  {
+    path: '/coal-visitors',
+    router: coalVisitorRoutes
   },
 
   {

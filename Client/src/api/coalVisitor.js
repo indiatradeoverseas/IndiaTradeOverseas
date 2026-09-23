@@ -1,10 +1,10 @@
-import axiosInstance from "./axiosInstance";
+import axiosInstance from './axiosInstance';
 
 export const coalVisitorApi = {
   create: async (payload) =>
     (
       await axiosInstance.post(
-        "/coal-visitors",
+        '/coal-visitors',
         payload
       )
     ).data,
@@ -12,11 +12,15 @@ export const coalVisitorApi = {
   get: async (visitorId) =>
     (
       await axiosInstance.get(
-        `/coal-visitors/${encodeURIComponent(visitorId)}`
+        `/coal-visitors/${encodeURIComponent(
+          visitorId
+        )}`
       )
     ).data,
 
-  createRazorpayOrder: async (visitorId) =>
+  createRazorpayOrder: async (
+    visitorId
+  ) =>
     (
       await axiosInstance.post(
         `/coal-visitors/${encodeURIComponent(
@@ -45,7 +49,8 @@ export const coalVisitorApi = {
         `/coal-visitors/crm/list?limit=${limit}`,
         {
           headers: {
-            "X-Portal-Context": "admin",
+            'X-Portal-Context':
+              'admin',
           },
         }
       )
