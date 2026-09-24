@@ -5964,6 +5964,103 @@ async function updateCallRecordingStatus(
 }
 
 
+async function logCallOutcome(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { callOutcome, notes, remarks, nextFollowupAt } = req.body;
+
+    let lead = null;
+    if (mongoose.isValidObjectId(id)) {
+      lead = await Lead.findById(id);
+    }
+    if (!lead) {
+      lead = await Lead.findOne({ $or: [{ leadCode: id }, { leadId: id }] });
+    }
+
+    if (!lead) {
+      return fail(res, 'Lead not found.', 404, req);
+    }
+
+    if (!canAccessLead(req.user, lead)) {
+      return fail(res, 'Access denied.', 403, req);
+    }
+
+    const outcomeUpper = String(callOutcome || 'CONNECTED').toUpperCase().trim();
+    const noteText = cleanText(notes || remarks || `Call outcome recorded: ${outcomeUpper}`, 1000);
+    const actorName = req.user?.fullName || req.user?.name || req.user?.email || 'Sales Executive';
+    const actorRole = req.user?.role || 'SALES_EXECUTIVE';
+
+    const updates = {
+      lastCallOutcome: outcomeUpper,
+      lastCallAt: new Date(),
+      lastCallBy: req.user?._id,
+      lastCallByName: actorName,
+      $inc: { callCount: 1 }
+    };
+
+    if (noteText) {
+      updates.chatSummary = noteText;
+      updates.remarks = noteText;
+    }
+
+    let parsedNextFollowup = null;
+    if (nextFollowupAt) {
+      const d = new Date(nextFollowupAt);
+      if (!isNaN(d.getTime())) {
+        parsedNextFollowup = d;
+        updates.nextFollowupAt = d;
+      }
+    }
+
+    const updatedLead = await Lead.findByIdAndUpdate(
+      lead._id,
+      updates,
+      { new: true }
+    );
+
+    const communicationOutcome = (outcomeUpper === 'CONNECTED') ? 'CONTACTED' : 'ATTEMPTED';
+    await advanceLeadForCommunication({
+      lead: updatedLead,
+      outcome: communicationOutcome,
+      actorId: req.user?._id,
+      note: noteText,
+      nextFollowupAt: parsedNextFollowup
+    });
+
+    const activity = await LeadActivity.create({
+      leadId: lead._id,
+      actionType: 'CALL_LOGGED',
+      note: `Call Outcome: [${outcomeUpper}] - ${noteText}`,
+      nextFollowupAt: parsedNextFollowup,
+      actorId: req.user?._id,
+      metadata: {
+        callOutcome: outcomeUpper,
+        performedByName: actorName,
+        performedByRole: actorRole,
+        notes: noteText
+      }
+    });
+
+    try {
+      const { emitEvent } = require('../../services/socket.service');
+      emitEvent('lead_updated', { action: 'call_logged', leadId: lead._id, callOutcome: outcomeUpper });
+    } catch (e) { }
+
+    return ok(
+      res,
+      {
+        lead: getLeadDisplay(updatedLead, req.user),
+        activity
+      },
+      'Call outcome logged successfully',
+      200,
+      req
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createManualLead,
   getDueReminders,
@@ -5972,6 +6069,7 @@ module.exports = {
   addActivity,
   logWhatsAppActivity,
   logEmailActivity,
+  logCallOutcome,
   getSalesMetrics,
   uploadCallRecording,
   getCallRecordings,

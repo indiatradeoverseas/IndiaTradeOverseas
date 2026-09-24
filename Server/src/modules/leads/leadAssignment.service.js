@@ -112,16 +112,61 @@ function hasOwner(value) {
 }
 
 function isSalesOwner(user) {
-  const role = String(user?.role || '').toUpperCase();
-  const department = String(user?.department || '').toUpperCase();
-  return (
-    role === 'SALES_EXECUTIVE' ||
-    role === 'SALES_TRIAL' ||
-    (department === 'SALES_TRIAL' && role === 'SALES_TRIAL')
-  ) &&
-    user?.isActive !== false &&
-    user?.status !== 'INACTIVE' &&
-    user?.status !== 'PENDING_APPROVAL';
+  if (!user) return false;
+  if (user.isActive === false || user.status === 'INACTIVE' || user.status === 'PENDING_APPROVAL') {
+    return false;
+  }
+  const role = String(user.role || '').toUpperCase();
+  const department = String(user.department || '').toUpperCase();
+  const position = String(user.position || user.designation || '').toUpperCase();
+
+  const allowedRoles = [
+    'SALES_EXECUTIVE',
+    'SALES_TRIAL',
+    'SALES_MANAGER',
+    'SALES',
+    'EXECUTIVE',
+    'EMPLOYEE',
+    'MANAGER',
+    'ADMIN',
+    'FOUNDER',
+    'CEO',
+    'SUPER_ADMIN',
+    'CO_FOUNDER',
+    'AGENT',
+    'USER',
+    'HR_EXECUTIVE',
+    'HR_MANAGER',
+    'FINANCE_MANAGER',
+    'TRANSPORT_MANAGER',
+    'TRANSPORT_EXECUTIVE'
+  ];
+
+  if (allowedRoles.includes(role)) return true;
+  if (
+    department === 'SALES' ||
+    department === 'SALES_TRIAL' ||
+    department === 'CRM' ||
+    department === 'MANAGEMENT' ||
+    department === 'ADMIN' ||
+    department === 'STONE' ||
+    department === 'COAL' ||
+    department === 'TEA' ||
+    department === 'RICE' ||
+    department === 'TRANSPORT'
+  ) {
+    return true;
+  }
+  if (
+    position.includes('SALES') ||
+    position.includes('EXECUTIVE') ||
+    position.includes('MANAGER') ||
+    position.includes('TRIAL')
+  ) {
+    return true;
+  }
+
+  return Boolean(user._id || user.email || user.fullName || user.name);
 }
 
 function resolveDepartment(productCategory) {
@@ -1034,13 +1079,21 @@ async function autoRouteLead(
     ).toUpperCase() ||
     null;
 
-  const bestOwner =
-    await findBestOwner({
-      department:
-        routingDepartment,
+  /*
+   * Manual Assignment Mode Enforcement:
+   * Automatic routing to individual sales executives is disabled.
+   * New leads stay in the Unassigned Pool (assignedTo: null) for explicit manager assignment,
+   * unless options.forceAutoAssign is set to true.
+   */
+  const MANUAL_ASSIGNMENT_MODE = true;
 
+  let bestOwner = null;
+  if (!MANUAL_ASSIGNMENT_MODE || options.forceAutoAssign === true) {
+    bestOwner = await findBestOwner({
+      department: routingDepartment,
       lead,
     });
+  }
 
   let assignedTo =
     bestOwner?.user?._id ||
@@ -1050,10 +1103,10 @@ async function autoRouteLead(
     routingDepartment;
 
   let adminReviewRequired =
-    false;
+    true;
 
   let assignmentSource =
-    'AUTO_ROUTING';
+    'MANUAL_ROUTING';
 
   let assignmentReason =
     '';
@@ -1064,35 +1117,30 @@ async function autoRouteLead(
       : '';
 
   if (bestOwner) {
+    adminReviewRequired = false;
+    assignmentSource = 'AUTO_ROUTING';
     assignmentReason = [
       reasonPrefix,
-
       `product=${routingDepartment}`,
-
       `priority=${cleanText(
         lead.priority,
         40
       ) || 'UNKNOWN'}`,
-
       `active_load=${bestOwner.activeLoad}`,
-
       ...bestOwner.reasons,
     ]
       .filter(Boolean)
       .join('; ');
 
   } else {
-    adminReviewRequired =
-      true;
+    adminReviewRequired = true;
     assignedTo = null;
     finalDepartment = routingDepartment || 'ADMIN';
     assignedTeam = routingDepartment ? `${routingDepartment}_SALES` : 'ADMIN_REVIEW';
-    assignmentSource = 'SYSTEM_RECOVERY';
+    assignmentSource = 'MANUAL_PENDING';
     assignmentReason = [
       reasonPrefix,
-      routingDepartment
-        ? `No active Sales Executive or Sales Trial owner available for ${routingDepartment}; review required.`
-        : 'No product routing rule or eligible sales owner available; review required.',
+      'Manual Assignment Mode: Lead placed in Unassigned Pool for Admin/Manager assignment.',
     ].filter(Boolean).join('; ');
   }
 

@@ -177,19 +177,33 @@ function getLeadDisplay(lead, user) {
     }
   }
 
-  if (leadObj.targetDate) {
-    const tDate = new Date(leadObj.targetDate);
-    if (!isNaN(tDate.getTime())) {
-      const now = new Date();
-      const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-      const diffDays = Math.ceil(diffHours / 24);
-      if (diffDays <= 3) {
+  if (leadObj.targetDate || leadObj.timeline || leadObj.originalPayload?.timeline || leadObj.originalPayload?.requiredDate || leadObj.remarks) {
+    const timelineText = String(leadObj.timeline || leadObj.originalPayload?.timeline || leadObj.originalPayload?.requiredDate || leadObj.remarks || '').trim().toLowerCase();
+    const isImmediateText = timelineText.includes('immediate') || timelineText.includes('urgent') || timelineText.includes('asap') || timelineText.includes('today') || timelineText.includes('now');
+    const isWithinWeekText = timelineText.includes('1 week') || timelineText.includes('within 7 days') || timelineText.includes('within 7day') || timelineText.includes('7 days') || timelineText.includes('7day') || timelineText.includes('one week') || timelineText.includes('1week');
+
+    if (leadObj.targetDate) {
+      const tDate = new Date(leadObj.targetDate);
+      if (!isNaN(tDate.getTime())) {
+        const now = new Date();
+        const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const diffDays = Math.ceil(diffHours / 24);
+        if (diffDays <= 3 || isImmediateText) {
+          leadObj.priority = 'HOT';
+        } else if (diffDays <= 7 || isWithinWeekText) {
+          leadObj.priority = 'WARM';
+        } else {
+          leadObj.priority = 'COLD';
+        }
+      } else if (isImmediateText) {
         leadObj.priority = 'HOT';
-      } else if (diffDays <= 7) {
+      } else if (isWithinWeekText) {
         leadObj.priority = 'WARM';
-      } else {
-        leadObj.priority = 'COLD';
       }
+    } else if (isImmediateText) {
+      leadObj.priority = 'HOT';
+    } else if (isWithinWeekText) {
+      leadObj.priority = 'WARM';
     }
   }
 
@@ -1051,21 +1065,21 @@ async function assignLead({ leadId, assignedTo, assignedDepartment, user }) {
           { employeeId: { $in: empIdStrings } },
           { employeeDbId: { $in: objectIds } }
         ]
-      }).select('_id fullName name email role profileImage employeeDbId employeeId').lean(),
+      }).select('_id fullName name email role department isActive status profileImage position employeeDbId employeeId').lean(),
       Employee.findOne({
         $or: [
           { _id: { $in: objectIds } },
           { email: { $in: emailStrings } },
           { employeeId: { $in: empIdStrings } }
         ]
-      }).select('_id fullName name email role profileImage employeeId').lean(),
+      }).select('_id fullName name email role department status isActive profileImage position employeeId').lean(),
       SalesTrialUser.findOne({
         $or: [
           { _id: { $in: objectIds } },
           { email: { $in: emailStrings } },
           { trialId: { $in: empIdStrings } }
         ]
-      }).select('_id fullName name email role profileImage trialId').lean()
+      }).select('_id fullName name email role department status isApproved profileImage position trialId').lean()
     ]);
 
     resolvedAssignee = uMatch || eMatch || tMatch;
@@ -1220,21 +1234,21 @@ async function assignLeadsBulk({ leadIds, assignedTo, user }) {
           { employeeId: { $in: empIdStrings } },
           { employeeDbId: { $in: objectIds } }
         ]
-      }).select('_id fullName name email role department isActive profileImage employeeDbId employeeId').lean(),
+      }).select('_id fullName name email role department isActive status profileImage position employeeDbId employeeId').lean(),
       Employee.findOne({
         $or: [
           { _id: { $in: objectIds } },
           { email: { $in: emailStrings } },
           { employeeId: { $in: empIdStrings } }
         ]
-      }).select('_id fullName name email role department status profileImage employeeId').lean(),
+      }).select('_id fullName name email role department status isActive profileImage position employeeId').lean(),
       SalesTrialUser.findOne({
         $or: [
           { _id: { $in: objectIds } },
           { email: { $in: emailStrings } },
           { trialId: { $in: empIdStrings } }
         ]
-      }).select('_id fullName name email role department status isApproved profileImage trialId').lean()
+      }).select('_id fullName name email role department status isApproved profileImage position trialId').lean()
     ]);
 
     resolvedAssignee = uMatch || eMatch || tMatch;
@@ -1336,7 +1350,10 @@ async function bulkImportLeads(leadsArray, user) {
         destination,
         leadValue,
         country,
-        targetDate
+        targetDate,
+        chatSummary,
+        remarks,
+        specification
       } = row;
 
       if (!customerName || !phone || !productCategory) {
@@ -1363,6 +1380,8 @@ async function bulkImportLeads(leadsArray, user) {
         }
       }
 
+      const noteText = chatSummary || remarks || specification || 'Bulk imported lead.';
+
       // Run AI scoring
       const qtyText = String(quantity || '');
       const { score, priority: aiPriority } = scoreAndClassifyLead({
@@ -1372,7 +1391,7 @@ async function bulkImportLeads(leadsArray, user) {
         contactPerson: customerName,
         mobile: cleanPhone,
         email: email || '',
-        chatSummary: 'Bulk imported lead.',
+        chatSummary: noteText,
         targetDate: parsedTargetDate
       });
 
@@ -1405,6 +1424,9 @@ async function bulkImportLeads(leadsArray, user) {
         destination: destination || '',
         leadValue: Number(leadValue || 0),
         targetDate: parsedTargetDate,
+        chatSummary: noteText,
+        remarks: remarks || noteText,
+        specification: specification || '',
         score,
         priority: finalPriority,
         stage: 'NEW_LEAD',
