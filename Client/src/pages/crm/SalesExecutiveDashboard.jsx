@@ -112,7 +112,7 @@ export default function SalesExecutiveDashboard() {
   const [myActivity, setMyActivity] = useState('Available');
   const [submittingStatus, setSubmittingStatus] = useState(false);
 
-  // Daily Work Log states (Calls, Conversions, Sales)
+  const [dailyWorkLogs, setDailyWorkLogs] = useState([]);
   const [dailyLogForm, setDailyLogForm] = useState({
     numberOfCalls: '',
     numberOfConversions: '',
@@ -123,15 +123,35 @@ export default function SalesExecutiveDashboard() {
 
   const handleDailyWorkLogSubmit = async (e) => {
     e.preventDefault();
+    const calls = Number(dailyLogForm.numberOfCalls || 0);
+    const conversions = Number(dailyLogForm.numberOfConversions || 0);
+    const sales = Number(dailyLogForm.numberOfSales || 0);
+
+    if (calls <= 0 && conversions <= 0 && sales <= 0) {
+      return toast.error('Please enter at least one valid metric (Calls, Conversions, or Sales)');
+    }
+
     setSubmittingDailyLog(true);
     try {
-      const res = await salesApi.submitDailyWorkLog(dailyLogForm);
-      if (res.success) {
-        toast.success("Daily work log submitted to Sales Manager!");
+      const res = await salesApi.submitDailyWorkLog({
+        numberOfCalls: calls,
+        numberOfConversions: conversions,
+        numberOfSales: sales,
+        note: (dailyLogForm.note || '').trim()
+      });
+      if (res && res.success) {
+        toast.success("Daily work log submitted to Sales Manager! 📊");
         setDailyLogForm({ numberOfCalls: '', numberOfConversions: '', numberOfSales: '', note: '' });
+        if (res.data?.log) {
+          const newLog = res.data.log;
+          setDailyWorkLogs(prev => [newLog, ...prev.filter(l => String(l._id) !== String(newLog._id))]);
+        }
+      } else {
+        toast.error(res?.message || "Failed to submit daily work log");
       }
     } catch (err) {
-      toast.error("Failed to submit daily work log");
+      console.error('Work log submission error:', err);
+      toast.error(err.response?.data?.message || "Failed to submit daily work log");
     } finally {
       setSubmittingDailyLog(false);
     }
@@ -415,6 +435,16 @@ export default function SalesExecutiveDashboard() {
         console.error('Error fetching call recordings:', err);
       }
 
+      // 10. Fetch own daily work logs
+      try {
+        const logsRes = await salesApi.getDailyWorkLogs();
+        if (logsRes.success) {
+          setDailyWorkLogs(logsRes.data?.logs || logsRes.logs || []);
+        }
+      } catch (err) {
+        console.error('Error fetching daily work logs:', err);
+      }
+
     } catch (err) {
       console.error('Error fetching executive dashboard details:', err);
       toast.error('Could not load recent performance data');
@@ -460,6 +490,22 @@ export default function SalesExecutiveDashboard() {
     const interval = setInterval(fetchChatMessages, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Listen for real-time work log socket broadcasts
+  useEffect(() => {
+    const skt = socketService.getSocket();
+    if (skt) {
+      const handleWorkLog = (newLog) => {
+        if (newLog && (String(newLog.employeeId) === String(user?._id) || user?.role === 'ADMIN' || user?.role?.includes('MANAGER'))) {
+          setDailyWorkLogs(prev => [newLog, ...prev.filter(l => String(l._id) !== String(newLog._id))]);
+        }
+      };
+      skt.on('work_log_submitted', handleWorkLog);
+      return () => {
+        skt.off('work_log_submitted', handleWorkLog);
+      };
+    }
+  }, [user]);
 
   // Handle Leaderboard Tab Switching
   const fetchLeaderboard = async (period) => {
@@ -1212,6 +1258,175 @@ export default function SalesExecutiveDashboard() {
                     </div>
                   </div>
 
+                {/* Daily Work Activity Reporting Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+
+                  {/* Left Column (4 Cols): LOG TODAY'S WORK ACTIVITY Form */}
+                  <div className="lg:col-span-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left font-mono space-y-4">
+                    <div className="border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-2">
+                        <FiCheckSquare className="text-teal-400" size={15} />
+                        <span>LOG TODAY'S WORK ACTIVITY</span>
+                      </h3>
+                      <span className="bg-teal-950/80 border border-teal-800 text-teal-300 font-mono text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        DAILY MANAGER REPORTING
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-[var(--crm-ink-faint)] leading-relaxed">
+                      Enter your daily calls count, conversions, and closed sales for Manager dashboard tracking.
+                    </p>
+
+                    <form onSubmit={handleDailyWorkLogSubmit} className="space-y-3 font-mono text-xs">
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                          📞 NUMBER OF CALLS *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          required
+                          value={dailyLogForm.numberOfCalls}
+                          onChange={(e) => setDailyLogForm(prev => ({ ...prev, numberOfCalls: e.target.value }))}
+                          placeholder="e.g. 45"
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                            🎯 CONVERSIONS *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={dailyLogForm.numberOfConversions}
+                            onChange={(e) => setDailyLogForm(prev => ({ ...prev, numberOfConversions: e.target.value }))}
+                            placeholder="e.g. 5"
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                            💰 SALES *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={dailyLogForm.numberOfSales}
+                            onChange={(e) => setDailyLogForm(prev => ({ ...prev, numberOfSales: e.target.value }))}
+                            placeholder="e.g. 2"
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                          📝 NOTES / REMARKS
+                        </label>
+                        <textarea
+                          rows="2"
+                          value={dailyLogForm.note}
+                          onChange={(e) => setDailyLogForm(prev => ({ ...prev, note: e.target.value }))}
+                          placeholder="e.g. Closed 2 deals with SGS Iron Ore client"
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono resize-none"
+                        ></textarea>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submittingDailyLog}
+                        className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-[10px] uppercase tracking-wider py-3 rounded transition cursor-pointer font-mono shadow flex items-center justify-center gap-2"
+                      >
+                        {submittingDailyLog ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>SUBMITTING...</span>
+                          </>
+                        ) : (
+                          <span>SUBMIT WORK LOG TO MANAGER</span>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right Column (8 Cols): EXECUTIVE DAILY ACTIVITY & SALES LOGS Table */}
+                  <div className="lg:col-span-8 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left font-mono flex flex-col justify-between">
+                    <div>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-line)] pb-3 mb-4 gap-2">
+                        <div>
+                          <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-1.5">
+                            <FiCheckSquare size={14} className="text-teal-400" /> EXECUTIVE DAILY ACTIVITY & SALES LOGS
+                          </h3>
+                          <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                            Real-time daily work entries submitted by you for Manager tracking (Calls, Conversions & Closed Sales).
+                          </p>
+                        </div>
+                        <span className="bg-teal-950/80 border border-teal-800 text-teal-300 font-mono text-[9px] px-2.5 py-0.5 rounded font-bold uppercase shrink-0">
+                          {getFilteredByDate(dailyWorkLogs).length} ENTRIES LOGGED
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[650px]">
+                          <thead>
+                            <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                              <th className="py-3 px-3">EMPLOYEE NAME</th>
+                              <th className="py-3 px-3">DEPT</th>
+                              <th className="py-3 px-3 text-teal-400">📞 CALLS MADE</th>
+                              <th className="py-3 px-3 text-amber-400">🎯 CONVERSIONS</th>
+                              <th className="py-3 px-3 text-emerald-400">💰 SALES COUNT</th>
+                              <th className="py-3 px-3">DATE & TIME</th>
+                              <th className="py-3 px-3">NOTES</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                            {getFilteredByDate(dailyWorkLogs).length === 0 ? (
+                              <tr>
+                                <td colSpan="7" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                                  No daily work logs submitted yet for this date filter.
+                                </td>
+                              </tr>
+                            ) : (
+                              getFilteredByDate(dailyWorkLogs).map((log) => (
+                                <tr key={log._id || log.id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
+                                  <td className="py-3 px-3 font-bold text-[var(--crm-heading)] font-sans">
+                                    {log.employeeName || user?.fullName || user?.name || 'Sales Executive'}
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span className="bg-slate-900 border border-slate-800 text-teal-400 px-2 py-0.5 rounded text-[8px] uppercase font-bold">
+                                      {log.department || user?.department || 'SALES'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 text-teal-300 font-bold">
+                                    {log.numberOfCalls} Calls
+                                  </td>
+                                  <td className="py-3 px-3 text-amber-300 font-bold">
+                                    {log.numberOfConversions} Conversions
+                                  </td>
+                                  <td className="py-3 px-3 text-emerald-400 font-bold">
+                                    {log.numberOfSales} Sales
+                                  </td>
+                                  <td className="py-3 px-3 text-[var(--crm-ink-faint)] text-[10px] whitespace-nowrap">
+                                    {new Date(log.createdAt || log.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                  </td>
+                                  <td className="py-3 px-3 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[160px]" title={log.note}>
+                                    {log.note ? `"${log.note}"` : '—'}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                   {/* Deals Pipeline Kanban (Bottom) */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
@@ -1429,89 +1644,6 @@ export default function SalesExecutiveDashboard() {
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Daily Work Activity Form (Calls, Conversions, Sales) */}
-                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span className="flex items-center gap-2 text-teal-400">
-                        <FiCheckSquare size={14} /> Log Today's Work Activity
-                      </span>
-                      <span className="text-[9px] font-mono text-[var(--crm-ink-faint)]">Daily Manager Reporting</span>
-                    </h3>
-                    <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1.5 font-light leading-relaxed">
-                      Enter your daily calls count, conversions, and closed sales for Manager dashboard tracking.
-                    </p>
-
-                    <form onSubmit={handleDailyWorkLogSubmit} className="mt-4 space-y-3 font-mono text-xs">
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
-                          📞 Number of Calls *
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          required
-                          value={dailyLogForm.numberOfCalls}
-                          onChange={(e) => setDailyLogForm({ ...dailyLogForm, numberOfCalls: e.target.value })}
-                          placeholder="e.g. 45"
-                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
-                            🎯 Number of Conversions *
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            required
-                            value={dailyLogForm.numberOfConversions}
-                            onChange={(e) => setDailyLogForm({ ...dailyLogForm, numberOfConversions: e.target.value })}
-                            placeholder="e.g. 5"
-                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
-                            💰 Number of Sales *
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            required
-                            value={dailyLogForm.numberOfSales}
-                            onChange={(e) => setDailyLogForm({ ...dailyLogForm, numberOfSales: e.target.value })}
-                            placeholder="e.g. 2"
-                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">
-                          📝 Notes / Remarks
-                        </label>
-                        <input
-                          type="text"
-                          value={dailyLogForm.note}
-                          onChange={(e) => setDailyLogForm({ ...dailyLogForm, note: e.target.value })}
-                          placeholder="e.g. Closed 2 deals with SGS Iron Ore client"
-                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-3 py-2 rounded outline-none focus:border-teal-500 transition text-[11px]"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={submittingDailyLog}
-                        className="w-full bg-teal-700 hover:bg-teal-600 disabled:bg-teal-900 text-white font-bold uppercase tracking-wider py-2.5 rounded transition cursor-pointer text-[10px]"
-                      >
-                        {submittingDailyLog ? 'Submitting...' : 'Submit Work Log to Manager'}
-                      </button>
-                    </form>
                   </div>
 
                   {/* Sales Team Chat Hub */}

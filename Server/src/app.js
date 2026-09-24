@@ -332,14 +332,7 @@ app.get(
 );
 
 
-/*
- * Route ordering matters.
- *
- * DPR extension routers sharing a base path such as /leads,
- * /quotations and /reports are mounted before the existing
- * generic routers so a broad /:id route cannot consume one
- * of the DPR-specific endpoints first.
- */
+
 const apiRoutes = [
   {
     path: '/auth',

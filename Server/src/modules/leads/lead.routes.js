@@ -58,6 +58,7 @@ const {
   addActivity,
   logWhatsAppActivity,
   logEmailActivity,
+  logCallOutcome,
   uploadCallRecording,
   getCallRecordings,
   streamCallRecording,
@@ -804,6 +805,16 @@ router.post(
     'taskPermission'
   ),
   logEmailActivity
+);
+
+
+router.post(
+  '/:id/log-call',
+  checkPermission(
+    'leadPermission',
+    'taskPermission'
+  ),
+  logCallOutcome
 );
 
 

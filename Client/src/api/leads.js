@@ -798,6 +798,19 @@ export const leadsApi = {
     return response.data;
   },
 
+  async logCallOutcome(
+    leadId,
+    callData
+  ) {
+    const response =
+      await axiosInstance.post(
+        `/leads/${leadId}/log-call`,
+        callData
+      );
+
+    return response.data;
+  },
+
   async sendEmailActivity(
     leadId,
     subject,

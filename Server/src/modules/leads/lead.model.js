@@ -961,6 +961,34 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
+    lastCallOutcome: {
+      type: String,
+      enum: ["", "CONNECTED", "BUSY", "NO_ANSWER", "SWITCHED_OFF", "CALL_BACK", "WRONG_NUMBER"],
+      default: "",
+      index: true,
+    },
+
+    lastCallAt: {
+      type: Date,
+      default: null,
+    },
+
+    lastCallBy: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+
+    lastCallByName: {
+      type: String,
+      default: "",
+    },
+
+    callCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     // ============================================================
     // MASTER DPR v4.0 — COMMERCIAL FIELDS
     // ============================================================
