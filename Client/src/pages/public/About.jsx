@@ -312,10 +312,10 @@ export default function About() {
 
         <div className="max-w-[1180px] mx-auto">
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+          <div className="grid grid-cols-1 gap-14 lg:gap-16 items-start">
 
             <motion.div
-              className="lg:col-span-5 space-y-5"
+              className="w-full max-w-4xl mx-auto space-y-5 text-center"
               variants={containerVariants}
               initial="hidden"
               whileInView="visible"
@@ -336,17 +336,17 @@ export default function About() {
                 variants={textPopUpVariants}
                 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-[#F2F4F7] uppercase tracking-tight leading-[1.1]"
               >
-                Built From Trade,
+                Built From a Vision,
                 <br />
-                Growing Through Relationships
+                Growing Through Trust
               </motion.h2>
 
-              <div className="w-12 h-[1px] bg-[#C5CBD3]/24 mt-5" />
+              <div className="w-16 h-[1px] bg-[#C5CBD3]/24 mt-5 mx-auto" />
 
             </motion.div>
 
             <motion.div
-              className="lg:col-span-7 space-y-5"
+              className="w-full max-w-[900px] mx-auto space-y-6 text-left"
               variants={containerVariants}
               initial="hidden"
               whileInView="visible"
@@ -358,32 +358,177 @@ export default function About() {
 
               <motion.p
                 variants={textPopUpVariants}
-                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.75] font-light opacity-90"
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
               >
-                India Trade Overseas began with a simple business objective:
-                connect genuine buyer requirements with dependable supply and
-                make the commercial process easier to coordinate.
+                Every company has a beginning. Ours began with no large office,
+                no established network, and no guarantee that the idea would
+                work. It began with a belief — that if we could understand what
+                businesses truly needed, find the right people, honour our
+                commitments, and keep moving even when things became difficult,
+                we could build something meaningful from the ground up. That
+                belief became India Trade Overseas.
               </motion.p>
 
               <motion.p
                 variants={textPopUpVariants}
-                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.75] font-light opacity-90"
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
               >
-                Since its establishment in 2024, the company has been
-                developing its presence across sourcing, bulk supply, trade,
-                export and logistics. The business operates across multiple
-                commercial verticals while maintaining one consistent approach
-                to business.
+                I am Md Ramiz Raza Khan, Founder & Proprietor of India Trade
+                Overseas, and this is our story.
               </motion.p>
 
               <motion.p
                 variants={textPopUpVariants}
-                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.75] font-light opacity-90"
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
               >
-                This foundation continues to shape the way ITO approaches
-                business today: practical sourcing, clear commercial
-                communication, coordinated execution and relationships that can
-                develop beyond a single transaction.
+                In the beginning there were no separate departments, no large
+                team, no established system doing the work for us. Every
+                supplier had to be found, every buyer understood, every
+                quotation prepared carefully, every negotiation mattered, every
+                mistake had to teach us something, and every opportunity had to
+                be earned. Those early days were filled with uncertainty, long
+                conversations, constant learning and countless moments where
+                giving up would have been easier than continuing. But those
+                days built the foundation of our company. They taught us that
+                business is not simply about finding a product and selling it —
+                it is about responsibility, answering the phone when there is a
+                problem, communicating when plans change, and standing behind
+                your word even when execution becomes difficult.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                During those earliest days one person stood beside me through
+                almost every situation — Sabita Besra. She was there when there
+                was still very little to show other than the vision itself.
+                Through uncertainty, challenges, setbacks and new beginnings,
+                she remained part of the journey. Today Sabita serves as Head of
+                Procurement at India Trade Overseas and Co‑Founder of ITO
+                Transport Pvt Ltd, but her contribution cannot be explained only
+                through a designation. She represents the people who believe in
+                the journey before success arrives — the foundation on which
+                that success is built.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                As India Trade Overseas started growing, the nature of the
+                challenge changed. The question was no longer “Can we start?”
+                but “Can we build something capable of lasting?” Growth brought
+                new opportunities and new responsibility. We began working
+                across agricultural commodities, construction materials, coal,
+                procurement, transportation, logistics and B2B services. The
+                business became larger, the operations more complex, and we
+                realised that ambition alone would never be enough. We needed
+                systems, accountability, people who could take ownership.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                That is where Abdur Rauf became an important part of building
+                the operational side of the organisation. Today he serves as
+                Head of Operations at India Trade Overseas and CEO of ITO
+                Transport Pvt Ltd. Behind every successful transaction is an
+                entire chain of execution that customers rarely see — sourcing,
+                procurement, coordination, transportation, documentation,
+                loading, timelines, communication, problem solving, and dozens
+                of decisions that must happen correctly before a commitment
+                becomes a result.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                This stage was not without difficulties: negotiations that did
+                not close, changing market prices, shipment delays, logistics
+                challenges, plans that had to change at the last moment. Those
+                experiences changed us. We stopped looking at problems simply as
+                setbacks and started asking, “What system do we need to build so
+                this problem becomes easier to solve next time?” That mindset
+                became one of the most important turning points in our journey.
+                A challenge in procurement became a reason to strengthen
+                procurement; a challenge in logistics became a reason to
+                strengthen transportation; a communication gap became a reason
+                to improve accountability; a growing sales operation became a
+                reason to build better technology and processes. Slowly the
+                business stopped depending only on individual effort and started
+                becoming an organisation.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                Today India Trade Overseas is no longer only the idea that once
+                existed in my mind. It is becoming a network of people,
+                departments, businesses and systems working toward a larger
+                vision. From this journey came ITO Transport Pvt Ltd, created to
+                strengthen our logistics and transportation capabilities, giving
+                us the ability to think beyond simply finding the right material
+                — to think about how that material moves, how it reaches the
+                customer, how logistics becomes part of the solution instead of
+                an afterthought. We also developed ITO Ads, focused on B2B
+                advertising, qualified lead generation and helping businesses
+                create new opportunities. And through Prakriti by India Trade
+                Overseas we continue building product‑focused brands designed
+                for Indian and international markets. Different businesses,
+                different responsibilities, one philosophy: build useful
+                solutions around the needs of the people who trust us.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                We know that almost every company website uses the word trust.
+                For us, trust cannot simply be written — it has to be
+                demonstrated. It is built when communication remains clear,
+                when documents are transparent, when people take responsibility,
+                when commitments are honoured, and when circumstances change we
+                communicate instead of disappearing. We do not claim that
+                business will always be perfect; markets change, logistics
+                change, prices change, unexpected situations happen. What should
+                not change is the responsibility to face those situations
+                professionally. Behind every order is a person, behind every
+                shipment somebody depending on a deadline, behind every
+                procurement decision somebody trusting our judgement, and behind
+                the name India Trade Overseas are real people who understand
+                that our reputation travels with every commitment we make.
+              </motion.p>
+
+              <motion.p
+                variants={textPopUpVariants}
+                className="text-[#C5CBD3] text-sm sm:text-base leading-[1.85] font-light opacity-90"
+              >
+                When I look back at where we started, I remember a time when
+                there was very little to point toward except an idea and the
+                people who believed in it. Today there are departments, teams,
+                buyers, suppliers, business partners, products moving through
+                different markets, systems being developed to make the company
+                stronger, and new businesses growing from the same foundation.
+                But I do not consider this the destination — it is only the
+                beginning taking shape. Our ambition is much larger: we want
+                India Trade Overseas to become a company businesses can approach
+                not simply when they need a product, but when they need a
+                dependable partner capable of understanding the requirement,
+                finding the right source, coordinating the process and standing
+                behind the execution. There are more markets to enter, more
+                relationships to build, more people to create opportunities for,
+                more technology to develop, more systems to strengthen, and
+                much more trust to earn. We are proud of how far we have come,
+                but we are even more conscious of how far we still want to go.
+                Because India Trade Overseas was never built on the idea of
+                starting big — it was built on the idea of starting with
+                belief, standing together through difficult chapters, learning
+                from every challenge and becoming stronger with every step
+                forward. From zero to here, and from here, forward.
               </motion.p>
 
             </motion.div>

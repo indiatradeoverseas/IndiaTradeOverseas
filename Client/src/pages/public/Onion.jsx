@@ -886,6 +886,20 @@ export default function Onion() {
           color: var(--ivory);
         }
 
+        /* Secondary buttons inside light cards must remain visible. */
+        .ito-split-card .ito-button.secondary {
+          background: var(--onion-red) !important;
+          color: var(--ivory) !important;
+          border-color: var(--onion-red) !important;
+        }
+
+        .ito-split-card .ito-button.secondary:hover,
+        .ito-split-card .ito-button.secondary:focus-visible {
+          background: var(--wine) !important;
+          color: var(--ivory) !important;
+          border-color: var(--wine) !important;
+        }
+
         .ito-table {
           width: 100%;
           border-collapse: collapse;
@@ -3628,7 +3642,394 @@ export default function Onion() {
           }
         }
 
-`}</style>
+        /* ============================================================
+           FINAL TYPOGRAPHY + BULLET RESTRUCTURE
+           ============================================================ */
+
+        .ito-onion-page h1,
+        .ito-onion-page h2,
+        .ito-onion-page h3,
+        .ito-onion-page h4,
+        .ito-onion-page h5,
+        .ito-onion-page h6,
+        .ito-onion-page .ito-display,
+        .ito-onion-page .ito-section-title,
+        .ito-onion-page .ito-section-heading,
+        .ito-onion-page .ito-sub-heading,
+        .ito-onion-page .ito-crm-heading {
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-eyebrow,
+        .ito-onion-page .ito-pack-card small {
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-section-title,
+        .ito-onion-page .ito-section-heading,
+        .ito-onion-page .ito-sub-heading,
+        .ito-onion-page .ito-crm-heading {
+          width: 100%;
+          margin-left: auto !important;
+          margin-right: auto !important;
+        }
+
+        .ito-onion-page .ito-card h3,
+        .ito-onion-page .ito-pack-card h3,
+        .ito-onion-page .ito-split-card h3,
+        .ito-onion-page .ito-cta h2,
+        .ito-onion-page .ito-faq-q,
+        .ito-onion-page .ito-onion-personal-header h2,
+        .ito-onion-page .ito-rate-modal-header h2,
+        .ito-onion-page .ito-rate-section-title {
+          text-align: center !important;
+        }
+
+        /* Compact bullets */
+        .ito-onion-page .ito-bullet-list {
+          list-style: none !important;
+          padding: 0 !important;
+          margin: 0 auto !important;
+          width: max-content;
+          max-width: 100%;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-bullet-list li {
+          position: relative;
+          padding-left: 12px !important;
+          margin: 0 0 3px !important;
+          line-height: 1.35 !important;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-bullet-list li:last-child {
+          margin-bottom: 0 !important;
+        }
+
+        .ito-onion-page .ito-bullet-list li::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0.58em;
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: var(--gold);
+        }
+
+        .ito-onion-page .ito-export-docs .ito-bullet-list li,
+        .ito-onion-page .ito-pack-card .ito-bullet-list li,
+        .ito-onion-page .ito-split-card .ito-bullet-list li {
+          padding-left: 12px !important;
+          margin-bottom: 3px !important;
+          line-height: 1.35 !important;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-export-docs .ito-bullet-list li:last-child,
+        .ito-onion-page .ito-pack-card .ito-bullet-list li:last-child,
+        .ito-onion-page .ito-split-card .ito-bullet-list li:last-child {
+          margin-bottom: 0 !important;
+        }
+
+        /* Center supporting section copy */
+        .ito-onion-page .ito-lead {
+          margin-left: auto !important;
+          margin-right: auto !important;
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-market-notice,
+        .ito-onion-page .ito-quote-box {
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-persona-card,
+        .ito-onion-page .ito-persona-card .buyer,
+        .ito-onion-page .ito-persona-card .need,
+        .ito-onion-page .ito-persona-card .cta {
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-process-item,
+        .ito-onion-page .ito-process-item span,
+        .ito-onion-page .ito-export-step .ito-process-stage,
+        .ito-onion-page .ito-export-step .ito-process-control {
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-table th {
+          text-align: center !important;
+          vertical-align: middle !important;
+        }
+
+        /* Keep the first quality-table header on one line, including narrow phones. */
+        .ito-onion-page .ito-quality-table th:first-child {
+          white-space: nowrap !important;
+          font-size: 11px;
+          letter-spacing: .08em;
+        }
+
+        .ito-onion-page .ito-table td {
+          vertical-align: middle !important;
+        }
+
+        @media (max-width: 800px) {
+          .ito-onion-page h1,
+          .ito-onion-page h2,
+          .ito-onion-page h3,
+          .ito-onion-page h4,
+          .ito-onion-page h5,
+          .ito-onion-page h6,
+          .ito-onion-page .ito-display,
+          .ito-onion-page .ito-section-title,
+          .ito-onion-page .ito-section-heading,
+          .ito-onion-page .ito-sub-heading,
+          .ito-onion-page .ito-crm-heading {
+            text-align: center !important;
+          }
+
+          .ito-onion-page .ito-bullet-list {
+            width: max-content;
+            max-width: 100%;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+
+          .ito-onion-page .ito-bullet-list li {
+            padding-left: 10px !important;
+            margin-bottom: 2px !important;
+            line-height: 1.32 !important;
+            text-align: left !important;
+          }
+
+          .ito-onion-page .ito-bullet-list li::before {
+            width: 4px;
+            height: 4px;
+          }
+
+          .ito-onion-page .ito-export-docs .ito-bullet-list li,
+          .ito-onion-page .ito-pack-card .ito-bullet-list li,
+          .ito-onion-page .ito-split-card .ito-bullet-list li {
+            padding-left: 10px !important;
+            margin-bottom: 2px !important;
+            line-height: 1.32 !important;
+            text-align: left !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page .ito-quality-table th:first-child {
+            width: 38% !important;
+            font-size: 9.5px !important;
+            letter-spacing: .06em !important;
+            white-space: nowrap !important;
+          }
+
+          .ito-onion-page .ito-quality-table th:last-child {
+            width: 62% !important;
+          }
+
+          .ito-onion-page .ito-bullet-list {
+            width: max-content;
+            max-width: 100%;
+          }
+
+          .ito-onion-page .ito-bullet-list li {
+            padding-left: 9px !important;
+            margin-bottom: 1px !important;
+            line-height: 1.3 !important;
+            text-align: left !important;
+          }
+
+          .ito-onion-page .ito-export-docs .ito-bullet-list li,
+          .ito-onion-page .ito-pack-card .ito-bullet-list li,
+          .ito-onion-page .ito-split-card .ito-bullet-list li {
+            padding-left: 9px !important;
+            margin-bottom: 1px !important;
+            text-align: left !important;
+          }
+        }
+
+
+        /* ============================================================
+           FINAL MOBILE + RESPONSIVE SAFETY PASS
+           ============================================================ */
+
+        .ito-onion-page,
+        .ito-onion-page * {
+          box-sizing: border-box;
+        }
+
+        .ito-onion-page {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow-x: clip;
+        }
+
+        .ito-onion-page .ito-section,
+        .ito-onion-page .ito-section-inner,
+        .ito-onion-page .ito-hero,
+        .ito-onion-page .ito-hero-inner,
+        .ito-onion-page .ito-intro,
+        .ito-onion-page .ito-cta-inner,
+        .ito-onion-page .ito-export-grid,
+        .ito-onion-page .ito-grade-grid,
+        .ito-onion-page .ito-process,
+        .ito-onion-page .ito-packaging,
+        .ito-onion-page .ito-persona-grid,
+        .ito-onion-page .ito-split-grid,
+        .ito-onion-page .ito-spec-grid {
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        .ito-onion-page .ito-section-inner > *,
+        .ito-onion-page .ito-card,
+        .ito-onion-page .ito-spec,
+        .ito-onion-page .ito-pack-card,
+        .ito-onion-page .ito-persona-card,
+        .ito-onion-page .ito-split-card,
+        .ito-onion-page .ito-export-docs,
+        .ito-onion-page .ito-quote-box,
+        .ito-onion-page .ito-faq,
+        .ito-onion-page .ito-faq-item {
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        .ito-onion-page img,
+        .ito-onion-page video,
+        .ito-onion-page canvas,
+        .ito-onion-page iframe {
+          max-width: 100%;
+        }
+
+        /* Quality-table headers use exactly the same font size. */
+        .ito-onion-page .ito-quality-table th:first-child,
+        .ito-onion-page .ito-quality-table th:last-child {
+          font-size: 13px !important;
+          line-height: 1.2 !important;
+        }
+
+        /* Buyer Questions: questions stay left-aligned. */
+        .ito-onion-page .ito-faq,
+        .ito-onion-page .ito-faq-item,
+        .ito-onion-page .ito-faq-q {
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-faq-q {
+          width: 100%;
+          max-width: 100%;
+          overflow-wrap: anywhere;
+        }
+
+        .ito-onion-page .ito-faq-a {
+          text-align: left !important;
+          overflow-wrap: anywhere;
+        }
+
+        /* Prevent long inline content from creating horizontal overflow. */
+        .ito-onion-page .ito-market,
+        .ito-onion-page .ito-button,
+        .ito-onion-page .ito-quote-box,
+        .ito-onion-page .ito-cta-copy,
+        .ito-onion-page p,
+        .ito-onion-page li,
+        .ito-onion-page td,
+        .ito-onion-page th,
+        .ito-onion-page span,
+        .ito-onion-page strong,
+        .ito-onion-page a {
+          overflow-wrap: anywhere;
+        }
+
+        /* Do not allow the quality table itself to become wider than its card. */
+        .ito-onion-page .ito-quality-table {
+          width: 100% !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+        }
+
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-quality-table th:first-child,
+          .ito-onion-page .ito-quality-table th:last-child {
+            font-size: 10px !important;
+            line-height: 1.15 !important;
+          }
+
+          .ito-onion-page .ito-quality-table th:first-child {
+            width: 38% !important;
+            white-space: nowrap !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+          }
+
+          .ito-onion-page .ito-quality-table th:last-child {
+            width: 62% !important;
+          }
+
+          .ito-onion-page .ito-quality-table th,
+          .ito-onion-page .ito-quality-table td {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .ito-onion-page .ito-faq {
+            width: 100%;
+            max-width: 100%;
+          }
+
+          .ito-onion-page .ito-faq-q {
+            text-align: left !important;
+            font-size: 15px;
+          }
+
+          .ito-onion-page .ito-faq-a {
+            text-align: left !important;
+          }
+
+          /* Every responsive grid child may shrink instead of forcing a page-wide overflow. */
+          .ito-onion-page .ito-grade-grid > *,
+          .ito-onion-page .ito-process > *,
+          .ito-onion-page .ito-packaging > *,
+          .ito-onion-page .ito-persona-grid > *,
+          .ito-onion-page .ito-split-grid > *,
+          .ito-onion-page .ito-export-grid > *,
+          .ito-onion-page .ito-spec-grid > * {
+            min-width: 0;
+            max-width: 100%;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page .ito-quality-table th:first-child,
+          .ito-onion-page .ito-quality-table th:last-child {
+            font-size: 9.5px !important;
+            line-height: 1.15 !important;
+          }
+
+          .ito-onion-page .ito-quality-table th:first-child {
+            width: 38% !important;
+            white-space: nowrap !important;
+          }
+
+          .ito-onion-page .ito-quality-table th:last-child {
+            width: 62% !important;
+          }
+
+          .ito-onion-page .ito-faq-q {
+            font-size: 14px;
+            line-height: 1.45;
+          }
+        }
+
+`}
+
+</style>
 
       {/* HERO */}
       <section className="ito-hero" aria-label="Nashik onion hero">
