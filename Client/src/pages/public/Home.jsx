@@ -20,14 +20,16 @@ import {
   FiTruck,
   FiFileText,
   FiSearch,
-  FiSpeaker
+  FiSpeaker,
+  FiX
 } from 'react-icons/fi';
 
 import {
   GiTeapot,
   GiWheat,
   GiStonePile,
-  GiGarlic
+  GiGarlic,
+  GiFire
 } from 'react-icons/gi';
 
 // ============================================================
@@ -39,7 +41,7 @@ const CINEMATIC_CAROUSEL_BACKDROPS = [
   './images/ito_images/ito_2.png',
   './images/ito_images/ito_3.jpeg',
   './images/ito_images/ito_4.png',
-  './images/ito_images/ito_5.jpeg',
+  './images/ito_images/ito_5.png',
   './images/ito_images/ito_6.jpeg',
   './images/ito_images/ito_7.png',
   './images/ito_images/ito_8.jpeg',
@@ -123,6 +125,8 @@ export default function Home() {
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
   const [isMobileCarousel, setIsMobileCarousel] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [openFoodModal, setOpenFoodModal] = useState(false);
+  const [openStoneModal, setOpenStoneModal] = useState(false);
   const dropdownTriggerRefs = useRef({});
 
   // ----------------------------------------------------------
@@ -252,6 +256,18 @@ export default function Home() {
         'Multiple grades & sizes',
         'Bulk supply for domestic & export',
         'Quality inspection & logistics support'
+      ]
+    },
+    {
+      to: '/coal',
+      icon: GiFire,
+      label: 'Coal Division',
+      image: '/images/coal-images/coal-1.png',
+      points: [
+        'Premium coal sourcing',
+        'Multiple grades & specifications',
+        'Bulk supply for industrial buyers',
+        'Logistics and delivery support'
       ]
     }
   ];
@@ -709,7 +725,7 @@ export default function Home() {
                       key={item.to}
                       className="absolute inset-0"
                       style={{
-                        transform: `rotateY(${i * 72}deg) translateZ(${isMobileCarousel ? 162 : 221}px)`,
+                        transform: `rotateY(${i * 60}deg) translateZ(${isMobileCarousel ? 190 : 260}px)`,
                         transformStyle: 'preserve-3d'
                       }}
                     >
@@ -1989,11 +2005,10 @@ export default function Home() {
                 </div>
 
                 {v.dropdown ? (
-                  <>
+                  v.num === '02' ? (
                     <button
-                      ref={(el) => (dropdownTriggerRefs.current[v.num] = el)}
                       type="button"
-                      onClick={() => setOpenDropdown(openDropdown === v.num ? null : v.num)}
+                      onClick={() => setOpenFoodModal(true)}
                       className="
                         w-full
                         h-[42px]
@@ -2019,18 +2034,81 @@ export default function Home() {
                       "
                     >
                       {v.cta}
-                      <FiChevronDown
-                        className={`ml-1 transition-transform duration-200 ${openDropdown === v.num ? 'rotate-180' : ''}`}
-                        size={13}
-                      />
                     </button>
-                    <Dropdown
-                      isOpen={openDropdown === v.num}
-                      items={v.dropdown}
-                      onClose={() => setOpenDropdown(null)}
-                      triggerRef={dropdownTriggerRefs.current[v.num]}
-                    />
-                  </>
+                  ) : v.num === '03' ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpenStoneModal(true)}
+                      className="
+                        w-full
+                        h-[42px]
+                        inline-flex
+                        items-center
+                        justify-center
+                        text-center
+                        bg-[#0E1116]
+                        hover:bg-[#2B3440]
+                        border
+                        border-[#C5CBD3]/24
+                        hover:border-[#F2F4F7]
+                        text-[#F2F4F7]
+                        font-sans
+                        text-[10px]
+                        uppercase
+                        tracking-widest
+                        font-semibold
+                        transition-colors
+                        duration-150
+                        rounded-[2px]
+                        cursor-pointer
+                      "
+                    >
+                      {v.cta}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        ref={(el) => (dropdownTriggerRefs.current[v.num] = el)}
+                        type="button"
+                        onClick={() => setOpenDropdown(openDropdown === v.num ? null : v.num)}
+                        className="
+                          w-full
+                          h-[42px]
+                          inline-flex
+                          items-center
+                          justify-center
+                          text-center
+                          bg-[#0E1116]
+                          hover:bg-[#2B3440]
+                          border
+                          border-[#C5CBD3]/24
+                          hover:border-[#F2F4F7]
+                          text-[#F2F4F7]
+                          font-sans
+                          text-[10px]
+                          uppercase
+                          tracking-widest
+                          font-semibold
+                          transition-colors
+                          duration-150
+                          rounded-[2px]
+                          cursor-pointer
+                        "
+                      >
+                        {v.cta}
+                        <FiChevronDown
+                          className={`ml-1 transition-transform duration-200 ${openDropdown === v.num ? 'rotate-180' : ''}`}
+                          size={13}
+                        />
+                      </button>
+                      <Dropdown
+                        isOpen={openDropdown === v.num}
+                        items={v.dropdown}
+                        onClose={() => setOpenDropdown(null)}
+                        triggerRef={dropdownTriggerRefs.current[v.num]}
+                      />
+                    </>
+                  )
                 ) : (
                   <button
                     type="button"
@@ -3062,6 +3140,125 @@ export default function Home() {
         </div>
 
       </footer>
+
+      {/* Food & Agriculture Modal */}
+      <AnimatePresence>
+        {openFoodModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-md bg-[#040A12]/60 px-4"
+            onClick={() => setOpenFoodModal(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Food & Agriculture"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="relative w-full max-w-4xl bg-[#121D29]/95 backdrop-blur-sm border border-[#C5CBD3]/24 rounded-[2px] p-6 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setOpenFoodModal(false)}
+                className="absolute top-3 right-3 text-[#6D7886] hover:text-[#F2F4F7] transition-colors"
+                aria-label="Close"
+              >
+                <FiX size={20} />
+              </button>
+              <h3 className="text-lg font-serif font-medium text-[#F2F4F7] mb-4">Food & Agriculture</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'Tea', to: '/prakriti', icon: GiTeapot, image: '/images/tea_images/g4.jpeg' },
+                  { label: 'Rice', to: '/prakriti/rice', icon: GiWheat, image: '/images/rice_images/rice_11.jpeg' },
+                  { label: 'Onion', to: '/nashik-onion', icon: GiGarlic, image: '/images/onion_image.png' }
+                ].map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    onClick={() => setOpenFoodModal(false)}
+                    className="group relative overflow-hidden rounded-[2px] border border-[#C5CBD3]/20 hover:border-[#F2F4F7] transition-colors duration-200 bg-[#0E1116]"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.label}
+                      className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0E1116]/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-left">
+                      <item.icon size={18} className="text-[#F2F4F7] mb-2" />
+                      <p className="text-sm font-semibold text-[#F2F4F7]">{item.label}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Building & Construction Modal */}
+      <AnimatePresence>
+        {openStoneModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-md bg-[#040A12]/60 px-4"
+            onClick={() => setOpenStoneModal(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Building & Construction"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="relative w-full max-w-md bg-[#121D29]/95 backdrop-blur-sm border border-[#C5CBD3]/24 rounded-[2px] p-6 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setOpenStoneModal(false)}
+                className="absolute top-3 right-3 text-[#6D7886] hover:text-[#F2F4F7] transition-colors"
+                aria-label="Close"
+              >
+                <FiX size={20} />
+              </button>
+              <h3 className="text-lg font-serif font-medium text-[#F2F4F7] mb-4">Building & Construction</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { label: 'Stone', to: '/stone', icon: GiStonePile, image: '/images/stone_images/Wmm.png' },
+                  { label: 'Coal', to: '/coal', icon: GiFire, image: '/images/coal-images/coal-1.png' }
+                ].map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    onClick={() => setOpenStoneModal(false)}
+                    className="group relative overflow-hidden rounded-[2px] border border-[#C5CBD3]/20 hover:border-[#F2F4F7] transition-colors duration-200 bg-[#0E1116]"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.label}
+                      className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0E1116]/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-left">
+                      <item.icon size={18} className="text-[#F2F4F7] mb-2" />
+                      <p className="text-sm font-semibold text-[#F2F4F7]">{item.label}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

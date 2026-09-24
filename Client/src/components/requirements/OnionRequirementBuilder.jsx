@@ -126,14 +126,9 @@ const GRADE_OPTIONS = [
 
 const QUANTITY_OPTIONS = [
   {
-    value: 10000,
-    title: "10 MT",
-    description: "10,000 kg",
-  },
-  {
-    value: 20000,
-    title: "20 MT",
-    description: "20,000 kg",
+    value: 30000,
+    title: "30 MT",
+    description: "30,000 kg",
   },
   {
     value: 40000,

@@ -540,7 +540,6 @@ function Coal() {
           <h2 id="final-title" className="coal-display">Looking for a Reliable Coal Supply Partner?</h2>
           <p>Share your required coal origin, GCV, testing basis, quantity, application and destination. India Trade Overseas will review the specification and coordinate the next available commercial steps.</p>
           <button onClick={openRequirementBuilder} className="coal-button primary">Request Bulk Quote</button>
-          <div className="coal-email">info@indiatradeoverseas.com</div>
         </section>
 
         <CoalRequirementBuilder

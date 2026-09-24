@@ -1693,7 +1693,8 @@ function AppLayout() {
     isPricingRoute(
       location.pathname
     ) ||
-    isCoalPricing;
+    isCoalPricing ||
+    isITOAds;
 
 
   return (
@@ -1939,14 +1940,14 @@ function AppLayout() {
       </main>
 
 
-      {isITOAds && (
+      {/* {isITOAds && (
         <CommercialRequirement
           key={
             location.pathname
           }
           category="ITO_ADS"
         />
-      )}
+      )} */}
 
 
       {!hidePublicChrome && (
