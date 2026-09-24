@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import OnionRequirementBuilder from "../../components/requirements/OnionRequirementBuilder";
 import { onionVisitorApi } from "../../api/onionVisitor";
+import { IoLogoWhatsapp } from "react-icons/io5";
 
 /*
   Onion.jsx — Nashik Onion Vertical
@@ -884,6 +885,45 @@ export default function Onion() {
           border-color: rgba(247,243,234,.34);
           background: transparent;
           color: var(--ivory);
+        }
+
+        .ito-whatsapp-button {
+          gap: 9px;
+          border-color: rgba(181,150,90,.62);
+          background: rgba(74,16,28,.34);
+          color: var(--ivory);
+          box-shadow: inset 0 0 0 1px rgba(181,150,90,.08);
+        }
+
+        .ito-whatsapp-button .ito-whatsapp-icon {
+          flex: 0 0 auto;
+          width: 19px;
+          height: 19px;
+          color: var(--gold);
+          transition: color .2s ease, transform .2s ease;
+        }
+
+        .ito-whatsapp-button:hover {
+          background: var(--onion-red);
+          border-color: var(--gold);
+          color: var(--ivory);
+        }
+
+        .ito-whatsapp-button:hover .ito-whatsapp-icon {
+          color: var(--ivory);
+          transform: scale(1.06);
+        }
+
+        .ito-whatsapp-button:focus-visible {
+          outline: 2px solid var(--gold);
+          outline-offset: 3px;
+        }
+
+        @media (max-width: 800px) {
+          .ito-whatsapp-button {
+            width: 100%;
+            max-width: 100%;
+          }
         }
 
         /* Secondary buttons inside light cards must remain visible. */
@@ -4131,7 +4171,7 @@ export default function Onion() {
               <button
                 className="ito-button"
                 type="button"
-                onClick={() => setShowRateChart(true)}
+                onClick={openRequirementBuilder}
               >
                 Get Domestic Delivered Rate
               </button>
@@ -4524,7 +4564,15 @@ export default function Onion() {
                 Request Bulk Quote
               </button>
               <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
-              <a className="ito-button secondary" href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements." target="_blank" rel="noopener noreferrer">Chat with Export Sales on WhatsApp</a>
+              <a
+                className="ito-button secondary ito-whatsapp-button"
+                href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <IoLogoWhatsapp className="ito-whatsapp-icon" aria-hidden="true" />
+                <span>Chat with Export Sales</span>
+              </a>
             </div>
           </div>
         </div>
