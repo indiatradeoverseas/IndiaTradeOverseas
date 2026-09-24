@@ -3,16 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
 import { pushDataLayerEvent } from '../../utils/analytics';
-import axiosInstance from '../../api/axiosInstance';
+import { coalVisitorApi } from '../../api/coalVisitor';
 import { toast } from 'react-hot-toast';
-
-const coalVisitorApi = {
-  create: async (payload) =>
-    (await axiosInstance.post('/coal-visitors', payload)).data,
-
-  get: async (visitorId) =>
-    (await axiosInstance.get(`/coal-visitors/${encodeURIComponent(visitorId)}`)).data,
-};
+import CoalRequirementBuilder from '../../components/requirements/CoalRequirementBuilder';
 
 const HERO_IMAGES = [
   '/images/coal-images/coal-1.png',
@@ -92,21 +85,62 @@ function Coal() {
         requirement: builtRequirement,
       });
 
-      if (!response?.success || !response?.visitorId) {
-        throw new Error(response?.message || 'Unable to create Coal visitor.');
+      const visitorId =
+        response?.data?.visitorId ||
+        response?.visitorId;
+
+      const pricing =
+        response?.data?.pricing ||
+        response?.pricing ||
+        null;
+
+      if (!response?.success || !visitorId) {
+        throw new Error(
+          response?.message ||
+          'Unable to create Coal visitor.'
+        );
       }
 
-      sessionStorage.setItem('ito_coal_visitor_id', response.visitorId);
-      sessionStorage.setItem('ito_coal_requirement', JSON.stringify(builtRequirement));
+      const visitorSnapshot = {
+        visitorId,
+        fullName: personalDetails.fullName.trim(),
+        email: personalDetails.email.trim(),
+        mobile: personalDetails.mobile.trim(),
+        city: personalDetails.city.trim(),
+        state: personalDetails.state.trim(),
+        company: builtRequirement.company || '',
+        requirement: builtRequirement,
+        pricing,
+      };
+
+      sessionStorage.setItem(
+        'ito_coal_visitor_id',
+        visitorId
+      );
+
+      sessionStorage.setItem(
+        'ito_coal_requirement',
+        JSON.stringify(builtRequirement)
+      );
+
+      sessionStorage.setItem(
+        'ito_coal_visitor_snapshot',
+        JSON.stringify(visitorSnapshot)
+      );
 
       pushDataLayerEvent('coal_visitor_created', {
-        visitorId: response.visitorId,
+        visitorId,
         origin: builtRequirement.origin,
         coalType: builtRequirement.coalType,
       });
 
       setShowPersonalDetails(false);
-      navigate('/coal/pricing');
+
+      navigate('/coal/pricing', {
+        state: {
+          visitor: visitorSnapshot,
+        },
+      });
     } catch (error) {
       console.error('Coal visitor creation error:', error);
       toast.error(
@@ -598,389 +632,6 @@ function OriginCard({ name, description, grades, details, isTable, isUsTable, on
   );
 }
 
-
-function CoalRequirementBuilder({ isOpen, open, onClose, onComplete }) {
-  const visible = Boolean(isOpen ?? open ?? false);
-
-  const initialState = {
-    company: '',
-    buyerType: '',
-    industry: '',
-    plant: '',
-    use: '',
-    origin: '',
-    coalType: '',
-    gcv: '',
-    basis: '',
-    rejVal: '',
-    ash: '',
-    sulphur: '',
-    tm: '',
-    vm: '',
-    fc: '',
-    hgiAft: '',
-    orderQty: '',
-    trialQty: '',
-    monthly: '',
-    targetQty: '',
-    estValuation: '',
-    dest: '',
-    tMode: '',
-    incoterm: '',
-    reqDate: '',
-    specFileName: '',
-    notes: '',
-    privacy: false,
-  };
-
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState(initialState);
-
-  const steps = ['Buyer & Application', 'Coal & Quality', 'Volume', 'Delivery', 'Review'];
-
-  const update = (name, value) => {
-    setForm((previous) => ({ ...previous, [name]: value }));
-  };
-
-  const validateStep = () => {
-    if (step === 0) {
-      if (!form.company.trim() || !form.buyerType || !form.industry.trim() || !form.plant.trim()) {
-        toast.error('Please complete company, buyer type, industry and plant/process.');
-        return false;
-      }
-    }
-
-    if (step === 1) {
-      if (!form.origin || !form.coalType || !form.basis) {
-        toast.error('Please select origin, coal type and GCV basis.');
-        return false;
-      }
-    }
-
-    if (step === 2) {
-      if (!form.orderQty && !form.trialQty && !form.monthly && !form.targetQty) {
-        toast.error('Please enter at least one coal quantity.');
-        return false;
-      }
-    }
-
-    if (step === 3) {
-      if (!form.dest.trim() || !form.tMode) {
-        toast.error('Please enter the destination and select a transport mode.');
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const next = () => {
-    if (!validateStep()) return;
-    setStep((previous) => Math.min(previous + 1, steps.length - 1));
-  };
-
-  const previous = () => setStep((current) => Math.max(current - 1, 0));
-
-  const close = () => {
-    setStep(0);
-    onClose?.();
-  };
-
-  const complete = () => {
-    if (!validateStep()) return;
-
-    if (!form.privacy) {
-      toast.error('Please accept the privacy policy to continue.');
-      return;
-    }
-
-    onComplete?.({
-      ...form,
-      gcv: form.gcv ? Number(form.gcv) : null,
-      rejVal: form.rejVal ? Number(form.rejVal) : null,
-      ash: form.ash ? Number(form.ash) : null,
-      sulphur: form.sulphur ? Number(form.sulphur) : null,
-      tm: form.tm ? Number(form.tm) : null,
-      vm: form.vm ? Number(form.vm) : null,
-      fc: form.fc ? Number(form.fc) : null,
-      hgiAft: form.hgiAft,
-      orderQty: form.orderQty ? Number(form.orderQty) : null,
-      trialQty: form.trialQty ? Number(form.trialQty) : null,
-      monthly: form.monthly ? Number(form.monthly) : null,
-      targetQty: form.targetQty ? Number(form.targetQty) : null,
-      estValuation: form.estValuation ? Number(form.estValuation) : null,
-      privacy: true,
-    });
-  };
-
-  if (!visible) return null;
-
-  const inputClass =
-    'w-full mt-2 px-3 py-3 rounded-lg border border-white/20 bg-[#071826]/70 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#D4A84F]';
-
-  const labelClass = 'block text-sm text-[#F4F0E7]/90';
-
-  const Select = ({ name, value, options, placeholder = 'Select' }) => (
-    <select
-      value={value}
-      onChange={(event) => update(name, event.target.value)}
-      className={inputClass}
-    >
-      <option value="" className="bg-[#071826]">{placeholder}</option>
-      {options.map((option) => (
-        <option key={option} value={option} className="bg-[#071826]">{option}</option>
-      ))}
-    </select>
-  );
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget) close();
-        }}
-      >
-        <motion.div
-          className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[#D4A84F]/30 bg-[#101214] shadow-2xl"
-          initial={{ opacity: 0, y: 25, scale: .98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 25, scale: .98 }}
-        >
-          <div className="sticky top-0 z-10 border-b border-white/10 bg-[#101214]/95 backdrop-blur-xl p-5 md:p-7">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="coal-eyebrow">Coal Visitor • Requirement Builder</span>
-                <h2 className="coal-display text-4xl md:text-5xl mt-2">Build your requirement.</h2>
-                <p className="text-white/55 text-sm mt-2">Step {step + 1} of {steps.length}</p>
-              </div>
-              <button type="button" onClick={close} className="text-white/60 hover:text-white text-2xl" aria-label="Close">×</button>
-            </div>
-
-            <div className="grid grid-cols-5 gap-1 mt-6">
-              {steps.map((label, index) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => index <= step && setStep(index)}
-                  className={`h-1.5 rounded-full transition ${index <= step ? 'bg-[#D4A84F]' : 'bg-white/10'}`}
-                  aria-label={label}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 md:p-8">
-            {step === 0 && (
-              <div className="space-y-6">
-                <BuilderSection title="Buyer">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Field label="Company / Buyer" required>
-                      <input className={inputClass} value={form.company} onChange={(e) => update('company', e.target.value)} placeholder="Company name" />
-                    </Field>
-                    <Field label="Buyer type" required>
-                      <Select name="buyerType" value={form.buyerType} options={['Thermal power plant','Cement / sponge-iron','Steel / rolling mill','Trader / distributor','Other']} />
-                    </Field>
-                  </div>
-                </BuilderSection>
-
-                <BuilderSection title="Application">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Field label="Industry" required>
-                      <input className={inputClass} value={form.industry} onChange={(e) => update('industry', e.target.value)} placeholder="e.g. Power, Cement, Steel" />
-                    </Field>
-                    <Field label="Plant / Process" required>
-                      <input className={inputClass} value={form.plant} onChange={(e) => update('plant', e.target.value)} placeholder="Plant or process name" />
-                    </Field>
-                    <Field label="Intended use">
-                      <textarea className={`${inputClass} min-h-[100px]`} value={form.use} onChange={(e) => update('use', e.target.value)} placeholder="Tell us how the coal will be used" />
-                    </Field>
-                  </div>
-                </BuilderSection>
-              </div>
-            )}
-
-            {step === 1 && (
-              <div className="space-y-6">
-                <BuilderSection title="Coal">
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Field label="Origin" required>
-                      <Select name="origin" value={form.origin} options={['Assam','Jharkhand','Indonesia','U.S.','Other domestic','Other imported']} />
-                    </Field>
-                    <Field label="Coal type" required>
-                      <Select name="coalType" value={form.coalType} options={['Non-coking thermal','Steam','Coking','Metallurgical','Anthracite','Sub-bituminous','Lignite','Not sure']} />
-                    </Field>
-                    <Field label="GCV (kcal/kg)">
-                      <input className={inputClass} type="number" value={form.gcv} onChange={(e) => update('gcv', e.target.value)} placeholder="e.g. 6200" />
-                    </Field>
-                    <Field label="Basis" required>
-                      <Select name="basis" value={form.basis} options={['GAR','NAR','ARB','ADB','DB','DAF','Other']} />
-                    </Field>
-                    <Field label="Rejection value (kcal/kg)">
-                      <input className={inputClass} type="number" value={form.rejVal} onChange={(e) => update('rejVal', e.target.value)} />
-                    </Field>
-                  </div>
-                </BuilderSection>
-
-                <BuilderSection title="Quality parameters">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[
-                      ['ash','Ash %'], ['sulphur','Sulphur %'], ['tm','Total moisture %'],
-                      ['vm','Volatile matter %'], ['fc','Fixed carbon %'], ['hgiAft','HGI / AFT']
-                    ].map(([name, label]) => (
-                      <Field key={name} label={label}>
-                        <input className={inputClass} value={form[name]} onChange={(e) => update(name, e.target.value)} />
-                      </Field>
-                    ))}
-                  </div>
-                </BuilderSection>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-6">
-                <BuilderSection title="Volume">
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[
-                      ['orderQty','Order quantity (MT)'],
-                      ['trialQty','Trial quantity (MT)'],
-                      ['monthly','Recurring monthly demand (MT)'],
-                      ['targetQty','Target quantity (MT)'],
-                      ['estValuation','Estimated valuation (INR)']
-                    ].map(([name, label]) => (
-                      <Field key={name} label={label}>
-                        <input className={inputClass} type="number" min="0" value={form[name]} onChange={(e) => update(name, e.target.value)} />
-                      </Field>
-                    ))}
-                  </div>
-                  <p className="text-xs text-white/45 mt-4">Enter at least one quantity so the commercial team can size the requirement.</p>
-                </BuilderSection>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-6">
-                <BuilderSection title="Delivery">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Field label="City / Plant / Port / Country" required>
-                      <input className={inputClass} value={form.dest} onChange={(e) => update('dest', e.target.value)} placeholder="Delivery destination" />
-                    </Field>
-                    <Field label="Transport mode" required>
-                      <Select name="tMode" value={form.tMode} options={['Road','Rail','Port','Vessel','Multimodal','To be advised']} />
-                    </Field>
-                    <Field label="Incoterm">
-                      <input className={inputClass} value={form.incoterm} onChange={(e) => update('incoterm', e.target.value)} placeholder="FOB, CIF, CFR, etc." />
-                    </Field>
-                    <Field label="Required date">
-                      <input className={inputClass} type="date" value={form.reqDate} onChange={(e) => update('reqDate', e.target.value)} />
-                    </Field>
-                  </div>
-                </BuilderSection>
-
-                <BuilderSection title="Evidence & notes">
-                  <Field label="Specification sheet (PDF / Excel)">
-                    <input
-                      className={inputClass}
-                      type="file"
-                      accept=".pdf,.xls,.xlsx"
-                      onChange={(event) => update('specFileName', event.target.files?.[0]?.name || '')}
-                    />
-                  </Field>
-                  <Field label="Additional notes">
-                    <textarea className={`${inputClass} min-h-[120px]`} value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Any inspection, sampling, lab, sizing or commercial requirement" />
-                  </Field>
-                </BuilderSection>
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="space-y-6">
-                <BuilderSection title="Review your Coal requirement">
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {[
-                      ['Company', form.company],
-                      ['Buyer type', form.buyerType],
-                      ['Industry', form.industry],
-                      ['Plant / Process', form.plant],
-                      ['Origin', form.origin],
-                      ['Coal type', form.coalType],
-                      ['GCV', form.gcv ? `${form.gcv} kcal/kg` : 'Not specified'],
-                      ['Basis', form.basis],
-                      ['Order quantity', form.orderQty ? `${form.orderQty} MT` : 'Not specified'],
-                      ['Trial quantity', form.trialQty ? `${form.trialQty} MT` : 'Not specified'],
-                      ['Monthly demand', form.monthly ? `${form.monthly} MT` : 'Not specified'],
-                      ['Destination', form.dest],
-                      ['Transport', form.tMode],
-                      ['Incoterm', form.incoterm || 'Not specified'],
-                      ['Required date', form.reqDate || 'Not specified'],
-                      ['Specification sheet', form.specFileName || 'Not attached'],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-lg border border-white/10 bg-white/[.025] p-3">
-                        <div className="text-[10px] uppercase tracking-[.12em] text-[#D4A84F]">{label}</div>
-                        <div className="text-sm text-white/80 mt-1 break-words">{value || 'Not specified'}</div>
-                      </div>
-                    ))}
-                  </div>
-                </BuilderSection>
-
-                <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[.025] p-4 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.privacy}
-                    onChange={(event) => update('privacy', event.target.checked)}
-                    className="mt-1 w-4 h-4 accent-[#D4A84F]"
-                  />
-                  <span className="text-sm text-white/75">
-                    I acknowledge the privacy policy and allow India Trade Overseas to contact me regarding this Coal requirement.
-                  </span>
-                </label>
-              </div>
-            )}
-          </div>
-
-          <div className="sticky bottom-0 border-t border-white/10 bg-[#101214]/95 backdrop-blur-xl p-5 md:p-6 flex items-center justify-between gap-3">
-            <button type="button" onClick={step === 0 ? close : previous} className="coal-button ghost">
-              {step === 0 ? 'Cancel' : 'Back'}
-            </button>
-
-            {step < steps.length - 1 ? (
-              <button type="button" onClick={next} className="coal-button primary">
-                Continue
-              </button>
-            ) : (
-              <button type="button" onClick={complete} className="coal-button primary">
-                Continue to Personal Details
-              </button>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}
-
-function BuilderSection({ title, children }) {
-  return (
-    <section className="rounded-2xl border border-white/10 bg-white/[.025] p-5 md:p-6">
-      <h3 className="text-lg font-semibold text-[#F4F0E7] mb-5">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-function Field({ label, required, children }) {
-  return (
-    <label className="block">
-      <span className="text-sm text-[#F4F0E7]/90 font-medium">
-        {label} {required && <span className="text-[#D4A84F]">*</span>}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 function PersonalDetailsModal({ requirement, values, submitting, onChange, onClose, onSubmit }) {
   const inputClass =
