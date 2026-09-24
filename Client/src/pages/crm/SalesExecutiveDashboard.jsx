@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL, getFileUrl } from '../../config/env';
-import { 
-  FiPhone, 
-  FiMail, 
-  FiUserPlus, 
-  FiCheckCircle, 
-  FiFileText, 
-  FiTrendingUp, 
-  FiAward, 
-  FiArrowUpRight, 
-  FiArrowDownRight, 
-  FiCalendar, 
-  FiZap, 
-  FiClock, 
-  FiChevronRight, 
-  FiUsers, 
+import {
+  FiPhone,
+  FiMail,
+  FiUserPlus,
+  FiCheckCircle,
+  FiFileText,
+  FiTrendingUp,
+  FiAward,
+  FiArrowUpRight,
+  FiArrowDownRight,
+  FiCalendar,
+  FiZap,
+  FiClock,
+  FiChevronRight,
+  FiUsers,
   FiAlertCircle,
   FiRotateCw,
   FiPaperclip,
@@ -28,15 +28,15 @@ import {
   FiTrash2
 } from 'react-icons/fi';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend 
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
 } from 'recharts';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -78,12 +78,12 @@ export default function SalesExecutiveDashboard() {
   const [performance, setPerformance] = useState(null);
   const [deals, setDeals] = useState([]);
   const [todos, setTodos] = useState([]);
-  
+
   // Chat States
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
-  
+
   // Gamification View States
   const [leaderboardTab, setLeaderboardTab] = useState('monthly');
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -152,7 +152,7 @@ export default function SalesExecutiveDashboard() {
 
     // 2. Search title or description for leadCode or customerName
     const combinedText = `${task.title || ''} ${task.description || ''}`;
-    
+
     // Check regex pattern for Lead Code (e.g. LD-1788620082426-3684)
     const codeMatch = combinedText.match(/\b(?:LD|LEAD)-[A-Za-z0-9-]+\b/i);
     if (codeMatch) {
@@ -310,7 +310,7 @@ export default function SalesExecutiveDashboard() {
 
   // Greeting Message based on local hour
   const [greeting, setGreeting] = useState('Good Morning');
-  
+
   useEffect(() => {
     const hr = new Date().getHours();
     if (hr < 12) setGreeting('Good Morning');
@@ -485,7 +485,7 @@ export default function SalesExecutiveDashboard() {
   // Generate dynamic to-dos from current deals in pipeline
   const generateToDos = (myLeads) => {
     const actionList = [];
-    
+
     // Sort leads by priority (HOT first)
     const hotLeads = myLeads.filter(l => l.priority === 'HOT');
     const icpoPending = myLeads.filter(l => l.stage === 'LOI_PO_PENDING' || l.stage === 'NEGOTIATION');
@@ -587,7 +587,7 @@ export default function SalesExecutiveDashboard() {
   const handleDownloadTaskFile = (fileUrl, originalName) => {
     if (!fileUrl) return;
     const absoluteUrl = getFileUrl(fileUrl);
-    
+
     const link = document.createElement('a');
     link.href = absoluteUrl;
     link.setAttribute('download', originalName || 'attachment');
@@ -667,10 +667,10 @@ export default function SalesExecutiveDashboard() {
   const myRankIndex = leaderboardData.findIndex(r => r.email?.toLowerCase() === user.email?.toLowerCase());
   const myRankNum = myRankIndex !== -1 ? myRankIndex + 1 : leaderboardData.length + 1;
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
-      variants={containerVariants} 
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
       className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0"
     >
       {/* Executive Portal Header */}
@@ -683,19 +683,19 @@ export default function SalesExecutiveDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-mono shrink-0">
-          <button 
+          <button
             onClick={() => setShowLOIModal(true)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiFileText className="text-teal-400" size={12} /> Upload LOI Document
           </button>
-          <button 
+          <button
             onClick={() => setShowCallModal(true)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
             <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
           </button>
-          <button 
+          <button
             onClick={loadDashboardData}
             className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
@@ -717,31 +717,28 @@ export default function SalesExecutiveDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
-              dateFilterMode === 'ALL'
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'ALL'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-            }`}
+              }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
-              dateFilterMode === 'TODAY'
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'TODAY'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-            }`}
+              }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
-              dateFilterMode === 'YESTERDAY'
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'YESTERDAY'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-            }`}
+              }`}
           >
             Yesterday
           </button>
@@ -770,7 +767,7 @@ export default function SalesExecutiveDashboard() {
         </div>
 
         <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong>
           &bull; ({getFilteredByDate(deals).length} Leads, {getFilteredByDate(myCallRecordings).length} Recordings)
         </div>
       </motion.div>
@@ -786,11 +783,10 @@ export default function SalesExecutiveDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                activeTab === tab.id
+              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeTab === tab.id
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
                   : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
-              }`}
+                }`}
             >
               <tab.icon size={13} className={activeTab === tab.id ? 'text-white' : 'text-inherit'} />
               {tab.label}
@@ -818,13 +814,13 @@ export default function SalesExecutiveDashboard() {
             {/* TAB 1: DAILY ACTION VIEW */}
             {activeTab === 'daily' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
+
                 {/* Left/Middle Column (KPIs, Target Progress, Deal Pipeline) */}
                 <div className="lg:col-span-8 space-y-6">
-                  
+
                   {/* Manager's Tasks Card Section */}
                   {managerTasks.length > 0 && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-[var(--crm-bg-raised)] border border-teal-900/50 p-5 rounded-lg shadow-sm text-left mb-6"
@@ -842,17 +838,16 @@ export default function SalesExecutiveDashboard() {
                         {managerTasks.map((task) => {
                           const resolvedLead = resolveLeadForTask(task);
                           return (
-                            <div 
-                              key={task._id} 
+                            <div
+                              key={task._id}
                               className="p-4 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/40 hover:bg-[var(--crm-bg-sunken)] rounded-md transition text-xs font-mono space-y-3 flex flex-col justify-between group hover:border-teal-600/50 shadow-sm"
                             >
                               <div className="space-y-1">
                                 <div className="flex justify-between items-start gap-2">
-                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${
-                                    task.priority === 'HIGH' ? 'bg-rose-600 text-white border border-rose-700' :
-                                    task.priority === 'MEDIUM' ? 'bg-amber-500 text-white border border-amber-600' :
-                                    'bg-slate-700 text-white border border-slate-600'
-                                  }`}>
+                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${task.priority === 'HIGH' ? 'bg-rose-600 text-white border border-rose-700' :
+                                      task.priority === 'MEDIUM' ? 'bg-amber-500 text-white border border-amber-600' :
+                                        'bg-slate-700 text-white border border-slate-600'
+                                    }`}>
                                     {task.priority}
                                   </span>
                                   <span className="text-[8px] text-[var(--crm-ink-faint)] font-light">
@@ -860,7 +855,7 @@ export default function SalesExecutiveDashboard() {
                                   </span>
                                 </div>
 
-                                <div 
+                                <div
                                   onClick={() => handleTaskClick(task)}
                                   className="cursor-pointer group/taskitem pt-1"
                                   title={resolvedLead ? `Click to open lead (${resolvedLead.code})` : 'Click to open associated lead'}
@@ -938,7 +933,7 @@ export default function SalesExecutiveDashboard() {
                       { label: 'Total Revenue', val: currency(achievedVal), color: 'text-cyan-400 bg-cyan-950/20', icon: FiTrendingUp },
                       { label: 'Completed Tasks', val: completedTasksCount, color: 'text-teal-400 bg-teal-950/20', icon: FiCheckSquare }
                     ].map((kpi, idx) => (
-                      <motion.div 
+                      <motion.div
                         key={idx}
                         whileHover={{ y: -3 }}
                         className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all"
@@ -962,9 +957,9 @@ export default function SalesExecutiveDashboard() {
                       <span>Monthly Performance Target</span>
                       <FiTrendingUp className="text-teal-500" size={14} />
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center mt-5">
-                      
+
                       {/* Circular Gauge */}
                       <div className="md:col-span-4 flex flex-col items-center justify-center py-2">
                         <div className="relative w-28 h-28 flex items-center justify-center">
@@ -1157,11 +1152,10 @@ export default function SalesExecutiveDashboard() {
                                   </span>
                                 )}
                               </div>
-                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${
-                                rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' :
-                                rec.leadPriority === 'WARM' ? 'bg-amber-950/60 text-amber-400 border-amber-800/60' :
-                                'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
-                              }`}>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' :
+                                  rec.leadPriority === 'WARM' ? 'bg-amber-950/60 text-amber-400 border-amber-800/60' :
+                                    'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
+                                }`}>
                                 {rec.leadPriority || 'WARM'}
                               </span>
                             </div>
@@ -1196,7 +1190,7 @@ export default function SalesExecutiveDashboard() {
                                 controlsList="nodownload"
                                 preload="metadata"
                                 className="w-full h-7 rounded accent-teal-500"
-                                src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
+                                src={`${API_URL}/leads/call-recordings/${rec._id}/stream${localStorage.getItem('token') ? `?token=${encodeURIComponent(localStorage.getItem('token'))}` : ''}`}
                               />
                               <div className="flex justify-between text-[8px] text-[var(--crm-ink-faint)] pt-1">
                                 <span>📅 {new Date(rec.createdAt).toLocaleDateString()}</span>
@@ -1254,7 +1248,7 @@ export default function SalesExecutiveDashboard() {
                                 </div>
                               ) : (
                                 stageDeals.map((deal) => (
-                                  <motion.div 
+                                  <motion.div
                                     key={deal._id}
                                     whileHover={{ scale: 1.01 }}
                                     onClick={() => toast.success(`Lead Code: ${deal.leadCode}\nValue: ${currency(deal.leadValue)}`)}
@@ -1264,9 +1258,8 @@ export default function SalesExecutiveDashboard() {
                                       <h5 className="text-[9px] font-bold text-[var(--crm-heading)] leading-tight truncate max-w-[85%]">
                                         {deal.customerName}
                                       </h5>
-                                      <span className={`text-[6px] font-bold font-mono px-1 rounded-sm uppercase ${
-                                        deal.priority === 'HOT' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/50' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)]'
-                                      }`}>
+                                      <span className={`text-[6px] font-bold font-mono px-1 rounded-sm uppercase ${deal.priority === 'HOT' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/50' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)]'
+                                        }`}>
                                         {deal.priority}
                                       </span>
                                     </div>
@@ -1395,7 +1388,7 @@ export default function SalesExecutiveDashboard() {
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                       </span>
                     </h3>
-                    
+
                     <div className="mt-4 space-y-3.5 text-xs font-mono">
                       <div>
                         <label className="block text-[8px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">My Current Status</label>
@@ -1527,7 +1520,7 @@ export default function SalesExecutiveDashboard() {
                       <span>Sales Team Chat Hub</span>
                       <span className="text-[8px] font-mono text-emerald-400 animate-pulse">Live Connection</span>
                     </h3>
-                    
+
                     {/* Chat Message List */}
                     <div className="flex-1 overflow-y-auto my-3 pr-1 space-y-2 custom-scrollbar text-[11px] font-sans">
                       {chatMessages.length === 0 ? (
@@ -1540,13 +1533,12 @@ export default function SalesExecutiveDashboard() {
                           const isFounder = msg.senderRole === 'ADMIN';
                           return (
                             <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                              <div className={`max-w-[85%] rounded-lg p-2.5 ${
-                                isMe 
-                                  ? 'bg-teal-600 text-white' 
-                                  : isFounder 
-                                    ? 'bg-blue-950/60 border border-blue-900/40 text-[var(--crm-ink-soft)]' 
+                              <div className={`max-w-[85%] rounded-lg p-2.5 ${isMe
+                                  ? 'bg-teal-600 text-white'
+                                  : isFounder
+                                    ? 'bg-blue-950/60 border border-blue-900/40 text-[var(--crm-ink-soft)]'
                                     : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)]'
-                              }`}>
+                                }`}>
                                 <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
                                   <span>{msg.senderName} ({msg.senderRole})</span>
                                 </div>
@@ -1596,8 +1588,8 @@ export default function SalesExecutiveDashboard() {
                         placeholder="Type a message to Sales team..."
                         className="flex-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3 py-2 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
                       />
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         disabled={sendingChat || !chatInput.trim()}
                         className="bg-teal-600 hover:bg-teal-700 text-white p-2 rounded transition disabled:opacity-50 flex items-center justify-center cursor-pointer"
                       >
@@ -1619,10 +1611,10 @@ export default function SalesExecutiveDashboard() {
             {/* TAB 2: LEADERS & GAMIFICATION */}
             {activeTab === 'leaderboard' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
+
                 {/* Left/Middle Column (Rank Card, Leaderboard Table, Department Chart) */}
                 <div className="lg:col-span-8 space-y-6">
-                  
+
 
 
                   {/* Leaderboard Tabs & Table */}
@@ -1631,7 +1623,7 @@ export default function SalesExecutiveDashboard() {
                       <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold flex items-center gap-1.5">
                         <FiUsers size={13} className="text-teal-500" /> Sales Leaderboard
                       </h3>
-                      
+
                       {/* Sub Tabs Selector */}
                       <div className="flex border border-[var(--crm-line)] p-1 bg-[var(--crm-bg-sunken)] rounded font-mono text-[9px]">
                         {[
@@ -1642,11 +1634,10 @@ export default function SalesExecutiveDashboard() {
                           <button
                             key={subTab.id}
                             onClick={() => handleLbTabChange(subTab.id)}
-                            className={`px-3 py-1 uppercase rounded font-bold tracking-wider transition cursor-pointer ${
-                              leaderboardTab === subTab.id 
-                                ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] shadow-sm border border-[var(--crm-line)]/50' 
+                            className={`px-3 py-1 uppercase rounded font-bold tracking-wider transition cursor-pointer ${leaderboardTab === subTab.id
+                                ? 'bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] shadow-sm border border-[var(--crm-line)]/50'
                                 : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
-                            }`}
+                              }`}
                           >
                             {subTab.label}
                           </button>
@@ -1684,11 +1675,10 @@ export default function SalesExecutiveDashboard() {
                             leaderboardData.map((row, idx) => {
                               const isCurrentUser = row.employeeId === user._id;
                               return (
-                                <tr 
-                                  key={row.employeeId} 
-                                  className={`transition-colors ${
-                                    isCurrentUser ? 'bg-teal-950/20 hover:bg-teal-950/30 border-y border-teal-900/40' : 'hover:bg-[var(--crm-bg-sunken)]/40'
-                                  }`}
+                                <tr
+                                  key={row.employeeId}
+                                  className={`transition-colors ${isCurrentUser ? 'bg-teal-950/20 hover:bg-teal-950/30 border-y border-teal-900/40' : 'hover:bg-[var(--crm-bg-sunken)]/40'
+                                    }`}
                                 >
                                   <td className="py-3 px-4 font-mono text-[var(--crm-ink-faint)]">
                                     {idx + 1 === 1 ? '🥇' : idx + 1 === 2 ? '🥈' : idx + 1 === 3 ? '🥉' : `#${idx + 1}`}
@@ -1705,11 +1695,10 @@ export default function SalesExecutiveDashboard() {
                                   <td className="py-3 px-4 font-mono text-amber-500 font-medium">{currency(row.revenue)}</td>
                                   <td className="py-3 px-4 font-mono">
                                     {row.targetValue > 0 ? (
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold font-sans ${
-                                        row.isTargetAchieved 
-                                          ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' 
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold font-sans ${row.isTargetAchieved
+                                          ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30'
                                           : 'bg-rose-950/40 text-rose-400 border border-rose-900/30'
-                                      }`}>
+                                        }`}>
                                         {row.isTargetAchieved ? 'Target Achieved 🎉' : `Short (Target: ${currency(row.targetValue)})`}
                                       </span>
                                     ) : (
@@ -1739,8 +1728,8 @@ export default function SalesExecutiveDashboard() {
                         <BarChart data={departmentRankings} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
-                          <YAxis stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} tickFormatter={(v) => `₹${v/100000}L`} />
-                          <Tooltip 
+                          <YAxis stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} tickFormatter={(v) => `₹${v / 100000}L`} />
+                          <Tooltip
                             contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
                             formatter={(v) => currency(v)}
                           />
@@ -1770,11 +1759,10 @@ export default function SalesExecutiveDashboard() {
                         { title: 'Most Calls in a Day', desc: 'Logged 40+ client phone consultations', icon: FiPhone, unlocked: false, color: 'text-[var(--crm-ink-faint)] bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]' },
                         { title: 'Quotation Master', desc: 'Sent 15 quotation packets this month', icon: FiFileText, unlocked: true, color: 'text-sky-400 bg-sky-950/40 border-sky-900/30' }
                       ].map((badge, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`flex items-start gap-4 p-3 border rounded-md transition duration-150 ${
-                            badge.unlocked ? 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)]' : 'bg-[var(--crm-bg-sunken)]/50 border-[var(--crm-line)]/50 opacity-60'
-                          }`}
+                        <div
+                          key={idx}
+                          className={`flex items-start gap-4 p-3 border rounded-md transition duration-150 ${badge.unlocked ? 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)]' : 'bg-[var(--crm-bg-sunken)]/50 border-[var(--crm-line)]/50 opacity-60'
+                            }`}
                         >
                           <div className={`p-2.5 rounded-lg border shrink-0 ${badge.color}`}>
                             <badge.icon size={16} />
@@ -1784,9 +1772,8 @@ export default function SalesExecutiveDashboard() {
                               {badge.title}
                             </h4>
                             <p className="text-[10px] text-[var(--crm-ink-faint)] mt-0.5 leading-snug">{badge.desc}</p>
-                            <span className={`text-[7px] font-mono font-bold block mt-1.5 uppercase ${
-                              badge.unlocked ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'
-                            }`}>
+                            <span className={`text-[7px] font-mono font-bold block mt-1.5 uppercase ${badge.unlocked ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'
+                              }`}>
                               {badge.unlocked ? '✓ Unlocked' : '🔒 Locked'}
                             </span>
                           </div>
@@ -1816,7 +1803,7 @@ export default function SalesExecutiveDashboard() {
                   <h4 className="text-xs uppercase tracking-wider text-[var(--crm-heading)] font-mono font-bold mb-4 flex items-center gap-2">
                     <FiPaperclip size={14} className="text-teal-400" /> Share / Upload New Excel File
                   </h4>
-                  
+
                   <form onSubmit={handleUploadFileSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end text-xs">
                     <div>
                       <label className="block text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-mono font-bold mb-1.5">
@@ -2038,7 +2025,17 @@ export default function SalesExecutiveDashboard() {
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
         leads={deals}
-        onSuccess={() => loadDashboardData()}
+        onSuccess={async (recording) => {
+          try {
+            if (recording?.leadId) {
+              const lId = typeof recording.leadId === 'object' ? recording.leadId._id : recording.leadId;
+              await leadsApi.updateStage(lId, { newStage: 'REQUIREMENT_CAPTURED' });
+            }
+            await loadDashboardData();
+          } catch (error) {
+            toast.error(error.response?.data?.message || 'Recording saved, but the lead stage could not be updated.');
+          }
+        }}
       />
 
       {/* LOI UPLOAD MODAL */}

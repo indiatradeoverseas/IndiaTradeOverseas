@@ -38,10 +38,135 @@ function generateOrderId() {
     .toUpperCase()}`;
 }
 
+function pricingSnapshot(pricing = {}) {
+  return {
+    unitRate:
+      Number(pricing.unitRate || 0),
+
+    transportRate:
+      Number(
+        pricing.transportRate || 0
+      ),
+
+    materialAmount:
+      Number(
+        pricing.materialAmount || 0
+      ),
+
+    transportAmount:
+      Number(
+        pricing.transportAmount || 0
+      ),
+
+    subtotal:
+      Number(pricing.subtotal || 0),
+
+    gstRate:
+      Number(pricing.gstRate || 0),
+
+    gstAmount:
+      Number(pricing.gstAmount || 0),
+
+    grandTotal:
+      Number(
+        pricing.grandTotal || 0
+      ),
+  };
+}
+
+function moneyDiffers(
+  left,
+  right
+) {
+  return (
+    Math.abs(
+      Number(left || 0) -
+        Number(right || 0)
+    ) > 0.009
+  );
+}
+
+function hasPricingChanged(
+  storedPricing,
+  currentPricing
+) {
+  const stored =
+    pricingSnapshot(storedPricing);
+
+  const current =
+    pricingSnapshot(currentPricing);
+
+  return (
+    moneyDiffers(
+      stored.unitRate,
+      current.unitRate
+    ) ||
+    moneyDiffers(
+      stored.transportRate,
+      current.transportRate
+    ) ||
+    moneyDiffers(
+      stored.materialAmount,
+      current.materialAmount
+    ) ||
+    moneyDiffers(
+      stored.transportAmount,
+      current.transportAmount
+    ) ||
+    moneyDiffers(
+      stored.subtotal,
+      current.subtotal
+    ) ||
+    moneyDiffers(
+      stored.gstRate,
+      current.gstRate
+    ) ||
+    moneyDiffers(
+      stored.gstAmount,
+      current.gstAmount
+    ) ||
+    moneyDiffers(
+      stored.grandTotal,
+      current.grandTotal
+    )
+  );
+}
+
+function isValidationError(error) {
+  const message = String(
+    error?.message || ""
+  ).toLowerCase();
+
+  return (
+    message.includes(
+      "valid mobile"
+    ) ||
+    message.includes(
+      "required"
+    ) ||
+    message.includes(
+      "requires"
+    ) ||
+    message.includes(
+      "rate"
+    ) ||
+    message.includes(
+      "select domestic"
+    ) ||
+    message.includes(
+      "configured"
+    )
+  );
+}
+
 /**
  * Register Onion visitor + calculate pricing.
  *
  * NO OTP.
+ *
+ * Each new website requirement creates a
+ * separate visitor record so previous
+ * requirements/orders are not overwritten.
  */
 const createOnionVisitor = async (
   req,
@@ -98,8 +223,11 @@ const createOnionVisitor = async (
       });
 
     const cleanRequirement = {
-      product: "RED_ONION",
-      crop: "NEW_CROP",
+      product:
+        "RED_ONION",
+
+      crop:
+        "NEW_CROP",
 
       tradeType:
         pricing.tradeType,
@@ -123,81 +251,46 @@ const createOnionVisitor = async (
         pricing.destination,
     };
 
-    const emailAddress =
-      email.trim().toLowerCase();
+    const visitor =
+      await OnionVisitor.create({
+        visitorId:
+          OnionVisitor.generateVisitorId(),
 
-    let visitor =
-      await OnionVisitor.findOne({
-        email: emailAddress,
-        division: "ONION",
+        division:
+          "ONION",
+
+        fullName:
+          fullName.trim(),
+
+        email:
+          email
+            .trim()
+            .toLowerCase(),
+
+        phone,
+
+        city:
+          city.trim(),
+
+        state:
+          state.trim(),
+
+        timeline,
+
+        requirement:
+          cleanRequirement,
+
+        pricing:
+          pricingSnapshot(
+            pricing
+          ),
+
+        status:
+          "PRICING_VIEWED",
+
+        source:
+          "WEBSITE_REQUEST_BULK_QUOTE",
       });
-
-    const data = {
-      fullName: fullName.trim(),
-
-      email: emailAddress,
-
-      phone,
-
-      city: city.trim(),
-
-      state: state.trim(),
-
-      timeline,
-
-      requirement:
-        cleanRequirement,
-
-      pricing: {
-        unitRate:
-          pricing.unitRate,
-
-        transportRate:
-          pricing.transportRate,
-
-        materialAmount:
-          pricing.materialAmount,
-
-        transportAmount:
-          pricing.transportAmount,
-
-        subtotal:
-          pricing.subtotal,
-
-        gstRate:
-          pricing.gstRate,
-
-        gstAmount:
-          pricing.gstAmount,
-
-        grandTotal:
-          pricing.grandTotal,
-      },
-
-      status: "PRICING_VIEWED",
-
-      source:
-        "WEBSITE_REQUEST_BULK_QUOTE",
-    };
-
-    if (visitor) {
-      Object.assign(
-        visitor,
-        data
-      );
-
-      await visitor.save();
-    } else {
-      visitor =
-        await OnionVisitor.create({
-          visitorId:
-            OnionVisitor.generateVisitorId(),
-
-          division: "ONION",
-
-          ...data,
-        });
-    }
 
     return ok(
       res,
@@ -205,7 +298,10 @@ const createOnionVisitor = async (
         visitorId:
           visitor.visitorId,
 
-        pricing,
+        pricing:
+          pricingSnapshot(
+            pricing
+          ),
       },
       "Onion visitor registered. Proceed to pricing.",
       201,
@@ -213,18 +309,7 @@ const createOnionVisitor = async (
     );
   } catch (error) {
     if (
-      error.message?.includes(
-        "valid mobile"
-      ) ||
-      error.message?.includes(
-        "required"
-      ) ||
-      error.message?.includes(
-        "rate"
-      ) ||
-      error.message?.includes(
-        "Select Domestic"
-      )
+      isValidationError(error)
     ) {
       return fail(
         res,
@@ -264,7 +349,9 @@ const getOnionVisitor = async (
 
     return ok(
       res,
-      { visitor },
+      {
+        visitor,
+      },
       "Onion visitor retrieved.",
       200,
       req
@@ -276,6 +363,22 @@ const getOnionVisitor = async (
 
 /**
  * Create Razorpay order.
+ *
+ * IMPORTANT:
+ * Onion is market-price sensitive.
+ *
+ * Before creating Razorpay order,
+ * pricing is recalculated from the
+ * current backend rate configuration.
+ *
+ * If the current price differs from
+ * the price previously shown to the
+ * buyer, the latest pricing is saved
+ * and returned for buyer review.
+ *
+ * Razorpay is NOT created until the
+ * buyer retries after reviewing the
+ * revised amount.
  */
 const createRazorpayOrder =
   async (req, res, next) => {
@@ -296,7 +399,83 @@ const createRazorpayOrder =
       }
 
       if (
-        !visitor.pricing?.grandTotal
+        visitor.paymentStatus ===
+          "COMPLETED" ||
+        visitor.status ===
+          "ORDER_CREATED"
+      ) {
+        return fail(
+          res,
+          409,
+          "ORDER_ALREADY_PAID",
+          "This Onion order has already been paid."
+        );
+      }
+
+      /*
+       * Recalculate against CURRENT
+       * onionPricing.js rates.
+       */
+      const currentPricing =
+        calculateOnionPricing({
+          ...(
+            visitor.requirement
+              ?.toObject?.() ||
+            visitor.requirement ||
+            {}
+          ),
+
+          timeline:
+            visitor.timeline,
+        });
+
+      const latestPricing =
+        pricingSnapshot(
+          currentPricing
+        );
+
+      const priceChanged =
+        hasPricingChanged(
+          visitor.pricing,
+          latestPricing
+        );
+
+      if (priceChanged) {
+        visitor.pricing =
+          latestPricing;
+
+        visitor.status =
+          "PRICING_VIEWED";
+
+        visitor.paymentOrderId =
+          undefined;
+
+        visitor.paymentStatus =
+          "PRICE_UPDATED";
+
+        await visitor.save();
+
+        return ok(
+          res,
+          {
+            priceChanged:
+              true,
+
+            visitorId:
+              visitor.visitorId,
+
+            pricing:
+              latestPricing,
+          },
+          "Onion market price has changed. Please review the updated payable amount before continuing.",
+          200,
+          req
+        );
+      }
+
+      if (
+        !latestPricing.grandTotal ||
+        latestPricing.grandTotal <= 0
       ) {
         return fail(
           res,
@@ -310,9 +489,13 @@ const createRazorpayOrder =
         process.env.RAZORPAY_KEY_ID;
 
       const keySecret =
-        process.env.RAZORPAY_KEY_SECRET;
+        process.env
+          .RAZORPAY_KEY_SECRET;
 
-      if (!keyId || !keySecret) {
+      if (
+        !keyId ||
+        !keySecret
+      ) {
         return fail(
           res,
           500,
@@ -321,59 +504,84 @@ const createRazorpayOrder =
         );
       }
 
-      const amount = Math.round(
-        visitor.pricing.grandTotal *
-          100
-      );
+      const amount =
+        Math.round(
+          latestPricing
+            .grandTotal *
+            100
+        );
 
       const razorpayResponse =
         await fetch(
           "https://api.razorpay.com/v1/orders",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
-              Authorization: `Basic ${Buffer.from(
-                `${keyId}:${keySecret}`
-              ).toString("base64")}`,
+              Authorization:
+                `Basic ${Buffer.from(
+                  `${keyId}:${keySecret}`
+                ).toString(
+                  "base64"
+                )}`,
 
               "Content-Type":
                 "application/json",
             },
 
-            body: JSON.stringify({
-              amount,
+            body:
+              JSON.stringify({
+                amount,
 
-              currency: "INR",
+                currency:
+                  "INR",
 
-              receipt: `onion_${visitor.visitorId}_${Date.now()}`,
+                receipt:
+                  `onion_${visitor.visitorId}_${Date.now()}`,
 
-              notes: {
-                visitorId:
-                  visitor.visitorId,
+                notes: {
+                  visitorId:
+                    visitor.visitorId,
 
-                product:
-                  "Red Onion",
+                  product:
+                    "Red Onion",
 
-                destination:
-                  visitor.requirement
-                    ?.destination,
-              },
-            }),
+                  destination:
+                    visitor
+                      .requirement
+                      ?.destination,
+                },
+              }),
           }
         );
 
-      if (!razorpayResponse.ok) {
+      if (
+        !razorpayResponse.ok
+      ) {
+        const gatewayMessage =
+          await razorpayResponse
+            .text();
+
         return fail(
           res,
           razorpayResponse.status,
           "PAYMENT_GATEWAY_ERROR",
-          `Razorpay Order Error: ${await razorpayResponse.text()}`
+          `Razorpay Order Error: ${gatewayMessage}`
         );
       }
 
       const order =
-        await razorpayResponse.json();
+        await razorpayResponse
+          .json();
+
+      /*
+       * Keep DB pricing exactly aligned
+       * with the amount used for this
+       * Razorpay order.
+       */
+      visitor.pricing =
+        latestPricing;
 
       visitor.paymentOrderId =
         order.id;
@@ -389,6 +597,9 @@ const createRazorpayOrder =
       return ok(
         res,
         {
+          priceChanged:
+            false,
+
           orderId:
             order.id,
 
@@ -399,12 +610,28 @@ const createRazorpayOrder =
             order.currency,
 
           keyId,
+
+          pricing:
+            latestPricing,
         },
         "Razorpay order created successfully.",
         201,
         req
       );
     } catch (error) {
+      if (
+        isValidationError(
+          error
+        )
+      ) {
+        return fail(
+          res,
+          400,
+          "VALIDATION_ERROR",
+          error.message
+        );
+      }
+
       next(error);
     }
   };
@@ -465,7 +692,8 @@ const verifyPayment = async (
     }
 
     const secret =
-      process.env.RAZORPAY_KEY_SECRET;
+      process.env
+        .RAZORPAY_KEY_SECRET;
 
     if (!secret) {
       return fail(
@@ -485,7 +713,9 @@ const verifyPayment = async (
         .update(
           `${razorpay_order_id}|${razorpay_payment_id}`
         )
-        .digest("hex");
+        .digest(
+          "hex"
+        );
 
     if (
       generatedSignature !==
@@ -509,7 +739,8 @@ const verifyPayment = async (
       "COMPLETED";
 
     visitor.paymentAmount =
-      visitor.pricing.grandTotal;
+      visitor.pricing
+        .grandTotal;
 
     visitor.paymentCompletedAt =
       new Date();
@@ -518,6 +749,7 @@ const verifyPayment = async (
       "ORDER_CREATED";
 
     visitor.orderId =
+      visitor.orderId ||
       generateOrderId();
 
     await visitor.save();
@@ -536,6 +768,11 @@ const verifyPayment = async (
 
         amount:
           visitor.paymentAmount,
+
+        pricing:
+          pricingSnapshot(
+            visitor.pricing
+          ),
       },
       "Payment verified and Onion order created successfully.",
       200,
@@ -555,24 +792,33 @@ const listOnionVisitors = async (
   next
 ) => {
   try {
-    const limit = Math.min(
-      Number(req.query.limit) || 500,
-      1000
-    );
+    const limit =
+      Math.min(
+        Number(
+          req.query.limit
+        ) || 500,
+        1000
+      );
 
     const visitors =
       await OnionVisitor.find({
-        division: "ONION",
+        division:
+          "ONION",
       })
         .sort({
-          createdAt: -1,
+          createdAt:
+            -1,
         })
-        .limit(limit)
+        .limit(
+          limit
+        )
         .lean();
 
     return ok(
       res,
-      { visitors },
+      {
+        visitors,
+      },
       "Onion visitors retrieved.",
       200,
       req

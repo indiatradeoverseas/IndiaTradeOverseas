@@ -94,6 +94,15 @@ const SIZE_OPTIONS = [
   },
 ];
 
+const DOMESTIC_SIZE_OPTIONS = SIZE_OPTIONS.filter(
+  (option) =>
+    ["40mm+", "45mm+", "50mm+"].includes(
+      option.value
+    )
+);
+
+const EXPORT_SIZE_OPTIONS = SIZE_OPTIONS;
+
 const GRADE_OPTIONS = [
   {
     value: "COMMERCIAL",
@@ -293,6 +302,18 @@ export default function OnionRequirementBuilder({
     return [];
   }, [requirement.tradeType]);
 
+  const sizeOptions = useMemo(() => {
+    if (requirement.tradeType === "DOMESTIC") {
+      return DOMESTIC_SIZE_OPTIONS;
+    }
+
+    if (requirement.tradeType === "EXPORT") {
+      return EXPORT_SIZE_OPTIONS;
+    }
+
+    return [];
+  }, [requirement.tradeType]);
+
   const updateRequirement = (field, value) => {
     setRequirement((previous) => ({
       ...previous,
@@ -304,6 +325,7 @@ export default function OnionRequirementBuilder({
     setRequirement((previous) => ({
       ...previous,
       tradeType: value,
+      size: "",
       destination: "",
     }));
 
@@ -480,8 +502,16 @@ export default function OnionRequirementBuilder({
         );
 
       case "size":
+        if (!requirement.tradeType) {
+          return (
+            <div className="ito-onion-builder-empty">
+              Please select Domestic India or International Export first.
+            </div>
+          );
+        }
+
         return renderOptionCards(
-          SIZE_OPTIONS,
+          sizeOptions,
           "size",
           (value) => updateRequirement("size", value)
         );
@@ -1240,8 +1270,8 @@ export default function OnionRequirementBuilder({
 
               <div className="ito-onion-builder-footer">
                 <div className="ito-onion-builder-footer-note">
-                  No OTP is required. Your requirement will be validated
-                  before pricing is generated.
+                  No OTP is required. Pricing is calculated by the backend
+                  and rechecked again before payment.
                 </div>
 
                 <div className="ito-onion-builder-actions">
@@ -1260,7 +1290,7 @@ export default function OnionRequirementBuilder({
                     onClick={goNext}
                   >
                     {currentStep === STEPS.length - 1
-                      ? "Continue"
+                      ? "Continue to Buyer Details"
                       : "Continue"}
                   </button>
                 </div>

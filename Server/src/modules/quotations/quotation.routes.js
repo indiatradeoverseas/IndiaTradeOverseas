@@ -47,18 +47,23 @@ function isManagementUser(user) {
 
   return (
     role === 'ADMIN' ||
-    role === 'FOUNDER' ||
     role === 'SUPER_ADMIN' ||
+    role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'CEO' ||
     role === 'MANAGER' ||
     role === 'SALES_MANAGER' ||
     role === 'TRANSPORT_MANAGER' ||
     role.endsWith('_MANAGER') ||
     role.includes('MANAGER') ||
     role.includes('FOUNDER') ||
+    role.includes('CEO') ||
+    role.includes('ADMIN') ||
     department === 'ADMIN' ||
     department === 'MANAGEMENT' ||
     position.includes('ADMIN') ||
     position.includes('FOUNDER') ||
+    position.includes('CEO') ||
     position.includes('MANAGER')
   );
 }
@@ -76,13 +81,18 @@ function isCommercialQuotationUser(user) {
 
   if (
     isManagementUser(user) ||
-    hasQuotationPermission(user)
+    hasQuotationPermission(user) ||
+    user?.isTrial === true ||
+    user?.modelName === 'SalesTrialUser'
   ) {
     return true;
   }
 
   if (
     role === 'SALES' ||
+    role === 'SALES_EXECUTIVE' ||
+    role === 'SALES_TRIAL' ||
+    role.includes('SALES') ||
     role === 'TRANSPORT' ||
     role === 'LOGISTICS'
   ) {
@@ -91,6 +101,7 @@ function isCommercialQuotationUser(user) {
 
   return [
     'SALES',
+    'SALES_TRIAL',
     'CRM',
     'STONE',
     'COAL',
@@ -125,7 +136,7 @@ function requireCommercialQuotationAccess(
 }
 
 function requireQuotationManagementAccess(req,res,next) {
-  if(require('../marketing/campaignGovernance').isManagement(req.user)) return next();
+  if(isManagementUser(req.user) || require('../marketing/campaignGovernance').isManagement(req.user)) return next();
   return fail(res,403,'RBAC_FORBIDDEN','Management approval is required.');
 }
 

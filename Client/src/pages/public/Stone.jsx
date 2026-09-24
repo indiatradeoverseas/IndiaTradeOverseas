@@ -269,6 +269,107 @@ const BHUTAN_RATES = BHUTAN_RAW.map(([location, state, values]) => ({
   }, {})
 }));
 
+// ============================================================
+// DIRECT REQUIREMENT -> CHECKOUT HELPERS
+// ============================================================
+const STONE_MATERIAL_TO_RATE_KEY = {
+  DUST: 'dust',
+  '10MM_WHITE': 'white10',
+  '20MM_WHITE': 'white20',
+  '30_40_WHITE': 'white3040',
+  '30MM_WHITE': 'white30',
+  '40_60_WHITE': 'white4060',
+  '10MM_BLACK_KAMJI': 'black10',
+  '20MM_BLACK_KAMJI': 'black20',
+  '30MM_BLACK_KAMJI': 'black30',
+  '40_60_BLACK_KAMJI': 'black4060',
+  PAKUR_20MM: '20mm',
+  PAKUR_30MM: '30mm',
+  PAKUR_40MM: '40mm',
+  PAKUR_10MM: '10mm'
+};
+
+const STONE_QUANTITY_DEFAULT_MT = {
+  '1_TRUCK': 30,
+  '2_5_TRUCKS': 50,
+  '6_10_TRUCKS': 150,
+  '10_PLUS_TRUCKS': 300,
+  CUSTOM: 500
+};
+
+function resolveDirectStoneCheckout(requirement) {
+  const materialCode = requirement?.material || '';
+  const location =
+    requirement?.destination?.location ||
+    requirement?.dischargePort ||
+    '';
+
+  if (!materialCode || !location) {
+    throw new Error(
+      'Material or delivery location is missing from the Stone requirement.'
+    );
+  }
+
+  const isPakur = materialCode.startsWith('PAKUR_');
+  const rateKey = STONE_MATERIAL_TO_RATE_KEY[materialCode];
+
+  if (!rateKey) {
+    throw new Error('Selected Stone material is not mapped to an official rate.');
+  }
+
+  const sourceRates = isPakur ? PAKUR_RATES : BHUTAN_RATES;
+
+  const rateEntry = sourceRates.find(
+    (entry) =>
+      String(entry.location).trim().toLowerCase() ===
+      String(location).trim().toLowerCase()
+  );
+
+  if (!rateEntry) {
+    throw new Error(
+      `Official Stone rate is not available for ${location}. Please choose a supported rate-card location.`
+    );
+  }
+
+  const price = isPakur
+    ? rateEntry?.rates?.[rateKey]?.adv100
+    : rateEntry?.rates?.[rateKey];
+
+  if (price == null || !Number.isFinite(Number(price))) {
+    throw new Error(
+      'Official Stone rate is unavailable for the selected material and location.'
+    );
+  }
+
+  const gradeLabel = isPakur
+    ? PAKUR_SIZE_LABELS[rateKey]
+    : BHUTAN_TYPE_LABELS[rateKey];
+
+  const quantityCode = requirement?.quantity || '';
+  const defaultQuantityMt =
+    STONE_QUANTITY_DEFAULT_MT[quantityCode] || 500;
+
+  const lotId = `${isPakur ? 'PAKUR' : 'BHUTAN'}-${String(location)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')}-${String(rateKey).toUpperCase()}`;
+
+  return {
+    lot: {
+      id: lotId,
+      division: isPakur ? 'Pakur Stone' : 'Bhutan Stone',
+      region: rateEntry.state
+        ? `${rateEntry.location}, ${rateEntry.state}`
+        : rateEntry.location,
+      grade: isPakur
+        ? `${gradeLabel} (100% Advance)`
+        : gradeLabel,
+      price: Number(price),
+      paymentTerm: isPakur ? 'ADVANCE_100' : 'STANDARD'
+    },
+    defaultQuantityMt
+  };
+}
+
 export default function Stone() {
   useDocumentMeta({
     title: 'Bhutan & Pakur Stone Chips Supplier | B2B Bulk Sourcing | India Trade Overseas',
@@ -329,58 +430,167 @@ export default function Stone() {
   const handlePersonalDetailsSubmit = async (e) => {
     e.preventDefault();
     if (loadingQuickGate) return;
-    const { fullName, email, mobile, city, state, targetTimeline } = personalDetails;
-    if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim() || !targetTimeline) {
+
+    const {
+      fullName,
+      email,
+      mobile,
+      city,
+      state,
+      targetTimeline
+    } = personalDetails;
+
+    if (
+      !fullName?.trim() ||
+      !email?.trim() ||
+      !mobile?.trim() ||
+      !city?.trim() ||
+      !state?.trim() ||
+      !targetTimeline
+    ) {
       toast.dismiss();
-      toast.error('Please fill all required fields.', { id: 'stone_gate_toast' });
+      toast.error(
+        'Please fill all required fields.',
+        { id: 'stone_gate_toast' }
+      );
       return;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailRegex.test(email)) {
       toast.dismiss();
-      toast.error('Please enter a valid email address.', { id: 'stone_gate_toast' });
+      toast.error(
+        'Please enter a valid email address.',
+        { id: 'stone_gate_toast' }
+      );
       return;
     }
+
     const cleanMobile = mobile.replace(/[^0-9]/g, '');
+
     if (cleanMobile.length < 10) {
       toast.dismiss();
-      toast.error('Please enter a valid 10-digit mobile number.', { id: 'stone_gate_toast' });
+      toast.error(
+        'Please enter a valid 10-digit mobile number.',
+        { id: 'stone_gate_toast' }
+      );
+      return;
+    }
+
+    if (!builtRequirement) {
+      toast.dismiss();
+      toast.error(
+        'Stone requirement is missing. Please build your requirement again.',
+        { id: 'stone_gate_toast' }
+      );
+      return;
+    }
+
+    let checkout;
+
+    try {
+      checkout = resolveDirectStoneCheckout(builtRequirement);
+    } catch (pricingError) {
+      toast.dismiss();
+      toast.error(
+        pricingError.message ||
+          'Unable to calculate Stone pricing for this requirement.',
+        { id: 'stone_gate_toast' }
+      );
       return;
     }
 
     try {
       setLoadingQuickGate(true);
+
       const formData = new FormData();
-      formData.append('name', fullName);
-      formData.append('email', email);
+      formData.append('name', fullName.trim());
+      formData.append('email', email.trim());
       formData.append('mobile', cleanMobile);
-      formData.append('city', city);
-      formData.append('state', state);
+      formData.append('city', city.trim());
+      formData.append('state', state.trim());
       formData.append('targetTimeline', targetTimeline);
       formData.append('division', 'STONE');
       formData.append('registrationSource', 'QUICK_GATE');
 
       const res = await distributorApi.registerDistributor(formData);
-      if (res.success) {
-        const id = res.data?.distributorId || res.data?._id;
-        const token = res.data?.token;
-        setLinkedDistributorId(id || null);
-        if (id) localStorage.setItem('ito_stone_buyer_id', id);
-        if (token) localStorage.setItem('distributor_token', token);
-        setShowPersonalDetails(false);
-        setUserAccessLayer(5);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        toast.dismiss();
-        toast.success('Details saved! Product pricing unlocked.', { id: 'stone_gate_toast' });
+
+      if (!res?.success) {
+        throw new Error(
+          res?.message || 'Failed to save buyer details.'
+        );
       }
-    } catch (err) {
-      console.error('Quick gate registration failed:', err);
+
+      const id =
+        res.data?.distributorId ||
+        res.data?._id;
+
+      const token =
+        res.data?.token ||
+        res.data?.accessToken;
+
+      setLinkedDistributorId(id || null);
+
+      if (id) {
+        setDistributorId(id);
+        localStorage.setItem(
+          'ito_stone_buyer_id',
+          id
+        );
+      }
+
+      if (token) {
+        localStorage.setItem(
+          'distributor_token',
+          token
+        );
+      }
+
+      setShowPersonalDetails(false);
+      setUserAccessLayer(1);
+      localStorage.setItem(
+        ACTIVE_LAYER_KEY,
+        '1'
+      );
+
+      setActiveDrawerLot(
+        checkout.lot
+      );
+
+      setOrderQuantity(
+        String(
+          checkout.defaultQuantityMt
+        )
+      );
+
+      setPaymentMode('ONLINE');
+      setIsOrderDrawerOpen(true);
+
       toast.dismiss();
-      toast.error(err.response?.data?.message || 'Failed to save details. Please try again.', { id: 'stone_gate_toast' });
+      toast.success(
+        'Details saved! Total payable calculated with 5% GST.',
+        { id: 'stone_gate_toast' }
+      );
+    } catch (err) {
+      console.error(
+        'Quick gate registration failed:',
+        err
+      );
+
+      toast.dismiss();
+
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          'Failed to save details. Please try again.',
+        { id: 'stone_gate_toast' }
+      );
     } finally {
       setLoadingQuickGate(false);
     }
   };
+
   const [showSoftGate, setShowSoftGate] = useState(false);
   const [softGateLeadId, setSoftGateLeadId] = useState(null);
   const [linkedDistributorId, setLinkedDistributorId] = useState(null);
@@ -487,12 +697,8 @@ export default function Stone() {
             const status = res.data.approvalStatus;
 
             if (status === 'approved') {
-              const savedLayer =
-                localStorage.getItem(ACTIVE_LAYER_KEY);
-
-              setUserAccessLayer(
-                savedLayer === '5' ? 5 : 1
-              );
+              setUserAccessLayer(1);
+              localStorage.setItem(ACTIVE_LAYER_KEY, '1');
             } else if (status === 'pending') {
               setUserAccessLayer(4);
             } else {
@@ -671,22 +877,12 @@ export default function Stone() {
       source_page: '/stone'
     });
 
-    const savedId =
-      localStorage.getItem(
-        'ito_stone_buyer_id'
-      );
+    setShowRequirementBuilder(true);
 
-    const token =
-      localStorage.getItem(
-        'distributor_token'
-      );
-
-    if (!savedId || !token) {
-      setShowRequirementBuilder(true);
-      pushDataLayerEvent('view_product', { division: 'STONE' });
-    } else {
-      setUserAccessLayer(5);
-    }
+    pushDataLayerEvent(
+      'view_product',
+      { division: 'STONE' }
+    );
   };
 
 
@@ -2291,7 +2487,7 @@ export default function Stone() {
                 }
               />
 
-              <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+              <div className="fixed inset-0 flex items-end sm:items-stretch sm:justify-end">
                 <motion.div
                   initial={{
                     x: '100%'
@@ -2302,9 +2498,9 @@ export default function Stone() {
                   exit={{
                     x: '100%'
                   }}
-                  className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
+                  className="w-full sm:w-screen sm:max-w-md max-h-[94dvh] sm:max-h-none sm:h-full bg-white shadow-2xl flex flex-col justify-between rounded-t-2xl sm:rounded-none overflow-hidden"
                 >
-                  <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1">
+                  <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1 min-h-0">
                     <div className="flex items-center justify-between border-b pb-3.5">
                       <h2 className="text-base sm:text-xl font-serif text-[#37424B] uppercase">
                         Quotation Enquiry
@@ -2354,7 +2550,7 @@ export default function Stone() {
 
                       <input
                         type="number"
-                        min="40"
+                        min="1"
                         value={orderQuantity}
                         onChange={(e) =>
                           setOrderQuantity(
@@ -2365,18 +2561,18 @@ export default function Stone() {
                       />
 
                       <span className="text-[9px] text-slate-400 block">
-                        Minimum truckload allocation constraint: 40 MT.
+                        Quantity is prefilled from your requirement band. Confirm the exact MT before payment.
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0">
+                  <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0 max-h-[48dvh] sm:max-h-none overflow-y-auto sm:overflow-visible">
                     {/* Payment Mode Selector */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                         Select Payment Method:
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setPaymentMode('ONLINE')}
@@ -2409,15 +2605,15 @@ export default function Stone() {
 
                       return (
                         <div className="space-y-1.5 font-mono text-xs bg-white p-3 rounded-lg border border-slate-200">
-                          <div className="flex items-center justify-between text-slate-600">
+                          <div className="flex items-start justify-between gap-3 text-slate-600">
                             <span>Base Subtotal:</span>
                             <span>INR {subtotal.toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between text-blue-700 font-bold">
+                          <div className="flex items-start justify-between gap-3 text-blue-700 font-bold">
                             <span>GST (5%):</span>
                             <span>INR {gstAmount.toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
+                          <div className="flex items-start justify-between gap-3 text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
                             <span className="uppercase">Total Payable:</span>
                             <span>INR {totalAmount.toLocaleString()}</span>
                           </div>
@@ -2427,8 +2623,8 @@ export default function Stone() {
 
                     <OrderButton
                       action={async () => {
-                        if (!orderQuantity || Number(orderQuantity) < 40) {
-                          toast.error("Minimum constraint is 40 MT.");
+                        if (!orderQuantity || Number(orderQuantity) <= 0) {
+                          toast.error("Please enter a valid quantity in MT.");
                           throw new Error('validation');
                         }
 
@@ -2498,47 +2694,143 @@ export default function Stone() {
                           return;
                         }
 
-                        // 3. IF ONLINE PAYMENT: Trigger Razorpay FIRST, Generate PDF ONLY AFTER SUCCESSFUL PAYMENT!
+                        // 3. IF ONLINE PAYMENT:
+                        // Open Razorpay, verify the transaction on the backend,
+                        // and generate the invoice only after verification succeeds.
                         try {
+                          await loadRazorpayScript();
+
+                          if (!window.Razorpay) {
+                            throw new Error(
+                              'Razorpay checkout could not be loaded.'
+                            );
+                          }
+
                           const orderResult = await distributorApi.createRazorpayOrder({
                             amount: totalAmount,
                             lotId: activeDrawerLot.id,
                             quantity: Number(orderQuantity)
                           });
 
+                          if (!orderResult?.success) {
+                            throw new Error(
+                              orderResult?.message ||
+                                'Failed to initialize Razorpay.'
+                            );
+                          }
+
                           const { orderId, keyId } = orderResult?.data || {};
 
-                          if (!orderId || !window.Razorpay) {
-                            triggerSuccessPDF('', 'ONLINE');
-                            return;
+                          if (!orderId || !keyId) {
+                            throw new Error(
+                              'Payment gateway returned an invalid order response.'
+                            );
                           }
 
                           const options = {
-                            key: keyId || 'rzp_test_demo',
+                            key: keyId,
                             amount: totalAmount * 100,
                             currency: 'INR',
                             name: 'India Trade Overseas',
                             description: `Stone Sourcing Payment (${activeDrawerLot.grade})`,
                             order_id: orderId,
-                            handler: function (response) {
-                              triggerSuccessPDF(response.razorpay_payment_id, 'ONLINE');
-                            },
-                            modal: {
-                              ondismiss: function () {
-                                toast.error('Payment cancelled. PDF invoice was not generated.');
+
+                            handler: async function (response) {
+                              const verifyingToast =
+                                toast.loading('Verifying payment...');
+
+                              try {
+                                const verifyResult =
+                                  await distributorApi.verifyRazorpayPayment({
+                                    razorpay_order_id:
+                                      response.razorpay_order_id,
+                                    razorpay_payment_id:
+                                      response.razorpay_payment_id,
+                                    razorpay_signature:
+                                      response.razorpay_signature,
+                                    lotId:
+                                      activeDrawerLot.id,
+                                    quantity:
+                                      Number(orderQuantity),
+                                    amount:
+                                      totalAmount
+                                  });
+
+                                toast.dismiss(verifyingToast);
+
+                                if (!verifyResult?.success) {
+                                  throw new Error(
+                                    verifyResult?.message ||
+                                      'Payment verification failed.'
+                                  );
+                                }
+
+                                triggerSuccessPDF(
+                                  response.razorpay_payment_id,
+                                  'ONLINE'
+                                );
+
+                                pushDataLayerEvent(
+                                  'payment_success',
+                                  {
+                                    division: 'STONE',
+                                    transaction_id:
+                                      response.razorpay_payment_id,
+                                    value: totalAmount,
+                                    currency: 'INR',
+                                    lot_id: activeDrawerLot.id,
+                                    quantity: Number(orderQuantity)
+                                  }
+                                );
+                              } catch (verifyErr) {
+                                toast.dismiss(verifyingToast);
+
+                                console.error(
+                                  'Stone payment verification failed:',
+                                  verifyErr
+                                );
+
+                                toast.error(
+                                  verifyErr.response?.data?.message ||
+                                    verifyErr.message ||
+                                    'Payment verification failed.'
+                                );
                               }
                             },
+
+                            modal: {
+                              ondismiss: function () {
+                                toast.error(
+                                  'Payment cancelled. Invoice was not generated.'
+                                );
+                              }
+                            },
+
                             prefill: {
                               name: personalDetails.fullName || '',
                               email: personalDetails.email || ''
                             },
-                            theme: { color: '#37424B' }
+
+                            theme: {
+                              color: '#37424B'
+                            }
                           };
-                          const rzp = new window.Razorpay(options);
+
+                          const rzp =
+                            new window.Razorpay(options);
+
                           rzp.open();
                         } catch (payErr) {
-                          console.warn('Razorpay popup bypass / fallback:', payErr);
-                          triggerSuccessPDF('', 'ONLINE');
+                          console.error(
+                            'Stone Razorpay checkout failed:',
+                            payErr
+                          );
+
+                          toast.error(
+                            payErr.response?.data?.message ||
+                              payErr.message ||
+                              'Unable to start payment.'
+                          );
                         }
                       }}
                       onDone={() => setIsOrderDrawerOpen(false)}
@@ -2559,16 +2851,16 @@ export default function Stone() {
 {/* Requirement Builder Modal */}
       <AnimatePresence>
         {showRequirementBuilder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowRequirementBuilder(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Build Your Stone Requirement
                 </h3>
                 <button onClick={() => setShowRequirementBuilder(false)}
@@ -2577,7 +2869,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <StoneRequirementBuilder onComplete={handleRequirementComplete} />
               </div>
             </motion.div>
@@ -2588,16 +2880,16 @@ export default function Stone() {
       {/* Personal Details Modal */}
       <AnimatePresence>
         {showPersonalDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowPersonalDetails(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Enter Your Details
                 </h3>
                 <button onClick={() => setShowPersonalDetails(false)}
@@ -2606,7 +2898,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <form onSubmit={handlePersonalDetailsSubmit} className="p-6 space-y-4">
+              <form onSubmit={handlePersonalDetailsSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                   <input
@@ -2641,7 +2933,7 @@ export default function Stone() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
                     <input
@@ -2684,7 +2976,7 @@ export default function Stone() {
                   className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
                   style={{ backgroundColor: STONE_GATE_THEME.accent, color: STONE_GATE_THEME.accentText }}
                 >
-                  <span>Continue to Product Page</span>
+                  <span>View Total Payable</span>
                   <FiArrowRight size={14} />
                 </button>
               </form>
@@ -2696,16 +2988,16 @@ export default function Stone() {
       {/* OTP Verification Modal */}
       <AnimatePresence>
         {showOtp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowOtp(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Verify OTP
                 </h3>
                 <button onClick={() => setShowOtp(false)}
@@ -2714,7 +3006,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <form onSubmit={handleOtpVerify} className="p-6 space-y-4">
+              <form onSubmit={handleOtpVerify} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
                 <p className="text-sm text-gray-600">
                   A 6‑digit code was sent to <strong>{personalDetails.email}</strong>.
                 </p>

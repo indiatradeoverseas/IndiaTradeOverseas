@@ -1,4 +1,3 @@
-import LeadCommercialPanel from '../../components/crm/LeadCommercialPanel';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,19 +70,23 @@ export default function LeadDetail() {
 
   const departments = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT', 'ADMIN', 'IT', 'PROCUREMENT', 'ACCOUNTS', 'HR', 'SALES'];
 
-  const activeStages = [
-    'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED',
-    'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING',
-    'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING'
-  ];
+  const getPipelineStages = (stg, qStatus) => {
+    const list = ['LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED'];
+    if (stg === 'QUOTATION_PENDING_APPROVAL' || qStatus === 'PENDING') {
+      list.push('QUOTATION_PENDING_APPROVAL');
+    }
+    list.push('QUOTATION_APPROVED', 'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'PAYMENT_PENDING');
+    return list;
+  };
 
   const allowedTransitions = {
     NEW_LEAD: ['ASSIGNED', 'LEAD_QUALIFICATION', 'CLOSED_LOST', 'CONTACTED', 'DEAL_LOST'],
-    ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
-    CONTACTED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'FOLLOW_UP', 'DEAL_LOST'],
-    LEAD_QUALIFICATION: ['FOLLOW_UP', 'CLOSED_LOST', 'DEAL_LOST'],
-    FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
-    REQUIREMENT_CAPTURED: ['QUOTATION_REQUIRED', 'CLOSED_LOST', 'DEAL_LOST'],
+    ASSIGNED: ['CONTACTED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+    CONTACTED: ['QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'FOLLOW_UP', 'DEAL_LOST'],
+    CONTACT_ATTEMPTED: ['REQUIREMENT_CAPTURED', 'FOLLOW_UP', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+    LEAD_QUALIFICATION: ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
+    FOLLOW_UP: ['REQUIREMENT_CAPTURED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'REQUIREMENT_RECEIVED', 'DEAL_LOST'],
+    REQUIREMENT_CAPTURED: ['QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'CLOSED_LOST', 'DEAL_LOST'],
     QUOTATION_REQUIRED: ['QUOTATION_PENDING_APPROVAL', 'QUOTATION_REQUESTED', 'CLOSED_LOST', 'DEAL_LOST'],
     QUOTATION_PENDING_APPROVAL: ['QUOTATION_APPROVED', 'CLOSED_LOST', 'DEAL_LOST'],
     QUOTATION_APPROVED: ['NEGOTIATION', 'CLOSED_LOST', 'DEAL_LOST'],
@@ -210,9 +213,9 @@ export default function LeadDetail() {
     }
 
     const advancedList = [
-      'QUOTATION_APPROVED', 'QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 
-      'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'LOI_PO_PENDING', 'PO_RECEIVED', 
-      'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 
+      'QUOTATION_APPROVED', 'QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION',
+      'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'LOI_PO_PENDING', 'PO_RECEIVED',
+      'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING',
       'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'
     ];
     if (advancedList.includes(newStage) && lead?.quotationStatus !== 'APPROVED') {
@@ -227,7 +230,7 @@ export default function LeadDetail() {
       return;
     }
 
-    const isTransportOrSalesManager = 
+    const isTransportOrSalesManager =
       ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((user?.role || '').toUpperCase()) ||
       user?.department === 'TRANSPORT' || user?.department === 'LOGISTICS' || user?.department === 'ADMIN' || user?.department === 'MANAGEMENT' ||
       (user?.role && (user.role.toUpperCase().includes('TRANSPORT') || user.role.toUpperCase().includes('MANAGER') || user.role.toUpperCase().includes('CEO')));
@@ -241,9 +244,18 @@ export default function LeadDetail() {
       }
     }
 
+    const hasFollowupFormBeenFilled = (Array.isArray(lead?.voiceNotes) && lead.voiceNotes.length > 0) || (Array.isArray(activities) && activities.some(a => a.actionType === 'VOICE_NOTE_ADDED' || a.actionType === 'CALL'));
+
+    if (newStage === 'REQUIREMENT_CAPTURED' && !hasFollowupFormBeenFilled) {
+      toast.error('⚠️ Follow-up Call Recording is required before moving to Requirement Captured. Please complete call recording details.');
+      setTargetStageAfterCall('REQUIREMENT_CAPTURED');
+      setShowCallModal(true);
+      return;
+    }
+
     // MANDATORY CALL RECORDING MODAL FOR FOLLOW_UP
     if (newStage === 'FOLLOW_UP') {
-      setTargetStageAfterCall('FOLLOW_UP');
+      setTargetStageAfterCall('REQUIREMENT_CAPTURED');
       setShowCallModal(true);
       return;
     }
@@ -281,11 +293,11 @@ export default function LeadDetail() {
   };
 
   const handleCallRecordingSuccess = async () => {
-    const nextStg = targetStageAfterCall || 'FOLLOW_UP';
+    const nextStg = (targetStageAfterCall && targetStageAfterCall !== 'FOLLOW_UP') ? targetStageAfterCall : 'REQUIREMENT_CAPTURED';
     try {
       const response = await leadsApi.updateStage(id, { newStage: nextStg });
       if (response.success) {
-        toast.success(`Call recording uploaded & lead updated to ${nextStg.replace(/_/g, ' ')}!`);
+        toast.success(`Call recording uploaded & stage updated to ${nextStg.replace(/_/g, ' ')}! 🎉`);
       }
     } catch (err) {
       console.error(err);
@@ -356,10 +368,10 @@ export default function LeadDetail() {
         toast.success('Quotation request submitted to Sales Manager for approval! 🚀');
         setShowQuotationModal(false);
         setQuotationData({ employeeRequestedPrice: '', paymentTerms: '', validityDays: 7 });
-        await leadsApi.updateStage(id, { newStage: 'QUOTATION_REQUIRED' }).catch(() => {});
+        await leadsApi.updateStage(id, { newStage: 'QUOTATION_PENDING_APPROVAL' }).catch(() => { });
         fetchLeadDetails();
       }
-    } catch (err) { 
+    } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to request quotation');
     }
   };
@@ -430,7 +442,8 @@ export default function LeadDetail() {
     </div>
   );
 
-  const currentStage = lead.stage;
+  const currentStage = String(lead.stage || '').trim().toUpperCase();
+  const activeStages = getPipelineStages(currentStage, lead?.quotationStatus);
   const isOrderConfirmedOrBeyond = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((currentStage || '').toUpperCase());
   const isClosedWon = isOrderConfirmedOrBeyond;
   const isClosedLost = currentStage === 'CLOSED_LOST' || currentStage === 'DEAL_LOST';
@@ -475,8 +488,6 @@ export default function LeadDetail() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen w-full bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] block pb-12">
-      
-      <LeadCommercialPanel lead={lead} user={user} onSaved={() => window.location.reload()} />
       {/* Top Context Header Section */}
       <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="flex items-start space-x-4">
@@ -510,7 +521,7 @@ export default function LeadDetail() {
 
       {/* Main Core Viewport Data Stream Frame */}
       <div className="w-full px-4 md:px-8 py-6 space-y-6">
-        
+
         {/* Metric Specification Hex cards */}
         <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           {[
@@ -651,18 +662,17 @@ export default function LeadDetail() {
             <div>
               <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block mb-0.5">CLASSIFICATION MATRIX</span>
               <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
-                Lead Temperature Status: 
-                <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${
-                  lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'bg-zinc-900 text-zinc-300 border-zinc-700 shadow-sm' :
-                  lead.priority === 'HOT' ? 'bg-rose-950/80 text-rose-400 border-rose-800/60' :
-                  lead.priority === 'WARM' ? 'bg-amber-950/80 text-amber-400 border-amber-800/60' :
-                  'bg-cyan-950/80 text-cyan-400 border-cyan-800/60'
-                }`}>
-                  {lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'DEAD 💀' : lead.priority === 'HOT' ? 'HOT 🔥' : lead.priority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
+                Lead Temperature Status:
+                <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'bg-zinc-900 text-zinc-300 border-zinc-700 shadow-sm' :
+                    lead.priority === 'HOT' ? 'bg-rose-950/80 text-rose-400 border-rose-800/60' :
+                      lead.priority === 'WARM' ? 'bg-amber-950/80 text-amber-400 border-amber-800/60' :
+                        'bg-cyan-950/80 text-cyan-400 border-cyan-800/60'
+                  }`}>
+                  {lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'DEAD 💀' : lead.priority === 'HOT' ? 'HOT 🔥' : lead.priority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
                 </span>
               </h3>
             </div>
-            
+
             {/* Manual Temperature Override Dropdown */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold">Manual Override:</span>
@@ -695,9 +705,8 @@ export default function LeadDetail() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold text-[var(--crm-positive)]">{calculatedScore} / 100</span>
                 <div className="flex-1 bg-[var(--crm-bg)] h-2 border border-[var(--crm-ink-soft)]/15 rounded-xs overflow-hidden">
-                  <div className={`h-full transition-all ${
-                    calculatedScore >= 80 ? 'bg-rose-500' : calculatedScore >= 40 ? 'bg-amber-400' : 'bg-cyan-400'
-                  }`} style={{ width: `${Math.min(100, calculatedScore)}%` }} />
+                  <div className={`h-full transition-all ${calculatedScore >= 80 ? 'bg-rose-500' : calculatedScore >= 40 ? 'bg-amber-400' : 'bg-cyan-400'
+                    }`} style={{ width: `${Math.min(100, calculatedScore)}%` }} />
                 </div>
               </div>
             </div>
@@ -753,7 +762,7 @@ export default function LeadDetail() {
                 <span>{Math.round(progressPercent)}%</span>
               </div>
               <div className="w-full bg-[var(--crm-bg)] h-1.5 border border-[var(--crm-ink-soft)]/15 rounded-xs overflow-hidden">
-                <div className={`h-full transition-all duration-500 ease-out ${isClosedWon ? 'bg-[var(--crm-positive)]' : isClosedLost ? 'bg-[var(--crm-danger)]' : 'bg-[var(--crm-heading)]'}`} style={{ width: `${progressPercent}%` }}/>
+                <div className={`h-full transition-all duration-500 ease-out ${isClosedWon ? 'bg-[var(--crm-positive)]' : isClosedLost ? 'bg-[var(--crm-danger)]' : 'bg-[var(--crm-heading)]'}`} style={{ width: `${progressPercent}%` }} />
               </div>
             </div>
           </div>
@@ -766,38 +775,40 @@ export default function LeadDetail() {
                 const StageIcon = details.icon;
                 const isCurrent = currentStage === stage;
                 const isCompleted = isClosedWon || isClosedLost || activeStages.indexOf(currentStage) > idx;
-                const advancedList = ['NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
+                const advancedList = ['QUOTATION_APPROVED', 'QUOTATION_SHARED', 'QUOTATION_SENT', 'NEGOTIATION', 'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'LOI_PO_PENDING', 'PO_RECEIVED', 'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
                 const postLoiStages = ['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'];
-                const isBlockedByQuotation = advancedList.includes(stage) && (lead?.quotationStatus === 'PENDING' || lead?.quotationStatus === 'REJECTED');
+                const isBlockedByQuotation = advancedList.includes(stage) && lead?.quotationStatus !== 'APPROVED';
                 const isBlockedByLOI = postLoiStages.includes(stage) && (!lead?.loiDocuments || lead.loiDocuments.length === 0);
-                const isClickable = (allowedTransitions[currentStage]?.includes(stage) || (stage === 'LOI_PO_PENDING' && isCurrent) || (stage === 'QUOTATION_REQUIRED' && isCurrent)) && !isBlockedByQuotation && !isBlockedByLOI;
-                
+                const hasFollowupFormBeenFilled = (Array.isArray(lead?.voiceNotes) && lead.voiceNotes.length > 0) || (Array.isArray(activities) && activities.some(a => a.actionType === 'VOICE_NOTE_ADDED' || a.actionType === 'CALL'));
+                const isFollowUpRequirementTransition = (['FOLLOW_UP', 'CONTACTED', 'CONTACT_ATTEMPTED', 'LEAD_QUALIFICATION', 'NEW_LEAD', 'ASSIGNED'].includes(currentStage)) && stage === 'REQUIREMENT_CAPTURED' && hasFollowupFormBeenFilled;
+                const isClickable = (isFollowUpRequirementTransition || (allowedTransitions[currentStage]?.includes(stage) && (stage !== 'REQUIREMENT_CAPTURED' || hasFollowupFormBeenFilled)) || (stage === 'LOI_PO_PENDING' && isCurrent) || (stage === 'QUOTATION_REQUIRED' && isCurrent)) && !isBlockedByQuotation && !isBlockedByLOI;
+                const canOpenRequirementCaptured = isFollowUpRequirementTransition;
+
                 let currentStyle = isCurrent ? "border-[var(--crm-heading)] bg-[var(--crm-bg-raised)] text-[var(--crm-heading)] font-bold cursor-pointer hover:border-teal-500"
-                                  : isCompleted ? "border-[var(--crm-positive)]/30 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] opacity-80"
-                                  : isClickable ? "border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/50 cursor-pointer"
-                                  : "border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/40 text-[var(--crm-ink-faint)] opacity-30 cursor-not-allowed";
+                  : isCompleted ? "border-[var(--crm-positive)]/30 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] opacity-80"
+                    : isClickable ? "border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-ink-soft)] hover:border-[var(--crm-heading)]/50 cursor-pointer"
+                      : "border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/40 text-[var(--crm-ink-faint)] opacity-30 cursor-not-allowed";
 
                 return (
                   <React.Fragment key={stage}>
-                    <button 
+                    <button
                       onClick={() => {
                         if (stage === 'FOLLOW_UP') {
-                          setTargetStageAfterCall('FOLLOW_UP');
+                          setTargetStageAfterCall('REQUIREMENT_CAPTURED');
                           setShowCallModal(true);
                         } else if (stage === 'LOI_PO_PENDING' && isCurrent) {
                           setShowLOIModal(true);
                         } else if (stage === 'QUOTATION_REQUIRED' && isCurrent) {
                           setShowQuotationModal(true);
-                        } else if (isClickable) {
+                        } else if (isClickable || canOpenRequirementCaptured) {
                           handleStageChange(stage);
                         }
-                      }} 
-                      disabled={!isClickable && stage !== 'FOLLOW_UP'} 
-                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${
-                        stage === 'FOLLOW_UP' && !isCurrent
+                      }}
+                      disabled={!isClickable && !canOpenRequirementCaptured && stage !== 'FOLLOW_UP'}
+                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${stage === 'FOLLOW_UP' && !isCurrent
                           ? "border-rose-500/50 bg-rose-950/20 text-rose-300 font-bold cursor-pointer hover:border-rose-400"
                           : currentStyle
-                      }`}
+                        }`}
                       title={stage === 'FOLLOW_UP' ? 'Click to open Call Recording Form & set Follow Up' : stage === 'LOI_PO_PENDING' ? 'Click to open LOI Upload Form' : details.label}
                     >
                       <StageIcon className="w-4 h-4 mb-1" />
@@ -818,12 +829,12 @@ export default function LeadDetail() {
               const isWon = outcome === 'CLOSED_WON';
               const isTargetActive = currentStage === outcome;
               const canTransition = allowedTransitions[currentStage]?.includes(outcome);
-              
-              let outcomeStyle = isTargetActive 
+
+              let outcomeStyle = isTargetActive
                 ? (isWon ? 'border-[var(--crm-positive)]/50 bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : 'border-[var(--crm-danger)]/50 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)]')
-                : canTransition 
-                ? 'border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:border-[var(--crm-heading)]/40 cursor-pointer text-[var(--crm-ink-soft)]'
-                : 'border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/30 opacity-40 cursor-not-allowed text-[var(--crm-ink-faint)]';
+                : canTransition
+                  ? 'border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] hover:border-[var(--crm-heading)]/40 cursor-pointer text-[var(--crm-ink-soft)]'
+                  : 'border-[var(--crm-ink-soft)]/10 bg-[var(--crm-bg)]/30 opacity-40 cursor-not-allowed text-[var(--crm-ink-faint)]';
 
               return (
                 <button key={outcome} onClick={() => canTransition && handleStageChange(outcome)} disabled={isTargetActive || !canTransition} className={`flex items-center justify-between p-4 border rounded-sm text-left transition-all duration-200 focus:outline-none ${outcomeStyle}`}>
@@ -872,8 +883,8 @@ export default function LeadDetail() {
                 const rawName = act.performer?.name || act.actorId?.fullName || act.actorId?.name || act.actorId?.email || act.metadata?.performedByName || act.metadata?.actorName;
                 const cleanRawName = (rawName && !isHexId(rawName) && !rawName.includes('System / Automated')) ? rawName : null;
 
-                const leadAssigneeName = typeof lead?.assignedTo === 'object' 
-                  ? (lead?.assignedTo?.fullName || lead?.assignedTo?.name || lead?.assignedTo?.email) 
+                const leadAssigneeName = typeof lead?.assignedTo === 'object'
+                  ? (lead?.assignedTo?.fullName || lead?.assignedTo?.name || lead?.assignedTo?.email)
                   : (typeof lead?.assignedTo === 'string' && lead?.assignedTo.length > 1 && !isHexId(lead?.assignedTo) ? lead?.assignedTo : null);
 
                 const userDisplayName = (user?.fullName || user?.name || user?.email) && !isHexId(user?.fullName || user?.name || user?.email)
@@ -898,7 +909,7 @@ export default function LeadDetail() {
                       <span className="text-[10px] text-[var(--crm-ink-faint)] font-bold">{new Date(act.createdAt).toLocaleString()}</span>
                     </div>
                     <p className="text-xs text-[var(--crm-heading)] leading-relaxed font-sans mt-1 whitespace-pre-wrap">{act.note}</p>
-                    
+
                     {/* Performer / Task Executor Badge */}
                     <div className="flex flex-wrap items-center gap-3 mt-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10 text-[10px]">
                       <div className="flex items-center gap-1 text-sky-400 font-bold bg-sky-950/60 border border-sky-800/40 px-2 py-0.5 rounded-sm">
@@ -942,11 +953,11 @@ export default function LeadDetail() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Operational Summary Note / Report *</label>
-                  <textarea required rows="4" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Type report details, client response, meeting minutes, or action summary..."/>
+                  <textarea required rows="4" value={newActivity.note} onChange={(e) => setNewActivity({ ...newActivity, note: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Type report details, client response, meeting minutes, or action summary..." />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Next Follow-up Schedule (Optional)</label>
-                  <input type="datetime-local" value={newActivity.nextFollowupAt} onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
+                  <input type="datetime-local" value={newActivity.nextFollowupAt} onChange={(e) => setNewActivity({ ...newActivity, nextFollowupAt: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none" />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Commit Report</button>
@@ -965,7 +976,7 @@ export default function LeadDetail() {
               <form onSubmit={handleLogWhatsApp} className="space-y-4 text-xs font-mono">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Message Sent</label>
-                  <textarea rows="3" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Sent quotation template via WhatsApp..."/>
+                  <textarea rows="3" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Sent quotation template via WhatsApp..." />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button type="submit" disabled={sendingWhatsApp} className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-50">{sendingWhatsApp ? 'Logging...' : 'Log Activity'}</button>
@@ -984,11 +995,11 @@ export default function LeadDetail() {
               <form onSubmit={handleSendEmail} className="space-y-4 text-xs font-mono">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Subject *</label>
-                  <input type="text" required value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="Email subject"/>
+                  <input type="text" required value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="Email subject" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Body *</label>
-                  <textarea required rows="4" value={emailForm.body} onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Email body..."/>
+                  <textarea required rows="4" value={emailForm.body} onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="Email body..." />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button type="submit" disabled={sendingEmail} className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-50">{sendingEmail ? 'Sending...' : 'Send Email'}</button>
@@ -1007,15 +1018,15 @@ export default function LeadDetail() {
               <form onSubmit={handleRequestQuotation} className="space-y-4 text-xs font-mono">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Target Base Value (₹) *</label>
-                  <input type="number" required value={quotationData.employeeRequestedPrice} onChange={(e) => setQuotationData({ ...quotationData, employeeRequestedPrice: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none" placeholder="Specify baseline transaction valuation"/>
+                  <input type="number" required value={quotationData.employeeRequestedPrice} onChange={(e) => setQuotationData({ ...quotationData, employeeRequestedPrice: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none" placeholder="Specify baseline transaction valuation" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Payment Protocols</label>
-                  <input type="text" value={quotationData.paymentTerms} onChange={(e) => setQuotationData({ ...quotationData, paymentTerms: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="e.g. 30% advance deposit tier"/>
+                  <input type="text" value={quotationData.paymentTerms} onChange={(e) => setQuotationData({ ...quotationData, paymentTerms: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none font-sans" placeholder="e.g. 30% advance deposit tier" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Validity Lifecycle (Days)</label>
-                  <input type="number" value={quotationData.validityDays} onChange={(e) => setQuotationData({ ...quotationData, validityDays: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none"/>
+                  <input type="number" value={quotationData.validityDays} onChange={(e) => setQuotationData({ ...quotationData, validityDays: e.target.value })} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none" />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button type="submit" className="flex-1 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-ink-soft)] transition-colors">Submit Quote</button>
@@ -1035,7 +1046,7 @@ export default function LeadDetail() {
               <form onSubmit={handleRevealSubmit} className="space-y-4 text-xs font-mono">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1.5">Justification Token Entry</label>
-                  <textarea required rows="3" value={reason} onChange={(e) => setReason(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Reviewing dispatch schedules directly with client..."/>
+                  <textarea required rows="3" value={reason} onChange={(e) => setReason(e.target.value)} className="w-full p-2.5 border border-[var(--crm-ink-soft)]/20 bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded-sm outline-none resize-none font-sans" placeholder="e.g. Reviewing dispatch schedules directly with client..." />
                 </div>
                 <div className="flex gap-2">
                   <button type="submit" className="flex-1 bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 py-2.5 font-bold uppercase text-[10px] tracking-widest rounded-sm cursor-pointer hover:bg-[var(--crm-danger-bg)] transition-colors">Confirm Reveal</button>

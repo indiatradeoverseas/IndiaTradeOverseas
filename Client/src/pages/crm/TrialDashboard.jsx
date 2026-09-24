@@ -38,8 +38,8 @@ const blockVariants = {
 };
 
 const activePipelineStages = [
-  'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 
-  'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED', 
+  'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED',
+  'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_APPROVED',
   'NEGOTIATION', 'LOI_PO_PENDING', 'ORDER_CONFIRMED', 'DISPATCH_PENDING'
 ];
 
@@ -493,7 +493,7 @@ export default function TrialDashboard() {
       if (recRes.success) setMyCallRecordings(recRes.data?.recordings || []);
       if (empRes.success) setEmployeesList(empRes.data?.employees || empRes.employees || []);
       if (logsRes.success) setDailyWorkLogs(logsRes.data?.logs || logsRes.logs || []);
-      
+
       if (chatRes && chatRes.success && chatRes.data?.messages) {
         setChatMessages(chatRes.data.messages);
       }
@@ -626,7 +626,7 @@ export default function TrialDashboard() {
     return (
       <span>
         {parts.map((part, idx) => {
-          const matchedLead = leadList.find(l => 
+          const matchedLead = leadList.find(l =>
             l.leadCode === part || String(l._id) === part
           );
           if (matchedLead || /^(?:LD|LEAD)-/i.test(part)) {
@@ -682,7 +682,7 @@ export default function TrialDashboard() {
   // Filtered Leads by Search & Stage & Date
   const filteredLeads = getFilteredByDate(myLeads.filter(l => {
     const q = leadSearchQuery.toLowerCase().trim();
-    const matchesQuery = !q || 
+    const matchesQuery = !q ||
       (l.leadCode && l.leadCode.toLowerCase().includes(q)) ||
       (l.customerName && l.customerName.toLowerCase().includes(q)) ||
       (l.phone && l.phone.includes(q)) ||
@@ -696,7 +696,7 @@ export default function TrialDashboard() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] pb-16">
-      
+
       {/* Executive Portal Header Banner (Sales Executive Layout) */}
       <motion.div variants={blockVariants} className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm text-left">
         <div className="space-y-1 flex-1 min-w-0 pr-2">
@@ -709,19 +709,19 @@ export default function TrialDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-mono shrink-0">
-          <button 
+          <button
             onClick={() => setShowLOIModal(true)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer whitespace-nowrap"
           >
             <FiFileText className="text-teal-400" size={12} /> Upload LOI Document
           </button>
-          <button 
+          <button
             onClick={() => setShowCallModal(true)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer whitespace-nowrap"
           >
             <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
           </button>
-          <button 
+          <button
             onClick={loadTrialDashboardData}
             className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer whitespace-nowrap"
           >
@@ -743,31 +743,28 @@ export default function TrialDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-              dateFilterMode === 'ALL'
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'ALL'
                 ? 'bg-teal-600 text-white font-black shadow'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-            }`}
+              }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-              dateFilterMode === 'TODAY'
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'TODAY'
                 ? 'bg-teal-600 text-white font-black shadow'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-            }`}
+              }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-              dateFilterMode === 'YESTERDAY'
+            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'YESTERDAY'
                 ? 'bg-teal-600 text-white font-black shadow'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-            }`}
+              }`}
           >
             Yesterday
           </button>
@@ -796,7 +793,7 @@ export default function TrialDashboard() {
         </div>
 
         <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong>
           &bull; ({getFilteredByDate(myLeads).length} Leads, {getFilteredByDate(myCallRecordings).length} Recordings)
         </div>
       </motion.div>
@@ -815,11 +812,10 @@ export default function TrialDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3.5 px-1 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
-                activeTab === tab.id
+              className={`py-3.5 px-1 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${activeTab === tab.id
                   ? 'border-teal-500 text-teal-400'
                   : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-              }`}
+                }`}
             >
               <tab.icon size={13} className={activeTab === tab.id ? 'text-teal-400' : 'text-inherit'} />
               {tab.label}
@@ -847,7 +843,7 @@ export default function TrialDashboard() {
             {/* TAB 1: DAILY ACTION VIEW */}
             {activeTab === 'daily' && (
               <div className="space-y-6">
-                
+
                 {/* 6 KPI Stats Cards Row */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 font-mono">
                   {[
@@ -858,7 +854,7 @@ export default function TrialDashboard() {
                     { label: 'Total Revenue', val: currency(achievedVal), color: 'text-cyan-400 bg-cyan-950/30', icon: FiTrendingUp },
                     { label: 'Completed Tasks', val: completedTasksCount, color: 'text-teal-400 bg-teal-950/30', icon: FiCheckSquare }
                   ].map((kpi, idx) => (
-                    <motion.div 
+                    <motion.div
                       key={idx}
                       whileHover={{ y: -2 }}
                       className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left"
@@ -878,16 +874,16 @@ export default function TrialDashboard() {
 
                 {/* Target Progress & Live Activity Status Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
+
                   {/* Left (8 Cols): Monthly Performance Target */}
                   <div className="lg:col-span-8 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left font-mono">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
                       <span>Monthly Performance Target</span>
                       <FiTrendingUp className="text-teal-400" size={14} />
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center mt-5">
-                      
+
                       {/* Circular Gauge */}
                       <div className="md:col-span-4 flex flex-col items-center justify-center py-2">
                         <div className="relative w-28 h-28 flex items-center justify-center">
@@ -1009,7 +1005,7 @@ export default function TrialDashboard() {
 
                 {/* Daily Work Activity Reporting Section (Matching Screenshots) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
+
                   {/* Left Column (4 Cols): LOG TODAY'S WORK ACTIVITY Form (Screenshot 1) */}
                   <div className="lg:col-span-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left font-mono space-y-4">
                     <div className="border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
@@ -1262,9 +1258,8 @@ export default function TrialDashboard() {
                                 </span>
                               )}
                             </div>
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${
-                              rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' : 'bg-amber-950/60 text-amber-400 border-amber-800/60'
-                            }`}>
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' : 'bg-amber-950/60 text-amber-400 border-amber-800/60'
+                              }`}>
                               {rec.leadPriority || 'WARM'}
                             </span>
                           </div>
@@ -1274,7 +1269,7 @@ export default function TrialDashboard() {
                             controlsList="nodownload"
                             preload="metadata"
                             className="w-full h-7 rounded accent-teal-500"
-                            src={`${API_URL}/leads/call-recordings/${rec._id}/stream`}
+                            src={`${API_URL}/leads/call-recordings/${rec._id}/stream${localStorage.getItem('token') ? `?token=${encodeURIComponent(localStorage.getItem('token'))}` : ''}`}
                           />
                         </div>
                       ))
@@ -1393,9 +1388,8 @@ export default function TrialDashboard() {
                             <td className="py-3 px-4 text-[var(--crm-ink-faint)] font-mono">{lead.phone || '--'}</td>
                             <td className="py-3 px-4">{lead.productCategory || 'General'}</td>
                             <td className="py-3 px-4 whitespace-nowrap">
-                              <span className={`text-[8px] font-bold px-2.5 py-1 rounded-md uppercase border whitespace-nowrap inline-block ${
-                                (lead.priority || '').toUpperCase() === 'HOT' ? 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' : 'bg-amber-500 text-white font-black border-amber-600 shadow-xs'
-                              }`}>{lead.priority || 'WARM'}</span>
+                              <span className={`text-[8px] font-bold px-2.5 py-1 rounded-md uppercase border whitespace-nowrap inline-block ${(lead.priority || '').toUpperCase() === 'HOT' ? 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' : 'bg-amber-500 text-white font-black border-amber-600 shadow-xs'
+                                }`}>{lead.priority || 'WARM'}</span>
                             </td>
                             <td className="py-3 px-4">
                               <span className="bg-teal-950/80 text-teal-300 font-mono text-[8px] font-bold px-2 py-0.5 rounded border border-teal-800 uppercase">
@@ -1446,14 +1440,12 @@ export default function TrialDashboard() {
                             </td>
                             <td className="py-3 px-4 text-[var(--crm-ink-faint)]">{new Date(task.dueDate).toLocaleDateString('en-IN')}</td>
                             <td className="py-3 px-4">
-                              <span className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase ${
-                                task.priority === 'HIGH' ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-slate-800 text-slate-300'
-                              }`}>{task.priority}</span>
+                              <span className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase ${task.priority === 'HIGH' ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-slate-800 text-slate-300'
+                                }`}>{task.priority}</span>
                             </td>
                             <td className="py-3 px-4">
-                              <span className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase ${
-                                task.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
-                              }`}>{task.status}</span>
+                              <span className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase ${task.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
+                                }`}>{task.status}</span>
                             </td>
                             <td className="py-3 px-4 text-right">
                               {task.status !== 'COMPLETED' ? (
@@ -1504,19 +1496,18 @@ export default function TrialDashboard() {
                     </div>
                   ) : (
                     chatMessages.map((msg, msgIdx) => {
-                      const isMe = msg.senderId === String(user?._id || user?.id || user?.trialId || user?.employeeId) || 
-                                   (msg.senderRole === 'SALES_TRIAL');
+                      const isMe = msg.senderId === String(user?._id || user?.id || user?.trialId || user?.employeeId) ||
+                        (msg.senderRole === 'SALES_TRIAL');
                       const isManager = ['ADMIN', 'MANAGER', 'SALES_MANAGER'].includes(msg.senderRole);
 
                       return (
                         <div key={msg._id || `trial_msg_${msgIdx}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                          <div className={`max-w-[80%] rounded-lg p-3 space-y-1 shadow-sm ${
-                            isMe 
-                              ? 'bg-teal-600 text-white' 
-                              : isManager 
-                                ? 'bg-indigo-950/90 border border-indigo-800 text-[var(--crm-heading)]' 
+                          <div className={`max-w-[80%] rounded-lg p-3 space-y-1 shadow-sm ${isMe
+                              ? 'bg-teal-600 text-white'
+                              : isManager
+                                ? 'bg-indigo-950/90 border border-indigo-800 text-[var(--crm-heading)]'
                                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)]'
-                          }`}>
+                            }`}>
                             <div className="flex justify-between items-center gap-4 text-[9px] font-mono font-bold opacity-80 border-b border-white/10 pb-1">
                               <span>{msg.senderName} ({msg.senderRole || 'Executive'})</span>
                             </div>
@@ -1575,9 +1566,8 @@ export default function TrialDashboard() {
                       <button
                         key={period}
                         onClick={() => { setLeaderboardTab(period); fetchLeaderboard(period); }}
-                        className={`px-2.5 py-1 rounded text-[9px] uppercase font-bold tracking-wider ${
-                          leaderboardTab === period ? 'bg-amber-600 text-white' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]'
-                        }`}
+                        className={`px-2.5 py-1 rounded text-[9px] uppercase font-bold tracking-wider ${leaderboardTab === period ? 'bg-amber-600 text-white' : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)]'
+                          }`}
                       >
                         {period}
                       </button>
@@ -1603,9 +1593,8 @@ export default function TrialDashboard() {
                       </thead>
                       <tbody className="divide-y divide-[var(--crm-line)] text-xs">
                         {leaderboardData.map((lb, idx) => (
-                          <tr key={lb._id || idx} className={`hover:bg-[var(--crm-bg-sunken)]/40 transition ${
-                            lb.email?.toLowerCase() === user?.email?.toLowerCase() ? 'bg-teal-950/30 border-l-2 border-l-teal-500' : ''
-                          }`}>
+                          <tr key={lb._id || idx} className={`hover:bg-[var(--crm-bg-sunken)]/40 transition ${lb.email?.toLowerCase() === user?.email?.toLowerCase() ? 'bg-teal-950/30 border-l-2 border-l-teal-500' : ''
+                            }`}>
                             <td className="py-3 px-4 font-bold text-amber-400">#{idx + 1}</td>
                             <td className="py-3 px-4 font-sans font-bold text-[var(--crm-heading)]">{lb.name || lb.fullName}</td>
                             <td className="py-3 px-4 text-[var(--crm-ink-faint)]">{lb.department || 'SALES'}</td>
@@ -1732,7 +1721,17 @@ export default function TrialDashboard() {
       <CallRecordingModal
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
-        onSuccess={() => loadTrialDashboardData()}
+        onSuccess={async (recording) => {
+          try {
+            if (recording?.leadId) {
+              const lId = typeof recording.leadId === 'object' ? recording.leadId._id : recording.leadId;
+              await leadsApi.updateStage(lId, { newStage: 'REQUIREMENT_CAPTURED' });
+            }
+            await loadTrialDashboardData();
+          } catch (error) {
+            toast.error(error.response?.data?.message || 'Recording saved, but the lead stage could not be updated.');
+          }
+        }}
         initialLeads={myLeads}
       />
 

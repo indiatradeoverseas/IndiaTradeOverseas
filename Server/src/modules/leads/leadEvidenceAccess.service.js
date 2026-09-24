@@ -41,6 +41,8 @@ function normalizeRole(value) {
   ).toUpperCase();
 }
 
+const SalesTrialUser = require('../sales-trial/salesTrialUser.model');
+
 function isBroadEvidenceReviewer(
   user
 ) {
@@ -67,14 +69,28 @@ function isBroadEvidenceReviewer(
     role === 'ADMIN' ||
     role === 'SUPER_ADMIN' ||
     role === 'FOUNDER' ||
+    role === 'CO_FOUNDER' ||
+    role === 'CEO' ||
     role === 'MANAGER' ||
     role === 'SALES_MANAGER' ||
+    role === 'SALES_EXECUTIVE' ||
+    role === 'SALES_TRIAL' ||
+    role === 'SALES' ||
     role === 'HR' ||
     role.endsWith(
       '_MANAGER'
     ) ||
     role.includes(
       'MANAGER'
+    ) ||
+    role.includes(
+      'FOUNDER'
+    ) ||
+    role.includes(
+      'CEO'
+    ) ||
+    role.includes(
+      'SALES'
     ) ||
     position.includes(
       'ADMIN'
@@ -85,10 +101,19 @@ function isBroadEvidenceReviewer(
     position.includes(
       'MANAGER'
     ) ||
+    position.includes(
+      'CEO'
+    ) ||
     department ===
       'ADMIN' ||
     department ===
-      'MANAGEMENT'
+      'MANAGEMENT' ||
+    department ===
+      'SALES' ||
+    department ===
+      'SALES_TRIAL' ||
+    user?.isTrial === true ||
+    user?.modelName === 'SalesTrialUser'
   );
 }
 
@@ -113,6 +138,7 @@ function addIdentity(
       value.id,
       value.employeeDbId,
       value.employeeId,
+      value.trialId,
     ];
 
     candidates.forEach(
@@ -166,6 +192,11 @@ async function buildUserIdentitySet(
     user.employeeId
   );
 
+  addIdentity(
+    identitySet,
+    user.trialId
+  );
+
   const email =
     cleanText(
       user.email,
@@ -180,6 +211,7 @@ async function buildUserIdentitySet(
     const [
       employee,
       userRecord,
+      trialUser,
     ] =
       await Promise.all([
         Employee.findOne({
@@ -195,6 +227,14 @@ async function buildUserIdentitySet(
         })
           .select(
             '_id employeeId employeeDbId'
+          )
+          .lean(),
+
+        SalesTrialUser.findOne({
+          email,
+        })
+          .select(
+            '_id trialId'
           )
           .lean(),
       ]);
@@ -225,6 +265,18 @@ async function buildUserIdentitySet(
       addIdentity(
         identitySet,
         userRecord.employeeDbId
+      );
+    }
+
+    if (trialUser) {
+      addIdentity(
+        identitySet,
+        trialUser._id
+      );
+
+      addIdentity(
+        identitySet,
+        trialUser.trialId
       );
     }
 

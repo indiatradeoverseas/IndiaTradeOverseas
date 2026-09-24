@@ -3,7 +3,18 @@ import React, {
   useState,
 } from "react";
 
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  toast,
+} from "react-hot-toast";
+
+import {
+  motion,
+  AnimatePresence,
+} from "framer-motion";
 
 import OnionRequirementBuilder from "../../components/requirements/OnionRequirementBuilder";
 import { onionVisitorApi } from "../../api/onionVisitor";
@@ -237,6 +248,9 @@ const CRM_STAGES = [
 ];
 
 export default function Onion() {
+  const navigate =
+    useNavigate();
+
   const [heroIndex, setHeroIndex] = useState(0);
   const [showRequirementBuilder, setShowRequirementBuilder] =
     useState(false);
@@ -277,18 +291,27 @@ export default function Onion() {
   const handleRequirementComplete = (
     requirement
   ) => {
-    setBuiltRequirement(requirement);
+    setBuiltRequirement(
+      requirement
+    );
 
-    setPersonalDetails((previous) => ({
-      ...previous,
+    setPersonalDetails(
+      (previous) => ({
+        ...previous,
 
-      targetTimeline:
-        requirement.timeline || "",
-    }));
+        targetTimeline:
+          requirement?.timeline ||
+          "",
+      })
+    );
 
-    setShowRequirementBuilder(false);
+    setShowRequirementBuilder(
+      false
+    );
 
-    setShowPersonalDetails(true);
+    setShowPersonalDetails(
+      true
+    );
   };
 
   const handlePersonalDetailsSubmit =
@@ -296,44 +319,112 @@ export default function Onion() {
       event.preventDefault();
 
       if (
-        submittingPersonalDetails ||
-        !builtRequirement
+        submittingPersonalDetails
       ) {
         return;
       }
 
+      if (!builtRequirement) {
+        toast.error(
+          "Please complete the Onion Requirement Builder first."
+        );
+
+        return;
+      }
+
+      const {
+        fullName,
+        email,
+        mobile,
+        city,
+        state,
+        targetTimeline,
+      } = personalDetails;
+
+      const cleanName =
+        fullName.trim();
+
+      const cleanEmail =
+        email
+          .trim()
+          .toLowerCase();
+
+      const cleanMobile =
+        mobile.replace(
+          /\D/g,
+          ""
+        );
+
+      const cleanCity =
+        city.trim();
+
+      const cleanState =
+        state.trim();
+
+      if (
+        !cleanName ||
+        !cleanEmail ||
+        !cleanMobile ||
+        !cleanCity ||
+        !cleanState ||
+        !targetTimeline
+      ) {
+        toast.error(
+          "Please complete all required buyer details."
+        );
+
+        return;
+      }
+
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (
+        !emailRegex.test(
+          cleanEmail
+        )
+      ) {
+        toast.error(
+          "Please enter a valid email address."
+        );
+
+        return;
+      }
+
+      if (
+        cleanMobile.length <
+          10 ||
+        cleanMobile.length >
+          15
+      ) {
+        toast.error(
+          "Please enter a valid mobile number."
+        );
+
+        return;
+      }
+
       try {
-        setSubmittingPersonalDetails(true);
-
-        const {
-          fullName,
-          email,
-          mobile,
-          city,
-          state,
-          targetTimeline,
-        } = personalDetails;
-
-        if (
-          !fullName.trim() ||
-          !email.trim() ||
-          !mobile.trim() ||
-          !city.trim() ||
-          !state.trim() ||
-          !targetTimeline
-        ) {
-          throw new Error(
-            "Please complete all personal details."
-          );
-        }
+        setSubmittingPersonalDetails(
+          true
+        );
 
         const response =
           await onionVisitorApi.create({
-            fullName,
-            email,
-            mobile,
-            city,
-            state,
+            fullName:
+              cleanName,
+
+            email:
+              cleanEmail,
+
+            mobile:
+              cleanMobile,
+
+            city:
+              cleanCity,
+
+            state:
+              cleanState,
 
             timeline:
               targetTimeline,
@@ -342,18 +433,87 @@ export default function Onion() {
               builtRequirement,
           });
 
-        if (!response?.success) {
+        if (
+          !response?.success
+        ) {
           throw new Error(
             response?.message ||
-            "Unable to register your requirement."
+              "Unable to register your requirement."
           );
         }
 
-        setShowPersonalDetails(false);
+        const visitorId =
+          response?.data
+            ?.visitorId;
 
-        window.location.assign(
+        if (!visitorId) {
+          throw new Error(
+            "Onion visitor ID was not returned by the server."
+          );
+        }
+
+        const pricing =
+          response?.data
+            ?.pricing ||
+          null;
+
+        /*
+         * Backend remains the source of truth.
+         * Session storage is checkout context only.
+         */
+        sessionStorage.setItem(
+          "ito_onion_visitor_id",
+          visitorId
+        );
+
+        sessionStorage.setItem(
+          "ito_onion_requirement",
+          JSON.stringify(
+            builtRequirement
+          )
+        );
+
+        sessionStorage.setItem(
+          "ito_onion_visitor_snapshot",
+          JSON.stringify({
+            visitorId,
+
+            fullName:
+              cleanName,
+
+            email:
+              cleanEmail,
+
+            phone:
+              cleanMobile,
+
+            city:
+              cleanCity,
+
+            state:
+              cleanState,
+
+            timeline:
+              targetTimeline,
+
+            requirement:
+              builtRequirement,
+
+            pricing,
+          })
+        );
+
+        setShowPersonalDetails(
+          false
+        );
+
+        toast.success(
+          "Details saved. Review the latest Onion pricing before payment."
+        );
+
+        navigate(
           `/nashik-onion/pricing?visitorId=${encodeURIComponent(
-            response.data.visitorId
+            visitorId
           )}`
         );
       } catch (error) {
@@ -362,12 +522,17 @@ export default function Onion() {
           error
         );
 
-        alert(
-          error.message ||
-          "Unable to submit your requirement. Please try again."
+        toast.error(
+          error?.response
+            ?.data
+            ?.message ||
+            error?.message ||
+            "Unable to submit your requirement. Please try again."
         );
       } finally {
-        setSubmittingPersonalDetails(false);
+        setSubmittingPersonalDetails(
+          false
+        );
       }
     };
 

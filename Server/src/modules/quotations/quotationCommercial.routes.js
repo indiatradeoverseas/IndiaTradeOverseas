@@ -18,7 +18,7 @@ router.get('/lead/:leadId/commercial',async(req,res,next)=>{
 });
 router.patch('/:id/commercial-terms',async(req,res,next)=>{
   try {
-    if(!department(req.user,'OPERATIONS')) return fail(res,403,'FORBIDDEN','Operations must confirm commercial facts.');
+    if(!isManagement(req.user) && !department(req.user,'OPERATIONS') && !department(req.user,'SALES')) return fail(res,403,'FORBIDDEN','Management, Operations or Sales must confirm commercial facts.');
     const quote=await Quote.findById(req.params.id);
     if(!quote)return fail(res,404,'NOT_FOUND','Quotation not found.');
     if(['SENT_TO_CUSTOMER','NEGOTIATION','CLOSED'].includes(quote.status))return fail(res,409,'REVISION_REQUIRED','Create a new quotation revision after sharing with the customer.');

@@ -1,4 +1,3 @@
-import AcquisitionReport from '../../components/crm/AcquisitionReport';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -110,29 +109,26 @@ const CHART_COLORS = [
 ];
 
 const fmtCurrency = (val, currency = 'INR') => {
+  const num = Number(val);
   if (
     val === null ||
     val === undefined ||
     val === '' ||
-    Number.isNaN(Number(val))
+    Number.isNaN(num)
   ) {
-    return 'Unavailable';
+    return '₹0.00';
   }
 
-  const code = String(currency || '').trim().toUpperCase();
-
-  if (!code) {
-    return Number(val).toLocaleString('en-IN');
-  }
+  const code = String(currency || 'INR').trim().toUpperCase() || 'INR';
 
   try {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: code,
       maximumFractionDigits: 2
-    }).format(Number(val));
+    }).format(num);
   } catch {
-    return `${code} ${Number(val).toLocaleString('en-IN')}`;
+    return `${code} ${num.toLocaleString('en-IN')}`;
   }
 };
 
@@ -469,11 +465,10 @@ export default function FounderDashboard() {
 
   const revenueDisplay =
     summary?.revenue?.totalCollected !== null &&
-    summary?.revenue?.totalCollected !== undefined &&
-    summary?.revenue?.currency
+    summary?.revenue?.totalCollected !== undefined
       ? fmtCurrency(
           summary.revenue.totalCollected,
-          summary.revenue.currency
+          summary?.revenue?.currency || 'INR'
         )
       : revenueByCurrency.length > 1
         ? 'Mixed currencies'
@@ -482,7 +477,7 @@ export default function FounderDashboard() {
               revenueByCurrency[0]?.collected,
               revenueByCurrency[0]?._id
             )
-          : 'Unavailable';
+          : fmtCurrency(0, 'INR');
 
   const revenueSubtitle =
     revenueByCurrency.length > 1
@@ -752,7 +747,6 @@ export default function FounderDashboard() {
             {[
               { id: 'ALL', label: 'All Modules' },
               { id: 'OVERVIEW', label: 'Overview' },
-              { id: 'ACQUISITION', label: 'Acquisition & Campaigns' },
               { id: 'FILES', label: 'File Sharing' },
               { id: 'WORKFORCE', label: 'Workforce & Targets' },
               { id: 'ATTENDANCE', label: 'Attendance & Telemetry' },
@@ -803,301 +797,7 @@ export default function FounderDashboard() {
           </div>
         )}
 
-        {/* =========================================================================
-            MASTER DPR v4.0 — ACQUISITION & CONTROLLED CAMPAIGN OVERSIGHT
-            ========================================================================= */}
-        {(activeTab === 'ALL' || activeTab === 'ACQUISITION') && (
-          <div className="space-y-6">
-            <motion.div
-              initial={{ y: 12, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="overflow-hidden rounded-2xl border"
-              style={CARD_STYLE}
-            >
-              <div
-                className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
-                style={{
-                  borderColor: 'var(--crm-line)',
-                  background: 'var(--crm-bg-raised)'
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
-                    style={{
-                      borderColor: 'var(--crm-line)',
-                      background: 'var(--crm-bg-sunken)',
-                      color: 'var(--crm-accent)'
-                    }}
-                  >
-                    <FiTarget size={16} />
-                  </div>
 
-                  <div>
-                    <span
-                      className="text-[9px] font-bold uppercase tracking-[0.18em]"
-                      style={{ color: 'var(--crm-accent)' }}
-                    >
-                      ADS & ACQUISITION
-                    </span>
-
-                    <h2
-                      className="mt-0.5 text-sm font-semibold sm:text-base"
-                      style={{ color: 'var(--crm-heading)' }}
-                    >
-                      Controlled Campaign Oversight
-                    </h2>
-
-                    <p
-                      className="mt-1 text-xs leading-5"
-                      style={{ color: 'var(--crm-ink-faint)' }}
-                    >
-                      Governed acquisition test status, approvals, readiness and downstream CRM outcomes.
-                    </p>
-                  </div>
-                </div>
-
-                <Link
-                  to="/crm/controlled-campaigns"
-                  className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
-                  style={{
-                    background: 'var(--crm-accent)',
-                    color: '#fff'
-                  }}
-                >
-                  Open Workbench
-                  <FiArrowRight size={12} />
-                </Link>
-              </div>
-
-              {!controlledCampaignSnapshot?.campaign ? (
-                <div className="p-4 sm:p-5">
-                  <div
-                    className="flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
-                    style={CARD_SUNKEN}
-                  >
-                    <div className="flex min-w-0 items-start gap-3">
-                      <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-                        style={{
-                          borderColor: 'var(--crm-line)',
-                          background: 'var(--crm-bg-raised)',
-                          color: 'var(--crm-ink-faint)'
-                        }}
-                      >
-                        <FiTarget size={18} />
-                      </div>
-
-                      <div>
-                        <div
-                          className="text-sm font-semibold"
-                          style={{ color: 'var(--crm-heading)' }}
-                        >
-                          No controlled campaign defined
-                        </div>
-
-                        <p
-                          className="mt-1 max-w-3xl text-xs leading-5"
-                          style={{ color: 'var(--crm-ink-faint)' }}
-                        >
-                          Create the governed one-product, one-market campaign in the workbench using verified operational inputs.
-                        </p>
-                      </div>
-                    </div>
-
-                    <Link
-                      to="/crm/controlled-campaigns"
-                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide"
-                      style={{
-                        borderColor: 'var(--crm-line)',
-                        background: 'var(--crm-bg-raised)',
-                        color: 'var(--crm-accent)'
-                      }}
-                    >
-                      Configure Campaign
-                      <FiArrowRight size={11} />
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4 p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span
-                          className="rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide"
-                          style={{
-                            color:
-                              controlledCampaignSnapshot?.readiness?.ready
-                                ? 'var(--crm-positive)'
-                                : 'var(--crm-warning)',
-                            background:
-                              controlledCampaignSnapshot?.readiness?.ready
-                                ? 'var(--crm-positive-bg)'
-                                : 'var(--crm-warning-bg)'
-                          }}
-                        >
-                          {controlledCampaignSnapshot?.readiness?.ready
-                            ? 'Configuration Ready'
-                            : 'Configuration Blocked'}
-                        </span>
-
-                        <span
-                          className="rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide"
-                          style={{
-                            color: 'var(--crm-info)',
-                            background: 'var(--crm-info-bg)'
-                          }}
-                        >
-                          Controlled Acquisition
-                        </span>
-                      </div>
-
-                      <div
-                        className="break-words text-base font-semibold sm:text-lg"
-                        style={{ color: 'var(--crm-heading)' }}
-                      >
-                        {controlledCampaignSnapshot.campaign?.marketSelection?.product ||
-                          'Product not set'}
-                      </div>
-
-                      <div
-                        className="mt-1 text-[10px] sm:text-xs"
-                        style={LABEL_MONO}
-                      >
-                        {controlledCampaignSnapshot.campaign?.marketSelection?.targetMarket?.type ||
-                          'Market type not set'}
-                        {' · '}
-                        {controlledCampaignSnapshot.campaign?.marketSelection?.targetMarket?.name ||
-                          'Market not set'}
-                      </div>
-                    </div>
-
-                    <div
-                      className="min-w-0 rounded-lg border px-3 py-2 xl:max-w-[320px]"
-                      style={CARD_SUNKEN}
-                    >
-                      <div className="text-[8px] font-bold uppercase tracking-wider" style={LABEL_MONO}>
-                        UTM Campaign
-                      </div>
-
-                      <div
-                        className="mt-1 break-all font-mono text-[10px] sm:text-xs"
-                        style={{ color: 'var(--crm-heading)' }}
-                      >
-                        {controlledCampaignSnapshot.campaign?.utm?.campaign || '—'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                    {[
-                      {
-                        label: 'Priority',
-                        value:
-                          controlledCampaignSnapshot.campaign?.marketSelection?.priority ||
-                          '—'
-                      },
-                      {
-                        label: 'Operations',
-                        value:
-                          controlledCampaignSnapshot.campaign?.operationsInputsConfirmedAt
-                            ? 'Confirmed'
-                            : 'Pending'
-                      },
-                      {
-                        label: 'Management',
-                        value:
-                          controlledCampaignSnapshot.campaign?.managementApprovalAt
-                            ? 'Approved'
-                            : 'Pending'
-                      },
-                      {
-                        label: 'Qualified Leads',
-                        value:
-                          controlledCampaignSnapshot.metrics?.observed?.overall?.qualifiedLeads ??
-                          '—'
-                      },
-                      {
-                        label: 'Phase 4 Exit',
-                        value:
-                          controlledCampaignSnapshot.metrics?.phase4?.exitCriterionAchieved
-                            ? 'Achieved'
-                            : 'Not Yet'
-                      }
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="min-w-0 rounded-xl border p-3.5"
-                        style={CARD_SUNKEN}
-                      >
-                        <div
-                          className="truncate text-[9px] font-bold uppercase tracking-wide"
-                          style={LABEL_MONO}
-                        >
-                          {item.label}
-                        </div>
-
-                        <div
-                          className="mt-2 break-words text-sm font-semibold"
-                          style={{ color: 'var(--crm-heading)' }}
-                        >
-                          {item.value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {controlledCampaignSnapshot?.readiness?.reasons?.length > 0 && (
-                    <div
-                      className="rounded-xl border p-3.5"
-                      style={{
-                        borderColor: 'var(--crm-warning)',
-                        background: 'var(--crm-warning-bg)'
-                      }}
-                    >
-                      <div
-                        className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wide"
-                        style={{ color: 'var(--crm-warning)' }}
-                      >
-                        <FiAlertCircle size={12} />
-                        Current readiness blockers
-                      </div>
-
-                      <div
-                        className="mt-2 text-[10px] leading-5 sm:text-xs"
-                        style={{ color: 'var(--crm-ink-soft)' }}
-                      >
-                        {controlledCampaignSnapshot.readiness.reasons
-                          .map((reason) =>
-                            String(reason).replace(/_/g, ' ')
-                          )
-                          .join(' · ')}
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    className="flex items-start gap-2 text-[10px] leading-5"
-                    style={LABEL_MONO}
-                  >
-                    <FiActivity className="mt-0.5 shrink-0" size={12} />
-                    <span>
-                      Configuration readiness does not itself prove campaign success. DPR exit remains based on observed qualified-lead outcomes.
-                    </span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
-            <motion.div
-              initial={{ y: 15, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-            >
-              <AcquisitionReport />
-            </motion.div>
-          </div>
-        )}
         
         {/* =========================================================================
             SECTION 2: BUSINESS OVERVIEW SECTION (8 KPI CARDS + RECHARTS COMPOSED CHART + DATE RANGE)

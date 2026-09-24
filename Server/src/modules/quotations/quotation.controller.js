@@ -104,6 +104,9 @@ function isManagementUser(user) {
     role === 'TRANSPORT_MANAGER' ||
     role === 'LOGISTICS_MANAGER' ||
     role.includes('MANAGER') ||
+    role.includes('FOUNDER') ||
+    role.includes('CEO') ||
+    role.includes('ADMIN') ||
     department === 'ADMIN' ||
     department === 'MANAGEMENT' ||
     position.includes('ADMIN') ||
@@ -166,7 +169,9 @@ async function canAccessLeadForQuotation(user, lead) {
 
   if (
     isManagementUser(user) ||
-    hasQuotationPermission(user)
+    hasQuotationPermission(user) ||
+    user?.isTrial === true ||
+    user?.modelName === 'SalesTrialUser'
   ) {
     return true;
   }
