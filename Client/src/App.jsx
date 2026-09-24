@@ -107,6 +107,7 @@ import StonePricing from './pages/public/StonePricing';
 import RicePricing from './pages/public/RicePricing';
 import TeaPricing from './pages/public/TeaPricing';
 import CoalPricing from './pages/public/CoalPricing';
+import OnionPricing from './pages/public/OnionPricing';
 
 import SecurityGuard from './components/security/SecurityGuard';
 
@@ -1928,6 +1929,11 @@ function AppLayout() {
               <Onion />
             }
           />
+
+          <Route
+  path="/nashik-onion/pricing"
+  element={<OnionPricing />}
+/>
 
         </Routes>
       </main>
