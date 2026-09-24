@@ -1,21 +1,22 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "react-hot-toast";
 
 const STEPS = [
   {
-    key: "product",
+    key: "coal",
     title: "Coal",
-    subtitle: "Tell us what coal you need.",
+    subtitle: "Select the coal origin, type and GCV basis.",
   },
   {
-    key: "commercial",
+    key: "requirement",
     title: "Requirement",
-    subtitle: "Add quantity and delivery details.",
+    subtitle: "Enter quantity, valuation and delivery details.",
   },
   {
     key: "review",
     title: "Review",
-    subtitle: "Review your requirement before continuing.",
+    subtitle: "Review the requirement before entering your contact details.",
   },
 ];
 
@@ -60,24 +61,18 @@ const TRANSPORT_MODES = [
 
 const INITIAL_FORM = {
   company: "",
-  origin: "",
-  coalType: "",
-  gcv: "",
-  basis: "",
-  orderQty: "",
-  estValuation: "",
-  dest: "",
-  tMode: "",
-  incoterm: "",
-  reqDate: "",
-  notes: "",
-  privacy: false,
 
-  // Preserved for compatibility with the existing backend/data shape.
+  // Kept for backend/schema compatibility. These are not required
+  // in the simplified buyer-facing flow.
   buyerType: "",
   industry: "",
   plant: "",
   use: "",
+
+  origin: "",
+  coalType: "",
+  gcv: "",
+  basis: "",
   rejVal: "",
   ash: "",
   sulphur: "",
@@ -85,10 +80,21 @@ const INITIAL_FORM = {
   vm: "",
   fc: "",
   hgiAft: "",
+
+  orderQty: "",
   trialQty: "",
   monthly: "",
   targetQty: "",
+  estValuation: "",
+
+  dest: "",
+  tMode: "",
+  incoterm: "",
+  reqDate: "",
+
   specFileName: "",
+  notes: "",
+  privacy: false,
 };
 
 export default function CoalRequirementBuilder({
@@ -98,6 +104,18 @@ export default function CoalRequirementBuilder({
   onComplete,
 }) {
   const visible = Boolean(isOpen ?? open ?? false);
+
+  const todayDate = (() => {
+    const now = new Date();
+    const local = new Date(
+      now.getTime() -
+        now.getTimezoneOffset() * 60000
+    );
+
+    return local
+      .toISOString()
+      .split("T")[0];
+  })();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [formData, setFormData] = useState(INITIAL_FORM);
@@ -118,117 +136,120 @@ export default function CoalRequirementBuilder({
     }));
   };
 
-  const closeBuilder = () => {
+  const resetBuilder = () => {
     setStepIndex(0);
     setFormData(INITIAL_FORM);
+  };
+
+  const closeBuilder = () => {
+    resetBuilder();
     onClose?.();
   };
 
   const validateCurrentStep = () => {
-    if (step.key === "product") {
+    if (step.key === "coal") {
       if (!formData.company.trim()) {
-        alert("Please enter your company / organization name.");
+        toast.error("Please enter the company / buyer name.");
         return false;
       }
 
       if (!formData.origin) {
-        alert("Please select the coal origin.");
+        toast.error("Please select the coal origin.");
         return false;
       }
 
       if (!formData.coalType) {
-        alert("Please select the coal type.");
+        toast.error("Please select the coal type.");
         return false;
       }
 
       if (!formData.basis) {
-        alert("Please select the GCV basis.");
+        toast.error("Please select the GCV basis.");
+        return false;
+      }
+
+      if (
+        formData.gcv !== "" &&
+        (!Number.isFinite(Number(formData.gcv)) ||
+          Number(formData.gcv) <= 0)
+      ) {
+        toast.error("Please enter a valid GCV value.");
         return false;
       }
     }
 
-    if (step.key === "commercial") {
-      const quantity = Number(formData.orderQty);
+    if (step.key === "requirement") {
+      const quantity = Number(formData.targetQty);
 
       if (!Number.isFinite(quantity) || quantity <= 0) {
-        alert("Please enter a valid quantity in MT.");
+        toast.error("Please enter a valid quantity in MT.");
         return false;
       }
 
       const valuation = Number(formData.estValuation);
 
       if (!Number.isFinite(valuation) || valuation <= 0) {
-        alert("Please enter a valid estimated valuation.");
+        toast.error("Please enter the estimated valuation.");
         return false;
       }
 
       if (!formData.dest.trim()) {
-        alert("Please enter the delivery destination.");
+        toast.error("Please enter the delivery destination.");
         return false;
       }
 
       if (!formData.tMode) {
-        alert("Please select the transport mode.");
+        toast.error("Please select the transport mode.");
         return false;
       }
     }
 
     if (step.key === "review" && !formData.privacy) {
-      alert("Please accept the privacy policy to continue.");
+      toast.error("Please accept the privacy policy to continue.");
       return false;
     }
 
     return true;
   };
 
+  const buildRequirement = () => ({
+    ...formData,
+
+    vertical: "COAL",
+
+    // Existing backend expects these original field names.
+    gcv:
+      formData.gcv === ""
+        ? null
+        : Number(formData.gcv),
+
+    targetQty: Number(formData.targetQty),
+    orderQty: Number(formData.targetQty),
+
+    estValuation: Number(formData.estValuation),
+
+    // Compatibility aliases retained for any CRM/reporting code
+    // that already consumes the newer normalized names.
+    gcvKcalKg:
+      formData.gcv === ""
+        ? null
+        : Number(formData.gcv),
+
+    targetQtyMT: Number(formData.targetQty),
+    orderQtyMT: Number(formData.targetQty),
+
+    estimatedValuationINR: Number(
+      formData.estValuation
+    ),
+
+    privacy: true,
+  });
+
   const next = () => {
     if (!validateCurrentStep()) return;
 
     if (isLast) {
-      const requirement = {
-        ...formData,
-
-        vertical: "COAL",
-
-        gcv:
-          formData.gcv === ""
-            ? null
-            : Number(formData.gcv),
-
-        gcvKcalKg:
-          formData.gcv === ""
-            ? null
-            : Number(formData.gcv),
-
-        orderQty: Number(formData.orderQty),
-        orderQtyMT: Number(formData.orderQty),
-
-        estimatedValuationINR: Number(formData.estValuation),
-        estValuation: Number(formData.estValuation),
-
-        // Legacy/downstream-compatible defaults.
-        trialQty: null,
-        trialQtyMT: 0,
-        monthly: null,
-        monthlyDemandMT: 0,
-        targetQty: null,
-        targetQtyMT: 0,
-
-        rejVal: null,
-        rejectionValueKcalKg: null,
-        ash: null,
-        ashPercent: null,
-        sulphur: null,
-        sulphurPercent: null,
-        tm: null,
-        totalMoisturePercent: null,
-        vm: null,
-        volatileMatterPercent: null,
-        fc: null,
-        fixedCarbonPercent: null,
-        hgiAft: "",
-        specFileName: "",
-      };
+      const requirement = buildRequirement();
 
       onComplete?.(requirement);
       return;
@@ -288,27 +309,29 @@ export default function CoalRequirementBuilder({
             }
 
             .coal-builder-modal {
-              width: min(760px, 100%);
-              max-height: min(92vh, 850px);
+              width: min(900px, 100%);
+              max-height: min(92vh, 900px);
               overflow: hidden;
-              border-radius: 24px;
+              border-radius: 26px;
               background:
                 radial-gradient(
                   circle at top right,
-                  rgba(212, 168, 79, .12),
+                  rgba(212,168,79,.12),
                   transparent 30%
                 ),
                 #101214;
-              border: 1px solid rgba(212, 168, 79, .28);
-              box-shadow: 0 40px 120px rgba(0, 0, 0, .55);
+              border: 1px solid rgba(212,168,79,.28);
+              box-shadow:
+                0 40px 120px rgba(0,0,0,.55),
+                inset 0 1px 0 rgba(255,255,255,.05);
               color: #F4F0E7;
               display: flex;
               flex-direction: column;
             }
 
             .coal-builder-header {
-              padding: 24px 26px 18px;
-              border-bottom: 1px solid rgba(244, 240, 231, .10);
+              padding: 24px 28px 18px;
+              border-bottom: 1px solid rgba(244,240,231,.10);
             }
 
             .coal-builder-header-top {
@@ -328,27 +351,27 @@ export default function CoalRequirementBuilder({
 
             .coal-builder-header h2 {
               margin: 8px 0 5px;
-              font-family: Georgia, "Times New Roman", serif;
-              font-size: clamp(30px, 5vw, 44px);
-              line-height: 1;
+              font-family: Georgia, 'Times New Roman', serif;
+              font-size: clamp(30px, 5vw, 46px);
+              line-height: .98;
               font-weight: 500;
               letter-spacing: -.04em;
             }
 
             .coal-builder-header p {
               margin: 0;
-              color: rgba(244, 240, 231, .62);
+              color: rgba(244,240,231,.62);
               font-size: 13px;
               line-height: 1.6;
             }
 
             .coal-builder-close {
+              flex: 0 0 auto;
               width: 42px;
               height: 42px;
-              flex: 0 0 42px;
               border-radius: 50%;
-              border: 1px solid rgba(244, 240, 231, .18);
-              background: rgba(255, 255, 255, .04);
+              border: 1px solid rgba(244,240,231,.18);
+              background: rgba(255,255,255,.04);
               color: #F4F0E7;
               font-size: 24px;
               cursor: pointer;
@@ -356,7 +379,7 @@ export default function CoalRequirementBuilder({
 
             .coal-builder-progress {
               height: 3px;
-              background: rgba(244, 240, 231, .08);
+              background: rgba(244,240,231,.08);
             }
 
             .coal-builder-progress span {
@@ -367,41 +390,44 @@ export default function CoalRequirementBuilder({
             }
 
             .coal-builder-steps {
-              display: flex;
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
               gap: 8px;
-              padding: 13px 26px;
-              overflow-x: auto;
-              border-bottom: 1px solid rgba(244, 240, 231, .08);
+              padding: 14px 28px;
+              border-bottom: 1px solid rgba(244,240,231,.08);
             }
 
             .coal-builder-step {
-              flex: 1 0 auto;
-              text-align: center;
-              padding: 8px 11px;
+              padding: 9px 11px;
               border-radius: 999px;
-              border: 1px solid rgba(244, 240, 231, .12);
-              color: rgba(244, 240, 231, .45);
+              border: 1px solid rgba(244,240,231,.12);
+              color: rgba(244,240,231,.45);
               font-size: 10px;
               font-weight: 800;
               letter-spacing: .06em;
+              text-align: center;
               text-transform: uppercase;
             }
 
             .coal-builder-step.active {
               color: #D4A84F;
-              border-color: rgba(212, 168, 79, .45);
-              background: rgba(212, 168, 79, .08);
+              border-color: rgba(212,168,79,.45);
+              background: rgba(212,168,79,.08);
             }
 
             .coal-builder-body {
               overflow-y: auto;
-              padding: 26px;
+              padding: 28px;
             }
 
             .coal-builder-grid {
               display: grid;
               grid-template-columns: repeat(2, minmax(0, 1fr));
               gap: 16px;
+            }
+
+            .coal-builder-grid.three {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
             }
 
             .coal-builder-field {
@@ -415,7 +441,7 @@ export default function CoalRequirementBuilder({
             }
 
             .coal-builder-field label {
-              color: rgba(244, 240, 231, .82);
+              color: rgba(244,240,231,.82);
               font-size: 11px;
               font-weight: 800;
               letter-spacing: .04em;
@@ -425,18 +451,19 @@ export default function CoalRequirementBuilder({
             .coal-builder-field select,
             .coal-builder-field textarea {
               width: 100%;
-              min-height: 48px;
+              min-height: 46px;
               padding: 11px 13px;
               border-radius: 10px;
-              border: 1px solid rgba(244, 240, 231, .16);
-              background: rgba(7, 24, 38, .58);
+              border: 1px solid rgba(244,240,231,.16);
+              background: rgba(7,24,38,.58);
               color: #F4F0E7;
               outline: none;
               font-size: 13px;
+              box-sizing: border-box;
             }
 
             .coal-builder-field textarea {
-              min-height: 96px;
+              min-height: 100px;
               resize: vertical;
             }
 
@@ -444,7 +471,7 @@ export default function CoalRequirementBuilder({
             .coal-builder-field select:focus,
             .coal-builder-field textarea:focus {
               border-color: #D4A84F;
-              box-shadow: 0 0 0 3px rgba(212, 168, 79, .10);
+              box-shadow: 0 0 0 3px rgba(212,168,79,.10);
             }
 
             .coal-builder-field option {
@@ -456,37 +483,38 @@ export default function CoalRequirementBuilder({
               margin: 0 0 20px;
               padding: 13px 15px;
               border-left: 2px solid #D4A84F;
-              background: rgba(212, 168, 79, .05);
-              color: rgba(244, 240, 231, .62);
+              background: rgba(212,168,79,.05);
+              color: rgba(244,240,231,.62);
               font-size: 11px;
               line-height: 1.65;
             }
 
             .coal-builder-review {
               display: grid;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
+              grid-template-columns: repeat(2, minmax(0,1fr));
               gap: 12px;
             }
 
             .coal-builder-review-item {
-              padding: 14px;
-              border: 1px solid rgba(244, 240, 231, .10);
+              padding: 13px 14px;
+              border: 1px solid rgba(244,240,231,.10);
               border-radius: 12px;
-              background: rgba(255, 255, 255, .03);
+              background: rgba(255,255,255,.025);
             }
 
-            .coal-builder-review-item span {
+            .coal-builder-review-item small {
               display: block;
-              margin-bottom: 5px;
-              color: rgba(244, 240, 231, .42);
+              color: #D4A84F;
               font-size: 9px;
-              font-weight: 800;
-              letter-spacing: .1em;
+              font-weight: 900;
+              letter-spacing: .11em;
               text-transform: uppercase;
             }
 
             .coal-builder-review-item strong {
-              color: #F4F0E7;
+              display: block;
+              margin-top: 5px;
+              color: rgba(244,240,231,.86);
               font-size: 13px;
               overflow-wrap: anywhere;
             }
@@ -496,7 +524,7 @@ export default function CoalRequirementBuilder({
               align-items: flex-start;
               gap: 10px;
               margin-top: 20px;
-              color: rgba(244, 240, 231, .75);
+              color: rgba(244,240,231,.75);
               font-size: 12px;
               line-height: 1.6;
             }
@@ -510,16 +538,16 @@ export default function CoalRequirementBuilder({
               display: flex;
               justify-content: space-between;
               gap: 12px;
-              padding: 17px 26px;
-              border-top: 1px solid rgba(244, 240, 231, .10);
-              background: rgba(0, 0, 0, .12);
+              padding: 18px 28px;
+              border-top: 1px solid rgba(244,240,231,.10);
+              background: rgba(0,0,0,.12);
             }
 
             .coal-builder-btn {
               min-height: 46px;
               padding: 0 20px;
               border-radius: 999px;
-              border: 1px solid rgba(244, 240, 231, .20);
+              border: 1px solid rgba(244,240,231,.20);
               background: transparent;
               color: #F4F0E7;
               cursor: pointer;
@@ -535,36 +563,115 @@ export default function CoalRequirementBuilder({
               color: #071826;
             }
 
-            @media (max-width: 700px) {
+            .coal-date-field {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+
+            .coal-date-label-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 12px;
+            }
+
+            .coal-date-label-row label {
+              color: rgba(244,240,231,.82);
+              font-size: 11px;
+              font-weight: 800;
+              letter-spacing: .04em;
+            }
+
+            .coal-date-label-row span {
+              color: rgba(212,168,79,.78);
+              font-size: 9px;
+              font-weight: 800;
+              letter-spacing: .08em;
+              text-transform: uppercase;
+            }
+
+            .coal-date-input-wrap {
+              position: relative;
+            }
+
+            .coal-date-input-wrap input {
+              width: 100%;
+              min-height: 52px;
+              padding: 12px 48px 12px 14px;
+              border-radius: 12px;
+              border: 1px solid rgba(212,168,79,.28);
+              background:
+                linear-gradient(
+                  145deg,
+                  rgba(7,24,38,.92),
+                  rgba(16,18,20,.96)
+                );
+              color: #F4F0E7;
+              outline: none;
+              font-size: 14px;
+              color-scheme: dark;
+              transition:
+                border-color .2s ease,
+                box-shadow .2s ease,
+                background .2s ease;
+            }
+
+            .coal-date-input-wrap input:focus {
+              border-color: #D4A84F;
+              box-shadow: 0 0 0 3px rgba(212,168,79,.12);
+              background: rgba(7,24,38,.98);
+            }
+
+            .coal-date-input-wrap input::-webkit-calendar-picker-indicator {
+              cursor: pointer;
+              opacity: .9;
+              filter: invert(82%) sepia(34%) saturate(844%) hue-rotate(356deg) brightness(92%) contrast(88%);
+            }
+
+            .coal-date-icon {
+              position: absolute;
+              right: 14px;
+              top: 50%;
+              transform: translateY(-50%);
+              pointer-events: none;
+              color: #D4A84F;
+              font-size: 15px;
+              opacity: .9;
+            }
+
+            .coal-date-help {
+              margin: 0;
+              color: rgba(244,240,231,.48);
+              font-size: 10px;
+              line-height: 1.55;
+            }
+
+            @media(max-width: 700px) {
               .coal-builder-backdrop {
-                align-items: flex-end;
-                padding: 0;
+                padding: 8px;
               }
 
               .coal-builder-modal {
-                width: 100%;
-                max-height: 94dvh;
-                border-radius: 22px 22px 0 0;
+                max-height: 96vh;
+                border-radius: 18px;
               }
 
-              .coal-builder-header {
-                padding: 20px 18px 15px;
+              .coal-builder-header,
+              .coal-builder-body,
+              .coal-builder-footer {
+                padding-left: 16px;
+                padding-right: 16px;
               }
 
               .coal-builder-steps {
-                padding: 11px 18px;
-              }
-
-              .coal-builder-body {
-                padding: 20px 18px;
-              }
-
-              .coal-builder-footer {
-                padding: 14px 18px;
-                flex-direction: column-reverse;
+                padding-left: 16px;
+                padding-right: 16px;
+                grid-template-columns: 1fr;
               }
 
               .coal-builder-grid,
+              .coal-builder-grid.three,
               .coal-builder-review {
                 grid-template-columns: 1fr;
               }
@@ -574,7 +681,7 @@ export default function CoalRequirementBuilder({
               }
 
               .coal-builder-btn {
-                width: 100%;
+                padding: 0 16px;
               }
             }
           `}</style>
@@ -630,110 +737,175 @@ export default function CoalRequirementBuilder({
                 exit={{ opacity: 0, x: -16 }}
                 transition={{ duration: 0.2 }}
               >
-                {step.key === "product" && (
+                {step.key === "coal" && (
                   <>
                     <p className="coal-builder-help">
-                      Select the basic coal specification. Detailed lab parameters can be discussed later if required.
+                      Enter the commercial buyer name and the core coal
+                      specification. Optional technical values can be added
+                      later through notes or the commercial team.
                     </p>
 
                     <div className="coal-builder-grid">
                       <Field
-                        label="Company / Organization"
+                        label="Company / Buyer"
                         value={formData.company}
-                        onChange={(value) => update("company", value)}
+                        onChange={(value) =>
+                          update("company", value)
+                        }
                         placeholder="Company name"
                       />
 
                       <SelectField
                         label="Coal Origin"
                         value={formData.origin}
-                        onChange={(value) => update("origin", value)}
+                        onChange={(value) =>
+                          update("origin", value)
+                        }
                         options={ORIGINS}
                       />
 
                       <SelectField
                         label="Coal Type"
                         value={formData.coalType}
-                        onChange={(value) => update("coalType", value)}
+                        onChange={(value) =>
+                          update("coalType", value)
+                        }
                         options={COAL_TYPES}
                       />
 
                       <Field
                         label="GCV (kcal/kg)"
                         value={formData.gcv}
-                        onChange={(value) => update("gcv", value)}
+                        onChange={(value) =>
+                          update("gcv", value)
+                        }
                         type="number"
-                        placeholder="e.g. 5500"
+                        placeholder="Optional"
                       />
 
                       <SelectField
                         label="GCV Basis"
                         value={formData.basis}
-                        onChange={(value) => update("basis", value)}
+                        onChange={(value) =>
+                          update("basis", value)
+                        }
                         options={BASES}
                       />
                     </div>
                   </>
                 )}
 
-                {step.key === "commercial" && (
+                {step.key === "requirement" && (
                   <>
                     <p className="coal-builder-help">
-                      Enter the quantity, delivery destination and commercial value for this requirement.
+                      Estimated valuation is used by the backend to calculate
+                      GST and the total payable amount. Enter the total
+                      commercial valuation before GST.
                     </p>
 
                     <div className="coal-builder-grid">
                       <Field
                         label="Quantity (MT)"
-                        value={formData.orderQty}
-                        onChange={(value) => update("orderQty", value)}
+                        value={formData.targetQty}
+                        onChange={(value) =>
+                          update("targetQty", value)
+                        }
                         type="number"
+                        min="0"
                         placeholder="e.g. 100"
                       />
 
                       <Field
-                        label="Estimated Valuation (₹)"
+                        label="Estimated Valuation (INR)"
                         value={formData.estValuation}
-                        onChange={(value) => update("estValuation", value)}
+                        onChange={(value) =>
+                          update("estValuation", value)
+                        }
                         type="number"
-                        placeholder="e.g. 500000"
+                        min="0"
+                        placeholder="Required"
                       />
 
                       <Field
+                        full
                         label="Destination"
                         value={formData.dest}
-                        onChange={(value) => update("dest", value)}
-                        placeholder="City / plant / delivery location"
+                        onChange={(value) =>
+                          update("dest", value)
+                        }
+                        placeholder="City / Plant / Port / Country"
                       />
 
                       <SelectField
                         label="Transport Mode"
                         value={formData.tMode}
-                        onChange={(value) => update("tMode", value)}
+                        onChange={(value) =>
+                          update("tMode", value)
+                        }
                         options={TRANSPORT_MODES}
                       />
 
                       <Field
                         label="Incoterm"
                         value={formData.incoterm}
-                        onChange={(value) => update("incoterm", value)}
-                        placeholder="Optional"
+                        onChange={(value) =>
+                          update("incoterm", value)
+                        }
+                        placeholder="Optional - FOB / CIF / CFR / EXW"
                       />
 
-                      <Field
-                        label="Required By"
-                        value={formData.reqDate}
-                        onChange={(value) => update("reqDate", value)}
-                        type="date"
-                      />
+                      <div className="coal-date-field">
+                        <div className="coal-date-label-row">
+                          <label htmlFor="coal-required-by">
+                            Required By
+                          </label>
+
+                          <span>
+                            Optional
+                          </span>
+                        </div>
+
+                        <div className="coal-date-input-wrap">
+                          <input
+                            id="coal-required-by"
+                            type="date"
+                            value={formData.reqDate}
+                            min={todayDate}
+                            onChange={(event) =>
+                              update(
+                                "reqDate",
+                                event.target.value
+                              )
+                            }
+                            aria-describedby="coal-required-by-help"
+                          />
+
+                          <span
+                            className="coal-date-icon"
+                            aria-hidden="true"
+                          >
+                            ◫
+                          </span>
+                        </div>
+
+                        <p
+                          id="coal-required-by-help"
+                          className="coal-date-help"
+                        >
+                          Select the expected delivery or dispatch date.
+                          Past dates are disabled.
+                        </p>
+                      </div>
 
                       <Field
                         full
                         textarea
                         label="Additional Notes"
                         value={formData.notes}
-                        onChange={(value) => update("notes", value)}
-                        placeholder="Optional requirement details"
+                        onChange={(value) =>
+                          update("notes", value)
+                        }
+                        placeholder="Optional technical, inspection, sampling or commercial requirement."
                       />
                     </div>
                   </>
@@ -741,49 +913,56 @@ export default function CoalRequirementBuilder({
 
                 {step.key === "review" && (
                   <>
-                    <p className="coal-builder-help">
-                      Review the requirement. Your personal contact details will be collected in the next step.
-                    </p>
-
                     <div className="coal-builder-review">
-                      <ReviewItem label="Company" value={formData.company} />
-                      <ReviewItem label="Origin" value={formData.origin} />
-                      <ReviewItem label="Coal Type" value={formData.coalType} />
-
-                      <ReviewItem
-                        label="GCV"
-                        value={
+                      {[
+                        ["Company / Buyer", formData.company],
+                        ["Origin", formData.origin],
+                        ["Coal Type", formData.coalType],
+                        [
+                          "GCV",
                           formData.gcv
-                            ? `${formData.gcv} kcal/kg ${formData.basis}`
-                            : formData.basis
-                        }
-                      />
-
-                      <ReviewItem
-                        label="Quantity"
-                        value={`${formData.orderQty} MT`}
-                      />
-
-                      <ReviewItem
-                        label="Destination"
-                        value={formData.dest}
-                      />
-
-                      <ReviewItem
-                        label="Transport"
-                        value={formData.tMode}
-                      />
-
-                      <ReviewItem
-                        label="Estimated Valuation"
-                        value={
+                            ? `${formData.gcv} kcal/kg`
+                            : "Not specified",
+                        ],
+                        ["Basis", formData.basis],
+                        [
+                          "Quantity",
+                          `${formData.targetQty || 0} MT`,
+                        ],
+                        [
+                          "Estimated Valuation",
                           formData.estValuation
                             ? `₹${Number(
                                 formData.estValuation
                               ).toLocaleString("en-IN")}`
-                            : ""
-                        }
-                      />
+                            : "Not specified",
+                        ],
+                        ["Destination", formData.dest],
+                        ["Transport", formData.tMode],
+                        [
+                          "Incoterm",
+                          formData.incoterm ||
+                            "Not specified",
+                        ],
+                        [
+                          "Required By",
+                          formData.reqDate ||
+                            "Not specified",
+                        ],
+                        [
+                          "Notes",
+                          formData.notes ||
+                            "Not specified",
+                        ],
+                      ].map(([label, value]) => (
+                        <div
+                          className="coal-builder-review-item"
+                          key={label}
+                        >
+                          <small>{label}</small>
+                          <strong>{value}</strong>
+                        </div>
+                      ))}
                     </div>
 
                     <label className="coal-builder-consent">
@@ -791,12 +970,16 @@ export default function CoalRequirementBuilder({
                         type="checkbox"
                         checked={formData.privacy}
                         onChange={(event) =>
-                          update("privacy", event.target.checked)
+                          update(
+                            "privacy",
+                            event.target.checked
+                          )
                         }
                       />
 
                       <span>
-                        I agree to the privacy policy and allow India Trade Overseas to process this requirement for commercial communication and order processing.
+                        I acknowledge the privacy policy and allow India Trade
+                        Overseas to contact me regarding this Coal requirement.
                       </span>
                     </label>
                   </>
@@ -834,26 +1017,36 @@ function Field({
   label,
   value,
   onChange,
-  placeholder = "",
   type = "text",
+  placeholder = "",
   textarea = false,
   full = false,
+  min,
 }) {
   return (
-    <div className={`coal-builder-field ${full ? "full" : ""}`}>
+    <div
+      className={`coal-builder-field ${
+        full ? "full" : ""
+      }`}
+    >
       <label>{label}</label>
 
       {textarea ? (
         <textarea
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
           placeholder={placeholder}
         />
       ) : (
         <input
           type={type}
+          min={min}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
           placeholder={placeholder}
         />
       )}
@@ -873,31 +1066,18 @@ function SelectField({
 
       <select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
       >
         <option value="">Select</option>
 
         {options.map((option) => (
-          <option
-            key={option}
-            value={option}
-          >
+          <option key={option} value={option}>
             {option}
           </option>
         ))}
       </select>
-    </div>
-  );
-}
-
-function ReviewItem({
-  label,
-  value,
-}) {
-  return (
-    <div className="coal-builder-review-item">
-      <span>{label}</span>
-      <strong>{value || "Not specified"}</strong>
     </div>
   );
 }
