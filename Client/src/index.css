@@ -136,6 +136,14 @@ textarea {
   }
 }
 
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* ============================================================
    CRM design tokens — "Bonded Vault" direction.
    Applied via .crm-portal on the portal root (PortalLayout.jsx).

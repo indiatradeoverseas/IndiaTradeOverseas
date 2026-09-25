@@ -169,6 +169,22 @@ export default function Notifications() {
     }
   };
 
+  const formatTimeShort = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   const filteredNotifications = notifications.filter(n => {
     if (activeTab === 'unread') return !n.isRead;
     if (activeTab === 'read') return n.isRead;
@@ -187,29 +203,31 @@ export default function Notifications() {
     >
       
       {/* Top Deck Header Context Panel */}
-      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm px-4">
+      <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm px-3.5 sm:px-6">
         <div className="space-y-1 text-left">
           <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">Communications Center</span>
-          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] tracking-tight uppercase flex items-center gap-3.5">
-            <FiBell className="text-[var(--crm-ink-faint)]" size={24} /> Notifications
+          <h1 className="text-xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] tracking-tight uppercase flex items-center gap-2.5 sm:gap-3.5">
+            <FiBell className="text-[var(--crm-ink-faint)] shrink-0" size={22} /> Notifications
           </h1>
-          <p className="text-xs text-[#a4afbc] font-light max-w-2xl font-mono">
+          <p className="text-xs text-[#a4afbc] font-light max-w-2xl font-mono leading-relaxed">
             Real-time operations stream • Lead assignments, attendance reminders & leave request approvals.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        
+        {/* Action Buttons: Responsive & Single Line */}
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <motion.button
             whileHover={unreadCount > 0 ? { scale: 1.02 } : {}}
             whileTap={unreadCount > 0 ? { scale: 0.98 } : {}}
             onClick={handleMarkAllRead}
             disabled={unreadCount === 0}
-            className={`flex items-center gap-2 px-4 h-[38px] rounded-sm text-[10px] uppercase tracking-widest font-semibold transition-all font-mono ${
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 h-[36px] sm:h-[38px] rounded-sm text-[10px] uppercase tracking-wider font-semibold transition-all font-mono whitespace-nowrap ${
               unreadCount === 0
                 ? 'bg-[var(--crm-bg-raised)]/20 text-[var(--crm-ink-faint)]/40 border border-[var(--crm-ink-soft)]/5 cursor-not-allowed opacity-40'
                 : 'bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-heading)] hover:border-[var(--crm-heading)]/40 hover:bg-[var(--crm-bg-raised)] shadow-md cursor-pointer'
             }`}
           >
-            <FiCheck size={13} /> Mark All Read
+            <FiCheck size={13} className="shrink-0" /> Mark All Read
           </motion.button>
 
           {notifications.length > 0 && (
@@ -217,61 +235,61 @@ export default function Notifications() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleDeleteAll}
-              className="flex items-center gap-1.5 px-3.5 h-[38px] rounded-sm text-[10px] uppercase tracking-widest font-semibold font-mono bg-rose-950/40 text-rose-400 border border-rose-800/40 hover:bg-rose-900/50 transition cursor-pointer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-3.5 h-[36px] sm:h-[38px] rounded-sm text-[10px] uppercase tracking-wider font-semibold font-mono whitespace-nowrap bg-rose-950/40 text-rose-400 border border-rose-800/40 hover:bg-rose-900/50 transition cursor-pointer"
               title="Clear all notifications"
             >
-              <FiTrash2 size={12} /> Clear All
+              <FiTrash2 size={12} className="shrink-0" /> Clear All
             </motion.button>
           )}
         </div>
       </motion.div>
 
-      <div className="w-full py-6 space-y-6 bg-[var(--crm-bg)] px-4">
+      <div className="w-full py-4 sm:py-6 space-y-4 sm:space-y-6 bg-[var(--crm-bg)] px-3 sm:px-6">
         
         {/* Structured Segment Navigation Categories */}
-        <motion.div variants={blockVariants} className="flex items-center border-b border-[var(--crm-ink-soft)]/10 overflow-x-auto scrollbar-none">
+        <motion.div variants={blockVariants} className="flex items-center border-b border-[var(--crm-ink-soft)]/10 overflow-x-auto scrollbar-none space-x-1 sm:space-x-0">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-5 py-3 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-3.5 sm:px-5 py-2.5 sm:py-3 border-b-2 text-[10px] sm:text-[11px] uppercase tracking-wider sm:tracking-widest font-mono font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'all'
                 ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
                 : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
             }`}
           >
             All Records
-            <span className="ml-2 px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">
+            <span className="ml-1.5 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)] rounded-sm">
               {notifications.length}
             </span>
           </button>
           <button
             onClick={() => setActiveTab('unread')}
-            className={`px-5 py-3 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-3.5 sm:px-5 py-2.5 sm:py-3 border-b-2 text-[10px] sm:text-[11px] uppercase tracking-wider sm:tracking-widest font-mono font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'unread'
                 ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
                 : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
             }`}
           >
-            Unread Payload
+            Unread <span className="hidden xs:inline sm:inline">Payload</span>
             {unreadCount > 0 ? (
-              <span className="ml-2 px-2 py-0.5 text-[9px] bg-rose-950 border border-rose-800 text-rose-400 font-bold rounded-sm animate-pulse">
+              <span className="ml-1.5 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[9px] bg-rose-950 border border-rose-800 text-rose-400 font-bold rounded-sm animate-pulse">
                 {unreadCount}
               </span>
             ) : (
-              <span className="ml-2 px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-faint)] rounded-sm">
+              <span className="ml-1.5 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-faint)] rounded-sm">
                 0
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('read')}
-            className={`px-5 py-3 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-3.5 sm:px-5 py-2.5 sm:py-3 border-b-2 text-[10px] sm:text-[11px] uppercase tracking-wider sm:tracking-widest font-mono font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'read'
                 ? 'border-[var(--crm-heading)] text-[var(--crm-heading)]'
                 : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-ink-soft)]'
             }`}
           >
-            Archived Ledger
-            <span className="ml-2 px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-faint)] rounded-sm">
+            Archived <span className="hidden xs:inline sm:inline">Ledger</span>
+            <span className="ml-1.5 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[9px] bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-faint)] rounded-sm">
               {readCount}
             </span>
           </button>
@@ -280,17 +298,17 @@ export default function Notifications() {
         {/* Master Queue Terminal Box */}
         <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)]/20 border border-[var(--crm-ink-soft)]/15 rounded-sm shadow-2xl overflow-hidden">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-28 space-y-3">
+            <div className="flex flex-col items-center justify-center py-20 sm:py-28 space-y-3">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--crm-ink-soft)] border-t-transparent"></div>
               <p className="text-[10px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-mono">Polling Live Stream Nodes...</p>
             </div>
           ) : filteredNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="h-14 w-16 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm flex items-center justify-center text-gray-400 mb-4 shadow-inner">
+            <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center">
+              <div className="h-12 w-14 sm:h-14 sm:w-16 bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/10 rounded-sm flex items-center justify-center text-gray-400 mb-3 sm:mb-4 shadow-inner">
                 <FiInbox size={22} className="text-[var(--crm-ink-faint)] opacity-70" />
               </div>
-              <h3 className="text-base font-serif text-[var(--crm-heading)] uppercase tracking-wide">Stream Queue Cleared</h3>
-              <p className="text-xs text-[var(--crm-ink-faint)] mt-1.5 max-w-xs font-light leading-relaxed px-4 font-mono">
+              <h3 className="text-sm sm:text-base font-serif text-[var(--crm-heading)] uppercase tracking-wide">Stream Queue Cleared</h3>
+              <p className="text-[11px] sm:text-xs text-[var(--crm-ink-faint)] mt-1.5 max-w-xs font-light leading-relaxed px-4 font-mono">
                 {activeTab === 'unread' 
                   ? "All notifications have been read."
                   : activeTab === 'read'
@@ -311,7 +329,7 @@ export default function Notifications() {
                       layout
                       key={notification._id}
                       onClick={() => !isActionLoading && handleNotificationClick(notification)}
-                      className={`group relative p-5 flex items-start gap-5 transition-all duration-150 cursor-pointer border-l-2 text-left ${
+                      className={`group relative p-3.5 sm:p-5 flex items-start gap-3 sm:gap-5 transition-all duration-150 cursor-pointer border-l-2 text-left ${
                         isUnread
                           ? 'bg-[var(--crm-bg-raised)]/40 border-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]/60'
                           : 'border-transparent hover:bg-[var(--crm-bg-raised)]/30 bg-transparent'
@@ -319,19 +337,19 @@ export default function Notifications() {
                     >
                       
                       {/* Indicator Icon Context Box */}
-                      <div className={`p-2.5 rounded-sm shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-md ${bgClass}`}>
-                        <Icon size={15} />
+                      <div className={`p-2 sm:p-2.5 rounded-sm shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-md ${bgClass}`}>
+                        <Icon size={14} className="sm:text-base" />
                       </div>
 
                       {/* Body Parameter Cluster */}
                       <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                           <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)]">
                             {notification.type ? notification.type.replace(/_/g, ' ') : 'General Broadcast'}
                           </span>
-                          <span className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--crm-ink-faint)] font-light">
-                            <FiClock size={11} className="text-[var(--crm-ink-faint)]" />
-                            {new Date(notification.createdAt).toLocaleString()}
+                          <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono text-[var(--crm-ink-faint)] font-light">
+                            <FiClock size={10} className="text-[var(--crm-ink-faint)] shrink-0" />
+                            {formatTimeShort(notification.createdAt)}
                           </span>
                         </div>
                         <p className={`text-xs sm:text-sm leading-relaxed ${isUnread ? 'font-medium text-[var(--crm-heading)] font-mono' : 'text-[var(--crm-ink-soft)]/80 font-light font-mono'}`}>
@@ -340,23 +358,23 @@ export default function Notifications() {
                       </div>
 
                       {/* Actions Cluster: Unread Dot + Delete Button */}
-                      <div className="flex items-center gap-3 shrink-0 self-center pl-2">
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-center pl-1 sm:pl-2">
                         {isUnread && (
-                          <span className="h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-950 animate-pulse"></span>
+                          <span className="h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-950/60 animate-pulse shrink-0"></span>
                         )}
 
                         <button
                           type="button"
                           onClick={(e) => handleDeleteNotification(notification._id, e)}
-                          className="p-1.5 text-[var(--crm-ink-faint)] hover:text-rose-400 hover:bg-rose-950/60 border border-transparent hover:border-rose-800/40 rounded transition cursor-pointer"
+                          className="p-1 sm:p-1.5 text-[var(--crm-ink-faint)] hover:text-rose-400 hover:bg-rose-950/60 border border-transparent hover:border-rose-800/40 rounded transition cursor-pointer"
                           title="Delete notification"
                         >
-                          <FiTrash2 size={14} />
+                          <FiTrash2 size={13} />
                         </button>
 
                         <FiChevronRight 
-                          size={16} 
-                          className="text-[var(--crm-ink-faint)]/40 group-hover:text-[var(--crm-heading)] transition-colors transform group-hover:translate-x-0.5" 
+                          size={15} 
+                          className="text-[var(--crm-ink-faint)]/40 group-hover:text-[var(--crm-heading)] transition-colors transform group-hover:translate-x-0.5 shrink-0" 
                         />
                       </div>
                       
