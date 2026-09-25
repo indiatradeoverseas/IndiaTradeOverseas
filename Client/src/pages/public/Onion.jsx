@@ -2746,17 +2746,32 @@ export default function Onion() {
           text-align: center;
         }
 
-        /* Headings intentionally stay left aligned. */
-        .ito-onion-page h1,
+        /* Section headings / titles are centered across the page. */
         .ito-onion-page h2,
-        .ito-onion-page h3,
-        .ito-onion-page h4,
         .ito-onion-page .ito-section-title,
         .ito-onion-page .ito-section-heading,
         .ito-onion-page .ito-crm-heading,
-        .ito-onion-page .ito-sub-heading,
-        .ito-onion-page .ito-display {
-          text-align: left;
+        .ito-onion-page .ito-sub-heading {
+          text-align: center !important;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        /* Small section eyebrow labels such as PACKAGING / SEASONAL CROP CATEGORIES. */
+        .ito-onion-page .ito-eyebrow {
+          display: flex !important;
+          align-items: center;
+          justify-content: center !important;
+          width: 100%;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-eyebrow::before,
+        .ito-onion-page .ito-eyebrow::after {
+          display: none !important;
+          content: none !important;
         }
 
         .ito-onion-page .ito-spec strong,
@@ -4232,9 +4247,1880 @@ export default function Onion() {
           }
         }
 
-`}
+
+        /* ============================================================
+           PREMIUM ONION DESIGN SYSTEM
+           Layout / spacing / typography only. Existing content,
+           colors and business/backend logic are preserved.
+           ============================================================ */
+
+        .ito-onion-page {
+          --premium-max: 1220px;
+          --premium-x: clamp(18px, 4vw, 54px);
+          --premium-y: clamp(72px, 8vw, 124px);
+          overflow-x: hidden;
+        }
+
+        .ito-onion-page .ito-section {
+          padding: var(--premium-y) var(--premium-x);
+        }
+
+        .ito-onion-page .ito-section-inner {
+          width: min(var(--premium-max), 100%);
+          margin-inline: auto;
+        }
+
+        .ito-onion-page .ito-section-title {
+          max-width: 900px;
+          font-size: clamp(40px, 5.2vw, 72px);
+          line-height: .96;
+          letter-spacing: -.045em;
+        }
+
+        .ito-onion-page .ito-lead {
+          max-width: 720px;
+          font-size: clamp(15px, 1.25vw, 18px);
+          line-height: 1.8;
+        }
+
+        .ito-onion-page .ito-eyebrow {
+          margin-bottom: 16px;
+          line-height: 1;
+        }
+
+        /* HERO */
+        .ito-onion-page .ito-hero-inner {
+          width: min(1220px, 100%);
+          padding: clamp(108px, 12vw, 150px) var(--premium-x) clamp(62px, 7vw, 96px);
+          grid-template-columns: minmax(0, 1.08fr) minmax(220px, .42fr);
+          gap: clamp(30px, 7vw, 105px);
+        }
+
+        .ito-onion-page .ito-hero-text {
+          max-width: 820px;
+        }
+
+        .ito-onion-page .ito-hero-title {
+          font-size: clamp(46px, 6.5vw, 94px);
+          line-height: .91;
+          letter-spacing: -.055em;
+        }
+
+        .ito-onion-page .ito-hero-title-line {
+          display: block;
+        }
+
+        .ito-onion-page .ito-hero-subtitle {
+          max-width: 650px;
+          font-size: clamp(15px, 1.45vw, 19px);
+          line-height: 1.75;
+        }
+
+        /* EDITORIAL INTRO */
+        .ito-onion-page .ito-intro {
+          grid-template-columns: minmax(270px, .78fr) minmax(0, 1.22fr);
+          gap: clamp(42px, 8vw, 112px);
+          align-items: end;
+        }
+
+        /* SPECIFICATION CARDS */
+        .ito-onion-page .ito-spec-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 1px;
+          margin-top: clamp(42px, 5vw, 70px);
+        }
+
+        .ito-onion-page .ito-spec {
+          min-width: 0;
+          min-height: 185px;
+          padding: clamp(22px, 2.4vw, 32px);
+        }
+
+        .ito-onion-page .ito-spec strong {
+          font-size: clamp(22px, 2vw, 28px);
+        }
+
+        /* GRADE / FEATURE CARDS */
+        .ito-onion-page .ito-grade-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 20px;
+          margin-top: 52px;
+        }
+
+        .ito-onion-page .ito-card {
+          min-width: 0;
+          min-height: 280px;
+          padding: clamp(24px, 2.5vw, 32px);
+          border-radius: 16px;
+          transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+        }
+
+        .ito-onion-page .ito-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 24px 60px rgba(74,16,28,.10);
+          border-color: rgba(181,150,90,.55);
+        }
+
+        .ito-onion-page .ito-card h3 {
+          margin-top: 48px;
+          font-size: clamp(26px, 2.4vw, 32px);
+          line-height: 1.05;
+        }
+
+        /* DOMESTIC / EXPORT */
+        .ito-onion-page .ito-split-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 22px;
+          margin-top: 48px;
+        }
+
+        .ito-onion-page .ito-split-card {
+          min-width: 0;
+          padding: clamp(28px, 3.5vw, 46px);
+          border-radius: 18px;
+        }
+
+        .ito-onion-page .ito-split-card h3 {
+          font-size: clamp(28px, 3vw, 42px);
+          line-height: 1;
+          margin-bottom: 18px;
+        }
+
+        .ito-onion-page .ito-split-card p {
+          font-size: 14px;
+          line-height: 1.8;
+        }
+
+        .ito-onion-page .ito-split-card .ito-button {
+          margin-top: 28px;
+        }
+
+        /* PROCESS */
+        .ito-onion-page .ito-process {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          column-gap: clamp(30px, 6vw, 80px);
+          row-gap: 0;
+          margin-top: 50px;
+        }
+
+        .ito-onion-page .ito-process-item {
+          min-width: 0;
+          grid-template-columns: 48px minmax(0, 1fr);
+          gap: 16px;
+          min-height: 88px;
+          padding: 20px 0;
+        }
+
+        .ito-onion-page .ito-process-item span {
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        /* MARKETS / SIZES */
+        .ito-onion-page .ito-markets {
+          justify-content: flex-start;
+          align-items: flex-start;
+          gap: 10px;
+          margin-top: 36px;
+        }
+
+        .ito-onion-page .ito-market {
+          max-width: 100%;
+          white-space: normal;
+        }
+
+        /* PACKAGING */
+        .ito-onion-page .ito-packaging {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+          margin-top: 48px;
+        }
+
+        .ito-onion-page .ito-pack-card {
+          min-width: 0;
+          padding: clamp(26px, 3vw, 40px);
+          border-radius: 18px;
+        }
+
+        /* BUYER PERSONAS */
+        .ito-onion-page .ito-persona-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 18px;
+          margin-top: 48px;
+        }
+
+        .ito-onion-page .ito-persona-card {
+          min-width: 0;
+          padding: 28px;
+          border-radius: 16px;
+        }
+
+        /* EXPORT */
+        .ito-onion-page .ito-export-grid {
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+          gap: 22px;
+        }
+
+        .ito-onion-page .ito-export-column,
+        .ito-onion-page .ito-export-step {
+          min-width: 0;
+        }
+
+        /* BULLETS */
+        .ito-onion-page .ito-bullet-list {
+          width: 100%;
+          max-width: 760px;
+          margin: 22px auto 0;
+          padding-left: 22px;
+          text-align: left;
+        }
+
+        .ito-onion-page .ito-bullet-list li {
+          margin: 7px 0;
+          padding-left: 4px;
+          line-height: 1.65;
+          overflow-wrap: anywhere;
+        }
+
+        .ito-onion-page .ito-bullet-list li::marker {
+          color: var(--gold);
+          font-size: .82em;
+        }
+
+        /* TABLES */
+        .ito-onion-page .ito-rate-table-wrap,
+        .ito-onion-page .ito-table-wrap {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .ito-onion-page .ito-table,
+        .ito-onion-page .ito-rate-table {
+          width: 100%;
+          max-width: 100%;
+          table-layout: fixed;
+        }
+
+        .ito-onion-page .ito-table th,
+        .ito-onion-page .ito-table td,
+        .ito-onion-page .ito-rate-table th,
+        .ito-onion-page .ito-rate-table td {
+          vertical-align: middle;
+          overflow-wrap: anywhere;
+        }
+
+        /* CTA */
+        .ito-onion-page .ito-cta {
+          padding-top: clamp(72px, 9vw, 120px);
+          padding-bottom: clamp(78px, 9vw, 120px);
+        }
+
+        .ito-onion-page .ito-cta-inner {
+          grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+          gap: clamp(40px, 7vw, 100px);
+          align-items: center;
+        }
+
+        .ito-onion-page .ito-cta h2 {
+          font-size: clamp(42px, 5.8vw, 80px);
+          line-height: .95;
+        }
+
+        .ito-onion-page .ito-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .ito-onion-page .ito-button {
+          min-height: 48px;
+          padding: 13px 20px;
+          border-radius: 10px;
+        }
+
+        /* FAQ */
+        .ito-onion-page .ito-faq {
+          max-width: 980px;
+          margin-inline: auto;
+        }
+
+        .ito-onion-page .ito-faq-item {
+          padding: 22px 0;
+        }
+
+        .ito-onion-page .ito-faq-q,
+        .ito-onion-page .ito-faq-a {
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-faq-q {
+          font-size: clamp(16px, 1.4vw, 19px);
+          line-height: 1.45;
+        }
+
+        .ito-onion-page .ito-faq-a {
+          max-width: 860px;
+          font-size: 14px;
+          line-height: 1.8;
+        }
+
+        /* TABLET */
+        @media (max-width: 1024px) {
+          .ito-onion-page .ito-hero-inner {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-spec-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-onion-page .ito-persona-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ito-onion-page .ito-export-grid,
+          .ito-onion-page .ito-cta-inner {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        /* MOBILE */
+        @media (max-width: 800px) {
+          .ito-onion-page {
+            --premium-x: 18px;
+            --premium-y: 68px;
+          }
+
+          .ito-onion-page .ito-hero {
+            min-height: 760px;
+          }
+
+          .ito-onion-page .ito-hero-inner {
+            min-height: 760px;
+            padding-top: 105px;
+            padding-bottom: 52px;
+          }
+
+          .ito-onion-page .ito-hero-title {
+            font-size: clamp(42px, 12vw, 64px);
+            line-height: .94;
+          }
+
+          .ito-onion-page .ito-hero-subtitle {
+            line-height: 1.72;
+          }
+
+          .ito-onion-page .ito-intro,
+          .ito-onion-page .ito-split-grid,
+          .ito-onion-page .ito-grade-grid,
+          .ito-onion-page .ito-packaging,
+          .ito-onion-page .ito-export-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-process {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-spec-grid,
+          .ito-onion-page .ito-persona-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-spec {
+            min-height: auto;
+          }
+
+          .ito-onion-page .ito-section-title {
+            font-size: clamp(36px, 10vw, 56px);
+          }
+
+          .ito-onion-page .ito-cta h2 {
+            font-size: clamp(38px, 10vw, 56px);
+          }
+
+          .ito-onion-page .ito-actions {
+            width: 100%;
+            flex-direction: column;
+          }
+
+          .ito-onion-page .ito-actions .ito-button {
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page {
+            --premium-x: 15px;
+            --premium-y: 58px;
+          }
+
+          .ito-onion-page .ito-hero-inner {
+            padding-top: 94px;
+            padding-bottom: 44px;
+          }
+
+          .ito-onion-page .ito-hero-title {
+            font-size: clamp(38px, 11.5vw, 52px);
+          }
+
+          .ito-onion-page .ito-section-title {
+            font-size: clamp(34px, 10.5vw, 48px);
+          }
+
+          .ito-onion-page .ito-split-card,
+          .ito-onion-page .ito-pack-card,
+          .ito-onion-page .ito-persona-card,
+          .ito-onion-page .ito-card {
+            padding: 22px;
+          }
+
+          .ito-onion-page .ito-bullet-list {
+            padding-left: 20px;
+          }
+
+          .ito-onion-page .ito-bullet-list li {
+            margin: 6px 0;
+            line-height: 1.58;
+          }
+
+          .ito-onion-page .ito-table th {
+            font-size: 11px;
+            padding: 9px 7px;
+          }
+
+          .ito-onion-page .ito-table td {
+            padding: 9px 7px;
+          }
+        }
+
+
+        /* ============================================================
+           FINAL PREMIUM RESTRUCTURE
+           - Keeps all existing React state, API calls, routes,
+             requirement builder and pricing flow unchanged.
+           - Removes the "everything inside a floating box" look.
+           - Gives each section its own visual rhythm and whitespace.
+           - Keeps cards only where they represent actual content groups.
+           ============================================================ */
+
+        .ito-onion-page {
+          --premium-max: 1240px;
+          --premium-gutter: clamp(20px, 5vw, 72px);
+          --premium-section-y: clamp(82px, 9vw, 148px);
+          --premium-section-y-small: clamp(64px, 8vw, 104px);
+          --premium-rule: rgba(74, 16, 28, 0.14);
+          --premium-muted: rgba(34, 33, 31, 0.68);
+          overflow-x: clip;
+        }
+
+        /* Sections are now full-width canvases rather than floating cards. */
+        .ito-onion-page .ito-section {
+          width: 100%;
+          padding: var(--premium-section-y) var(--premium-gutter);
+          background: var(--ivory);
+          border-top: 1px solid rgba(74, 16, 28, 0.055);
+        }
+
+        .ito-onion-page .ito-section:nth-of-type(even) {
+          background: #F3EEE4;
+        }
+
+        .ito-onion-page .ito-section.ito-dark {
+          background:
+            radial-gradient(circle at 86% 12%, rgba(181,150,90,.10), transparent 28%),
+            linear-gradient(180deg, #4A101C 0%, #3B0D17 100%);
+          color: var(--ivory);
+        }
+
+        .ito-onion-page .ito-section.ito-cta {
+          background:
+            radial-gradient(circle at 15% 20%, rgba(181,150,90,.13), transparent 30%),
+            #F3EEE4;
+        }
+
+        /* The old section-inner was visually acting like a giant card.
+           It is now only a layout container. */
+        .ito-onion-page .ito-section .ito-section-inner,
+        .ito-onion-page .ito-section.ito-dark .ito-section-inner,
+        .ito-onion-page .ito-section.ito-cta .ito-section-inner,
+        .ito-onion-page .ito-section--pt .ito-section-inner {
+          width: min(var(--premium-max), 100%);
+          max-width: var(--premium-max);
+          margin: 0 auto;
+          padding: 0 !important;
+          background: transparent !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+        }
+
+        .ito-onion-page .ito-section-inner::before,
+        .ito-onion-page .ito-section-inner::after {
+          display: none !important;
+        }
+
+        /* Consistent section header rhythm. */
+        .ito-onion-page .ito-intro {
+          grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr);
+          gap: clamp(42px, 7vw, 110px);
+          align-items: start;
+        }
+
+        .ito-onion-page .ito-eyebrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 16px;
+          line-height: 1;
+        }
+
+        .ito-onion-page .ito-eyebrow::before {
+          content: "";
+          width: 28px;
+          height: 1px;
+          background: currentColor;
+          opacity: .7;
+        }
+
+        .ito-onion-page .ito-section-title {
+          margin: 0;
+          max-width: 920px;
+          font-size: clamp(42px, 5.6vw, 78px);
+          line-height: .94;
+          letter-spacing: -.045em;
+        }
+
+        .ito-onion-page .ito-lead {
+          max-width: 720px;
+          margin: 4px 0 0;
+          font-size: clamp(15px, 1.35vw, 18px);
+          line-height: 1.8;
+        }
+
+        /* Keep content groups separated by whitespace, not nested panels. */
+        .ito-onion-page .ito-spec-grid,
+        .ito-onion-page .ito-grade-grid,
+        .ito-onion-page .ito-process,
+        .ito-onion-page .ito-packaging,
+        .ito-onion-page .ito-persona-grid,
+        .ito-onion-page .ito-split-grid,
+        .ito-onion-page .ito-export-grid {
+          margin-top: clamp(48px, 6vw, 82px);
+        }
+
+        .ito-onion-page .ito-spec-grid {
+          gap: 0;
+          background: transparent;
+          border: 0;
+        }
+
+        .ito-onion-page .ito-spec {
+          min-height: 170px;
+          padding: 30px 28px;
+          background: rgba(255,255,255,.56) !important;
+          border: 1px solid var(--premium-rule);
+          border-radius: 0;
+        }
+
+        .ito-onion-page .ito-spec + .ito-spec {
+          border-left: 0;
+        }
+
+        .ito-onion-page .ito-spec strong {
+          margin-bottom: 14px;
+          font-size: 23px;
+        }
+
+        /* Actual cards remain cards, but become lighter and more editorial. */
+        .ito-onion-page .ito-card,
+        .ito-onion-page .ito-pack-card,
+        .ito-onion-page .ito-persona-card,
+        .ito-onion-page .ito-split-card {
+          border-radius: 18px;
+          border: 1px solid rgba(74,16,28,.12);
+          box-shadow: 0 18px 55px rgba(34,33,31,.055);
+        }
+
+        .ito-onion-page .ito-card,
+        .ito-onion-page .ito-persona-card,
+        .ito-onion-page .ito-split-card {
+          padding: clamp(26px, 3vw, 36px);
+        }
+
+        .ito-onion-page .ito-card {
+          min-height: 300px;
+        }
+
+        .ito-onion-page .ito-card h3 {
+          margin-top: 64px;
+        }
+
+        /* Process becomes a clean editorial list instead of a boxed grid. */
+        .ito-onion-page .ito-process {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 clamp(42px, 7vw, 100px);
+          border-top: 1px solid var(--premium-rule);
+        }
+
+        .ito-onion-page .ito-process-item {
+          min-height: 86px;
+          padding: 22px 0;
+          border-bottom: 1px solid var(--premium-rule);
+        }
+
+        .ito-onion-page .ito-process-item::before {
+          width: 40px;
+          height: 40px;
+          background: transparent;
+          border: 1px solid rgba(74,16,28,.22);
+        }
+
+        /* Markets breathe instead of looking like a dense tag cloud. */
+        .ito-onion-page .ito-markets {
+          gap: 10px;
+          margin-top: 42px;
+        }
+
+        .ito-onion-page .ito-market {
+          padding: 10px 14px;
+          background: transparent !important;
+          border-color: rgba(74,16,28,.18);
+        }
+
+        /* Tables are separated from headings with deliberate whitespace. */
+        .ito-onion-page .ito-table {
+          margin-top: 30px;
+          border: 1px solid rgba(74,16,28,.12);
+          border-radius: 14px;
+        }
+
+        .ito-onion-page .ito-table th,
+        .ito-onion-page .ito-table td {
+          padding: 16px 18px;
+        }
+
+        .ito-onion-page .ito-sub-heading,
+        .ito-onion-page .ito-crm-heading {
+          margin-top: clamp(56px, 7vw, 92px);
+          margin-bottom: 0;
+        }
+
+        .ito-onion-page .ito-quote-box {
+          margin-top: 44px;
+          border-radius: 14px;
+          padding: 24px 26px;
+        }
+
+        /* Export section gets a more open 2-column editorial composition. */
+        .ito-onion-page .ito-export-grid {
+          gap: clamp(40px, 6vw, 88px);
+        }
+
+        .ito-onion-page .ito-export-workflow {
+          gap: 0 42px;
+        }
+
+        .ito-onion-page .ito-export-step {
+          min-height: 76px;
+          padding: 15px 0;
+        }
+
+        .ito-onion-page .ito-export-docs {
+          align-self: start;
+          padding: 28px;
+          border-radius: 18px;
+        }
+
+        /* FAQ: no card around the whole section, only simple dividers. */
+        .ito-onion-page .ito-faq {
+          max-width: 980px;
+          margin-top: clamp(48px, 6vw, 78px);
+          border-top: 1px solid var(--premium-rule);
+        }
+
+        .ito-onion-page .ito-faq-item {
+          padding: 24px 0;
+          border-top: 0;
+          border-bottom: 1px solid var(--premium-rule);
+        }
+
+        .ito-onion-page .ito-faq-q {
+          margin-bottom: 10px;
+          font-size: 16px;
+        }
+
+        .ito-onion-page .ito-faq-a {
+          max-width: 850px;
+          line-height: 1.75;
+        }
+
+        /* Final CTA is intentionally spacious and not boxed. */
+        .ito-onion-page .ito-cta-inner {
+          grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+          gap: clamp(50px, 8vw, 120px);
+          align-items: center;
+        }
+
+        .ito-onion-page .ito-cta-inner > div:first-child,
+        .ito-onion-page .ito-cta-inner > div:last-child {
+          padding: 0 !important;
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+
+        .ito-onion-page .ito-cta h2 {
+          max-width: 850px;
+          font-size: clamp(46px, 6.2vw, 88px);
+          line-height: .94;
+        }
+
+        .ito-onion-page .ito-cta-image {
+          max-width: 430px;
+          margin: 0 0 26px auto;
+          border-radius: 18px;
+          object-fit: cover;
+        }
+
+        .ito-onion-page .ito-cta-copy {
+          max-width: 520px;
+          margin-left: auto;
+          text-align: left;
+          line-height: 1.75;
+        }
+
+        .ito-onion-page .ito-actions {
+          margin-top: 30px;
+          justify-content: flex-start;
+        }
+
+        /* Keep navigation and hero untouched in structure and behavior. */
+
+        @media (max-width: 900px) {
+          .ito-onion-page .ito-intro,
+          .ito-onion-page .ito-cta-inner {
+            grid-template-columns: 1fr;
+            gap: 34px;
+          }
+
+          .ito-onion-page .ito-process {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-cta-image {
+            margin-left: 0;
+            margin-right: auto;
+          }
+
+          .ito-onion-page .ito-cta-copy {
+            margin-left: 0;
+          }
+        }
+
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-section {
+            padding: var(--premium-section-y-small) 20px;
+          }
+
+          .ito-onion-page .ito-section-title {
+            font-size: clamp(38px, 10vw, 58px);
+            line-height: .96;
+          }
+
+          .ito-onion-page .ito-lead {
+            font-size: 15px;
+            line-height: 1.72;
+          }
+
+          .ito-onion-page .ito-spec-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .ito-onion-page .ito-spec,
+          .ito-onion-page .ito-spec + .ito-spec {
+            border: 1px solid var(--premium-rule);
+            border-radius: 14px;
+          }
+
+          .ito-onion-page .ito-card,
+          .ito-onion-page .ito-pack-card,
+          .ito-onion-page .ito-persona-card,
+          .ito-onion-page .ito-split-card {
+            padding: 24px;
+          }
+
+          .ito-onion-page .ito-export-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-export-workflow {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-actions {
+            justify-content: center;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .ito-onion-page .ito-section {
+            padding: 64px 16px;
+          }
+
+          .ito-onion-page .ito-intro {
+            gap: 24px;
+          }
+
+          .ito-onion-page .ito-eyebrow {
+            margin-bottom: 12px;
+          }
+
+          .ito-onion-page .ito-section-title {
+            font-size: clamp(34px, 11vw, 48px);
+          }
+
+          .ito-onion-page .ito-spec-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ito-onion-page .ito-spec {
+            min-height: auto;
+            padding: 22px 20px;
+          }
+
+          .ito-onion-page .ito-card {
+            min-height: auto;
+          }
+
+          .ito-onion-page .ito-card h3 {
+            margin-top: 38px;
+          }
+
+          .ito-onion-page .ito-process-item {
+            grid-template-columns: 44px 1fr;
+            text-align: left;
+          }
+
+          .ito-onion-page .ito-cta h2 {
+            font-size: clamp(38px, 11vw, 54px);
+          }
+
+          .ito-onion-page .ito-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .ito-onion-page .ito-actions .ito-button,
+          .ito-onion-page .ito-actions a {
+            width: 100%;
+          }
+        }
+
+
+        /* ============================================================
+           FINAL CONTRAST PATCH
+           Burgundy sections must never use Burgundy as body/heading text.
+           Light cards/tables inside dark sections keep their own readable
+           Burgundy treatment.
+           ============================================================ */
+
+        .ito-onion-page .ito-section.ito-dark .ito-section-title,
+        .ito-onion-page .ito-section.ito-dark .ito-section-heading,
+        .ito-onion-page .ito-section.ito-dark .ito-crm-heading,
+        .ito-onion-page .ito-section.ito-dark .ito-lead,
+        .ito-onion-page .ito-section.ito-dark .ito-sub-heading,
+        .ito-onion-page .ito-section.ito-dark .ito-faq-q,
+        .ito-onion-page .ito-section.ito-dark .ito-faq-a,
+        .ito-onion-page .ito-section.ito-dark .ito-process-item span,
+        .ito-onion-page .ito-section.ito-dark .ito-process-control,
+        .ito-onion-page .ito-section.ito-dark .ito-bullet-list li,
+        .ito-onion-page .ito-section.ito-dark .ito-doc-note {
+          color: var(--ivory) !important;
+        }
+
+        .ito-onion-page #international.ito-section.ito-dark .ito-lead {
+          color: rgba(247,243,234,.90) !important;
+        }
+
+        .ito-onion-page .ito-section.ito-dark .ito-eyebrow,
+        .ito-onion-page .ito-section.ito-dark .ito-process-stage {
+          color: var(--gold) !important;
+        }
+
+        /* Light cards/tables inside dark sections keep dark text. */
+        .ito-onion-page .ito-section.ito-dark .ito-card:not(.ito-card--dark) h3,
+        .ito-onion-page .ito-section.ito-dark .ito-pack-card h3,
+        .ito-onion-page .ito-section.ito-dark .ito-persona-card .buyer,
+        .ito-onion-page .ito-section.ito-dark .ito-split-card h3,
+        .ito-onion-page .ito-section.ito-dark .ito-table th {
+          color: var(--burgundy) !important;
+        }
+
+        .ito-onion-page .ito-section.ito-dark .ito-card:not(.ito-card--dark) p,
+        .ito-onion-page .ito-section.ito-dark .ito-pack-card p,
+        .ito-onion-page .ito-section.ito-dark .ito-persona-card .need,
+        .ito-onion-page .ito-section.ito-dark .ito-split-card p {
+          color: rgba(34,33,31,.86) !important;
+        }
+
+        .ito-onion-page .ito-section.ito-dark .ito-export-docs {
+          background: rgba(255,255,255,.07) !important;
+          border-color: rgba(247,243,234,.18) !important;
+        }
+
+        .ito-onion-page .ito-section.ito-dark .ito-export-docs .ito-section-heading,
+        .ito-onion-page .ito-section.ito-dark .ito-export-docs .ito-bullet-list li,
+        .ito-onion-page .ito-section.ito-dark .ito-export-docs .ito-doc-note {
+          color: var(--ivory) !important;
+        }
+
+        .ito-onion-page .ito-section.ito-dark .ito-quote-box--mt {
+          color: var(--ivory) !important;
+        }
+
+        /* Size / market pills inside Burgundy sections need light text. */
+        .ito-onion-page .ito-section.ito-dark .ito-market,
+        .ito-onion-page .ito-section.ito-dark .ito-size-card {
+          color: var(--ivory) !important;
+          background: rgba(247,243,234,.08) !important;
+          border-color: rgba(181,150,90,.34) !important;
+        }
+
+        .ito-onion-page .ito-section.ito-dark .ito-market:hover,
+        .ito-onion-page .ito-section.ito-dark .ito-size-card:hover {
+          color: var(--ivory) !important;
+          background: rgba(181,150,90,.16) !important;
+          border-color: rgba(181,150,90,.62) !important;
+        }
 
 </style>
+
+      {/* HERO */}
+      <section className="ito-hero" aria-label="Nashik onion hero">
+        <div className="ito-hero-background" aria-hidden="true">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={heroIndex}
+              src={HERO_IMAGES[heroIndex]}
+              alt="Nashik red onion supply"
+              initial={{ opacity: 0, scale: 1.03 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="ito-hero-image"
+            />
+          </AnimatePresence>
+
+          <div className="ito-hero-overlay ito-hero-overlay-horizontal" />
+          <div className="ito-hero-overlay ito-hero-overlay-bottom" />
+        </div>
+
+        <div className="ito-hero-inner">
+          <motion.div
+            className="ito-hero-text"
+            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{
+              duration: 1.2,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.2,
+            }}
+          >
+            <motion.div
+              className="ito-hero-kicker"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+            >
+              <span className="ito-hero-kicker-dot" />
+              <span>Domestic India · International Export · Bulk B2B Trade</span>
+            </motion.div>
+
+            <motion.h1
+              className="ito-display ito-hero-title"
+              initial={{ scale: 0.97 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 1, ease: "easeOut", delay: 0.4 }}
+            >
+              <span className="ito-hero-title-line">Nashik Onions</span>
+              <span className="ito-hero-title-line">for Domestic</span>
+              <span className="ito-hero-title-line">&amp; Global Markets</span>
+            </motion.h1>
+
+            <motion.div
+              className="ito-hero-accent-line"
+              initial={{ width: 0 }}
+              animate={{ width: 96 }}
+              transition={{ duration: 1, delay: 0.7, ease: "easeInOut" }}
+            />
+
+            <motion.p
+              className="ito-hero-subtitle"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              Sourced with Precision. Graded to Specification. Delivered with Coordination.
+            </motion.p>
+
+            <motion.div
+              className="ito-trust-line"
+              role="list"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+            >
+              <span role="listitem">Buyer-Defined Grades</span>
+              <span role="listitem">Flexible Packaging</span>
+              <span role="listitem">Documented Loading</span>
+              <span role="listitem">Logistics Coordination</span>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* MARKET SPLIT */}
+      <section className="ito-section ito-dark">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Market entry</div>
+          <h2 className="ito-display ito-section-title">Choose Your Supply Route</h2>
+          <p className="ito-lead ito-lead-burgundy">
+            The page splits domestic and international visitors immediately because their buying questions, commercial terms, documentation and logistics are materially different.
+          </p>
+
+          <div className="ito-split-grid">
+            <article className="ito-split-card">
+              <h3>Domestic Supply</h3>
+              <p>Bulk truckload supply for wholesalers, distributors, processors, institutional buyers and retail-chain suppliers across India. Quotations may be prepared on an Ex-Warehouse, FOR or delivered-to-destination basis.</p>
+              <button
+                className="ito-button"
+                type="button"
+                onClick={openRequirementBuilder}
+              >
+                Get Domestic Delivered Rate
+              </button>
+            </article>
+            <article className="ito-split-card">
+              <h3>International Export</h3>
+              <p>Container-based supply for verified importers, wholesalers, distributors and food-service companies. Every export requirement is assessed against destination regulations, transit time, crop condition, packaging, buyer specifications and the selected Incoterm.</p>
+              <a className="ito-button secondary" href="#international">Request Export SCO</a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* CORE VALUE PROPOSITION */}
+      <section className="ito-section ito-core-value-section">
+        <div className="ito-section-inner">
+          <div className="ito-intro">
+            <div>
+              <div className="ito-eyebrow">One point of coordination</div>
+              <h2 className="ito-display ito-section-title">From Nashik to Destination</h2>
+            </div>
+            <p className="ito-lead">
+              Bulk onion procurement involves more than finding a market rate. Size consistency, crop condition, packing strength, bag weight, loading, documentation and transit planning can directly affect the buyer's outcome. India Trade Overseas coordinates these stages under one structured order process.
+            </p>
+          </div>
+
+          <div className="ito-spec-grid">
+            <div className="ito-spec">
+              <strong>Sourcing</strong>
+              <span>Nashik and approved nearby producing regions of Maharashtra</span>
+            </div>
+            <div className="ito-spec">
+              <strong>Grading</strong>
+              <span>Commercial, Standard Export or Premium Export selection</span>
+            </div>
+            <div className="ito-spec">
+              <strong>Packing</strong>
+              <span>Domestic 20–50 kg · Export 5–25 kg ventilated mesh</span>
+            </div>
+            <div className="ito-spec">
+              <strong>Logistics</strong>
+              <span>Truckload coordination or containerised export execution</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* GRADE SELECTION */}
+      <section className="ito-section ito-dark">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Grade selection</div>
+          <h2 className="ito-display ito-section-title">Select the Grade Your Market Requires</h2>
+
+          <div className="ito-grade-grid">
+            {GRADES.map((grade, index) => (
+              <article className="ito-spec ito-card ito-grade-card" key={grade.name}>
+                <div className="ito-card-number">0{index + 1}</div>
+                <h3>{grade.name}</h3>
+                <p className="positioning">{grade.positioning}</p>
+                <p>{grade.control}</p>
+              </article>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 86 }}>
+            <div className="ito-eyebrow">Size classifications</div>
+            <div className="ito-markets" style={{ marginTop: 22 }}>
+              {SIZES.map((size) => (
+                <span className="ito-market ito-size-card" key={size}>{size}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SEASONAL CROPS */}
+      <section className="ito-section">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Seasonal crop categories</div>
+          <h2 className="ito-display ito-section-title">Fresh Red Onions from Nashik</h2>
+          <p className="ito-lead">
+            Fresh red onions will be sourced from Nashik and approved nearby producing regions of Maharashtra. Each commercial offer must identify the crop, lot, grade, size, packaging and destination requirements.
+          </p>
+
+          <div className="ito-grade-grid">
+            {CROPS.map((crop, index) => (
+              <article className="ito-spec ito-card" key={crop.name}>
+                <div className="ito-card-number">0{index + 1}</div>
+                <h3>{crop.name}</h3>
+                <p>{crop.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* MASTER SPECIFICATION */}
+      <section className="ito-section ito-dark" id="specifications">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Master product specification</div>
+          <h2 className="ito-display ito-section-title">Every Quotation Confirms These Fields</h2>
+          <p className="ito-lead">
+            Website content is indicative; the signed commercial document is authoritative.
+          </p>
+
+          <table className="ito-table alt ito-quality-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Required Confirmation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SPEC_FIELDS.map((field, i) => (
+                <tr key={i}>
+                  <td>{field.label}</td>
+                  <td>{field.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="ito-quote-box ito-quote-box--alt">
+            <strong>Mandatory quality rule:</strong> The website must never claim zero defects or guarantee a universal shelf life. Crop performance depends on season, curing, weather, handling, storage, temperature, humidity and transit conditions.
+          </div>
+        </div>
+      </section>
+
+      {/* PACKAGING */}
+      <section className="ito-section ito-packaging-section" id="packaging">
+        <div className="ito-section-inner">
+          <div className="ito-intro">
+            <div>
+              <h2 className="ito-display ito-section-title">Packed for Domestic and Export Markets</h2>
+              <div className="ito-eyebrow"></div>
+            </div>
+            <p className="ito-lead">
+              Packaging must protect ventilation, maintain presentation and match the buyer's distribution model. Final net weight, bag tolerance, artwork and shipping marks must be confirmed before production.
+            </p>
+          </div>
+
+          <div className="ito-packaging">
+            <article className="ito-pack-card">
+              <small>Domestic India</small>
+              <h3>Standard Options</h3>
+              <ul className="ito-bullet-list">
+                {PACKAGING.domestic.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+              <p className="ito-pack-note">
+                Buyer-branded bags and institutional pack sizes available
+              </p>
+            </article>
+            <article className="ito-pack-card">
+              <small>International Export</small>
+              <h3>Standard Options</h3>
+              <ul className="ito-bullet-list">
+                {PACKAGING.international.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+              <p className="ito-pack-note">
+                Private label, product labels, barcodes and destination shipping marks
+              </p>
+            </article>
+          </div>
+
+          <div className="ito-quote-box" style={{ marginTop: 32 }}>
+            <strong>Packaging control checklist:</strong> Correct net-weight target and written weight tolerance · Adequate ventilation and appropriate bag strength · Secure closure or stitching and accurate bag count · Product, lot and country-of-origin identification where required · Buyer-approved artwork before printing private-label material · Destination-specific markings verified before dispatch
+          </div>
+
+          <p className="ito-disclaimer">
+            <strong>Product disclaimer:</strong> Colour, skin, firmness, pungency, moisture, shelf life and storage performance vary by crop, season, weather, producing area, curing, storage and individual lot. Final supply is governed by the written specification.
+          </p>
+        </div>
+      </section>
+
+      {/* DOMESTIC TRADE */}
+      <section className="ito-section" id="domestic">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Domestic trade</div>
+          <h2 className="ito-display ito-section-title">Domestic Supply Operating Model</h2>
+          <p className="ito-lead">
+            Domestic orders can be offered under an Ex-Warehouse, FOR or delivered-to-destination structure, or through a recurring weekly or monthly supply programme.
+          </p>
+
+          <div className="ito-process">
+            {[
+              "Receive and verify the buyer's company details and requirement",
+              "Confirm size, grade, tolerance, packaging, quantity and destination",
+              "Check suitable lots and share applicable photographs, video or inspection information",
+              "Issue a formal quotation or Proforma Invoice with validity and exclusions",
+              "Secure written acceptance and agreed payment terms",
+              "Complete procurement, grading, packing and vehicle coordination",
+              "Issue dispatch documents, track transit and collect delivery acknowledgement",
+              "Schedule the next requirement for recurring buyers",
+            ].map((step, i) => (
+              <div className="ito-process-item" key={i}>
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+
+          <table className="ito-table">
+            <thead>
+              <tr>
+                <th>Cost Component</th>
+                <th>Quotation Requirement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DOMESTIC_COST_COMPONENTS.map((item, i) => (
+                <tr key={i}>
+                  <td>{item.component}</td>
+                  <td>{item.requirement}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* INTERNATIONAL TRADE */}
+      <section className="ito-section ito-dark" id="international">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">International trade</div>
+          <h2 className="ito-display ito-section-title">Export Operating Model</h2>
+          <p className="ito-lead">
+            Export quotations may be structured under EXW, FCA, FOB, CFR or CIF, subject to destination feasibility and mutual agreement. The named place or port, included costs, risk point, document responsibility and applicable Incoterms version must be stated.
+          </p>
+
+          <div className="ito-export-grid">
+            <div className="ito-export-column">
+              <h3 className="ito-section-heading">Export Workflow</h3>
+              <div className="ito-export-workflow">
+                {EXPORT_WORKFLOW.map((item, i) => (
+                  <div key={i} className="ito-export-step">
+                    <span className="ito-process-stage">{item.stage}</span>
+                    <span className="ito-process-control">{item.control}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ito-export-column ito-export-docs">
+              <h3 className="ito-section-heading">Export Documentation</h3>
+              <ul className="ito-bullet-list ito-bullet-list--alt">
+                {EXPORT_DOCS.map((doc, i) => (
+                  <li key={i}>{doc}</li>
+                ))}
+              </ul>
+              <p className="ito-doc-note">
+                No document should be promised unless it is applicable, obtainable, contractually included and compatible with the destination-country requirement.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* QUALITY ASSURANCE */}
+      <section className="ito-section" id="quality">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Operations</div>
+          <h2 className="ito-display ito-section-title">Quality Assurance, Storage and Logistics</h2>
+          <p className="ito-lead">
+            The operating system must protect the buyer-approved specification at each handoff — lot selection, grading, packing, loading, transport and documentation.
+          </p>
+
+          <h3 className="ito-sub-heading">
+            Five-Stage Quality Protocol
+          </h3>
+          <table className="ito-table ito-table--mt">
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>Checks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {QUALITY_STAGES.map((item, i) => (
+                <tr key={i}>
+                  <td><strong>{item.stage}</strong></td>
+                  <td>{item.checks}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="ito-split-grid ito-split-grid--mt">
+            <article className="ito-split-card">
+              <h3>Storage and Handling</h3>
+              <ul className="ito-bullet-list">
+                <li>Use dry, clean and ventilated storage protected from rain and standing water</li>
+                <li>Avoid excessive stacking pressure and unnecessary handling</li>
+                <li>Separate wet, damaged or decayed bulbs and monitor stock condition</li>
+                <li>Apply first-in, first-out movement and plan dispatch against crop condition</li>
+                <li>Assess storage suitability against curing, humidity, temperature and expected holding period</li>
+              </ul>
+            </article>
+            <article className="ito-split-card">
+              <h3>Logistics Controls</h3>
+              <ul className="ito-bullet-list">
+                <li><strong>Domestic:</strong> Truck selection, freight, route, loading point, driver details, tracking and proof of delivery</li>
+                <li><strong>Export:</strong> Container availability and condition, vessel cutoff, customs, loading pattern, seal, Bill of Lading and arrival updates</li>
+                <li>Do not guarantee a fixed payload before confirming bag size, product density, container type, legal payload and carrier rules</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* BUYER PERSONAS */}
+      <section className="ito-section ito-dark">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Buyer personas</div>
+          <h2 className="ito-display ito-section-title">Buyer Segments and Calls to Action</h2>
+          <p className="ito-lead">
+            The page must address the primary need of each buyer segment with a specific conversion CTA.
+          </p>
+
+          <div className="ito-persona-grid">
+            {BUYER_PERSONAS.map((persona, i) => (
+              <article className="ito-persona-card" key={i}>
+                <div className="buyer">{persona.buyer}</div>
+                <div className="need">{persona.need}</div>
+                <div className="cta">{persona.cta}</div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PROCESS */}
+      <section className="ito-section" id="process">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Process</div>
+          <h2 className="ito-display ito-section-title">A Clear Process from Enquiry to Delivery</h2>
+
+          <div className="ito-process">
+            {PROCESS_STEPS.map((step, i) => (
+              <div className="ito-process-item" key={i}>
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="ito-quote-box ito-quote-box--mt">
+            <strong>Long-term supply programme:</strong> Qualified buyers requiring weekly, monthly or seasonal supply can request a structured programme covering volume forecasts, specifications, packing, delivery calendar, price review, documentation and performance review.
+          </div>
+
+          <p className="ito-market-notice ">
+            <strong>Market-price notice:</strong> Onion prices can change according to crop arrivals, quality, size, weather, demand, packaging, labour, transport, port charges, freight and government regulations. Every quotation carries a defined validity period. An enquiry does not lock price or confirm stock.
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="ito-section ito-dark" id="faq">
+        <div className="ito-section-inner">
+          <div className="ito-eyebrow">Objection handling</div>
+          <h2 className="ito-display ito-section-title">Buyer Questions and Objection Handling</h2>
+
+          <div className="ito-faq">
+            {FAQS.map((faq, i) => (
+              <div className="ito-faq-item" key={i}>
+                <div className="ito-faq-q">Q. {faq.q}</div>
+                <div className="ito-faq-a">A. {faq.a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="ito-section ito-cta">
+        <div className="ito-section-inner ito-cta-inner">
+          <div>
+            <div className="ito-eyebrow">Final conversion</div>
+            <h2 className="ito-display">Share Your Requirement. Receive a Commercial Supply Plan.</h2>
+          </div>
+
+          <div>
+            <img src="/images/onion_image.png" alt="Nashik onions" className="ito-cta-image" />
+            <p className="ito-cta-copy ito-cta-copy-burgundy">
+              Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability, logistics and applicable terms before preparing the offer.
+            </p>
+            <div className="ito-actions">
+              <button
+                className="ito-button"
+                type="button"
+                onClick={openRequirementBuilder}
+              >
+                Request Bulk Quote
+              </button>
+              <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
+              <a
+                className="ito-button secondary ito-whatsapp-button"
+                href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <IoLogoWhatsapp className="ito-whatsapp-icon" aria-hidden="true" />
+                <span>Chat with Export Sales</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      {/* ONION REQUIREMENT BUILDER */}
+      <OnionRequirementBuilder
+        isOpen={showRequirementBuilder}
+        onClose={() => setShowRequirementBuilder(false)}
+        onComplete={handleRequirementComplete}
+      />
+
+      {/* PERSONAL DETAILS */}
+      <AnimatePresence>
+        {showPersonalDetails && (
+          <motion.div
+            className="ito-onion-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !submittingPersonalDetails) {
+                setShowPersonalDetails(false);
+              }
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ito-onion-personal-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onion-personal-details-title"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <div className="ito-onion-personal-header">
+                <div>
+                  <small>Step 2 · Buyer details</small>
+                  <h2 id="onion-personal-details-title">Tell us who is buying.</h2>
+                </div>
+
+                <button
+                  type="button"
+                  className="ito-onion-modal-close"
+                  aria-label="Close"
+                  disabled={submittingPersonalDetails}
+                  onClick={() => setShowPersonalDetails(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                className="ito-onion-personal-body"
+                onSubmit={handlePersonalDetailsSubmit}
+              >
+                {builtRequirement && (
+                  <div className="ito-onion-requirement-summary">
+                    <div>
+                      <span>Trade</span>
+                      <strong>{builtRequirement.tradeType === "EXPORT" ? "International Export" : "Domestic India"}</strong>
+                    </div>
+                    <div>
+                      <span>Size</span>
+                      <strong>{builtRequirement.size}</strong>
+                    </div>
+                    <div>
+                      <span>Grade</span>
+                      <strong>{builtRequirement.grade}</strong>
+                    </div>
+                    <div>
+                      <span>Quantity</span>
+                      <strong>
+                        {Number(builtRequirement.quantityKg || 0).toLocaleString("en-IN")} kg
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Packaging</span>
+                      <strong>{builtRequirement.packaging}</strong>
+                    </div>
+                    <div>
+                      <span>Destination</span>
+                      <strong>{builtRequirement.destination}</strong>
+                    </div>
+                  </div>
+                )}
+
+                <div className="ito-onion-form-grid">
+                  <div className="ito-onion-field full">
+                    <label htmlFor="onion-full-name">Full Name</label>
+                    <input
+                      id="onion-full-name"
+                      type="text"
+                      autoComplete="name"
+                      value={personalDetails.fullName}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          fullName: event.target.value,
+                        }))
+                      }
+                      placeholder="Enter your full name"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-email">Business Email</label>
+                    <input
+                      id="onion-email"
+                      type="email"
+                      autoComplete="email"
+                      value={personalDetails.email}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          email: event.target.value,
+                        }))
+                      }
+                      placeholder="you@company.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-mobile">Mobile Number</label>
+                    <input
+                      id="onion-mobile"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={personalDetails.mobile}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          mobile: event.target.value,
+                        }))
+                      }
+                      placeholder="+91 98765 43210"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-city">City</label>
+                    <input
+                      id="onion-city"
+                      type="text"
+                      autoComplete="address-level2"
+                      value={personalDetails.city}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          city: event.target.value,
+                        }))
+                      }
+                      placeholder="City"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field">
+                    <label htmlFor="onion-state">State / Province</label>
+                    <input
+                      id="onion-state"
+                      type="text"
+                      autoComplete="address-level1"
+                      value={personalDetails.state}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          state: event.target.value,
+                        }))
+                      }
+                      placeholder="State / Province"
+                      required
+                    />
+                  </div>
+
+                  <div className="ito-onion-field full">
+                    <label htmlFor="onion-timeline">Required Timeline</label>
+                    <input
+                      id="onion-timeline"
+                      type="text"
+                      value={personalDetails.targetTimeline}
+                      onChange={(event) =>
+                        setPersonalDetails((previous) => ({
+                          ...previous,
+                          targetTimeline: event.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Immediate, 7 days, 15 days"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <p className="ito-onion-form-note">
+                  Your requirement will be validated by the server before the pricing page is opened. No OTP is required for this Onion purchase flow.
+                </p>
+
+                <div className="ito-onion-form-actions">
+                  <button
+                    type="button"
+                    className="ito-button secondary"
+                    disabled={submittingPersonalDetails}
+                    onClick={() => {
+                      setShowPersonalDetails(false);
+                      setShowRequirementBuilder(true);
+                    }}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="ito-button"
+                    disabled={submittingPersonalDetails}
+                  >
+                    {submittingPersonalDetails ? "Saving Requirement…" : "Continue to Pricing"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DAILY DOMESTIC / EXPORT ONION RATE CHART */}
+      <AnimatePresence>
+        {showRateChart && (
+          <motion.div
+            className="ito-rate-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setShowRateChart(false);
+              }
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ito-rate-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onion-rate-chart-title"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <div className="ito-rate-modal-header">
+                <div>
+                  <div className="ito-rate-modal-kicker">Prakriti by India Trade Overseas</div>
+                  <h2 id="onion-rate-chart-title">Daily Onion Rate Chart</h2>
+                  <div className="ito-rate-modal-date">
+                    Fresh Fruits &amp; Vegetables Supply &amp; Export · {ONION_RATE_CHART.date}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="ito-rate-modal-close"
+                  aria-label="Close onion rate chart"
+                  onClick={() => setShowRateChart(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="ito-rate-modal-body">
+                <div className="ito-rate-intro">
+                  <span className="ito-rate-pill">🧅 {ONION_RATE_CHART.product}</span>
+                  <span className="ito-rate-pill">🌱 {ONION_RATE_CHART.variety}</span>
+                  <span className="ito-rate-pill">🚢 Export Quality · Ex. Godown Price</span>
+                </div>
+
+                <h3 className="ito-rate-section-title">Domestic Quality</h3>
+                <div className="ito-rate-table-wrap">
+                  <table className="ito-rate-table">
+                    <thead>
+                      <tr>
+                        <th>Size</th>
+                        <th>Rate / KG</th>
+                        <th>Packing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ONION_RATE_CHART.domestic.map((item) => (
+                        <tr key={item.size}>
+                          <td><strong>{item.size}</strong></td>
+                          <td className="ito-rate-price">{item.rate}</td>
+                          <td>{ONION_RATE_CHART.domesticPacking}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ito-domestic-highlight">
+                  <strong>🚚 Transportation:</strong> {ONION_RATE_CHART.transport}
+                </div>
+
+                <h3 className="ito-rate-section-title">Export Quality — Ex. Godown Price</h3>
+                <div className="ito-rate-table-wrap">
+                  <table className="ito-rate-table">
+                    <thead>
+                      <tr>
+                        <th>Market</th>
+                        <th>Size</th>
+                        <th>Rate / KG</th>
+                        <th>Packing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ONION_RATE_CHART.export.map((item) => (
+                        <tr key={item.market}>
+                          <td><strong>{item.market}</strong></td>
+                          <td>{item.size}</td>
+                          <td className="ito-rate-price">{item.rate}</td>
+                          <td>{item.packing}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ito-rate-notes">
+                  <div className="ito-rate-note">
+                    <span>JNPT Transportation</span>
+                    <strong>{ONION_RATE_CHART.jnpt}</strong>
+                  </div>
+                  <div className="ito-rate-note">
+                    <span>Domestic Packing</span>
+                    <strong>{ONION_RATE_CHART.domesticPacking}</strong>
+                  </div>
+                  <div className="ito-rate-note">
+                    <span>Rate Date</span>
+                    <strong>{ONION_RATE_CHART.date}</strong>
+                  </div>
+                </div>
+
+                <p className="ito-rate-disclaimer">
+                  Rates shown are the supplied rate chart for 22/09/2026. Transportation and
+                  final commercial terms are subject to the applicable destination, quantity,
+                  logistics and confirmation at the time of order.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}
+
+        /* ============================================================
+           FINAL HEADING ALIGNMENT
+           - Center all section eyebrow headings
+           - Remove the decorative line on the left
+           - Applies consistently across desktop and mobile
+           - Hero structure / backend logic untouched
+           ============================================================ */
+        .ito-onion-page .ito-eyebrow {
+          width: 100%;
+          display: flex !important;
+          align-items: center;
+          justify-content: center !important;
+          gap: 0 !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-eyebrow::before {
+          display: none !important;
+          content: none !important;
+        }
+
+      
+        /* FINAL: all section labels are centered, with no decorative left line. */
+        .ito-onion-page .ito-eyebrow {
+          display: flex !important;
+          justify-content: center !important;
+          align-items: center !important;
+          width: 100% !important;
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-eyebrow::before,
+        .ito-onion-page .ito-eyebrow::after {
+          content: none !important;
+          display: none !important;
+        }
+
+      
+        /* FINAL: only Commercial / Standard Export / Premium Export boxes. */
+        .ito-onion-page .ito-grade-grid .ito-card {
+          background: #FFFFFF !important;
+        }
+
+      
+        /* FINAL: give section headings clear breathing room before the lead text. */
+        .ito-onion-page .ito-section-title {
+          margin-bottom: 28px !important;
+        }
+
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-section-title {
+            margin-bottom: 22px !important;
+          }
+        }
+
+      `}</style>
 
       {/* HERO */}
       <section className="ito-hero" aria-label="Nashik onion hero">
