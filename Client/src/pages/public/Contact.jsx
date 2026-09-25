@@ -1,4 +1,4 @@
-import QuickEnquiry from '../../components/QuickEnquiry';
+
 import { BUSINESS_WHATSAPP, BUSINESS_WHATSAPP_DISPLAY } from '../../config/business';
 import React, { useState } from 'react';
 
@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi';
 
 import toast from 'react-hot-toast';
+import { FaWhatsapp } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { pushDataLayerEvent } from '../../utils/analytics';
 import useDocumentMeta from '../../hooks/useDocumentMeta';
@@ -321,11 +322,6 @@ export default function Contact() {
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden">
 
-      <QuickEnquiry/>
-      {/* =====================================================
-          TOP BORDER
-      ===================================================== */}
-
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full"></div>
 
       {/* =====================================================
@@ -459,7 +455,7 @@ export default function Contact() {
                     className="bg-[#121D29]/58 border border-[#C5CBD3]/24 shadow-sm rounded-[4px] p-5 flex items-center space-x-4"
                   >
 
-                    <div className="p-3 bg-[#0E1116] border border-[#C5CBD3]/24 text-[#F2F4F7] rounded-[2px] shrink-0">
+                    <div className="ito-whatsapp-cta-icon p-3 bg-[#0E1116] border border-[#C5CBD3]/24 text-[#F2F4F7] rounded-[2px] shrink-0">
                       <Icon size={16} />
                     </div>
 
@@ -489,15 +485,15 @@ export default function Contact() {
                 WHATSAPP CTA
             ================================================= */}
 
-            <div className="bg-[#121D29]/58 border border-[#C5CBD3]/24 rounded-[4px] shadow-sm p-5 w-full">
+            <div className="ito-whatsapp-cta bg-[#121D29]/58 border border-[#C5CBD3]/24 rounded-[4px] shadow-sm p-5 w-full">
 
-              <div className="flex items-center gap-3">
+              <div className="ito-whatsapp-cta-inner flex items-center gap-3">
 
                 <div className="p-3 bg-[#0E1116] border border-[#C5CBD3]/24 text-[#F2F4F7] rounded-[2px] shrink-0">
                   <FiMessageCircle size={17} />
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <div className="ito-whatsapp-cta-copy flex-1 min-w-0">
 
                   <h3 className="font-serif text-sm font-medium text-[#F2F4F7] mb-1">
                     Talk to Us on WhatsApp
@@ -512,9 +508,12 @@ export default function Contact() {
                 <button
                   type="button"
                   onClick={handleWhatsApp}
-                  className="shrink-0 px-4 h-[40px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-all"
+                  className="ito-whatsapp-cta-button shrink-0 px-4 h-[40px] bg-[#2B3440] hover:bg-[#0E1116] border border-[#C5CBD3]/42 hover:border-[#F2F4F7] text-[#F2F4F7] font-sans font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-all"
                 >
-                  WhatsApp {BUSINESS_WHATSAPP_DISPLAY}
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <FaWhatsapp size={16} aria-hidden="true" />
+                    <span>{BUSINESS_WHATSAPP_DISPLAY}</span>
+                  </span>
                 </button>
 
               </div>
@@ -961,6 +960,50 @@ export default function Contact() {
         </div>
 
       </footer>
+
+
+      <style>{`
+        /* Mobile WhatsApp CTA: prevent the button from squeezing the copy. */
+        @media (max-width: 640px) {
+          .ito-whatsapp-cta-inner {
+            display: grid !important;
+            grid-template-columns: auto minmax(0, 1fr) !important;
+            grid-template-areas:
+              "icon copy"
+              "button button";
+            align-items: center;
+            column-gap: 12px !important;
+            row-gap: 16px !important;
+          }
+
+          .ito-whatsapp-cta-icon {
+            grid-area: icon;
+          }
+
+          .ito-whatsapp-cta-copy {
+            grid-area: copy;
+            min-width: 0 !important;
+            width: 100%;
+          }
+
+          .ito-whatsapp-cta-copy h3,
+          .ito-whatsapp-cta-copy p {
+            white-space: normal !important;
+            overflow-wrap: break-word;
+            word-break: normal;
+          }
+
+          .ito-whatsapp-cta-button {
+            grid-area: button;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      `}</style>
 
     </div>
   );
