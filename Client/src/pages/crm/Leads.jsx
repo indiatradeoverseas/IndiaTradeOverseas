@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
@@ -10,9 +10,9 @@ import SalesCalculatorModal from '../../components/crm/SalesCalculatorModal';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
-
   FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail, FiPhoneCall, FiPhoneOff, FiPhoneMissed,
-  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2
+  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2,
+  FiImage, FiEdit, FiRotateCw, FiSun, FiCrop, FiCheck
 } from 'react-icons/fi';
 import { BsCalculator } from 'react-icons/bs';
 import { useAuth } from '../../hooks/useAuth';
@@ -275,6 +275,17 @@ export default function Leads() {
   const [columnMappings, setColumnMappings] = useState({});
   const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
+
+  // Image Upload & Editing State
+  const [uploadedImage, setUploadedImage] = useState(null); // { file, dataUrl, name }
+  const [imageEditMode, setImageEditMode] = useState(false);
+  const [imageRotation, setImageRotation] = useState(0);
+  const [imageBrightness, setImageBrightness] = useState(100);
+  const [imageContrast, setImageContrast] = useState(100);
+  const [deletedRowIndices, setDeletedRowIndices] = useState(new Set());
+  const [deletedColIndices, setDeletedColIndices] = useState(new Set());
+  const imageCanvasRef = useRef(null);
+  const imagePreviewRef = useRef(null);
 
   // Call Recording & Sales Calculator Modal State
   const [showCallModal, setShowCallModal] = useState(false);
@@ -847,6 +858,74 @@ export default function Leads() {
     return allRows;
   };
 
+  // --- Image Upload Handlers ---
+  const handleImageUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setUploadedImage({ file, dataUrl: event.target.result, name: file.name });
+      setImageEditMode(true);
+      setImageRotation(0);
+      setImageBrightness(100);
+      setImageContrast(100);
+      toast.success(`Image loaded: ${file.name}`);
+    };
+    reader.onerror = () => toast.error('Failed to read image file.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageRotate = () => {
+    setImageRotation(prev => (prev + 90) % 360);
+  };
+
+  const handleImageDone = () => {
+    setImageEditMode(false);
+    toast.success('Image saved! You can now manually enter data from the image, or upload a spreadsheet instead.');
+  };
+
+  const handleImageDelete = () => {
+    setUploadedImage(null);
+    setImageEditMode(false);
+    setImageRotation(0);
+    setImageBrightness(100);
+    setImageContrast(100);
+    toast('Image removed.', { icon: '🗑️' });
+  };
+
+  // --- Row Deletion Handler ---
+  const handleDeleteRow = (rowIdx) => {
+    setDeletedRowIndices(prev => {
+      const next = new Set(prev);
+      next.add(rowIdx);
+      return next;
+    });
+    toast('Row removed from import.', { icon: '🗑️' });
+  };
+
+  const handleUndoDeleteRow = (rowIdx) => {
+    setDeletedRowIndices(prev => {
+      const next = new Set(prev);
+      next.delete(rowIdx);
+      return next;
+    });
+    toast.success('Row restored.');
+  };
+
+  // --- Column Deletion Handler ---
+  const handleDeleteCol = (colIdx) => {
+    setDeletedColIndices(prev => {
+      const next = new Set(prev);
+      next.add(colIdx);
+      return next;
+    });
+    // Also remove the mapping for this column
+    setColumnMappings(prev => {
+      const next = { ...prev };
+      delete next[colIdx];
+      return next;
+    });
+    toast('Column removed from import.', { icon: '🗑️' });
+  };
+
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -854,6 +933,21 @@ export default function Leads() {
     const fileName = file.name.toLowerCase();
     const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
     const isPdf = fileName.endsWith('.pdf');
+    const isImage = /\.(jpe?g|png|gif|bmp|webp|tiff?)$/i.test(fileName);
+
+    // Reset deleted rows/cols on new file
+    setDeletedRowIndices(new Set());
+    setDeletedColIndices(new Set());
+
+    // Handle Image files
+    if (isImage) {
+      handleImageUpload(file);
+      return;
+    }
+
+    // Clear any previous image
+    setUploadedImage(null);
+    setImageEditMode(false);
 
     if (isPdf) {
       const toastId = toast.loading("Parsing PDF document...");
@@ -925,7 +1019,7 @@ export default function Leads() {
   };
 
   const handleConfirmImport = async () => {
-    if (parsedRows.length <= 1) {
+    if (parsedRows.length <= 1 && !uploadedImage) {
       return toast.error("No data rows to import.");
     }
 
@@ -944,11 +1038,15 @@ export default function Leads() {
     try {
       const leadsArray = [];
       for (let r = 1; r < parsedRows.length; r++) {
+        // Skip deleted rows
+        if (deletedRowIndices.has(r - 1)) continue;
         const row = parsedRows[r];
         if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
 
         const leadObj = {};
         Object.entries(columnMappings).forEach(([colIdx, field]) => {
+          // Skip deleted columns
+          if (deletedColIndices.has(Number(colIdx))) return;
           leadObj[field] = row[Number(colIdx)] || '';
         });
 
@@ -995,6 +1093,10 @@ export default function Leads() {
         setShowImportModal(false);
         setParsedRows([]);
         setColumnMappings({});
+        setDeletedRowIndices(new Set());
+        setDeletedColIndices(new Set());
+        setUploadedImage(null);
+        setImageEditMode(false);
         fetchLeads();
       }
     } catch (err) {
@@ -2734,7 +2836,7 @@ export default function Leads() {
         )}
       </AnimatePresence>
 
-      {/* Excel Spreadsheet Ingestion Modal */}
+      {/* Excel Spreadsheet / Image Ingestion Modal */}
       <AnimatePresence>
         {showImportModal && (
           <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4">
@@ -2747,26 +2849,167 @@ export default function Leads() {
             >
               <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-4 text-left shrink-0">
                 <div>
-                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet / PDF Bulk Ingestion</h2>
-                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Upload CSV / Excel / PDF files to parse and ingest lead records</p>
+                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet / PDF / Image Bulk Ingestion</h2>
+                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Upload CSV / Excel / PDF / Photo files to parse and ingest lead records</p>
                 </div>
-                <button type="button" onClick={() => { setShowImportModal(false); setParsedRows([]); setColumnMappings({}); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm cursor-pointer">
+                <button type="button" onClick={() => { setShowImportModal(false); setParsedRows([]); setColumnMappings({}); setUploadedImage(null); setImageEditMode(false); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm cursor-pointer">
                   <FiX size={16} />
                 </button>
               </div>
 
-              {parsedRows.length === 0 ? (
-                /* STEP 1: Upload Panel */
+              {/* IMAGE EDITING VIEW */}
+              {uploadedImage && imageEditMode ? (
+                <div className="flex-1 flex flex-col space-y-4 overflow-hidden text-left">
+                  {/* Image editing toolbar */}
+                  <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <FiImage size={14} className="text-teal-400" />
+                      <span className="font-bold text-[var(--crm-heading)] uppercase tracking-wider">Image Editor</span>
+                      <span className="text-[var(--crm-ink-faint)] text-[10px] truncate max-w-[200px]" title={uploadedImage.name}>{uploadedImage.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleImageRotate}
+                        className="px-3 py-1.5 rounded border border-[var(--crm-line)] text-[10px] font-bold uppercase transition cursor-pointer hover:border-teal-500 hover:text-teal-400 flex items-center gap-1.5 text-[var(--crm-ink-soft)]"
+                        title="Rotate 90°"
+                      >
+                        <FiRotateCw size={12} /> Rotate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImageDelete}
+                        className="px-3 py-1.5 rounded border border-rose-800/50 text-[10px] font-bold uppercase transition cursor-pointer hover:bg-rose-950/40 text-rose-400 flex items-center gap-1.5"
+                        title="Delete Image"
+                      >
+                        <FiTrash2 size={12} /> Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImageDone}
+                        className="px-3 py-1.5 rounded border border-teal-600 bg-teal-600 text-white text-[10px] font-bold uppercase transition cursor-pointer hover:bg-teal-500 flex items-center gap-1.5"
+                        title="Save & Continue"
+                      >
+                        <FiCheck size={12} /> Done
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Brightness & Contrast sliders */}
+                  <div className="flex flex-wrap gap-4 p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm text-xs font-mono">
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      <FiSun size={12} className="text-amber-400 shrink-0" />
+                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-20 shrink-0">Brightness</span>
+                      <input
+                        type="range"
+                        min="30"
+                        max="200"
+                        value={imageBrightness}
+                        onChange={(e) => setImageBrightness(Number(e.target.value))}
+                        className="flex-1 h-1 accent-amber-400 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-[var(--crm-ink-soft)] w-10 text-right">{imageBrightness}%</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      <FiCrop size={12} className="text-sky-400 shrink-0" />
+                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-20 shrink-0">Contrast</span>
+                      <input
+                        type="range"
+                        min="30"
+                        max="200"
+                        value={imageContrast}
+                        onChange={(e) => setImageContrast(Number(e.target.value))}
+                        className="flex-1 h-1 accent-sky-400 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-[var(--crm-ink-soft)] w-10 text-right">{imageContrast}%</span>
+                    </div>
+                  </div>
+
+                  {/* Image preview with editing applied */}
+                  <div className="flex-1 overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/60 flex items-center justify-center p-4 min-h-[300px]">
+                    <img
+                      ref={imagePreviewRef}
+                      src={uploadedImage.dataUrl}
+                      alt="Uploaded preview"
+                      className="max-w-full max-h-[55vh] object-contain rounded shadow-lg transition-all duration-300"
+                      style={{
+                        transform: `rotate(${imageRotation}deg)`,
+                        filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
+                      }}
+                    />
+                  </div>
+
+                  {/* Info banner */}
+                  <div className="p-3 bg-sky-950/20 border border-sky-500/20 rounded-sm text-[11px] text-sky-400 flex items-start gap-2.5">
+                    <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
+                    <div>
+                      <strong className="font-bold">Tip:</strong> After reviewing the image, click <strong>Done</strong> to save. Then upload a spreadsheet file (CSV/Excel) to map the data, or use this image as a reference while manually creating leads.
+                    </div>
+                  </div>
+                </div>
+              ) : uploadedImage && !imageEditMode ? (
+                /* IMAGE SAVED - Show thumbnail + option to re-edit or upload spreadsheet */
+                <div className="flex-1 flex flex-col space-y-4 text-left">
+                  {/* Saved image thumbnail strip */}
+                  <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-sm flex items-center gap-4">
+                    <div className="relative group">
+                      <img
+                        src={uploadedImage.dataUrl}
+                        alt="Saved"
+                        className="w-20 h-20 object-cover rounded border border-emerald-500/30"
+                        style={{
+                          transform: `rotate(${imageRotation}deg)`,
+                          filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
+                        <button onClick={() => setImageEditMode(true)} className="p-1.5 bg-teal-600 rounded text-white cursor-pointer" title="Re-edit">
+                          <FiEdit size={10} />
+                        </button>
+                        <button onClick={handleImageDelete} className="p-1.5 bg-rose-600 rounded text-white cursor-pointer" title="Delete">
+                          <FiTrash2 size={10} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono font-bold text-emerald-400 uppercase">📸 Image Saved</p>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] truncate" title={uploadedImage.name}>{uploadedImage.name}</p>
+                      <p className="text-[10px] text-[var(--crm-ink-soft)] mt-1">Hover thumbnail to re-edit or delete. Upload a spreadsheet below to map data.</p>
+                    </div>
+                  </div>
+
+                  {parsedRows.length === 0 ? (
+                    /* Upload spreadsheet area (with image already saved) */
+                    <div className="flex-1 py-10 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[200px]">
+                      <input
+                        type="file"
+                        accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <FiUpload size={28} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-2" />
+                      <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Upload Spreadsheet Data</p>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Now upload a CSV / Excel / PDF to map the lead data, or another image</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : parsedRows.length === 0 ? (
+                /* STEP 1: Upload Panel (original - now with image support) */
                 <div className="flex-1 py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[300px]">
                   <input
                     type="file"
-                    accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                    accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <FiUpload size={32} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-3" />
-                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel / PDF File</p>
-                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, .xls, or .pdf file here (Max: 15MB)</p>
+                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel / PDF / Image File</p>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, .xls, .pdf, .jpg, .png file here (Max: 15MB)</p>
+                  <div className="flex items-center gap-3 mt-4">
+                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-teal-950/60 text-teal-300 border border-teal-800/40">📊 Spreadsheet</span>
+                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-rose-950/60 text-rose-300 border border-rose-800/40">📄 PDF</span>
+                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-violet-950/60 text-violet-300 border border-violet-800/40">📸 Photo</span>
+                  </div>
                 </div>
               ) : (
                 /* STEP 2: Spreadsheet Mapping and Grid View */
@@ -2815,34 +3058,53 @@ export default function Leads() {
                         {/* Field mapping selectors */}
                         <tr className="border-b border-[var(--crm-line)]">
                           <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/60 font-mono font-bold text-[10px] text-center w-12 shrink-0">MAP</th>
-                          {parsedRows[0].map((_, colIdx) => (
-                            <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] min-w-[150px] bg-slate-900/40">
-                              <select
-                                value={columnMappings[colIdx] || ''}
-                                onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
-                                className="w-full p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
-                              >
-                                <option value="">[Unmapped]</option>
-                                {LEAD_FIELDS.map(f => (
-                                  <option key={f.value} value={f.value}>{f.label}</option>
-                                ))}
-                              </select>
-                            </th>
-                          ))}
+                          {parsedRows[0].map((_, colIdx) => {
+                            if (deletedColIndices.has(colIdx)) return null;
+                            return (
+                              <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] min-w-[150px] bg-slate-900/40">
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={columnMappings[colIdx] || ''}
+                                    onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
+                                    className="flex-1 p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
+                                  >
+                                    <option value="">[Unmapped]</option>
+                                    {LEAD_FIELDS.map(f => (
+                                      <option key={f.value} value={f.value}>{f.label}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCol(colIdx)}
+                                    className="p-1 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer shrink-0"
+                                    title={`Delete column ${getColumnLetter(colIdx)}`}
+                                  >
+                                    <FiTrash2 size={10} />
+                                  </button>
+                                </div>
+                              </th>
+                            );
+                          })}
                         </tr>
                         {/* Excel coordinate letters and original CSV header name */}
                         <tr className="border-b border-[var(--crm-line)] text-slate-400">
                           <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/40 text-center font-mono font-bold">#</th>
-                          {parsedRows[0].map((hdr, colIdx) => (
-                            <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/20">
-                              <span className="text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
-                              <span className="truncate block font-sans text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
-                            </th>
-                          ))}
+                          {parsedRows[0].map((hdr, colIdx) => {
+                            if (deletedColIndices.has(colIdx)) return null;
+                            return (
+                              <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/20">
+                                <span className="text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
+                                <span className="truncate block font-sans text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody>
                         {parsedRows.slice(1, 51).map((row, rowIdx) => {
+                          // Skip deleted rows
+                          if (deletedRowIndices.has(rowIdx)) return null;
+
                           const phoneCol = Object.entries(columnMappings).find(([_, f]) => f === 'phone')?.[0];
                           const nameCol = Object.entries(columnMappings).find(([_, f]) => f === 'customerName')?.[0];
                           const rPhone = phoneCol !== undefined ? String(row[Number(phoneCol)] || '').replace(/\D/g, '').slice(-10) : '';
@@ -2854,9 +3116,20 @@ export default function Leads() {
                           return (
                             <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-950/30 hover:bg-purple-900/40' : 'hover:bg-[var(--crm-bg-raised)]/20'}`}>
                               <td className="p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 text-center font-mono font-bold text-[var(--crm-ink-faint)] select-none shrink-0 w-12">
-                                {isRowDup ? <span title="Matches existing lead in database" className="text-purple-400 font-bold cursor-help">⚠️ {rowIdx + 1}</span> : rowIdx + 1}
+                                <div className="flex items-center justify-center gap-1">
+                                  {isRowDup ? <span title="Matches existing lead in database" className="text-purple-400 font-bold cursor-help">⚠️ {rowIdx + 1}</span> : rowIdx + 1}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteRow(rowIdx); }}
+                                    className="ml-0.5 p-0.5 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                                    title={`Delete row ${rowIdx + 1}`}
+                                  >
+                                    <FiTrash2 size={10} />
+                                  </button>
+                                </div>
                               </td>
                               {row.map((cell, colIdx) => {
+                                if (deletedColIndices.has(colIdx)) return null;
                                 const isMapped = !!columnMappings[colIdx];
                                 return (
                                   <td 
@@ -2877,15 +3150,69 @@ export default function Leads() {
                     </table>
                   </div>
 
+                  {/* Deleted rows undo bar */}
+                  {(deletedRowIndices.size > 0 || deletedColIndices.size > 0) && (
+                    <div className="p-2 bg-rose-950/20 border border-rose-500/20 rounded-sm text-[10px] text-rose-400 flex items-center justify-between font-mono flex-wrap gap-2">
+                      <span>
+                        {deletedRowIndices.size > 0 && <><strong>{deletedRowIndices.size}</strong> row(s) removed</>}
+                        {deletedRowIndices.size > 0 && deletedColIndices.size > 0 && ' · '}
+                        {deletedColIndices.size > 0 && <><strong>{deletedColIndices.size}</strong> column(s) removed</>}
+                      </span>
+                      <div className="flex gap-2">
+                        {deletedRowIndices.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => { setDeletedRowIndices(new Set()); toast.success('All deleted rows restored.'); }}
+                            className="px-2 py-1 border border-rose-700/50 rounded text-[9px] uppercase font-bold hover:bg-rose-950/60 transition cursor-pointer"
+                          >
+                            Undo Rows
+                          </button>
+                        )}
+                        {deletedColIndices.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => { setDeletedColIndices(new Set()); toast.success('All deleted columns restored.'); }}
+                            className="px-2 py-1 border border-amber-700/50 rounded text-[9px] uppercase font-bold hover:bg-amber-950/60 transition cursor-pointer text-amber-400"
+                          >
+                            Undo Columns
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Saved image reference strip (if image was uploaded alongside spreadsheet) */}
+                  {uploadedImage && !imageEditMode && (
+                    <div className="p-2 bg-violet-950/20 border border-violet-500/20 rounded-sm flex items-center gap-3">
+                      <img
+                        src={uploadedImage.dataUrl}
+                        alt="Reference"
+                        className="w-12 h-12 object-cover rounded border border-violet-500/30"
+                        style={{
+                          transform: `rotate(${imageRotation}deg)`,
+                          filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
+                        }}
+                      />
+                      <span className="text-[10px] font-mono text-violet-300 flex-1 truncate">📸 Reference image: {uploadedImage.name}</span>
+                      <button onClick={() => setImageEditMode(true)} className="p-1.5 border border-violet-600/40 rounded text-violet-300 hover:bg-violet-950/40 cursor-pointer" title="Re-edit image">
+                        <FiEdit size={10} />
+                      </button>
+                      <button onClick={handleImageDelete} className="p-1.5 border border-rose-600/40 rounded text-rose-400 hover:bg-rose-950/40 cursor-pointer" title="Remove image">
+                        <FiTrash2 size={10} />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Actions footer inside Step 2 */}
                   <div className="flex items-center justify-between pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0">
                     <p className="text-[11px] font-mono text-[var(--crm-ink-faint)]">
-                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1} records</strong>
+                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1 - deletedRowIndices.size} records</strong>
+                      {deletedRowIndices.size > 0 && <span className="text-rose-400 ml-1">({deletedRowIndices.size} removed)</span>}
                     </p>
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => { setParsedRows([]); setColumnMappings({}); }}
+                        onClick={() => { setParsedRows([]); setColumnMappings({}); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }}
                         className="px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase rounded-sm transition-colors cursor-pointer"
                       >
                         Reset File

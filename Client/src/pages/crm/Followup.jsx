@@ -428,112 +428,112 @@ export default function Followup() {
   });
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] pb-16">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] pb-16">
       
       {/* Header Bar */}
-      <motion.div variants={blockVariants} className="w-full bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm text-left">
-        <div className="space-y-1">
+      <motion.div variants={blockVariants} className="w-full bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3.5 sm:p-5 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 shadow-sm text-left">
+        <div className="space-y-1 min-w-0">
           <span className="text-[9px] uppercase tracking-[0.25em] text-teal-400 font-bold block font-mono">SALES TELEPHONY & FOLLOW-UP HUB</span>
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] tracking-tight flex items-center gap-2">
-            <FiPhoneCall className="text-teal-500" size={22} /> Follow-up & Call Recording Registry
+          <h1 className="text-lg sm:text-2xl font-bold text-[var(--crm-heading)] tracking-tight flex items-center gap-2">
+            <FiPhoneCall className="text-teal-500 shrink-0" size={20} /> <span className="truncate">Follow-up & Call Recording Registry</span>
           </h1>
-          <p className="text-xs text-[var(--crm-ink-faint)]">
+          <p className="text-[11px] sm:text-xs text-[var(--crm-ink-faint)] leading-relaxed">
             Manage active call recordings, track follow-up progress, review executives, and route leads to next stage custodians.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <button
             onClick={() => setShowCallModal(true)}
-            className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-3.5 py-2 rounded transition cursor-pointer shadow-sm"
+            className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-3 sm:px-3.5 py-2 rounded transition cursor-pointer shadow-sm w-full sm:w-auto whitespace-nowrap"
           >
-            <FiMic size={13} className="animate-pulse" /> Upload Call Recording
+            <FiMic size={13} className="animate-pulse shrink-0" /> Upload Call Recording
           </button>
         </div>
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 font-mono text-left">
-        <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm">
-          <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">TOTAL FOLLOW-UPS</span>
-          <p className="text-xl font-bold text-[var(--crm-heading)] mt-1">{recordings.length}</p>
-          <span className="text-[9px] text-[var(--crm-ink-faint)] mt-1">Logged Records</span>
+      <motion.div variants={blockVariants} className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 font-mono text-left">
+        <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm">
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">TOTAL FOLLOW-UPS</span>
+          <p className="text-lg sm:text-xl font-bold text-[var(--crm-heading)] mt-1">{recordings.length}</p>
+          <span className="text-[8px] sm:text-[9px] text-[var(--crm-ink-faint)] mt-1">Logged Records</span>
         </div>
 
         <div 
           onClick={() => setStatusFilter('PENDING')}
-          className="bg-[var(--crm-bg-raised)] border border-amber-900/40 hover:border-amber-500/60 p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
+          className="bg-[var(--crm-bg-raised)] border border-amber-900/40 hover:border-amber-500/60 p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
         >
-          <span className="text-[9px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
-            <FiClock size={11} /> PENDING FOLLOW-UPS
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
+            <FiClock size={10} className="shrink-0" /> PENDING FOLLOW-UPS
           </span>
-          <p className="text-xl font-bold text-amber-400 mt-1">{pendingCount}</p>
-          <span className="text-[9px] text-amber-500/80 mt-1">Requires Executive Action</span>
+          <p className="text-lg sm:text-xl font-bold text-amber-400 mt-1">{pendingCount}</p>
+          <span className="text-[8px] sm:text-[9px] text-amber-500/80 mt-1">Requires Executive Action</span>
         </div>
 
         <div 
           onClick={() => setStatusFilter('COMPLETED')}
-          className="bg-[var(--crm-bg-raised)] border border-emerald-900/40 hover:border-emerald-500/60 p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
+          className="bg-[var(--crm-bg-raised)] border border-emerald-900/40 hover:border-emerald-500/60 p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
         >
-          <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
-            <FiCheckCircle size={11} /> COMPLETED FOLLOW-UPS
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
+            <FiCheckCircle size={10} className="shrink-0" /> COMPLETED FOLLOW-UPS
           </span>
-          <p className="text-xl font-bold text-emerald-400 mt-1">{completedCount}</p>
-          <span className="text-[9px] text-emerald-500/80 mt-1">Finished / Stage Advanced</span>
+          <p className="text-lg sm:text-xl font-bold text-emerald-400 mt-1">{completedCount}</p>
+          <span className="text-[8px] sm:text-[9px] text-emerald-500/80 mt-1">Finished / Stage Advanced</span>
         </div>
 
-        <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm">
-          <span className="text-[9px] uppercase tracking-wider text-rose-400 font-bold">HOT PRIORITY DEALS</span>
-          <p className="text-xl font-bold text-rose-400 mt-1">{hotCount}</p>
-          <span className="text-[9px] text-[var(--crm-ink-faint)] mt-1">Urgent Conversion</span>
+        <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm">
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-rose-400 font-bold">HOT PRIORITY DEALS</span>
+          <p className="text-lg sm:text-xl font-bold text-rose-400 mt-1">{hotCount}</p>
+          <span className="text-[8px] sm:text-[9px] text-[var(--crm-ink-faint)] mt-1">Urgent Conversion</span>
         </div>
       </motion.div>
 
       {/* Main Status Toggle Bar (Upper Followup vs FollowupComplete Buttons) */}
-      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 rounded-lg shadow-sm font-mono text-xs flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 text-left">
-        {/* Status Mode Buttons */}
-        <div className="flex items-center gap-2 bg-[var(--crm-bg-sunken)] p-1 rounded-md border border-[var(--crm-line)]">
+      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-2.5 sm:p-3 rounded-lg shadow-sm font-mono text-xs flex flex-col gap-2.5 sm:gap-3 text-left">
+        {/* Status Mode Buttons — scrollable on mobile */}
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-[var(--crm-bg-sunken)] p-1 rounded-md border border-[var(--crm-line)] overflow-x-auto scrollbar-none">
           <button
             onClick={() => setStatusFilter('ALL')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`shrink-0 px-3 sm:px-4 py-2 rounded text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap ${
               statusFilter === 'ALL'
                 ? 'bg-teal-600 text-white shadow-sm'
                 : 'text-[var(--crm-ink-faint)] hover:text-white'
             }`}
           >
-            All Follow-ups <span className="px-1.5 py-0.2 text-[9px] bg-black/40 rounded-full">{recordings.length}</span>
+            All Follow-ups <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] bg-black/40 rounded-full">{recordings.length}</span>
           </button>
 
           <button
             onClick={() => setStatusFilter('PENDING')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 border shadow-xs ${
+            className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 border shadow-xs whitespace-nowrap ${
               statusFilter === 'PENDING'
                 ? 'bg-amber-600 text-white border-amber-700 shadow-md'
                 : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200'
             }`}
           >
-            ⏱️ Followup Pending <span className={`px-2 py-0.5 text-[9px] rounded-full font-black ${statusFilter === 'PENDING' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'}`}>{pendingCount}</span>
+            ⏱️ <span className="hidden xs:inline">Followup</span> Pending <span className={`px-1.5 py-0.5 text-[8px] sm:text-[9px] rounded-full font-black ${statusFilter === 'PENDING' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'}`}>{pendingCount}</span>
           </button>
 
           <button
             onClick={() => setStatusFilter('COMPLETED')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 border shadow-xs ${
+            className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 border shadow-xs whitespace-nowrap ${
               statusFilter === 'COMPLETED'
                 ? 'bg-emerald-600 text-white border-emerald-700 shadow-md'
                 : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200'
             }`}
           >
-            ✓ Followup Complete <span className={`px-2 py-0.5 text-[9px] rounded-full font-black ${statusFilter === 'COMPLETED' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'}`}>{completedCount}</span>
+            ✓ <span className="hidden xs:inline">Followup</span> Complete <span className={`px-1.5 py-0.5 text-[8px] sm:text-[9px] rounded-full font-black ${statusFilter === 'COMPLETED' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'}`}>{completedCount}</span>
           </button>
         </div>
 
         {/* Priority & Search Filters */}
-        <div className="flex flex-wrap items-center gap-2 flex-1 md:justify-end">
-          <div className="relative min-w-[180px] flex-1 sm:flex-initial">
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+          <div className="relative min-w-0 flex-1 sm:min-w-[180px] sm:flex-initial">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--crm-ink-faint)]" size={13} />
             <input
               type="text"
-              placeholder="Search Executive, Custodian, Client..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] pl-8 pr-3 py-1.5 rounded outline-none focus:border-teal-500 transition text-xs"
@@ -543,9 +543,9 @@ export default function Followup() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2.5 py-1.5 rounded outline-none cursor-pointer text-xs font-mono"
+            className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 sm:px-2.5 py-1.5 rounded outline-none cursor-pointer text-[10px] sm:text-xs font-mono"
           >
-            <option value="ALL">All Priorities</option>
+            <option value="ALL">All Priority</option>
             <option value="HOT">🔥 HOT</option>
             <option value="WARM">⚡ WARM</option>
             <option value="COLD">❄️ COLD</option>
@@ -554,7 +554,7 @@ export default function Followup() {
 
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-2.5 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-2 sm:px-2.5 py-1.5 rounded text-[9px] sm:text-[10px] uppercase font-bold tracking-wider transition cursor-pointer whitespace-nowrap ${
               dateFilterMode === 'ALL'
                 ? 'bg-teal-700 text-white font-black'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)]'
@@ -564,7 +564,7 @@ export default function Followup() {
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-2.5 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
+            className={`px-2 sm:px-2.5 py-1.5 rounded text-[9px] sm:text-[10px] uppercase font-bold tracking-wider transition cursor-pointer whitespace-nowrap ${
               dateFilterMode === 'TODAY'
                 ? 'bg-teal-700 text-white font-black'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)]'
@@ -593,7 +593,7 @@ export default function Followup() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {filteredRecordings.map((rec) => {
               const leadObjId = typeof rec.leadId === 'object' && rec.leadId ? rec.leadId._id : rec.leadId;
               const isCompleted = rec.status === 'COMPLETED';
@@ -601,25 +601,25 @@ export default function Followup() {
               return (
                 <div
                   key={rec._id}
-                  className={`bg-[var(--crm-bg-raised)] border p-4 sm:p-5 rounded-lg shadow-sm font-mono space-y-3.5 transition ${
+                  className={`bg-[var(--crm-bg-raised)] border p-3 sm:p-5 rounded-lg shadow-sm font-mono space-y-3 sm:space-y-3.5 transition ${
                     isCompleted ? 'border-emerald-900/60 hover:border-emerald-700/80 bg-emerald-950/10' : 'border-[var(--crm-line)] hover:border-teal-900/60'
                   }`}
                 >
                   {/* Top Status Header Row: Status Badge + Toggle Status Button */}
-                  <div className="flex flex-wrap justify-between items-center bg-[var(--crm-bg-sunken)]/60 px-3 py-2 rounded border border-[var(--crm-line)]/50 gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap justify-between items-center bg-[var(--crm-bg-sunken)]/60 px-2.5 sm:px-3 py-2 rounded border border-[var(--crm-line)]/50 gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       {isCompleted ? (
-                        <span className="px-2.5 py-1 rounded text-[9px] font-black uppercase font-mono bg-emerald-600 text-white border border-emerald-700 flex items-center gap-1 shadow-xs">
-                          <FiCheckCircle size={10} /> FOLLOWUP COMPLETE
+                        <span className="px-2 sm:px-2.5 py-1 rounded text-[8px] sm:text-[9px] font-black uppercase font-mono bg-emerald-600 text-white border border-emerald-700 flex items-center gap-1 shadow-xs whitespace-nowrap">
+                          <FiCheckCircle size={10} className="shrink-0" /> COMPLETE
                         </span>
                       ) : (
-                        <span className="px-2.5 py-1 rounded text-[9px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 flex items-center gap-1 shadow-xs">
-                          <FiClock size={10} /> FOLLOWUP PENDING
+                        <span className="px-2 sm:px-2.5 py-1 rounded text-[8px] sm:text-[9px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 flex items-center gap-1 shadow-xs whitespace-nowrap">
+                          <FiClock size={10} className="shrink-0" /> PENDING
                         </span>
                       )}
 
                       {rec.leadPriority && (
-                        <span className={`text-[8px] font-black px-2 py-1 rounded uppercase shadow-xs ${
+                        <span className={`text-[7px] sm:text-[8px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded uppercase shadow-xs whitespace-nowrap ${
                           rec.leadPriority === 'DEAD' ? 'bg-zinc-800 text-zinc-200 border border-zinc-600' :
                           rec.leadPriority === 'HOT' ? 'bg-rose-600 text-white border border-rose-700' :
                           rec.leadPriority === 'WARM' ? 'bg-amber-500 text-white border border-amber-600' :
@@ -634,32 +634,32 @@ export default function Followup() {
                       type="button"
                       onClick={() => handleToggleStatus(rec._id, rec.status)}
                       disabled={togglingStatusId === rec._id}
-                      className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-lg border transition cursor-pointer shadow-xs disabled:opacity-50 ${
+                      className={`text-[8px] sm:text-[9px] font-black uppercase px-2.5 sm:px-3 py-1.5 rounded-lg border transition cursor-pointer shadow-xs disabled:opacity-50 whitespace-nowrap ${
                         isCompleted
                           ? 'bg-slate-700 hover:bg-slate-800 text-white border-slate-600'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700'
                       }`}
                     >
-                      {togglingStatusId === rec._id ? 'Updating...' : isCompleted ? 'Re-open Followup' : '✓ Mark as Complete'}
+                      {togglingStatusId === rec._id ? 'Updating...' : isCompleted ? 'Re-open' : '✓ Complete'}
                     </button>
                   </div>
 
                   {/* People Section: Who did Follow-up & Who is assigned for Next Stage */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] bg-slate-100 dark:bg-slate-800/90 p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs font-mono">
-                    <div className="space-y-0.5">
-                      <span className="text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
-                        👤 FOLLOW-UP DONE BY:
+                  <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-100 dark:bg-slate-800/90 p-2.5 sm:p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs font-mono">
+                    <div className="space-y-0.5 min-w-0">
+                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
+                        👤 DONE BY:
                       </span>
-                      <strong className="text-teal-700 dark:text-teal-300 text-xs font-black block truncate">
+                      <strong className="text-teal-700 dark:text-teal-300 text-[10px] sm:text-xs font-black block truncate">
                         {rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
 
-                    <div className="space-y-0.5 sm:border-l border-slate-300 dark:border-slate-700 sm:pl-2.5">
-                      <span className="text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
-                        🎯 NEXT STAGE CUSTODIAN:
+                    <div className="space-y-0.5 border-l border-slate-300 dark:border-slate-700 pl-2 sm:pl-2.5 min-w-0">
+                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
+                        🎯 CUSTODIAN:
                       </span>
-                      <strong className="text-emerald-700 dark:text-emerald-300 text-xs font-black block truncate">
+                      <strong className="text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-xs font-black block truncate">
                         {rec.assignedToName || rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
@@ -729,17 +729,17 @@ export default function Followup() {
                   )}
 
                   {/* Lead Specifications Grid */}
-                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-900 dark:text-slate-100 font-mono font-bold bg-slate-100 dark:bg-slate-800/90 p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-slate-900 dark:text-slate-100 font-mono font-bold bg-slate-100 dark:bg-slate-800/90 p-2.5 sm:p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs">
                     {rec.mobileNumber && rec.mobileNumber !== '—' ? (
-                      <a href={`tel:${rec.mobileNumber}`} className="hover:text-emerald-500 hover:underline cursor-pointer flex items-center">
-                        <FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1 shrink-0" /> Phone: <strong className="text-slate-900 dark:text-slate-100 font-black ml-1">{rec.mobileNumber} 📞</strong>
+                      <a href={`tel:${rec.mobileNumber}`} className="hover:text-emerald-500 hover:underline cursor-pointer flex items-center min-w-0">
+                        <FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1 shrink-0" /> <span className="truncate"><strong className="font-black">{rec.mobileNumber}</strong> 📞</span>
                       </a>
                     ) : (
-                      <p><FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1" /> Phone: <strong className="text-slate-900 dark:text-slate-100 font-black">—</strong></p>
+                      <p className="flex items-center"><FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1 shrink-0" /> <strong className="font-black">—</strong></p>
                     )}
-                    <p><FiMapPin size={10} className="inline text-amber-600 dark:text-amber-400 mr-1" /> Location: <strong className="text-slate-900 dark:text-slate-100 font-black">{rec.location || '—'}</strong></p>
-                    <p><FiPackage size={10} className="inline text-cyan-600 dark:text-cyan-400 mr-1" /> Material: <strong className="text-slate-900 dark:text-slate-100 font-black">{rec.material || '—'}</strong></p>
-                    <p><FiHash size={10} className="inline text-teal-600 dark:text-teal-400 mr-1" /> Quantity: <strong className="text-slate-900 dark:text-slate-100 font-black">{rec.quantity || '—'}</strong></p>
+                    <p className="flex items-center min-w-0"><FiMapPin size={10} className="inline text-amber-600 dark:text-amber-400 mr-1 shrink-0" /> <span className="truncate"><strong className="font-black">{rec.location || '—'}</strong></span></p>
+                    <p className="flex items-center min-w-0"><FiPackage size={10} className="inline text-cyan-600 dark:text-cyan-400 mr-1 shrink-0" /> <span className="truncate"><strong className="font-black">{rec.material || '—'}</strong></span></p>
+                    <p className="flex items-center min-w-0"><FiHash size={10} className="inline text-teal-600 dark:text-teal-400 mr-1 shrink-0" /> <span className="truncate"><strong className="font-black">{rec.quantity || '—'}</strong></span></p>
                   </div>
 
                   {/* Notes / Talk Summary */}

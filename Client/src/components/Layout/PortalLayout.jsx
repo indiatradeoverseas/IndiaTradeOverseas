@@ -159,13 +159,13 @@ export default function PortalLayout({ children }) {
       {/* MOBILE TOP BAR */}
       <div
         className="md:hidden fixed top-0 left-0 right-0 z-[52] border-b shadow-sm backdrop-blur-xl"
-        style={{ background: 'color-mix(in srgb, var(--crm-nav-bg) 92%, transparent)', borderColor: 'var(--crm-line)' }}
+        style={{ background: 'color-mix(in srgb, var(--crm-nav-bg) 94%, transparent)', borderColor: 'var(--crm-line)' }}
       >
-        <div className="flex min-h-[60px] items-center justify-between gap-2 px-3 sm:px-4 py-2.5">
+        <div className="flex min-h-[54px] items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2">
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition duration-200 focus:outline-none"
+            className="inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border transition duration-200 focus:outline-none cursor-pointer"
             style={{ color: 'var(--crm-ink)', borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
             aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
           >
@@ -178,24 +178,27 @@ export default function PortalLayout({ children }) {
                 transition={{ duration: 0.2, ease: 'easeInOut' }}
                 className="inline-flex"
               >
-                {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+                {sidebarOpen ? <FiX size={20} /> : <FiMenu size={20} />}
               </motion.span>
             </AnimatePresence>
           </button>
+
           <div
-            className="min-w-0 flex-1 truncate text-center text-[12px] font-semibold uppercase tracking-[0.14em]"
+            className="min-w-0 flex-1 truncate text-center text-[10px] sm:text-[12px] font-semibold uppercase tracking-wider sm:tracking-[0.14em] px-1"
             style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}
           >
-            India Trade Center
+            <span className="hidden sm:inline">India Trade Center</span>
+            <span className="sm:hidden font-mono font-bold tracking-widest text-[11px] text-[var(--crm-accent)]">INDIA TRADE</span>
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+
+          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
             {user && (
-              <div className="flex items-center gap-1.5 mr-1 font-mono">
+              <div className="flex items-center gap-1 font-mono shrink-0">
                 {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer whitespace-nowrap shadow-sm"
                   >
                     In
                   </button>
@@ -206,24 +209,24 @@ export default function PortalLayout({ children }) {
                       <button
                         onClick={handleLunchStart}
                         disabled={loadingAttendance}
-                        className="bg-amber-950/90 hover:bg-amber-900 text-amber-300 border border-amber-800/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer flex items-center gap-1"
+                        className="bg-amber-950/90 hover:bg-amber-900 text-amber-300 border border-amber-800/40 text-[8px] font-bold uppercase px-1.5 py-1 rounded cursor-pointer flex items-center gap-0.5 whitespace-nowrap"
                       >
-                        <FiCoffee size={10} /> Lunch
+                        <FiCoffee size={9} /> Lunch
                       </button>
                     )}
                     {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
                       <button
                         onClick={handleLunchEnd}
                         disabled={loadingAttendance}
-                        className="bg-[#1f170d] text-[#f5c46c] border border-[#c89a54] text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer animate-pulse flex items-center gap-1"
+                        className="bg-[#1f170d] text-[#f5c46c] border border-[#c89a54] text-[8px] font-bold uppercase px-1.5 py-1 rounded cursor-pointer animate-pulse flex items-center gap-0.5 whitespace-nowrap"
                       >
-                        <FiCoffee size={10} /> {formatElapsed(lunchElapsed)}
+                        <FiCoffee size={9} /> {formatElapsed(lunchElapsed)}
                       </button>
                     )}
                     <button
                       onClick={handleCheckOut}
                       disabled={loadingAttendance}
-                      className="bg-rose-950/90 hover:bg-rose-900 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                      className="bg-rose-950/90 hover:bg-rose-900 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer whitespace-nowrap shadow-sm"
                     >
                       Out
                     </button>
@@ -233,7 +236,7 @@ export default function PortalLayout({ children }) {
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2.5 py-1 rounded cursor-pointer"
+                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer whitespace-nowrap shadow-sm"
                   >
                     In
                   </button>
@@ -243,11 +246,11 @@ export default function PortalLayout({ children }) {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer"
+              className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-md border text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer shrink-0"
               style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
               aria-label="Toggle Theme"
             >
-              {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
+              {theme === 'light' ? <FiMoon size={15} /> : <FiSun size={15} />}
             </button>
             <NotificationDropdown compact />
             <VoiceStatusPill compact />

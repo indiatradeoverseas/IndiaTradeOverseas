@@ -926,6 +926,7 @@ const leadSchema = new mongoose.Schema(
         "UNASSIGNED",
         "AUTO_ROUTING",
         "MANUAL",
+        "MANUAL_PENDING",
         "IMPORT",
         "SYSTEM_RECOVERY",
       ],

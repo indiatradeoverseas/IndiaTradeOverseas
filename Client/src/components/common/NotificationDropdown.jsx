@@ -158,7 +158,7 @@ export default function NotificationDropdown({ compact = false }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-80 sm:w-96 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg shadow-2xl z-[100] overflow-hidden text-left font-sans"
+            className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-xs sm:max-w-none sm:w-96 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg shadow-2xl z-[100] overflow-hidden text-left font-sans"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]">
