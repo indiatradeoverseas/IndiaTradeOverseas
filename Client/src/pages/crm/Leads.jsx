@@ -62,6 +62,322 @@ const LEAD_FIELDS = [
   { value: 'remarks', label: 'Remarks / Internal Notes' }
 ];
 
+function extractDetailsFromChunk(chunk, fallbackPhone) {
+  if (!chunk) return null;
+
+  const cleanChunk = chunk.replace(/\s+/g, ' ').trim();
+
+  // 1. Phone extraction
+  const phoneRegex = /(?:\+91[\s-]?)?[6-9]\d{9}\b/g;
+  const phoneMatches = cleanChunk.match(phoneRegex);
+  let extractedPhone = phoneMatches && phoneMatches.length > 0 ? phoneMatches[0].replace(/[^\d+]/g, '') : '';
+  if (extractedPhone.length === 10) extractedPhone = '+91' + extractedPhone;
+  if (!extractedPhone && fallbackPhone) extractedPhone = fallbackPhone;
+
+  // 2. Customer Name extraction
+  let extractedName = '';
+
+  let nameSource = cleanChunk
+    .replace(/(?:\+91[\s-]?)?[6-9]\d{9}\b/g, '')
+    .replace(/\b(?:mob(?:ile)?(?:\s*no\.?)?|ph(?:one)?(?:\s*no\.?)?|whatsapp|client|customer|inquiry|details?|notes?|remarks?)\b/gi, '')
+    .replace(/[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}/g, '')
+    .trim();
+
+  const namePatterns = [
+    /(?:name|customer|client|consignee|person|buyer)[:\s\-]+([A-Za-z\s]{2,30})/i,
+    /(?:i\s*am|my\s*name\s*is|this\s*side)[:\s\-]+([A-Za-z\s]{2,30})/i,
+    /([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/,
+    /([A-Za-z]{3,20}\s+[A-Za-z]{3,20})/
+  ];
+
+  for (const pat of namePatterns) {
+    const match = nameSource.match(pat);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      const forbidden = ['Hi', 'Hello', 'Sir', 'Madam', 'Dear', 'Thanks', 'Regards', 'Good', 'Urgent', 'Sabita', 'WhatsApp', 'Inquiry', 'Detail', 'Focus', 'Bhej', 'Hoga', 'Submit', 'Mobile', 'Mob', 'No', 'Number', 'Call', 'Message'];
+      if (!forbidden.some(w => candidate.toLowerCase() === w.toLowerCase()) && candidate.length >= 3 && !/\d/.test(candidate)) {
+        extractedName = candidate;
+        break;
+      }
+    }
+  }
+
+  if (!extractedName) {
+    const headerMatch = cleanChunk.match(/-\s*([^:]+):/);
+    if (headerMatch && headerMatch[1]) {
+      const candidate = headerMatch[1].replace(/\b(?:mob|mobile|no|whatsapp)\b/gi, '').trim();
+      if (!candidate.includes('+91') && !/^\d+$/.test(candidate) && candidate.length >= 3) {
+        extractedName = candidate;
+      }
+    }
+  }
+
+  if (!extractedName && extractedPhone) {
+    extractedName = `WhatsApp Client (${extractedPhone.slice(-4)})`;
+  } else if (!extractedName) {
+    extractedName = 'WhatsApp Direct Inquiry';
+  }
+
+  // 3. Category extraction
+  let extractedCategory = 'STONE';
+  const lower = cleanChunk.toLowerCase();
+  if (lower.includes('coal') || lower.includes('coke') || lower.includes('steam coal') || lower.includes('koyla')) {
+    extractedCategory = 'COAL';
+  } else if (lower.includes('tea') || lower.includes('ctc') || lower.includes('chai')) {
+    extractedCategory = 'TEA';
+  } else if (lower.includes('rice') || lower.includes('basmati') || lower.includes('paddy') || lower.includes('chawal') || lower.includes('sella')) {
+    extractedCategory = 'RICE';
+  } else if (lower.includes('transport') || lower.includes('gari') || lower.includes('truck') || lower.includes('dumper') || lower.includes('logistics') || lower.includes('hyva')) {
+    extractedCategory = 'TRANSPORT';
+  } else if (lower.includes('stone') || lower.includes('pakur') || lower.includes('chips') || lower.includes('20mm') || lower.includes('10mm') || lower.includes('granite') || lower.includes('gitti') || lower.includes('dust') || lower.includes('boulder')) {
+    extractedCategory = 'STONE';
+  }
+
+  // 4. Location / Destination extraction
+  let extractedLocation = '';
+  const locExplicitMatch = chunk.match(/(?:location|loc|destination|deliver(?:y)?(?:\s*(?:to|at))?|place|address|site|city|discharge)\s*[:\-]+\s*([^\n\r,;|]+)/i) ||
+                           chunk.match(/(?:location|loc|destination|site)\s*[:\s]+([^\n\r,;|]+)/i);
+  if (locExplicitMatch && locExplicitMatch[1]) {
+    const locCand = locExplicitMatch[1].trim();
+    if (!['stone', 'coal', 'rice', 'tea', 'mobile', 'phone', 'urgent'].includes(locCand.toLowerCase()) && locCand.length >= 2) {
+      extractedLocation = locCand;
+    }
+  }
+
+  if (!extractedLocation) {
+    const knownCitiesMatch = cleanChunk.match(/\b(siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|bengal|west\s*bengal|assam|nepal|noida|gurgaon|jaipur|lucknow|kanpur|varanasi|gorakhpur|samastipur|purnea|arrah|chhapra|buxar|sasaram|deoghar|bokaro|jamshedpur|araria|jhanjharpur|katihar|bettiah|motihari|darbhanga|begusarai|madhubani|kishanganj|munger|saharsa|khagaria|nawada|jamui|lakhisarai|kaimur|bhabua|gopalganj|vaishali|hajipur|up|uttar\s*pradesh|odisha|bhubaneswar|cuttack)\b/i);
+    if (knownCitiesMatch) {
+      extractedLocation = knownCitiesMatch[0].trim();
+    }
+  }
+
+  // 5. Target Timeline / Date extraction
+  let extractedTimeline = '';
+  const dateExplicitMatch = chunk.match(/(?:timeline|target|delivery\s*date|target\s*date|required\s*by|by|date)\s*[:\-]+\s*([^\n\r,;|]+)/i);
+  if (dateExplicitMatch && dateExplicitMatch[1]) {
+    extractedTimeline = dateExplicitMatch[1].trim();
+  } else {
+    const dateMatch = cleanChunk.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
+                      cleanChunk.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i) ||
+                      cleanChunk.match(/\b(?:urgent|immediate|asap|this\s*week|next\s*week|kal\s*tak)\b/i);
+    if (dateMatch) {
+      extractedTimeline = dateMatch[0].trim();
+    }
+  }
+
+  // 6. Quantity extraction
+  let extractedQuantity = '';
+  const qtyExplicitMatch = chunk.match(/(?:quantity|qty|volume|matra|requirement|need|capacity)\s*[:\-]+\s*([^\n\r,;|]+)/i);
+  if (qtyExplicitMatch && qtyExplicitMatch[1]) {
+    extractedQuantity = qtyExplicitMatch[1].trim();
+  } else {
+    const qtyPatternMatch = cleanChunk.match(/\b(\d+(?:\.\d+)?\s*(?:tons?|tonnes?|mt|t|gari|gaddi|trucks?|dumper|bags?|cft|sqft|kg|quintal|containers?|pcs|pieces?|katti|pack)(?:\s+(?:daily|per\s*day|per\s*month))?)\b/i);
+    if (qtyPatternMatch) {
+      extractedQuantity = qtyPatternMatch[1].trim();
+    }
+  }
+
+  // 7. Valuation / Deal Value extraction
+  let extractedValuation = '';
+  const valExplicitMatch = chunk.match(/(?:valuation|budget|price|rate|total|value|amount|cost|deal\s*value)\s*[:\-]+\s*([^\n\r,;|]+)/i);
+  if (valExplicitMatch && valExplicitMatch[1]) {
+    extractedValuation = valExplicitMatch[1].trim();
+  } else {
+    const valPatternMatch = cleanChunk.match(/(?:budget|valuation|price|total|value|amount|cost|rate|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k))?)/i) ||
+                             cleanChunk.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
+                             cleanChunk.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
+    if (valPatternMatch) {
+      extractedValuation = (valPatternMatch[1] || valPatternMatch[0]).trim();
+    }
+  }
+
+  return {
+    customerName: extractedName,
+    phone: extractedPhone || '',
+    productCategory: extractedCategory,
+    destination: extractedLocation,
+    targetDate: extractedTimeline,
+    quantity: extractedQuantity,
+    leadValue: extractedValuation
+  };
+}
+
+function parseStructuredLeadTemplates(textToParse) {
+  if (!textToParse || (!/Name\s*[:\-]+/i.test(textToParse) && !/New\s*lead/i.test(textToParse))) return [];
+
+  const rawBlocks = textToParse
+    .split(/(?=\b(?:New\s*lead|Name\s*[:\-]+)\b)/i)
+    .filter(b => b.trim().length > 10 && (/Name\s*[:\-]+/i.test(b) || /No\s*[:\-]+/i.test(b)));
+
+  if (rawBlocks.length === 0) return [];
+
+  const leads = [];
+
+  for (const block of rawBlocks) {
+    const nameMatch = block.match(/Name\s*[:\-]+\s*([^\n\r]+)/i);
+    const customerName = nameMatch && nameMatch[1] ? nameMatch[1].trim() : '';
+
+    const phoneMatch = block.match(/(?:No|Phone|Mobile|Tel|Mob)\s*[:\-]+\s*([^\n\r]+)/i) || block.match(/(?:\+91[\s-]?)?[6-9]\d{9}\b/);
+    let phone = phoneMatch ? (phoneMatch[1] || phoneMatch[0]).replace(/[^\d+]/g, '') : '';
+    if (phone.length === 10) phone = '+91' + phone;
+
+    if (!customerName && !phone) continue;
+
+    const locMatch = block.match(/(?:Location|Loc|Destination|Site|Address|City|Place|Discharge)\s*[:\-]+\s*([^\n\r]+)/i);
+    let destination = locMatch && locMatch[1] ? locMatch[1].trim() : '';
+    if (!destination) {
+      const knownCitiesMatch = block.match(/\b(siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|bengal|west\s*bengal|assam|nepal|noida|gurgaon|jaipur|lucknow|kanpur|varanasi|gorakhpur|samastipur|purnea|arrah|chhapra|buxar|sasaram|deoghar|bokaro|jamshedpur|araria|jhanjharpur|katihar|bettiah|motihari|darbhanga|begusarai|madhubani|kishanganj|munger|saharsa|khagaria|nawada|jamui|lakhisarai|kaimur|bhabua|gopalganj|vaishali|hajipur|up|uttar\s*pradesh|odisha|bhubaneswar|cuttack)\b/i);
+      if (knownCitiesMatch) destination = knownCitiesMatch[0].trim();
+    }
+
+    const qtyMatch = block.match(/(?:Quantity|Qty|Volume|Matra|Requirement|Need|Capacity)\s*[:\-]+\s*([^\n\r]+)/i);
+    let quantity = qtyMatch && qtyMatch[1] ? qtyMatch[1].trim() : '';
+    if (!quantity) {
+      const qtyPatternMatch = block.match(/\b(\d+(?:\.\d+)?\s*(?:tons?|tonnes?|mt|t|gari|gaddi|trucks?|dumper|bags?|cft|sqft|kg|quintal|containers?|pcs|pieces?|katti|pack)(?:\s+(?:daily|per\s*day|per\s*month))?)\b/i);
+      if (qtyPatternMatch) quantity = qtyPatternMatch[1].trim();
+    }
+
+    const roleMatch = block.match(/Role\s*[:\-]+\s*([^\n\r]+)/i);
+    const role = roleMatch && roleMatch[1] ? roleMatch[1].trim() : '';
+
+    const materialMatches = [...block.matchAll(/Material\s*[:\-]+\s*([^\n\r]*)/gi)];
+    const materials = materialMatches.map(m => m[1] ? m[1].trim() : '').filter(Boolean);
+    const materialText = materials.join(' ').trim();
+
+    let productCategory = 'STONE';
+    const lowerMat = (materialText + ' ' + block).toLowerCase();
+    if (lowerMat.includes('coal') || lowerMat.includes('coke')) productCategory = 'COAL';
+    else if (lowerMat.includes('tea')) productCategory = 'TEA';
+    else if (lowerMat.includes('rice') || lowerMat.includes('paddy')) productCategory = 'RICE';
+    else if (lowerMat.includes('transport') || lowerMat.includes('truck') || lowerMat.includes('logistics')) productCategory = 'TRANSPORT';
+
+    let priority = 'WARM';
+    const flameMatches = block.match(/🔥/g);
+    if (flameMatches && flameMatches.length >= 2) {
+      priority = 'HOT';
+    } else if (flameMatches && flameMatches.length === 1) {
+      priority = 'WARM';
+    }
+
+    const dateMatch = block.match(/(?:Timeline|Target|Delivery|Date)\s*[:\-]+\s*([^\n\r]+)/i) ||
+                      block.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
+                      block.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
+    const targetDate = dateMatch ? (dateMatch[1] || dateMatch[0]).trim() : '';
+
+    const valMatch = block.match(/(?:Valuation|Budget|Price|Rate|Total|Value|Amount|Cost|Deal\s*Value)\s*[:\-]+\s*([^\n\r]+)/i);
+    let leadValue = valMatch && valMatch[1] ? valMatch[1].trim() : '';
+    if (!leadValue) {
+      const valPatternMatch = block.match(/(?:budget|valuation|price|total|value|amount|cost|rate|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k))?)/i) ||
+                               block.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
+                               block.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
+      if (valPatternMatch) leadValue = (valPatternMatch[1] || valPatternMatch[0]).trim();
+    }
+
+    leads.push({
+      customerName: customerName || `Client (${phone.slice(-4)})`,
+      phone: phone || '+919999999999',
+      productCategory,
+      destination,
+      targetDate,
+      quantity,
+      leadValue,
+      priority,
+      remarks: [role ? `Role: ${role}` : '', materialText ? `Material: ${materialText}` : ''].filter(Boolean).join(' | ')
+    });
+  }
+
+  return leads;
+}
+
+function parseWhatsAppChatText(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+
+  const textToParse = rawText.trim();
+  if (!textToParse) return [];
+
+  // 1. Try structured template extraction first (Name :-, No :-, Location :- etc.)
+  const structuredLeads = parseStructuredLeadTemplates(textToParse);
+  if (structuredLeads && structuredLeads.length > 0) {
+    return structuredLeads;
+  }
+
+  const lines = textToParse.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const messages = [];
+  let currentSender = '';
+  let currentMsg = '';
+
+  const timestampRegex = /^(?:\[?\d{1,2}[/-]\d{1,2}[/-]\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?\]?|-?\s*)\s*([^:]+):\s*(.*)/i;
+
+  for (const line of lines) {
+    const match = line.match(timestampRegex);
+    if (match) {
+      if (currentMsg) {
+        messages.push({ sender: currentSender, text: currentMsg });
+      }
+      currentSender = match[1].trim();
+      currentMsg = match[2].trim();
+    } else {
+      if (currentMsg) {
+        currentMsg += ' ' + line;
+      } else {
+        currentMsg = line;
+      }
+    }
+  }
+  if (currentMsg) {
+    messages.push({ sender: currentSender, text: currentMsg });
+  }
+
+  if (messages.length === 0) {
+    const blocks = textToParse.split(/(?:\r?\n){2,}|---+|\b(?:Lead|Customer|Client|Inquiry)\s*#?\d*[:\n]/i).filter(b => b.trim().length > 5);
+    blocks.forEach(b => messages.push({ sender: '', text: b.trim() }));
+  }
+
+  const extractedLeads = [];
+  const processedPhoneSet = new Set();
+
+  const fullPhoneMatches = textToParse.match(/(?:\+91[\s-]?)?[6-9]\d{9}\b/g) || [];
+  const uniquePhones = [...new Set(fullPhoneMatches.map(p => p.replace(/[^\d+]/g, '').slice(-10)))].filter(p => p.length === 10);
+
+  if (uniquePhones.length > 0) {
+    for (const phoneTen of uniquePhones) {
+      const fullPhone = '+91' + phoneTen;
+      if (processedPhoneSet.has(phoneTen)) continue;
+      processedPhoneSet.add(phoneTen);
+
+      const relevantMsgs = messages.filter(m => m.sender.includes(phoneTen) || m.text.includes(phoneTen));
+      const contextText = relevantMsgs.length > 0 
+        ? relevantMsgs.map(m => `${m.sender}: ${m.text}`).join('\n') 
+        : textToParse;
+
+      const extracted = extractDetailsFromChunk(contextText, fullPhone);
+      if (extracted) {
+        extractedLeads.push(extracted);
+      }
+    }
+  }
+
+  if (extractedLeads.length === 0) {
+    const ignorePatterns = /^(?:ok|okay|thanks|thank you|bhej|bhejo|sabita|focus|sir|mam|hoga|ha|haan|karo|kijiye|nahi|kya|hi|hello|good morning|good evening)$/i;
+    for (const msg of messages) {
+      if (ignorePatterns.test(msg.text) || msg.text.length < 12) continue;
+
+      const lower = msg.text.toLowerCase();
+      const hasProduct = ['stone', 'pakur', 'coal', 'tea', 'rice', 'transport', 'gari', 'truck', 'ton', '20mm', '10mm', 'chips', 'granite'].some(w => lower.includes(w));
+      const hasLocation = /(?:siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|location|city)/i.test(msg.text);
+
+      if (hasProduct || hasLocation || msg.sender) {
+        const extracted = extractDetailsFromChunk(msg.text, '');
+        if (extracted && (extracted.customerName !== 'WhatsApp Inquiry' || extracted.destination || extracted.quantity || extracted.leadValue)) {
+          extractedLeads.push(extracted);
+        }
+      }
+    }
+  }
+
+  return extractedLeads;
+}
+
 export default function Leads() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -269,12 +585,49 @@ export default function Leads() {
   // Toggle between Table and Visual Kanban Board
   const [viewMode, setViewMode] = useState('TABLE'); // 'TABLE' | 'KANBAN'
 
-  // Excel / CSV Import State
+  // Excel / CSV / Chat Import State
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showChatTextModal, setShowChatTextModal] = useState(false);
+  const [chatInputText, setChatInputText] = useState('');
   const [parsedRows, setParsedRows] = useState([]);
   const [columnMappings, setColumnMappings] = useState({});
   const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
+
+  const populateParsedChatRows = (extractedLeads) => {
+    if (!extractedLeads || extractedLeads.length === 0) return;
+    const headers = [
+      'Customer Name',
+      'Mobile Number',
+      'Category',
+      'Location',
+      'Target Timeline',
+      'Quantity',
+      'Valuation'
+    ];
+    const rows = [headers];
+    extractedLeads.forEach(item => {
+      rows.push([
+        item.customerName || '',
+        item.phone || '',
+        item.productCategory || 'STONE',
+        item.destination || '',
+        item.targetDate || '',
+        item.quantity || '',
+        item.leadValue || ''
+      ]);
+    });
+    setParsedRows(rows);
+    setColumnMappings({
+      0: 'customerName',
+      1: 'phone',
+      2: 'productCategory',
+      3: 'destination',
+      4: 'targetDate',
+      5: 'quantity',
+      6: 'leadValue'
+    });
+  };
 
   // Image Upload & Editing State
   const [uploadedImage, setUploadedImage] = useState(null); // { file, dataUrl, name }
@@ -926,6 +1279,17 @@ export default function Leads() {
     toast('Column removed from import.', { icon: '🗑️' });
   };
 
+  // --- Inline Cell Editing Handler ---
+  const handleCellEdit = (actualRowIdx, colIdx, newValue) => {
+    setParsedRows(prevRows => {
+      const nextRows = prevRows.map(r => [...r]);
+      if (nextRows[actualRowIdx]) {
+        nextRows[actualRowIdx][colIdx] = newValue;
+      }
+      return nextRows;
+    });
+  };
+
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -934,6 +1298,8 @@ export default function Leads() {
     const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
     const isPdf = fileName.endsWith('.pdf');
     const isImage = /\.(jpe?g|png|gif|bmp|webp|tiff?)$/i.test(fileName);
+
+    const isTxt = fileName.endsWith('.txt') || file.type === 'text/plain';
 
     // Reset deleted rows/cols on new file
     setDeletedRowIndices(new Set());
@@ -948,6 +1314,27 @@ export default function Leads() {
     // Clear any previous image
     setUploadedImage(null);
     setImageEditMode(false);
+
+    // Handle Text / WhatsApp Export Chat files
+    if (isTxt) {
+      const toastId = toast.loading("Parsing WhatsApp chat text file...");
+      try {
+        const text = await file.text();
+        toast.dismiss(toastId);
+        const extracted = parseWhatsAppChatText(text);
+        if (extracted && extracted.length > 0) {
+          populateParsedChatRows(extracted);
+          toast.success(`Extracted ${extracted.length} lead(s) from WhatsApp chat!`);
+        } else {
+          toast.error("Could not extract lead fields from text file.");
+        }
+      } catch (err) {
+        toast.dismiss(toastId);
+        console.error("Text file parsing error:", err);
+        toast.error("Failed to parse chat text file.");
+      }
+      return;
+    }
 
     if (isPdf) {
       const toastId = toast.loading("Parsing PDF document...");
@@ -2998,17 +3385,27 @@ export default function Leads() {
                 <div className="flex-1 py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[300px]">
                   <input
                     type="file"
-                    accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
+                    accept=".csv, .xlsx, .xls, .pdf, .txt, text/plain, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <FiUpload size={32} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-3" />
-                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel / PDF / Image File</p>
-                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, .xls, .pdf, .jpg, .png file here (Max: 15MB)</p>
-                  <div className="flex items-center gap-3 mt-4">
+                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel / PDF / Image / Chat File</p>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, .xls, .pdf, .txt, .jpg, .png file here (Max: 15MB)</p>
+                  <div className="flex items-center gap-3 mt-4 flex-wrap justify-center">
                     <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-teal-950/60 text-teal-300 border border-teal-800/40">📊 Spreadsheet</span>
                     <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-rose-950/60 text-rose-300 border border-rose-800/40">📄 PDF</span>
                     <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-violet-950/60 text-violet-300 border border-violet-800/40">📸 Photo</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowChatTextModal(true);
+                      }}
+                      className="px-3 py-1 rounded text-[9px] font-mono font-bold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 cursor-pointer transition shadow-sm flex items-center gap-1.5 z-10"
+                    >
+                      💬 Extract Chat
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -3018,7 +3415,7 @@ export default function Leads() {
                   <div className="p-3 bg-amber-950/20 border border-amber-500/20 rounded-sm text-[11px] text-amber-400 flex items-start gap-2.5">
                     <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
                     <div>
-                      <strong className="font-bold">Verify Column Alignments:</strong> Map the spreadsheet columns to their matching database fields using the dropdown selectors below. Highlighted columns will be imported. Unmapped columns will be ignored. Required fields are marked with an asterisk (*).
+                      <strong className="font-bold">Verify Column Alignments & Edit Cells:</strong> Map the spreadsheet columns to database fields using the dropdowns below. ✏️ <strong>Click or double-click inside any cell to edit details directly!</strong> Unmapped columns will be ignored. Required fields are marked with an asterisk (*).
                     </div>
                   </div>
 
@@ -3131,15 +3528,22 @@ export default function Leads() {
                               {row.map((cell, colIdx) => {
                                 if (deletedColIndices.has(colIdx)) return null;
                                 const isMapped = !!columnMappings[colIdx];
+                                const actualRowIdx = rowIdx + 1;
                                 return (
                                   <td 
                                     key={colIdx} 
-                                    className={`p-2 border-r border-[var(--crm-line)] text-left truncate max-w-[200px] ${
-                                      isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-40 text-slate-400'
+                                    className={`p-1 border-r border-[var(--crm-line)] text-left min-w-[140px] max-w-[240px] ${
+                                      isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-60 text-slate-400'
                                     }`}
-                                    title={cell}
                                   >
-                                    {cell}
+                                    <input
+                                      type="text"
+                                      value={cell ?? ''}
+                                      onChange={(e) => handleCellEdit(actualRowIdx, colIdx, e.target.value)}
+                                      className="w-full bg-transparent hover:bg-black/40 focus:bg-black/80 border border-transparent focus:border-teal-500/80 outline-none px-1.5 py-1 text-[11px] font-mono text-current rounded transition-all"
+                                      placeholder="Edit..."
+                                      title="Click or double-click to edit cell value"
+                                    />
                                   </td>
                                 );
                               })}
@@ -3229,6 +3633,97 @@ export default function Leads() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* WhatsApp Chat Extraction Modal */}
+      <AnimatePresence>
+        {showChatTextModal && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[var(--crm-bg-raised)] border border-emerald-800/40 rounded-xl p-6 w-full max-w-2xl shadow-2xl relative text-[var(--crm-ink-soft)] flex flex-col space-y-4 max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 text-left shrink-0">
+                <div>
+                  <h3 className="text-base font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
+                    💬 Extract Lead from WhatsApp Chat / Text
+                  </h3>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-mono mt-0.5">
+                    Auto-extracts Customer Name, Mobile Number, Category, Location, Target Timeline, Quantity & Valuation
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowChatTextModal(false)}
+                  className="text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer text-base"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Chat Input Area */}
+              <div className="space-y-2 text-left font-mono text-xs flex-1 flex flex-col min-h-0">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">
+                  Paste WhatsApp Chat / Client Discussion Text Below:
+                </label>
+                <textarea
+                  rows={9}
+                  placeholder={`Paste exported chat or discussion text here...
+
+Example:
+Vijay Kumar from Siwan Bihar (+919709586173)
+Product: Pakur 20mm Stone
+Quantity: 60 Tons
+Delivery Target: 10th October
+Valuation: ₹2,50,000`}
+                  value={chatInputText}
+                  onChange={(e) => setChatInputText(e.target.value)}
+                  className="w-full flex-1 p-3 bg-black/60 border border-[var(--crm-line)] focus:border-emerald-500 rounded-xl font-mono text-xs text-[var(--crm-heading)] placeholder-slate-600 outline-none resize-none custom-scrollbar"
+                />
+              </div>
+
+              {/* Info Pill */}
+              <div className="p-2.5 bg-emerald-950/40 border border-emerald-800/30 rounded-lg text-[10px] font-mono text-emerald-300 flex items-center justify-between">
+                <span>⚡ Extracted data will automatically populate in the Bulk Ingestion table grid.</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-3 border-t border-[var(--crm-line)] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!chatInputText.trim()) {
+                      return toast.error("Please paste chat or discussion text first.");
+                    }
+                    const extracted = parseWhatsAppChatText(chatInputText);
+                    if (extracted && extracted.length > 0) {
+                      populateParsedChatRows(extracted);
+                      setShowChatTextModal(false);
+                      setShowImportModal(true);
+                      toast.success(`Extracted ${extracted.length} lead(s) from WhatsApp chat!`);
+                    } else {
+                      toast.error("Could not extract lead fields from provided text.");
+                    }
+                  }}
+                  className="flex-1 py-2.5 px-4 text-xs font-mono font-bold uppercase rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer shadow-md"
+                >
+                  ⚡ Extract & Map Lead Data
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowChatTextModal(false)}
+                  className="py-2.5 px-4 text-xs font-mono font-bold uppercase rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
