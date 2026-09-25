@@ -1,4 +1,3 @@
-
 import { BUSINESS_WHATSAPP, BUSINESS_WHATSAPP_DISPLAY } from '../../config/business';
 import React, { useState } from 'react';
 
@@ -321,6 +320,10 @@ export default function Contact() {
 
   return (
     <div className="bg-[#0E1116] text-[#C5CBD3] antialiased min-h-screen selection:bg-[#6D7886]/30 selection:text-white font-sans overflow-x-hidden">
+
+      {/* =====================================================
+          TOP BORDER
+      ===================================================== */}
 
       <div className="border-t-[3px] border-double border-[#C5CBD3]/20 w-full"></div>
 

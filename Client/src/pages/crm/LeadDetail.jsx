@@ -525,24 +525,39 @@ export default function LeadDetail() {
         {/* Metric Specification Hex cards */}
         <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           {[
-            { label: 'Telephony Line', val: revealedPhone || lead.phoneMasked || '••••• •••••', revealTarget: 'phone' },
-            { label: 'Email Coordinates', val: revealedEmail || lead.emailMasked || '•••••', revealTarget: 'email' },
+            { label: 'Telephony Line', val: revealedPhone || lead.phoneMasked || '••••• •••••', revealTarget: 'phone', isPhone: true },
+            { label: 'Email Coordinates', val: revealedEmail || lead.emailMasked || '•••••', revealTarget: 'email', isEmail: true },
             { label: 'Commodity Sector', val: lead.productCategory },
             { label: 'Volume / Mass', val: lead.quantity || '—' },
             { label: 'Target Timeline', val: lead.targetDate ? new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unspecified', accent: lead.targetDate ? 'text-[var(--crm-warning)]' : undefined },
             { label: 'Assigned Custodian', val: typeof lead.assignedTo === 'object' && lead.assignedTo !== null ? (lead.assignedTo.fullName || lead.assignedTo.name || lead.assignedTo.email || lead.assignedTo.employeeId || String(lead.assignedTo._id || 'Unassigned')) : (lead.assignedTo || 'Unassigned'), accent: 'text-[var(--crm-info)]' },
             { label: 'Department Router', val: lead.assignedDepartment || 'None', accent: 'text-[var(--crm-accent)]' }
-          ].map((item, i) => (
-            <div key={i} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
-              <div className="flex justify-between items-start gap-1">
-                <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">{item.label}</span>
-                {item.revealTarget && !['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'HR'].includes((user?.role || '').toUpperCase()) && (
-                  <button onClick={() => handleUnmaskClick(item.revealTarget)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition-colors cursor-pointer"><FiEye size={12} /></button>
+          ].map((item, i) => {
+            const rawPhoneDigits = item.isPhone && item.val ? String(item.val).replace(/\D/g, '') : '';
+
+            return (
+              <div key={i} className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-ink-soft)]/15 p-3.5 flex flex-col justify-between min-h-[85px] rounded-sm text-left font-mono">
+                <div className="flex justify-between items-start gap-1">
+                  <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold">{item.label}</span>
+                  {item.revealTarget && !['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'HR'].includes((user?.role || '').toUpperCase()) && (
+                    <button onClick={() => handleUnmaskClick(item.revealTarget)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition-colors cursor-pointer" title="Reveal Details"><FiEye size={12} /></button>
+                  )}
+                </div>
+                {item.isPhone ? (
+                  <a
+                    href={`tel:${rawPhoneDigits || item.val}`}
+                    title="Click to dial / open phone dialer"
+                    className="text-xs font-bold tracking-wide break-all mt-2 truncate text-teal-400 hover:text-teal-300 hover:underline flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FiPhone size={12} className="text-teal-400 shrink-0 animate-pulse" />
+                    <span>{item.val}</span>
+                  </a>
+                ) : (
+                  <p className={`text-xs font-bold tracking-wide break-all mt-2 truncate ${item.accent || 'text-[var(--crm-heading)]'}`}>{item.val}</p>
                 )}
               </div>
-              <p className={`text-xs font-bold tracking-wide break-all mt-2 truncate ${item.accent || 'text-[var(--crm-heading)]'}`}>{item.val}</p>
-            </div>
-          ))}
+            );
+          })}
         </motion.div>
 
         {/* Master DPR — persisted buyer requirement + acquisition context */}

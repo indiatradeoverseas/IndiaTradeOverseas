@@ -1861,20 +1861,32 @@ export default function SalesManagerDashboard() {
                             );
 
                             let prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
+                            const timelineText = String(lead.timeline || lead.originalPayload?.timeline || lead.originalPayload?.requiredDate || lead.remarks || '').trim().toLowerCase();
+                            const isImmediate = timelineText.includes('immediate') || timelineText.includes('urgent') || timelineText.includes('asap') || timelineText.includes('today') || timelineText.includes('now');
+                            const isWithinWeek = timelineText.includes('1 week') || timelineText.includes('within 7 days') || timelineText.includes('within 7day') || timelineText.includes('7 days') || timelineText.includes('7day') || timelineText.includes('one week') || timelineText.includes('1week');
+
                             if (lead.targetDate) {
                               const tDate = new Date(lead.targetDate);
                               if (!isNaN(tDate.getTime())) {
                                 const now = new Date();
                                 const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
                                 const diffDays = Math.ceil(diffHours / 24);
-                                if (diffDays <= 3) {
+                                if (diffDays <= 3 || isImmediate) {
                                   prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
-                                } else if (diffDays <= 7) {
+                                } else if (diffDays <= 7 || isWithinWeek) {
                                   prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
                                 } else {
                                   prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
                                 }
+                              } else if (isImmediate) {
+                                prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+                              } else if (isWithinWeek) {
+                                prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
                               }
+                            } else if (isImmediate) {
+                              prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+                            } else if (isWithinWeek) {
+                              prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
                             } else {
                               const pUpper = (lead.priority || 'WARM').toUpperCase();
                               const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase());

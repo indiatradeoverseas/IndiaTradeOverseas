@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
@@ -10,9 +10,9 @@ import SalesCalculatorModal from '../../components/crm/SalesCalculatorModal';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import {
   FiPlus, FiSearch, FiEye, FiFilter, FiDownload,
-
-  FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail,
-  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2
+  FiClock, FiX, FiList, FiColumns, FiMessageSquare, FiMail, FiPhoneCall, FiPhoneOff, FiPhoneMissed,
+  FiUpload, FiFileText, FiAlertCircle, FiMic, FiZap, FiUser, FiUserCheck, FiUsers, FiCalendar, FiTrash2,
+  FiImage, FiEdit, FiRotateCw, FiSun, FiCrop, FiCheck
 } from 'react-icons/fi';
 import { BsCalculator } from 'react-icons/bs';
 import { useAuth } from '../../hooks/useAuth';
@@ -54,10 +54,12 @@ const LEAD_FIELDS = [
   { value: 'email', label: 'Email Address' },
   { value: 'leadValue', label: 'Lead Value (INR)' },
   { value: 'country', label: 'Country' },
-  { value: 'targetDate', label: 'Requirement Date / Date' },
+  { value: 'targetDate', label: 'Requirement / Last Update Date' },
   { value: 'priority', label: 'Priority / Temp (HOT/WARM/COLD)' },
   { value: 'quantity', label: 'Quantity' },
-  { value: 'destination', label: 'Destination' }
+  { value: 'destination', label: 'Destination' },
+  { value: 'chatSummary', label: 'Executive Discussion / Notes' },
+  { value: 'remarks', label: 'Remarks / Internal Notes' }
 ];
 
 export default function Leads() {
@@ -149,6 +151,71 @@ export default function Leads() {
     };
   }, [leads, reminders]);
 
+  const { duplicateLeadIds, duplicateLeadDetails } = useMemo(() => {
+    const dupIds = new Set();
+    const dupDetails = new Map();
+
+    const phoneMap = new Map();
+    const emailMap = new Map();
+    const nameCompMap = new Map();
+
+    (leads || []).forEach(l => {
+      if (!l) return;
+      const lId = String(l._id || '');
+
+      if (l.duplicateOf) {
+        dupIds.add(lId);
+        dupDetails.set(lId, 'Flagged in database as duplicate lead');
+      }
+
+      // Phone matching
+      const rawPhone = (l.phone || l.phoneMasked || '').replace(/\D/g, '');
+      if (rawPhone.length >= 7) {
+        const pKey = rawPhone.slice(-10);
+        if (!phoneMap.has(pKey)) phoneMap.set(pKey, []);
+        phoneMap.get(pKey).push(l);
+      }
+
+      // Email matching
+      const rawEmail = (l.email || l.emailMasked || '').trim().toLowerCase();
+      if (rawEmail && !rawEmail.includes('indiatradeoverseas.com') && rawEmail.includes('@')) {
+        if (!emailMap.has(rawEmail)) emailMap.set(rawEmail, []);
+        emailMap.get(rawEmail).push(l);
+      }
+
+      // Consignee + Company name matching
+      const cName = (l.customerName || '').trim().toLowerCase();
+      const compName = (l.companyName || '').trim().toLowerCase();
+      if (cName.length > 2 && compName.length > 2) {
+        const ncKey = `${cName}|${compName}`;
+        if (!nameCompMap.has(ncKey)) nameCompMap.set(ncKey, []);
+        nameCompMap.get(ncKey).push(l);
+      }
+    });
+
+    const registerDuplicates = (groupMap, matchType) => {
+      groupMap.forEach((group) => {
+        if (group.length > 1) {
+          group.forEach((lead) => {
+            const id = String(lead._id);
+            dupIds.add(id);
+            const existingReason = dupDetails.get(id);
+            const otherLead = group.find(g => String(g._id) !== id);
+            const otherCode = otherLead?.leadCode || otherLead?.customerName || 'another lead';
+            const reason = `Matches ${matchType} with ${otherCode}`;
+            dupDetails.set(id, existingReason ? `${existingReason}, ${reason}` : reason);
+          });
+        }
+      });
+    };
+
+    registerDuplicates(phoneMap, 'phone number');
+    registerDuplicates(emailMap, 'email address');
+    registerDuplicates(nameCompMap, 'consignee & company name');
+
+    return { duplicateLeadIds: dupIds, duplicateLeadDetails: dupDetails };
+  }, [leads]);
+
 
   const isAssignedToMe = (lead) => {
     if (!user || !lead || !lead.assignedTo) return false;
@@ -209,9 +276,75 @@ export default function Leads() {
   const [importDefaultPriority, setImportDefaultPriority] = useState('ALL');
   const [importing, setImporting] = useState(false);
 
+  // Image Upload & Editing State
+  const [uploadedImage, setUploadedImage] = useState(null); // { file, dataUrl, name }
+  const [imageEditMode, setImageEditMode] = useState(false);
+  const [imageRotation, setImageRotation] = useState(0);
+  const [imageBrightness, setImageBrightness] = useState(100);
+  const [imageContrast, setImageContrast] = useState(100);
+  const [deletedRowIndices, setDeletedRowIndices] = useState(new Set());
+  const [deletedColIndices, setDeletedColIndices] = useState(new Set());
+  const imageCanvasRef = useRef(null);
+  const imagePreviewRef = useRef(null);
+
   // Call Recording & Sales Calculator Modal State
   const [showCallModal, setShowCallModal] = useState(false);
   const [showSalesCalc, setShowSalesCalc] = useState(false);
+
+  // Call Outcome Disposition & Multi-Call History Modal State
+  const [callLogModalOpen, setCallLogModalOpen] = useState(false);
+  const [callTargetLead, setCallTargetLead] = useState(null);
+  const [callOutcomeSelect, setCallOutcomeSelect] = useState('CONNECTED');
+  const [callNotesInput, setCallNotesInput] = useState('');
+  const [callNextFollowupInput, setCallNextFollowupInput] = useState('');
+  const [callSubmitting, setCallSubmitting] = useState(false);
+  const [callHistoryList, setCallHistoryList] = useState([]);
+
+  const openCallLogModal = async (lead) => {
+    setCallTargetLead(lead);
+    setCallOutcomeSelect(lead.lastCallOutcome || 'CONNECTED');
+    setCallNotesInput(lead.chatSummary || lead.remarks || '');
+    setCallNextFollowupInput(lead.nextFollowupAt ? new Date(lead.nextFollowupAt).toISOString().split('T')[0] : '');
+    setCallHistoryList([]);
+    setCallLogModalOpen(true);
+
+    try {
+      const res = await leadsApi.getLeadById(lead._id);
+      if (res?.success && res?.data?.activities) {
+        setCallHistoryList(res.data.activities || []);
+      } else if (res?.activities) {
+        setCallHistoryList(res.activities || []);
+      }
+    } catch (err) {
+      console.warn('Notice fetching call history activities:', err.message);
+    }
+  };
+
+  const handleLogCallSubmit = async (e) => {
+    e.preventDefault();
+    if (!callTargetLead) return;
+
+    setCallSubmitting(true);
+    try {
+      const res = await leadsApi.logCallOutcome(callTargetLead._id, {
+        callOutcome: callOutcomeSelect,
+        notes: callNotesInput,
+        nextFollowupAt: callNextFollowupInput
+      });
+
+      if (res?.success || res) {
+        toast.success(`Call logged as ${callOutcomeSelect}! 📞`);
+        setCallLogModalOpen(false);
+        setCallTargetLead(null);
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error('Call logging error:', err);
+      toast.error(err.response?.data?.message || 'Failed to log call outcome');
+    } finally {
+      setCallSubmitting(false);
+    }
+  };
 
   // Calendar Date Filtering & LOI State
   const [dateFilterMode, setDateFilterMode] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'PICK_DATE'
@@ -634,7 +767,7 @@ export default function Leads() {
         mappings[colIdx] = 'leadValue';
       } else if (cleanVal.includes('country') || cleanVal.includes('region')) {
         mappings[colIdx] = 'country';
-      } else if (cleanVal.includes('date') || cleanVal.includes('created') || cleanVal.includes('time')) {
+      } else if (cleanVal.includes('date') || cleanVal.includes('created') || cleanVal.includes('time') || cleanVal.includes('update') || cleanVal.includes('modified')) {
         mappings[colIdx] = 'targetDate';
       } else if (cleanVal.includes('priority') || cleanVal.includes('temp') || cleanVal.includes('temperature') || cleanVal.includes('hot') || cleanVal.includes('warm') || cleanVal.includes('cold') || cleanVal.includes('quality')) {
         mappings[colIdx] = 'priority';
@@ -642,6 +775,8 @@ export default function Leads() {
         mappings[colIdx] = 'quantity';
       } else if (cleanVal.includes('destination') || cleanVal.includes('discharge') || cleanVal.includes('port')) {
         mappings[colIdx] = 'destination';
+      } else if (cleanVal.includes('remark') || cleanVal.includes('note') || cleanVal.includes('discussion') || cleanVal.includes('conversation') || cleanVal.includes('chat') || cleanVal.includes('summary') || cleanVal.includes('baat')) {
+        mappings[colIdx] = 'chatSummary';
       }
     });
     return mappings;
@@ -657,12 +792,185 @@ export default function Leads() {
     return letter;
   };
 
-  const handleFileSelect = (e) => {
+  const loadPdfJs = () => {
+    return new Promise((resolve, reject) => {
+      if (window.pdfjsLib) return resolve(window.pdfjsLib);
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = () => {
+        if (window.pdfjsLib) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        } else {
+          reject(new Error("PDF.js library failed to load"));
+        }
+      };
+      script.onerror = () => reject(new Error("Failed to load PDF script from CDN"));
+      document.head.appendChild(script);
+    });
+  };
+
+  const parsePdfBuffer = async (arrayBuffer) => {
+    const pdfjsLib = await loadPdfJs();
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    const allRows = [];
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      const lineMap = new Map();
+      for (const item of textContent.items) {
+        if (!item.str || !item.str.trim()) continue;
+        const yKey = Math.round((item.transform[5] || 0) / 4) * 4;
+        if (!lineMap.has(yKey)) lineMap.set(yKey, []);
+        lineMap.get(yKey).push(item);
+      }
+
+      const sortedYs = Array.from(lineMap.keys()).sort((a, b) => b - a);
+
+      for (const yKey of sortedYs) {
+        const lineItems = lineMap.get(yKey);
+        lineItems.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
+
+        const lineText = lineItems.map(it => it.str).join(' ').trim();
+        if (!lineText) continue;
+
+        let cells = [];
+        if (lineText.includes(',')) {
+          cells = parseCSV(lineText)[0] || [lineText];
+        } else if (lineText.includes('\t')) {
+          cells = lineText.split('\t');
+        } else if (lineText.includes('|')) {
+          cells = lineText.split('|');
+        } else {
+          cells = lineText.split(/\s{2,}/);
+        }
+
+        cells = cells.map(c => String(c).trim()).filter(Boolean);
+        if (cells.length > 0) {
+          allRows.push(cells);
+        }
+      }
+    }
+
+    return allRows;
+  };
+
+  // --- Image Upload Handlers ---
+  const handleImageUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setUploadedImage({ file, dataUrl: event.target.result, name: file.name });
+      setImageEditMode(true);
+      setImageRotation(0);
+      setImageBrightness(100);
+      setImageContrast(100);
+      toast.success(`Image loaded: ${file.name}`);
+    };
+    reader.onerror = () => toast.error('Failed to read image file.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageRotate = () => {
+    setImageRotation(prev => (prev + 90) % 360);
+  };
+
+  const handleImageDone = () => {
+    setImageEditMode(false);
+    toast.success('Image saved! You can now manually enter data from the image, or upload a spreadsheet instead.');
+  };
+
+  const handleImageDelete = () => {
+    setUploadedImage(null);
+    setImageEditMode(false);
+    setImageRotation(0);
+    setImageBrightness(100);
+    setImageContrast(100);
+    toast('Image removed.', { icon: '🗑️' });
+  };
+
+  // --- Row Deletion Handler ---
+  const handleDeleteRow = (rowIdx) => {
+    setDeletedRowIndices(prev => {
+      const next = new Set(prev);
+      next.add(rowIdx);
+      return next;
+    });
+    toast('Row removed from import.', { icon: '🗑️' });
+  };
+
+  const handleUndoDeleteRow = (rowIdx) => {
+    setDeletedRowIndices(prev => {
+      const next = new Set(prev);
+      next.delete(rowIdx);
+      return next;
+    });
+    toast.success('Row restored.');
+  };
+
+  // --- Column Deletion Handler ---
+  const handleDeleteCol = (colIdx) => {
+    setDeletedColIndices(prev => {
+      const next = new Set(prev);
+      next.add(colIdx);
+      return next;
+    });
+    // Also remove the mapping for this column
+    setColumnMappings(prev => {
+      const next = { ...prev };
+      delete next[colIdx];
+      return next;
+    });
+    toast('Column removed from import.', { icon: '🗑️' });
+  };
+
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const fileName = file.name.toLowerCase();
     const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    const isPdf = fileName.endsWith('.pdf');
+    const isImage = /\.(jpe?g|png|gif|bmp|webp|tiff?)$/i.test(fileName);
+
+    // Reset deleted rows/cols on new file
+    setDeletedRowIndices(new Set());
+    setDeletedColIndices(new Set());
+
+    // Handle Image files
+    if (isImage) {
+      handleImageUpload(file);
+      return;
+    }
+
+    // Clear any previous image
+    setUploadedImage(null);
+    setImageEditMode(false);
+
+    if (isPdf) {
+      const toastId = toast.loading("Parsing PDF document...");
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const parsed = await parsePdfBuffer(arrayBuffer);
+        toast.dismiss(toastId);
+
+        if (parsed.length > 0) {
+          setParsedRows(parsed);
+          const auto = autoDetectMappings(parsed[0]);
+          setColumnMappings(auto);
+          toast.success(`Loaded ${parsed.length - 1 > 0 ? parsed.length - 1 : parsed.length} rows from PDF file!`);
+        } else {
+          toast.error("PDF file appears empty or text could not be extracted.");
+        }
+      } catch (err) {
+        toast.dismiss(toastId);
+        console.error("PDF parsing error:", err);
+        toast.error("Failed to parse PDF file. Ensure it contains readable text.");
+      }
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -711,7 +1019,7 @@ export default function Leads() {
   };
 
   const handleConfirmImport = async () => {
-    if (parsedRows.length <= 1) {
+    if (parsedRows.length <= 1 && !uploadedImage) {
       return toast.error("No data rows to import.");
     }
 
@@ -730,11 +1038,15 @@ export default function Leads() {
     try {
       const leadsArray = [];
       for (let r = 1; r < parsedRows.length; r++) {
+        // Skip deleted rows
+        if (deletedRowIndices.has(r - 1)) continue;
         const row = parsedRows[r];
         if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
 
         const leadObj = {};
         Object.entries(columnMappings).forEach(([colIdx, field]) => {
+          // Skip deleted columns
+          if (deletedColIndices.has(Number(colIdx))) return;
           leadObj[field] = row[Number(colIdx)] || '';
         });
 
@@ -781,6 +1093,10 @@ export default function Leads() {
         setShowImportModal(false);
         setParsedRows([]);
         setColumnMappings({});
+        setDeletedRowIndices(new Set());
+        setDeletedColIndices(new Set());
+        setUploadedImage(null);
+        setImageEditMode(false);
         fetchLeads();
       }
     } catch (err) {
@@ -943,6 +1259,8 @@ export default function Leads() {
 
       if (filterPriority === 'DEAD') {
         if (pUpper !== 'DEAD' && !isDateExpired) return false;
+      } else if (filterPriority === 'DUPLICATE') {
+        if (!duplicateLeadIds.has(String(lead._id))) return false;
       } else {
         if (isDateExpired || pUpper === 'DEAD') return false;
         if (pUpper !== filterPriority) return false;
@@ -986,9 +1304,49 @@ export default function Leads() {
 
     return matchesSearch;
   }).sort((a, b) => {
-    const timeA = new Date(a.createdAt || a.date || a.updatedAt || a.targetDate || 0).getTime();
-    const timeB = new Date(b.createdAt || b.date || b.updatedAt || b.targetDate || 0).getTime();
-    return timeB - timeA;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowTime = tomorrow.getTime();
+
+    const parseTargetMidnight = (lead) => {
+      const raw = lead.targetDate || lead.nextFollowupAt;
+      if (!raw) return null;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return null;
+      const copy = new Date(d);
+      copy.setHours(0, 0, 0, 0);
+      return copy.getTime();
+    };
+
+    const targetA = parseTargetMidnight(a);
+    const targetB = parseTargetMidnight(b);
+
+    const getTargetRank = (t) => {
+      if (t === null) return 5;
+      if (t === todayTime) return 1;
+      if (t === tomorrowTime) return 2;
+      if (t > tomorrowTime) return 3;
+      return 4;
+    };
+
+    const rankA = getTargetRank(targetA);
+    const rankB = getTargetRank(targetB);
+
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    if (targetA && targetB && targetA !== targetB) {
+      return targetA - targetB;
+    }
+
+    const createdA = new Date(a.createdAt || a.date || a.updatedAt || 0).getTime();
+    const createdB = new Date(b.createdAt || b.date || b.updatedAt || 0).getTime();
+    return createdB - createdA;
   });
 
   const executiveWorkloadSummary = useMemo(() => {
@@ -1821,6 +2179,16 @@ export default function Leads() {
             >
               💀 Dead (Expired Date)
             </button>
+            <button
+              onClick={() => setFilterPriority('DUPLICATE')}
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                filterPriority === 'DUPLICATE'
+                  ? 'bg-purple-600 text-white border-purple-400 font-bold shadow-sm ring-2 ring-purple-300'
+                  : 'bg-purple-100 text-purple-950 border border-purple-300 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700 font-bold'
+              }`}
+            >
+              ⚠️ Duplicates ({duplicateLeadIds.size})
+            </button>
           </div>
         </motion.div>
 
@@ -1878,7 +2246,7 @@ export default function Leads() {
                     )}
                     <th className="py-3.5 px-5">Identifier</th>
                     <th className="py-3.5 px-5">Consignee Name</th>
-                    <th className="py-3.5 px-5">Category & Region</th>
+                    <th className="py-3.5 px-5">Category / Location</th>
                     <th className="py-3.5 px-5 text-center">Target Timeline</th>
                     <th className="py-3.5 px-5 text-right">Valuation</th>
                     <th className="py-3.5 px-5 text-center">Pipeline Stage</th>
@@ -1924,7 +2292,7 @@ export default function Leads() {
                           </Link>
                         </td>
                         <td className="py-3.5 px-5 min-w-[160px]">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
                               {lead.customerName}
                             </Link>
@@ -1937,6 +2305,30 @@ export default function Leads() {
                             ) : (
                               <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                             )}
+                            {duplicateLeadIds.has(String(lead._id)) && (
+                              <span 
+                                title={duplicateLeadDetails.get(String(lead._id)) || "Duplicate lead identified"}
+                                className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-purple-900/80 text-purple-200 border border-purple-500 shadow-xs flex items-center gap-1 cursor-help"
+                              >
+                                ⚠️ DUPLICATE
+                              </span>
+                            )}
+                            {lead.lastCallOutcome && (
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 ${
+                                lead.lastCallOutcome === 'CONNECTED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' :
+                                lead.lastCallOutcome === 'BUSY' ? 'bg-rose-950 text-rose-300 border border-rose-700' :
+                                lead.lastCallOutcome === 'NO_ANSWER' ? 'bg-amber-950 text-amber-300 border border-amber-700' :
+                                lead.lastCallOutcome === 'SWITCHED_OFF' ? 'bg-slate-900 text-slate-300 border border-slate-700' :
+                                lead.lastCallOutcome === 'CALL_BACK' ? 'bg-sky-950 text-sky-300 border border-sky-700' :
+                                'bg-purple-950 text-purple-300 border border-purple-700'
+                              }`}>
+                                📞 {lead.lastCallOutcome === 'CONNECTED' ? 'Connected' :
+                                    lead.lastCallOutcome === 'BUSY' ? 'Busy' :
+                                    lead.lastCallOutcome === 'NO_ANSWER' ? 'No Answer' :
+                                    lead.lastCallOutcome === 'SWITCHED_OFF' ? 'Switched Off' :
+                                    lead.lastCallOutcome === 'CALL_BACK' ? 'Call Back' : lead.lastCallOutcome}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
                         </td>
@@ -1944,7 +2336,7 @@ export default function Leads() {
                           <span className="px-2.5 py-1 text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md border border-slate-300 dark:border-slate-700 shadow-xs mr-2">
                             {lead.productCategory}
                           </span>
-                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.country || 'IN'}</span>
+                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.destination || lead.location || lead.country || 'India'}</span>
                         </td>
                         <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
                           {lead.targetDate ? (
@@ -2031,6 +2423,16 @@ export default function Leads() {
                             {/* Direct Communication & Actions */}
                             <div className="flex items-center space-x-1.5">
                               <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openCallLogModal(lead);
+                                }}
+                                className="p-1.5 bg-amber-950/80 border border-amber-800/60 text-amber-400 hover:bg-amber-900 hover:text-amber-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                title="Log Call Outcome & View Multi-Call History Timeline"
+                              >
+                                <FiPhoneCall size={13} />
+                              </button>
+                              <button
                                 onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
                                 className="p-1.5 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 hover:bg-emerald-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
                                 title="Launch WhatsApp Chat"
@@ -2108,6 +2510,14 @@ export default function Leads() {
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
                           ) : (
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
+                          )}
+                          {duplicateLeadIds.has(String(lead._id)) && (
+                            <span 
+                              title={duplicateLeadDetails.get(String(lead._id)) || "Duplicate lead identified"}
+                              className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-purple-900/80 text-purple-200 border border-purple-500 shadow-xs cursor-help"
+                            >
+                              ⚠️ DUP
+                            </span>
                           )}
                         </div>
                       </div>
@@ -2426,7 +2836,7 @@ export default function Leads() {
         )}
       </AnimatePresence>
 
-      {/* Excel Spreadsheet Ingestion Modal */}
+      {/* Excel Spreadsheet / Image Ingestion Modal */}
       <AnimatePresence>
         {showImportModal && (
           <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4">
@@ -2439,26 +2849,167 @@ export default function Leads() {
             >
               <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-4 text-left shrink-0">
                 <div>
-                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet Bulk Ingestion</h2>
-                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Upload CSV / Excel sheets to parse and ingest lead records</p>
+                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet / PDF / Image Bulk Ingestion</h2>
+                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Upload CSV / Excel / PDF / Photo files to parse and ingest lead records</p>
                 </div>
-                <button type="button" onClick={() => { setShowImportModal(false); setParsedRows([]); setColumnMappings({}); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm cursor-pointer">
+                <button type="button" onClick={() => { setShowImportModal(false); setParsedRows([]); setColumnMappings({}); setUploadedImage(null); setImageEditMode(false); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm cursor-pointer">
                   <FiX size={16} />
                 </button>
               </div>
 
-              {parsedRows.length === 0 ? (
-                /* STEP 1: Upload Panel */
+              {/* IMAGE EDITING VIEW */}
+              {uploadedImage && imageEditMode ? (
+                <div className="flex-1 flex flex-col space-y-4 overflow-hidden text-left">
+                  {/* Image editing toolbar */}
+                  <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <FiImage size={14} className="text-teal-400" />
+                      <span className="font-bold text-[var(--crm-heading)] uppercase tracking-wider">Image Editor</span>
+                      <span className="text-[var(--crm-ink-faint)] text-[10px] truncate max-w-[200px]" title={uploadedImage.name}>{uploadedImage.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleImageRotate}
+                        className="px-3 py-1.5 rounded border border-[var(--crm-line)] text-[10px] font-bold uppercase transition cursor-pointer hover:border-teal-500 hover:text-teal-400 flex items-center gap-1.5 text-[var(--crm-ink-soft)]"
+                        title="Rotate 90°"
+                      >
+                        <FiRotateCw size={12} /> Rotate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImageDelete}
+                        className="px-3 py-1.5 rounded border border-rose-800/50 text-[10px] font-bold uppercase transition cursor-pointer hover:bg-rose-950/40 text-rose-400 flex items-center gap-1.5"
+                        title="Delete Image"
+                      >
+                        <FiTrash2 size={12} /> Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImageDone}
+                        className="px-3 py-1.5 rounded border border-teal-600 bg-teal-600 text-white text-[10px] font-bold uppercase transition cursor-pointer hover:bg-teal-500 flex items-center gap-1.5"
+                        title="Save & Continue"
+                      >
+                        <FiCheck size={12} /> Done
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Brightness & Contrast sliders */}
+                  <div className="flex flex-wrap gap-4 p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm text-xs font-mono">
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      <FiSun size={12} className="text-amber-400 shrink-0" />
+                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-20 shrink-0">Brightness</span>
+                      <input
+                        type="range"
+                        min="30"
+                        max="200"
+                        value={imageBrightness}
+                        onChange={(e) => setImageBrightness(Number(e.target.value))}
+                        className="flex-1 h-1 accent-amber-400 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-[var(--crm-ink-soft)] w-10 text-right">{imageBrightness}%</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      <FiCrop size={12} className="text-sky-400 shrink-0" />
+                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-20 shrink-0">Contrast</span>
+                      <input
+                        type="range"
+                        min="30"
+                        max="200"
+                        value={imageContrast}
+                        onChange={(e) => setImageContrast(Number(e.target.value))}
+                        className="flex-1 h-1 accent-sky-400 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-[var(--crm-ink-soft)] w-10 text-right">{imageContrast}%</span>
+                    </div>
+                  </div>
+
+                  {/* Image preview with editing applied */}
+                  <div className="flex-1 overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/60 flex items-center justify-center p-4 min-h-[300px]">
+                    <img
+                      ref={imagePreviewRef}
+                      src={uploadedImage.dataUrl}
+                      alt="Uploaded preview"
+                      className="max-w-full max-h-[55vh] object-contain rounded shadow-lg transition-all duration-300"
+                      style={{
+                        transform: `rotate(${imageRotation}deg)`,
+                        filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
+                      }}
+                    />
+                  </div>
+
+                  {/* Info banner */}
+                  <div className="p-3 bg-sky-950/20 border border-sky-500/20 rounded-sm text-[11px] text-sky-400 flex items-start gap-2.5">
+                    <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
+                    <div>
+                      <strong className="font-bold">Tip:</strong> After reviewing the image, click <strong>Done</strong> to save. Then upload a spreadsheet file (CSV/Excel) to map the data, or use this image as a reference while manually creating leads.
+                    </div>
+                  </div>
+                </div>
+              ) : uploadedImage && !imageEditMode ? (
+                /* IMAGE SAVED - Show thumbnail + option to re-edit or upload spreadsheet */
+                <div className="flex-1 flex flex-col space-y-4 text-left">
+                  {/* Saved image thumbnail strip */}
+                  <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-sm flex items-center gap-4">
+                    <div className="relative group">
+                      <img
+                        src={uploadedImage.dataUrl}
+                        alt="Saved"
+                        className="w-20 h-20 object-cover rounded border border-emerald-500/30"
+                        style={{
+                          transform: `rotate(${imageRotation}deg)`,
+                          filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
+                        <button onClick={() => setImageEditMode(true)} className="p-1.5 bg-teal-600 rounded text-white cursor-pointer" title="Re-edit">
+                          <FiEdit size={10} />
+                        </button>
+                        <button onClick={handleImageDelete} className="p-1.5 bg-rose-600 rounded text-white cursor-pointer" title="Delete">
+                          <FiTrash2 size={10} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono font-bold text-emerald-400 uppercase">📸 Image Saved</p>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] truncate" title={uploadedImage.name}>{uploadedImage.name}</p>
+                      <p className="text-[10px] text-[var(--crm-ink-soft)] mt-1">Hover thumbnail to re-edit or delete. Upload a spreadsheet below to map data.</p>
+                    </div>
+                  </div>
+
+                  {parsedRows.length === 0 ? (
+                    /* Upload spreadsheet area (with image already saved) */
+                    <div className="flex-1 py-10 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[200px]">
+                      <input
+                        type="file"
+                        accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <FiUpload size={28} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-2" />
+                      <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Upload Spreadsheet Data</p>
+                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Now upload a CSV / Excel / PDF to map the lead data, or another image</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : parsedRows.length === 0 ? (
+                /* STEP 1: Upload Panel (original - now with image support) */
                 <div className="flex-1 py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[300px]">
                   <input
                     type="file"
-                    accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                    accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <FiUpload size={32} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-3" />
-                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel spreadsheet file</p>
-                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, or .xls file here (Max: 15MB)</p>
+                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel / PDF / Image File</p>
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, .xls, .pdf, .jpg, .png file here (Max: 15MB)</p>
+                  <div className="flex items-center gap-3 mt-4">
+                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-teal-950/60 text-teal-300 border border-teal-800/40">📊 Spreadsheet</span>
+                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-rose-950/60 text-rose-300 border border-rose-800/40">📄 PDF</span>
+                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-violet-950/60 text-violet-300 border border-violet-800/40">📸 Photo</span>
+                  </div>
                 </div>
               ) : (
                 /* STEP 2: Spreadsheet Mapping and Grid View */
@@ -2507,67 +3058,161 @@ export default function Leads() {
                         {/* Field mapping selectors */}
                         <tr className="border-b border-[var(--crm-line)]">
                           <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/60 font-mono font-bold text-[10px] text-center w-12 shrink-0">MAP</th>
-                          {parsedRows[0].map((_, colIdx) => (
-                            <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] min-w-[150px] bg-slate-900/40">
-                              <select
-                                value={columnMappings[colIdx] || ''}
-                                onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
-                                className="w-full p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
-                              >
-                                <option value="">[Unmapped]</option>
-                                {LEAD_FIELDS.map(f => (
-                                  <option key={f.value} value={f.value}>{f.label}</option>
-                                ))}
-                              </select>
-                            </th>
-                          ))}
+                          {parsedRows[0].map((_, colIdx) => {
+                            if (deletedColIndices.has(colIdx)) return null;
+                            return (
+                              <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] min-w-[150px] bg-slate-900/40">
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={columnMappings[colIdx] || ''}
+                                    onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
+                                    className="flex-1 p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
+                                  >
+                                    <option value="">[Unmapped]</option>
+                                    {LEAD_FIELDS.map(f => (
+                                      <option key={f.value} value={f.value}>{f.label}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCol(colIdx)}
+                                    className="p-1 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer shrink-0"
+                                    title={`Delete column ${getColumnLetter(colIdx)}`}
+                                  >
+                                    <FiTrash2 size={10} />
+                                  </button>
+                                </div>
+                              </th>
+                            );
+                          })}
                         </tr>
                         {/* Excel coordinate letters and original CSV header name */}
                         <tr className="border-b border-[var(--crm-line)] text-slate-400">
                           <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/40 text-center font-mono font-bold">#</th>
-                          {parsedRows[0].map((hdr, colIdx) => (
-                            <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/20">
-                              <span className="text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
-                              <span className="truncate block font-sans text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
-                            </th>
-                          ))}
+                          {parsedRows[0].map((hdr, colIdx) => {
+                            if (deletedColIndices.has(colIdx)) return null;
+                            return (
+                              <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/20">
+                                <span className="text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
+                                <span className="truncate block font-sans text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody>
-                        {parsedRows.slice(1, 51).map((row, rowIdx) => (
-                          <tr key={rowIdx} className="border-b border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)]/20 transition-colors">
-                            <td className="p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 text-center font-mono font-bold text-[var(--crm-ink-faint)] select-none shrink-0 w-12">
-                              {rowIdx + 1}
-                            </td>
-                            {row.map((cell, colIdx) => {
-                              const isMapped = !!columnMappings[colIdx];
-                              return (
-                                <td 
-                                  key={colIdx} 
-                                  className={`p-2 border-r border-[var(--crm-line)] text-left truncate max-w-[200px] ${
-                                    isMapped ? 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20' : 'opacity-40 text-slate-400'
-                                  }`}
-                                  title={cell}
-                                >
-                                  {cell}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
+                        {parsedRows.slice(1, 51).map((row, rowIdx) => {
+                          // Skip deleted rows
+                          if (deletedRowIndices.has(rowIdx)) return null;
+
+                          const phoneCol = Object.entries(columnMappings).find(([_, f]) => f === 'phone')?.[0];
+                          const nameCol = Object.entries(columnMappings).find(([_, f]) => f === 'customerName')?.[0];
+                          const rPhone = phoneCol !== undefined ? String(row[Number(phoneCol)] || '').replace(/\D/g, '').slice(-10) : '';
+                          const rName = nameCol !== undefined ? String(row[Number(nameCol)] || '').trim().toLowerCase() : '';
+
+                          const isRowDup = (rPhone && rPhone.length >= 7 && leads.some(l => (l.phone || l.phoneMasked || '').replace(/\D/g, '').slice(-10) === rPhone)) ||
+                                           (rName && rName.length > 2 && leads.some(l => (l.customerName || '').trim().toLowerCase() === rName));
+
+                          return (
+                            <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-950/30 hover:bg-purple-900/40' : 'hover:bg-[var(--crm-bg-raised)]/20'}`}>
+                              <td className="p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 text-center font-mono font-bold text-[var(--crm-ink-faint)] select-none shrink-0 w-12">
+                                <div className="flex items-center justify-center gap-1">
+                                  {isRowDup ? <span title="Matches existing lead in database" className="text-purple-400 font-bold cursor-help">⚠️ {rowIdx + 1}</span> : rowIdx + 1}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteRow(rowIdx); }}
+                                    className="ml-0.5 p-0.5 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                                    title={`Delete row ${rowIdx + 1}`}
+                                  >
+                                    <FiTrash2 size={10} />
+                                  </button>
+                                </div>
+                              </td>
+                              {row.map((cell, colIdx) => {
+                                if (deletedColIndices.has(colIdx)) return null;
+                                const isMapped = !!columnMappings[colIdx];
+                                return (
+                                  <td 
+                                    key={colIdx} 
+                                    className={`p-2 border-r border-[var(--crm-line)] text-left truncate max-w-[200px] ${
+                                      isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-40 text-slate-400'
+                                    }`}
+                                    title={cell}
+                                  >
+                                    {cell}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
 
+                  {/* Deleted rows undo bar */}
+                  {(deletedRowIndices.size > 0 || deletedColIndices.size > 0) && (
+                    <div className="p-2 bg-rose-950/20 border border-rose-500/20 rounded-sm text-[10px] text-rose-400 flex items-center justify-between font-mono flex-wrap gap-2">
+                      <span>
+                        {deletedRowIndices.size > 0 && <><strong>{deletedRowIndices.size}</strong> row(s) removed</>}
+                        {deletedRowIndices.size > 0 && deletedColIndices.size > 0 && ' · '}
+                        {deletedColIndices.size > 0 && <><strong>{deletedColIndices.size}</strong> column(s) removed</>}
+                      </span>
+                      <div className="flex gap-2">
+                        {deletedRowIndices.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => { setDeletedRowIndices(new Set()); toast.success('All deleted rows restored.'); }}
+                            className="px-2 py-1 border border-rose-700/50 rounded text-[9px] uppercase font-bold hover:bg-rose-950/60 transition cursor-pointer"
+                          >
+                            Undo Rows
+                          </button>
+                        )}
+                        {deletedColIndices.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => { setDeletedColIndices(new Set()); toast.success('All deleted columns restored.'); }}
+                            className="px-2 py-1 border border-amber-700/50 rounded text-[9px] uppercase font-bold hover:bg-amber-950/60 transition cursor-pointer text-amber-400"
+                          >
+                            Undo Columns
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Saved image reference strip (if image was uploaded alongside spreadsheet) */}
+                  {uploadedImage && !imageEditMode && (
+                    <div className="p-2 bg-violet-950/20 border border-violet-500/20 rounded-sm flex items-center gap-3">
+                      <img
+                        src={uploadedImage.dataUrl}
+                        alt="Reference"
+                        className="w-12 h-12 object-cover rounded border border-violet-500/30"
+                        style={{
+                          transform: `rotate(${imageRotation}deg)`,
+                          filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
+                        }}
+                      />
+                      <span className="text-[10px] font-mono text-violet-300 flex-1 truncate">📸 Reference image: {uploadedImage.name}</span>
+                      <button onClick={() => setImageEditMode(true)} className="p-1.5 border border-violet-600/40 rounded text-violet-300 hover:bg-violet-950/40 cursor-pointer" title="Re-edit image">
+                        <FiEdit size={10} />
+                      </button>
+                      <button onClick={handleImageDelete} className="p-1.5 border border-rose-600/40 rounded text-rose-400 hover:bg-rose-950/40 cursor-pointer" title="Remove image">
+                        <FiTrash2 size={10} />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Actions footer inside Step 2 */}
                   <div className="flex items-center justify-between pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0">
                     <p className="text-[11px] font-mono text-[var(--crm-ink-faint)]">
-                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1} records</strong>
+                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1 - deletedRowIndices.size} records</strong>
+                      {deletedRowIndices.size > 0 && <span className="text-rose-400 ml-1">({deletedRowIndices.size} removed)</span>}
                     </p>
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => { setParsedRows([]); setColumnMappings({}); }}
+                        onClick={() => { setParsedRows([]); setColumnMappings({}); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }}
                         className="px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase rounded-sm transition-colors cursor-pointer"
                       >
                         Reset File
@@ -2772,6 +3417,168 @@ export default function Leads() {
           </div>
         </div>
       )}
+
+      {/* LOG CALL OUTCOME & MULTI-CALL HISTORY MODAL */}
+      <AnimatePresence>
+        {callLogModalOpen && callTargetLead && (
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/20 rounded-lg p-6 w-full max-w-3xl shadow-2xl relative text-[var(--crm-ink-soft)] flex flex-col max-h-[90vh] overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-4 border-b border-[var(--crm-ink-soft)]/10 pb-4 shrink-0">
+                <div className="flex items-center gap-3 text-left">
+                  <span className="p-2.5 rounded bg-amber-950/80 border border-amber-800/60 text-amber-400">
+                    <FiPhoneCall size={20} />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-serif font-bold text-[var(--crm-heading)] uppercase tracking-wide">Log Call Outcome & Discussion</h2>
+                    <p className="text-xs text-[var(--crm-ink-faint)] font-mono">
+                      Lead: <span className="text-teal-400 font-bold">{callTargetLead.customerName}</span> ({callTargetLead.leadCode})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setCallLogModalOpen(false); setCallTargetLead(null); }}
+                  className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1.5 rounded-sm cursor-pointer"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable Container */}
+              <div className="flex-1 overflow-y-auto space-y-5 pr-1 custom-scrollbar text-left font-sans">
+                {/* Form to Log Current Call */}
+                <form onSubmit={handleLogCallSubmit} className="space-y-4 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] rounded-lg p-4">
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--crm-heading)] mb-2">
+                      Select Call Disposition / Outcome *
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
+                      {[
+                        { id: 'CONNECTED', label: 'Connected 🟢', style: 'border-emerald-600 bg-emerald-950/40 text-emerald-300' },
+                        { id: 'BUSY', label: 'Busy 🔴', style: 'border-rose-600 bg-rose-950/40 text-rose-300' },
+                        { id: 'NO_ANSWER', label: 'No Answer 🟡', style: 'border-amber-600 bg-amber-950/40 text-amber-300' },
+                        { id: 'SWITCHED_OFF', label: 'Switched Off ⚪', style: 'border-slate-600 bg-slate-900/40 text-slate-300' },
+                        { id: 'CALL_BACK', label: 'Call Back Requested 🔵', style: 'border-sky-600 bg-sky-950/40 text-sky-300' },
+                        { id: 'WRONG_NUMBER', label: 'Wrong Number 🟣', style: 'border-purple-600 bg-purple-950/40 text-purple-300' }
+                      ].map(item => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => setCallOutcomeSelect(item.id)}
+                          className={`p-2.5 rounded border font-bold uppercase text-[11px] transition cursor-pointer flex items-center justify-center text-center ${
+                            callOutcomeSelect === item.id
+                              ? `${item.style} ring-2 ring-current font-black shadow-md scale-[1.02]`
+                              : 'border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg)]/40'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notes / Conversation Details */}
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--crm-heading)] mb-1">
+                      Call Discussion Notes / Conversation Remarks
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={callNotesInput}
+                      onChange={(e) => setCallNotesInput(e.target.value)}
+                      placeholder="Enter details of conversation with client..."
+                      className="w-full p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded text-xs outline-none text-[var(--crm-heading)] placeholder-slate-500 font-sans focus:border-teal-500"
+                    />
+                  </div>
+
+                  {/* Next Followup Date */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                    <div>
+                      <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--crm-heading)] mb-1">
+                        Next Follow-Up Date (Optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={callNextFollowupInput}
+                        onChange={(e) => setCallNextFollowupInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-xs rounded text-[var(--crm-heading)] outline-none focus:border-teal-500 font-mono"
+                      />
+                    </div>
+
+                    <div className="pt-2 sm:pt-4 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={callSubmitting}
+                        className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs uppercase tracking-wider rounded transition cursor-pointer shadow-md font-mono"
+                      >
+                        {callSubmitting ? 'Recording Call...' : 'Save Call Entry 📞'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {/* Timeline History Section */}
+                <div className="border-t border-[var(--crm-line)] pt-4">
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--crm-heading)] mb-3 flex items-center gap-2">
+                    <FiClock className="text-amber-400" />
+                    Multi-Call History & Activity Timeline ({callHistoryList.length})
+                  </h3>
+
+                  {callHistoryList.length === 0 ? (
+                    <div className="p-6 text-center text-xs font-mono text-[var(--crm-ink-faint)] border border-dashed border-[var(--crm-line)] rounded">
+                      No previous call logs recorded for this lead yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[2px] before:bg-[var(--crm-line)]">
+                      {callHistoryList.map((act, idx) => {
+                        const actor = act.performer || act.metadata?.performedByName || 'Executive';
+                        const actorName = typeof actor === 'object' ? (actor.fullName || actor.name || actor.email || 'Executive') : String(actor);
+                        const outcome = act.metadata?.callOutcome || (act.actionType === 'CALL_LOGGED' ? 'CALL' : act.actionType);
+
+                        return (
+                          <div key={act._id || idx} className="relative pl-8 text-xs font-mono">
+                            <div className="absolute left-1.5 top-1.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-[var(--crm-bg-raised)]" />
+                            <div className="bg-[var(--crm-bg-sunken)]/80 border border-[var(--crm-line)] rounded p-3 text-left space-y-1">
+                              <div className="flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-[var(--crm-heading)]">{actorName}</span>
+                                  {outcome && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-950 text-amber-300 border border-amber-800">
+                                      {outcome}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-[var(--crm-ink-faint)]">
+                                  {new Date(act.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[var(--crm-ink-soft)] font-sans whitespace-pre-wrap">
+                                {act.note || act.metadata?.notes || 'Call recorded'}
+                              </p>
+                              {act.nextFollowupAt && (
+                                <div className="text-[10px] text-teal-400 font-mono pt-1">
+                                  📌 Next Follow-Up: {new Date(act.nextFollowupAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* SALES CALCULATOR MODAL */}
       <SalesCalculatorModal

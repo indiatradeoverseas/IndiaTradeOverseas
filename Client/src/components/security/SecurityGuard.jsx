@@ -95,7 +95,6 @@ export default function SecurityGuard({ children }) {
     // 3. Blur Screen on Focus Loss & Mobile App Switch / Screenshot Gesture
     const handleBlur = () => {
       setIsBlurred(true);
-      reportViolation('WINDOW_FOCUS_LOST');
     };
 
     const handleFocus = () => {
@@ -105,7 +104,6 @@ export default function SecurityGuard({ children }) {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         setIsBlurred(true);
-        reportViolation('MOBILE_VISIBILITY_HIDDEN');
       } else {
         setIsBlurred(false);
       }

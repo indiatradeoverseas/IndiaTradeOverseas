@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { API_URL, getFileUrl } from '../../config/env';
 import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../api/admin';
 import { leaveApi } from '../../api/leave';
 import { salesApi } from '../../api/sales';
+import { leadsApi } from '../../api/leads';
 import { careersApi } from '../../api/careers';
 import { employeeSignupApi } from '../../api/employee-signup';
 import {
@@ -15,7 +17,7 @@ import {
   FiCheckSquare, FiX, FiFileText, FiTruck, FiSettings, FiRefreshCw,
   FiPlus, FiEdit, FiTrash2, FiEye, FiActivity, FiGlobe, FiLock, FiBell,
   FiMessageSquare, FiZap, FiDownload, FiFilter, FiUserCheck, FiUserX,
-  FiClock, FiChevronDown, FiChevronUp, FiSliders, FiCheck, FiMail, FiUpload
+  FiClock, FiChevronDown, FiChevronUp, FiSliders, FiCheck, FiMail, FiUpload, FiMic
 } from 'react-icons/fi';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -114,6 +116,9 @@ export default function CEODashboard() {
   const [securityAlerts, setSecurityAlerts] = useState([]);
   const [pipelineData, setPipelineData] = useState([]);
   const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
+  const [dailyWorkLogs, setDailyWorkLogs] = useState([]);
+  const [callRecordings, setCallRecordings] = useState([]);
+  const [recordingPriorityFilter, setRecordingPriorityFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -143,7 +148,9 @@ export default function CEODashboard() {
         appsRes,
         leaderboardRes,
         alertsRes,
-        pipelineRes
+        pipelineRes,
+        workLogsRes,
+        callRecRes
       ] = await Promise.all([
         adminApi.getDashboardSummary(params).catch(() => ({ success: false })),
         leaveApi.getLeaves({ status: 'PENDING' }).catch(() => ({ success: false })),
@@ -152,7 +159,9 @@ export default function CEODashboard() {
         careersApi.getAllApplications().catch(() => ({ success: false })),
         salesApi.getLeaderboard({ period: perfPeriod }).catch(() => ({ success: false })),
         adminApi.getSecurityAlerts().catch(() => ({ success: false })),
-        adminApi.getPipeline().catch(() => ({ success: false }))
+        adminApi.getPipeline().catch(() => ({ success: false })),
+        salesApi.getDailyWorkLogs().catch(() => ({ success: false })),
+        leadsApi.getCallRecordings().catch(() => ({ success: false }))
       ]);
 
       if (summaryRes?.success && summaryRes.data?.summary) {
@@ -169,6 +178,8 @@ export default function CEODashboard() {
       if (appsRes?.success) setApplications(appsRes.data?.applications || appsRes.applications || []);
       if (leaderboardRes?.success) setLeaderboard(leaderboardRes.data?.leaderboard || leaderboardRes.leaderboard || []);
       if (alertsRes?.success) setSecurityAlerts(alertsRes.data?.alerts || alertsRes.alerts || []);
+      if (workLogsRes?.success) setDailyWorkLogs(workLogsRes.data?.logs || workLogsRes.logs || []);
+      if (callRecRes?.success) setCallRecordings(callRecRes.data?.recordings || callRecRes.recordings || []);
 
       const pResData = pipelineRes?.data?.data || pipelineRes?.data || pipelineRes || {};
       let pData = [];
@@ -585,6 +596,7 @@ export default function CEODashboard() {
           {[
             { id: 'ALL', label: 'All Modules' },
             { id: 'OVERVIEW', label: 'Overview Chart' },
+            { id: 'WORK_LOGS', label: 'Work Updates & Calls' },
             { id: 'FILES', label: 'File Sharing' },
             { id: 'SALES', label: 'Sales' },
             { id: 'ATTENDANCE', label: 'Attendance' },
@@ -608,6 +620,7 @@ export default function CEODashboard() {
       </div>
 
       <div className="w-full px-4 sm:px-6 py-6 space-y-8">
+        
         
         {/* =========================================================================
             SECTION 2: REQUIRED MAIN BUSINESS OVERVIEW SECTION (COMBINED CHART + 8 KPI CARDS)
