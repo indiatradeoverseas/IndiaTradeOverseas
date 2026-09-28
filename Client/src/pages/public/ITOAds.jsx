@@ -107,7 +107,6 @@ export default function ITOAds() {
 
   const [selectedPlan, setSelectedPlan] = useState('Professional');
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
   const [isPolicyOpen, setIsPolicyOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -116,17 +115,14 @@ export default function ITOAds() {
   const [paymentPlan, setPaymentPlan] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  // The supplied ITO Ads documents mention GST, but do NOT specify a GST
-  // percentage or confirm that GST is collected inside this Razorpay order.
-  // Do not hard-code 18% (or any other rate) in the frontend.
-  const GST_RATE = null;
+  const GST_RATE = 0.18; // 18% GST
 
   const getCheckoutAmounts = useCallback((pkg) => {
-    if (!pkg) return { subtotal: 0, gst: null, total: 0 };
+    if (!pkg) return { subtotal: 0, gst: 0, total: 0 };
     const subtotal = parseInt(pkg.price.replace(/[₹,]/g, ''), 10) || 0;
-    // GST remains an applicable invoice item until the billing entity confirms
-    // the applicable rate and invoice treatment.
-    return { subtotal, gst: null, total: subtotal };
+    const gst = Math.round(subtotal * GST_RATE);
+    const total = subtotal + gst;
+    return { subtotal, gst, total };
   }, []);
 
   // Form State
@@ -143,7 +139,6 @@ export default function ITOAds() {
     plan: 'Professional',
     consent: false
   });
-  const [formSubmitted, setFormSubmitted] = useState(false);
 
   // Chat State
   const [chatMessages, setChatMessages] = useState([]);
@@ -420,8 +415,6 @@ export default function ITOAds() {
         setIsProcessingPayment(false);
         setIsCheckoutOpen(false);
         setPaymentPlan(null);
-        // Open consultation modal after successful payment
-        setIsConsultModalOpen(true);
       } else {
         throw new Error('Payment verification failed');
       }
@@ -438,15 +431,6 @@ export default function ITOAds() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-  };
-
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setIsConsultModalOpen(false);
-      setFormSubmitted(false);
-    }, 2200);
   };
 
   // Six Pillars Data
@@ -1037,8 +1021,7 @@ export default function ITOAds() {
             >
               {(() => {
                 const { subtotal, gst, total } = getCheckoutAmounts(paymentPlan);
-                const requiredCustomerFieldsMissing =
-                  !formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.company.trim() || !formData.billingAddress.trim() || !formData.billingState.trim();
+                const requiredCustomerFieldsMissing = false;
 
                 return (
                   <>
@@ -1097,49 +1080,15 @@ export default function ITOAds() {
                         <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider font-mono text-[#A1A1A7]">
                           <span className="px-2.5 py-1 rounded-full border border-white/10">Service Fee</span>
                           <span className="px-2.5 py-1 rounded-full border border-white/10">Media Spend Extra</span>
-                          <span className="px-2.5 py-1 rounded-full border border-white/10">GST As Applicable</span>
+                          <span className="px-2.5 py-1 rounded-full border border-white/10">GST 18% Included</span>
                         </div>
                       </div>
 
-                      {/* Customer details */}
+                      {/* Payment breakdown with GST */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <div>
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-[#F2580E] font-mono font-bold">01 / Customer</p>
-                            <h4 className="text-lg text-white font-serif font-semibold">Customer Details</h4>
-                          </div>
-                          <FiUser className="text-[#A1A1A7]" />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {[
-                            ['name', 'Full Name *', 'Enter your full name', 'text'],
-                            ['email', 'Email Address *', 'you@company.com', 'email'],
-                            ['phone', 'Phone Number *', '+91 XXXXX XXXXX', 'tel'],
-                            ['company', 'Company / Organization *', 'Company name', 'text'],
-                            ['billingAddress', 'Billing Address *', 'Full billing address', 'text'],
-                            ['billingState', 'Billing State *', 'State / Union Territory', 'text'],
-                            ['gstin', 'GSTIN (if applicable)', 'e.g. 19XXXXXXXXXX1Z1', 'text']
-                          ].map(([field, label, placeholder, type]) => (
-                            <label key={field} className="block">
-                              <span className="block text-[11px] text-[#A1A1A7] mb-1.5">{label}</span>
-                              <input
-                                type={type}
-                                name={field}
-                                value={formData[field]}
-                                onChange={handleInputChange}
-                                placeholder={placeholder}
-                                className="w-full bg-[#07111F] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-[#686A70] outline-none focus:border-[#F2580E]/60 transition-colors"
-                              />
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Payment breakdown */}
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-[#F2580E] font-mono font-bold">02 / Summary</p>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-[#F2580E] font-mono font-bold">01 / Summary</p>
                             <h4 className="text-lg text-white font-serif font-semibold">Payment Breakdown</h4>
                           </div>
                           <FiCreditCard className="text-[#A1A1A7]" />
@@ -1149,18 +1098,18 @@ export default function ITOAds() {
                             <span className="text-[#A1A1A7]">{paymentPlan.name} Service Fee</span>
                             <span className="text-white font-mono">₹{subtotal.toLocaleString('en-IN')}.00</span>
                           </div>
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <span className="text-[#A1A1A7]">GST (18%)</span>
+                            <span className="text-white font-mono">₹{gst.toLocaleString('en-IN')}.00</span>
+                          </div>
                           <div className="flex items-start justify-between gap-4 text-sm">
                             <span className="text-[#A1A1A7]">Platform Media Spend</span>
                             <span className="text-right text-[#F3D0AB] font-medium">Additional<br /><span className="text-[10px] text-[#686A70]">Not included in service fee</span></span>
                           </div>
-                          <div className="flex items-start justify-between gap-4 text-sm">
-                            <span className="text-[#A1A1A7]">GST / Taxes</span>
-                            <span className="text-right text-[#F3D0AB] font-medium">Applicable as invoiced<br /><span className="text-[10px] text-[#686A70]">Rate not specified in source documents</span></span>
-                          </div>
                           <div className="border-t border-white/10 pt-4 flex items-end justify-between gap-4">
                             <div>
-                              <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Payable in this Razorpay order</p>
-                              <p className="text-xs text-[#686A70] mt-1">Service fee only; media spend and applicable GST are excluded.</p>
+                              <p className="text-[10px] uppercase tracking-widest text-[#A1A1A7] font-mono">Total Payable Now</p>
+                              <p className="text-xs text-[#686A70] mt-1">Service fee + GST (media spend billed separately)</p>
                             </div>
                             <span className="text-2xl md:text-3xl font-bold font-mono text-[#F2580E] whitespace-nowrap">₹{total.toLocaleString('en-IN')}.00</span>
                           </div>
@@ -1170,7 +1119,7 @@ export default function ITOAds() {
                           <p className="font-semibold text-white mb-1">Commercial terms to confirm before payment</p>
                           <ul className="space-y-1 text-[#A1A1A7]">
                             <li>• Media spend is additional and must be shown separately.</li>
-                            <li>• GST and invoice treatment must be visible before checkout.</li>
+                            <li>• GST @18% is included in the amount above; final invoice will reflect applicable tax treatment.</li>
                             <li>• Lead quantities are estimates unless a written category-specific guarantee exists.</li>
                             <li>• Campaign preparation, reporting, renewal, cancellation and refund terms must be defined in the agreement.</li>
                             <li>• The final billing entity should match the agreement, Razorpay account and GST invoice.</li>
@@ -1191,23 +1140,15 @@ export default function ITOAds() {
                         </div>
                       </div>
 
-                      {/* Consent */}
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" name="consent" checked={formData.consent} onChange={handleInputChange} className="mt-1 accent-[#F2580E]" />
-                        <span className="text-[11px] leading-relaxed text-[#A1A1A7]">
-                          I confirm that the customer and billing details provided above are correct. I understand that platform media spend is additional, and that applicable GST/tax treatment will be stated on the invoice. I agree to proceed subject to the applicable service agreement and commercial policies.
-                        </span>
-                      </label>
-
                       {/* Pay */}
                       <button
                         type="button"
-                        disabled={isProcessingPayment || requiredCustomerFieldsMissing || !formData.consent}
+                        disabled={isProcessingPayment}
                         onClick={() => initiatePayment(paymentPlan)}
-                        style={{ opacity: isProcessingPayment || requiredCustomerFieldsMissing || !formData.consent ? 0.55 : 1 }}
+                        style={{ opacity: isProcessingPayment ? 0.55 : 1 }}
                         className="w-full py-3.5 rounded-xl bg-[#F2580E] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#FF7A18] transition-all disabled:cursor-not-allowed shadow-lg"
                       >
-                        {isProcessingPayment ? <><FiLoader className="animate-spin" size={17} />Preparing Secure Payment...</> : <>Pay Service Fee ₹{total.toLocaleString('en-IN')}.00<FiArrowRight /></>}
+                        {isProcessingPayment ? <><FiLoader className="animate-spin" size={17} />Preparing Secure Payment...</> : <>Pay Service Fee + GST ₹{total.toLocaleString('en-IN')}.00<FiArrowRight /></>}
                       </button>
 
                       <div className="flex items-center justify-center gap-2 text-[10px] text-[#686A70]">

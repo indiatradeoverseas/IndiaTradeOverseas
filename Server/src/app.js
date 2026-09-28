@@ -6,6 +6,12 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const path = require('path');
 
+const coalVisitorRoutes =
+  require('./modules/distributors/coalVisitor.routes');
+
+const onionVisitorRoutes =
+  require('./modules/distributors/onionVisitor.routes');
+
 const corsOptions = require('./config/cors');
 
 const {
@@ -243,6 +249,7 @@ app.use(
   })
 );
 
+
 app.use(
   (req, res, next) => {
     if (
@@ -347,6 +354,28 @@ const apiRoutes = [
   {
     path: '/users',
     router: userRoutes
+  },
+
+  /*
+   * COAL VISITOR FLOW
+   *
+   * Mounted here so it receives:
+   * - CORS
+   * - JSON body parsing
+   * - URL encoded parsing
+   * - global rate limiting
+   *
+   * It is mounted under both /api and /api/v1 below,
+   * matching the architecture of the rest of the backend.
+   */
+  {
+    path: '/coal-visitors',
+    router: coalVisitorRoutes
+  },
+
+  {
+    path: '/onion-visitors',
+    router: onionVisitorRoutes
   },
 
   {
