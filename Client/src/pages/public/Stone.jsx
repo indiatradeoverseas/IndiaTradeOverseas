@@ -2570,8 +2570,8 @@ export default function Stone() {
                     {/* Payment Mode Selector */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Select Payment Method:
-                      </label>
+  Payment Method
+</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
@@ -2582,9 +2582,9 @@ export default function Stone() {
                               : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           }`}
                         >
-                          <span>💳</span> Online Payment
+                          <span>💳</span> Secure Online Payment
                         </button>
-                        <button
+                        {/* <button
                           type="button"
                           onClick={() => setPaymentMode('COD')}
                           className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
@@ -2594,7 +2594,7 @@ export default function Stone() {
                           }`}
                         >
                           <span>📦</span> Cash on Delivery
-                        </button>
+                        </button> */}
                       </div>
                     </div>
 
