@@ -84,7 +84,7 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
     .trim();
 
   const namePatterns = [
-    /(?:name|customer|client|consignee|person|buyer)[:\s\-]+([A-Za-z\s]{2,30})/i,
+    /(?:name|customer|client|consignee|person|buyer|buyer\s*name)[:\s\-]+([A-Za-z\s]{2,30})/i,
     /(?:i\s*am|my\s*name\s*is|this\s*side)[:\s\-]+([A-Za-z\s]{2,30})/i,
     /([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/,
     /([A-Za-z]{3,20}\s+[A-Za-z]{3,20})/
@@ -135,7 +135,7 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
 
   // 4. Location / Destination extraction
   let extractedLocation = '';
-  const locExplicitMatch = chunk.match(/(?:location|loc|destination|deliver(?:y)?(?:\s*(?:to|at))?|place|address|site|city|discharge)\s*[:\-]+\s*([^\n\r,;|]+)/i) ||
+  const locExplicitMatch = chunk.match(/(?:location|loc|destination|deliver(?:y)?(?:\s*(?:to|at))?|place|address|site|city|state|discharge)\s*[:\-]+\s*([^\n\r,;|]+)/i) ||
                            chunk.match(/(?:location|loc|destination|site)\s*[:\s]+([^\n\r,;|]+)/i);
   if (locExplicitMatch && locExplicitMatch[1]) {
     const locCand = locExplicitMatch[1].trim();
@@ -145,23 +145,28 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
   }
 
   if (!extractedLocation) {
-    const knownCitiesMatch = cleanChunk.match(/\b(siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|bengal|west\s*bengal|assam|nepal|noida|gurgaon|jaipur|lucknow|kanpur|varanasi|gorakhpur|samastipur|purnea|arrah|chhapra|buxar|sasaram|deoghar|bokaro|jamshedpur|araria|jhanjharpur|katihar|bettiah|motihari|darbhanga|begusarai|madhubani|kishanganj|munger|saharsa|khagaria|nawada|jamui|lakhisarai|kaimur|bhabua|gopalganj|vaishali|hajipur|up|uttar\s*pradesh|odisha|bhubaneswar|cuttack)\b/i);
+    const knownCitiesMatch = cleanChunk.match(/\b(siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|bengal|west\s*bengal|assam|nepal|noida|gurgaon|jaipur|lucknow|kanpur|varanasi|gorakhpur|samastipur|purnea|arrah|chhapra|buxar|sasaram|deoghar|bokaro|jamshedpur|araria|jhanjharpur|katihar|bettiah|motihari|darbhanga|begusarai|madhubani|kishanganj|munger|saharsa|khagaria|nawada|jamui|lakhisarai|kaimur|bhabua|gopalganj|vaishali|hajipur|up|uttar\s*pradesh|odisha|bhubaneswar|cuttack|madhepura|bardhaman|bardhanan)\b/i);
     if (knownCitiesMatch) {
       extractedLocation = knownCitiesMatch[0].trim();
     }
   }
 
-  // 5. Target Timeline / Date extraction
+  // 5. Target Timeline / Date & Frequency extraction
   let extractedTimeline = '';
-  const dateExplicitMatch = chunk.match(/(?:timeline|target|delivery\s*date|target\s*date|required\s*by|by|date)\s*[:\-]+\s*([^\n\r,;|]+)/i);
+  const dateExplicitMatch = chunk.match(/(?:timeline|target|delivery\s*date|target\s*date|required\s*by|requirement\s*timing|urgency|frequency|by|date)\s*[:\-]+\s*([^\n\r,;|]+)/i);
   if (dateExplicitMatch && dateExplicitMatch[1]) {
     extractedTimeline = dateExplicitMatch[1].trim();
   } else {
-    const dateMatch = cleanChunk.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
-                      cleanChunk.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i) ||
-                      cleanChunk.match(/\b(?:urgent|immediate|asap|this\s*week|next\s*week|kal\s*tak)\b/i);
-    if (dateMatch) {
-      extractedTimeline = dateMatch[0].trim();
+    // Relative & natural language timeline expressions
+    const relativeTimelineMatch = cleanChunk.match(/\b(?:next\s*month|daily\s*basis|daily|after\s*few\s*days|regular\s*basis|after\s*15\s*days|2-3\s*days|\d+-\d+\s*days|\d+\s*days|after\s*1\s*month|after\s*2\s*months|after\s*\d+\s*months?|every\s*week|weekly\s*basis|weekly|monthly|urgent|immediate|asap|this\s*week|next\s*week|kal\s*tak)\b/i);
+    if (relativeTimelineMatch) {
+      extractedTimeline = relativeTimelineMatch[0].trim();
+    } else {
+      const dateMatch = cleanChunk.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
+                        cleanChunk.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
+      if (dateMatch) {
+        extractedTimeline = dateMatch[0].trim();
+      }
     }
   }
 
@@ -171,19 +176,19 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
   if (qtyExplicitMatch && qtyExplicitMatch[1]) {
     extractedQuantity = qtyExplicitMatch[1].trim();
   } else {
-    const qtyPatternMatch = cleanChunk.match(/\b(\d+(?:\.\d+)?\s*(?:tons?|tonnes?|mt|t|gari|gaddi|trucks?|dumper|bags?|cft|sqft|kg|quintal|containers?|pcs|pieces?|katti|pack)(?:\s+(?:daily|per\s*day|per\s*month))?)\b/i);
+    const qtyPatternMatch = cleanChunk.match(/\b(\d+(?:\.\d+)?\s*(?:tons?|tonnes?|mt|t|gari|gaddi|trucks?|dumper|hyva|bags?|cft|sqft|kg|quintal|containers?|pcs|pieces?|katti|pack)(?:\s+(?:daily|per\s*day|per\s*month|per\s*week))?)\b/i);
     if (qtyPatternMatch) {
       extractedQuantity = qtyPatternMatch[1].trim();
     }
   }
 
-  // 7. Valuation / Deal Value extraction
+  // 7. Valuation / Deal Value / Rate extraction
   let extractedValuation = '';
-  const valExplicitMatch = chunk.match(/(?:valuation|budget|price|rate|total|value|amount|cost|deal\s*value)\s*[:\-]+\s*([^\n\r,;|]+)/i);
+  const valExplicitMatch = chunk.match(/(?:valuation|budget|price|rate|total|value|amount|cost|deal\s*value|quote)\s*[:\-]+\s*([^\n\r,;|]+)/i);
   if (valExplicitMatch && valExplicitMatch[1]) {
     extractedValuation = valExplicitMatch[1].trim();
   } else {
-    const valPatternMatch = cleanChunk.match(/(?:budget|valuation|price|total|value|amount|cost|rate|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k))?)/i) ||
+    const valPatternMatch = cleanChunk.match(/(?:budget|valuation|price|total|value|amount|cost|rate|quote|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k|\/ton|\/cft|\/mt|\/truck))?)/i) ||
                              cleanChunk.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
                              cleanChunk.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
     if (valPatternMatch) {
@@ -214,26 +219,26 @@ function parseStructuredLeadTemplates(textToParse) {
   const leads = [];
 
   for (const block of rawBlocks) {
-    const nameMatch = block.match(/Name\s*[:\-]+\s*([^\n\r]+)/i);
+    const nameMatch = block.match(/(?:Name|Buyer|Customer|Consignee)\s*[:\-]+\s*([^\n\r]+)/i);
     const customerName = nameMatch && nameMatch[1] ? nameMatch[1].trim() : '';
 
-    const phoneMatch = block.match(/(?:No|Phone|Mobile|Tel|Mob)\s*[:\-]+\s*([^\n\r]+)/i) || block.match(/(?:\+91[\s-]?)?[6-9]\d{9}\b/);
+    const phoneMatch = block.match(/(?:No|Phone|Mobile|Tel|Mob|Contact)\s*[:\-]+\s*([^\n\r]+)/i) || block.match(/(?:\+91[\s-]?)?[6-9]\d{9}\b/);
     let phone = phoneMatch ? (phoneMatch[1] || phoneMatch[0]).replace(/[^\d+]/g, '') : '';
     if (phone.length === 10) phone = '+91' + phone;
 
     if (!customerName && !phone) continue;
 
-    const locMatch = block.match(/(?:Location|Loc|Destination|Site|Address|City|Place|Discharge)\s*[:\-]+\s*([^\n\r]+)/i);
+    const locMatch = block.match(/(?:Location|Loc|Destination|Site|Address|City|State|Place|Discharge)\s*[:\-]+\s*([^\n\r]+)/i);
     let destination = locMatch && locMatch[1] ? locMatch[1].trim() : '';
     if (!destination) {
-      const knownCitiesMatch = block.match(/\b(siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|bengal|west\s*bengal|assam|nepal|noida|gurgaon|jaipur|lucknow|kanpur|varanasi|gorakhpur|samastipur|purnea|arrah|chhapra|buxar|sasaram|deoghar|bokaro|jamshedpur|araria|jhanjharpur|katihar|bettiah|motihari|darbhanga|begusarai|madhubani|kishanganj|munger|saharsa|khagaria|nawada|jamui|lakhisarai|kaimur|bhabua|gopalganj|vaishali|hajipur|up|uttar\s*pradesh|odisha|bhubaneswar|cuttack)\b/i);
+      const knownCitiesMatch = block.match(/\b(siwan|patna|siliguri|pakur|ranchi|kolkata|delhi|dhanbad|muzaffarpur|gaya|sitamarhi|forbesganj|bhagalpur|beroli|bihar|jharkhand|bengal|west\s*bengal|assam|nepal|noida|gurgaon|jaipur|lucknow|kanpur|varanasi|gorakhpur|samastipur|purnea|arrah|chhapra|buxar|sasaram|deoghar|bokaro|jamshedpur|araria|jhanjharpur|katihar|bettiah|motihari|darbhanga|begusarai|madhubani|kishanganj|munger|saharsa|khagaria|nawada|jamui|lakhisarai|kaimur|bhabua|gopalganj|vaishali|hajipur|up|uttar\s*pradesh|odisha|bhubaneswar|cuttack|madhepura|bardhaman|bardhanan)\b/i);
       if (knownCitiesMatch) destination = knownCitiesMatch[0].trim();
     }
 
     const qtyMatch = block.match(/(?:Quantity|Qty|Volume|Matra|Requirement|Need|Capacity)\s*[:\-]+\s*([^\n\r]+)/i);
     let quantity = qtyMatch && qtyMatch[1] ? qtyMatch[1].trim() : '';
     if (!quantity) {
-      const qtyPatternMatch = block.match(/\b(\d+(?:\.\d+)?\s*(?:tons?|tonnes?|mt|t|gari|gaddi|trucks?|dumper|bags?|cft|sqft|kg|quintal|containers?|pcs|pieces?|katti|pack)(?:\s+(?:daily|per\s*day|per\s*month))?)\b/i);
+      const qtyPatternMatch = block.match(/\b(\d+(?:\.\d+)?\s*(?:tons?|tonnes?|mt|t|gari|gaddi|trucks?|dumper|hyva|bags?|cft|sqft|kg|quintal|containers?|pcs|pieces?|katti|pack)(?:\s+(?:daily|per\s*day|per\s*month|per\s*week))?)\b/i);
       if (qtyPatternMatch) quantity = qtyPatternMatch[1].trim();
     }
 
@@ -259,15 +264,16 @@ function parseStructuredLeadTemplates(textToParse) {
       priority = 'WARM';
     }
 
-    const dateMatch = block.match(/(?:Timeline|Target|Delivery|Date)\s*[:\-]+\s*([^\n\r]+)/i) ||
+    const dateMatch = block.match(/(?:Timeline|Target|Delivery|Date|Urgency|Frequency)\s*[:\-]+\s*([^\n\r]+)/i) ||
+                      block.match(/\b(?:next\s*month|daily\s*basis|daily|after\s*few\s*days|regular\s*basis|after\s*15\s*days|2-3\s*days|\d+-\d+\s*days|\d+\s*days|after\s*1\s*month|after\s*2\s*months|after\s*\d+\s*months?|every\s*week|weekly\s*basis|weekly|monthly|urgent|immediate|asap|this\s*week|next\s*week|kal\s*tak)\b/i) ||
                       block.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
                       block.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
     const targetDate = dateMatch ? (dateMatch[1] || dateMatch[0]).trim() : '';
 
-    const valMatch = block.match(/(?:Valuation|Budget|Price|Rate|Total|Value|Amount|Cost|Deal\s*Value)\s*[:\-]+\s*([^\n\r]+)/i);
+    const valMatch = block.match(/(?:Valuation|Budget|Price|Rate|Total|Value|Amount|Cost|Deal\s*Value|Quote)\s*[:\-]+\s*([^\n\r]+)/i);
     let leadValue = valMatch && valMatch[1] ? valMatch[1].trim() : '';
     if (!leadValue) {
-      const valPatternMatch = block.match(/(?:budget|valuation|price|total|value|amount|cost|rate|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k))?)/i) ||
+      const valPatternMatch = block.match(/(?:budget|valuation|price|total|value|amount|cost|rate|quote|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k|\/ton|\/cft|\/mt|\/truck))?)/i) ||
                                block.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
                                block.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
       if (valPatternMatch) leadValue = (valPatternMatch[1] || valPatternMatch[0]).trim();
@@ -471,9 +477,7 @@ export default function Leads() {
     const dupIds = new Set();
     const dupDetails = new Map();
 
-    const phoneMap = new Map();
-    const emailMap = new Map();
-    const nameCompMap = new Map();
+    const comboMap = new Map();
 
     (leads || []).forEach(l => {
       if (!l) return;
@@ -484,50 +488,32 @@ export default function Leads() {
         dupDetails.set(lId, 'Flagged in database as duplicate lead');
       }
 
-      // Phone matching
+      // Exact Smart Match: Phone + Email + Product Category
       const rawPhone = (l.phone || l.phoneMasked || '').replace(/\D/g, '');
-      if (rawPhone.length >= 7) {
-        const pKey = rawPhone.slice(-10);
-        if (!phoneMap.has(pKey)) phoneMap.set(pKey, []);
-        phoneMap.get(pKey).push(l);
-      }
-
-      // Email matching
+      const pKey = rawPhone.length >= 7 ? rawPhone.slice(-10) : '';
       const rawEmail = (l.email || l.emailMasked || '').trim().toLowerCase();
-      if (rawEmail && !rawEmail.includes('indiatradeoverseas.com') && rawEmail.includes('@')) {
-        if (!emailMap.has(rawEmail)) emailMap.set(rawEmail, []);
-        emailMap.get(rawEmail).push(l);
-      }
+      const catKey = String(l.productCategory || '').trim().toUpperCase();
 
-      // Consignee + Company name matching
-      const cName = (l.customerName || '').trim().toLowerCase();
-      const compName = (l.companyName || '').trim().toLowerCase();
-      if (cName.length > 2 && compName.length > 2) {
-        const ncKey = `${cName}|${compName}`;
-        if (!nameCompMap.has(ncKey)) nameCompMap.set(ncKey, []);
-        nameCompMap.get(ncKey).push(l);
+      if (pKey && rawEmail && rawEmail.includes('@') && !rawEmail.includes('indiatradeoverseas.com') && catKey) {
+        const comboKey = `${pKey}|${rawEmail}|${catKey}`;
+        if (!comboMap.has(comboKey)) comboMap.set(comboKey, []);
+        comboMap.get(comboKey).push(l);
       }
     });
 
-    const registerDuplicates = (groupMap, matchType) => {
-      groupMap.forEach((group) => {
-        if (group.length > 1) {
-          group.forEach((lead) => {
-            const id = String(lead._id);
-            dupIds.add(id);
-            const existingReason = dupDetails.get(id);
-            const otherLead = group.find(g => String(g._id) !== id);
-            const otherCode = otherLead?.leadCode || otherLead?.customerName || 'another lead';
-            const reason = `Matches ${matchType} with ${otherCode}`;
-            dupDetails.set(id, existingReason ? `${existingReason}, ${reason}` : reason);
-          });
-        }
-      });
-    };
-
-    registerDuplicates(phoneMap, 'phone number');
-    registerDuplicates(emailMap, 'email address');
-    registerDuplicates(nameCompMap, 'consignee & company name');
+    comboMap.forEach((group) => {
+      if (group.length > 1) {
+        group.forEach((lead) => {
+          const id = String(lead._id);
+          dupIds.add(id);
+          const existingReason = dupDetails.get(id);
+          const otherLead = group.find(g => String(g._id) !== id);
+          const otherCode = otherLead?.leadCode || otherLead?.customerName || 'another lead';
+          const reason = `Matches Phone, Email & Category (${lead.productCategory}) with ${otherCode}`;
+          dupDetails.set(id, existingReason ? `${existingReason}, ${reason}` : reason);
+        });
+      }
+    });
 
     return { duplicateLeadIds: dupIds, duplicateLeadDetails: dupDetails };
   }, [leads]);
@@ -1473,9 +1459,14 @@ export default function Leads() {
 
       const res = await leadsApi.bulkImportLeads(leadsArray);
       if (res.success) {
-        toast.success(`Successfully imported ${res.data?.successCount || leadsArray.length} leads! 🎉`);
-        if (res.data?.errors && res.data.errors.length > 0) {
-          toast.error(`Warnings: ${res.data.errors.length} rows had errors. Check console.`);
+        const successCount = res.data?.successCount ?? (res.data?.count ?? 0);
+        if (successCount > 0) {
+          toast.success(`Successfully imported ${successCount} leads! 🎉`);
+        } else {
+          toast.error(`0 leads imported. Please check column mappings.`);
+        }
+        if (res.data?.errors && res.data.errors.length > 0 && successCount > 0) {
+          toast.error(`Warnings: ${res.data.errors.length} rows had warnings.`);
         }
         setShowImportModal(false);
         setParsedRows([]);

@@ -292,38 +292,39 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
   return (
     <div className="w-full border rounded-sm overflow-hidden font-sans" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
       {/* Header Bar */}
-      <div className="px-4 sm:px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded bg-blue-500/10 text-blue-400 border border-blue-400/30">
-            <FiFolder size={18} />
+      <div className="px-3 py-3 sm:px-6 sm:py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded bg-blue-500/10 text-blue-400 border border-blue-400/30 shrink-0">
+            <FiFolder size={16} />
           </div>
-          <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-              Enterprise File Sharing Center <span className="text-[9px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-bold">Max 25MB</span>
+          <div className="min-w-0">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex flex-wrap items-center gap-1.5 font-sans">
+              <span>Enterprise File Sharing Center</span>
+              <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-bold whitespace-nowrap">Max 25MB</span>
             </h2>
-            <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
+            <p className="text-[9.5px] sm:text-[10px] text-[var(--crm-ink-faint)] font-sans truncate">
               Share PDFs, Excel, Images & Documents securely across Founder, CEO, Admin, Managers & Staff
             </p>
           </div>
         </div>
 
         {/* Action Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 py-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 py-0.5 max-w-full scrollbar-none">
           {canShare && (
             <button
               onClick={() => setActiveTab('SHARE')}
-              className={`px-3.5 py-1.5 text-[11px] font-sans uppercase font-extrabold rounded-md whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
+              className={`px-3 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-extrabold rounded-md whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shadow-sm ${
                 activeTab === 'SHARE'
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border border-cyan-400'
                   : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/60'
               }`}
             >
-              <FiUpload size={13} /> + Share New File
+              <FiUpload size={12} /> + Share File
             </button>
           )}
           <button
             onClick={() => setActiveTab('RECEIVED')}
-            className={`px-3 py-1.5 text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'RECEIVED'
                 ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
                 : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
@@ -333,7 +334,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
           </button>
           <button
             onClick={() => setActiveTab('SENT')}
-            className={`px-3 py-1.5 text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'SENT'
                 ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
                 : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
@@ -344,20 +345,20 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
           {isLeader && (
             <button
               onClick={() => setActiveTab('ALL_AUDIT')}
-              className={`px-3 py-1.5 text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'ALL_AUDIT'
                   ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
                   : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
               }`}
             >
-              Team Shared Files Audit
+              Team Audit
             </button>
           )}
         </div>
       </div>
 
       {/* Main Container */}
-      <div className="p-4 sm:p-6">
+      <div className="p-3 sm:p-6">
         {/* SHARE NEW FILE FORM TAB */}
         {activeTab === 'SHARE' && canShare && (
           <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleUploadAndShare} className="space-y-6">
@@ -497,7 +498,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </div>
 
                 {/* Filter & Search Recipient Bar */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <div className="relative flex-1">
                     <FiSearch className="absolute left-2.5 top-2.5 text-[var(--crm-ink-faint)]" size={13} />
                     <input
@@ -595,24 +596,24 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
           <div className="space-y-4 font-sans">
             {/* Search & Filter Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1 min-w-0 max-w-md">
                 <FiSearch className="absolute left-3 top-2.5 text-[var(--crm-ink-faint)]" size={14} />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={`Search ${activeTab.toLowerCase()} files by name, sender, note...`}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
+                  placeholder={`Search ${activeTab.toLowerCase()} files...`}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded outline-none"
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-sans text-[var(--crm-ink-faint)]">
+              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                <span className="text-[10px] font-sans text-[var(--crm-ink-faint)] whitespace-nowrap">
                   Total {filteredFiles.length} file(s)
                 </span>
                 <button
                   onClick={fetchSharedFiles}
-                  className="px-2.5 py-1.5 text-[10px] font-sans uppercase bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold rounded flex items-center gap-1"
+                  className="px-2.5 py-1.5 text-[10px] font-sans uppercase bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold rounded flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer shadow-xs"
                 >
                   <FiRefreshCw size={11} /> Refresh
                 </button>
@@ -719,29 +720,29 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
           <div className="space-y-4 font-sans">
             <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm text-left">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-line)] pb-3 mb-4 gap-3">
-                <div>
-                  <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-                    <FiFolder className="text-blue-500" /> Team Shared Files Audit Repository
+                <div className="min-w-0">
+                  <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans truncate">
+                    <FiFolder className="text-blue-500 shrink-0" /> Team Shared Files Audit Repository
                   </h3>
-                  <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans mt-0.5">
+                  <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans mt-0.5 leading-relaxed">
                     Founder & CEO Master Audit Log: Inspect and download all client Excel files and documents shared across all Sales Executives, Managers & Staff.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="relative">
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                  <div className="relative flex-1 min-w-0 sm:w-56">
                     <FiSearch className="absolute left-2.5 top-2.5 text-[var(--crm-ink-faint)]" size={13} />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search file, sender, recipient..."
-                      className="pl-8 pr-3 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
+                      placeholder="Search file, sender..."
+                      className="w-full pl-8 pr-2.5 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded outline-none"
                     />
                   </div>
                   <button
                     onClick={fetchSharedFiles}
-                    className="px-3 py-1.5 text-[10px] font-sans uppercase bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 font-bold rounded flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 text-[10px] font-sans uppercase bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 font-bold rounded flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap shadow-xs"
                   >
                     <FiRefreshCw size={11} /> Refresh
                   </button>

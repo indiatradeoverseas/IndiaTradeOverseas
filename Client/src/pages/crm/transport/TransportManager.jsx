@@ -134,15 +134,26 @@ export default function TransportManager() {
   const [quotationForm, setQuotationForm] = useState({ clientName: '', route: '', ratePerTon: '', tonnage: '25' });
 
   // Map & Live GPS Telemetry
-  const [gpsLocation, setGpsLocation] = useState({ lat: 28.6139, long: 77.2090 });
+  const [gpsLocation, setGpsLocation] = useState(null);
   const [etaKmRemaining, setEtaKmRemaining] = useState(120);
 
   // Real-Time Socket.IO & Event Listeners
   useEffect(() => {
     const handleGpsEvent = (e) => {
-      if (e.detail && e.detail.lat && e.detail.long) {
+      if (e.detail && Number.isFinite(Number(e.detail.lat)) && Number.isFinite(Number(e.detail.long))) {
         setGpsLocation({ lat: e.detail.lat, long: e.detail.long });
       }
+    };
+
+    const handleLocationUpdate = (data) => {
+      if (data && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.long))) {
+        setGpsLocation({ lat: data.lat, long: data.long });
+      }
+    };
+
+    const handleLocationSnapshot = (data) => {
+      const latest = Array.isArray(data) ? data[0] : null;
+      handleLocationUpdate(latest);
     };
 
     const fetchMongoChats = async () => {
@@ -185,14 +196,14 @@ export default function TransportManager() {
 
     window.addEventListener('ito_driver_gps_update_event', handleGpsEvent);
 
-    const socket = socketService.getSocket();
+    const socket = socketService.connect(user);
     if (socket) {
-      socket.on('driver_location_update', (data) => {
-        if (data && data.lat && data.long) setGpsLocation({ lat: data.lat, long: data.long });
-      });
+      const latestLocation = socketService.getLatestDriverLocations()[0];
+      handleLocationUpdate(latestLocation);
+      socket.on('driver_location_update', handleLocationUpdate);
+      socket.on('driver_location_snapshot', handleLocationSnapshot);
       socket.on('driver_work_update', (data) => {
         if (data) setDriverWorkUpdates(prev => [data, ...prev]);
-        fetchData();
       });
       socket.on('driver_chat_message', handleIncomingChat);
       socket.on('transport_chat_receive', handleIncomingChat);
@@ -201,11 +212,13 @@ export default function TransportManager() {
     return () => {
       window.removeEventListener('ito_driver_gps_update_event', handleGpsEvent);
       if (socket) {
+        socket.off('driver_location_update', handleLocationUpdate);
+        socket.off('driver_location_snapshot', handleLocationSnapshot);
         socket.off('driver_chat_message', handleIncomingChat);
         socket.off('transport_chat_receive', handleIncomingChat);
       }
     };
-  }, []);
+  }, [user]);
 
   const [selectedPreviewImage, setSelectedPreviewImage] = useState(null);
 

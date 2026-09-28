@@ -207,98 +207,100 @@ export default function EmployeeActivityMonitor({ scopeDepartment = null, showLu
   return (
     <div className="w-full space-y-6">
       {/* Header bar */}
-      <div className="border p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 backdrop-blur-sm" style={CARD}>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--crm-ink-faint)] uppercase tracking-wider">
+      <div className="border p-3.5 sm:p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 backdrop-blur-sm" style={CARD}>
+        <div className="space-y-0.5 sm:space-y-1">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold text-[var(--crm-ink-faint)] uppercase tracking-wider">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <span>Real-time Shift & Activity Telemetry</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--crm-heading)] font-sans">{title}</h2>
+          <h2 className="text-base sm:text-2xl font-bold tracking-tight text-[var(--crm-heading)] font-sans">{title}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center p-1 rounded-xl border" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+          <div className="flex items-center overflow-x-auto max-w-full scrollbar-none p-1 rounded-xl border shrink-0" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
             <button
               onClick={() => setActiveTab('live')}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'live' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
+              className={`px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTab === 'live' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
             >
               Live Telemetry
             </button>
             <button
               onClick={() => setActiveTab('report6pm')}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'report6pm' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
+              className={`px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTab === 'report6pm' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
             >
               6:00 PM Report
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'analytics' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
+              className={`px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTab === 'analytics' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
             >
               Historical Reports
             </button>
           </div>
-          <button onClick={handleRefresh} disabled={refreshing} className="p-2.5 border rounded-xl transition-all hover:bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)]" style={CARD_SUNKEN} title="Refresh">
-            <FiRefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          </button>
-          <button onClick={handleExport} className="px-3.5 py-2 border text-xs font-semibold rounded-xl flex items-center gap-2 transition-all hover:opacity-90 shadow-sm" style={{ background: 'var(--crm-positive-bg)', color: 'var(--crm-positive)', borderColor: 'rgba(86,165,135,0.3)' }}>
-            <FiDownload size={14} /> <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={handleRefresh} disabled={refreshing} className="p-2 border rounded-xl transition-all hover:bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] cursor-pointer" style={CARD_SUNKEN} title="Refresh">
+              <FiRefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            </button>
+            <button onClick={handleExport} className="px-3 py-1.5 border text-[11px] sm:text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all hover:opacity-90 shadow-sm cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-positive-bg)', color: 'var(--crm-positive)', borderColor: 'rgba(86,165,135,0.3)' }}>
+              <FiDownload size={13} /> <span>Export CSV</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="border p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-emerald-500/40" style={CARD}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)]">Active Staff Now</span>
-            <span className="relative flex h-3 w-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="border p-3 sm:p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-emerald-500/40" style={CARD}>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)] leading-tight">Active Staff Now</span>
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-emerald-400 font-sans tracking-tight">{activeCount}</span>
-            <span className="text-xs font-medium text-[var(--crm-ink-faint)]">/ {filteredEmployees.length} Total</span>
+          <div className="mt-2.5 flex items-baseline justify-between gap-1">
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-sans tracking-tight">{activeCount}</span>
+            <span className="text-[9.5px] sm:text-xs font-medium text-[var(--crm-ink-faint)] truncate">/ {filteredEmployees.length} Total</span>
           </div>
         </div>
 
-        <div className="border p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-rose-500/40" style={CARD}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)]">Idle / Inactive</span>
-            <span className="relative flex h-3 w-3">
+        <div className="border p-3 sm:p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-rose-500/40" style={CARD}>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)] leading-tight">Idle / Inactive</span>
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
             </span>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-rose-400 font-sans tracking-tight">{idleCount}</span>
-            <span className="text-xs font-medium text-[var(--crm-ink-faint)]">No Action &gt;5m</span>
+          <div className="mt-2.5 flex items-baseline justify-between gap-1">
+            <span className="text-2xl sm:text-3xl font-extrabold text-rose-400 font-sans tracking-tight">{idleCount}</span>
+            <span className="text-[9.5px] sm:text-xs font-medium text-[var(--crm-ink-faint)] truncate">&gt;5m Idle</span>
           </div>
         </div>
 
-        <div className="border p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-slate-500/40" style={CARD}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)]">Offline / Signed Out</span>
-            <span className="w-3 h-3 rounded-full bg-slate-500 ring-4 ring-slate-500/20" />
+        <div className="border p-3 sm:p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-slate-500/40" style={CARD}>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)] leading-tight">Offline / Signed Out</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0" />
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-slate-400 font-sans tracking-tight">{offlineCount}</span>
-            <span className="text-xs font-medium text-[var(--crm-ink-faint)]">Logged Out</span>
+          <div className="mt-2.5 flex items-baseline justify-between gap-1">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-400 font-sans tracking-tight">{offlineCount}</span>
+            <span className="text-[9.5px] sm:text-xs font-medium text-[var(--crm-ink-faint)] truncate">Logged Out</span>
           </div>
         </div>
 
-        <div className="border p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-cyan-500/40" style={CARD}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)]">Today's CRM Actions</span>
-            <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
-              <FiActivity size={16} />
+        <div className="border p-3 sm:p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-cyan-500/40" style={CARD}>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--crm-ink-faint)] leading-tight">Today's Actions</span>
+            <div className="p-1 rounded-lg bg-cyan-500/10 text-cyan-400 shrink-0">
+              <FiActivity size={14} />
             </div>
           </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-cyan-400 font-sans tracking-tight">{totalCrmActions}</span>
-            <span className="text-xs font-medium text-[var(--crm-ink-faint)]">Calls, Notes, Updates</span>
+          <div className="mt-2.5 flex items-baseline justify-between gap-1">
+            <span className="text-2xl sm:text-3xl font-extrabold text-cyan-400 font-sans tracking-tight">{totalCrmActions}</span>
+            <span className="text-[9.5px] sm:text-xs font-medium text-[var(--crm-ink-faint)] truncate">Logged Actions</span>
           </div>
         </div>
       </div>

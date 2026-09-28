@@ -647,38 +647,38 @@ export default function FounderDashboard() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-screen overflow-x-hidden font-sans" style={{ background: 'var(--crm-bg)' }}>
       {/* Top Header Bar */}
       <div
-        className="sticky top-0 z-20 w-full border-b px-4 py-4 sm:px-6 sm:py-5"
+        className="sticky top-0 z-20 w-full border-b px-3 py-3 sm:px-6 sm:py-5"
         style={{
           borderColor: 'var(--crm-line)',
           background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)',
           backdropFilter: 'blur(14px)'
         }}
       >
-        <div className="mx-auto max-w-[1700px] space-y-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="mx-auto max-w-[1700px] space-y-3 sm:space-y-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+                  className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border"
                   style={{
                     borderColor: 'var(--crm-line)',
                     background: 'var(--crm-bg-sunken)',
                     color: 'var(--crm-accent)'
                   }}
                 >
-                  <FiShield size={17} />
+                  <FiShield size={15} />
                 </div>
 
                 <div className="min-w-0">
                   <span
-                    className="block text-[9px] font-bold uppercase tracking-[0.22em]"
+                    className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.2em]"
                     style={{ color: 'var(--crm-accent)' }}
                   >
                     Founder Oversight · Enterprise Command
                   </span>
 
                   <h1
-                    className="mt-0.5 truncate text-xl font-semibold tracking-tight sm:text-2xl"
+                    className="mt-0.5 truncate text-base font-bold tracking-tight sm:text-2xl"
                     style={{ color: 'var(--crm-heading)' }}
                   >
                     Founder Command Center
@@ -687,25 +687,24 @@ export default function FounderDashboard() {
               </div>
 
               <p
-                className="mt-2 max-w-3xl text-xs leading-5 sm:text-sm"
-                style={{ color: 'var(--crm-ink-faint)' }}
+                className="mt-1 max-w-3xl text-[10px] sm:text-xs leading-4 sm:leading-5 text-[var(--crm-ink-faint)] hidden sm:block"
               >
                 Executive oversight across acquisition, workforce, operations, sales and enterprise controls.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <Link
                 to="/crm/manager-chat"
-                className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap"
                 style={{
                   borderColor: 'var(--crm-line)',
                   background: 'var(--crm-bg-sunken)',
                   color: 'var(--crm-heading)'
                 }}
               >
-                <FiMessageSquare size={12} />
-                Manager Chat
+                <FiMessageSquare size={12} className="shrink-0" />
+                <span>Manager Chat</span>
               </Link>
 
               <button
@@ -714,34 +713,34 @@ export default function FounderDashboard() {
                   fetchAll();
                   fetchControlledCampaignSnapshot();
                 }}
-                className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer"
                 style={{
                   borderColor: 'var(--crm-line)',
                   background: 'var(--crm-bg-sunken)',
                   color: 'var(--crm-heading)'
                 }}
               >
-                <FiRefreshCw size={12} />
-                Refresh
+                <FiRefreshCw size={12} className="shrink-0" />
+                <span>Refresh</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleExportCSV}
-                className="inline-flex min-h-[38px] items-center gap-2 rounded-lg px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                className="w-full sm:w-auto inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer shadow-sm"
                 style={{
                   background: 'var(--crm-accent)',
                   color: '#fff'
                 }}
               >
-                <FiDownload size={12} />
-                Export Report
+                <FiDownload size={12} className="shrink-0" />
+                <span>Export Report</span>
               </button>
             </div>
           </div>
 
           <div
-            className="flex items-center gap-2 overflow-x-auto border-t pt-3 pb-1 scrollbar-none"
+            className="flex items-center gap-1.5 overflow-x-auto border-t pt-2.5 pb-1 scrollbar-none whitespace-nowrap"
             style={{ borderColor: 'var(--crm-line)' }}
           >
             {[
@@ -760,7 +759,7 @@ export default function FounderDashboard() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className="whitespace-nowrap rounded-lg border px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition"
+                  className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition shrink-0 cursor-pointer"
                   style={{
                     borderColor: active
                       ? 'var(--crm-accent)'
@@ -781,11 +780,11 @@ export default function FounderDashboard() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1700px] space-y-8 px-4 py-6 sm:px-6">
+      <div className="mx-auto w-full max-w-[1700px] space-y-4 sm:space-y-8 px-2.5 py-3 sm:px-6 sm:py-6">
         {error && (
           <div
             role="alert"
-            className="flex items-start gap-3 rounded-xl border p-4 text-sm"
+            className="flex items-start gap-3 rounded-xl border p-3 sm:p-4 text-xs sm:text-sm"
             style={{
               borderColor: 'var(--crm-danger)',
               background: 'var(--crm-danger-bg)',
@@ -797,27 +796,25 @@ export default function FounderDashboard() {
           </div>
         )}
 
-
-        
         {/* =========================================================================
             SECTION 2: BUSINESS OVERVIEW SECTION (8 KPI CARDS + RECHARTS COMPOSED CHART + DATE RANGE)
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'OVERVIEW') && (
-          <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="overflow-hidden rounded-2xl border p-4 sm:p-6" style={CARD_STYLE}>
-            <div className="mb-5 flex flex-col gap-4 border-b pb-5 xl:flex-row xl:items-end xl:justify-between" style={{ borderColor: 'var(--crm-line)' }}>
+          <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="overflow-hidden rounded-2xl border p-3 sm:p-6" style={CARD_STYLE}>
+            <div className="mb-4 flex flex-col gap-3 border-b pb-4 xl:flex-row xl:items-end xl:justify-between" style={{ borderColor: 'var(--crm-line)' }}>
               <div>
-                <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>Core Enterprise Telemetry</span>
-                <h2 className="mt-1 flex items-center gap-2 text-base font-semibold sm:text-lg" style={{ color: 'var(--crm-heading)' }}>
-                  <FiBarChart2 className="text-[var(--crm-accent)]" /> Founder Business Overview
+                <span className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>Core Enterprise Telemetry</span>
+                <h2 className="mt-0.5 flex items-center gap-1.5 text-sm sm:text-lg font-bold" style={{ color: 'var(--crm-heading)' }}>
+                  <FiBarChart2 className="text-[var(--crm-accent)] shrink-0" /> Founder Business Overview
                 </h2>
-                <p className="mt-1 text-xs leading-5" style={{ color: 'var(--crm-ink-faint)' }}>
+                <p className="mt-0.5 text-[10px] sm:text-xs leading-4" style={{ color: 'var(--crm-ink-faint)' }}>
                   Executive view of workforce, pipeline, fulfilment, quotation and revenue signals.
                 </p>
               </div>
 
               {/* Date Range Filter Selector */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-[9px] font-bold uppercase tracking-wide" style={LABEL_MONO}>Range</span>
+              <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 scrollbar-none shrink-0">
+                <span className="mr-1 text-[8.5px] font-bold uppercase tracking-wide shrink-0" style={LABEL_MONO}>Range</span>
 
                 {['ALL', 'Today', '7d', '30d', '90d', 'Custom'].map((range) => {
                   const active = dateRange === range;
@@ -827,7 +824,7 @@ export default function FounderDashboard() {
                       key={range}
                       type="button"
                       onClick={() => setDateRange(range)}
-                      className="rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase transition"
+                      className="rounded-lg border px-2 py-1 text-[9.5px] font-semibold uppercase transition whitespace-nowrap shrink-0 cursor-pointer"
                       style={{
                         borderColor: active
                           ? 'var(--crm-accent)'
@@ -846,20 +843,20 @@ export default function FounderDashboard() {
                 })}
 
                 {dateRange === 'Custom' && (
-                  <div className="mt-2 flex w-full items-center gap-2 sm:mt-0 sm:w-auto">
+                  <div className="mt-2 flex w-full items-center gap-1.5 sm:mt-0 sm:w-auto shrink-0">
                     <input
                       type="date"
                       value={customStartDate}
                       onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[10px] outline-none sm:flex-none"
+                      className="min-w-0 flex-1 rounded-lg border px-2 py-1 text-[9.5px] outline-none sm:flex-none"
                       style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}
                     />
-                    <span className="text-[10px]" style={LABEL_MONO}>to</span>
+                    <span className="text-[9.5px]" style={LABEL_MONO}>to</span>
                     <input
                       type="date"
                       value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[10px] outline-none sm:flex-none"
+                      className="min-w-0 flex-1 rounded-lg border px-2 py-1 text-[9.5px] outline-none sm:flex-none"
                       style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}
                     />
                   </div>
@@ -868,88 +865,92 @@ export default function FounderDashboard() {
             </div>
 
             {/* 10 Business Overview Telemetry KPI Cards */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
               {kpiCards.map((card, i) => (
-                <motion.div key={i} whileHover={{ y: -2 }} className="flex min-h-[118px] flex-col justify-between rounded-xl border p-4" style={CARD_SUNKEN}>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--crm-ink-faint)]">{card.title}</span>
-                    <div className="flex-shrink-0 rounded-lg border p-2" style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg-raised)' }}>
-                      <card.icon size={14} />
+                <motion.div key={i} whileHover={{ y: -2 }} className="flex min-h-[92px] sm:min-h-[110px] flex-col justify-between rounded-xl border p-2.5 sm:p-4" style={CARD_SUNKEN}>
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] leading-tight">{card.title}</span>
+                    <div className="flex-shrink-0 rounded-md border p-1 sm:p-1.5" style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg-raised)' }}>
+                      <card.icon size={12} />
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <div className="break-words text-xl font-semibold text-[var(--crm-heading)] sm:text-2xl">{card.value}</div>
-                    <div className="mt-1 text-[10px] leading-4 text-[var(--crm-ink-faint)]">{card.subtitle}</div>
+                  <div className="mt-1.5">
+                    <div className="truncate text-base font-extrabold text-[var(--crm-heading)] sm:text-2xl leading-tight" title={String(card.value)}>{card.value}</div>
+                    <div className="mt-0.5 text-[8.5px] sm:text-[10px] leading-3 sm:leading-4 text-[var(--crm-ink-faint)] truncate">{card.subtitle}</div>
                   </div>
                 </motion.div>
               ))}
             </div>
 
             {/* Recharts ComposedChart Section */}
-            <div className="mt-5 rounded-xl border p-4 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
-              <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+            <div className="mt-4 sm:mt-5 rounded-xl border p-2.5 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                 <div>
-                  <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
+                  <span className="text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
                     Core Enterprise Telemetry
                   </span>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-                    <FiActivity className="text-emerald-400 animate-pulse" /> Combined Business Performance (Bars: Volume/Revenue, Line: Total Conversion %)
+                  <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-sans">
+                    <FiActivity className="text-emerald-400 animate-pulse shrink-0" />
+                    <span>Combined Business Performance</span>
                   </h3>
+                  <p className="text-[9.5px] sm:text-[10px] text-[var(--crm-ink-faint)] font-normal mt-0.5">
+                    Bars: Volume/Revenue · Line: Total Conversion %
+                  </p>
                 </div>
-                <span className="text-[9px] font-sans uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                <span className="text-[8.5px] sm:text-[9px] font-sans uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded self-start sm:self-auto">
                   Founder Command Feed
                 </span>
               </div>
 
-              <div className="h-80 sm:h-96 w-full">
-                <ResponsiveContainer width="100%" height={320}>
-                  <ComposedChart data={composedChartData} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>
+              <div className="h-60 sm:h-96 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={composedChartData} margin={{ top: 12, right: 8, left: -20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis dataKey="period" tick={XAXIS_TICK_STYLE} />
-                    <YAxis yAxisId="left" tick={AXIS_TICK_STYLE} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 11, fontFamily: 'var(--crm-font-mono)' }} unit="%" />
+                    <XAxis dataKey="period" tick={XAXIS_TICK_STYLE} dy={3} />
+                    <YAxis yAxisId="left" tick={AXIS_TICK_STYLE} width={30} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 9, fontFamily: 'var(--crm-font-mono)' }} unit="%" width={30} />
                     <Tooltip
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                       itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                     />
-                    <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                    <Legend wrapperStyle={{ fontSize: '9.5px', fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)', paddingTop: '8px' }} />
 
-                    <Bar yAxisId="left" dataKey="Total Employees" fill="var(--crm-info)" opacity={0.7} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Active Leads" fill="var(--crm-accent)" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Completed & Delivered" fill="var(--crm-positive)" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Quotations Sent" fill="#a855f7" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Orders Confirmed" fill="#38bdf8" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Total Employees" fill="var(--crm-info)" opacity={0.7} maxBarSize={14} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Active Leads" fill="var(--crm-accent)" opacity={0.8} maxBarSize={14} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Completed & Delivered" fill="var(--crm-positive)" opacity={0.8} maxBarSize={14} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Quotations Sent" fill="#a855f7" opacity={0.8} maxBarSize={14} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Orders Confirmed" fill="#38bdf8" opacity={0.8} maxBarSize={14} radius={[2, 2, 0, 0]} />
 
-                    <Line yAxisId="right" type="monotone" dataKey="Conversion %" stroke="#ec4899" strokeWidth={3} dot={{ r: 5, fill: '#ec4899' }} activeDot={{ r: 8 }} name="Total Conversion %" />
+                    <Line yAxisId="right" type="monotone" dataKey="Conversion %" stroke="#ec4899" strokeWidth={2.5} dot={{ r: 3, fill: '#ec4899' }} activeDot={{ r: 6 }} name="Total Conversion %" />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Stage Distribution & Monthly Trends Section (matching Reports.jsx) */}
-            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div className="mt-4 sm:mt-5 grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-12">
               {/* Stage Distribution (Donut Chart + Grid Badges Legend) */}
-              <div className="space-y-4 rounded-xl border p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
-                <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+              <div className="space-y-3 rounded-xl border p-3 sm:p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                <div className="flex justify-between items-center border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-                      <FiPieChart className="text-purple-400" /> Stage Distribution ({totalPipelineLeads} Total Leads)
+                    <span className="text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
+                    <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-sans">
+                      <FiPieChart className="text-purple-400 shrink-0" /> Stage Distribution ({totalPipelineLeads} Total Leads)
                     </h3>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  <div className="sm:col-span-5 h-64 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height={240}>
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                  <div className="sm:col-span-5 h-44 sm:h-64 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={pipelineData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={55}
-                          outerRadius={90}
+                          innerRadius={35}
+                          outerRadius={60}
                           paddingAngle={3}
                           dataKey="total"
                           nameKey="_id"
@@ -968,25 +969,25 @@ export default function FounderDashboard() {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="sm:col-span-7 grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1">
+                  <div className="sm:col-span-7 grid grid-cols-1 gap-1 max-h-48 sm:max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                     {pipelineData.map((entry, index) => {
                       const pct = totalPipelineLeads > 0 ? Math.round(((entry.total || 0) / totalPipelineLeads) * 100) : 0;
                       const color = STAGE_COLORS[index % STAGE_COLORS.length];
                       return (
                         <div
                           key={entry._id || index}
-                          className="flex items-center justify-between p-2 rounded border bg-[var(--crm-bg-sunken)] transition-colors hover:bg-[var(--crm-bg)]"
+                          className="flex items-center justify-between p-1.5 rounded border bg-[var(--crm-bg-raised)] transition-colors hover:border-[var(--crm-line-strong)]"
                           style={{ borderColor: 'var(--crm-line)' }}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                            <span className="text-[10px] font-sans font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                            <span className="text-[9.5px] font-sans font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
                               {String(entry._id || 'STAGE').replace(/_/g, ' ')}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 font-sans text-xs flex-shrink-0">
+                          <div className="flex items-center gap-1.5 font-sans text-[11px] flex-shrink-0">
                             <span className="font-bold text-[var(--crm-heading)]">{entry.total || 0}</span>
-                            <span className="text-[9px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">
+                            <span className="text-[8.5px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1 py-0.5 rounded">
                               {pct}%
                             </span>
                           </div>
@@ -998,34 +999,34 @@ export default function FounderDashboard() {
               </div>
 
               {/* Monthly Trends (Leads, Won & Lost) Line Chart */}
-              <div className="space-y-4 rounded-xl border p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
-                <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+              <div className="space-y-3 rounded-xl border p-3 sm:p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+                <div className="flex justify-between items-center border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
-                      <FiTrendingUp className="text-emerald-400" /> Monthly Trends (Leads, Won & Lost)
+                    <span className="text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
+                    <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-sans">
+                      <FiTrendingUp className="text-emerald-400 shrink-0" /> Monthly Trends (Leads, Won & Lost)
                     </h3>
                   </div>
-                  <span className="text-[9px] font-sans uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
+                  <span className="text-[8.5px] sm:text-[9px] font-sans uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
                     Telemetry Stream
                   </span>
                 </div>
 
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height={240}>
-                    <LineChart data={monthlyLeadsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
+                <div className="h-44 sm:h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyLeadsData} margin={{ top: 12, right: 12, left: -20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                      <XAxis dataKey="month" tick={XAXIS_TICK_STYLE} />
-                      <YAxis tick={AXIS_TICK_STYLE} />
+                      <XAxis dataKey="month" tick={XAXIS_TICK_STYLE} dy={3} />
+                      <YAxis tick={AXIS_TICK_STYLE} width={30} />
                       <Tooltip
                         contentStyle={CHART_TOOLTIP_STYLE}
                         labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                         itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                       />
-                      <Legend wrapperStyle={CHART_LEGEND_STYLE} />
-                      <Line type="monotone" dataKey="leads" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#38bdf8' }} activeDot={{ r: 6 }} name="Total Leads" />
-                      <Line type="monotone" dataKey="won" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} name="Won" />
-                      <Line type="monotone" dataKey="lost" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#f43f5e' }} activeDot={{ r: 6 }} name="Lost" />
+                      <Legend wrapperStyle={{ fontSize: '9.5px', fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)', paddingTop: '8px' }} />
+                      <Line type="monotone" dataKey="leads" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3, fill: '#38bdf8' }} activeDot={{ r: 5 }} name="Total Leads" />
+                      <Line type="monotone" dataKey="won" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} activeDot={{ r: 5 }} name="Won" />
+                      <Line type="monotone" dataKey="lost" stroke="#f43f5e" strokeWidth={2.5} dot={{ r: 3, fill: '#f43f5e' }} activeDot={{ r: 5 }} name="Lost" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1231,7 +1232,7 @@ export default function FounderDashboard() {
                       ))}
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[9px] uppercase tracking-wider mb-1" style={LABEL_MONO}>Target Amount (₹) *</label>
                       <input type="number" required placeholder="Target revenue..." value={targetForm.targetValue} onChange={(e) => setTargetForm({ ...targetForm, targetValue: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
@@ -1424,7 +1425,7 @@ export default function FounderDashboard() {
       <AnimatePresence>
         {showEmployeeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} className="w-full max-w-lg space-y-4 rounded-2xl border p-5 font-sans sm:p-6" style={CARD_STYLE}>
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} className="w-full max-w-lg space-y-4 rounded-2xl border p-5 font-sans sm:p-6 max-h-[90vh] overflow-y-auto custom-scrollbar" style={CARD_STYLE}>
               <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <h3 className="text-sm uppercase font-bold font-sans text-[var(--crm-heading)]">
                   {editingEmployee ? 'Edit Staff Member' : 'Add New Employee'}

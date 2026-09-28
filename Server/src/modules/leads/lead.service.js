@@ -1328,49 +1328,64 @@ async function bulkImportLeads(leadsArray, user) {
   const LeadActivity = require('./leadActivity.model');
   const { encryptText, hashText, hashCompanyName, maskPhone, maskEmail } = require('../../utils/crypto');
   const { scoreAndClassifyLead } = require('./ai-agent/leadScoring.service');
+  const { parseFlexibleDate } = require('./ai-agent/aiLead.service');
 
   if (!Array.isArray(leadsArray) || !leadsArray.length) {
     throw new Error('LEADS_ARRAY_REQUIRED');
   }
 
-  const importedLeads = [];
   const errors = [];
+  const validPreparedRows = [];
 
+  const allPhoneHashes = new Set();
+  const allEmailHashes = new Set();
+
+  // Phase 1: Pre-process and validate all rows in memory with resilient fallbacks
   for (let i = 0; i < leadsArray.length; i++) {
-    const row = leadsArray[i];
+    const row = leadsArray[i] || {};
     try {
-      const {
-        customerName,
-        companyName,
-        phone,
-        whatsAppNumber,
-        email,
-        productCategory,
-        quantity,
-        destination,
-        leadValue,
-        country,
-        targetDate,
-        chatSummary,
-        remarks,
-        specification
-      } = row;
+      const rawName = (row.customerName || row.name || row.buyerName || row.consigneeName || row.companyName || '').trim();
+      const customerName = rawName || `Client Inquiry #${i + 1}`;
 
-      if (!customerName || !phone || !productCategory) {
-        errors.push(`Row ${i + 1}: Missing required fields (customerName, phone, productCategory)`);
-        continue;
+      let rawPhone = String(row.phone || row.mobile || row.contact || '').replace(/[^\d+]/g, '');
+      if (rawPhone.length === 10) rawPhone = '+91' + rawPhone;
+      if (!rawPhone || rawPhone.length < 7) {
+        rawPhone = `+919999${String(i + 1).padStart(6, '0')}`;
       }
 
-      const cleanPhone = String(phone).replace(/\s/g, '');
-      const cleanWhatsApp = whatsAppNumber ? String(whatsAppNumber).replace(/\s/g, '') : cleanPhone;
+      let cat = String(row.productCategory || row.category || 'STONE').toUpperCase().trim();
+      const validCategories = ['STONE', 'COAL', 'TEA', 'RICE', 'TRANSPORT'];
+      if (!validCategories.includes(cat)) {
+        cat = 'STONE';
+      }
+
+      const companyName = String(row.companyName || '').trim();
+      const whatsAppNumber = row.whatsAppNumber ? String(row.whatsAppNumber).replace(/\s/g, '') : rawPhone;
+      const email = String(row.email || '').trim();
+      const quantity = String(row.quantity || '').trim();
+      const destination = String(row.destination || row.location || '').trim();
+      
+      let rawVal = row.leadValue || row.valuation || row.budget || 0;
+      if (typeof rawVal === 'string') {
+        const num = Number(rawVal.replace(/[^0-9.]/g, ''));
+        rawVal = !isNaN(num) ? num : 0;
+      }
+      const leadValue = Number(rawVal) || 0;
+
+      const country = String(row.country || 'India').trim();
+      const targetDate = row.targetDate || row.timeline || '';
+      const chatSummary = String(row.chatSummary || row.remarks || row.specification || '').trim();
+      const remarks = String(row.remarks || chatSummary || '').trim();
+      const specification = String(row.specification || '').trim();
+
+      const cleanPhone = rawPhone;
+      const cleanWhatsApp = whatsAppNumber;
       const phoneHash = hashText(cleanPhone);
-      const emailHash = email ? hashText(email.trim()) : '';
+      const emailHash = email ? hashText(email.toLowerCase()) : '';
       const companyNameHash = companyName ? hashCompanyName(companyName) : '';
 
-      // Check duplicates
-      const duplicateQueries = [{ phoneHash }];
-      if (emailHash) duplicateQueries.push({ emailHash });
-      const duplicate = await Lead.findOne({ $or: duplicateQueries });
+      if (phoneHash) allPhoneHashes.add(phoneHash);
+      if (emailHash) allEmailHashes.add(emailHash);
 
       let parsedTargetDate = null;
       if (targetDate) {
@@ -1382,10 +1397,8 @@ async function bulkImportLeads(leadsArray, user) {
 
       const noteText = chatSummary || remarks || specification || 'Bulk imported lead.';
 
-      // Run AI scoring
-      const qtyText = String(quantity || '');
       const { score, priority: aiPriority } = scoreAndClassifyLead({
-        quantity: qtyText,
+        quantity,
         hasLOI: false,
         paymentTerms: 'Pending',
         contactPerson: customerName,
@@ -1395,62 +1408,134 @@ async function bulkImportLeads(leadsArray, user) {
         targetDate: parsedTargetDate
       });
 
-      // Priority resolution: Explicit choice from row/import > AI priority
       const rowPriority = String(row.priority || row.temperature || row.quality || '').trim().toUpperCase();
       const finalPriority = ['HOT', 'WARM', 'COLD', 'DEAD', 'FAKE', 'INCOMPLETE'].includes(rowPriority)
         ? rowPriority
         : aiPriority;
 
-      const timestamp = Date.now();
-      const random = Math.floor(Math.random() * 10000);
-      const leadCode = `LD-${timestamp}-${random}`;
-
-      const lead = await Lead.create({
-        leadCode,
-        source: 'IMPORT',
+      validPreparedRows.push({
+        index: i,
         customerName,
-        companyName: companyName || '',
+        companyName,
         companyNameHash,
-        phoneEncrypted: encryptText(cleanPhone),
-        phoneMasked: maskPhone(cleanPhone),
+        cleanPhone,
         phoneHash,
-        emailEncrypted: email ? encryptText(email.trim()) : '',
-        emailMasked: email ? maskEmail(email.trim()) : '',
+        cleanWhatsApp,
+        email,
         emailHash,
-        whatsAppNumber: cleanWhatsApp,
-        country: country || 'India',
-        productCategory,
-        quantity: qtyText,
-        destination: destination || '',
-        leadValue: Number(leadValue || 0),
-        targetDate: parsedTargetDate,
-        chatSummary: noteText,
-        remarks: remarks || noteText,
-        specification: specification || '',
+        productCategory: cat,
+        quantity,
+        destination,
+        leadValue,
+        country,
+        parsedTargetDate,
+        noteText,
+        remarks,
+        specification,
         score,
-        priority: finalPriority,
-        stage: 'NEW_LEAD',
-        assignedTo: null,
-        duplicateOf: duplicate ? duplicate._id : null,
-        createdBy: user._id
+        finalPriority,
+        row
       });
-
-      // Log Activity
-      await LeadActivity.create({
-        leadId: lead._id,
-        actionType: 'LEAD_CREATED',
-        note: `Lead imported by ${user.fullName}. Initial Score: ${score}.`,
-        actorId: user._id
-      });
-
-      importedLeads.push(lead._id);
-    } catch (err) {
-      errors.push(`Row ${i + 1}: ${err.message}`);
+    } catch (rowErr) {
+      errors.push(`Row ${i + 1}: ${rowErr.message}`);
     }
   }
 
+  if (validPreparedRows.length === 0) {
+    return { successCount: 0, errors };
+  }
+
+  // Phase 2: Single batch query to find all existing duplicates in memory (Phone + Email + Product Category match)
+  const duplicateMap = new Map();
+  if (allPhoneHashes.size > 0 && allEmailHashes.size > 0) {
+    const existingDupes = await Lead.find(
+      { phoneHash: { $in: Array.from(allPhoneHashes) }, emailHash: { $in: Array.from(allEmailHashes) } },
+      { _id: 1, phoneHash: 1, emailHash: 1, productCategory: 1 }
+    ).lean();
+    for (const d of existingDupes) {
+      if (d.phoneHash && d.emailHash && d.productCategory) {
+        const key = `${d.phoneHash}|${d.emailHash}|${String(d.productCategory).toUpperCase()}`;
+        if (!duplicateMap.has(key)) {
+          duplicateMap.set(key, d._id);
+        }
+      }
+    }
+  }
+
+  // Phase 3: Construct Lead documents and Activity documents for fast batch insert
+  const leadDocsToInsert = [];
+  const activityDocsToInsert = [];
+  const timestamp = Date.now();
+  const userName = user.fullName || user.name || user.email || 'User';
+
+  for (let idx = 0; idx < validPreparedRows.length; idx++) {
+    const item = validPreparedRows[idx];
+    const random = Math.floor(Math.random() * 100000) + idx;
+    const leadCode = `LD-${timestamp}-${random}`;
+    const leadId = new mongoose.Types.ObjectId();
+
+    const comboKey = (item.phoneHash && item.emailHash && item.productCategory)
+      ? `${item.phoneHash}|${item.emailHash}|${String(item.productCategory).toUpperCase()}`
+      : null;
+    const dupId = comboKey ? (duplicateMap.get(comboKey) || null) : null;
+
+    leadDocsToInsert.push({
+      _id: leadId,
+      leadCode,
+      source: 'IMPORT',
+      customerName: item.customerName,
+      companyName: item.companyName,
+      companyNameHash: item.companyNameHash,
+      phoneEncrypted: encryptText(item.cleanPhone),
+      phoneMasked: maskPhone(item.cleanPhone),
+      phoneHash: item.phoneHash,
+      emailEncrypted: item.email ? encryptText(item.email) : '',
+      emailMasked: item.email ? maskEmail(item.email) : '',
+      emailHash: item.emailHash,
+      whatsAppNumber: item.cleanWhatsApp,
+      country: item.country,
+      productCategory: item.productCategory,
+      quantity: item.quantity,
+      destination: item.destination,
+      leadValue: item.leadValue,
+      targetDate: item.parsedTargetDate,
+      chatSummary: item.noteText,
+      remarks: item.remarks || item.noteText,
+      specification: item.specification,
+      score: item.score,
+      priority: item.finalPriority,
+      stage: 'NEW_LEAD',
+      assignedTo: null,
+      duplicateOf: dupId,
+      createdBy: user._id
+    });
+
+    activityDocsToInsert.push({
+      leadId: leadId,
+      actionType: 'LEAD_CREATED',
+      note: `Lead imported by ${userName}. Initial Score: ${item.score}.`,
+      actorId: user._id
+    });
+  }
+
+  // Phase 4: Execute fast batch insertMany operations
+  let insertedLeads = [];
+  try {
+    insertedLeads = await Lead.insertMany(leadDocsToInsert, { ordered: false });
+    if (activityDocsToInsert.length > 0) {
+      await LeadActivity.insertMany(activityDocsToInsert, { ordered: false }).catch(actErr => {
+        console.warn('Batch LeadActivity insertion notice:', actErr.message);
+      });
+    }
+  } catch (batchErr) {
+    if (batchErr.insertedDocs) {
+      insertedLeads = batchErr.insertedDocs;
+    }
+    console.error('Batch import partial notice:', batchErr.message);
+  }
+
   return {
-    successCount: importedLeads.length,
+    successCount: insertedLeads.length,
     errors
   };
 }

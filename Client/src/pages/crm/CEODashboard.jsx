@@ -557,123 +557,202 @@ export default function CEODashboard() {
     >
       {/* CEO Dashboard Top Bar Header */}
       <div
-        className="w-full border-b px-4 sm:px-6 py-4 sm:py-5 space-y-4"
-        style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+        className="sticky top-0 z-20 w-full border-b px-3 py-3 sm:px-6 sm:py-5"
+        style={{
+          borderColor: 'var(--crm-line)',
+          background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)',
+          backdropFilter: 'blur(14px)'
+        }}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase tracking-[0.25em] font-bold block text-cyan-500 font-sans">
-              Executive Command & Oversight
-            </span>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight uppercase flex items-center gap-2 font-sans" style={{ color: 'var(--crm-heading)' }}>
-              <FiZap className="text-cyan-500" /> CEO Master Dashboard
-            </h1>
+        <div className="mx-auto max-w-[1700px] space-y-3 sm:space-y-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border"
+                  style={{
+                    borderColor: 'var(--crm-line)',
+                    background: 'var(--crm-bg-sunken)',
+                    color: 'var(--crm-accent)'
+                  }}
+                >
+                  <FiZap size={15} />
+                </div>
+
+                <div className="min-w-0">
+                  <span
+                    className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.2em]"
+                    style={{ color: 'var(--crm-accent)' }}
+                  >
+                    Executive Command & Oversight
+                  </span>
+
+                  <h1
+                    className="mt-0.5 truncate text-base sm:text-2xl font-bold tracking-tight uppercase flex items-center gap-2"
+                    style={{ color: 'var(--crm-heading)' }}
+                  >
+                    CEO Master Dashboard
+                  </h1>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Controls */}
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Link
+                to="/crm/manager-chat"
+                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap"
+                style={{
+                  borderColor: 'var(--crm-line)',
+                  background: 'var(--crm-bg-sunken)',
+                  color: 'var(--crm-heading)'
+                }}
+              >
+                <FiMessageSquare size={12} className="shrink-0" />
+                <span className="hidden sm:inline">Manager Chat</span>
+                <span className="sm:hidden">Chat</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={fetchAllData}
+                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer"
+                style={{
+                  borderColor: 'var(--crm-line)',
+                  background: 'var(--crm-bg-sunken)',
+                  color: 'var(--crm-heading)'
+                }}
+              >
+                <FiRefreshCw size={12} className="shrink-0" />
+                <span className="hidden sm:inline">Refresh Data</span>
+                <span className="sm:hidden">Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="w-full sm:w-auto inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer shadow-sm"
+                style={{
+                  background: 'var(--crm-accent)',
+                  color: '#fff'
+                }}
+              >
+                <FiDownload size={12} className="shrink-0" />
+                <span>Export Executive Report</span>
+              </button>
+            </div>
           </div>
 
-          {/* Action Controls */}
-          <div className="flex flex-wrap items-center gap-2 font-sans">
-            <Link to="/crm/manager-chat" className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold">
-              <FiMessageSquare size={12} /> 
-            </Link>
-            <button
-              onClick={fetchAllData}
-              className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md border flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold"
-            >
-              <FiRefreshCw size={12} /> 
-            </button>
-
-            <button
-              onClick={handleExportCSV}
-              className="px-3.5 py-1.5 text-[10px] font-sans uppercase rounded-md flex items-center gap-1.5 transition-all cursor-pointer bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold"
-            >
-              <FiDownload size={12} /> 
-            </button>
+          {/* Module Navigation Tabs Row */}
+          <div
+            className="flex items-center gap-1.5 overflow-x-auto border-t pt-2.5 pb-1 scrollbar-none whitespace-nowrap"
+            style={{ borderColor: 'var(--crm-line)' }}
+          >
+            {[
+              { id: 'ALL', label: 'All Modules' },
+              { id: 'OVERVIEW', label: 'Overview Chart' },
+              { id: 'WORK_LOGS', label: 'Work Updates & Calls' },
+              { id: 'FILES', label: 'File Sharing' },
+              { id: 'SALES', label: 'Sales' },
+              { id: 'ATTENDANCE', label: 'Attendance' },
+              { id: 'TRANSPORT', label: 'Transport Map' },
+              { id: 'HIRING', label: 'Hiring' },
+              { id: 'ALERTS', label: 'Alerts' }
+            ].map((t) => {
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTab(t.id)}
+                  className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition shrink-0 cursor-pointer"
+                  style={{
+                    borderColor: active ? 'var(--crm-accent)' : 'var(--crm-line)',
+                    background: active ? 'var(--crm-accent-bg)' : 'var(--crm-bg-sunken)',
+                    color: active ? 'var(--crm-accent)' : 'var(--crm-ink-faint)'
+                  }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        {/* Module Navigation Tabs Row */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-800/80 pb-1 scrollbar-none">
-          {[
-            { id: 'ALL', label: 'All Modules' },
-            { id: 'OVERVIEW', label: 'Overview Chart' },
-            { id: 'WORK_LOGS', label: 'Work Updates & Calls' },
-            { id: 'FILES', label: 'File Sharing' },
-            { id: 'SALES', label: 'Sales' },
-            { id: 'ATTENDANCE', label: 'Attendance' },
-            { id: 'TRANSPORT', label: 'Transport Map' },
-            { id: 'HIRING', label: 'Hiring' },
-            { id: 'ALERTS', label: 'Alerts' }
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-1.5 text-[10px] uppercase font-sans font-bold rounded-md transition-all whitespace-nowrap ${
-                activeTab === t.id
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 py-6 space-y-8">
-        
-        
+      <div className="mx-auto w-full max-w-[1700px] space-y-4 sm:space-y-8 px-2.5 py-3 sm:px-6 sm:py-6">
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-xl border p-3 sm:p-4 text-xs sm:text-sm"
+            style={{
+              borderColor: 'var(--crm-danger)',
+              background: 'var(--crm-danger-bg)',
+              color: 'var(--crm-danger)'
+            }}
+          >
+            <FiAlertCircle className="mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* =========================================================================
             SECTION 2: REQUIRED MAIN BUSINESS OVERVIEW SECTION (COMBINED CHART + 8 KPI CARDS)
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'OVERVIEW') && (
           <motion.div
-            initial={{ y: 15, opacity: 0 }}
+            initial={{ y: 12, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="border rounded-sm overflow-hidden space-y-6 p-4 sm:p-6"
+            className="overflow-hidden rounded-2xl border space-y-4 sm:space-y-6 p-3 sm:p-6"
             style={CARD_STYLE}
           >
             {/* Header + Date Range Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: 'var(--crm-line)' }}>
+            <div className="flex flex-col gap-3 border-b pb-4 xl:flex-row xl:items-center xl:justify-between" style={{ borderColor: 'var(--crm-line)' }}>
               <div>
-                <span className="text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>
+                <span className="text-[8.5px] sm:text-[9px] uppercase tracking-widest font-bold" style={LABEL_MONO}>
                   Core Enterprise Telemetry
                 </span>
-                <h2 className="text-lg uppercase font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                <h2 className="mt-0.5 text-sm sm:text-lg uppercase font-bold text-[var(--crm-heading)] flex items-center gap-2">
                   <FiBarChart2 className="text-[var(--crm-accent)]" /> Business Overview & Combined Performance
                 </h2>
               </div>
 
               {/* Date Range Filter Controls */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] uppercase font-mono text-[var(--crm-ink-faint)]">Range:</span>
-                {['Today', '7d', '30d', '90d', 'Custom'].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setDateRange(r)}
-                    className={`px-3 py-1 text-[10px] font-sans uppercase rounded-md transition-all ${
-                      dateRange === r
-                        ? 'border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-md shadow-cyan-950/60'
-                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 scrollbar-none shrink-0">
+                <span className="mr-1 text-[8.5px] uppercase font-mono text-[var(--crm-ink-faint)] shrink-0">Range:</span>
+                {['Today', '7d', '30d', '90d', 'Custom'].map((r) => {
+                  const active = dateRange === r;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setDateRange(r)}
+                      className="rounded-lg border px-2.5 py-1 text-[9.5px] font-semibold uppercase transition whitespace-nowrap shrink-0 cursor-pointer"
+                      style={{
+                        borderColor: active ? 'var(--crm-accent)' : 'var(--crm-line)',
+                        background: active ? 'var(--crm-accent-bg)' : 'var(--crm-bg-sunken)',
+                        color: active ? 'var(--crm-accent)' : 'var(--crm-ink-faint)'
+                      }}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
 
                 {dateRange === 'Custom' && (
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <input
                       type="date"
                       value={customStartDate}
                       onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded"
+                      className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded-lg"
                     />
                     <span className="text-[10px] text-[var(--crm-ink-faint)]">to</span>
                     <input
                       type="date"
                       value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded"
+                      className="px-2 py-1 text-[10px] bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] rounded-lg"
                     />
                   </div>
                 )}
@@ -681,30 +760,30 @@ export default function CEODashboard() {
             </div>
 
             {/* 8 Required KPI Cards Above the Combined Chart */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               {kpiCards.map((card, i) => (
                 <motion.div
                   key={i}
-                  whileHover={{ y: -3 }}
-                  className="border p-4 rounded-sm flex flex-col justify-between"
+                  whileHover={{ y: -2 }}
+                  className="rounded-xl border p-2.5 sm:p-4 flex flex-col justify-between overflow-hidden"
                   style={CARD_SUNKEN}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] uppercase tracking-wider font-bold font-mono text-[var(--crm-ink-faint)]">
+                  <div className="flex items-start justify-between gap-1.5">
+                    <span className="text-[8.5px] sm:text-[10px] uppercase tracking-wider font-bold font-mono text-[var(--crm-ink-faint)] truncate">
                       {card.title}
                     </span>
                     <div
-                      className="p-1.5 border rounded-sm flex-shrink-0"
+                      className="p-1 sm:p-1.5 border rounded-lg shrink-0"
                       style={{ borderColor: 'var(--crm-line)', color: card.color, background: 'var(--crm-bg)' }}
                     >
-                      <card.icon size={14} />
+                      <card.icon size={13} />
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <div className="text-2xl font-light font-serif text-[var(--crm-heading)]">
+                  <div className="mt-2 sm:mt-3">
+                    <div className="text-base sm:text-2xl font-extrabold truncate text-[var(--crm-heading)]">
                       {card.value}
                     </div>
-                    <div className="text-[10px] mt-1 font-mono text-[var(--crm-ink-faint)]">
+                    <div className="text-[8.5px] sm:text-[10px] mt-0.5 font-mono text-[var(--crm-ink-faint)] truncate">
                       {card.subtitle}
                     </div>
                   </div>
@@ -713,28 +792,28 @@ export default function CEODashboard() {
             </div>
 
             {/* Recharts ComposedChart Section (Bars for counts/amounts + Line for Total Conversion %) */}
-            <div className="border rounded-sm p-4 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
-              <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+            <div className="rounded-xl border p-3 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <div>
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
+                  <span className="text-[8.5px] sm:text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
                     Core Enterprise Telemetry
                   </span>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
-                    <FiActivity className="text-emerald-400 animate-pulse" /> Combined Business Performance (Bars: Volume/Revenue, Line: Total Conversion %)
+                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
+                    <FiActivity className="text-emerald-400 animate-pulse shrink-0" /> Combined Business Performance
                   </h3>
                 </div>
-                <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                <span className="self-start sm:self-auto text-[8.5px] sm:text-[9px] font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-md">
                   Live Aggregate Feed
                 </span>
               </div>
 
-              <div className="h-80 sm:h-96 w-full">
-                <ResponsiveContainer width="100%" height={320}>
-                  <ComposedChart data={composedChartData} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>
+              <div className="h-60 sm:h-96 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={composedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis dataKey="period" tick={XAXIS_TICK_STYLE} />
-                    <YAxis yAxisId="left" tick={AXIS_TICK_STYLE} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 11, fontFamily: 'var(--crm-font-mono)' }} unit="%" />
+                    <XAxis dataKey="period" tick={{ ...XAXIS_TICK_STYLE, fontSize: 9 }} />
+                    <YAxis yAxisId="left" width={30} tick={{ ...AXIS_TICK_STYLE, fontSize: 9 }} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 9, fontFamily: 'var(--crm-font-mono)' }} unit="%" width={30} />
                     <Tooltip
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
@@ -743,11 +822,11 @@ export default function CEODashboard() {
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
 
                     {/* Bars for Counts / Volume */}
-                    <Bar yAxisId="left" dataKey="Total Employees" fill="var(--crm-info)" opacity={0.7} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Active Leads" fill="var(--crm-accent)" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Completed & Delivered" fill="var(--crm-positive)" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Quotations Sent" fill="#a855f7" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Orders Confirmed" fill="#38bdf8" opacity={0.8} maxBarSize={20} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Total Employees" fill="var(--crm-info)" opacity={0.7} maxBarSize={18} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Active Leads" fill="var(--crm-accent)" opacity={0.8} maxBarSize={18} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Completed & Delivered" fill="var(--crm-positive)" opacity={0.8} maxBarSize={18} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Quotations Sent" fill="#a855f7" opacity={0.8} maxBarSize={18} radius={[2, 2, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Orders Confirmed" fill="#38bdf8" opacity={0.8} maxBarSize={18} radius={[2, 2, 0, 0]} />
 
                     {/* Line for Total Conversion % */}
                     <Line
@@ -755,9 +834,9 @@ export default function CEODashboard() {
                       type="monotone"
                       dataKey="Conversion %"
                       stroke="#ec4899"
-                      strokeWidth={3}
-                      dot={{ r: 5, fill: '#ec4899' }}
-                      activeDot={{ r: 8 }}
+                      strokeWidth={2.5}
+                      dot={{ r: 4, fill: '#ec4899' }}
+                      activeDot={{ r: 6 }}
                       name="Total Conversion %"
                     />
                   </ComposedChart>
@@ -765,29 +844,29 @@ export default function CEODashboard() {
               </div>
             </div>
 
-            {/* Stage Distribution & Monthly Trends Section (matching Reports.jsx) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Stage Distribution & Monthly Trends Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
               {/* Stage Distribution (Donut Chart + Grid Badges Legend) */}
-              <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+              <div className="lg:col-span-6 rounded-xl border p-3 sm:p-5 space-y-3 sm:space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
-                      <FiPieChart className="text-purple-400" /> Stage Distribution ({totalPipelineLeads} Total Leads)
+                    <span className="text-[8.5px] sm:text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
+                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
+                      <FiPieChart className="text-purple-400 shrink-0" /> Stage Distribution ({totalPipelineLeads} Leads)
                     </h3>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  <div className="sm:col-span-5 h-64 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height={240}>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-center">
+                  <div className="md:col-span-5 h-44 sm:h-64 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={pipelineData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={55}
-                          outerRadius={90}
+                          innerRadius={35}
+                          outerRadius={65}
                           paddingAngle={3}
                           dataKey="total"
                           nameKey="_id"
@@ -806,25 +885,25 @@ export default function CEODashboard() {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="sm:col-span-7 grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1">
+                  <div className="md:col-span-7 grid grid-cols-1 gap-1.5 max-h-44 sm:max-h-64 overflow-y-auto pr-1">
                     {pipelineData.map((entry, index) => {
                       const pct = totalPipelineLeads > 0 ? Math.round(((entry.total || 0) / totalPipelineLeads) * 100) : 0;
                       const color = STAGE_COLORS[index % STAGE_COLORS.length];
                       return (
                         <div
                           key={entry._id || index}
-                          className="flex items-center justify-between p-2 rounded border bg-[var(--crm-bg-sunken)] transition-colors hover:bg-[var(--crm-bg)]"
+                          className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg border bg-[var(--crm-bg-sunken)] transition-colors hover:bg-[var(--crm-bg)]"
                           style={{ borderColor: 'var(--crm-line)' }}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                            <span className="text-[10px] font-mono font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                            <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
                               {String(entry._id || 'STAGE').replace(/_/g, ' ')}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 font-mono text-xs flex-shrink-0">
+                          <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
                             <span className="font-bold text-[var(--crm-heading)]">{entry.total || 0}</span>
-                            <span className="text-[9px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">
+                            <span className="text-[8.5px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1 py-0.2 rounded">
                               {pct}%
                             </span>
                           </div>
@@ -836,34 +915,34 @@ export default function CEODashboard() {
               </div>
 
               {/* Monthly Trends (Leads, Won & Lost) Line Chart */}
-              <div className="lg:col-span-6 border rounded-sm p-5 space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
+              <div className="lg:col-span-6 rounded-xl border p-3 sm:p-5 space-y-3 sm:space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-mono">
-                      <FiTrendingUp className="text-emerald-400" /> Monthly Trends (Leads, Won & Lost)
+                    <span className="text-[8.5px] sm:text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
+                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
+                      <FiTrendingUp className="text-emerald-400 shrink-0" /> Monthly Trends (Leads, Won & Lost)
                     </h3>
                   </div>
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
+                  <span className="text-[8.5px] sm:text-[9px] font-mono uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded-md">
                     Telemetry Stream
                   </span>
                 </div>
 
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height={240}>
-                    <LineChart data={monthlyLeadsData} margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
+                <div className="h-44 sm:h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyLeadsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                      <XAxis dataKey="month" tick={XAXIS_TICK_STYLE} />
-                      <YAxis tick={AXIS_TICK_STYLE} />
+                      <XAxis dataKey="month" tick={{ ...XAXIS_TICK_STYLE, fontSize: 9 }} />
+                      <YAxis width={30} tick={{ ...AXIS_TICK_STYLE, fontSize: 9 }} />
                       <Tooltip
                         contentStyle={CHART_TOOLTIP_STYLE}
                         labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                         itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                       />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} />
-                      <Line type="monotone" dataKey="leads" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#38bdf8' }} activeDot={{ r: 6 }} name="Total Leads" />
-                      <Line type="monotone" dataKey="won" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} name="Won" />
-                      <Line type="monotone" dataKey="lost" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#f43f5e' }} activeDot={{ r: 6 }} name="Lost" />
+                      <Line type="monotone" dataKey="leads" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3, fill: '#38bdf8' }} activeDot={{ r: 5 }} name="Total Leads" />
+                      <Line type="monotone" dataKey="won" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} activeDot={{ r: 5 }} name="Won" />
+                      <Line type="monotone" dataKey="lost" stroke="#f43f5e" strokeWidth={2.5} dot={{ r: 3, fill: '#f43f5e' }} activeDot={{ r: 5 }} name="Lost" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -885,19 +964,19 @@ export default function CEODashboard() {
             EXECUTIVE SALES PERFORMANCE & LEADERBOARD MODULE
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'SALES') && (
-          <div className="space-y-6">
-            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
-              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="rounded-xl border overflow-hidden" style={CARD_STYLE}>
+              <div className="p-3 sm:p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                  <FiTrendingUp className="text-emerald-400" /> Executive Sales & Transport Leaderboard ({salesAndTransportLeaderboard.length} Executives)
+                  <FiTrendingUp className="text-emerald-400 shrink-0" /> Executive Sales & Transport Leaderboard ({salesAndTransportLeaderboard.length} Executives)
                 </h3>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+                <span className="text-[9px] sm:text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-md">
                   Live Revenue Streams
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[700px]">
+              <div className="overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
                     <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
                       <th className="py-2.5 px-3">Sales Executive</th>
@@ -922,19 +1001,19 @@ export default function CEODashboard() {
 
                         return (
                           <tr key={item._id || item.employeeId || idx} className="hover:bg-[var(--crm-bg-sunken)]/50 transition-colors">
-                            <td className="py-3 px-3">
+                            <td className="py-2.5 px-3">
                               <div className="font-bold text-[var(--crm-heading)]">{item.fullName || item.name || item.employeeName || 'Sales Executive'}</div>
                               <div className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{item.email || item.employeeCode || (item.employeeId && item.employeeId.length < 20 ? item.employeeId : '') || 'SALES EXECUTIVE'}</div>
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-2.5 px-3">
                               <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400">
                                 {item.department || 'SALES'}
                               </span>
                             </td>
-                            <td className="py-3 px-3 font-bold text-emerald-400">{fmtCurrency(item.revenue || item.totalRevenue || 0)}</td>
-                            <td className="py-3 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
-                            <td className="py-3 px-3 font-bold text-pink-400">{convPct}%</td>
-                            <td className="py-3 px-3">
+                            <td className="py-2.5 px-3 font-bold text-emerald-400">{fmtCurrency(item.revenue || item.totalRevenue || 0)}</td>
+                            <td className="py-2.5 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
+                            <td className="py-2.5 px-3 font-bold text-pink-400">{convPct}%</td>
+                            <td className="py-2.5 px-3">
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${
                                 idx === 0 ? 'bg-amber-950 border-amber-800 text-amber-300' : 'bg-slate-900 border-slate-700 text-slate-300'
                               }`}>
@@ -956,27 +1035,27 @@ export default function CEODashboard() {
             MODULE 3 & 4: TEAM ATTENDANCE & ACTIVE/INACTIVE TELEMETRY
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'ATTENDANCE') && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Employee Activity Monitor Widget */}
             <EmployeeActivityMonitor title="Executive Employee Active/Inactive Working Hours Telemetry" />
 
             {/* Attendance Breakdown per Team */}
-            <div className="border rounded-sm p-5 space-y-4" style={CARD_STYLE}>
+            <div className="rounded-xl border p-3 sm:p-5 space-y-3 sm:space-y-4" style={CARD_STYLE}>
               <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                  <FiUserCheck className="text-emerald-400" /> Attendance Telemetry (Present: {attendanceMetrics.presentPct}%, Late: {attendanceMetrics.latePct}%, Absent: {attendanceMetrics.absentPct}%)
+                  <FiUserCheck className="text-emerald-400 shrink-0" /> Attendance Telemetry (Present: {attendanceMetrics.presentPct}%, Late: {attendanceMetrics.latePct}%, Absent: {attendanceMetrics.absentPct}%)
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
                 {attendanceMetrics.teams.map((tm, idx) => (
-                  <div key={idx} className="p-3 border rounded bg-[var(--crm-bg-sunken)] space-y-2" style={{ borderColor: 'var(--crm-line)' }}>
+                  <div key={idx} className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)] space-y-2" style={{ borderColor: 'var(--crm-line)' }}>
                     <div className="flex justify-between text-xs font-mono">
-                      <span className="text-[var(--crm-heading)] font-bold">{tm.name} Team</span>
-                      <span className="text-emerald-400">{tm.presentPct}% Present</span>
+                      <span className="text-[var(--crm-heading)] font-bold truncate">{tm.name} Team</span>
+                      <span className="text-emerald-400 text-[10px] shrink-0">{tm.presentPct}% Present</span>
                     </div>
-                    <div className="w-full bg-slate-800 h-2 rounded overflow-hidden">
-                      <div className="bg-emerald-500 h-full rounded" style={{ width: `${tm.presentPct}%` }} />
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${tm.presentPct}%` }} />
                     </div>
                   </div>
                 ))}
@@ -998,56 +1077,56 @@ export default function CEODashboard() {
             MODULE 6: JOB HIRING & APPLICATIONS PIPELINE
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'HIRING') && (
-          <div className="space-y-6">
-            <div className="border rounded-sm p-5 space-y-4" style={CARD_STYLE}>
-              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="rounded-xl border p-3 sm:p-5 space-y-3 sm:space-y-4" style={CARD_STYLE}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                  <FiBriefcase className="text-amber-400" /> Recruitment & Job Applications Pipeline
+                  <FiBriefcase className="text-amber-400 shrink-0" /> Recruitment & Job Applications Pipeline
                 </h3>
-                <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 border border-amber-800 px-2 py-0.5 rounded">
+                <span className="self-start sm:self-auto text-[9px] sm:text-[10px] font-mono text-amber-400 bg-amber-950/60 border border-amber-800 px-2 py-0.5 rounded-md">
                   Avg Time-to-Hire: {hiringPipeline.timeToHire}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-center">
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Open Positions</span>
-                  <span className="text-lg font-light text-amber-400 mt-1 block">{hiringPipeline.openPositions}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-center">
+                <div className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block truncate">Open Positions</span>
+                  <span className="text-base sm:text-lg font-extrabold text-amber-400 mt-0.5 block">{hiringPipeline.openPositions}</span>
                 </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Applications</span>
-                  <span className="text-lg font-light text-sky-400 mt-1 block">{hiringPipeline.applicationsReceived}</span>
+                <div className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block truncate">Applications</span>
+                  <span className="text-base sm:text-lg font-extrabold text-sky-400 mt-0.5 block">{hiringPipeline.applicationsReceived}</span>
                 </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Shortlisted</span>
-                  <span className="text-lg font-light text-purple-400 mt-1 block">{hiringPipeline.shortlisted}</span>
+                <div className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block truncate">Shortlisted</span>
+                  <span className="text-base sm:text-lg font-extrabold text-purple-400 mt-0.5 block">{hiringPipeline.shortlisted}</span>
                 </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Interviewed</span>
-                  <span className="text-lg font-light text-indigo-400 mt-1 block">{hiringPipeline.interviewed}</span>
+                <div className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block truncate">Interviewed</span>
+                  <span className="text-base sm:text-lg font-extrabold text-indigo-400 mt-0.5 block">{hiringPipeline.interviewed}</span>
                 </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Offers Rolled</span>
-                  <span className="text-lg font-light text-emerald-400 mt-1 block">{hiringPipeline.offersRolled}</span>
+                <div className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block truncate">Offers Rolled</span>
+                  <span className="text-base sm:text-lg font-extrabold text-emerald-400 mt-0.5 block">{hiringPipeline.offersRolled}</span>
                 </div>
-                <div className="p-3 border rounded bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
-                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block">Hired</span>
-                  <span className="text-lg font-light text-emerald-500 mt-1 block">{hiringPipeline.hired}</span>
+                <div className="p-2.5 sm:p-3 rounded-lg border bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <span className="text-[8px] uppercase text-[var(--crm-ink-faint)] font-mono block truncate">Hired</span>
+                  <span className="text-base sm:text-lg font-extrabold text-emerald-500 mt-0.5 block">{hiringPipeline.hired}</span>
                 </div>
               </div>
             </div>
 
             {/* Job Openings & Candidate Applications Tables */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Active Job Postings */}
-              <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
-                <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+              <div className="rounded-xl border overflow-hidden" style={CARD_STYLE}>
+                <div className="p-3 sm:p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                   <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                    <FiBriefcase className="text-amber-400" /> Active Job Postings ({jobs.length})
+                    <FiBriefcase className="text-amber-400 shrink-0" /> Active Job Postings ({jobs.length})
                   </h3>
                 </div>
-                <div className="overflow-x-auto max-h-80 overflow-y-auto">
-                  <table className="w-full text-left border-collapse min-w-[450px]">
+                <div className="overflow-x-auto max-h-80 overflow-y-auto scrollbar-thin">
+                  <table className="w-full text-left border-collapse min-w-[400px]">
                     <thead>
                       <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
                         <th className="py-2.5 px-3">Job Position</th>
@@ -1079,14 +1158,14 @@ export default function CEODashboard() {
               </div>
 
               {/* Recent Candidate Applications */}
-              <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
-                <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+              <div className="rounded-xl border overflow-hidden" style={CARD_STYLE}>
+                <div className="p-3 sm:p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                   <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                    <FiUsers className="text-sky-400" /> Candidate Applications ({applications.length})
+                    <FiUsers className="text-sky-400 shrink-0" /> Candidate Applications ({applications.length})
                   </h3>
                 </div>
-                <div className="overflow-x-auto max-h-80 overflow-y-auto">
-                  <table className="w-full text-left border-collapse min-w-[500px]">
+                <div className="overflow-x-auto max-h-80 overflow-y-auto scrollbar-thin">
+                  <table className="w-full text-left border-collapse min-w-[450px]">
                     <thead>
                       <tr className="border-b text-[9px] uppercase font-mono" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', color: 'var(--crm-ink-faint)' }}>
                         <th className="py-2.5 px-3">Candidate</th>
@@ -1127,23 +1206,23 @@ export default function CEODashboard() {
             MODULE 7 & 8: APPROVALS & SCREENSHOT ALERTS
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'ALERTS') && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <ScreenshotAlertsWidget />
 
             {/* Pending Approvals Widget */}
-            <div className="border rounded-sm overflow-hidden" style={CARD_STYLE}>
-              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+            <div className="rounded-xl border overflow-hidden" style={CARD_STYLE}>
+              <div className="p-3 sm:p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
-                  <FiClock className="text-amber-400" /> Pending Approvals ({leaves.length})
+                  <FiClock className="text-amber-400 shrink-0" /> Pending Approvals ({leaves.length})
                 </h3>
               </div>
 
-              <div className="divide-y max-h-80 overflow-y-auto" style={{ borderColor: 'var(--crm-line)' }}>
+              <div className="divide-y max-h-80 overflow-y-auto scrollbar-thin" style={{ borderColor: 'var(--crm-line)' }}>
                 {leaves.length === 0 ? (
                   <EmptyState title="No pending approvals" description="All requests are processed." className="py-8" />
                 ) : (
                   leaves.map((lv) => (
-                    <div key={lv._id} className="p-4 flex items-center justify-between gap-3 bg-[var(--crm-bg-sunken)]">
+                    <div key={lv._id} className="p-3 sm:p-4 flex items-center justify-between gap-3 bg-[var(--crm-bg-sunken)]">
                       <div className="space-y-1 text-xs min-w-0">
                         <div className="font-bold text-[var(--crm-heading)] truncate">
                           {lv.employeeName || lv.employeeId?.fullName || 'Employee Request'}
@@ -1152,18 +1231,18 @@ export default function CEODashboard() {
                           {new Date(lv.fromDate).toLocaleDateString()} - {new Date(lv.toDate).toLocaleDateString()} ({lv.numberOfDays} Days)
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           disabled={reviewingLeaveId === lv._id}
                           onClick={() => handleLeaveDecision(lv._id, 'APPROVED')}
-                          className="px-2.5 py-1 text-[9px] uppercase font-mono rounded bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900"
+                          className="px-2.5 py-1 text-[9px] uppercase font-mono rounded bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900 cursor-pointer"
                         >
                           Approve
                         </button>
                         <button
                           disabled={reviewingLeaveId === lv._id}
                           onClick={() => handleLeaveDecision(lv._id, 'REJECTED')}
-                          className="px-2.5 py-1 text-[9px] uppercase font-mono rounded bg-rose-950 text-rose-400 border border-rose-800 hover:bg-rose-900"
+                          className="px-2.5 py-1 text-[9px] uppercase font-mono rounded bg-rose-950 text-rose-400 border border-rose-800 hover:bg-rose-900 cursor-pointer"
                         >
                           Reject
                         </button>

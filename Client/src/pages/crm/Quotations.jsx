@@ -4,6 +4,7 @@ import { quotationsApi } from '../../api/quotations';
 import { FiCheck, FiX, FiFileText, FiAlertCircle, FiFilter, FiCheckCircle, FiClock, FiLayers, FiCheckSquare } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { socketService } from '../../services/socket';
 
 // Staggered cinematic entrance variants
 const containerVariants = {
@@ -104,6 +105,20 @@ export default function Quotations() {
   useEffect(() => {
     fetchQuotations();
   }, [statusFilter]);
+
+  useEffect(() => {
+    const socket = socketService.connect(user);
+    if (!socket) return undefined;
+
+    const refreshForRealtimeChange = () => fetchQuotations();
+    socket.on('quotation_updated', refreshForRealtimeChange);
+    socket.on('lead_updated', refreshForRealtimeChange);
+
+    return () => {
+      socket.off('quotation_updated', refreshForRealtimeChange);
+      socket.off('lead_updated', refreshForRealtimeChange);
+    };
+  }, [user, statusFilter]);
 
   const fetchQuotations = async () => {
     try {

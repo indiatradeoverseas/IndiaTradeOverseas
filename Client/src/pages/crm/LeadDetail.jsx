@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { socketService } from '../../services/socket';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leadsApi } from '../../api/leads';
 import { quotationsApi } from '../../api/quotations';
@@ -133,6 +134,28 @@ export default function LeadDetail() {
     if (['ADMIN', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER', 'MANAGER', 'HR'].includes((user?.role || '').toUpperCase()) || user?.department === 'ADMIN' || user?.department === 'MANAGEMENT') {
       fetchUsers();
     }
+  }, [id, user]);
+
+  useEffect(() => {
+    const socket = socketService.connect(user);
+    if (!socket) return undefined;
+
+    const belongsToThisLead = (data) => {
+      const quotationLeadId = data?.quotation?.leadId?._id || data?.quotation?.leadId;
+      return String(data?.leadId || quotationLeadId || '') === String(id);
+    };
+
+    const handleRealtimeUpdate = (data) => {
+      if (belongsToThisLead(data)) fetchLeadDetails();
+    };
+
+    socket.on('lead_updated', handleRealtimeUpdate);
+    socket.on('quotation_updated', handleRealtimeUpdate);
+
+    return () => {
+      socket.off('lead_updated', handleRealtimeUpdate);
+      socket.off('quotation_updated', handleRealtimeUpdate);
+    };
   }, [id, user]);
 
   const fetchUsers = async () => {
