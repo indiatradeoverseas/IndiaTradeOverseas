@@ -19,6 +19,7 @@ import {
 import OnionRequirementBuilder from "../../components/requirements/OnionRequirementBuilder";
 import { onionVisitorApi } from "../../api/onionVisitor";
 import { IoLogoWhatsapp } from "react-icons/io5";
+import useDocumentMeta from "../../hooks/useDocumentMeta";
 
 /*
   Onion.jsx — Nashik Onion Vertical
@@ -108,7 +109,7 @@ const CROPS = [
 
 const PROCESS_STEPS = [
   "Submit requirement",
-  "Complete buyer verification",
+  "Share buyer and business details",
   "Confirm size, grade and packing",
   "Check lot and logistics availability",
   "Receive formal quotation",
@@ -127,7 +128,7 @@ const PACKAGING = {
 const BUYER_PERSONAS = [
   { buyer: "Domestic wholesaler", need: "Fast truckload supply and delivered pricing", cta: "Get Domestic Delivered Rate" },
   { buyer: "Food processor", need: "Recurring volume and agreed tolerance", cta: "Discuss Monthly Supply" },
-  { buyer: "International importer", need: "Container supply, documents and execution", cta: "Request Export SCO" },
+  { buyer: "International importer", need: "Container supply, documents and execution", cta: "Request Export Quote" },
   { buyer: "Supermarket distributor", need: "Consistent grading and presentation", cta: "Request Premium Packing Offer" },
   { buyer: "Trial buyer", need: "Execution confidence before a contract", cta: "Plan a Trial Order" },
 ];
@@ -248,12 +249,21 @@ const CRM_STAGES = [
 ];
 
 export default function Onion() {
+  useDocumentMeta({
+    title: "Nashik Red Onion Supplier & Exporter | Bulk B2B Supply | India Trade Overseas",
+    description: "Source Nashik red onions for domestic and export markets with buyer-defined size, grade, packaging, inspection and logistics coordination through India Trade Overseas.",
+    canonicalPath: "/nashik-onion",
+  });
+
   const navigate =
     useNavigate();
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [showRequirementBuilder, setShowRequirementBuilder] =
     useState(false);
+
+  const [requirementIntent, setRequirementIntent] =
+    useState("BULK_QUOTE");
 
   const [showRateChart, setShowRateChart] = useState(false);
 
@@ -284,7 +294,8 @@ export default function Onion() {
     return () => clearTimeout(timer);
   }, [heroIndex]);
 
-  const openRequirementBuilder = () => {
+  const openRequirementBuilder = (intent = "BULK_QUOTE") => {
+    setRequirementIntent(intent);
     setShowRequirementBuilder(true);
   };
 
@@ -508,7 +519,9 @@ export default function Onion() {
         );
 
         toast.success(
-          "Details saved. Review the latest Onion pricing before payment."
+          requirementIntent === "LOT_PHOTOS_INSPECTION"
+            ? "Requirement saved. Lot photos / inspection can be coordinated during commercial review."
+            : "Details saved. Review the latest Onion pricing before payment."
         );
 
         navigate(
@@ -5198,7 +5211,57 @@ export default function Onion() {
           border-color: rgba(181,150,90,.62) !important;
         }
 
-</style>
+
+
+        /* Buyer-facing audit refinements */
+        .ito-onion-page .ito-eyebrow {
+          width: 100%;
+          display: flex !important;
+          align-items: center;
+          justify-content: center !important;
+          gap: 0 !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          text-align: center !important;
+        }
+
+        .ito-onion-page .ito-eyebrow::before,
+        .ito-onion-page .ito-eyebrow::after {
+          content: none !important;
+          display: none !important;
+        }
+
+        .ito-onion-page .ito-grade-grid .ito-card {
+          background: #FFFFFF !important;
+        }
+
+        .ito-onion-page .ito-section-title {
+          margin-bottom: 28px !important;
+        }
+
+        .ito-hero-actions {
+          margin-top: 28px;
+        }
+
+        .ito-hero-actions .ito-button {
+          border-color: rgba(181,150,90,.72);
+        }
+
+        @media (max-width: 800px) {
+          .ito-onion-page .ito-section-title {
+            margin-bottom: 22px !important;
+          }
+
+          .ito-hero-actions {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .ito-hero-actions .ito-button {
+            width: 100%;
+          }
+        }
+`}</style>
 
       {/* HERO */}
       <section className="ito-hero" aria-label="Nashik onion hero">
@@ -5280,6 +5343,28 @@ export default function Onion() {
               <span role="listitem">Documented Loading</span>
               <span role="listitem">Logistics Coordination</span>
             </motion.div>
+
+            <motion.div
+              className="ito-actions ito-hero-actions"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.95 }}
+            >
+              <button
+                className="ito-button"
+                type="button"
+                onClick={openRequirementBuilder}
+              >
+                Request Current Onion Rate
+              </button>
+              <button
+                className="ito-button secondary"
+                type="button"
+                onClick={() => setShowRateChart(true)}
+              >
+                View Published Rate Reference
+              </button>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -5290,7 +5375,7 @@ export default function Onion() {
           <div className="ito-eyebrow">Market entry</div>
           <h2 className="ito-display ito-section-title">Choose Your Supply Route</h2>
           <p className="ito-lead ito-lead-burgundy">
-            The page splits domestic and international visitors immediately because their buying questions, commercial terms, documentation and logistics are materially different.
+            Choose the supply route that matches your requirement. Domestic truckload orders and international container shipments follow different commercial, documentation and logistics processes.
           </p>
 
           <div className="ito-split-grid">
@@ -5308,7 +5393,9 @@ export default function Onion() {
             <article className="ito-split-card">
               <h3>International Export</h3>
               <p>Container-based supply for verified importers, wholesalers, distributors and food-service companies. Every export requirement is assessed against destination regulations, transit time, crop condition, packaging, buyer specifications and the selected Incoterm.</p>
-              <a className="ito-button secondary" href="#international">Request Export SCO</a>
+              <a className="ito-button secondary" href="#international">
+                Request Export SCO
+              </a>
             </article>
           </div>
         </div>
@@ -5394,6 +5481,10 @@ export default function Onion() {
               </article>
             ))}
           </div>
+
+          <p className="ito-market-notice">
+            Crop and lot availability changes with seasonal arrivals. Exact crop, origin, size and dispatch suitability are confirmed against the current lot before quotation or order confirmation.
+          </p>
         </div>
       </section>
 
@@ -5424,7 +5515,7 @@ export default function Onion() {
           </table>
 
           <div className="ito-quote-box ito-quote-box--alt">
-            <strong>Mandatory quality rule:</strong> The website must never claim zero defects or guarantee a universal shelf life. Crop performance depends on season, curing, weather, handling, storage, temperature, humidity and transit conditions.
+            <strong>Quality note:</strong> Natural agricultural variation applies. No universal zero-defect or shelf-life guarantee is stated because crop performance depends on season, curing, weather, handling, storage, temperature, humidity and transit conditions.
           </div>
         </div>
       </section>
@@ -5563,7 +5654,7 @@ export default function Onion() {
           <div className="ito-eyebrow">Operations</div>
           <h2 className="ito-display ito-section-title">Quality Assurance, Storage and Logistics</h2>
           <p className="ito-lead">
-            The operating system must protect the buyer-approved specification at each handoff — lot selection, grading, packing, loading, transport and documentation.
+            Buyer-approved specifications are carried through lot selection, grading, packing, loading, transport and documentation, with inspection scope agreed for the transaction.
           </p>
 
           <h3 className="ito-sub-heading">
@@ -5585,6 +5676,26 @@ export default function Onion() {
               ))}
             </tbody>
           </table>
+
+          <div className="ito-actions">
+            <button
+              className="ito-button"
+              type="button"
+              onClick={() =>
+                openRequirementBuilder("LOT_PHOTOS_INSPECTION")
+              }
+            >
+              Request Lot Photos / Inspection
+            </button>
+            <a className="ito-button secondary" href="#specifications">
+              Review Product Specification
+            </a>
+          </div>
+
+          <p className="ito-market-notice">
+            Current lot photos, loading evidence and inspection options are shared
+            against available stock or lot and the buyer's confirmed requirement.
+          </p>
 
           <div className="ito-split-grid ito-split-grid--mt">
             <article className="ito-split-card">
@@ -5613,9 +5724,9 @@ export default function Onion() {
       <section className="ito-section ito-dark">
         <div className="ito-section-inner">
           <div className="ito-eyebrow">Buyer personas</div>
-          <h2 className="ito-display ito-section-title">Buyer Segments and Calls to Action</h2>
+          <h2 className="ito-display ito-section-title">Solutions for Different Onion Buyers</h2>
           <p className="ito-lead">
-            The page must address the primary need of each buyer segment with a specific conversion CTA.
+            Choose the buying route that best matches your volume, market, packing and execution requirement.
           </p>
 
           <div className="ito-persona-grid">
@@ -5692,7 +5803,9 @@ export default function Onion() {
               >
                 Request Bulk Quote
               </button>
-              <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
+              <a className="ito-button secondary" href="#rfq">
+                Request Export SCO
+              </a>
               <a
                 className="ito-button secondary ito-whatsapp-button"
                 href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements."
@@ -5756,6 +5869,16 @@ export default function Onion() {
                   ×
                 </button>
               </div>
+
+              {requirementIntent === "LOT_PHOTOS_INSPECTION" && (
+                <div className="ito-quote-box ito-quote-box--alt">
+                  <strong>Request type: Lot photos / inspection</strong>
+                  <br />
+                  Complete your buyer details and requirement. Our commercial team
+                  can then coordinate current-lot photos, loading evidence or an
+                  inspection option subject to lot availability and mutual agreement.
+                </div>
+              )}
 
               <form
                 className="ito-onion-personal-body"
@@ -5933,7 +6056,7 @@ export default function Onion() {
         )}
       </AnimatePresence>
 
-      {/* DAILY DOMESTIC / EXPORT ONION RATE CHART */}
+      {/* PUBLISHED DOMESTIC / EXPORT ONION RATE REFERENCE */}
       <AnimatePresence>
         {showRateChart && (
           <motion.div
@@ -5961,9 +6084,9 @@ export default function Onion() {
               <div className="ito-rate-modal-header">
                 <div>
                   <div className="ito-rate-modal-kicker">Prakriti by India Trade Overseas</div>
-                  <h2 id="onion-rate-chart-title">Daily Onion Rate Chart</h2>
+                  <h2 id="onion-rate-chart-title">Published Onion Rate Reference</h2>
                   <div className="ito-rate-modal-date">
-                    Fresh Fruits &amp; Vegetables Supply &amp; Export · {ONION_RATE_CHART.date}
+                    Last published: {ONION_RATE_CHART.date} · Confirm current rate before ordering
                   </div>
                 </div>
 
@@ -6050,932 +6173,21 @@ export default function Onion() {
                 </div>
 
                 <p className="ito-rate-disclaimer">
-                  Rates shown are the supplied rate chart for 22/09/2026. Transportation and
-                  final commercial terms are subject to the applicable destination, quantity,
-                  logistics and confirmation at the time of order.
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </main>
-  );
-}
-
-        /* ============================================================
-           FINAL HEADING ALIGNMENT
-           - Center all section eyebrow headings
-           - Remove the decorative line on the left
-           - Applies consistently across desktop and mobile
-           - Hero structure / backend logic untouched
-           ============================================================ */
-        .ito-onion-page .ito-eyebrow {
-          width: 100%;
-          display: flex !important;
-          align-items: center;
-          justify-content: center !important;
-          gap: 0 !important;
-          margin-left: auto !important;
-          margin-right: auto !important;
-          text-align: center !important;
-        }
-
-        .ito-onion-page .ito-eyebrow::before {
-          display: none !important;
-          content: none !important;
-        }
-
-      
-        /* FINAL: all section labels are centered, with no decorative left line. */
-        .ito-onion-page .ito-eyebrow {
-          display: flex !important;
-          justify-content: center !important;
-          align-items: center !important;
-          width: 100% !important;
-          text-align: center !important;
-        }
-
-        .ito-onion-page .ito-eyebrow::before,
-        .ito-onion-page .ito-eyebrow::after {
-          content: none !important;
-          display: none !important;
-        }
-
-      
-        /* FINAL: only Commercial / Standard Export / Premium Export boxes. */
-        .ito-onion-page .ito-grade-grid .ito-card {
-          background: #FFFFFF !important;
-        }
-
-      
-        /* FINAL: give section headings clear breathing room before the lead text. */
-        .ito-onion-page .ito-section-title {
-          margin-bottom: 28px !important;
-        }
-
-        @media (max-width: 800px) {
-          .ito-onion-page .ito-section-title {
-            margin-bottom: 22px !important;
-          }
-        }
-
-      `}</style>
-
-      {/* HERO */}
-      <section className="ito-hero" aria-label="Nashik onion hero">
-        <div className="ito-hero-background" aria-hidden="true">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={heroIndex}
-              src={HERO_IMAGES[heroIndex]}
-              alt="Nashik red onion supply"
-              initial={{ opacity: 0, scale: 1.03 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1.5, ease: "easeInOut" }}
-              className="ito-hero-image"
-            />
-          </AnimatePresence>
-
-          <div className="ito-hero-overlay ito-hero-overlay-horizontal" />
-          <div className="ito-hero-overlay ito-hero-overlay-bottom" />
-        </div>
-
-        <div className="ito-hero-inner">
-          <motion.div
-            className="ito-hero-text"
-            initial={{ opacity: 0, scale: 0.95, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{
-              duration: 1.2,
-              ease: [0.16, 1, 0.3, 1],
-              delay: 0.2,
-            }}
-          >
-            <motion.div
-              className="ito-hero-kicker"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-            >
-              <span className="ito-hero-kicker-dot" />
-              <span>Domestic India · International Export · Bulk B2B Trade</span>
-            </motion.div>
-
-            <motion.h1
-              className="ito-display ito-hero-title"
-              initial={{ scale: 0.97 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 1, ease: "easeOut", delay: 0.4 }}
-            >
-              <span className="ito-hero-title-line">Nashik Onions</span>
-              <span className="ito-hero-title-line">for Domestic</span>
-              <span className="ito-hero-title-line">&amp; Global Markets</span>
-            </motion.h1>
-
-            <motion.div
-              className="ito-hero-accent-line"
-              initial={{ width: 0 }}
-              animate={{ width: 96 }}
-              transition={{ duration: 1, delay: 0.7, ease: "easeInOut" }}
-            />
-
-            <motion.p
-              className="ito-hero-subtitle"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              Sourced with Precision. Graded to Specification. Delivered with Coordination.
-            </motion.p>
-
-            <motion.div
-              className="ito-trust-line"
-              role="list"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-            >
-              <span role="listitem">Buyer-Defined Grades</span>
-              <span role="listitem">Flexible Packaging</span>
-              <span role="listitem">Documented Loading</span>
-              <span role="listitem">Logistics Coordination</span>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* MARKET SPLIT */}
-      <section className="ito-section ito-dark">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Market entry</div>
-          <h2 className="ito-display ito-section-title">Choose Your Supply Route</h2>
-          <p className="ito-lead ito-lead-burgundy">
-            The page splits domestic and international visitors immediately because their buying questions, commercial terms, documentation and logistics are materially different.
-          </p>
-
-          <div className="ito-split-grid">
-            <article className="ito-split-card">
-              <h3>Domestic Supply</h3>
-              <p>Bulk truckload supply for wholesalers, distributors, processors, institutional buyers and retail-chain suppliers across India. Quotations may be prepared on an Ex-Warehouse, FOR or delivered-to-destination basis.</p>
-              <button
-                className="ito-button"
-                type="button"
-                onClick={openRequirementBuilder}
-              >
-                Get Domestic Delivered Rate
-              </button>
-            </article>
-            <article className="ito-split-card">
-              <h3>International Export</h3>
-              <p>Container-based supply for verified importers, wholesalers, distributors and food-service companies. Every export requirement is assessed against destination regulations, transit time, crop condition, packaging, buyer specifications and the selected Incoterm.</p>
-              <a className="ito-button secondary" href="#international">Request Export SCO</a>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      {/* CORE VALUE PROPOSITION */}
-      <section className="ito-section ito-core-value-section">
-        <div className="ito-section-inner">
-          <div className="ito-intro">
-            <div>
-              <div className="ito-eyebrow">One point of coordination</div>
-              <h2 className="ito-display ito-section-title">From Nashik to Destination</h2>
-            </div>
-            <p className="ito-lead">
-              Bulk onion procurement involves more than finding a market rate. Size consistency, crop condition, packing strength, bag weight, loading, documentation and transit planning can directly affect the buyer's outcome. India Trade Overseas coordinates these stages under one structured order process.
-            </p>
-          </div>
-
-          <div className="ito-spec-grid">
-            <div className="ito-spec">
-              <strong>Sourcing</strong>
-              <span>Nashik and approved nearby producing regions of Maharashtra</span>
-            </div>
-            <div className="ito-spec">
-              <strong>Grading</strong>
-              <span>Commercial, Standard Export or Premium Export selection</span>
-            </div>
-            <div className="ito-spec">
-              <strong>Packing</strong>
-              <span>Domestic 20–50 kg · Export 5–25 kg ventilated mesh</span>
-            </div>
-            <div className="ito-spec">
-              <strong>Logistics</strong>
-              <span>Truckload coordination or containerised export execution</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* GRADE SELECTION */}
-      <section className="ito-section ito-dark">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Grade selection</div>
-          <h2 className="ito-display ito-section-title">Select the Grade Your Market Requires</h2>
-
-          <div className="ito-grade-grid">
-            {GRADES.map((grade, index) => (
-              <article className="ito-spec ito-card ito-grade-card" key={grade.name}>
-                <div className="ito-card-number">0{index + 1}</div>
-                <h3>{grade.name}</h3>
-                <p className="positioning">{grade.positioning}</p>
-                <p>{grade.control}</p>
-              </article>
-            ))}
-          </div>
-
-          <div style={{ marginTop: 86 }}>
-            <div className="ito-eyebrow">Size classifications</div>
-            <div className="ito-markets" style={{ marginTop: 22 }}>
-              {SIZES.map((size) => (
-                <span className="ito-market ito-size-card" key={size}>{size}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SEASONAL CROPS */}
-      <section className="ito-section">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Seasonal crop categories</div>
-          <h2 className="ito-display ito-section-title">Fresh Red Onions from Nashik</h2>
-          <p className="ito-lead">
-            Fresh red onions will be sourced from Nashik and approved nearby producing regions of Maharashtra. Each commercial offer must identify the crop, lot, grade, size, packaging and destination requirements.
-          </p>
-
-          <div className="ito-grade-grid">
-            {CROPS.map((crop, index) => (
-              <article className="ito-spec ito-card" key={crop.name}>
-                <div className="ito-card-number">0{index + 1}</div>
-                <h3>{crop.name}</h3>
-                <p>{crop.description}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* MASTER SPECIFICATION */}
-      <section className="ito-section ito-dark" id="specifications">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Master product specification</div>
-          <h2 className="ito-display ito-section-title">Every Quotation Confirms These Fields</h2>
-          <p className="ito-lead">
-            Website content is indicative; the signed commercial document is authoritative.
-          </p>
-
-          <table className="ito-table alt ito-quality-table">
-            <thead>
-              <tr>
-                <th>Parameter</th>
-                <th>Required Confirmation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SPEC_FIELDS.map((field, i) => (
-                <tr key={i}>
-                  <td>{field.label}</td>
-                  <td>{field.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="ito-quote-box ito-quote-box--alt">
-            <strong>Mandatory quality rule:</strong> The website must never claim zero defects or guarantee a universal shelf life. Crop performance depends on season, curing, weather, handling, storage, temperature, humidity and transit conditions.
-          </div>
-        </div>
-      </section>
-
-      {/* PACKAGING */}
-      <section className="ito-section ito-packaging-section" id="packaging">
-        <div className="ito-section-inner">
-          <div className="ito-intro">
-            <div>
-              <h2 className="ito-display ito-section-title">Packed for Domestic and Export Markets</h2>
-              <div className="ito-eyebrow">Packaging</div>
-            </div>
-            <p className="ito-lead">
-              Packaging must protect ventilation, maintain presentation and match the buyer's distribution model. Final net weight, bag tolerance, artwork and shipping marks must be confirmed before production.
-            </p>
-          </div>
-
-          <div className="ito-packaging">
-            <article className="ito-pack-card">
-              <small>Domestic India</small>
-              <h3>Standard Options</h3>
-              <ul className="ito-bullet-list">
-                {PACKAGING.domestic.map((item, i) => <li key={i}>{item}</li>)}
-              </ul>
-              <p className="ito-pack-note">
-                Buyer-branded bags and institutional pack sizes available
-              </p>
-            </article>
-            <article className="ito-pack-card">
-              <small>International Export</small>
-              <h3>Standard Options</h3>
-              <ul className="ito-bullet-list">
-                {PACKAGING.international.map((item, i) => <li key={i}>{item}</li>)}
-              </ul>
-              <p className="ito-pack-note">
-                Private label, product labels, barcodes and destination shipping marks
-              </p>
-            </article>
-          </div>
-
-          <div className="ito-quote-box" style={{ marginTop: 32 }}>
-            <strong>Packaging control checklist:</strong> Correct net-weight target and written weight tolerance · Adequate ventilation and appropriate bag strength · Secure closure or stitching and accurate bag count · Product, lot and country-of-origin identification where required · Buyer-approved artwork before printing private-label material · Destination-specific markings verified before dispatch
-          </div>
-
-          <p className="ito-disclaimer">
-            <strong>Product disclaimer:</strong> Colour, skin, firmness, pungency, moisture, shelf life and storage performance vary by crop, season, weather, producing area, curing, storage and individual lot. Final supply is governed by the written specification.
-          </p>
-        </div>
-      </section>
-
-      {/* DOMESTIC TRADE */}
-      <section className="ito-section" id="domestic">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Domestic trade</div>
-          <h2 className="ito-display ito-section-title">Domestic Supply Operating Model</h2>
-          <p className="ito-lead">
-            Domestic orders can be offered under an Ex-Warehouse, FOR or delivered-to-destination structure, or through a recurring weekly or monthly supply programme.
-          </p>
-
-          <div className="ito-process">
-            {[
-              "Receive and verify the buyer's company details and requirement",
-              "Confirm size, grade, tolerance, packaging, quantity and destination",
-              "Check suitable lots and share applicable photographs, video or inspection information",
-              "Issue a formal quotation or Proforma Invoice with validity and exclusions",
-              "Secure written acceptance and agreed payment terms",
-              "Complete procurement, grading, packing and vehicle coordination",
-              "Issue dispatch documents, track transit and collect delivery acknowledgement",
-              "Schedule the next requirement for recurring buyers",
-            ].map((step, i) => (
-              <div className="ito-process-item" key={i}>
-                <span>{step}</span>
-              </div>
-            ))}
-          </div>
-
-          <table className="ito-table">
-            <thead>
-              <tr>
-                <th>Cost Component</th>
-                <th>Quotation Requirement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DOMESTIC_COST_COMPONENTS.map((item, i) => (
-                <tr key={i}>
-                  <td>{item.component}</td>
-                  <td>{item.requirement}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* INTERNATIONAL TRADE */}
-      <section className="ito-section ito-dark" id="international">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">International trade</div>
-          <h2 className="ito-display ito-section-title">Export Operating Model</h2>
-          <p className="ito-lead">
-            Export quotations may be structured under EXW, FCA, FOB, CFR or CIF, subject to destination feasibility and mutual agreement. The named place or port, included costs, risk point, document responsibility and applicable Incoterms version must be stated.
-          </p>
-
-          <div className="ito-export-grid">
-            <div className="ito-export-column">
-              <h3 className="ito-section-heading">Export Workflow</h3>
-              <div className="ito-export-workflow">
-                {EXPORT_WORKFLOW.map((item, i) => (
-                  <div key={i} className="ito-export-step">
-                    <span className="ito-process-stage">{item.stage}</span>
-                    <span className="ito-process-control">{item.control}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="ito-export-column ito-export-docs">
-              <h3 className="ito-section-heading">Export Documentation</h3>
-              <ul className="ito-bullet-list ito-bullet-list--alt">
-                {EXPORT_DOCS.map((doc, i) => (
-                  <li key={i}>{doc}</li>
-                ))}
-              </ul>
-              <p className="ito-doc-note">
-                No document should be promised unless it is applicable, obtainable, contractually included and compatible with the destination-country requirement.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* QUALITY ASSURANCE */}
-      <section className="ito-section" id="quality">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Operations</div>
-          <h2 className="ito-display ito-section-title">Quality Assurance, Storage and Logistics</h2>
-          <p className="ito-lead">
-            The operating system must protect the buyer-approved specification at each handoff — lot selection, grading, packing, loading, transport and documentation.
-          </p>
-
-          <h3 className="ito-sub-heading">
-            Five-Stage Quality Protocol
-          </h3>
-          <table className="ito-table ito-table--mt">
-            <thead>
-              <tr>
-                <th>Stage</th>
-                <th>Checks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {QUALITY_STAGES.map((item, i) => (
-                <tr key={i}>
-                  <td><strong>{item.stage}</strong></td>
-                  <td>{item.checks}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="ito-split-grid ito-split-grid--mt">
-            <article className="ito-split-card">
-              <h3>Storage and Handling</h3>
-              <ul className="ito-bullet-list">
-                <li>Use dry, clean and ventilated storage protected from rain and standing water</li>
-                <li>Avoid excessive stacking pressure and unnecessary handling</li>
-                <li>Separate wet, damaged or decayed bulbs and monitor stock condition</li>
-                <li>Apply first-in, first-out movement and plan dispatch against crop condition</li>
-                <li>Assess storage suitability against curing, humidity, temperature and expected holding period</li>
-              </ul>
-            </article>
-            <article className="ito-split-card">
-              <h3>Logistics Controls</h3>
-              <ul className="ito-bullet-list">
-                <li><strong>Domestic:</strong> Truck selection, freight, route, loading point, driver details, tracking and proof of delivery</li>
-                <li><strong>Export:</strong> Container availability and condition, vessel cutoff, customs, loading pattern, seal, Bill of Lading and arrival updates</li>
-                <li>Do not guarantee a fixed payload before confirming bag size, product density, container type, legal payload and carrier rules</li>
-              </ul>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      {/* BUYER PERSONAS */}
-      <section className="ito-section ito-dark">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Buyer personas</div>
-          <h2 className="ito-display ito-section-title">Buyer Segments and Calls to Action</h2>
-          <p className="ito-lead">
-            The page must address the primary need of each buyer segment with a specific conversion CTA.
-          </p>
-
-          <div className="ito-persona-grid">
-            {BUYER_PERSONAS.map((persona, i) => (
-              <article className="ito-persona-card" key={i}>
-                <div className="buyer">{persona.buyer}</div>
-                <div className="need">{persona.need}</div>
-                <div className="cta">{persona.cta}</div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* PROCESS */}
-      <section className="ito-section" id="process">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Process</div>
-          <h2 className="ito-display ito-section-title">A Clear Process from Enquiry to Delivery</h2>
-
-          <div className="ito-process">
-            {PROCESS_STEPS.map((step, i) => (
-              <div className="ito-process-item" key={i}>
-                <span>{step}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="ito-quote-box ito-quote-box--mt">
-            <strong>Long-term supply programme:</strong> Qualified buyers requiring weekly, monthly or seasonal supply can request a structured programme covering volume forecasts, specifications, packing, delivery calendar, price review, documentation and performance review.
-          </div>
-
-          <p className="ito-market-notice ">
-            <strong>Market-price notice:</strong> Onion prices can change according to crop arrivals, quality, size, weather, demand, packaging, labour, transport, port charges, freight and government regulations. Every quotation carries a defined validity period. An enquiry does not lock price or confirm stock.
-          </p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="ito-section ito-dark" id="faq">
-        <div className="ito-section-inner">
-          <div className="ito-eyebrow">Objection handling</div>
-          <h2 className="ito-display ito-section-title">Buyer Questions and Objection Handling</h2>
-
-          <div className="ito-faq">
-            {FAQS.map((faq, i) => (
-              <div className="ito-faq-item" key={i}>
-                <div className="ito-faq-q">Q. {faq.q}</div>
-                <div className="ito-faq-a">A. {faq.a}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FINAL CTA */}
-      <section className="ito-section ito-cta">
-        <div className="ito-section-inner ito-cta-inner">
-          <div>
-            <div className="ito-eyebrow">Final conversion</div>
-            <h2 className="ito-display">Share Your Requirement. Receive a Commercial Supply Plan.</h2>
-          </div>
-
-          <div>
-            <img src="/images/onion_image.png" alt="Nashik onions" className="ito-cta-image" />
-            <p className="ito-cta-copy ito-cta-copy-burgundy">
-              Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability, logistics and applicable terms before preparing the offer.
-            </p>
-            <div className="ito-actions">
-              <button
-                className="ito-button"
-                type="button"
-                onClick={openRequirementBuilder}
-              >
-                Request Bulk Quote
-              </button>
-              <a className="ito-button secondary" href="#rfq">Request Export SCO</a>
-              <a
-                className="ito-button secondary ito-whatsapp-button"
-                href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <IoLogoWhatsapp className="ito-whatsapp-icon" aria-hidden="true" />
-                <span>Chat with Export Sales</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* ONION REQUIREMENT BUILDER */}
-      <OnionRequirementBuilder
-        isOpen={showRequirementBuilder}
-        onClose={() => setShowRequirementBuilder(false)}
-        onComplete={handleRequirementComplete}
-      />
-
-      {/* PERSONAL DETAILS */}
-      <AnimatePresence>
-        {showPersonalDetails && (
-          <motion.div
-            className="ito-onion-modal-backdrop"
-            role="presentation"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget && !submittingPersonalDetails) {
-                setShowPersonalDetails(false);
-              }
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="ito-onion-personal-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="onion-personal-details-title"
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-            >
-              <div className="ito-onion-personal-header">
-                <div>
-                  <small>Step 2 · Buyer details</small>
-                  <h2 id="onion-personal-details-title">Tell us who is buying.</h2>
-                </div>
-
-                <button
-                  type="button"
-                  className="ito-onion-modal-close"
-                  aria-label="Close"
-                  disabled={submittingPersonalDetails}
-                  onClick={() => setShowPersonalDetails(false)}
-                >
-                  ×
-                </button>
-              </div>
-
-              <form
-                className="ito-onion-personal-body"
-                onSubmit={handlePersonalDetailsSubmit}
-              >
-                {builtRequirement && (
-                  <div className="ito-onion-requirement-summary">
-                    <div>
-                      <span>Trade</span>
-                      <strong>{builtRequirement.tradeType === "EXPORT" ? "International Export" : "Domestic India"}</strong>
-                    </div>
-                    <div>
-                      <span>Size</span>
-                      <strong>{builtRequirement.size}</strong>
-                    </div>
-                    <div>
-                      <span>Grade</span>
-                      <strong>{builtRequirement.grade}</strong>
-                    </div>
-                    <div>
-                      <span>Quantity</span>
-                      <strong>
-                        {Number(builtRequirement.quantityKg || 0).toLocaleString("en-IN")} kg
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Packaging</span>
-                      <strong>{builtRequirement.packaging}</strong>
-                    </div>
-                    <div>
-                      <span>Destination</span>
-                      <strong>{builtRequirement.destination}</strong>
-                    </div>
-                  </div>
-                )}
-
-                <div className="ito-onion-form-grid">
-                  <div className="ito-onion-field full">
-                    <label htmlFor="onion-full-name">Full Name</label>
-                    <input
-                      id="onion-full-name"
-                      type="text"
-                      autoComplete="name"
-                      value={personalDetails.fullName}
-                      onChange={(event) =>
-                        setPersonalDetails((previous) => ({
-                          ...previous,
-                          fullName: event.target.value,
-                        }))
-                      }
-                      placeholder="Enter your full name"
-                      required
-                    />
-                  </div>
-
-                  <div className="ito-onion-field">
-                    <label htmlFor="onion-email">Business Email</label>
-                    <input
-                      id="onion-email"
-                      type="email"
-                      autoComplete="email"
-                      value={personalDetails.email}
-                      onChange={(event) =>
-                        setPersonalDetails((previous) => ({
-                          ...previous,
-                          email: event.target.value,
-                        }))
-                      }
-                      placeholder="you@company.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="ito-onion-field">
-                    <label htmlFor="onion-mobile">Mobile Number</label>
-                    <input
-                      id="onion-mobile"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      value={personalDetails.mobile}
-                      onChange={(event) =>
-                        setPersonalDetails((previous) => ({
-                          ...previous,
-                          mobile: event.target.value,
-                        }))
-                      }
-                      placeholder="+91 98765 43210"
-                      required
-                    />
-                  </div>
-
-                  <div className="ito-onion-field">
-                    <label htmlFor="onion-city">City</label>
-                    <input
-                      id="onion-city"
-                      type="text"
-                      autoComplete="address-level2"
-                      value={personalDetails.city}
-                      onChange={(event) =>
-                        setPersonalDetails((previous) => ({
-                          ...previous,
-                          city: event.target.value,
-                        }))
-                      }
-                      placeholder="City"
-                      required
-                    />
-                  </div>
-
-                  <div className="ito-onion-field">
-                    <label htmlFor="onion-state">State / Province</label>
-                    <input
-                      id="onion-state"
-                      type="text"
-                      autoComplete="address-level1"
-                      value={personalDetails.state}
-                      onChange={(event) =>
-                        setPersonalDetails((previous) => ({
-                          ...previous,
-                          state: event.target.value,
-                        }))
-                      }
-                      placeholder="State / Province"
-                      required
-                    />
-                  </div>
-
-                  <div className="ito-onion-field full">
-                    <label htmlFor="onion-timeline">Required Timeline</label>
-                    <input
-                      id="onion-timeline"
-                      type="text"
-                      value={personalDetails.targetTimeline}
-                      onChange={(event) =>
-                        setPersonalDetails((previous) => ({
-                          ...previous,
-                          targetTimeline: event.target.value,
-                        }))
-                      }
-                      placeholder="e.g. Immediate, 7 days, 15 days"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <p className="ito-onion-form-note">
-                  Your requirement will be validated by the server before the pricing page is opened. No OTP is required for this Onion purchase flow.
+                  This is the latest published reference currently available on the page, dated {ONION_RATE_CHART.date}. Onion prices are market-sensitive and may change daily. Please submit your requirement to confirm current availability, freight and the final commercial quotation before ordering.
                 </p>
 
-                <div className="ito-onion-form-actions">
+                <div className="ito-actions">
                   <button
+                    className="ito-button"
                     type="button"
-                    className="ito-button secondary"
-                    disabled={submittingPersonalDetails}
                     onClick={() => {
-                      setShowPersonalDetails(false);
-                      setShowRequirementBuilder(true);
+                      setShowRateChart(false);
+                      openRequirementBuilder();
                     }}
                   >
-                    Back
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="ito-button"
-                    disabled={submittingPersonalDetails}
-                  >
-                    {submittingPersonalDetails ? "Saving Requirement…" : "Continue to Pricing"}
+                    Request Current Onion Rate
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* DAILY DOMESTIC / EXPORT ONION RATE CHART */}
-      <AnimatePresence>
-        {showRateChart && (
-          <motion.div
-            className="ito-rate-modal-backdrop"
-            role="presentation"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) {
-                setShowRateChart(false);
-              }
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="ito-rate-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="onion-rate-chart-title"
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-            >
-              <div className="ito-rate-modal-header">
-                <div>
-                  <div className="ito-rate-modal-kicker">Prakriti by India Trade Overseas</div>
-                  <h2 id="onion-rate-chart-title">Daily Onion Rate Chart</h2>
-                  <div className="ito-rate-modal-date">
-                    Fresh Fruits &amp; Vegetables Supply &amp; Export · {ONION_RATE_CHART.date}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="ito-rate-modal-close"
-                  aria-label="Close onion rate chart"
-                  onClick={() => setShowRateChart(false)}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="ito-rate-modal-body">
-                <div className="ito-rate-intro">
-                  <span className="ito-rate-pill">🧅 {ONION_RATE_CHART.product}</span>
-                  <span className="ito-rate-pill">🌱 {ONION_RATE_CHART.variety}</span>
-                  <span className="ito-rate-pill">🚢 Export Quality · Ex. Godown Price</span>
-                </div>
-
-                <h3 className="ito-rate-section-title">Domestic Quality</h3>
-                <div className="ito-rate-table-wrap">
-                  <table className="ito-rate-table">
-                    <thead>
-                      <tr>
-                        <th>Size</th>
-                        <th>Rate / KG</th>
-                        <th>Packing</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ONION_RATE_CHART.domestic.map((item) => (
-                        <tr key={item.size}>
-                          <td><strong>{item.size}</strong></td>
-                          <td className="ito-rate-price">{item.rate}</td>
-                          <td>{ONION_RATE_CHART.domesticPacking}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="ito-domestic-highlight">
-                  <strong>🚚 Transportation:</strong> {ONION_RATE_CHART.transport}
-                </div>
-
-                <h3 className="ito-rate-section-title">Export Quality — Ex. Godown Price</h3>
-                <div className="ito-rate-table-wrap">
-                  <table className="ito-rate-table">
-                    <thead>
-                      <tr>
-                        <th>Market</th>
-                        <th>Size</th>
-                        <th>Rate / KG</th>
-                        <th>Packing</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ONION_RATE_CHART.export.map((item) => (
-                        <tr key={item.market}>
-                          <td><strong>{item.market}</strong></td>
-                          <td>{item.size}</td>
-                          <td className="ito-rate-price">{item.rate}</td>
-                          <td>{item.packing}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="ito-rate-notes">
-                  <div className="ito-rate-note">
-                    <span>JNPT Transportation</span>
-                    <strong>{ONION_RATE_CHART.jnpt}</strong>
-                  </div>
-                  <div className="ito-rate-note">
-                    <span>Domestic Packing</span>
-                    <strong>{ONION_RATE_CHART.domesticPacking}</strong>
-                  </div>
-                  <div className="ito-rate-note">
-                    <span>Rate Date</span>
-                    <strong>{ONION_RATE_CHART.date}</strong>
-                  </div>
-                </div>
-
-                <p className="ito-rate-disclaimer">
-                  Rates shown are the supplied rate chart for 22/09/2026. Transportation and
-                  final commercial terms are subject to the applicable destination, quantity,
-                  logistics and confirmation at the time of order.
-                </p>
               </div>
             </motion.div>
           </motion.div>
