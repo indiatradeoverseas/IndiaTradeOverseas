@@ -2,10 +2,61 @@ const socketIO = require('socket.io');
 const mongoose = require('mongoose');
 const EmployeeStatus = require('../modules/employee/employeeStatus.model');
 const Employee = require('../modules/employee/employee.model');
+const DriverLocation = require('../modules/dispatch/driverLocation.model');
 
 let io = null;
 const connectedEmployees = new Map();
 const socketMetadata = new Map();
+const latestDriverLocations = new Map();
+
+async function persistDriverLocation(location) {
+  try {
+    const driverKey = String(location.driverId);
+    const lastSeenAt = new Date(location.timestamp);
+
+    await DriverLocation.findOneAndUpdate(
+      { driverKey },
+      {
+        $set: {
+          driverId: driverKey,
+          driverName: location.driverName || 'Driver',
+          vehicleNo: location.vehicleNo || '',
+          lat: location.lat,
+          long: location.long,
+          accuracy: location.accuracy || '',
+          lastSeenAt: Number.isNaN(lastSeenAt.getTime()) ? new Date() : lastSeenAt
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  } catch (err) {
+    console.warn('[WebSocket] Driver GPS persistence notice:', err.message);
+  }
+}
+
+async function sendPersistedDriverLocations(socket) {
+  try {
+    const persistedLocations = await DriverLocation.find({}).sort({ lastSeenAt: -1 }).lean();
+    persistedLocations.forEach((location) => {
+      const driverId = location.driverId || location.driverKey;
+      if (!driverId) return;
+
+      latestDriverLocations.set(String(driverId), {
+        driverId: String(driverId),
+        driverName: location.driverName || 'Driver',
+        vehicleNo: location.vehicleNo || '',
+        lat: location.lat,
+        long: location.long,
+        accuracy: location.accuracy || '',
+        timestamp: location.lastSeenAt
+      });
+    });
+
+    socket.emit('driver_location_snapshot', Array.from(latestDriverLocations.values()));
+  } catch (err) {
+    console.warn('[WebSocket] Driver GPS snapshot notice:', err.message);
+  }
+}
 
 async function updateEmployeePresence(employeeId, eventType) {
   try {
@@ -75,6 +126,9 @@ function init(server) {
     } else {
       console.log(`Socket connected anonymously: ${socket.id}`);
     }
+
+    socket.emit('driver_location_snapshot', Array.from(latestDriverLocations.values()));
+    sendPersistedDriverLocations(socket);
 
     socket.on('change_status', async (data) => {
       try {
@@ -160,8 +214,26 @@ function init(server) {
 
     // Driver GPS Live Location Real-Time Broadcast Handler
     socket.on('driver_location_update', (locationData) => {
-      console.log(`[WebSocket] Driver GPS Update from ${locationData?.driverName}:`, locationData?.lat, locationData?.long);
-      io.emit('driver_location_update', locationData);
+      const lat = Number(locationData?.lat);
+      const long = Number(locationData?.long);
+      const driverId = locationData?.driverId || locationData?.driverName;
+
+      if (!driverId || !Number.isFinite(lat) || !Number.isFinite(long) || lat < -90 || lat > 90 || long < -180 || long > 180) {
+        return;
+      }
+
+      const normalizedLocation = {
+        ...locationData,
+        driverId,
+        lat,
+        long,
+        timestamp: locationData?.timestamp || new Date().toISOString()
+      };
+
+      latestDriverLocations.set(String(driverId), normalizedLocation);
+      persistDriverLocation(normalizedLocation);
+      console.log(`[WebSocket] Driver GPS Update from ${normalizedLocation.driverName}:`, lat, long);
+      io.emit('driver_location_update', normalizedLocation);
     });
 
     socket.on('task_assigned', (data) => {
@@ -209,7 +281,7 @@ function init(server) {
                 }
               }
             }
-          } catch (e) {}
+          } catch (e) { }
         }
 
         const dbDoc = await ManagerChat.create({

@@ -4,6 +4,7 @@ import { BACKEND_URL } from '../config/env';
 import { playNotificationSound } from '../utils/sound';
 
 let socket = null;
+let latestDriverLocations = [];
 
 export const socketService = {
   connect(user) {
@@ -61,6 +62,21 @@ export const socketService = {
       window.dispatchEvent(event);
     });
 
+    socket.on('driver_location_snapshot', (data) => {
+      latestDriverLocations = Array.isArray(data) ? data : [];
+      const event = new CustomEvent('driver_location_snapshot_event', { detail: data });
+      window.dispatchEvent(event);
+    });
+
+    socket.on('driver_location_update', (data) => {
+      if (!data?.driverId && !data?.driverName) return;
+      const key = String(data.driverId || data.driverName);
+      latestDriverLocations = [
+        ...latestDriverLocations.filter(item => String(item.driverId || item.driverName) !== key),
+        data
+      ];
+    });
+
     socket.on('payment_updated', (data) => {
       const event = new CustomEvent('payment_updated_event', { detail: data });
       window.dispatchEvent(event);
@@ -84,11 +100,16 @@ export const socketService = {
     if (socket) {
       socket.disconnect();
       socket = null;
+      latestDriverLocations = [];
       console.log('[WebSocket] Connection closed');
     }
   },
 
   getSocket() {
     return socket;
+  },
+
+  getLatestDriverLocations() {
+    return latestDriverLocations;
   }
 };

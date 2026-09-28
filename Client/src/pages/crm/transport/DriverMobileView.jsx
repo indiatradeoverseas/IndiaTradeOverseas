@@ -452,7 +452,7 @@ export default function DriverMobileView() {
   const [calcResult, setCalcResult] = useState(1200);
 
   // Real GPS State
-  const [gpsLocation, setGpsLocation] = useState({ lat: 28.6139, long: 77.2090, accuracy: '±5m' });
+  const [gpsLocation, setGpsLocation] = useState({ lat: null, long: null, accuracy: 'Waiting for GPS' });
   const [mapZoom, setMapZoom] = useState(12);
   const [mapType, setMapType] = useState('roadmap'); // roadmap, satellite
 
@@ -747,14 +747,14 @@ export default function DriverMobileView() {
           
           window.dispatchEvent(new CustomEvent('ito_driver_gps_update_event', { detail: payload }));
 
-          const socket = socketService.getSocket();
+          const socket = socketService.connect(user);
           if (socket) {
             socket.emit('driver_location_update', payload);
           }
         } catch (err) {}
       };
 
-      navigator.geolocation.getCurrentPosition(updateLocation, null, { enableHighAccuracy: false, timeout: 30000 });
+      navigator.geolocation.getCurrentPosition(updateLocation, null, { enableHighAccuracy: true, timeout: 30000 });
       navigator.geolocation.watchPosition(
         updateLocation, 
         (err) => {
@@ -763,7 +763,7 @@ export default function DriverMobileView() {
           }
         }, 
         {
-          enableHighAccuracy: false,
+          enableHighAccuracy: true,
           timeout: 30000,
           maximumAge: 10000
         }

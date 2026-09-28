@@ -20,7 +20,7 @@ const CITY_COORDS = {
 };
 
 const getCityFromCoords = (lat, long) => {
-  if (!lat || !long) return 'New Delhi, NCR';
+  if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(long))) return 'Location unavailable';
   let closestCity = 'New Delhi, NCR';
   let minDistance = Infinity;
 
@@ -43,53 +43,51 @@ export default function TransportMap({
   onSelectTrip,
   gpsLocation = null
 }) {
-  // Default coordinates (Lucknow/Delhi Corridor)
-  const defaultLat = 26.8467;
-  const defaultLong = 80.9462;
-
-  const [mapCenter, setMapCenter] = useState({ lat: defaultLat, long: defaultLong });
+  const [mapCenter, setMapCenter] = useState(null);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(12);
   const [showRoutePath, setShowRoutePath] = useState(false);
 
   // Sync map center whenever activeDrivers or gpsLocation prop changes
   useEffect(() => {
-    if (gpsLocation && gpsLocation.lat && gpsLocation.long) {
+    if (gpsLocation && Number.isFinite(Number(gpsLocation.lat)) && Number.isFinite(Number(gpsLocation.long))) {
       setMapCenter({ lat: Number(gpsLocation.lat), long: Number(gpsLocation.long) });
     } else if (activeDrivers.length > 0) {
       const firstDrv = activeDrivers[0];
-      const drvLat = Number(firstDrv.lat || firstDrv.latitude || defaultLat);
-      const drvLong = Number(firstDrv.long || firstDrv.longitude || defaultLong);
-      setMapCenter({ lat: drvLat, long: drvLong });
-      setSelectedDriver(firstDrv);
+      const drvLat = Number(firstDrv.lat ?? firstDrv.latitude);
+      const drvLong = Number(firstDrv.long ?? firstDrv.longitude);
+      if (Number.isFinite(drvLat) && Number.isFinite(drvLong)) {
+        setMapCenter({ lat: drvLat, long: drvLong });
+        setSelectedDriver(firstDrv);
+      }
     }
   }, [gpsLocation, activeDrivers]);
 
   // Recenter handler
   const handleRecenter = () => {
-    if (gpsLocation && gpsLocation.lat && gpsLocation.long) {
+    if (gpsLocation && Number.isFinite(Number(gpsLocation.lat)) && Number.isFinite(Number(gpsLocation.long))) {
       setMapCenter({ lat: Number(gpsLocation.lat), long: Number(gpsLocation.long) });
     } else if (activeDrivers.length > 0) {
       const firstDrv = activeDrivers[0];
-      const drvLat = Number(firstDrv.lat || firstDrv.latitude || defaultLat);
-      const drvLong = Number(firstDrv.long || firstDrv.longitude || defaultLong);
-      setMapCenter({ lat: drvLat, long: drvLong });
-      setSelectedDriver(firstDrv);
+      const drvLat = Number(firstDrv.lat ?? firstDrv.latitude);
+      const drvLong = Number(firstDrv.long ?? firstDrv.longitude);
+      if (Number.isFinite(drvLat) && Number.isFinite(drvLong)) {
+        setMapCenter({ lat: drvLat, long: drvLong });
+        setSelectedDriver(firstDrv);
+      }
     } else if (trips.length > 0) {
       const firstTrip = trips[0];
       const city = firstTrip.originCity || firstTrip.origin || 'Delhi';
       const coords = CITY_COORDS[city] || CITY_COORDS['Delhi'];
       setMapCenter(coords);
-    } else {
-      setMapCenter({ lat: defaultLat, long: defaultLong });
     }
   };
 
   const handleSelectDriver = (drv) => {
     setSelectedDriver(drv);
-    const lat = Number(drv.lat || drv.latitude || defaultLat);
-    const long = Number(drv.long || drv.longitude || defaultLong);
-    setMapCenter({ lat, long });
+    const lat = Number(drv.lat ?? drv.latitude);
+    const long = Number(drv.long ?? drv.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(long)) setMapCenter({ lat, long });
   };
 
   const activeDriverName = selectedDriver?.driverName || selectedDriver?.fullName || selectedDriver?.name || (activeDrivers[0]?.driverName || 'Driver Unit');
@@ -103,9 +101,9 @@ export default function TransportMap({
   const originCity = activeTrip.originCity || activeTrip.origin || 'Delhi';
   const destCity = activeTrip.destCity || activeTrip.destination || 'Patna';
 
-  const embedSrc = showRoutePath
+  const embedSrc = mapCenter && (showRoutePath
     ? `https://maps.google.com/maps?saddr=${encodeURIComponent(originCity)}&daddr=${mapCenter.lat},${mapCenter.long}+to:${encodeURIComponent(destCity)}&output=embed`
-    : `https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.long}&z=${zoomLevel}&output=embed`;
+    : `https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.long}&z=${zoomLevel}&output=embed`);
 
   return (
     <div
@@ -144,7 +142,7 @@ export default function TransportMap({
           </button>
 
           <a
-            href={`https://www.google.com/maps/dir/?api=1&origin=${mapCenter.lat},${mapCenter.long}&destination=${encodeURIComponent(destCity)}&travelmode=driving`}
+            href={mapCenter ? `https://www.google.com/maps/dir/?api=1&origin=${mapCenter.lat},${mapCenter.long}&destination=${encodeURIComponent(destCity)}&travelmode=driving` : '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="px-3 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-700 dark:text-sky-300 border border-sky-500/40 rounded text-[10px] uppercase font-bold tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow-sm"
@@ -165,15 +163,21 @@ export default function TransportMap({
 
       {/* Main Google Maps Viewport */}
       <div className="relative flex-1 w-full overflow-hidden" style={{ background: 'var(--crm-bg-sunken)' }}>
-        <iframe
-          title="Google Map Live Radar"
-          width="100%"
-          height="100%"
-          style={{ border: 0 }}
-          src={embedSrc}
-          loading="lazy"
-          allowFullScreen
-        />
+        {mapCenter ? (
+          <iframe
+            title="Google Map Live Radar"
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            src={embedSrc}
+            loading="lazy"
+            allowFullScreen
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-xs text-[var(--crm-ink-faint)] font-sans">
+            Waiting for driver GPS location...
+          </div>
+        )}
 
         {/* Live Status Floating Badge (Top Left Overlay) */}
         <div 
@@ -188,10 +192,10 @@ export default function TransportMap({
             {activeDriverName} <span className="text-sky-500">({activeVehicleNo})</span>
           </div>
           <div className="text-amber-500 font-sans text-[10px] font-bold">
-            📍 Location: {getCityFromCoords(mapCenter.lat, mapCenter.long)}
+            📍 Location: {mapCenter ? getCityFromCoords(mapCenter.lat, mapCenter.long) : 'Location unavailable'}
           </div>
           <div className="text-[var(--crm-ink-faint)] font-mono text-[9px]">
-            GPS Pos: {mapCenter.lat.toFixed(4)}° N, {mapCenter.long.toFixed(4)}° E
+            GPS Pos: {mapCenter ? `${mapCenter.lat.toFixed(4)}° N, ${mapCenter.long.toFixed(4)}° E` : 'Waiting for GPS'}
           </div>
         </div>
 

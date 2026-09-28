@@ -184,11 +184,12 @@ export default function PortalLayout({ children }) {
           </button>
 
           <div
-            className="min-w-0 flex-1 truncate text-center text-[10px] sm:text-[12px] font-semibold uppercase tracking-wider sm:tracking-[0.14em] px-1"
-            style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}
+            className="min-w-0 flex-1 text-center px-1"
+            style={{ fontFamily: 'var(--crm-font-display)' }}
           >
-            <span className="hidden sm:inline">India Trade Center</span>
-            <span className="sm:hidden font-mono font-bold tracking-widest text-[11px] text-[var(--crm-accent)]">INDIA TRADE</span>
+            <span className="font-sans font-bold tracking-wider text-[10px] sm:text-[12px] uppercase text-[var(--crm-accent)] whitespace-nowrap">
+              India Trade Center
+            </span>
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
@@ -291,7 +292,7 @@ export default function PortalLayout({ children }) {
         {/* Core Main Viewport Workspace Terminal Container */}
         <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden md:h-screen" style={{ background: 'var(--crm-bg)' }}>
           {/* Buffer spacer block to balance mobile fixed top bar overlay */}
-          <div className="md:hidden h-[60px] shrink-0" />
+          <div className="md:hidden h-[54px] shrink-0" />
 
           {/* Desktop utility bar */}
           <div
@@ -392,7 +393,7 @@ export default function PortalLayout({ children }) {
             </div>
           </div>
 
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-5 sm:py-6 md:px-6 md:py-7 lg:px-8 scroll-smooth">
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3 sm:px-5 sm:py-6 md:px-6 md:py-7 lg:px-8 scroll-smooth">
             <div className="mx-auto w-full max-w-[1800px] min-w-0">
               {children}
             </div>

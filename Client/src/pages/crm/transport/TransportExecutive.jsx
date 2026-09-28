@@ -66,54 +66,51 @@ export default function TransportExecutive() {
 
   // Real-Time Socket.IO & Geolocation Live Driver Updates Listener
   useEffect(() => {
+    const applyLocation = (data) => {
+      const lat = Number(data?.lat);
+      const long = Number(data?.long);
+      if (!data || !(data.driverId || data.driverName) || !Number.isFinite(lat) || !Number.isFinite(long)) return;
+
+      const key = data.driverId || data.driverName;
+      setActiveDriversMap(prev => ({
+        ...prev,
+        [key]: {
+          driverId: key,
+          driverName: data.driverName || 'Driver',
+          vehicleNo: data.vehicleNo || 'Carrier Truck',
+          lat,
+          long,
+          isOnline: true,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      }));
+    };
+
     const handleDriverGpsEvent = (e) => {
-      if (e.detail && (e.detail.driverId || e.detail.driverName)) {
-        const key = e.detail.driverId || e.detail.driverName;
-        setActiveDriversMap(prev => ({
-          ...prev,
-          [key]: {
-            driverId: key,
-            driverName: e.detail.driverName || 'Driver',
-            vehicleNo: e.detail.vehicleNo || 'Carrier Truck',
-            lat: e.detail.lat || 28.6139,
-            long: e.detail.long || 77.2090,
-            isOnline: true,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        }));
-      }
+      applyLocation(e.detail);
+    };
+
+    const handleLocationSnapshot = (data) => {
+      if (Array.isArray(data)) data.forEach(applyLocation);
     };
 
     window.addEventListener('ito_driver_gps_update_event', handleDriverGpsEvent);
 
-    const socket = socketService.getSocket();
+    const socket = socketService.connect(user);
     if (socket) {
-      socket.on('driver_location_update', (data) => {
-        if (data && (data.driverId || data.driverName)) {
-          const key = data.driverId || data.driverName;
-          setActiveDriversMap(prev => ({
-            ...prev,
-            [key]: {
-              driverId: key,
-              driverName: data.driverName || 'Driver',
-              vehicleNo: data.vehicleNo || 'Truck',
-              lat: data.lat || 28.6139,
-              long: data.long || 77.2090,
-              isOnline: true,
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }
-          }));
-        }
-      });
+      socketService.getLatestDriverLocations().forEach(applyLocation);
+      socket.on('driver_location_update', applyLocation);
+      socket.on('driver_location_snapshot', handleLocationSnapshot);
     }
 
     return () => {
       window.removeEventListener('ito_driver_gps_update_event', handleDriverGpsEvent);
       if (socket) {
-        socket.off('driver_location_update');
+        socket.off('driver_location_update', applyLocation);
+        socket.off('driver_location_snapshot', handleLocationSnapshot);
       }
     };
-  }, []);
+  }, [user]);
 
   const fetchAssignedTrips = async () => {
     setLoading(true);
@@ -132,8 +129,7 @@ export default function TransportExecutive() {
               driverId: key,
               driverName: t.driverName,
               vehicleNo: t.vehicleNo || t.vehicleNumber || 'Carrier',
-              lat: t.originLat || (t.destination === 'Patna' ? 25.5941 : 28.6139),
-              long: t.originLng || (t.destination === 'Patna' ? 85.1376 : 77.2090),
+              ...(Number.isFinite(Number(t.originLat)) && Number.isFinite(Number(t.originLng)) ? { lat: Number(t.originLat), long: Number(t.originLng) } : {}),
               isOnline: t.status === 'IN_TRANSIT' || t.status === 'LOADING',
               time: 'Active'
             };
