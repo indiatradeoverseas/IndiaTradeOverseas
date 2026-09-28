@@ -301,7 +301,7 @@ export default function PortalLayout({ children }) {
           >
             <div className="min-w-0">
               <div className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>
-                India Trade Overseas
+                India Trade Center
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
                 <span className="font-semibold" style={{ color: 'var(--crm-heading)' }}>CRM Workspace</span>

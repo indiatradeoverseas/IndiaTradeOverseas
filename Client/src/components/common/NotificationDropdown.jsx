@@ -234,7 +234,7 @@ export default function NotificationDropdown({ compact = false }) {
 
             {/* Footer */}
             <div className="px-4 py-2 bg-[var(--crm-bg-sunken)] border-t border-[var(--crm-line)] text-center text-[10px] font-mono text-[var(--crm-ink-faint)]">
-              Live Notifications Matrix • India Trade Overseas
+              Live Notifications Matrix • India Trade Center
             </div>
           </motion.div>
         )}
