@@ -178,21 +178,74 @@ const registerDistributor = async (req, res, next) => {
 
     // Automatically create a CRM Lead for Sales Manager
     try {
-      const { processAiLead } = require('../leads/ai-agent/aiLead.service');
+      const { processAiLead, parseFlexibleDate } = require('../leads/ai-agent/aiLead.service');
+      const cleanName = (name || company || 'Website Buyer').trim();
+      const cleanMobile = mobile ? String(mobile).trim() : '';
+      const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+      const selectedDivision = (division || 'TEA').toUpperCase();
+      const timelineVal = targetTimeline || timeline || req.body.targetDate || 'Within 7 Days';
+
       await processAiLead({
-        customerName: name,
-        email,
-        phone: mobile,
-        city,
-        state,
-        targetTimeline: targetTimeline || timeline || req.body.targetDate,
-        companyName: company || `Buyer (${division || 'TEA'})`,
-        productCategory: division || 'TEA',
+        customerName: cleanName,
+        email: cleanEmail,
+        phone: cleanMobile,
+        mobile: cleanMobile,
+        city: city || 'N/A',
+        state: state || 'N/A',
+        timeline: timelineVal,
+        targetTimeline: timelineVal,
+        requiredDate: timelineVal,
+        companyName: company || `Buyer (${selectedDivision})`,
+        productCategory: selectedDivision,
         source: 'WEBSITE',
-        chatSummary: `Inquiry registered via ${division || 'TEA'} division website form.`
+        chatSummary: `Inquiry registered via ${selectedDivision} website form.`
       });
     } catch (leadErr) {
-      console.error('Auto lead creation note:', leadErr.message);
+      console.error('Auto processAiLead note, falling back to direct Lead creation:', leadErr.message);
+      try {
+        const Lead = require('../leads/lead.model');
+        const { generateFormattedLeadCode } = require('../leads/leadCodeGenerator');
+        const { parseFlexibleDate } = require('../leads/ai-agent/aiLead.service');
+        const { encryptText, hashText, maskPhone, maskEmail, hashCompanyName } = require('../../utils/crypto');
+
+        const cleanName = (name || company || 'Website Buyer').trim();
+        const cleanMobile = mobile ? String(mobile).trim() : 'N/A';
+        const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+        const selectedDivision = (division || 'TEA').toUpperCase();
+        const timelineVal = targetTimeline || timeline || req.body.targetDate || 'Within 7 Days';
+        const compName = company || `Buyer (${selectedDivision})`;
+
+        const leadCode = await generateFormattedLeadCode({
+          productCategory: selectedDivision,
+          country: country || 'India',
+          product: selectedDivision
+        });
+
+        await Lead.create({
+          leadCode,
+          customerName: cleanName,
+          companyName: compName,
+          companyNameHash: hashCompanyName(compName),
+          phoneEncrypted: encryptText(cleanMobile),
+          phoneMasked: maskPhone(cleanMobile),
+          phoneHash: hashText(cleanMobile),
+          emailEncrypted: encryptText(cleanEmail),
+          emailMasked: maskEmail(cleanEmail),
+          emailHash: hashText(cleanEmail),
+          productCategory: selectedDivision,
+          product: selectedDivision,
+          destination: city || state || 'India',
+          timeline: timelineVal,
+          targetDate: parseFlexibleDate(timelineVal),
+          source: 'WEBSITE',
+          leadOrigin: 'QUICK_ENQUIRY',
+          priority: 'WARM',
+          crmStatus: 'NEW'
+        });
+        console.log(`[AutoLeadFallback] Lead ${leadCode} successfully created for ${cleanName} (${selectedDivision}).`);
+      } catch (fallbackErr) {
+        console.error('Auto lead fallback creation error:', fallbackErr.message);
+      }
     }
 
     const subject = `Distributor Verification OTP - India Trade Overseas ${DIVISION_LABELS[division] || 'Prakriti Tea'} Division`;
@@ -202,7 +255,9 @@ const registerDistributor = async (req, res, next) => {
     global.latestOtps = global.latestOtps || {};
     global.latestOtps[email.toLowerCase().trim()] = otpCode;
 
-    await sendEmail(email, subject, text, html);
+    sendEmail(email, subject, text, html).catch((mailErr) => {
+      console.warn('Background mail note (non-blocking):', mailErr.message);
+    });
 
     // Generate JWT token for immediate authenticated session
     const jwt = require('jsonwebtoken');

@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
+const { generateFormattedLeadCode } = require('./leadCodeGenerator');
 const CallRecording = require('./callRecording.model');
 const Employee = require('../employee/employee.model');
 
@@ -1157,13 +1158,7 @@ async function createInternalLeadOpportunity({
         payload.repeatVisitCount,
     });
 
-  const leadCode =
-    `LD-${Date.now()}-${crypto
-      .randomUUID()
-      .slice(
-        0,
-        8
-      )}`;
+  const leadCode = await generateFormattedLeadCode(payload);
 
   const lead =
     await Lead.create({

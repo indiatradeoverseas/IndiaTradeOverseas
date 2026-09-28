@@ -26,7 +26,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
  * conversion event (e.g. stone_distributor_verified) still lives in each
  * host page's onVerified/onComplete callback, same as before.
  */
-export default function BuyerEntryGate({ theme, division, requireOtp, onVerified, onComplete, mascotSrc }) {
+export default function BuyerEntryGate({ theme, division, requireOtp = false, onVerified, onComplete, mascotSrc }) {
   const [step, setStep] = useState('details'); // 'details' | 'otp' | 'welcome'
   const [submitting, setSubmitting] = useState(false);
   const [distributorId, setDistributorId] = useState('');
@@ -308,14 +308,14 @@ export default function BuyerEntryGate({ theme, division, requireOtp, onVerified
                     <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>{requireOtp ? 'Continue' : 'Enter'}</span>
+                      <span>Continue</span>
                       <FiArrowRight size={14} />
                     </>
                   )}
                 </button>
 
                 <p className="text-center text-[10px] pt-1" style={{ color: t.muted }}>
-                  Takes less than 30 seconds. {requireOtp ? 'We just need to confirm your email.' : ''}
+                  Takes less than 30 seconds.
                 </p>
               </form>
             ) : step === 'otp' ? (

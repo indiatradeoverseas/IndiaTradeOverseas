@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
+const { generateFormattedLeadCode } = require('./leadCodeGenerator');
 
 const {
   encryptText,
@@ -1029,10 +1030,7 @@ async function createWebsiteLeadRecord(payload = {}) {
      OPPORTUNITY ID / ATTRIBUTION
   ---------------------------------------------------------- */
 
-  const leadCode =
-    `LD-${Date.now()}-${crypto
-      .randomUUID()
-      .slice(0, 8)}`;
+  const leadCode = await generateFormattedLeadCode(payload);
 
   const attribution = buildAttribution(
     payload.attribution || {}

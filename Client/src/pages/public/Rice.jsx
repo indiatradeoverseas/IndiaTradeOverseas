@@ -511,7 +511,8 @@ export default function RicePage() {
         e.preventDefault();
         if (loadingQuickGate) return;
         const { fullName, email, mobile, city, state, targetTimeline } = personalDetails;
-        if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim() || !targetTimeline) {
+        const effectiveTimeline = targetTimeline || 'Within 7 Days';
+        if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim()) {
             toast.dismiss();
             toast.error('Please fill all required fields.', { id: 'rice_gate_toast' });
             return;
@@ -537,7 +538,7 @@ export default function RicePage() {
             formData.append('mobile', cleanMobile);
             formData.append('city', city);
             formData.append('state', state);
-            formData.append('targetTimeline', targetTimeline);
+            formData.append('targetTimeline', effectiveTimeline);
             formData.append('division', 'RICE');
             formData.append('registrationSource', 'QUICK_GATE');
 
@@ -4655,7 +4656,7 @@ export default function RicePage() {
                                     className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
                                     style={{ backgroundColor: RICE_GATE_THEME.accent, color: RICE_GATE_THEME.accentText }}
                                 >
-                                    <span>Continue to Phone Verification</span>
+                                    <span>Submit & Get Instant Quote</span>
                                     <FiArrowRight size={14} />
                                 </button>
                             </form>
@@ -4664,55 +4665,7 @@ export default function RicePage() {
                 )}
             </AnimatePresence>
 
-            {/* OTP Verification Modal */}
-            <AnimatePresence>
-                {showOtp && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-                        onClick={() => setShowOtp(false)}>
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
-                            onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
-                                    Verify OTP
-                                </h3>
-                                <button onClick={() => setShowOtp(false)}
-                                    className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                                    <FiX size={24} />
-                                </button>
-                            </div>
 
-                            <form onSubmit={handleOtpVerify} className="p-6 space-y-4">
-                                <p className="text-sm text-gray-600">
-                                    A 6‑digit code was sent to <strong>{personalDetails.email}</strong>.
-                                </p>
-                                {otpError && <p className="text-sm text-red-500">{otpError}</p>}
-                                <input
-                                    type="text"
-                                    maxLength={6}
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                    placeholder="Enter 6‑digit code"
-                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 text-center text-2xl tracking-widest font-mono"
-                                    autoComplete="one-time-code"
-                                    required
-                                />
-                                <button
-                                    type="submit"
-                                    className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
-                                    style={{ backgroundColor: RICE_GATE_THEME.accent, color: RICE_GATE_THEME.accentText }}
-                                >
-                                    <span>Continue to Product Page</span>
-                                    <FiArrowRight size={14} />
-                                </button>
-                            </form>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
 
             {/* Soft Gate Modal */}
             <AnimatePresence>

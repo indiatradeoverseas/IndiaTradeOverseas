@@ -187,7 +187,7 @@ export default function PortalLayout({ children }) {
             className="min-w-0 flex-1 text-center px-1"
             style={{ fontFamily: 'var(--crm-font-display)' }}
           >
-            <span className="font-sans font-bold tracking-wider text-[10px] sm:text-[12px] uppercase text-[var(--crm-accent)] whitespace-nowrap">
+            <span className="font-sans font-bold tracking-wider text-[11px] sm:text-[13px] uppercase text-white whitespace-nowrap block">
               India Trade Center
             </span>
           </div>
@@ -300,7 +300,7 @@ export default function PortalLayout({ children }) {
             style={{ borderColor: 'var(--crm-line)', background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)' }}
           >
             <div className="min-w-0">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white">
                 India Trade Center
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
