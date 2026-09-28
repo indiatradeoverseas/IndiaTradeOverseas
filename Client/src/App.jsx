@@ -587,10 +587,19 @@ function RoleProtectedRoute({
     );
   }
 
+  const isFounderOrAdmin =
+    user &&
+    (
+      isFounderUser(user) ||
+      isCEOUser(user) ||
+      isAdminUser(user)
+    );
+
   if (
     !user ||
-    !allowedRoles.includes(
-      user.role
+    (
+      !allowedRoles.includes(user.role) &&
+      !isFounderOrAdmin
     )
   ) {
     return (
@@ -628,15 +637,22 @@ function HRRedirectGate() {
     );
   }
 
-  if (
+  const role = (user.role || '').toUpperCase();
+  const isFounderOrAdmin =
     [
       'ADMIN',
       'MANAGER',
-      'HR_MANAGER'
-    ].includes(
-      user.role
-    )
-  ) {
+      'HR_MANAGER',
+      'FOUNDER',
+      'CO_FOUNDER',
+      'CEO',
+      'SUPER_ADMIN'
+    ].includes(role) ||
+    isFounderUser(user) ||
+    isCEOUser(user) ||
+    isAdminUser(user);
+
+  if (isFounderOrAdmin) {
     return (
       <Navigate
         to="/crm/hr/manager"
@@ -649,9 +665,7 @@ function HRRedirectGate() {
     [
       'HR_EXECUTIVE',
       'HR'
-    ].includes(
-      user.role
-    )
+    ].includes(role)
   ) {
     return (
       <Navigate
@@ -1503,7 +1517,11 @@ function AppLayout() {
                   allowedRoles={[
                     'ADMIN',
                     'MANAGER',
-                    'HR_MANAGER'
+                    'HR_MANAGER',
+                    'FOUNDER',
+                    'CO_FOUNDER',
+                    'CEO',
+                    'SUPER_ADMIN'
                   ]}
                 >
                   <HrManagerDashboard />
@@ -1520,7 +1538,11 @@ function AppLayout() {
                     'MANAGER',
                     'HR_MANAGER',
                     'HR_EXECUTIVE',
-                    'HR'
+                    'HR',
+                    'FOUNDER',
+                    'CO_FOUNDER',
+                    'CEO',
+                    'SUPER_ADMIN'
                   ]}
                 >
                   <HrExecutiveDashboard />

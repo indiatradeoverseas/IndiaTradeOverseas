@@ -103,8 +103,8 @@ export default function Sidebar({ onClose }) {
       >
         <div className="min-w-0 flex-1 text-left">
           <h1
-            className="truncate text-[15px] font-semibold uppercase tracking-[0.08em]"
-            style={{ fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' }}
+            className="text-[13px] sm:text-[15px] font-bold uppercase tracking-wider leading-tight text-left break-words text-white"
+            style={{ fontFamily: 'var(--crm-font-display)', color: '#FFFFFF' }}
           >
             India Trade Center
           </h1>

@@ -1071,29 +1071,216 @@ export default function SalesManagerDashboard() {
     }
   };
 
-  // Filter for Division Leads (Only Website Forms for Tea, Rice, Stone & Website Chat leads)
+  // Helper for Division & Origin Badges (Website Leads: Tea, Rice, Stone, Coal, Onion, ITOads)
+  const getLeadDivisionAndOriginBadges = (lead) => {
+    const catUpper = String(
+      lead.productCategory ||
+      lead.division ||
+      lead.category ||
+      lead.product ||
+      lead.originalPayload?.productCategory ||
+      lead.originalPayload?.division ||
+      lead.requirementDetails?.productCategory ||
+      ''
+    ).toUpperCase();
+
+    let divisionBadge = { label: '🌐 Website Inquiry', color: 'bg-slate-700 text-white font-bold border-slate-600 shadow-xs' };
+    if (catUpper.includes('TEA') || catUpper.includes('PRAKRITI')) {
+      divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-xs' };
+    } else if (catUpper.includes('RICE')) {
+      divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-600 text-white font-bold border-amber-700 shadow-xs' };
+    } else if (catUpper.includes('STONE') || catUpper.includes('WHITE') || catUpper.includes('INFRA') || catUpper.includes('BHUTAN') || catUpper.includes('PAKUR')) {
+      divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-600 text-white font-bold border-sky-700 shadow-xs' };
+    } else if (catUpper.includes('COAL')) {
+      divisionBadge = { label: '🪵 Coal Division', color: 'bg-stone-700 text-white font-bold border-stone-800 shadow-xs' };
+    } else if (catUpper.includes('ONION') || catUpper.includes('AGRI')) {
+      divisionBadge = { label: '🧅 Onion & Agri Division', color: 'bg-yellow-600 text-white font-bold border-yellow-700 shadow-xs' };
+    } else if (catUpper.includes('ITOADS') || catUpper.includes('ADS') || catUpper.includes('MARKETING')) {
+      divisionBadge = { label: '📢 ITO Ads Campaign', color: 'bg-purple-600 text-white font-bold border-purple-700 shadow-xs' };
+    }
+
+    const srcUpper = (lead.source || '').toUpperCase();
+    const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || srcUpper.includes('CHAT');
+    const isAdLead = srcUpper.includes('ADS') || srcUpper.includes('ITOADS') || srcUpper.includes('CAMPAIGN') || catUpper.includes('ITOADS');
+    const originBadge = isChatLead 
+      ? { label: '💬 Website Chat', color: 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs' }
+      : isAdLead
+      ? { label: '📢 ITO Digital Ad', color: 'bg-purple-600 text-white font-bold border-purple-700 shadow-xs' }
+      : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
+
+    return { divisionBadge, originBadge };
+  };
+
+  // Helper for rendering Target Timeline cell with date formatting & theme-aware high contrast styling
+  const renderTargetTimelineCell = (lead) => {
+    const rawVal = lead.targetDate || lead.timeline || lead.targetTimeline || lead.originalPayload?.targetTimeline || lead.originalPayload?.timeline || '';
+    
+    if (!rawVal) {
+      return <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>;
+    }
+
+    let dateDisplay = '';
+    let labelDisplay = '';
+
+    // 1. Check targetDate
+    if (lead.targetDate) {
+      const d = new Date(lead.targetDate);
+      if (!isNaN(d.getTime())) {
+        dateDisplay = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+    }
+
+    // 2. Check text timeline string
+    const textVal = String(lead.timeline || lead.targetTimeline || lead.originalPayload?.targetTimeline || lead.originalPayload?.timeline || '').trim();
+    if (textVal) {
+      if (/^\d{4}-\d{2}-\d{2}/.test(textVal)) {
+        const pDate = new Date(textVal);
+        if (!isNaN(pDate.getTime())) {
+          dateDisplay = pDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+      } else {
+        labelDisplay = textVal;
+      }
+    }
+
+    // 3. Fallback: parse rawVal as date if format matches YYYY-MM-DD
+    if (!dateDisplay && typeof rawVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawVal)) {
+      const pDate = new Date(rawVal);
+      if (!isNaN(pDate.getTime())) {
+        dateDisplay = pDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-1 font-mono">
+        {dateDisplay && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-extrabold tracking-tight bg-teal-100 dark:bg-teal-950/90 text-teal-900 dark:text-teal-200 border border-teal-300 dark:border-teal-700 shadow-xs whitespace-nowrap">
+            📅 {dateDisplay}
+          </span>
+        )}
+        {labelDisplay && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/90 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 whitespace-nowrap">
+            ⏱️ {labelDisplay}
+          </span>
+        )}
+        {!dateDisplay && !labelDisplay && (
+          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+        )}
+      </div>
+    );
+  };
+
+  // Helper for computing Lead Temperature/Priority (HOT <= 3 days, WARM <= 7 days, COLD > 7 days)
+  const calculateLeadPriorityTemp = (lead) => {
+    const pUpper = (lead.priority || '').toUpperCase();
+    const stageUpper = (lead.stage || '').toUpperCase();
+    const isExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(stageUpper);
+
+    if (pUpper === 'DEAD' || isExpired) {
+      return { label: 'DEAD 💀', color: 'bg-zinc-800 text-zinc-200 font-black border-zinc-600 shadow-xs' };
+    }
+
+    const rawTimeline = String(
+      lead.timeline ||
+      lead.targetTimeline ||
+      lead.originalPayload?.targetTimeline ||
+      lead.originalPayload?.timeline ||
+      lead.remarks ||
+      ''
+    ).trim().toLowerCase();
+
+    // 1. Try parsing target date from lead.targetDate or rawTimeline regex
+    let targetDateObj = null;
+    if (lead.targetDate) {
+      const p = new Date(lead.targetDate);
+      if (!isNaN(p.getTime())) targetDateObj = p;
+    }
+    if (!targetDateObj && rawTimeline) {
+      const matchIso = rawTimeline.match(/(\d{4}-\d{2}-\d{2})/);
+      if (matchIso) {
+        const p = new Date(matchIso[1]);
+        if (!isNaN(p.getTime())) targetDateObj = p;
+      }
+    }
+
+    const isImmediate = rawTimeline.includes('immediate') || rawTimeline.includes('urgent') || rawTimeline.includes('asap') || rawTimeline.includes('today') || rawTimeline.includes('now') || rawTimeline.includes('24 hour') || rawTimeline.includes('48 hour') || rawTimeline.includes('within 2 day') || rawTimeline.includes('within 3 day') || rawTimeline.includes('3 days') || rawTimeline.includes('2 days') || rawTimeline.includes('1 day');
+    const isWithinWeek = rawTimeline.includes('1 week') || rawTimeline.includes('within 7 day') || rawTimeline.includes('7 days') || rawTimeline.includes('within 5 day') || rawTimeline.includes('within 6 day') || rawTimeline.includes('within 4 day');
+    const isMoreThanWeek = rawTimeline.includes('15 day') || rawTimeline.includes('30 day') || rawTimeline.includes('1 month') || rawTimeline.includes('2 month') || rawTimeline.includes('more than 7') || rawTimeline.includes('after 1 week') || rawTimeline.includes('after 7') || rawTimeline.includes('more than week');
+
+    if (targetDateObj) {
+      const baseDate = lead.createdAt ? new Date(lead.createdAt) : new Date();
+      const baseDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+      const targetDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate());
+      
+      const diffMs = targetDay.getTime() - baseDay.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 3 || isImmediate) {
+        return { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+      } else if (diffDays <= 7) {
+        return { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
+      } else {
+        return { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
+      }
+    }
+
+    if (isImmediate) {
+      return { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+    }
+    if (isMoreThanWeek) {
+      return { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
+    }
+    if (isWithinWeek) {
+      return { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
+    }
+
+    if (pUpper === 'HOT') return { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
+    if (pUpper === 'COLD' || pUpper === 'NURTURE' || pUpper === 'LOW') return { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
+
+    return { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
+  };
+
+  // Filter for Division Leads (Only Website Sourced Leads for Tea, Rice, Stone, Coal, Onion, ITOads)
   const getFilteredDivisionLeads = () => {
     return getFilteredByDate(allLeads).filter(lead => {
-      // 1. Exclude third-party import / whatsapp / indiamart external channels
+      // 1. Source constraint: Exclude non-website/external channels
       const src = (lead.source || '').toUpperCase();
-      const isExcludedExternalSource = src === 'INDIAMART' || src === 'WHATSAPP' || src === 'IMPORT';
-      if (isExcludedExternalSource) return false;
+      const isExcludedSource = src === 'INDIAMART' || src === 'WHATSAPP' || src === 'IMPORT' || src === 'EXCEL_IMPORT' || src === 'MANUAL_IMPORT' || src === 'OFFLINE';
+      if (isExcludedSource) return false;
 
-      // 2. Division Category constraint: Must be Tea, Rice, or Stone
-      const cat = (lead.productCategory || '').toUpperCase();
-      const isDivisionProduct =
-        cat.includes('TEA') ||
-        cat.includes('RICE') ||
-        cat.includes('STONE') ||
-        cat.includes('WHITE_STONE');
+      // 2. Division Category extraction
+      const catRaw = String(
+        lead.productCategory ||
+        lead.division ||
+        lead.category ||
+        lead.product ||
+        lead.originalPayload?.productCategory ||
+        lead.originalPayload?.division ||
+        lead.requirementDetails?.productCategory ||
+        ''
+      ).toUpperCase();
 
-      if (!isDivisionProduct) return false;
+      if (catRaw.includes('CAREER')) return false;
 
-      // 3. Filter by Selected Division Tab (ALL, TEA, RICE, STONE)
+      const isTea = catRaw.includes('TEA') || catRaw.includes('PRAKRITI');
+      const isRice = catRaw.includes('RICE');
+      const isStone = catRaw.includes('STONE') || catRaw.includes('WHITE') || catRaw.includes('INFRA') || catRaw.includes('BHUTAN') || catRaw.includes('PAKUR');
+      const isCoal = catRaw.includes('COAL');
+      const isOnion = catRaw.includes('ONION') || catRaw.includes('AGRI');
+      const isItoAds = catRaw.includes('ITOADS') || catRaw.includes('ADS') || catRaw.includes('MARKETING') || src.includes('ADS') || src.includes('ITOADS') || src.includes('CAMPAIGN');
+
+      // Allow website leads matching target categories or general website inquiries
+      const isWebsiteCategory = isTea || isRice || isStone || isCoal || isOnion || isItoAds || !catRaw || catRaw.includes('GENERAL') || catRaw.includes('WEBSITE') || catRaw.includes('INQUIRY') || catRaw.includes('BUYER');
+      if (!isWebsiteCategory) return false;
+
+      // 3. Filter by Selected Division Tab (ALL, TEA, RICE, STONE, COAL, ONION, ITOADS)
       const matchesDiv = leadDivisionFilter === 'ALL' ||
-        (leadDivisionFilter === 'TEA' && cat.includes('TEA')) ||
-        (leadDivisionFilter === 'RICE' && cat.includes('RICE')) ||
-        (leadDivisionFilter === 'STONE' && (cat.includes('STONE') || cat.includes('WHITE_STONE')));
+        (leadDivisionFilter === 'TEA' && isTea) ||
+        (leadDivisionFilter === 'RICE' && isRice) ||
+        (leadDivisionFilter === 'STONE' && isStone) ||
+        (leadDivisionFilter === 'COAL' && isCoal) ||
+        (leadDivisionFilter === 'ONION' && isOnion) ||
+        (leadDivisionFilter === 'ITOADS' && isItoAds);
 
       if (!matchesDiv) return false;
 
@@ -1103,8 +1290,8 @@ export default function SalesManagerDashboard() {
         (lead.customerName || '').toLowerCase().includes(searchLower) ||
         (lead.leadCode || '').toLowerCase().includes(searchLower) ||
         (lead.companyName || '').toLowerCase().includes(searchLower) ||
-        (lead.emailEncrypted || lead.emailMasked || '').toLowerCase().includes(searchLower) ||
-        (lead.phoneEncrypted || lead.phoneMasked || '').toLowerCase().includes(searchLower);
+        (lead.emailEncrypted || lead.emailMasked || lead.email || '').toLowerCase().includes(searchLower) ||
+        (lead.phoneEncrypted || lead.phoneMasked || lead.phone || '').toLowerCase().includes(searchLower);
 
       return matchesSearch;
     });
@@ -1731,10 +1918,13 @@ export default function SalesManagerDashboard() {
                       <span className="text-[9px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold">Filter Division:</span>
                       <div className="flex flex-wrap gap-1 bg-[var(--crm-bg-sunken)] p-1 rounded border border-[var(--crm-line)]">
                         {[
-                          { id: 'ALL', label: 'All Divisions' },
+                          { id: 'ALL', label: 'All Website Divisions' },
                           { id: 'TEA', label: '🍃 Tea Division' },
                           { id: 'RICE', label: '🌾 Rice Division' },
-                          { id: 'STONE', label: '🪨 Stone & Infra' }
+                          { id: 'STONE', label: '🪨 Stone & Infra' },
+                          { id: 'COAL', label: '🪵 Coal Division' },
+                          { id: 'ONION', label: '🧅 Onion & Agri' },
+                          { id: 'ITOADS', label: '📢 ITO Ads / Marketing' }
                         ].map(divFilter => (
                           <button
                             key={divFilter.id}
@@ -1841,61 +2031,13 @@ export default function SalesManagerDashboard() {
                             );
                           }
                           return divisionLeadsList.map((lead) => {
-                            const catUpper = (lead.productCategory || '').toUpperCase();
-                            let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-700 text-white font-bold border-slate-600 shadow-xs' };
-                            if (catUpper.includes('TEA')) {
-                              divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-xs' };
-                            } else if (catUpper.includes('RICE')) {
-                              divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-600 text-white font-bold border-amber-700 shadow-xs' };
-                            } else if (catUpper.includes('STONE')) {
-                              divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-600 text-white font-bold border-sky-700 shadow-xs' };
-                            }
-
-                            const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || (lead.source || '').toUpperCase().includes('CHAT');
-                            const originBadge = isChatLead 
-                              ? { label: '💬 Website Chat', color: 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs' }
-                              : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
+                            const { divisionBadge, originBadge } = getLeadDivisionAndOriginBadges(lead);
 
                             const assignedEmp = teamEmployees.find(e => 
                               e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
                             );
 
-                            let prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
-                            const timelineText = String(lead.timeline || lead.originalPayload?.timeline || lead.originalPayload?.requiredDate || lead.remarks || '').trim().toLowerCase();
-                            const isImmediate = timelineText.includes('immediate') || timelineText.includes('urgent') || timelineText.includes('asap') || timelineText.includes('today') || timelineText.includes('now');
-                            const isWithinWeek = timelineText.includes('1 week') || timelineText.includes('within 7 days') || timelineText.includes('within 7day') || timelineText.includes('7 days') || timelineText.includes('7day') || timelineText.includes('one week') || timelineText.includes('1week');
-
-                            if (lead.targetDate) {
-                              const tDate = new Date(lead.targetDate);
-                              if (!isNaN(tDate.getTime())) {
-                                const now = new Date();
-                                const diffHours = (tDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-                                const diffDays = Math.ceil(diffHours / 24);
-                                if (diffDays <= 3 || isImmediate) {
-                                  prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
-                                } else if (diffDays <= 7 || isWithinWeek) {
-                                  prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
-                                } else {
-                                  prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
-                                }
-                              } else if (isImmediate) {
-                                prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
-                              } else if (isWithinWeek) {
-                                prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
-                              }
-                            } else if (isImmediate) {
-                              prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
-                            } else if (isWithinWeek) {
-                              prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
-                            } else {
-                              const pUpper = (lead.priority || 'WARM').toUpperCase();
-                              const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase());
-
-                              if (pUpper === 'DEAD' || isDateExpired) prioInfo = { label: 'DEAD 💀', color: 'bg-zinc-800 text-zinc-200 font-black border-zinc-600 shadow-xs' };
-                              else if (pUpper === 'HOT') prioInfo = { label: 'HOT 🔥', color: 'bg-rose-600 text-white font-black border-rose-700 shadow-xs' };
-                              else if (pUpper === 'WARM') prioInfo = { label: 'WARM ⚡', color: 'bg-amber-500 text-white font-black border-amber-600 shadow-xs' };
-                              else if (pUpper === 'COLD') prioInfo = { label: 'COLD ❄️', color: 'bg-cyan-600 text-white font-black border-cyan-700 shadow-xs' };
-                            }
+                            const prioInfo = calculateLeadPriorityTemp(lead);
 
                             return (
                               <tr key={lead._id} className={`hover:bg-[var(--crm-bg-sunken)]/60 transition ${selectedLeads.includes(lead._id) ? 'bg-teal-950/30' : ''}`}>
@@ -1912,11 +2054,24 @@ export default function SalesManagerDashboard() {
                                     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
                                   })}
                                 </td>
-                                <td className="py-3 px-4 font-mono font-bold text-teal-400 text-xs whitespace-nowrap">
-                                  {lead.leadCode}
+                                <td className="py-3 px-4 font-mono font-bold text-xs whitespace-nowrap">
+                                  <Link
+                                    to={`/crm/leads/${lead._id}`}
+                                    className="text-teal-600 dark:text-teal-400 hover:text-teal-500 hover:underline inline-flex items-center gap-1 cursor-pointer font-bold"
+                                    title="Click to view full lead details"
+                                  >
+                                    <span>{lead.leadCode}</span>
+                                    <FiArrowUpRight size={12} className="shrink-0 text-teal-500" />
+                                  </Link>
                                 </td>
                                 <td className="py-3 px-4 space-y-0.5 min-w-[170px]">
-                                  <div className="font-bold text-[var(--crm-heading)] text-sm">{lead.customerName}</div>
+                                  <Link
+                                    to={`/crm/leads/${lead._id}`}
+                                    className="font-bold text-[var(--crm-heading)] hover:text-teal-500 hover:underline text-sm block cursor-pointer"
+                                    title="Click to view full lead details"
+                                  >
+                                    {lead.customerName}
+                                  </Link>
                                   <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Individual Inquiry'}</div>
                                 </td>
                                 <td className="py-3 px-4 text-center whitespace-nowrap">
@@ -1925,13 +2080,7 @@ export default function SalesManagerDashboard() {
                                   </span>
                                 </td>
                                 <td className="py-3 px-4 text-center font-mono text-[11px] whitespace-nowrap">
-                                  {lead.targetDate ? (
-                                    <span className="text-[11px] font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap bg-transparent">
-                                      📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
-                                  )}
+                                  {renderTargetTimelineCell(lead)}
                                 </td>
                                 <td className="py-3 px-4 space-y-1 font-mono text-[11px]">
                                   <div className="text-[var(--crm-ink-soft)] flex items-center gap-1.5">
@@ -2031,20 +2180,7 @@ export default function SalesManagerDashboard() {
                         );
                       }
                       return divisionLeadsList.map((lead) => {
-                        const catUpper = (lead.productCategory || '').toUpperCase();
-                        let divisionBadge = { label: 'General Inquiry', color: 'bg-slate-700 text-white font-bold border-slate-600 shadow-xs' };
-                        if (catUpper.includes('TEA')) {
-                          divisionBadge = { label: '🍃 Prakriti Tea Division', color: 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-xs' };
-                        } else if (catUpper.includes('RICE')) {
-                          divisionBadge = { label: '🌾 Prakriti Rice Division', color: 'bg-amber-600 text-white font-bold border-amber-700 shadow-xs' };
-                        } else if (catUpper.includes('STONE')) {
-                          divisionBadge = { label: '🪨 Stone & Infrastructure', color: 'bg-sky-600 text-white font-bold border-sky-700 shadow-xs' };
-                        }
-
-                        const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || (lead.source || '').toUpperCase().includes('CHAT');
-                        const originBadge = isChatLead 
-                          ? { label: '💬 Website Chat', color: 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs' }
-                          : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
+                        const { divisionBadge, originBadge } = getLeadDivisionAndOriginBadges(lead);
 
                         const assignedEmp = teamEmployees.find(e => 
                           e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
@@ -2061,7 +2197,14 @@ export default function SalesManagerDashboard() {
                                   onChange={(e) => handleSelectLead(lead._id, e.target.checked)}
                                   className="accent-teal-500 cursor-pointer shrink-0"
                                 />
-                                <span className="font-bold text-teal-400 text-xs truncate">{lead.leadCode}</span>
+                                <Link
+                                  to={`/crm/leads/${lead._id}`}
+                                  className="font-bold text-teal-400 hover:underline text-xs truncate inline-flex items-center gap-1 cursor-pointer"
+                                  title="Click to view full lead details"
+                                >
+                                  <span>{lead.leadCode}</span>
+                                  <FiArrowUpRight size={12} className="shrink-0 text-teal-500" />
+                                </Link>
                               </div>
                               <span className="text-[9px] text-[var(--crm-ink-faint)] shrink-0">
                                 {new Date(lead.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
@@ -2071,7 +2214,13 @@ export default function SalesManagerDashboard() {
                             {/* Customer & Division Info */}
                             <div className="flex justify-between items-start gap-2">
                               <div className="space-y-0.5 min-w-0">
-                                <div className="font-bold text-[var(--crm-heading)] text-sm truncate">{lead.customerName}</div>
+                                <Link
+                                  to={`/crm/leads/${lead._id}`}
+                                  className="font-bold text-[var(--crm-heading)] hover:text-teal-400 hover:underline text-sm truncate block cursor-pointer"
+                                  title="Click to view full lead details"
+                                >
+                                  {lead.customerName}
+                                </Link>
                                 <div className="text-[10px] text-[var(--crm-ink-faint)] truncate">{lead.companyName || 'Individual Inquiry'}</div>
                               </div>
                               <div className="flex flex-col gap-1 items-end shrink-0">
@@ -2094,6 +2243,12 @@ export default function SalesManagerDashboard() {
                                 <FiMail size={10} className="text-sky-400 shrink-0" />
                                 <span>{lead.emailMasked || lead.emailEncrypted || 'N/A'}</span>
                               </div>
+                            </div>
+
+                            {/* Target Timeline */}
+                            <div className="flex items-center justify-between text-[10px] bg-[var(--crm-bg-sunken)] p-2 rounded border border-[var(--crm-line)]">
+                              <span className="text-[var(--crm-ink-faint)] font-bold uppercase">Target Timeline:</span>
+                              {renderTargetTimelineCell(lead)}
                             </div>
 
                             {/* Executive Assignment controls */}

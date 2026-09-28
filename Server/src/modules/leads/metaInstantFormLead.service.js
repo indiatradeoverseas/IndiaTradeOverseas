@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const Lead = require('./lead.model');
 const LeadActivity = require('./leadActivity.model');
+const { generateFormattedLeadCode } = require('./leadCodeGenerator');
 const ControlledCampaign = require('../marketing/controlledCampaign.model');
 
 const {
@@ -1024,8 +1025,7 @@ async function createMetaInstantFormLeadRecord(input = {}) {
       matchedCreative
     );
 
-  const leadCode =
-    `LD-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  const leadCode = await generateFormattedLeadCode(input);
 
   const phoneHash = hashText(phone);
   const emailHash = email ? hashText(email) : '';

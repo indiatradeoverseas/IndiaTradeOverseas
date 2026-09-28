@@ -620,13 +620,13 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={() => setExpandedDivisions(prev => ({ ...prev, [gIdx]: !prev[gIdx] }))}
-                      className="flex items-center justify-between w-full pl-2 text-[#6D7886] text-[9px] tracking-widest font-mono font-bold uppercase hover:text-[#F2F4F7] transition-colors"
+                      className="flex items-center justify-between w-full pl-2 text-white hover:text-[#F2F4F7] text-[10px] tracking-widest font-mono font-bold uppercase transition-colors"
                       aria-expanded={expandedDivisions[gIdx]}
                     >
-                      <span>{group.groupLabel}</span>
+                      <span className="text-left break-words pr-2 text-white">{group.groupLabel}</span>
                       <FiChevronDown
                         size={12}
-                        className={`transition-transform duration-200 ${expandedDivisions[gIdx] ? 'rotate-180' : ''}`}
+                        className={`transition-transform duration-200 shrink-0 ${expandedDivisions[gIdx] ? 'rotate-180' : ''}`}
                       />
                     </button>
 
@@ -684,26 +684,89 @@ export default function Navbar() {
                   </Link>
                 </motion.div>
 
-                {!user && (
+                {!user ? (
                   <motion.div
                     variants={mobileMenuItem}
-                    className="grid grid-cols-2 gap-3 pt-1"
+                    className="space-y-3 pt-1"
                   >
-                    <Link
-                      to="/login"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] text-xs tracking-widest"
-                    >
-                      LOGIN
-                    </Link>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Link
+                        to="/login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="h-[48px] flex items-center justify-center border border-[#C5CBD3]/30 text-[#C5CBD3] hover:text-white font-semibold text-xs tracking-widest transition-colors"
+                      >
+                        LOGIN
+                      </Link>
 
-                    <Link
-                      to="/client-signup"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="h-[48px] flex items-center justify-center bg-[#2B3440] text-[#F2F4F7] font-semibold text-xs tracking-widest"
-                    >
-                      SIGN UP
-                    </Link>
+                      <Link
+                        to="/client-signup"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="h-[48px] flex items-center justify-center bg-[#2B3440] text-[#F2F4F7] hover:bg-[#1E2530] font-semibold text-xs tracking-widest transition-colors"
+                      >
+                        SIGN UP
+                      </Link>
+                    </div>
+
+                    <div className="text-center pt-1">
+                      <Link
+                        to="/employee-login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="text-[10px] text-[#6D7886] hover:text-[#C5CBD3] tracking-widest uppercase transition-colors"
+                      >
+                        Staff / Employee Login →
+                      </Link>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={mobileMenuItem}
+                    className="space-y-3 pt-2"
+                  >
+                    {/* User profile info bar */}
+                    <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#2B3440]/60 border border-[#C5CBD3]/20 rounded-[2px]">
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <FiUser size={15} className="text-amber-400 shrink-0" />
+                        <span className="text-xs text-[#F2F4F7] font-semibold tracking-wider truncate">
+                          {user?.fullName || user?.name || user?.email}
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-mono text-[#9CA3AF] uppercase tracking-widest shrink-0 ml-2">
+                        {user?.role || 'USER'}
+                      </span>
+                    </div>
+
+                    {/* Action buttons grid */}
+                    <div className="space-y-2">
+                      {!user?.employeeId?.startsWith('CL_') && (
+                        <Link
+                          to="/crm/dashboard"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="w-full h-[48px] flex items-center justify-center space-x-2 border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 font-semibold text-xs tracking-widest rounded-[2px] hover:bg-emerald-900/50 transition-colors"
+                        >
+                          <FiPackage size={14} />
+                          <span>DASHBOARD</span>
+                        </Link>
+                      )}
+
+                      {isAdmin && (
+                        <Link
+                          to="/crm/admin"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="w-full h-[48px] flex items-center justify-center space-x-2 border border-amber-500/40 bg-amber-950/40 text-amber-300 font-semibold text-xs tracking-widest rounded-[2px] hover:bg-amber-900/50 transition-colors"
+                        >
+                          <FiSettings size={14} />
+                          <span>ADMIN PANEL</span>
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={handleLogout}
+                        className="w-full h-[48px] flex items-center justify-center space-x-2 border border-red-500/40 bg-red-950/40 text-red-300 font-semibold text-xs tracking-widest rounded-[2px] hover:bg-red-900/50 transition-colors cursor-pointer"
+                      >
+                        <FiLogOut size={14} />
+                        <span>LOGOUT</span>
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </motion.div>

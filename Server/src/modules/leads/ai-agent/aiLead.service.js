@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 const Lead = require('../lead.model');
 const LeadActivity = require('../leadActivity.model');
+const { generateFormattedLeadCode } = require('../leadCodeGenerator');
 
 const {
   encryptText,
@@ -513,6 +514,7 @@ async function processAiLead(payload, actorId = null) {
   const timeline =
     cleanText(
       payload.timeline ||
+      payload.targetTimeline ||
       payload.purchaseTimeline ||
       payload.requiredDate,
       120
@@ -522,6 +524,7 @@ async function processAiLead(payload, actorId = null) {
   const targetDateRaw =
     payload.targetDate ||
     payload.requiredDate ||
+    payload.targetTimeline ||
     payload.timeline ||
     null;
 
@@ -783,13 +786,7 @@ async function processAiLead(payload, actorId = null) {
      IMMUTABLE LEAD / OPPORTUNITY ID
   ========================================================== */
 
-  const leadCode =
-    `LD-${Date.now()}-${crypto
-      .randomUUID()
-      .slice(
-        0,
-        8
-      )}`;
+  const leadCode = await generateFormattedLeadCode(payload);
 
 
   /* ==========================================================

@@ -371,7 +371,7 @@ export default function Careers() {
     return (
       <BuyerEntryGate
         theme={CAREERS_GATE_THEME}
-        requireOtp={true}
+        requireOtp={false}
         division="CAREERS"
         mascotSrc="/images/walking-man.png"
         onVerified={(activeId, activeToken, values) => {

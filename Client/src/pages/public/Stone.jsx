@@ -430,24 +430,9 @@ export default function Stone() {
   const handlePersonalDetailsSubmit = async (e) => {
     e.preventDefault();
     if (loadingQuickGate) return;
-
-    const {
-      fullName,
-      email,
-      mobile,
-      city,
-      state,
-      targetTimeline
-    } = personalDetails;
-
-    if (
-      !fullName?.trim() ||
-      !email?.trim() ||
-      !mobile?.trim() ||
-      !city?.trim() ||
-      !state?.trim() ||
-      !targetTimeline
-    ) {
+    const { fullName, email, mobile, city, state, targetTimeline } = personalDetails;
+    const effectiveTimeline = targetTimeline || 'Within 7 Days';
+    if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim()) {
       toast.dismiss();
       toast.error(
         'Please fill all required fields.',
@@ -508,9 +493,9 @@ export default function Stone() {
       formData.append('name', fullName.trim());
       formData.append('email', email.trim());
       formData.append('mobile', cleanMobile);
-      formData.append('city', city.trim());
-      formData.append('state', state.trim());
-      formData.append('targetTimeline', targetTimeline);
+      formData.append('city', city);
+      formData.append('state', state);
+      formData.append('targetTimeline', effectiveTimeline);
       formData.append('division', 'STONE');
       formData.append('registrationSource', 'QUICK_GATE');
 
@@ -2985,55 +2970,7 @@ export default function Stone() {
         )}
       </AnimatePresence>
 
-      {/* OTP Verification Modal */}
-      <AnimatePresence>
-        {showOtp && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
-            onClick={() => setShowOtp(false)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
-                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
-                  Verify OTP
-                </h3>
-                <button onClick={() => setShowOtp(false)}
-                  className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                  <FiX size={24} />
-                </button>
-              </div>
 
-              <form onSubmit={handleOtpVerify} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
-                <p className="text-sm text-gray-600">
-                  A 6‑digit code was sent to <strong>{personalDetails.email}</strong>.
-                </p>
-                {otpError && <p className="text-sm text-red-500">{otpError}</p>}
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Enter 6‑digit code"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 text-center text-2xl tracking-widest font-mono"
-                  autoComplete="one-time-code"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
-                  style={{ backgroundColor: STONE_GATE_THEME.accent, color: STONE_GATE_THEME.accentText }}
-                >
-                  <span>Verify & Continue</span>
-                  <FiArrowRight size={14} />
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Soft Gate Modal */}
       <AnimatePresence>
