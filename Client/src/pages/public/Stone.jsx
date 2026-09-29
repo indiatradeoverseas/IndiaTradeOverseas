@@ -2841,28 +2841,168 @@ export default function Stone() {
           )}
       </AnimatePresence>
 
-{/* Requirement Builder Modal */}
+{/* Requirement Builder Modal — Onion-style UI, Stone palette only */}
       <AnimatePresence>
         {showRequirementBuilder && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
-            onClick={() => setShowRequirementBuilder(false)}>
+          <div
+            className="stone-requirement-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-[#20262B]/80 backdrop-blur-sm overflow-y-auto"
+            onClick={() => setShowRequirementBuilder(false)}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full sm:max-w-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
-                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
-                  Build Your Stone Requirement
-                </h3>
-                <button onClick={() => setShowRequirementBuilder(false)}
-                  className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                  <FiX size={24} />
-                </button>
-              </div>
+              initial={{ opacity: 0, y: 30, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.97 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Build Your Stone Requirement"
+              className="stone-requirement-builder-modal relative w-full sm:max-w-[920px] max-h-[94dvh] sm:max-h-[calc(100vh-40px)] overflow-y-auto rounded-t-[22px] sm:rounded-[24px] border border-[#4A545E] shadow-2xl bg-gradient-to-br from-[#37424B] via-[#2B333A] to-[#20262B] text-[#F4F2EE]"
+              onClick={e => e.stopPropagation()}
+            >
+              <style>{`
+                /* =====================================================
+                   STONE REQUIREMENT BUILDER — ONION UI STRUCTURE
+                   UI ONLY. Existing StoneRequirementBuilder logic,
+                   validation, analytics, pricing and backend flow stay
+                   untouched.
+                   ===================================================== */
 
-              <div className="p-4 sm:p-6">
+                .stone-requirement-backdrop,
+                .stone-requirement-builder-modal {
+                  scrollbar-width: none;
+                  -ms-overflow-style: none;
+                }
+
+                .stone-requirement-backdrop::-webkit-scrollbar,
+                .stone-requirement-builder-modal::-webkit-scrollbar {
+                  display: none;
+                  width: 0;
+                  height: 0;
+                }
+
+                .stone-requirement-builder-modal .stone-requirement-builder-host {
+                  padding: 0 !important;
+                  background: transparent !important;
+                }
+
+                .stone-requirement-builder-modal .stone-requirement-builder-host > div {
+                  background: transparent !important;
+                  color: #F4F2EE !important;
+                }
+
+                /* The builder now owns the title, matching Onion.jsx.
+                   No second Stone title/header is rendered here. */
+                .stone-requirement-builder-modal .ito-rice-header h3 {
+                  color: #F4F2EE !important;
+                }
+
+                /* Stone palette for every builder surface. */
+                .stone-requirement-builder-modal .ito-stone-builder-active {
+                  background: linear-gradient(145deg,#37424B 0%,#2B333A 58%,#20262B 100%) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-kicker,
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-step.completed {
+                  color: #C5A059 !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-progress-track {
+                  background: rgba(244,242,238,.10) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-progress-fill {
+                  background: linear-gradient(90deg,#37424B,#C5A059) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-step.active {
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button[class*="border-2"] {
+                  border-color: rgba(220,204,180,.18) !important;
+                  background: rgba(255,255,255,.035) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button[class*="border-2"].border-blue-600 {
+                  border-color: rgba(197,160,89,.85) !important;
+                  background: rgba(197,160,89,.12) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-blue-600 {
+                  color: #C5A059 !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .bg-blue-100 {
+                  background: rgba(197,160,89,.10) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button.bg-blue-600,
+                .stone-requirement-builder-modal .ito-stone-builder-active button.bg-emerald-600 {
+                  background: #C5A059 !important;
+                  color: #20262B !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button.border-gray-300 {
+                  border-color: rgba(220,204,180,.18) !important;
+                  background: rgba(255,255,255,.05) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active input,
+                .stone-requirement-builder-modal .ito-stone-builder-active select {
+                  border-color: rgba(220,204,180,.20) !important;
+                  background: rgba(0,0,0,.20) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-gray-500,
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-gray-600,
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-gray-700 {
+                  color: rgba(244,242,238,.58) !important;
+                }
+
+                .stone-requirement-close {
+                  position: absolute;
+                  top: 20px;
+                  right: 20px;
+                  z-index: 50;
+                  width: 42px;
+                  height: 42px;
+                  display: grid;
+                  place-items: center;
+                  border: 1px solid rgba(220,204,180,.18);
+                  border-radius: 50%;
+                  background: rgba(255,255,255,.055);
+                  color: #F4F2EE;
+                  cursor: pointer;
+                  transition: background .2s ease, transform .2s ease;
+                }
+
+                .stone-requirement-close:hover {
+                  background: rgba(255,255,255,.12);
+                  transform: rotate(4deg);
+                }
+
+                @media (max-width: 700px) {
+                  .stone-requirement-close {
+                    top: 14px;
+                    right: 14px;
+                  }
+                }
+              `}</style>
+
+              <button
+                type="button"
+                className="stone-requirement-close"
+                aria-label="Close Stone requirement builder"
+                onClick={() => setShowRequirementBuilder(false)}
+              >
+                <FiX size={24} />
+              </button>
+
+              <div className="stone-requirement-builder-host">
                 <StoneRequirementBuilder onComplete={handleRequirementComplete} />
               </div>
             </motion.div>

@@ -2272,11 +2272,11 @@ export default function Prakriti() {
 
                         <div className="absolute inset-0 z-0 pointer-events-none">
 
-                            <img
+                            {/* <img
                                 src="/images/Prakriti Image.jpeg"
                                 alt="Prakriti tea packaging"
                                 className="w-full h-full object-cover object-center opacity-40 sm:opacity-100"
-                            />
+                            /> */}
 
                             <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-[#014B3B]/85 via-[#0B3D2E]/80 to-[#014B3B]/75 sm:from-[#014B3B]/80 sm:via-[#0B3D2E]/70 sm:to-[#014B3B]/50 z-1" />
 
@@ -3732,28 +3732,61 @@ export default function Prakriti() {
 
             `}</style>
 
-{/* Requirement Builder Modal */}
+{/* Requirement Builder Modal — UI ONLY */}
             <AnimatePresence>
                 {showRequirementBuilder && (
-                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
-                        onClick={() => setShowRequirementBuilder(false)}>
+                    <div
+                        className="tea-requirement-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#021b14]/80 backdrop-blur-sm overflow-hidden"
+                        onClick={() => setShowRequirementBuilder(false)}
+                    >
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.97, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full sm:max-w-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
-                            onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
-                                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
-                                    Build Your Tea Requirement
-                                </h3>
-                                <button onClick={() => setShowRequirementBuilder(false)}
-                                    className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                                    <FiX size={24} />
-                                </button>
-                            </div>
+                            exit={{ opacity: 0, scale: 0.97, y: 20 }}
+                            transition={{ duration: 0.24, ease: "easeOut" }}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Build Your Tea Requirement"
+                            className="tea-requirement-modal relative w-full sm:max-w-4xl max-h-[96dvh] sm:max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-3xl shadow-2xl bg-gradient-to-br from-[#0F2E24] via-[#0B3D2E] to-[#004B3B] border border-[#50C878]/30"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <style>{`
+                                /* UI ONLY: hide the native scrollbar while preserving scroll */
+                                .tea-requirement-backdrop,
+                                .tea-requirement-modal {
+                                    scrollbar-width: none;
+                                    -ms-overflow-style: none;
+                                }
 
-                            <div className="p-4 sm:p-6">
+                                .tea-requirement-backdrop::-webkit-scrollbar,
+                                .tea-requirement-modal::-webkit-scrollbar {
+                                    display: none;
+                                    width: 0;
+                                    height: 0;
+                                }
+
+                                /* UI ONLY: keep the modal close button clear of the builder step counter */
+                                .tea-requirement-modal .ito-tea-builder-active > .mb-8 > .flex.items-center.justify-between {
+                                    padding-right: 58px !important;
+                                }
+
+                                @media (max-width: 639px) {
+                                    .tea-requirement-modal .ito-tea-builder-active > .mb-8 > .flex.items-center.justify-between {
+                                        padding-right: 0 !important;
+                                    }
+                                }
+                            `}</style>
+
+                            <button
+                                type="button"
+                                onClick={() => setShowRequirementBuilder(false)}
+                                aria-label="Close tea requirement builder"
+                                className="absolute right-3 top-3 sm:right-5 sm:top-5 z-30 p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15 transition-all"
+                            >
+                                <FiX size={24} />
+                            </button>
+
+                            <div className="p-0">
                                 <TeaRequirementBuilder onComplete={handleRequirementComplete} />
                             </div>
                         </motion.div>

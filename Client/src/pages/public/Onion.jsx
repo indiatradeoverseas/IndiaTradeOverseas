@@ -5392,6 +5392,59 @@ export default function Onion() {
             width: 58% !important;
           }
         }
+
+
+        /* PACKAGING CARDS — centered content */
+        .ito-onion-page .ito-packaging .ito-pack-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .ito-onion-page .ito-packaging .ito-pack-card small,
+        .ito-onion-page .ito-packaging .ito-pack-card h3,
+        .ito-onion-page .ito-packaging .ito-pack-card .ito-pack-note {
+          width: 100%;
+          text-align: center;
+        }
+
+        .ito-onion-page .ito-packaging .ito-pack-card .ito-bullet-list {
+          width: fit-content;
+          max-width: 100%;
+          margin: 22px auto 0;
+          padding: 0;
+          text-align: left;
+        }
+
+        .ito-onion-page .ito-packaging .ito-pack-card .ito-bullet-list li {
+          width: fit-content;
+          max-width: 100%;
+          margin: 7px auto;
+          padding-left: 0;
+          text-align: left;
+        }
+
+        .ito-onion-page .ito-packaging .ito-pack-card .ito-bullet-list li::before {
+          position: static;
+          display: inline-block;
+          margin-right: 9px;
+          vertical-align: middle;
+          transform: translateY(-1px);
+        }
+
+        @media (max-width: 600px) {
+          .ito-onion-page .ito-packaging .ito-pack-card .ito-bullet-list {
+            width: 100%;
+            text-align: center;
+          }
+
+          .ito-onion-page .ito-packaging .ito-pack-card .ito-bullet-list li {
+            width: 100%;
+            text-align: center;
+          }
+        }
+
       `}</style>
 
       {/* HERO */}
