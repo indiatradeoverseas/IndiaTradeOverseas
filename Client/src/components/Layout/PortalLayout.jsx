@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut, FiCoffee } from 'react-icons/fi';
 import Sidebar from './Sidebar';
@@ -13,11 +14,14 @@ import toast from 'react-hot-toast';
 
 export default function PortalLayout({ children }) {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('crm-theme') || 'dark');
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const isTransportManagerRoute = location.pathname === '/crm/transport/manager' || location.pathname === '/transport/manager';
+  const effectiveTheme = theme;
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -152,13 +156,13 @@ export default function PortalLayout({ children }) {
 
   return (
     <div
-      className={`crm-portal min-h-screen antialiased overflow-x-hidden ${theme === 'light' ? 'light-theme' : ''}`}
+      className={`crm-portal min-h-screen antialiased overflow-x-hidden ${effectiveTheme === 'light' ? 'light-theme' : ''} ${isTransportManagerRoute ? 'transport-shell-layout' : ''}`}
       style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)', fontFamily: 'var(--crm-font-body)' }}
     >
 
       {/* MOBILE TOP BAR */}
       <div
-        className="md:hidden fixed top-0 left-0 right-0 z-[52] border-b shadow-sm backdrop-blur-xl"
+        className={`md:hidden fixed top-0 left-0 right-0 z-[52] border-b shadow-sm backdrop-blur-xl ${isTransportManagerRoute ? 'transport-mobile-topbar' : ''}`}
         style={{ background: 'color-mix(in srgb, var(--crm-nav-bg) 94%, transparent)', borderColor: 'var(--crm-line)' }}
       >
         <div className="flex min-h-[54px] items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2">
@@ -184,22 +188,25 @@ export default function PortalLayout({ children }) {
           </button>
 
           <div
-            className="min-w-0 flex-1 text-center px-1"
+            className="min-w-0 flex-1 text-left sm:text-center px-1 overflow-hidden"
             style={{ fontFamily: 'var(--crm-font-display)' }}
           >
-            <span className="font-sans font-bold tracking-wider text-[11px] sm:text-[13px] uppercase text-white whitespace-nowrap block">
+            <span
+              className="font-sans font-extrabold tracking-wider text-[10px] sm:text-[13px] uppercase whitespace-nowrap block overflow-hidden text-ellipsis"
+              style={{ color: 'var(--crm-heading)' }}
+            >
               India Trade Center
             </span>
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
+          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-1.5">
             {user && (
-              <div className="flex items-center gap-1 font-mono shrink-0">
+              <div className="transport-attendance-actions flex items-center gap-1 font-mono shrink-0">
                 {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer whitespace-nowrap shadow-sm"
+                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer whitespace-nowrap shadow-xs"
                   >
                     In
                   </button>
@@ -210,24 +217,24 @@ export default function PortalLayout({ children }) {
                       <button
                         onClick={handleLunchStart}
                         disabled={loadingAttendance}
-                        className="bg-amber-950/90 hover:bg-amber-900 text-amber-300 border border-amber-800/40 text-[8px] font-bold uppercase px-1.5 py-1 rounded cursor-pointer flex items-center gap-0.5 whitespace-nowrap"
+                        className=" text-amber-300 border border-amber-800/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer flex items-center gap-0.5 whitespace-nowrap shadow-xs"
                       >
-                        <FiCoffee size={9} /> Lunch
+                        <FiCoffee size={8} /> Lunch
                       </button>
                     )}
                     {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
                       <button
                         onClick={handleLunchEnd}
                         disabled={loadingAttendance}
-                        className="bg-[#1f170d] text-[#f5c46c] border border-[#c89a54] text-[8px] font-bold uppercase px-1.5 py-1 rounded cursor-pointer animate-pulse flex items-center gap-0.5 whitespace-nowrap"
+                        className="bg-[#1f170d] text-[#f5c46c] border border-[#c89a54] text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer animate-pulse flex items-center gap-0.5 whitespace-nowrap shadow-xs"
                       >
-                        <FiCoffee size={9} /> {formatElapsed(lunchElapsed)}
+                        <FiCoffee size={8} /> {formatElapsed(lunchElapsed)}
                       </button>
                     )}
                     <button
                       onClick={handleCheckOut}
                       disabled={loadingAttendance}
-                      className="bg-rose-950/90 hover:bg-rose-900 text-rose-400 border border-rose-900/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer whitespace-nowrap shadow-sm"
+                      className=" text-rose-400 border border-rose-900/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer whitespace-nowrap shadow-xs"
                     >
                       Out
                     </button>
@@ -237,7 +244,7 @@ export default function PortalLayout({ children }) {
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-bold uppercase px-2 py-1 rounded cursor-pointer whitespace-nowrap shadow-sm"
+                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer whitespace-nowrap shadow-xs"
                   >
                     In
                   </button>
@@ -251,7 +258,7 @@ export default function PortalLayout({ children }) {
               style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
               aria-label="Toggle Theme"
             >
-              {theme === 'light' ? <FiMoon size={15} /> : <FiSun size={15} />}
+              {effectiveTheme === 'light' ? <FiMoon size={15} /> : <FiSun size={15} />}
             </button>
             <NotificationDropdown compact />
             <VoiceStatusPill compact />
@@ -263,9 +270,8 @@ export default function PortalLayout({ children }) {
 
         {/* PORTAL SIDEBAR BRAND CONTEXT CONTAINER */}
         <div
-          className={`fixed inset-y-0 left-0 z-[60] w-64 sm:w-72 transform border-r transition-all duration-300 ease-in-out shadow-2xl md:sticky md:top-0 md:h-screen md:flex-shrink-0 md:translate-x-0 md:shadow-none ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+          className={`fixed inset-y-0 left-0 z-[60] w-64 sm:w-72 transform border-r transition-all duration-300 ease-in-out shadow-2xl md:sticky md:top-0 md:h-screen md:flex-shrink-0 md:translate-x-0 md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
           style={{ borderColor: 'var(--crm-line)' }}
         >
           <Sidebar
@@ -300,7 +306,7 @@ export default function PortalLayout({ children }) {
             style={{ borderColor: 'var(--crm-line)', background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)' }}
           >
             <div className="min-w-0">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white">
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-heading)' }}>
                 India Trade Center
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
@@ -310,86 +316,86 @@ export default function PortalLayout({ children }) {
             </div>
 
             <div className="flex shrink-0 items-center gap-3">
-            {user && (
-              <div className="flex items-center gap-2 mr-4 font-mono">
-                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
-                  <button
-                    onClick={handleCheckIn}
-                    disabled={loadingAttendance}
-                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                  >
-                    <FiLogIn size={12} /> Check In
-                  </button>
-                )}
-
-                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
-                  <>
-                    {/* Lunch Break Controls */}
-                    {!todayAttendance.lunchStartAt && (
-                      <button
-                        onClick={handleLunchStart}
-                        disabled={loadingAttendance}
-                        className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                        title="Start Lunch Break"
-                      >
-                        <FiCoffee size={12} /> Lunch Break
-                      </button>
-                    )}
-
-                    {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
-                      <button
-                        onClick={handleLunchEnd}
-                        disabled={loadingAttendance}
-                        className="flex items-center gap-1.5 bg-[#1f170d] hover:bg-[#2a1f11] border border-[#c89a54] text-[#f5c46c] text-[10px] font-mono font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-md animate-pulse disabled:opacity-50"
-                        title="Click to end lunch break and return to work"
-                      >
-                        <FiCoffee size={12} /> BACK TO WORK <span className="font-bold text-amber-200">{formatElapsed(lunchElapsed)}</span>
-                      </button>
-                    )}
-
-                    {todayAttendance.lunchEndAt && (
-                      <span
-                        className="text-[10px] font-mono text-amber-300/90 bg-amber-950/40 border border-amber-900/40 px-2.5 py-1 rounded flex items-center gap-1"
-                        title={`Lunch break taken: ${todayAttendance.lunchDurationMinutes || 0} min`}
-                      >
-                        <FiCoffee size={10} /> Lunch ({todayAttendance.lunchDurationMinutes || 0}m)
-                      </span>
-                    )}
-
-                    {/* Check Out Button */}
+              {user && (
+                <div className="flex items-center gap-2 mr-4 font-mono">
+                  {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                     <button
-                      onClick={handleCheckOut}
+                      onClick={handleCheckIn}
                       disabled={loadingAttendance}
-                      className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
                     >
-                      <FiLogOut size={12} /> Check Out
+                      <FiLogIn size={12} /> Check In
                     </button>
-                  </>
-                )}
+                  )}
 
-                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
-                  <button
-                    onClick={handleCheckIn}
-                    disabled={loadingAttendance}
-                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                    title="Click to check in again"
-                  >
-                    <FiLogIn size={12} /> Check In
-                  </button>
-                )}
-              </div>
-            )}
-            <NotificationDropdown />
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-1.5 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] transition cursor-pointer text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]"
-              title="Toggle Theme"
-            >
-              {theme === 'light' ? <FiMoon size={13} /> : <FiSun size={13} />}
-            </button>
-            <VoiceStatusPill />
-            <CommandPalette />
+                  {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
+                    <>
+                      {/* Lunch Break Controls */}
+                      {!todayAttendance.lunchStartAt && (
+                        <button
+                          onClick={handleLunchStart}
+                          disabled={loadingAttendance}
+                          className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                          title="Start Lunch Break"
+                        >
+                          <FiCoffee size={12} /> Lunch Break
+                        </button>
+                      )}
+
+                      {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
+                        <button
+                          onClick={handleLunchEnd}
+                          disabled={loadingAttendance}
+                          className="flex items-center gap-1.5 bg-[#1f170d] hover:bg-[#2a1f11] border border-[#c89a54] text-[#f5c46c] text-[10px] font-mono font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-md animate-pulse disabled:opacity-50"
+                          title="Click to end lunch break and return to work"
+                        >
+                          <FiCoffee size={12} /> BACK TO WORK <span className="font-bold text-amber-200">{formatElapsed(lunchElapsed)}</span>
+                        </button>
+                      )}
+
+                      {todayAttendance.lunchEndAt && (
+                        <span
+                          className="text-[10px] font-mono text-amber-300/90 bg-amber-950/40 border border-amber-900/40 px-2.5 py-1 rounded flex items-center gap-1"
+                          title={`Lunch break taken: ${todayAttendance.lunchDurationMinutes || 0} min`}
+                        >
+                          <FiCoffee size={10} /> Lunch ({todayAttendance.lunchDurationMinutes || 0}m)
+                        </span>
+                      )}
+
+                      {/* Check Out Button */}
+                      <button
+                        onClick={handleCheckOut}
+                        disabled={loadingAttendance}
+                        className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                      >
+                        <FiLogOut size={12} /> Check Out
+                      </button>
+                    </>
+                  )}
+
+                  {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
+                    <button
+                      onClick={handleCheckIn}
+                      disabled={loadingAttendance}
+                      className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
+                      title="Click to check in again"
+                    >
+                      <FiLogIn size={12} /> Check In
+                    </button>
+                  )}
+                </div>
+              )}
+              <NotificationDropdown />
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="p-1.5 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] transition cursor-pointer text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]"
+                title="Toggle Theme"
+              >
+                {effectiveTheme === 'light' ? <FiMoon size={13} /> : <FiSun size={13} />}
+              </button>
+              <VoiceStatusPill />
+              <CommandPalette />
             </div>
           </div>
 

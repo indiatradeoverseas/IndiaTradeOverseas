@@ -20,18 +20,18 @@ import { API_URL, getFileUrl } from '../../config/env';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import CallRecordingModal from '../../components/crm/CallRecordingModal';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend 
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
 } from 'recharts';
 
 // Staggered animation configurations
@@ -136,7 +136,7 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
   // 4. Location / Destination extraction
   let extractedLocation = '';
   const locExplicitMatch = chunk.match(/(?:location|loc|destination|deliver(?:y)?(?:\s*(?:to|at))?|place|address|site|city|state|discharge)\s*[:\-]+\s*([^\n\r,;|]+)/i) ||
-                           chunk.match(/(?:location|loc|destination|site)\s*[:\s]+([^\n\r,;|]+)/i);
+    chunk.match(/(?:location|loc|destination|site)\s*[:\s]+([^\n\r,;|]+)/i);
   if (locExplicitMatch && locExplicitMatch[1]) {
     const locCand = locExplicitMatch[1].trim();
     if (!['stone', 'coal', 'rice', 'tea', 'mobile', 'phone', 'urgent'].includes(locCand.toLowerCase()) && locCand.length >= 2) {
@@ -163,7 +163,7 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
       extractedTimeline = relativeTimelineMatch[0].trim();
     } else {
       const dateMatch = cleanChunk.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
-                        cleanChunk.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
+        cleanChunk.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
       if (dateMatch) {
         extractedTimeline = dateMatch[0].trim();
       }
@@ -189,8 +189,8 @@ function extractDetailsFromChunk(chunk, fallbackPhone) {
     extractedValuation = valExplicitMatch[1].trim();
   } else {
     const valPatternMatch = cleanChunk.match(/(?:budget|valuation|price|total|value|amount|cost|rate|quote|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k|\/ton|\/cft|\/mt|\/truck))?)/i) ||
-                             cleanChunk.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
-                             cleanChunk.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
+      cleanChunk.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
+      cleanChunk.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
     if (valPatternMatch) {
       extractedValuation = (valPatternMatch[1] || valPatternMatch[0]).trim();
     }
@@ -265,17 +265,17 @@ function parseStructuredLeadTemplates(textToParse) {
     }
 
     const dateMatch = block.match(/(?:Timeline|Target|Delivery|Date|Urgency|Frequency)\s*[:\-]+\s*([^\n\r]+)/i) ||
-                      block.match(/\b(?:next\s*month|daily\s*basis|daily|after\s*few\s*days|regular\s*basis|after\s*15\s*days|2-3\s*days|\d+-\d+\s*days|\d+\s*days|after\s*1\s*month|after\s*2\s*months|after\s*\d+\s*months?|every\s*week|weekly\s*basis|weekly|monthly|urgent|immediate|asap|this\s*week|next\s*week|kal\s*tak)\b/i) ||
-                      block.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
-                      block.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
+      block.match(/\b(?:next\s*month|daily\s*basis|daily|after\s*few\s*days|regular\s*basis|after\s*15\s*days|2-3\s*days|\d+-\d+\s*days|\d+\s*days|after\s*1\s*month|after\s*2\s*months|after\s*\d+\s*months?|every\s*week|weekly\s*basis|weekly|monthly|urgent|immediate|asap|this\s*week|next\s*week|kal\s*tak)\b/i) ||
+      block.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/) ||
+      block.match(/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i);
     const targetDate = dateMatch ? (dateMatch[1] || dateMatch[0]).trim() : '';
 
     const valMatch = block.match(/(?:Valuation|Budget|Price|Rate|Total|Value|Amount|Cost|Deal\s*Value|Quote)\s*[:\-]+\s*([^\n\r]+)/i);
     let leadValue = valMatch && valMatch[1] ? valMatch[1].trim() : '';
     if (!leadValue) {
       const valPatternMatch = block.match(/(?:budget|valuation|price|total|value|amount|cost|rate|quote|rs\.?|₹)[:\s]*([₹\d,.]+(?:\s*(?:lakhs?|lacs?|crores?|cr|k|\/ton|\/cft|\/mt|\/truck))?)/i) ||
-                               block.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
-                               block.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
+        block.match(/(?:₹|rs\.?)\s*([\d,.]+)/i) ||
+        block.match(/(\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|cr|k))\b/i);
       if (valPatternMatch) leadValue = (valPatternMatch[1] || valPatternMatch[0]).trim();
     }
 
@@ -352,8 +352,8 @@ function parseWhatsAppChatText(rawText) {
       processedPhoneSet.add(phoneTen);
 
       const relevantMsgs = messages.filter(m => m.sender.includes(phoneTen) || m.text.includes(phoneTen));
-      const contextText = relevantMsgs.length > 0 
-        ? relevantMsgs.map(m => `${m.sender}: ${m.text}`).join('\n') 
+      const contextText = relevantMsgs.length > 0
+        ? relevantMsgs.map(m => `${m.sender}: ${m.text}`).join('\n')
         : textToParse;
 
       const extracted = extractDetailsFromChunk(contextText, fullPhone);
@@ -794,14 +794,14 @@ export default function Leads() {
   });
 
   const stages = [
-    'NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 
-    'REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_REQUIRED', 
-    'QUOTATION_SENT', 'QUOTATION_APPROVED', 'NEGOTIATION', 'SAMPLE_SENT', 
-    'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'PO_RECEIVED', 'ORDER_CONFIRMED', 
+    'NEW_LEAD', 'ASSIGNED', 'CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP',
+    'REQUIREMENT_CAPTURED', 'REQUIREMENT_RECEIVED', 'QUOTATION_REQUIRED',
+    'QUOTATION_SENT', 'QUOTATION_APPROVED', 'NEGOTIATION', 'SAMPLE_SENT',
+    'PRICE_DISCUSSION', 'PAYMENT_DISCUSSION', 'PO_RECEIVED', 'ORDER_CONFIRMED',
     'DISPATCH_PENDING', 'PAYMENT_PENDING', 'CLOSED_WON', 'CLOSED_LOST'
   ];
 
-  const isManagerOrAdmin = 
+  const isManagerOrAdmin =
     ['ADMIN', 'MANAGER', 'SALES_MANAGER', 'HR_MANAGER', 'FOUNDER', 'CEO', 'SUPER_ADMIN', 'CO_FOUNDER'].includes((user?.role || '').toUpperCase()) ||
     (user?.role && user.role.toUpperCase().endsWith('_MANAGER')) ||
     (user?.role && user.role.toLowerCase().includes('manager')) ||
@@ -953,7 +953,7 @@ export default function Leads() {
         if (trialRes && trialRes.success) {
           const trialUsersList = trialRes.data?.users || [];
           const activeTrial = trialUsersList.filter(u => u.status === 'ACTIVE' || u.isApproved);
-          
+
           const seen = new Set(filteredRegular.map(e => String(e._id || e.employeeId || '')));
           activeTrial.forEach(u => {
             const uId = String(u._id || u.trialId || '');
@@ -1358,7 +1358,7 @@ export default function Leads() {
           }
           const worksheet = workbook.Sheets[firstSheetName];
           const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-          parsed = rawRows.map(row => 
+          parsed = rawRows.map(row =>
             Array.isArray(row) ? row.map(cell => cell !== null && cell !== undefined ? String(cell) : '') : []
           );
         } else {
@@ -1444,7 +1444,7 @@ export default function Leads() {
           else if (p.includes('COLD')) p = 'COLD';
           else if (importDefaultPriority !== 'ALL') p = importDefaultPriority;
           else p = '';
-          
+
           if (p) leadObj.priority = p;
           else delete leadObj.priority;
         }
@@ -1487,7 +1487,7 @@ export default function Leads() {
 
   // Bulk Selection Helpers
   const handleSelectLead = (leadId) => {
-    setSelectedLeadIds(prev => 
+    setSelectedLeadIds(prev =>
       prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId]
     );
   };
@@ -1544,16 +1544,9 @@ export default function Leads() {
     setDeletingLead(true);
     try {
       if (deleteConfirmLead === 'BULK') {
-        let successCount = 0;
-        for (const id of selectedLeadIds) {
-          try {
-            await leadsApi.deleteLead(id);
-            successCount++;
-          } catch (err) {
-            console.error('Failed to delete lead:', id, err);
-          }
-        }
-        toast.success(`Successfully deleted ${successCount} leads!`);
+        const res = await leadsApi.deleteLeadsBulk(selectedLeadIds);
+        const deletedCount = Number(res?.data?.deletedCount ?? res?.deletedCount ?? 0);
+        toast.success(`Successfully deleted ${deletedCount} leads!`);
         setSelectedLeadIds([]);
       } else {
         const leadId = typeof deleteConfirmLead === 'object' ? deleteConfirmLead._id : deleteConfirmLead;
@@ -1633,7 +1626,7 @@ export default function Leads() {
 
     if (filterPriority !== 'ALL') {
       const pUpper = (lead.priority || 'WARM').toUpperCase();
-      const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !completedStages.includes((lead.stage || '').toUpperCase());
+      const isDateExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0))) && !completedStages.includes((lead.stage || '').toUpperCase());
 
       if (filterPriority === 'DEAD') {
         if (pUpper !== 'DEAD' && !isDateExpired) return false;
@@ -1884,24 +1877,24 @@ export default function Leads() {
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto font-sans">
           {/* Table Badge */}
-        
+
 
           <DownloadButton
             action={handleExportLeads}
             className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm transition-all disabled:cursor-default"
             icon={FiDownload}
             iconSize={11}
-           
+
             busyLabel="Exporting..."
             doneLabel="Exported"
           />
 
           {isManagerOrAdmin && (
-            <button 
-              onClick={() => setShowImportModal(true)} 
+            <button
+              onClick={() => setShowImportModal(true)}
               className="bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer"
             >
-              <FiUpload size={11} /> 
+              <FiUpload size={11} />
             </button>
           )}
 
@@ -1927,7 +1920,7 @@ export default function Leads() {
           </button>
 
           <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm">
-            <FiPlus size={12} /> 
+            <FiPlus size={12} />
           </button>
         </div>
       </motion.div>
@@ -1942,31 +1935,28 @@ export default function Leads() {
         <div className="flex flex-wrap items-center gap-2 font-sans">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-              dateFilterMode === 'ALL'
+            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'ALL'
                 ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
                 : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-            }`}
+              }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-              dateFilterMode === 'TODAY'
+            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'TODAY'
                 ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
                 : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-            }`}
+              }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${
-              dateFilterMode === 'YESTERDAY'
+            className={`px-3 py-1.5 rounded-sm text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'YESTERDAY'
                 ? 'bg-cyan-600 text-white border border-cyan-400 font-bold shadow'
                 : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-            }`}
+              }`}
           >
             Yesterday
           </button>
@@ -1995,7 +1985,7 @@ export default function Leads() {
         </div>
 
         <div className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
-          Showing: <strong className="text-teal-600 dark:text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          Showing: <strong className="text-teal-600 dark:text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong>
           &bull; ({getFilteredByDate(leads).length} Leads Matched)
         </div>
       </motion.div>
@@ -2005,7 +1995,7 @@ export default function Leads() {
 
         {/* Module 4: Sales Performance Metrics & Graph Analytics Section */}
         <motion.div variants={blockVariants} className="space-y-4 font-sans">
-          
+
           {/* Header Controls for Analytics & Graph */}
           <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--crm-bg-raised)] p-3 border border-[var(--crm-line)] rounded-sm">
             <div className="flex items-center gap-2">
@@ -2023,31 +2013,28 @@ export default function Leads() {
                 <div className="flex items-center bg-[var(--crm-bg-sunken)] p-0.5 rounded border border-[var(--crm-line)]">
                   <button
                     onClick={() => setGraphViewMode('BAR')}
-                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
-                      graphViewMode === 'BAR'
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${graphViewMode === 'BAR'
                         ? 'bg-cyan-600 text-white shadow-sm'
                         : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                    }`}
+                      }`}
                   >
-                    📊 
+                    📊
                   </button>
                   <button
                     onClick={() => setGraphViewMode('PIE')}
-                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
-                      graphViewMode === 'PIE'
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${graphViewMode === 'PIE'
                         ? 'bg-cyan-600 text-white shadow-sm'
                         : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                    }`}
+                      }`}
                   >
-                    🥧 
+                    🥧
                   </button>
                   <button
                     onClick={() => setGraphViewMode('ALL')}
-                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${
-                      graphViewMode === 'ALL'
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded transition cursor-pointer ${graphViewMode === 'ALL'
                         ? 'bg-cyan-600 text-white shadow-sm'
                         : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                    }`}
+                      }`}
                   >
                     📈 Both Graphs
                   </button>
@@ -2065,7 +2052,7 @@ export default function Leads() {
 
           {/* 7 Core Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            
+
             {/* 1. Active Pipeline */}
             <div className="p-3 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm hover:border-cyan-500/50 transition">
               <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold block mb-1">
@@ -2170,7 +2157,7 @@ export default function Leads() {
                 className="overflow-hidden"
               >
                 <div className={`grid gap-4 ${graphViewMode === 'ALL' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-                  
+
                   {/* BAR CHART: Pipeline Stage Valuation */}
                   {(graphViewMode === 'BAR' || graphViewMode === 'ALL') && (
                     <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-sm">
@@ -2296,80 +2283,70 @@ export default function Leads() {
           <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
             <button
               onClick={() => setLeadTab('ALL')}
-              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
-                leadTab === 'ALL'
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'ALL'
                   ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               <span>All Lead</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                leadTab === 'ALL' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${leadTab === 'ALL' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+                }`}>
                 {leads.length}
               </span>
             </button>
 
             <button
               onClick={() => setLeadTab('WON_DELIVERED')}
-              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
-                leadTab === 'WON_DELIVERED'
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'WON_DELIVERED'
                   ? 'bg-emerald-600 text-white border-emerald-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               <span>DEAL WON</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                leadTab === 'WON_DELIVERED' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${leadTab === 'WON_DELIVERED' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+                }`}>
                 {leads.filter(l => isWonOrDelivered(l.stage)).length}
               </span>
             </button>
 
             <button
               onClick={() => setLeadTab('ORDER_CONFIRM')}
-              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
-                leadTab === 'ORDER_CONFIRM'
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'ORDER_CONFIRM'
                   ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               <span>order Confirm</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                leadTab === 'ORDER_CONFIRM' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${leadTab === 'ORDER_CONFIRM' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+                }`}>
                 {leads.filter(l => isOrderConfirmedStage(l.stage)).length}
               </span>
             </button>
 
             <button
               onClick={() => setLeadTab('NEW_LEAD')}
-              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
-                leadTab === 'NEW_LEAD'
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'NEW_LEAD'
                   ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               <span>New Lead</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                leadTab === 'NEW_LEAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${leadTab === 'NEW_LEAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+                }`}>
                 {leads.filter(l => isNewOrAssignedLead(l.stage)).length}
               </span>
             </button>
 
             <button
               onClick={() => setLeadTab('WORKLOAD')}
-              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
-                leadTab === 'WORKLOAD'
+              className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'WORKLOAD'
                   ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               <span>👥 Employee Workload</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                leadTab === 'WORKLOAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${leadTab === 'WORKLOAD' ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-300 text-blue-950 border border-blue-400/50'
+                }`}>
                 {executiveWorkloadSummary.list.length} Members
               </span>
             </button>
@@ -2409,17 +2386,15 @@ export default function Leads() {
             {isManagerOrAdmin && (
               <button
                 onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
-                className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
-                  filterAssignee === 'UNASSIGNED'
+                className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${filterAssignee === 'UNASSIGNED'
                     ? 'bg-amber-600 text-white border-amber-700 font-black shadow-md'
                     : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200 font-black'
-                }`}
+                  }`}
               >
                 <FiAlertCircle size={14} className={filterAssignee === 'UNASSIGNED' ? 'text-white' : 'text-amber-600 dark:text-amber-400'} />
                 <span>❓ Unassigned Pool</span>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
-                  filterAssignee === 'UNASSIGNED' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'
-                }`}>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${filterAssignee === 'UNASSIGNED' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'
+                  }`}>
                   {executiveWorkloadSummary.unassigned.totalCount} Leads
                 </span>
               </button>
@@ -2428,17 +2403,15 @@ export default function Leads() {
             {/* Logged-in User Pill */}
             <button
               onClick={() => setFilterAssignee(filterAssignee === 'MY' ? 'ALL' : 'MY')}
-              className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
-                filterAssignee === 'MY'
+              className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${filterAssignee === 'MY'
                   ? 'bg-emerald-600 text-white border-emerald-700 font-black shadow-md'
                   : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 font-black'
-              }`}
+                }`}
             >
               <FiUser size={14} className={filterAssignee === 'MY' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'} />
               <span>👤 Assigned to Me</span>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
-                filterAssignee === 'MY' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'
-              }`}>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${filterAssignee === 'MY' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'
+                }`}>
                 {myLeadsCount} Leads
               </span>
             </button>
@@ -2450,17 +2423,15 @@ export default function Leads() {
                 <button
                   key={emp.id}
                   onClick={() => setFilterAssignee(isSelected ? 'ALL' : emp.id)}
-                  className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${
-                    isSelected
+                  className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${isSelected
                       ? 'bg-cyan-600 text-white border-cyan-700 font-black shadow-md'
                       : 'bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-200 border-sky-300 dark:border-sky-700 hover:bg-sky-200 font-black'
-                  }`}
+                    }`}
                 >
                   <FiUserCheck size={14} className={isSelected ? "text-white" : "text-sky-600 dark:text-sky-400"} />
                   <span>{emp.name}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
-                    isSelected ? 'bg-white/25 text-white' : 'bg-cyan-600 text-white'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${isSelected ? 'bg-white/25 text-white' : 'bg-cyan-600 text-white'
+                    }`}>
                     {emp.totalCount}
                   </span>
                 </button>
@@ -2488,11 +2459,10 @@ export default function Leads() {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className={`w-full sm:w-auto px-3.5 py-2.5 text-xs font-sans font-bold rounded-sm border outline-none cursor-pointer transition shadow-sm ${
-                  filterCategory !== 'ALL'
+                className={`w-full sm:w-auto px-3.5 py-2.5 text-xs font-sans font-bold rounded-sm border outline-none cursor-pointer transition shadow-sm ${filterCategory !== 'ALL'
                     ? 'bg-amber-600 text-white border-amber-400 font-bold'
                     : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)] hover:border-cyan-400'
-                }`}
+                  }`}
               >
                 <option value="ALL" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">All Categories</option>
                 <option value="STONE" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]"> Stone</option>
@@ -2509,61 +2479,55 @@ export default function Leads() {
           <div className="flex items-center gap-1.5 font-sans text-xs w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setFilterPriority('ALL')}
-              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${
-                filterPriority === 'ALL'
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${filterPriority === 'ALL'
                   ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               🌐 ALL LEADS (Date Wise)
             </button>
             <button
               onClick={() => setFilterPriority('HOT')}
-              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                filterPriority === 'HOT'
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'HOT'
                   ? 'bg-rose-600 text-white border-rose-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               🔥 Hot
             </button>
             <button
               onClick={() => setFilterPriority('WARM')}
-              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                filterPriority === 'WARM'
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'WARM'
                   ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               ⚡ Warm
             </button>
             <button
               onClick={() => setFilterPriority('COLD')}
-              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                filterPriority === 'COLD'
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'COLD'
                   ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
                   : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
-              }`}
+                }`}
             >
               ❄️ Cold
             </button>
             <button
               onClick={() => setFilterPriority('DEAD')}
-              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                filterPriority === 'DEAD'
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'DEAD'
                   ? 'bg-zinc-800 text-zinc-100 border-zinc-600 font-bold shadow-sm'
                   : 'bg-zinc-300 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 border border-zinc-400 dark:border-zinc-700 hover:bg-zinc-400 font-bold'
-              }`}
+                }`}
             >
               💀 Dead (Expired Date)
             </button>
             <button
               onClick={() => setFilterPriority('DUPLICATE')}
-              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                filterPriority === 'DUPLICATE'
+              className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'DUPLICATE'
                   ? 'bg-purple-600 text-white border-purple-400 font-bold shadow-sm ring-2 ring-purple-300'
                   : 'bg-purple-100 text-purple-950 border border-purple-300 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700 font-bold'
-              }`}
+                }`}
             >
               ⚠️ Duplicates ({duplicateLeadIds.size})
             </button>
@@ -2646,199 +2610,198 @@ export default function Leads() {
                         : (lead.assignedTo || 'Unassigned');
 
                       return (
-                      <tr 
-                        key={lead._id} 
-                        onClick={(e) => {
-                          if (e.target.closest('input, button, a, select')) return;
-                          navigate(`/crm/leads/${lead._id}`);
-                        }}
-                        className="hover:bg-[var(--crm-bg-raised)]/60 cursor-pointer transition-colors"
-                      >
-                        {isManagerOrAdmin && (
-                          <td className="py-3.5 px-4 text-center shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedLeadIds.includes(lead._id)}
-                              onChange={() => handleSelectLead(lead._id)}
-                              className="cursor-pointer"
-                            />
-                          </td>
-                        )}
-                        <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
-                          <Link to={`/crm/leads/${lead._id}`} className="hover:underline text-[var(--crm-heading)]">
-                            {lead.leadCode}
-                          </Link>
-                        </td>
-                        <td className="py-3.5 px-5 min-w-[160px]">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
-                              {lead.customerName}
+                        <tr
+                          key={lead._id}
+                          onClick={(e) => {
+                            if (e.target.closest('input, button, a, select')) return;
+                            navigate(`/crm/leads/${lead._id}`);
+                          }}
+                          className="hover:bg-[var(--crm-bg-raised)]/60 cursor-pointer transition-colors"
+                        >
+                          {isManagerOrAdmin && (
+                            <td className="py-3.5 px-4 text-center shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedLeadIds.includes(lead._id)}
+                                onChange={() => handleSelectLead(lead._id)}
+                                className="cursor-pointer"
+                              />
+                            </td>
+                          )}
+                          <td className="py-3.5 px-5 font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
+                            <Link to={`/crm/leads/${lead._id}`} className="hover:underline text-[var(--crm-heading)]">
+                              {lead.leadCode}
                             </Link>
-                            {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
-                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
-                            ) : lead.priority === 'HOT' ? (
-                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
-                            ) : lead.priority === 'WARM' ? (
-                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
-                            )}
-                            {duplicateLeadIds.has(String(lead._id)) && (
-                              <span 
-                                title={duplicateLeadDetails.get(String(lead._id)) || "Duplicate lead identified"}
-                                className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-purple-900/80 text-purple-200 border border-purple-500 shadow-xs flex items-center gap-1 cursor-help"
-                              >
-                                ⚠️ DUPLICATE
-                              </span>
-                            )}
-                            {lead.lastCallOutcome && (
-                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 ${
-                                lead.lastCallOutcome === 'CONNECTED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' :
-                                lead.lastCallOutcome === 'BUSY' ? 'bg-rose-950 text-rose-300 border border-rose-700' :
-                                lead.lastCallOutcome === 'NO_ANSWER' ? 'bg-amber-950 text-amber-300 border border-amber-700' :
-                                lead.lastCallOutcome === 'SWITCHED_OFF' ? 'bg-slate-900 text-slate-300 border border-slate-700' :
-                                lead.lastCallOutcome === 'CALL_BACK' ? 'bg-sky-950 text-sky-300 border border-sky-700' :
-                                'bg-purple-950 text-purple-300 border border-purple-700'
-                              }`}>
-                                📞 {lead.lastCallOutcome === 'CONNECTED' ? 'Connected' :
-                                    lead.lastCallOutcome === 'BUSY' ? 'Busy' :
-                                    lead.lastCallOutcome === 'NO_ANSWER' ? 'No Answer' :
-                                    lead.lastCallOutcome === 'SWITCHED_OFF' ? 'Switched Off' :
-                                    lead.lastCallOutcome === 'CALL_BACK' ? 'Call Back' : lead.lastCallOutcome}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
-                        </td>
-                        <td className="py-3.5 px-5">
-                          <span className="px-2.5 py-1 text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md border border-slate-300 dark:border-slate-700 shadow-xs mr-2">
-                            {lead.productCategory}
-                          </span>
-                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.destination || lead.location || lead.country || 'India'}</span>
-                        </td>
-                        <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
-                          {lead.targetDate ? (
-                            <span className="text-[11px] font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
-                              📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-5 text-right font-mono font-bold text-[var(--crm-positive)]">
-                          {getLeadValuationDisplay(lead)}
-                        </td>
-                        <td className="py-3.5 px-5 text-center">
-                          {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
-                            <span className="px-2.5 py-1 border text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-950/80 border-emerald-800 text-emerald-400 rounded shadow-sm">
-                              ✓ {lead.stage?.replace(/_/g, ' ')}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[var(--crm-bg-sunken)]/60 border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
-                              {lead.stage?.replace(/_/g, ' ')}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-5 text-center font-mono text-[11px]">
-                          {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
-                            <div className="space-y-0.5">
-                              <span className="text-emerald-400 font-bold block">
-                                ✓ {execName}
-                              </span>
-                              <span className="text-[8px] text-emerald-500/80 uppercase font-mono block">Completed Sales Owner</span>
-                            </div>
-                          ) : (
-                            <span className="text-[var(--crm-heading)] font-semibold">
-                              {execName}
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-3.5 px-5 text-center font-mono" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-3">
-                            {/* LOI Section */}
-                            {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
-                              <div className="space-y-1 text-center">
-                                <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
-                                  ✓ LOI ({lead.loiDocuments.length})
+                          </td>
+                          <td className="py-3.5 px-5 min-w-[160px]">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
+                                {lead.customerName}
+                              </Link>
+                              {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
+                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
+                              ) : lead.priority === 'HOT' ? (
+                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
+                              ) : lead.priority === 'WARM' ? (
+                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-amber-500 text-white border border-amber-600 shadow-xs">WARM ⚡</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
+                              )}
+                              {duplicateLeadIds.has(String(lead._id)) && (
+                                <span
+                                  title={duplicateLeadDetails.get(String(lead._id)) || "Duplicate lead identified"}
+                                  className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-purple-900/80 text-purple-200 border border-purple-500 shadow-xs flex items-center gap-1 cursor-help"
+                                >
+                                  ⚠️ DUPLICATE
                                 </span>
-                                {lead.loiDocuments.map((loi, i) => (
-                                  <a
-                                    key={i}
-                                    href={`${API_URL}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block text-[9px] text-teal-400 hover:underline truncate max-w-[100px] mx-auto"
-                                    title={loi.originalName}
+                              )}
+                              {lead.lastCallOutcome && (
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 ${lead.lastCallOutcome === 'CONNECTED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' :
+                                    lead.lastCallOutcome === 'BUSY' ? 'bg-rose-950 text-rose-300 border border-rose-700' :
+                                      lead.lastCallOutcome === 'NO_ANSWER' ? 'bg-amber-950 text-amber-300 border border-amber-700' :
+                                        lead.lastCallOutcome === 'SWITCHED_OFF' ? 'bg-slate-900 text-slate-300 border border-slate-700' :
+                                          lead.lastCallOutcome === 'CALL_BACK' ? 'bg-sky-950 text-sky-300 border border-sky-700' :
+                                            'bg-purple-950 text-purple-300 border border-purple-700'
+                                  }`}>
+                                  📞 {lead.lastCallOutcome === 'CONNECTED' ? 'Connected' :
+                                    lead.lastCallOutcome === 'BUSY' ? 'Busy' :
+                                      lead.lastCallOutcome === 'NO_ANSWER' ? 'No Answer' :
+                                        lead.lastCallOutcome === 'SWITCHED_OFF' ? 'Switched Off' :
+                                          lead.lastCallOutcome === 'CALL_BACK' ? 'Call Back' : lead.lastCallOutcome}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <span className="px-2.5 py-1 text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md border border-slate-300 dark:border-slate-700 shadow-xs mr-2">
+                              {lead.productCategory}
+                            </span>
+                            <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.destination || lead.location || lead.country || 'India'}</span>
+                          </td>
+                          <td className="py-3.5 px-5 text-center font-mono text-[11px] whitespace-nowrap">
+                            {lead.targetDate ? (
+                              <span className="text-[11px] font-mono font-bold text-[var(--crm-heading)] whitespace-nowrap">
+                                📅 {new Date(lead.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-right font-mono font-bold text-[var(--crm-positive)]">
+                            {getLeadValuationDisplay(lead)}
+                          </td>
+                          <td className="py-3.5 px-5 text-center">
+                            {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
+                              <span className="px-2.5 py-1 border text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-950/80 border-emerald-800 text-emerald-400 rounded shadow-sm">
+                                ✓ {lead.stage?.replace(/_/g, ' ')}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 border text-[9px] font-mono font-bold uppercase bg-[var(--crm-bg-sunken)]/60 border-[var(--crm-ink-soft)]/10 text-[var(--crm-ink-soft)]">
+                                {lead.stage?.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-center font-mono text-[11px]">
+                            {['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON'].includes((lead.stage || '').toUpperCase()) ? (
+                              <div className="space-y-0.5">
+                                <span className="text-emerald-400 font-bold block">
+                                  ✓ {execName}
+                                </span>
+                                <span className="text-[8px] text-emerald-500/80 uppercase font-mono block">Completed Sales Owner</span>
+                              </div>
+                            ) : (
+                              <span className="text-[var(--crm-heading)] font-semibold">
+                                {execName}
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-5 text-center font-mono" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-3">
+                              {/* LOI Section */}
+                              {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
+                                <div className="space-y-1 text-center">
+                                  <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                    ✓ LOI ({lead.loiDocuments.length})
+                                  </span>
+                                  {lead.loiDocuments.map((loi, i) => (
+                                    <a
+                                      key={i}
+                                      href={`${API_URL}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="block text-[9px] text-teal-400 hover:underline truncate max-w-[100px] mx-auto"
+                                      title={loi.originalName}
+                                    >
+                                      📄 {loi.originalName}
+                                    </a>
+                                  ))}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLoiTargetLeadId(lead._id);
+                                      setShowLOIModal(true);
+                                    }}
+                                    className="text-[8px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-1.5 py-0.5 rounded cursor-pointer transition block mx-auto"
                                   >
-                                    📄 {loi.originalName}
-                                  </a>
-                                ))}
+                                    + Add LOI
+                                  </button>
+                                </div>
+                              ) : (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setLoiTargetLeadId(lead._id);
                                     setShowLOIModal(true);
                                   }}
-                                  className="text-[8px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-1.5 py-0.5 rounded cursor-pointer transition block mx-auto"
+                                  className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition shadow-sm inline-flex items-center gap-1"
                                 >
-                                  + Add LOI
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLoiTargetLeadId(lead._id);
-                                  setShowLOIModal(true);
-                                }}
-                                className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition shadow-sm inline-flex items-center gap-1"
-                              >
-                                + LOI
-                              </button>
-                            )}
-
-                            {/* Direct Communication & Actions */}
-                            <div className="flex items-center space-x-1.5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openCallLogModal(lead);
-                                }}
-                                className="p-1.5 bg-amber-950/80 border border-amber-800/60 text-amber-400 hover:bg-amber-900 hover:text-amber-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
-                                title="Log Call Outcome & View Multi-Call History Timeline"
-                              >
-                                <FiPhoneCall size={13} />
-                              </button>
-                              <button
-                                onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
-                                className="p-1.5 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 hover:bg-emerald-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
-                                title="Launch WhatsApp Chat"
-                              >
-                                <FiMessageSquare size={13} />
-                              </button>
-                              <button
-                                onClick={(e) => triggerEmail(e, lead.email, lead)}
-                                className="p-1.5 bg-sky-950/80 border border-sky-800/60 text-sky-400 hover:bg-sky-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
-                                title="Send Direct Email"
-                              >
-                                <FiMail size={13} />
-                              </button>
-                              {isManagerOrAdmin && (
-                                <button
-                                  onClick={(e) => handleDeleteSingleLead(lead._id, e)}
-                                  className="p-1.5 bg-rose-950/80 border border-rose-800/60 text-rose-400 hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
-                                  title="Delete Lead Node"
-                                >
-                                  <FiTrash2 size={13} />
+                                  + LOI
                                 </button>
                               )}
+
+                              {/* Direct Communication & Actions */}
+                              <div className="flex items-center space-x-1.5">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openCallLogModal(lead);
+                                  }}
+                                  className="p-1.5 bg-amber-950/80 border border-amber-800/60 text-amber-400 hover:bg-amber-900 hover:text-amber-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  title="Log Call Outcome & View Multi-Call History Timeline"
+                                >
+                                  <FiPhoneCall size={13} />
+                                </button>
+                                <button
+                                  onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
+                                  className="p-1.5 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 hover:bg-emerald-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  title="Launch WhatsApp Chat"
+                                >
+                                  <FiMessageSquare size={13} />
+                                </button>
+                                <button
+                                  onClick={(e) => triggerEmail(e, lead.email, lead)}
+                                  className="p-1.5 bg-sky-950/80 border border-sky-800/60 text-sky-400 hover:bg-sky-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  title="Send Direct Email"
+                                >
+                                  <FiMail size={13} />
+                                </button>
+                                {isManagerOrAdmin && (
+                                  <button
+                                    onClick={(e) => handleDeleteSingleLead(lead._id, e)}
+                                    className="p-1.5 bg-rose-950/80 border border-rose-800/60 text-rose-400 hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                    title="Delete Lead Node"
+                                  >
+                                    <FiTrash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -2857,8 +2820,8 @@ export default function Leads() {
                     : (lead.assignedTo || 'Unassigned');
 
                   return (
-                    <div 
-                      key={lead._id} 
+                    <div
+                      key={lead._id}
                       onClick={(e) => {
                         if (e.target.closest('input, button, a, select')) return;
                         navigate(`/crm/leads/${lead._id}`);
@@ -2880,7 +2843,7 @@ export default function Leads() {
                         </div>
 
                         <div className="shrink-0 flex items-center gap-1.5">
-                          {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
+                          {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
                           ) : lead.priority === 'HOT' ? (
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-rose-600 text-white border border-rose-700 shadow-xs">HOT 🔥</span>
@@ -2890,7 +2853,7 @@ export default function Leads() {
                             <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-cyan-600 text-white border border-cyan-700 shadow-xs">COLD ❄️</span>
                           )}
                           {duplicateLeadIds.has(String(lead._id)) && (
-                            <span 
+                            <span
                               title={duplicateLeadDetails.get(String(lead._id)) || "Duplicate lead identified"}
                               className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-purple-900/80 text-purple-200 border border-purple-500 shadow-xs cursor-help"
                             >
@@ -3092,8 +3055,8 @@ export default function Leads() {
                       </div>
                     ) : (
                       stageLeads.map((item) => (
-                        <div 
-                          key={item._id} 
+                        <div
+                          key={item._id}
                           onClick={(e) => {
                             if (e.target.closest('input, button, a, select')) return;
                             navigate(`/crm/leads/${item._id}`);
@@ -3427,11 +3390,10 @@ export default function Leads() {
                           key={t.value}
                           type="button"
                           onClick={() => setImportDefaultPriority(t.value)}
-                          className={`px-3 py-1.5 rounded border text-[10px] font-bold uppercase transition cursor-pointer ${
-                            importDefaultPriority === t.value
+                          className={`px-3 py-1.5 rounded border text-[10px] font-bold uppercase transition cursor-pointer ${importDefaultPriority === t.value
                               ? `${t.style} ring-1 ring-current font-black`
                               : 'border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                          }`}
+                            }`}
                         >
                           {t.label}
                         </button>
@@ -3499,7 +3461,7 @@ export default function Leads() {
                           const rName = nameCol !== undefined ? String(row[Number(nameCol)] || '').trim().toLowerCase() : '';
 
                           const isRowDup = (rPhone && rPhone.length >= 7 && leads.some(l => (l.phone || l.phoneMasked || '').replace(/\D/g, '').slice(-10) === rPhone)) ||
-                                           (rName && rName.length > 2 && leads.some(l => (l.customerName || '').trim().toLowerCase() === rName));
+                            (rName && rName.length > 2 && leads.some(l => (l.customerName || '').trim().toLowerCase() === rName));
 
                           return (
                             <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-950/30 hover:bg-purple-900/40' : 'hover:bg-[var(--crm-bg-raised)]/20'}`}>
@@ -3521,11 +3483,10 @@ export default function Leads() {
                                 const isMapped = !!columnMappings[colIdx];
                                 const actualRowIdx = rowIdx + 1;
                                 return (
-                                  <td 
-                                    key={colIdx} 
-                                    className={`p-1 border-r border-[var(--crm-line)] text-left min-w-[140px] max-w-[240px] ${
-                                      isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-60 text-slate-400'
-                                    }`}
+                                  <td
+                                    key={colIdx}
+                                    className={`p-1 border-r border-[var(--crm-line)] text-left min-w-[140px] max-w-[240px] ${isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-60 text-slate-400'
+                                      }`}
                                   >
                                     <input
                                       type="text"
@@ -3734,7 +3695,7 @@ Valuation: ₹2,50,000`}
               <span className="bg-teal-950/50 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-sm font-bold">
                 {selectedLeadIds.length} Selected
               </span>
-              <button 
+              <button
                 onClick={() => setSelectedLeadIds([])}
                 className="text-[var(--crm-ink-faint)] hover:text-white transition-colors cursor-pointer"
               >
@@ -3958,11 +3919,10 @@ Valuation: ₹2,50,000`}
                           type="button"
                           key={item.id}
                           onClick={() => setCallOutcomeSelect(item.id)}
-                          className={`p-2.5 rounded border font-bold uppercase text-[11px] transition cursor-pointer flex items-center justify-center text-center ${
-                            callOutcomeSelect === item.id
+                          className={`p-2.5 rounded border font-bold uppercase text-[11px] transition cursor-pointer flex items-center justify-center text-center ${callOutcomeSelect === item.id
                               ? `${item.style} ring-2 ring-current font-black shadow-md scale-[1.02]`
                               : 'border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg)]/40'
-                          }`}
+                            }`}
                         >
                           {item.label}
                         </button>

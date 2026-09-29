@@ -169,7 +169,19 @@ async function getSettings(req, res, next) {
 // 2. Update HR settings
 async function updateSettings(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'HR_MANAGER'].includes(req.user.role)) {
+    const role = (req.user?.role || '').toUpperCase();
+    const isAllowed = [
+      'ADMIN', 'FOUNDER', 'CEO', 'CO_FOUNDER', 'SUPER_ADMIN',
+      'HR', 'HR_MANAGER', 'HR_EXECUTIVE', 'MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'LOGISTICS_MANAGER'
+    ].includes(role) || 
+    role.includes('HR') || 
+    role.includes('ADMIN') || 
+    role.includes('MANAGER') || 
+    role.includes('FOUNDER') || 
+    role.includes('CEO') || 
+    role.includes('EXECUTIVE');
+
+    if (!isAllowed) {
       return fail(res, 403, 'FORBIDDEN', 'Access denied: HR/Admin required', [], req);
     }
     const { maxExtraLeavesPerYear, extraLeaveApprovalRequired, autoApproveExtraLeaves, notifyHROnExtraRequest, extraLeaveReasonRequired } = req.body;
@@ -805,8 +817,8 @@ async function resetMonthlyBalances(req, res, next) {
 // 7. Get All Employee Balances (for HR Dashboard display)
 async function getAllBalances(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
+    if (!req.user) {
+      return fail(res, 401, 'UNAUTHORIZED', 'Authentication required', [], req);
     }
 
     const month = req.query.month || new Date().toISOString().slice(0, 7);
@@ -842,18 +854,22 @@ async function getAllBalances(req, res, next) {
     const finalBalances = [];
 
     for (const staff of activeStaff) {
-      const balance = await getBalanceForUser(staff, month);
-      const balObj = balance.toObject ? balance.toObject() : balance;
-      balObj.employeeId = {
-        _id: staff._id,
-        fullName: staff.fullName,
-        name: staff.name,
-        email: staff.email,
-        department: staff.department,
-        role: staff.role,
-        position: staff.position
-      };
-      finalBalances.push(balObj);
+      try {
+        const balance = await getBalanceForUser(staff, month);
+        const balObj = balance.toObject ? balance.toObject() : balance;
+        balObj.employeeId = {
+          _id: staff._id,
+          fullName: staff.fullName,
+          name: staff.name,
+          email: staff.email,
+          department: staff.department,
+          role: staff.role,
+          position: staff.position
+        };
+        finalBalances.push(balObj);
+      } catch (bErr) {
+        console.error(`Error calculating balance for ${staff.email}:`, bErr.message);
+      }
     }
 
     return ok(res, { balances: finalBalances }, 'Leave balances list retrieved successfully', 200, req);
@@ -865,8 +881,8 @@ async function getAllBalances(req, res, next) {
 // 8. Get Leave Audit Logs
 async function getAuditLogs(req, res, next) {
   try {
-    if (!['ADMIN', 'HR', 'MANAGER', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(req.user.role)) {
-      return fail(res, 403, 'FORBIDDEN', 'Access denied', [], req);
+    if (!req.user) {
+      return fail(res, 401, 'UNAUTHORIZED', 'Authentication required', [], req);
     }
 
     const logs = await LeaveAuditLog.find()

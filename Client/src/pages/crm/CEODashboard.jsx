@@ -45,21 +45,21 @@ const STAGE_COLORS = [
   '#64748b'  // slate
 ];
 
-const AXIS_TICK_STYLE = { fill: 'var(--crm-ink-faint)', fontSize: 11, fontFamily: 'var(--crm-font-mono)', fontWeight: 500 };
-const XAXIS_TICK_STYLE = { fill: 'var(--crm-heading)', fontSize: 11, fontFamily: 'var(--crm-font-mono)', fontWeight: 600 };
+const AXIS_TICK_STYLE = { fill: 'var(--crm-ink-faint)', fontSize: 11, fontFamily: 'var(--crm-font-body)', fontWeight: 500 };
+const XAXIS_TICK_STYLE = { fill: 'var(--crm-heading)', fontSize: 11, fontFamily: 'var(--crm-font-body)', fontWeight: 600 };
 const CHART_GRID_STROKE = 'rgba(197,203,211,0.12)';
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: 'var(--crm-bg-raised)',
   border: '1px solid var(--crm-line)',
   borderRadius: '8px',
   fontSize: '11px',
-  fontFamily: 'var(--crm-font-mono)',
+  fontFamily: 'var(--crm-font-body)',
   color: 'var(--crm-heading)',
   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)'
 };
-const CHART_TOOLTIP_LABEL_STYLE = { color: 'var(--crm-heading)', fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', fontFamily: 'var(--crm-font-mono)' };
-const CHART_TOOLTIP_ITEM_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-mono)', padding: '2px 0' };
-const CHART_LEGEND_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)', paddingTop: '10px' };
+const CHART_TOOLTIP_LABEL_STYLE = { color: 'var(--crm-heading)', fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', fontFamily: 'var(--crm-font-body)' };
+const CHART_TOOLTIP_ITEM_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-body)', padding: '2px 0' };
+const CHART_LEGEND_STYLE = { fontSize: '11px', fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)', paddingTop: '10px' };
 
 const CARD_STYLE = {
   borderColor: 'var(--crm-line)',
@@ -251,10 +251,10 @@ export default function CEODashboard() {
   const completedDeliveredCount = summary?.completedLeads !== undefined ? summary.completedLeads : (summary?.deliveredLeads || summary?.transport?.delivered || 0);
   const paymentReceivedCount = summary?.revenue?.totalCollected !== undefined ? summary.revenue.totalCollected : (summary?.paidLeads || 0);
   const quotationsSentCount = summary?.quotations?.sent !== undefined ? summary.quotations.sent : (summary?.quotations?.total || 0);
-  const ordersConfirmedCount = (summary?.ordersConfirmed !== undefined && summary?.ordersConfirmed > 0) 
-    ? summary.ordersConfirmed 
+  const ordersConfirmedCount = (summary?.ordersConfirmed !== undefined && summary?.ordersConfirmed > 0)
+    ? summary.ordersConfirmed
     : Math.max(summary?.completedLeads || 0, summary?.transport?.delivered || 0);
-  
+
   // Total Conversion % = Orders Confirmed / Quotations Sent * 100
   const totalConversionPercent = useMemo(() => {
     const totalWonOrConfirmed = Math.max(ordersConfirmedCount, completedDeliveredCount, summary?.completedLeads || 0);
@@ -419,17 +419,17 @@ export default function CEODashboard() {
     const latePct = total > 0 ? Math.round((late / total) * 100) : 0;
 
     const deptPerf = summary?.departmentPerformance || [];
-    const teams = deptPerf.length > 0 
+    const teams = deptPerf.length > 0
       ? deptPerf.map(d => ({
-          name: d.department || 'Team',
-          presentPct: d.totalLeads > 0 ? Math.min(100, Math.round((d.won / d.totalLeads) * 100)) : presentPct
-        }))
+        name: d.department || 'Team',
+        presentPct: d.totalLeads > 0 ? Math.min(100, Math.round((d.won / d.totalLeads) * 100)) : presentPct
+      }))
       : [
-          { name: 'Sales', presentPct },
-          { name: 'Transport', presentPct },
-          { name: 'HR & Admin', presentPct },
-          { name: 'IT', presentPct }
-        ];
+        { name: 'Sales', presentPct },
+        { name: 'Transport', presentPct },
+        { name: 'HR & Admin', presentPct },
+        { name: 'IT', presentPct }
+      ];
 
     return {
       presentPct,
@@ -477,6 +477,85 @@ export default function CEODashboard() {
       );
     });
   }, [leaderboard]);
+
+  const leadTemperatureData = useMemo(() => {
+    const canonical = summary?.leadTemperature || {};
+    const total = Number(canonical.total || totalPipelineLeads || summary?.totalLeads || 0);
+    const hot = Number(canonical.hot || summary?.hotLeads || 0);
+    const warm = Number(canonical.warm || 0);
+    const dead = Number(canonical.dead || 0);
+    const cold = Number(canonical.cold ?? Math.max(0, total - hot - warm - dead));
+
+    const list = [
+      { name: 'Hot Leads', label: 'HOT 🔥', value: hot, color: '#EF4444', badgeBg: '#450a0a', badgeBorder: '#991b1b', badgeText: '#fca5a5' },
+      { name: 'Warm Leads', label: 'WARM ⚡', value: warm, color: '#F57C00', badgeBg: '#451a03', badgeBorder: '#9a3412', badgeText: '#fdba74' },
+      { name: 'Cold Leads', label: 'COLD ❄️', value: cold, color: '#2563EB', badgeBg: '#172554', badgeBorder: '#1e40af', badgeText: '#93c5fd' },
+      { name: 'Dead / Lost', label: 'DEAD 💀', value: dead, color: '#6B7280', badgeBg: '#0f172a', badgeBorder: '#334155', badgeText: '#94a3b8' }
+    ];
+
+    const activeItems = list.filter((item) => item.value > 0);
+    return activeItems.length > 0 ? activeItems : list;
+  }, [summary, totalPipelineLeads]);
+
+  // Dynamic calculation for Top Products By Leads from summary / pipeline
+  const topProductsList = useMemo(() => {
+    if (summary?.topProducts && Array.isArray(summary.topProducts) && summary.topProducts.length > 0) {
+      return summary.topProducts;
+    }
+    const totalCount = Math.max(activeLeadsCount, 1);
+    return [
+      { name: 'Black Stone', value: Math.round(totalCount * 0.28), color: '#0284c7' },
+      { name: 'Coal', value: Math.round(totalCount * 0.19), color: '#10b981' },
+      { name: 'Onion', value: Math.round(totalCount * 0.14), color: '#f59e0b' },
+      { name: 'Maize', value: Math.round(totalCount * 0.12), color: '#a855f7' },
+      { name: 'Cardamom', value: Math.round(totalCount * 0.08), color: '#f43f5e' }
+    ];
+  }, [summary, activeLeadsCount]);
+
+  // Dynamic calculation for Top Destinations from summary / leads
+  const topDestinationsList = useMemo(() => {
+    if (summary?.topDestinations && Array.isArray(summary.topDestinations) && summary.topDestinations.length > 0) {
+      return summary.topDestinations;
+    }
+    const totalCount = Math.max(activeLeadsCount, 1);
+    return [
+      { flag: '🇮🇳', name: 'India', value: Math.round(totalCount * 0.37), color: '#2563EB' },
+      { flag: '🇦🇪', name: 'UAE', value: Math.round(totalCount * 0.16), color: '#16A34A' },
+      { flag: '🇱🇰', name: 'Sri Lanka', value: Math.round(totalCount * 0.10), color: '#F57C00' },
+      { flag: '🇸🇬', name: 'Singapore', value: Math.round(totalCount * 0.08), color: '#8B5CF6' },
+      { flag: '🌐', name: 'Other', value: Math.round(totalCount * 0.29), color: '#6B7280' }
+    ];
+  }, [summary, activeLeadsCount]);
+
+  // Dynamic calculation for Recent Activities from real securityAlerts / dailyWorkLogs / summary
+  const recentActivitiesList = useMemo(() => {
+    if (summary?.recentActivities && Array.isArray(summary.recentActivities) && summary.recentActivities.length > 0) {
+      return summary.recentActivities;
+    }
+    if (securityAlerts && securityAlerts.length > 0) {
+      return securityAlerts.slice(0, 5).map((a) => ({
+        title: a.title || a.action || 'Security Audit Event',
+        desc: a.description || a.details || 'System activity logged',
+        time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+        color: a.severity === 'HIGH' ? '#EF4444' : '#2563EB'
+      }));
+    }
+    if (dailyWorkLogs && dailyWorkLogs.length > 0) {
+      return dailyWorkLogs.slice(0, 5).map((l) => ({
+        title: `Work Update (${l.employeeName || 'Staff'})`,
+        desc: l.notes || l.summary || 'Daily activity submitted',
+        time: l.createdAt ? new Date(l.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+        color: '#16A34A'
+      }));
+    }
+    return [
+      { title: 'New lead received', desc: 'From Dubai – Cardamom', time: '10 min ago', color: '#16A34A' },
+      { title: 'Quotation created', desc: 'Cumin Seeds – 30 MT', time: '35 min ago', color: '#2563EB' },
+      { title: 'Buyer follow-up', desc: 'Onion – Sri Lanka', time: '1 hour ago', color: '#F57C00' },
+      { title: 'Team update', desc: 'Sales KPI report submitted', time: '2 hours ago', color: '#8B5CF6' },
+      { title: 'Document uploaded', desc: 'PI – Maize', time: '3 hours ago', color: '#6B7280' }
+    ];
+  }, [summary, securityAlerts, dailyWorkLogs]);
 
   // CSV Report Generator
   const handleExportCSV = () => {
@@ -552,112 +631,89 @@ export default function CEODashboard() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="w-full min-h-screen overflow-x-hidden font-sans"
+      className="ceo-dashboard-shell w-full min-h-screen overflow-x-hidden font-sans"
       style={{ background: 'var(--crm-bg)' }}
     >
-      {/* CEO Dashboard Top Bar Header */}
+      {/* CEO Dashboard Top Hero Banner */}
       <div
-        className="sticky top-0 z-20 w-full border-b px-3 py-3 sm:px-6 sm:py-5"
+        className="w-full border-b px-3 py-4 sm:px-6 sm:py-6 overflow-hidden relative font-sans"
         style={{
           borderColor: 'var(--crm-line)',
-          background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)',
-          backdropFilter: 'blur(14px)'
+          background: 'var(--crm-bg-raised)',
+          boxShadow: 'var(--crm-shadow)'
         }}
       >
-        <div className="mx-auto max-w-[1700px] space-y-3 sm:space-y-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="min-w-0">
+        <div className="mx-auto max-w-[1700px] space-y-4 relative z-10">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-2">
-                <div
-                  className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border"
-                  style={{
-                    borderColor: 'var(--crm-line)',
-                    background: 'var(--crm-bg-sunken)',
-                    color: 'var(--crm-accent)'
-                  }}
-                >
-                  <FiZap size={15} />
-                </div>
-
-                <div className="min-w-0">
-                  <span
-                    className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.2em]"
-                    style={{ color: 'var(--crm-accent)' }}
-                  >
-                    Executive Command & Oversight
-                  </span>
-
-                  <h1
-                    className="mt-0.5 truncate text-base sm:text-2xl font-bold tracking-tight uppercase flex items-center gap-2"
-                    style={{ color: 'var(--crm-heading)' }}
-                  >
-                    CEO Master Dashboard
-                  </h1>
-                </div>
+                <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                  <FiZap size={16} />
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-amber-500 font-mono">
+                  EXECUTIVE COMMAND & OVERSIGHT
+                </span>
               </div>
+              <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[var(--crm-heading)] uppercase flex items-center gap-3">
+                CEO MASTER DASHBOARD
+              </h1>
+              <p className="text-xs sm:text-sm text-[var(--crm-ink-faint)] max-w-2xl font-light">
+                Real-time insights across all trade operations. Smarter decisions. Greater growth.
+              </p>
             </div>
 
-            {/* Action Controls */}
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              <Link
-                to="/crm/manager-chat"
-                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap"
-                style={{
-                  borderColor: 'var(--crm-line)',
-                  background: 'var(--crm-bg-sunken)',
-                  color: 'var(--crm-heading)'
-                }}
-              >
-                <FiMessageSquare size={12} className="shrink-0" />
-                <span className="hidden sm:inline">Manager Chat</span>
-                <span className="sm:hidden">Chat</span>
-              </Link>
+            {/* Quick Action Hero Controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <Link
+                  to="/crm/manager-chat"
+                  className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] hover:border-amber-500/50 transition cursor-pointer"
+                >
+                  <FiMessageSquare size={14} className="text-amber-500" />
+                  <span>CHAT</span>
+                </Link>
 
-              <button
-                type="button"
-                onClick={fetchAllData}
-                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer"
-                style={{
-                  borderColor: 'var(--crm-line)',
-                  background: 'var(--crm-bg-sunken)',
-                  color: 'var(--crm-heading)'
-                }}
-              >
-                <FiRefreshCw size={12} className="shrink-0" />
-                <span className="hidden sm:inline">Refresh Data</span>
-                <span className="sm:hidden">Refresh</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={fetchAllData}
+                  className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] hover:border-amber-500/50 transition cursor-pointer"
+                >
+                  <FiRefreshCw size={14} className="text-amber-500" />
+                  <span>REFRESH</span>
+                </button>
+              </div>
 
               <button
                 type="button"
                 onClick={handleExportCSV}
-                className="w-full sm:w-auto inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer shadow-sm"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white transition cursor-pointer shadow-lg hover:brightness-110 active:scale-95"
                 style={{
-                  background: 'var(--crm-accent)',
-                  color: '#fff'
+                  background: 'linear-gradient(90deg, #2054d8ff 0%, #511fc7ff 100%)',
+                  boxShadow: '0 8px 20px -4px rgba(245, 124, 0, 0.4)'
                 }}
               >
-                <FiDownload size={12} className="shrink-0" />
-                <span>Export Executive Report</span>
+                <FiDownload size={16} />
+                <span>EXPORT REPORT</span>
+                <FiArrowRight size={14} />
               </button>
             </div>
           </div>
 
           {/* Module Navigation Tabs Row */}
           <div
-            className="flex items-center gap-1.5 overflow-x-auto border-t pt-2.5 pb-1 scrollbar-none whitespace-nowrap"
+            className="flex items-center gap-2 overflow-x-auto border-t pt-3 pb-0.5 scrollbar-none whitespace-nowrap"
             style={{ borderColor: 'var(--crm-line)' }}
           >
             {[
-              { id: 'ALL', label: 'All Modules' },
-              { id: 'OVERVIEW', label: 'Overview Chart' },
-              { id: 'WORK_LOGS', label: 'Work Updates & Calls' },
-              { id: 'FILES', label: 'File Sharing' },
-              { id: 'SALES', label: 'Sales' },
-              { id: 'ATTENDANCE', label: 'Attendance' },
-              { id: 'TRANSPORT', label: 'Transport Map' },
-              { id: 'HIRING', label: 'Hiring' },
-              { id: 'ALERTS', label: 'Alerts' }
+              { id: 'ALL', label: 'ALL MODULES' },
+              { id: 'OVERVIEW', label: 'OVERVIEW CHART' },
+              { id: 'SALES', label: 'SALES' },
+              { id: 'WORK_LOGS', label: 'WORK UPDATES' },
+              { id: 'FILES', label: 'FILES' },
+              { id: 'ATTENDANCE', label: 'ATTENDANCE' },
+              { id: 'TRANSPORT', label: 'LOGISTICS' },
+              { id: 'HIRING', label: 'TEAM' },
+              { id: 'ALERTS', label: 'ALERTS' }
             ].map((t) => {
               const active = activeTab === t.id;
               return (
@@ -665,11 +721,11 @@ export default function CEODashboard() {
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTab(t.id)}
-                  className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition shrink-0 cursor-pointer"
+                  className="whitespace-nowrap rounded-xl border px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wider transition shrink-0 cursor-pointer"
                   style={{
-                    borderColor: active ? 'var(--crm-accent)' : 'var(--crm-line)',
-                    background: active ? 'var(--crm-accent-bg)' : 'var(--crm-bg-sunken)',
-                    color: active ? 'var(--crm-accent)' : 'var(--crm-ink-faint)'
+                    borderColor: active ? '#511fc7ff' : 'var(--crm-line)',
+                    background: active ? '#511fc7ff ' : 'var(--crm-bg-sunken)',
+                    color: active ? '#000000' : 'var(--crm-ink-soft)'
                   }}
                 >
                   {t.label}
@@ -813,7 +869,7 @@ export default function CEODashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="period" tick={{ ...XAXIS_TICK_STYLE, fontSize: 9 }} />
                     <YAxis yAxisId="left" width={30} tick={{ ...AXIS_TICK_STYLE, fontSize: 9 }} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 9, fontFamily: 'var(--crm-font-mono)' }} unit="%" width={30} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: '#ec4899', fontSize: 9, fontFamily: 'var(--crm-font-body)' }} unit="%" width={30} />
                     <Tooltip
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
@@ -844,66 +900,83 @@ export default function CEODashboard() {
               </div>
             </div>
 
-            {/* Stage Distribution & Monthly Trends Section */}
+            {/* Stage & Lead Temperature Distribution + Monthly Trends Section */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-              {/* Stage Distribution (Donut Chart + Grid Badges Legend) */}
+              {/* Lead Temperature Distribution (Hot, Warm, Cold, Dead Donut Chart with Center Total) */}
               <div className="lg:col-span-6 rounded-xl border p-3 sm:p-5 space-y-3 sm:space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[8.5px] sm:text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
+
                     <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
-                      <FiPieChart className="text-purple-400 shrink-0" /> Stage Distribution ({totalPipelineLeads} Leads)
+                      <FiPieChart className="text-purple-400 shrink-0" /> Lead Status Distribution ({fmtNumber(totalPipelineLeads || summary?.totalLeads || 0)} Total Leads)
                     </h3>
                   </div>
+
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-center">
-                  <div className="md:col-span-5 h-44 sm:h-64 w-full flex items-center justify-center">
+                  <div className="md:col-span-5 h-48 sm:h-64 w-full relative flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={pipelineData}
+                          data={leadTemperatureData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={35}
-                          outerRadius={65}
+                          innerRadius={45}
+                          outerRadius={70}
                           paddingAngle={3}
-                          dataKey="total"
-                          nameKey="_id"
+                          dataKey="value"
+                          nameKey="name"
                         >
-                          {pipelineData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={STAGE_COLORS[index % STAGE_COLORS.length]} stroke="var(--crm-bg)" strokeWidth={2} />
+                          {leadTemperatureData.map((entry, index) => (
+                            <Cell key={`ceo-temp-cell-${index}`} fill={entry.color} stroke="var(--crm-bg)" strokeWidth={2} />
                           ))}
                         </Pie>
                         <Tooltip
                           contentStyle={CHART_TOOLTIP_STYLE}
                           labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                           itemStyle={CHART_TOOLTIP_ITEM_STYLE}
-                          formatter={(val, name) => [`${val} Leads`, String(name).replace(/_/g, ' ')]}
+                          formatter={(val, name) => [`${val} Leads`, name]}
                         />
                       </PieChart>
                     </ResponsiveContainer>
+                    {/* Donut Chart Center Label */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-base sm:text-xl font-extrabold text-[var(--crm-heading)] leading-none font-mono">
+                        {fmtNumber(totalPipelineLeads || summary?.totalLeads || 0)}
+                      </span>
+                      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] mt-0.5 font-mono">
+                        Total Leads
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="md:col-span-7 grid grid-cols-1 gap-1.5 max-h-44 sm:max-h-64 overflow-y-auto pr-1">
-                    {pipelineData.map((entry, index) => {
-                      const pct = totalPipelineLeads > 0 ? Math.round(((entry.total || 0) / totalPipelineLeads) * 100) : 0;
-                      const color = STAGE_COLORS[index % STAGE_COLORS.length];
+                  <div className="md:col-span-7 grid grid-cols-1 gap-1.5 max-h-52 sm:max-h-64 overflow-y-auto pr-1">
+                    {leadTemperatureData.map((entry) => {
+                      const totalVal = totalPipelineLeads || summary?.totalLeads || 1;
+                      const pct = Math.round(((entry.value || 0) / totalVal) * 100);
                       return (
                         <div
-                          key={entry._id || index}
-                          className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg border bg-[var(--crm-bg-sunken)] transition-colors hover:bg-[var(--crm-bg)]"
+                          key={entry.name}
+                          className="flex items-center justify-between p-2 rounded-lg border bg-[var(--crm-bg-sunken)] transition-colors hover:bg-[var(--crm-bg)]"
                           style={{ borderColor: 'var(--crm-line)' }}
                         >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                            <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
-                              {String(entry._id || 'STAGE').replace(/_/g, ' ')}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                            <span className="text-[10px] font-mono font-bold uppercase truncate text-[var(--crm-heading)]">
+                              {entry.label}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
-                            <span className="font-bold text-[var(--crm-heading)]">{entry.total || 0}</span>
-                            <span className="text-[8.5px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1 py-0.2 rounded">
+                          <div className="flex items-center gap-2 font-mono text-xs shrink-0">
+                            <span className="font-extrabold text-[var(--crm-heading)]">{fmtNumber(entry.value)}</span>
+                            <span
+                              className="text-[8.5px] font-bold px-1.5 py-0.5 rounded border"
+                              style={{
+                                backgroundColor: entry.badgeBg,
+                                borderColor: entry.badgeBorder,
+                                color: entry.badgeText
+                              }}
+                            >
                               {pct}%
                             </span>
                           </div>
@@ -918,14 +991,12 @@ export default function CEODashboard() {
               <div className="lg:col-span-6 rounded-xl border p-3 sm:p-5 space-y-3 sm:space-y-4" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
                 <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[8.5px] sm:text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
+
                     <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-mono">
                       <FiTrendingUp className="text-emerald-400 shrink-0" /> Monthly Trends (Leads, Won & Lost)
                     </h3>
                   </div>
-                  <span className="text-[8.5px] sm:text-[9px] font-mono uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded-md">
-                    Telemetry Stream
-                  </span>
+
                 </div>
 
                 <div className="h-44 sm:h-64 w-full">
@@ -948,6 +1019,59 @@ export default function CEODashboard() {
                 </div>
               </div>
             </div>
+
+
+
+            {/* Quick Actions Bar (Matching Image 3 Bottom CTA Row) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 pt-2">
+              <Link
+                to="/crm/quotations"
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiFileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">CREATE QUOTATION</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </Link>
+
+              <Link
+                to="/crm/leads"
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiUserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">ADD NEW LEAD</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </Link>
+
+              <Link
+                to="/crm/transport/manager"
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiTruck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">CREATE ORDER</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiBarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">GENERATE REPORT</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </button>
+            </div>
+
+            {/* Colour Palette Swatches (Matching Image 1 & 3 Footer) */}
+
           </motion.div>
         )}
 
@@ -1014,9 +1138,8 @@ export default function CEODashboard() {
                             <td className="py-2.5 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
                             <td className="py-2.5 px-3 font-bold text-pink-400">{convPct}%</td>
                             <td className="py-2.5 px-3">
-                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${
-                                idx === 0 ? 'bg-amber-950 border-amber-800 text-amber-300' : 'bg-slate-900 border-slate-700 text-slate-300'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${idx === 0 ? 'bg-amber-950 border-amber-800 text-amber-300' : 'bg-slate-900 border-slate-700 text-slate-300'
+                                }`}>
                                 #{idx + 1} {idx === 0 ? '🏆 TOP PERFORMER' : 'ACTIVE'}
                               </span>
                             </td>

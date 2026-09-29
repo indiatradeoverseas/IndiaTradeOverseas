@@ -113,7 +113,7 @@ async function submitWebsiteLeadOnce(leadData) {
     if (!response.ok) {
       throw createWebsiteLeadError(
         body?.message ||
-          `Lead submission failed with HTTP ${response.status}.`,
+        `Lead submission failed with HTTP ${response.status}.`,
         {
           code:
             body?.errorCode ||
@@ -277,9 +277,9 @@ async function submitWebsiteLeadWithRetry(leadData) {
   }
 
   throw lastError ||
-    createWebsiteLeadError(
-      'Lead submission failed.'
-    );
+  createWebsiteLeadError(
+    'Lead submission failed.'
+  );
 }
 
 async function updateWebsiteLeadProfileOnce(profileData) {
@@ -326,7 +326,7 @@ async function updateWebsiteLeadProfileOnce(profileData) {
     if (!response.ok) {
       throw createWebsiteLeadError(
         body?.message ||
-          `Lead profile update failed with HTTP ${response.status}.`,
+        `Lead profile update failed with HTTP ${response.status}.`,
         {
           code:
             body?.errorCode ||
@@ -385,7 +385,7 @@ async function updateWebsiteLeadProfileOnce(profileData) {
       data.profileUpdated !== true ||
       !data.leadId ||
       String(data.leadId) !==
-        String(profileData.leadId)
+      String(profileData.leadId)
     ) {
       throw createWebsiteLeadError(
         'The server did not confirm the progressive Lead profile update.',
@@ -426,13 +426,13 @@ async function updateWebsiteLeadProfileOnce(profileData) {
 
     if (
       error?.code ===
-        'WEBSITE_LEAD_PROFILE_HTTP_ERROR' ||
+      'WEBSITE_LEAD_PROFILE_HTTP_ERROR' ||
       error?.code ===
-        'WEBSITE_LEAD_PROFILE_INVALID_RESPONSE' ||
+      'WEBSITE_LEAD_PROFILE_INVALID_RESPONSE' ||
       error?.code ===
-        'WEBSITE_LEAD_PROFILE_NOT_CONFIRMED' ||
+      'WEBSITE_LEAD_PROFILE_NOT_CONFIRMED' ||
       error?.code ===
-        'WEBSITE_LEAD_PROFILE_TIMEOUT'
+      'WEBSITE_LEAD_PROFILE_TIMEOUT'
     ) {
       throw error;
     }
@@ -475,7 +475,7 @@ async function updateWebsiteLeadProfileWithRetry(
       const canRetry =
         error?.retryable === true &&
         attempt <
-          WEBSITE_LEAD_MAX_ATTEMPTS;
+        WEBSITE_LEAD_MAX_ATTEMPTS;
 
       if (!canRetry) {
         throw error;
@@ -488,13 +488,13 @@ async function updateWebsiteLeadProfileWithRetry(
   }
 
   throw lastError ||
-    createWebsiteLeadError(
-      'Lead profile update failed.',
-      {
-        code:
-          'WEBSITE_LEAD_PROFILE_UPDATE_FAILED'
-      }
-    );
+  createWebsiteLeadError(
+    'Lead profile update failed.',
+    {
+      code:
+        'WEBSITE_LEAD_PROFILE_UPDATE_FAILED'
+    }
+  );
 }
 
 export const leadsApi = {
@@ -667,10 +667,9 @@ export const leadsApi = {
 
     const response =
       await axiosInstance.get(
-        `/leads${
-          queryString
-            ? `?${queryString}`
-            : ''
+        `/leads${queryString
+          ? `?${queryString}`
+          : ''
         }`
       );
 
@@ -776,6 +775,11 @@ export const leadsApi = {
     }
   },
 
+  async deleteLeadsBulk(leadIds) {
+    const response = await axiosInstance.post('/leads/bulk-delete', { leadIds });
+    return response.data;
+  },
+
   async getDueReminders() {
     const response =
       await axiosInstance.get(
@@ -850,10 +854,9 @@ export const leadsApi = {
 
     const response =
       await axiosInstance.get(
-        `/leads/count${
-          queryString
-            ? `?${queryString}`
-            : ''
+        `/leads/count${queryString
+          ? `?${queryString}`
+          : ''
         }`
       );
 
@@ -898,10 +901,9 @@ export const leadsApi = {
 
     const response =
       await axiosInstance.get(
-        `/leads/call-recordings${
-          queryString
-            ? `?${queryString}`
-            : ''
+        `/leads/call-recordings${queryString
+          ? `?${queryString}`
+          : ''
         }`
       );
 

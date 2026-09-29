@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400..600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
+
 @theme {
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
@@ -54,7 +55,8 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-#root, .crm-portal {
+#root,
+.crm-portal {
   max-width: 100vw;
   overflow-x: hidden;
 }
@@ -68,6 +70,7 @@ body {
 body:has(.crm-portal) {
   background: #000000;
 }
+
 body:has(.crm-portal.light-theme) {
   background: #FFFFFF;
 }
@@ -124,13 +127,16 @@ textarea {
     width: 4px;
     height: 4px;
   }
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
+
   &::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
   }
+
   &::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
@@ -139,6 +145,7 @@ textarea {
 @utility scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -157,110 +164,154 @@ textarea {
   --crm-font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --crm-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
+  /* India Trade Center Brand Palette Tokens */
+  --crm-navy-brand: #0F2D5B;
+  --crm-gold-accent: #D4A017;
+  --crm-orange-cta: #F57C00;
+  --crm-green-success: #16A34A;
+  --crm-red-alert: #EF4444;
+  --crm-purple: #8B5CF6;
+  --crm-ivory-bg: #FFFBF3;
+  --crm-slate-text: #6B7280;
+  --crm-border-gray: #E5E7EB;
+  --crm-warm-sand: #F7EAD3;
+
   --crm-bg: #000000;
-  --crm-bg-raised: #121212;
-  --crm-bg-sunken: #080808;
-  --crm-nav-bg: #000000;
-  --crm-nav-bg-to: #121212;
+  --crm-bg-raised: #000000;
+  --crm-bg-sunken: #000000;
+  --crm-nav-bg: #0F2D5B;
+  --crm-nav-bg-to: #0F172A;
   --crm-ink: #FFFFFF;
-  --crm-ink-soft: #E5E7EB;
-  --crm-ink-faint: #9CA3AF;
+  --crm-ink-soft: #FFFFFF;
+  --crm-ink-faint: #FFFFFF;
   --crm-heading: #FFFFFF;
-  --crm-line: rgba(255,255,255,0.15);
-  --crm-line-strong: rgba(255,255,255,0.25);
-  --crm-accent: #C89A54;
-  --crm-accent-soft: #9A7639;
-  --crm-accent-bg: rgba(200,154,84,0.1);
-  --crm-positive: #56A587;
-  --crm-positive-bg: rgba(86,165,135,0.12);
-  --crm-warning: #D2A85C;
-  --crm-warning-bg: rgba(210,168,92,0.12);
-  --crm-danger: #C96A57;
-  --crm-danger-bg: rgba(201,106,87,0.12);
-  --crm-info: #5B9BB8;
-  --crm-info-bg: rgba(91,155,184,0.12);
-  --crm-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 20px 44px -20px rgba(0,0,0,0.8);
-  --crm-shimmer: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
-  color-scheme: dark;
-  font-weight: 600;
-}
-
-.crm-portal[data-theme='light'] {
-  --crm-bg: #FFFFFF;
-  --crm-bg-raised: #FFFFFF;
-  --crm-bg-sunken: #F1F5F9;
-  --crm-nav-bg: #F8FAFC;
-  --crm-nav-bg-to: #FFFFFF;
-  --crm-ink: #000000;
-  --crm-ink-soft: #000000;
-  --crm-ink-faint: #000000;
-  --crm-heading: #000000;
-  --crm-line: rgba(0, 0, 0, 0.15);
-  --crm-line-strong: rgba(0, 0, 0, 0.25);
-  --crm-accent: #D97706;
-  --crm-accent-soft: #FEF3C7;
-  --crm-accent-bg: #FEF3C7;
-  --crm-positive: #10B981;
-  --crm-positive-bg: rgba(16, 185, 129, 0.1);
-  --crm-warning: #F59E0B;
-  --crm-warning-bg: rgba(245, 158, 11, 0.1);
+  --crm-line: rgba(255, 255, 255, 0.2);
+  --crm-line-strong: rgba(255, 255, 255, 0.35);
+  --crm-accent: #D4A017;
+  --crm-accent-soft: #FBBF24;
+  --crm-accent-bg: rgba(212, 160, 23, 0.12);
+  --crm-positive: #16A34A;
+  --crm-positive-bg: rgba(22, 163, 74, 0.14);
+  --crm-warning: #F57C00;
+  --crm-warning-bg: rgba(245, 124, 0, 0.14);
   --crm-danger: #EF4444;
-  --crm-danger-bg: rgba(239, 68, 68, 0.1);
-  --crm-info: #3B82F6;
-  --crm-info-bg: rgba(59, 130, 246, 0.1);
-  color-scheme: light;
+  --crm-danger-bg: rgba(239, 68, 68, 0.14);
+  --crm-info: #2563EB;
+  --crm-info-bg: rgba(37, 99, 235, 0.14);
+  --crm-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 44px -20px rgba(0, 0, 0, 0.8);
+  --crm-shimmer: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.03) 100%);
+  color-scheme: dark;
+  font-weight: 500;
 }
 
+.crm-portal[data-theme='light'],
 .crm-portal.light-theme {
-  --crm-bg: #FFFFFF;
+  /* India Trade Center Brand Palette Tokens */
+  --crm-navy-brand: #0F2D5B;
+  --crm-gold-accent: #D4A017;
+  --crm-orange-cta: #F57C00;
+  --crm-green-success: #16A34A;
+  --crm-red-alert: #EF4444;
+  --crm-purple: #8B5CF6;
+  --crm-ivory-bg: #FFFBF3;
+  --crm-slate-text: #0e0e0f;
+  --crm-border-gray: #E5E7EB;
+  --crm-warm-sand: #F7EAD3;
+
+  --crm-bg: #FFFBF3;
   --crm-bg-raised: #FFFFFF;
-  --crm-bg-sunken: #F1F5F9;
+  --crm-bg-sunken: #FFFBF3;
   --crm-nav-bg: #FFFFFF;
-  --crm-nav-bg-to: #F8FAFC;
-  --crm-ink: #000000;
-  --crm-ink-soft: #000000;
-  --crm-ink-faint: #000000;
-  --crm-heading: #000000;
-  --crm-line: rgba(0, 0, 0, 0.2);
-  --crm-line-strong: rgba(0, 0, 0, 0.3);
-  --crm-accent: #D97706;
-  --crm-accent-soft: #FEF3C7;
-  --crm-accent-bg: #FEF3C7;
-  --crm-positive: #15803D;
-  --crm-positive-bg: rgba(21, 128, 61, 0.1);
-  --crm-warning: #B45309;
-  --crm-warning-bg: rgba(180, 83, 9, 0.1);
-  --crm-danger: #B91C1C;
-  --crm-danger-bg: rgba(185, 28, 28, 0.1);
-  --crm-info: #0369A1;
-  --crm-info-bg: rgba(3, 105, 161, 0.1);
-  --crm-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.12);
+  --crm-nav-bg-to: #FFFBF3;
+  --crm-ink: #0F2D5B;
+  --crm-ink-soft: #6B7280;
+  --crm-ink-faint: #6B7280;
+  --crm-heading: #061936;
+  --crm-line: #E5E7EB;
+  --crm-line-strong: #E5E7EB;
+  --crm-accent: #D4A017;
+  --crm-accent-soft: #F7EAD3;
+  --crm-accent-bg: #FFFBF3;
+  --crm-positive: #16A34A;
+  --crm-positive-bg: rgba(22, 163, 74, 0.08);
+  --crm-warning: #F57C00;
+  --crm-warning-bg: rgba(245, 124, 0, 0.08);
+  --crm-danger: #EF4444;
+  --crm-danger-bg: rgba(239, 68, 68, 0.08);
+  --crm-info: #2563EB;
+  --crm-info-bg: rgba(37, 99, 235, 0.08);
+  --crm-shadow: 0 4px 20px -2px rgba(15, 45, 91, 0.08), 0 1px 3px rgba(15, 45, 91, 0.05);
   --crm-shimmer: linear-gradient(90deg, rgba(0, 0, 0, 0.03) 0%, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.03) 100%);
   color-scheme: light;
 }
 
-/* High-Contrast Light Mode Utility Overrides — Solid Dark Text (#0F172A) */
-.crm-portal.light-theme .text-white,
-.crm-portal.light-theme .text-slate-50,
-.crm-portal.light-theme .text-slate-100,
-.crm-portal.light-theme .text-slate-200,
-.crm-portal.light-theme .text-slate-300,
-.crm-portal.light-theme .text-slate-400,
-.crm-portal.light-theme .text-slate-500,
-.crm-portal.light-theme .text-slate-600,
-.crm-portal.light-theme .text-slate-700,
-.crm-portal.light-theme .text-gray-100,
-.crm-portal.light-theme .text-gray-200,
-.crm-portal.light-theme .text-gray-300,
-.crm-portal.light-theme .text-gray-400,
-.crm-portal.light-theme .text-gray-500,
-.crm-portal.light-theme .text-gray-600,
-.crm-portal.light-theme .text-gray-700,
-.crm-portal.light-theme label,
-.crm-portal.light-theme input,
-.crm-portal.light-theme select,
-.crm-portal.light-theme textarea {
-  color: #0F172A !important;
+/* Sidebar Theme Engine — Deep Navy in Light Mode (Image 1), Pure Black in Dark Mode */
+aside.crm-sidebar,
+.crm-portal aside {
+  --crm-sb-bg-from: #0A1B36;
+  --crm-sb-bg-to: #051124;
+  --crm-sb-card-bg: rgba(0, 0, 0, 0.45);
+  --crm-sb-card-border: rgba(212, 160, 23, 0.35);
+  --crm-sb-line: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, var(--crm-sb-bg-from) 0%, var(--crm-sb-bg-to) 100%) !important;
+  border-color: var(--crm-sb-line) !important;
+  color: #CBD5E1 !important;
+}
+
+.crm-portal.light-theme aside.crm-sidebar,
+.crm-portal[data-theme='light'] aside {
+  --crm-sb-bg-from: #0A1B36;
+  --crm-sb-bg-to: #051124;
+  --crm-sb-card-bg: rgba(0, 0, 0, 0.45);
+  --crm-sb-card-border: rgba(212, 160, 23, 0.35);
+  --crm-sb-line: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, #0A1B36 0%, #051124 100%) !important;
+}
+
+/* Exempt sidebar elements from high-contrast light mode dark text override */
+.crm-portal.light-theme aside.crm-sidebar *,
+.crm-portal[data-theme='light'] aside * {
+  color: inherit;
+}
+
+.crm-portal.light-theme aside.crm-sidebar .text-white,
+.crm-portal[data-theme='light'] aside .text-white {
+  color: #FFFFFF !important;
+}
+
+.crm-portal:not(.light-theme) aside.crm-sidebar,
+.crm-portal[data-theme='dark'] aside {
+  --crm-sb-bg-from: #000000;
+  --crm-sb-bg-to: #000000;
+  --crm-sb-card-bg: rgba(255, 255, 255, 0.05);
+  --crm-sb-card-border: rgba(255, 255, 255, 0.15);
+  --crm-sb-line: rgba(255, 255, 255, 0.15);
+  background: #000000 !important;
+}
+
+/* High-Contrast Light Mode Utility Overrides — Solid Dark Text (#0A0F1D) for Workspace (excluding Sidebar) */
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-50,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-100,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-200,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-300,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-400,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-500,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-600,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-700,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-800,
+.crm-portal.light-theme :not(aside):not(aside *) .text-slate-900,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-100,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-200,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-300,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-400,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-500,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-600,
+.crm-portal.light-theme :not(aside):not(aside *) .text-gray-700,
+.crm-portal.light-theme :not(aside):not(aside *) label,
+.crm-portal.light-theme :not(aside):not(aside *) input,
+.crm-portal.light-theme :not(aside):not(aside *) select,
+.crm-portal.light-theme :not(aside):not(aside *) textarea {
+  color: #0A0F1D !important;
 }
 
 .crm-portal.light-theme .text-red-400,
@@ -274,7 +325,7 @@ textarea {
 .crm-portal.light-theme .bg-red-950\/40,
 .crm-portal.light-theme .bg-red-950\/60 {
   background-color: #FEF2F2 !important;
-  border-color: #FCA5A5 !important;
+  border-color: #edcaca !important;
 }
 
 .crm-portal.light-theme .bg-red-500\/10,
@@ -339,6 +390,63 @@ textarea {
   color: #92400E !important;
 }
 
+/* Transport Manager keeps the light workspace but retains the reference navy rail. */
+.transport-shell-layout>div>div:first-child aside {
+  --crm-nav-bg: #06284F;
+  --crm-nav-bg-to: #031A35;
+  --crm-ink-soft: #E2E8F0;
+  --crm-ink-faint: #B8C7D9;
+  --crm-heading: #FFFFFF;
+  --crm-line: rgba(255, 255, 255, 0.16);
+  --crm-accent: #F59E0B;
+  --crm-accent-bg: rgba(37, 99, 235, 0.22);
+}
+
+.ceo-dashboard-shell,
+.ceo-dashboard-shell .font-mono {
+  font-family: var(--crm-font-body) !important;
+}
+
+.sales-manager-dashboard-shell,
+.sales-manager-dashboard-shell .font-mono {
+  font-family: var(--crm-font-body) !important;
+}
+
+.founder-letter-dropdown {
+  background: var(--crm-bg-raised);
+  border-color: var(--crm-line);
+  color: var(--crm-heading);
+}
+
+.founder-letter-dropdown__title {
+  border-color: var(--crm-line);
+  color: var(--crm-info);
+}
+
+.founder-letter-dropdown__item {
+  color: var(--crm-heading) !important;
+}
+
+@media (max-width: 767px) {
+  .transport-attendance-actions {
+    gap: 2px !important;
+    shrink: 0 !important;
+  }
+
+  .transport-attendance-actions button {
+    flex: 0 0 auto !important;
+    padding: 3px 6px !important;
+    font-size: 8px !important;
+    line-height: 1 !important;
+    border-radius: 4px !important;
+  }
+
+  .transport-attendance-actions button svg {
+    width: 8px !important;
+    height: 8px !important;
+  }
+}
+
 .crm-portal.light-theme .bg-slate-900,
 .crm-portal.light-theme .bg-slate-800,
 .crm-portal.light-theme .bg-slate-950 {
@@ -352,25 +460,65 @@ textarea {
   color: #000000 !important;
 }
 
-.crm-portal.light-theme *, 
-.crm-portal.light-theme input, 
-.crm-portal.light-theme button, 
-.crm-portal.light-theme select, 
+.crm-portal.light-theme *,
+.crm-portal.light-theme input,
+.crm-portal.light-theme button,
+.crm-portal.light-theme select,
 .crm-portal.light-theme textarea {
   font-weight: 700 !important;
 }
 
+/* High-Contrast Dark Mode Utility Overrides — Bright White / Light Slate Text for Black Backgrounds */
+.crm-portal:not(.light-theme) .text-slate-400,
+.crm-portal:not(.light-theme) .text-slate-500,
+.crm-portal:not(.light-theme) .text-slate-600,
+.crm-portal:not(.light-theme) .text-slate-700,
+.crm-portal:not(.light-theme) .text-gray-400,
+.crm-portal:not(.light-theme) .text-gray-500,
+.crm-portal:not(.light-theme) .text-gray-600,
+.crm-portal:not(.light-theme) .text-gray-700,
+.crm-portal:not(.light-theme) .text-zinc-400,
+.crm-portal:not(.light-theme) .text-zinc-500,
+.crm-portal:not(.light-theme) .text-zinc-600 {
+  color: #060709 !important;
+}
+
+.crm-portal:not(.light-theme) th,
+.crm-portal:not(.light-theme) td,
+.crm-portal:not(.light-theme) label,
+.crm-portal:not(.light-theme) input,
+.crm-portal:not(.light-theme) select,
+.crm-portal:not(.light-theme) textarea {
+  color: #FFFFFF !important;
+}
+
 @keyframes crm-shimmer-sweep {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes pulse-slow {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
 }
 
-.animate-pulse-slow { animation: pulse-slow 4s ease-in-out infinite; }
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
 
 @utility crm-skeleton {
   background-image: var(--crm-shimmer);

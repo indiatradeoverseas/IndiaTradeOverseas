@@ -2,17 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL, getFileUrl } from '../../config/env';
-import { 
-  FiDollarSign, 
-  FiTrendingUp, 
-  FiPercent, 
-  FiFileText, 
-  FiUsers, 
-  FiAlertCircle, 
-  FiCheck, 
-  FiX, 
-  FiCalendar, 
-  FiFilter, 
+import {
+  FiDollarSign,
+  FiTrendingUp,
+  FiPercent,
+  FiFileText,
+  FiUsers,
+  FiAlertCircle,
+  FiCheck,
+  FiX,
+  FiCalendar,
+  FiFilter,
   FiCpu,
   FiPrinter,
   FiRotateCw,
@@ -38,18 +38,18 @@ import {
   FiMessageSquare
 } from 'react-icons/fi';
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
-import { 
-  ResponsiveContainer, 
-  FunnelChart, 
-  Funnel, 
-  LabelList, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend 
+import {
+  ResponsiveContainer,
+  FunnelChart,
+  Funnel,
+  LabelList,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
 } from 'recharts';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -86,7 +86,7 @@ export default function SalesManagerDashboard() {
   const [repsData, setRepsData] = useState([]);
   const [allLeads, setAllLeads] = useState([]);
   const [pendingDocs, setPendingDocs] = useState([]);
-  
+
   // Sorting for Team Table
   const [sortField, setSortField] = useState('revenue');
   const [sortDirection, setSortDirection] = useState('desc');
@@ -297,7 +297,7 @@ export default function SalesManagerDashboard() {
       if (res && res.success) {
         setNextTrialIdPreview(res.data?.nextTrialId || 'TRL001');
       }
-    } catch (e) {}
+    } catch (e) { }
     setShowCreateTrialModal(true);
   };
 
@@ -444,9 +444,9 @@ export default function SalesManagerDashboard() {
       const handleAttendanceUpdate = (data) => {
         if (data && data.employeeId) {
           setTeamEmployees(prev => prev.map(emp => {
-            const isTarget = String(emp._id) === String(data.employeeId) || 
-                             String(emp.employeeId) === String(data.employeeId) ||
-                             (emp.email && data.record?.email && emp.email.toLowerCase() === data.record.email.toLowerCase());
+            const isTarget = String(emp._id) === String(data.employeeId) ||
+              String(emp.employeeId) === String(data.employeeId) ||
+              (emp.email && data.record?.email && emp.email.toLowerCase() === data.record.email.toLowerCase());
             if (isTarget) {
               return {
                 ...emp,
@@ -460,7 +460,7 @@ export default function SalesManagerDashboard() {
           }));
         }
       };
-      
+
       const handleTrialChatReceive = (msg) => {
         if (msg) {
           setTrialChatMessages(prev => {
@@ -490,7 +490,7 @@ export default function SalesManagerDashboard() {
       skt.on('attendance_updated', handleAttendanceUpdate);
       skt.on('sales_trial_chat_receive', handleTrialChatReceive);
       skt.on('work_log_submitted', handleWorkLogSubmitted);
-      
+
       return () => {
         skt.off('employee_status_updated', handleStatusUpdate);
         skt.off('attendance_updated', handleAttendanceUpdate);
@@ -519,7 +519,7 @@ export default function SalesManagerDashboard() {
     );
 
     // 2. Is Approved Leave?
-    const isOnLeave = teamLeaves.some(l => 
+    const isOnLeave = teamLeaves.some(l =>
       (l.applicantId?._id === emp._id || l.applicantId === emp._id || l.employeeId === emp._id) &&
       l.status === 'APPROVED'
     );
@@ -535,7 +535,7 @@ export default function SalesManagerDashboard() {
 
     // 3. Live Socket Status or DB Attendance check
     const live = liveStatuses[emp._id] || liveStatuses[emp.email];
-    const isCheckedInInDB = emp.isCheckedIn === true || 
+    const isCheckedInInDB = emp.isCheckedIn === true ||
       (emp.status && emp.status !== 'OFFLINE' && emp.status !== 'ABSENT') ||
       (emp.statusInfo && emp.statusInfo.status !== 'OFFLINE' && emp.statusInfo.status !== 'ABSENT');
 
@@ -789,8 +789,8 @@ export default function SalesManagerDashboard() {
       if (sortField === 'fullName') {
         valA = a.fullName.toLowerCase();
         valB = b.fullName.toLowerCase();
-        return sortDirection === 'asc' 
-          ? valA.localeCompare(valB) 
+        return sortDirection === 'asc'
+          ? valA.localeCompare(valB)
           : valB.localeCompare(valA);
       }
 
@@ -882,7 +882,7 @@ export default function SalesManagerDashboard() {
     else if (l.stage === 'DOCUMENT_PENDING') probability = 0.9;
     else if (['CLOSED_WON', 'DEAL_WON'].includes(l.stage)) probability = 1.0;
     else if (['CLOSED_LOST', 'DEAL_LOST'].includes(l.stage)) probability = 0.0;
-    
+
     return sum + (l.leadValue || 0) * probability;
   }, 0);
 
@@ -908,7 +908,7 @@ export default function SalesManagerDashboard() {
 
   // Map Recharts Funnel Dataset
   const funnelData = funnelStagesMap.map((stage, idx, arr) => {
-    const parentCount = idx === 0 ? stage.count : arr[idx-1].count;
+    const parentCount = idx === 0 ? stage.count : arr[idx - 1].count;
     const conversion = parentCount > 0 ? Math.round((stage.count / parentCount) * 100) : 100;
     return {
       value: stage.count || 2,
@@ -921,10 +921,10 @@ export default function SalesManagerDashboard() {
   // Dynamic coaching suggestions (AI insights generation)
   const getAISuggestions = () => {
     const suggestions = [];
-    
+
     // Sort reps by revenue to identify top and bottom performers
     const sortedReps = [...repsData].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
-    
+
     sortedReps.forEach((rep) => {
       // 1. Target Achievement Suggestions
       if (rep.targetValue > 0) {
@@ -963,7 +963,7 @@ export default function SalesManagerDashboard() {
         { repName: 'Sales Reps', msg: 'No active sales reps performance data found. Configure monthly targets to generate coaching insights.' }
       );
     }
-    
+
     return suggestions.slice(0, 5); // Limit to top 5 dynamic suggestions
   };
 
@@ -1102,11 +1102,11 @@ export default function SalesManagerDashboard() {
     const srcUpper = (lead.source || '').toUpperCase();
     const isChatLead = lead.source === 'AI_AGENT' || Boolean(lead.chatSummary) || srcUpper.includes('CHAT');
     const isAdLead = srcUpper.includes('ADS') || srcUpper.includes('ITOADS') || srcUpper.includes('CAMPAIGN') || catUpper.includes('ITOADS');
-    const originBadge = isChatLead 
+    const originBadge = isChatLead
       ? { label: '💬 Website Chat', color: 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs' }
       : isAdLead
-      ? { label: '📢 ITO Digital Ad', color: 'bg-purple-600 text-white font-bold border-purple-700 shadow-xs' }
-      : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
+        ? { label: '📢 ITO Digital Ad', color: 'bg-purple-600 text-white font-bold border-purple-700 shadow-xs' }
+        : { label: '🌐 Website Form', color: 'bg-cyan-600 text-white font-bold border-cyan-700 shadow-xs' };
 
     return { divisionBadge, originBadge };
   };
@@ -1114,7 +1114,7 @@ export default function SalesManagerDashboard() {
   // Helper for rendering Target Timeline cell with date formatting & theme-aware high contrast styling
   const renderTargetTimelineCell = (lead) => {
     const rawVal = lead.targetDate || lead.timeline || lead.targetTimeline || lead.originalPayload?.targetTimeline || lead.originalPayload?.timeline || '';
-    
+
     if (!rawVal) {
       return <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">—</span>;
     }
@@ -1174,7 +1174,7 @@ export default function SalesManagerDashboard() {
   const calculateLeadPriorityTemp = (lead) => {
     const pUpper = (lead.priority || '').toUpperCase();
     const stageUpper = (lead.stage || '').toUpperCase();
-    const isExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0,0,0,0))) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(stageUpper);
+    const isExpired = lead.targetDate && (new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0))) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(stageUpper);
 
     if (pUpper === 'DEAD' || isExpired) {
       return { label: 'DEAD 💀', color: 'bg-zinc-800 text-zinc-200 font-black border-zinc-600 shadow-xs' };
@@ -1211,7 +1211,7 @@ export default function SalesManagerDashboard() {
       const baseDate = lead.createdAt ? new Date(lead.createdAt) : new Date();
       const baseDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
       const targetDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate());
-      
+
       const diffMs = targetDay.getTime() - baseDay.getTime();
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -1315,11 +1315,11 @@ export default function SalesManagerDashboard() {
   };
 
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
-      variants={containerVariants} 
-      className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] overflow-x-hidden print:bg-white print:p-0"
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="sales-manager-dashboard-shell p-3 sm:p-6 space-y-6 max-w-[1700px] mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] overflow-x-hidden print:bg-white print:p-0"
     >
       {/* Header Bar */}
       <motion.div variants={itemVariants} className="w-full bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shadow-sm print:shadow-none print:border-none print:pb-2">
@@ -1345,7 +1345,7 @@ export default function SalesManagerDashboard() {
             </select>
           </div>
 
-          <button 
+          <button
             onClick={loadDashboardData}
             className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
@@ -1359,16 +1359,16 @@ export default function SalesManagerDashboard() {
             <FiMessageSquare size={12} /> Executive & Founder Chat
           </Link>
 
-          <button 
+          <button
             onClick={handlePrintPDF}
             className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white border border-slate-950 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <FiPrinter size={12} /> 
+            <FiPrinter size={12} />
           </button>
 
-        
 
-          <button 
+
+          <button
             onClick={() => setShowFileModal(true)}
             className="flex items-center justify-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-800 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
@@ -1389,31 +1389,28 @@ export default function SalesManagerDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
-              dateFilterMode === 'ALL'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-            }`}
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'ALL'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
+              }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
-              dateFilterMode === 'TODAY'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-            }`}
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'TODAY'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
+              }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
-              dateFilterMode === 'YESTERDAY'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-            }`}
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'YESTERDAY'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
+              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
+              }`}
           >
             Yesterday
           </button>
@@ -1442,7 +1439,7 @@ export default function SalesManagerDashboard() {
         </div>
 
         <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong> 
+          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong>
           &bull; ({getFilteredByDate(allLeads).length} Leads &bull; {getFilteredByDate(callRecordings).length} Recordings)
         </div>
       </motion.div>
@@ -1463,11 +1460,10 @@ export default function SalesManagerDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                activeTab === tab.id
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
-                  : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
-              }`}
+              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeTab === tab.id
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
+                : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+                }`}
             >
               <tab.icon size={13} className={activeTab === tab.id ? 'text-white' : 'text-inherit'} />
               {tab.label}
@@ -1500,17 +1496,17 @@ export default function SalesManagerDashboard() {
             {/* TAB 1: TEAM COMMAND CENTER */}
             {activeTab === 'command' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
+
                 {/* Left/Middle Column */}
                 <div className="lg:col-span-8 space-y-6">
-                  
+
                   {/* Lead Temperature Classification Banner */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs text-left shadow-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl border text-xs text-left shadow-sm" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
                     <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-rose-600 to-red-600 text-white border border-rose-500 rounded-lg shadow-sm">
                       <span className="text-2xl">🔥</span>
                       <div>
                         <span className="text-[10px] uppercase font-bold tracking-wider text-rose-100 block">Hot Deals (Urgent)</span>
-                        <strong className="text-base text-white font-black">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'HOT').length} Leads</strong>
+                        <strong className="text-base text-white font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('HOT')).length} Leads</strong>
                       </div>
                     </div>
 
@@ -1518,7 +1514,7 @@ export default function SalesManagerDashboard() {
                       <span className="text-2xl">⚡</span>
                       <div>
                         <span className="text-[10px] uppercase font-bold tracking-wider text-amber-100 block">Warm Pipeline</span>
-                        <strong className="text-base text-white font-black">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'WARM').length} Leads</strong>
+                        <strong className="text-base text-white font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('WARM')).length} Leads</strong>
                       </div>
                     </div>
 
@@ -1526,7 +1522,7 @@ export default function SalesManagerDashboard() {
                       <span className="text-2xl">❄️</span>
                       <div>
                         <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-100 block">Cold / Nurturing</span>
-                        <strong className="text-base text-white font-black">{allLeads.filter(l => (l.priority || '').toUpperCase() === 'COLD').length} Leads</strong>
+                        <strong className="text-base text-white font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('COLD')).length} Leads</strong>
                       </div>
                     </div>
                   </div>
@@ -1541,7 +1537,7 @@ export default function SalesManagerDashboard() {
                       { label: 'PENDING LEADS', val: metrics.pendingLeads, sub: 'Active Pipeline', icon: FiAlertCircle, color: 'text-amber-400 bg-amber-950/20 border-amber-900/30' },
                       { label: 'TOTAL EXECUTIVES', val: metrics.totalExecutives, sub: 'Sales Department', icon: FiCpu, color: 'text-cyan-400 bg-cyan-950/20 border-cyan-900/30' }
                     ].map((kpi, idx) => (
-                      <motion.div 
+                      <motion.div
                         key={idx}
                         whileHover={{ y: -3 }}
                         className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3.5 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all text-left min-w-0"
@@ -1566,7 +1562,7 @@ export default function SalesManagerDashboard() {
                       <span>Team Performance Status</span>
                       <span className="text-[8px] font-mono text-[var(--crm-ink-faint)]">Click headers to sort</span>
                     </h3>
-                    
+
                     <div className="overflow-x-auto mt-4">
                       <table className="w-full text-left border-collapse min-w-[750px]">
                         <thead>
@@ -1587,7 +1583,7 @@ export default function SalesManagerDashboard() {
                             let rowBg = 'border-l-4 border-l-emerald-500';
                             if (rep.dealsWon < 2) rowBg = 'border-l-4 border-l-rose-500 bg-rose-950/10';
                             else if (rep.dealsWon < 5) rowBg = 'border-l-4 border-l-amber-500 bg-amber-950/5';
-                            
+
                             const convRate = rep.totalLeads > 0 ? Math.round((rep.dealsWon / rep.totalLeads) * 100) : 0;
 
                             return (
@@ -1619,7 +1615,7 @@ export default function SalesManagerDashboard() {
 
                   {/* Funnel Chart & Approval Queue */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
+
                     {/* Funnel Chart */}
                     <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                       <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
@@ -1630,7 +1626,7 @@ export default function SalesManagerDashboard() {
                       <div className="h-64 mt-6">
                         <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                           <FunnelChart>
-                            <Tooltip 
+                            <Tooltip
                               contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
                               formatter={(v, n, p) => [p.payload.rate, 'Conversion']}
                             />
@@ -1748,18 +1744,16 @@ export default function SalesManagerDashboard() {
                                 <td className="py-3 px-4 text-[var(--crm-ink-soft)]">{task.assignedTo?.name || 'Employee'}</td>
                                 <td className="py-3 px-4 font-mono text-[var(--crm-ink-faint)]">{new Date(task.dueDate).toLocaleDateString('en-IN')}</td>
                                 <td className="py-3 px-4">
-                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${
-                                    task.priority === 'HIGH' ? 'bg-rose-600 text-white border border-rose-700' :
+                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${task.priority === 'HIGH' ? 'bg-rose-600 text-white border border-rose-700' :
                                     task.priority === 'MEDIUM' ? 'bg-amber-500 text-white border border-amber-600' :
-                                    'bg-slate-700 text-white border border-slate-600'
-                                  }`}>{task.priority}</span>
+                                      'bg-slate-700 text-white border border-slate-600'
+                                    }`}>{task.priority}</span>
                                 </td>
                                 <td className="py-3 px-4">
-                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${
-                                    task.status === 'COMPLETED' ? 'bg-emerald-600 text-white border border-emerald-700' :
+                                  <span className={`text-[8px] font-mono font-black px-2.5 py-1 rounded uppercase shadow-xs ${task.status === 'COMPLETED' ? 'bg-emerald-600 text-white border border-emerald-700' :
                                     task.status === 'IN_PROGRESS' ? 'bg-blue-600 text-white border border-blue-700' :
-                                    'bg-amber-500 text-white border border-amber-600'
-                                  }`}>{task.status?.replace('_', ' ')}</span>
+                                      'bg-amber-500 text-white border border-amber-600'
+                                    }`}>{task.status?.replace('_', ' ')}</span>
                                 </td>
                                 <td className="py-3 px-4">
                                   {task.fileOriginalName ? (
@@ -1838,8 +1832,8 @@ export default function SalesManagerDashboard() {
                       ) : (
                         teamEmployees.map((emp) => {
                           return (
-                            <div 
-                              key={emp._id} 
+                            <div
+                              key={emp._id}
                               className="p-3 border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 hover:bg-[var(--crm-bg-sunken)] rounded-xl transition text-xs font-mono space-y-2.5 shadow-xs"
                             >
                               <div className="flex justify-between items-start gap-2">
@@ -1929,11 +1923,10 @@ export default function SalesManagerDashboard() {
                           <button
                             key={divFilter.id}
                             onClick={() => setLeadDivisionFilter(divFilter.id)}
-                            className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition cursor-pointer ${
-                              leadDivisionFilter === divFilter.id
-                                ? 'bg-teal-600 text-white shadow-sm'
-                                : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                            }`}
+                            className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition cursor-pointer ${leadDivisionFilter === divFilter.id
+                              ? 'bg-teal-600 text-white shadow-sm'
+                              : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                              }`}
                           >
                             {divFilter.label}
                           </button>
@@ -2033,7 +2026,7 @@ export default function SalesManagerDashboard() {
                           return divisionLeadsList.map((lead) => {
                             const { divisionBadge, originBadge } = getLeadDivisionAndOriginBadges(lead);
 
-                            const assignedEmp = teamEmployees.find(e => 
+                            const assignedEmp = teamEmployees.find(e =>
                               e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
                             );
 
@@ -2182,7 +2175,7 @@ export default function SalesManagerDashboard() {
                       return divisionLeadsList.map((lead) => {
                         const { divisionBadge, originBadge } = getLeadDivisionAndOriginBadges(lead);
 
-                        const assignedEmp = teamEmployees.find(e => 
+                        const assignedEmp = teamEmployees.find(e =>
                           e._id === lead.assignedTo || e._id === lead.assignedTo?._id || e.employeeId === lead.assignedTo
                         );
 
@@ -2300,10 +2293,10 @@ export default function SalesManagerDashboard() {
             {/* TAB 2: STRATEGIC & COACHING */}
             {activeTab === 'strategic' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
+
                 {/* Left/Middle Column */}
                 <div className="lg:col-span-8 space-y-6">
-                  
+
                   {/* Forecast Accuracy Line Chart */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
                     <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
@@ -2312,14 +2305,14 @@ export default function SalesManagerDashboard() {
                         Total Revenue Generated: {currency(strategicInsights?.totalActualRevenue || 0)}
                       </span>
                     </h3>
-                    
+
                     <div className="h-64 mt-6">
                       <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                         <LineChart data={strategicInsights?.forecastHistory || []} margin={{ left: -10, top: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.05} stroke="var(--crm-line)" />
                           <XAxis dataKey="month" stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} />
-                          <YAxis stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} tickFormatter={(v) => `₹${v/10000000}Cr`} />
-                          <Tooltip 
+                          <YAxis stroke="var(--crm-ink-faint)" fontSize={9} tickLine={false} tickFormatter={(v) => `₹${v / 10000000}Cr`} />
+                          <Tooltip
                             contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }}
                             formatter={(v) => currency(v)}
                           />
@@ -2446,7 +2439,7 @@ export default function SalesManagerDashboard() {
                       <span>Sales Team Chat Hub</span>
                       <span className="text-[8px] font-mono text-emerald-400 animate-pulse">Live Connection</span>
                     </h3>
-                    
+
                     {/* Chat Message List */}
                     <div className="flex-1 overflow-y-auto my-3 pr-1 space-y-2 custom-scrollbar text-[11px] font-sans">
                       {chatMessages.length === 0 ? (
@@ -2459,13 +2452,12 @@ export default function SalesManagerDashboard() {
                           const isFounder = msg.senderRole === 'ADMIN';
                           return (
                             <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                              <div className={`max-w-[85%] rounded-lg p-2.5 ${
-                                isMe 
-                                  ? 'bg-teal-600 text-white' 
-                                  : isFounder 
-                                    ? 'bg-blue-950/60 border border-blue-900/40 text-[var(--crm-ink-soft)]' 
-                                    : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)]'
-                              }`}>
+                              <div className={`max-w-[85%] rounded-lg p-2.5 ${isMe
+                                ? 'bg-teal-600 text-white'
+                                : isFounder
+                                  ? 'bg-blue-950/60 border border-blue-900/40 text-[var(--crm-ink-soft)]'
+                                  : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)]'
+                                }`}>
                                 <div className="flex justify-between items-center gap-2 mb-1 text-[8px] font-semibold opacity-85">
                                   <span>{msg.senderName} ({msg.senderRole})</span>
                                 </div>
@@ -2515,8 +2507,8 @@ export default function SalesManagerDashboard() {
                         placeholder="Type a message to Sales team..."
                         className="flex-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-3 py-2 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
                       />
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         disabled={sendingChat || !chatInput.trim()}
                         className="bg-teal-600 hover:bg-teal-700 text-white p-2 rounded transition disabled:opacity-50 flex items-center justify-center cursor-pointer"
                       >
@@ -2537,7 +2529,7 @@ export default function SalesManagerDashboard() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[var(--crm-line)] pb-4">
                     <div>
                       <h3 className="text-sm font-bold text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiCalendar className="text-teal-500" size={16} /> Team Leave Applications Desk 
+                        <FiCalendar className="text-teal-500" size={16} /> Team Leave Applications Desk
                       </h3>
                       <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">
                         Review, approve, or reject leave requests submitted by the Sales Execs of your department.
@@ -2571,7 +2563,7 @@ export default function SalesManagerDashboard() {
                         ) : (
                           teamLeaves.map((lv) => {
                             const isPending = lv.status === 'PENDING' || lv.status === 'PENDING_HR_APPROVAL';
-                            
+
                             // Check if Manager is allowed to review this request
                             // Sales Manager can approve:
                             // - Executives under his department (SALES)
@@ -2689,11 +2681,10 @@ export default function SalesManagerDashboard() {
                         <button
                           key={p}
                           onClick={() => setRecordingPriorityFilter(p)}
-                          className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase transition cursor-pointer ${
-                            recordingPriorityFilter === p
-                              ? 'bg-teal-700 text-white font-black'
-                              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
-                          }`}
+                          className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase transition cursor-pointer ${recordingPriorityFilter === p
+                            ? 'bg-teal-700 text-white font-black'
+                            : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                            }`}
                         >
                           {p}
                         </button>
@@ -2868,7 +2859,7 @@ export default function SalesManagerDashboard() {
               const normalizeLostReason = (rawReason) => {
                 if (!rawReason) return 'Other';
                 const clean = rawReason.trim().toLowerCase();
-                
+
                 if (clean.includes('price') || clean.includes('rate') || clean.includes('cost')) return 'Price';
                 if (clean.includes('freight') || clean.includes('shipping')) return 'Freight';
                 if (clean.includes('competitor') || clean.includes('competing')) return 'Competitor';
@@ -2880,7 +2871,7 @@ export default function SalesManagerDashboard() {
                 if (clean.includes('timing') || clean.includes('time') || clean.includes('postponed')) return 'Timing';
                 if (clean.includes('payment') || clean.includes('credit') || clean.includes('lc')) return 'Payment terms';
                 if (clean.includes('trust') || clean.includes('hesitat')) return 'Trust concern';
-                
+
                 return 'Other';
               };
 
@@ -3040,7 +3031,7 @@ export default function SalesManagerDashboard() {
             {activeTab === 'sales_trial_hub' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
-                  
+
                   {/* Left Column: Trial Employees Roster */}
                   <div className="lg:col-span-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm font-mono text-xs space-y-4">
                     <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
@@ -3073,13 +3064,12 @@ export default function SalesManagerDashboard() {
                             <div
                               key={u._id || u.trialId || `trial_user_${uIdx}`}
                               onClick={() => handleSelectTrialUser(u)}
-                              className={`p-3 border rounded-lg cursor-pointer transition flex items-center justify-between gap-2 shadow-xs ${
-                                isSelected
-                                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 border-teal-500 text-white shadow-sm'
-                                  : isPending
-                                    ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700 text-slate-900 dark:text-slate-100'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-teal-500'
-                              }`}
+                              className={`p-3 border rounded-lg cursor-pointer transition flex items-center justify-between gap-2 shadow-xs ${isSelected
+                                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 border-teal-500 text-white shadow-sm'
+                                : isPending
+                                  ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700 text-slate-900 dark:text-slate-100'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-teal-500'
+                                }`}
                             >
                               <div className="space-y-0.5 min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-1.5">
@@ -3151,7 +3141,7 @@ export default function SalesManagerDashboard() {
                     <div className="border-b border-[var(--crm-line)] pb-3 flex justify-between items-center shrink-0 font-mono">
                       <div>
                         <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-2">
-                          <FiMessageSquare className="text-teal-400" size={15} /> 
+                          <FiMessageSquare className="text-teal-400" size={15} />
                           {selectedTrialUserName ? `Chatting with: ${selectedTrialUserName} (${selectedTrialUserId})` : 'Select a Sales Trial Executive'}
                         </h3>
                         <p className="text-[9px] text-[var(--crm-ink-faint)]">1-on-1 direct coaching line & lead query channel.</p>
@@ -3194,11 +3184,10 @@ export default function SalesManagerDashboard() {
 
                           return (
                             <div key={msg._id || `msg_${msgIdx}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                              <div className={`max-w-[80%] rounded-xl p-3 space-y-1 shadow-sm ${
-                                isMe 
-                                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-sm' 
-                                  : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                              }`}>
+                              <div className={`max-w-[80%] rounded-xl p-3 space-y-1 shadow-sm ${isMe
+                                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-sm'
+                                : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                                }`}>
                                 <div className="flex justify-between items-center gap-4 text-[9px] font-mono font-bold opacity-80 border-b border-white/10 pb-1">
                                   <span>{msg.senderName} ({msg.senderRole})</span>
                                 </div>
@@ -3245,15 +3234,15 @@ export default function SalesManagerDashboard() {
       {/* DOCUMENT APPROVAL DIALOG MODAL */}
       {actioningDoc && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <motion.div 
-            initial={{ scale: 0.97, opacity: 0 }} 
-            animate={{ scale: 1, opacity: 1 }} 
+          <motion.div
+            initial={{ scale: 0.97, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
             className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-md relative text-left shadow-xl"
           >
             <h3 className="text-sm uppercase tracking-wide font-bold font-sans text-[var(--crm-heading)] border-b border-[var(--crm-line)] pb-3">
               Confirm Document {actionType === 'APPROVE' ? 'Approval' : 'Rejection'}
             </h3>
-            
+
             <div className="mt-4 text-xs font-mono text-[var(--crm-ink-soft)] space-y-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] p-3 rounded">
               <p>Document: <strong className="text-[var(--crm-heading)]">{actioningDoc.fileName}</strong></p>
               <p>Type: <strong className="text-[var(--crm-heading)]">{actioningDoc.exportDocType || 'Other'}</strong></p>
@@ -3272,8 +3261,8 @@ export default function SalesManagerDashboard() {
                   value={actionNote}
                   onChange={(e) => setActionNote(e.target.value)}
                   placeholder={
-                    actionType === 'APPROVE' 
-                      ? 'Add any comments for the uploader (e.g. Approved for dispatch)' 
+                    actionType === 'APPROVE'
+                      ? 'Add any comments for the uploader (e.g. Approved for dispatch)'
                       : 'Provide a reason for rejection (Mandatory)...'
                   }
                   className="w-full p-2.5 border border-[var(--crm-line)] bg-[var(--crm-bg)] text-[var(--crm-heading)] rounded outline-none resize-none focus:border-teal-500"
@@ -3281,21 +3270,20 @@ export default function SalesManagerDashboard() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button 
-                  type="submit" 
-                  disabled={submittingAction} 
-                  className={`flex-1 text-white py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer transition disabled:opacity-50 ${
-                    actionType === 'APPROVE' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-rose-600 hover:bg-rose-700'
-                  }`}
+                <button
+                  type="submit"
+                  disabled={submittingAction}
+                  className={`flex-1 text-white py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer transition disabled:opacity-50 ${actionType === 'APPROVE' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-rose-600 hover:bg-rose-700'
+                    }`}
                 >
                   {submittingAction ? 'Processing...' : `Confirm ${actionType === 'APPROVE' ? 'Approval' : 'Rejection'}`}
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => {
                     setActioningDoc(null);
                     setActionNote('');
-                  }} 
+                  }}
                   className="flex-1 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] py-2.5 font-bold uppercase text-[9px] tracking-widest rounded cursor-pointer hover:bg-[var(--crm-bg-raised)] transition"
                 >
                   Cancel
@@ -3329,7 +3317,7 @@ export default function SalesManagerDashboard() {
                 <input
                   type="text"
                   value={taskForm.title}
-                  onChange={(e) => setTaskForm(prev => ({...prev, title: e.target.value}))}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g. Follow up with ABC Buyer"
                   className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 transition"
                   required
@@ -3340,7 +3328,7 @@ export default function SalesManagerDashboard() {
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Description</label>
                 <textarea
                   value={taskForm.description}
-                  onChange={(e) => setTaskForm(prev => ({...prev, description: e.target.value}))}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Task details..."
                   rows={3}
                   className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] placeholder-slate-500 resize-none font-sans transition"
@@ -3352,7 +3340,7 @@ export default function SalesManagerDashboard() {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Assign To *</label>
                   <select
                     value={taskForm.assignedTo}
-                    onChange={(e) => setTaskForm(prev => ({...prev, assignedTo: e.target.value}))}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, assignedTo: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                     required
                   >
@@ -3367,7 +3355,7 @@ export default function SalesManagerDashboard() {
                   <input
                     type="date"
                     value={taskForm.dueDate}
-                    onChange={(e) => setTaskForm(prev => ({...prev, dueDate: e.target.value}))}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                     required
                   />
@@ -3379,7 +3367,7 @@ export default function SalesManagerDashboard() {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Priority</label>
                   <select
                     value={taskForm.priority}
-                    onChange={(e) => setTaskForm(prev => ({...prev, priority: e.target.value}))}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                   >
                     <option value="LOW">Low</option>
@@ -3391,7 +3379,7 @@ export default function SalesManagerDashboard() {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Category</label>
                   <select
                     value={taskForm.category}
-                    onChange={(e) => setTaskForm(prev => ({...prev, category: e.target.value}))}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, category: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                   >
                     <option value="GENERAL">General</option>
@@ -3407,7 +3395,7 @@ export default function SalesManagerDashboard() {
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Link to Lead (Optional)</label>
                 <select
                   value={taskForm.leadId}
-                  onChange={(e) => setTaskForm(prev => ({...prev, leadId: e.target.value}))}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, leadId: e.target.value }))}
                   className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] transition"
                 >
                   <option value="">None / General Task</option>
@@ -3471,7 +3459,7 @@ export default function SalesManagerDashboard() {
                 <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Send To *</label>
                 <select
                   value={fileForm.sentTo}
-                  onChange={(e) => setFileForm(prev => ({...prev, sentTo: e.target.value}))}
+                  onChange={(e) => setFileForm(prev => ({ ...prev, sentTo: e.target.value }))}
                   className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-indigo-600 transition cursor-pointer"
                   required
                 >
@@ -3497,7 +3485,7 @@ export default function SalesManagerDashboard() {
                 <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Note (Optional)</label>
                 <textarea
                   value={fileForm.note}
-                  onChange={(e) => setFileForm(prev => ({...prev, note: e.target.value}))}
+                  onChange={(e) => setFileForm(prev => ({ ...prev, note: e.target.value }))}
                   placeholder="Instructions or notes for the executive..."
                   rows={3}
                   className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-indigo-600 transition resize-none placeholder:text-[var(--crm-ink-faint)]"
@@ -3547,7 +3535,7 @@ export default function SalesManagerDashboard() {
                 <input
                   type="number"
                   value={targetForm.targetValue}
-                  onChange={(e) => setTargetForm(prev => ({...prev, targetValue: e.target.value}))}
+                  onChange={(e) => setTargetForm(prev => ({ ...prev, targetValue: e.target.value }))}
                   placeholder="e.g. 5000000"
                   className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
                   required
@@ -3559,7 +3547,7 @@ export default function SalesManagerDashboard() {
                   <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Month *</label>
                   <select
                     value={targetForm.month}
-                    onChange={(e) => setTargetForm(prev => ({...prev, month: e.target.value}))}
+                    onChange={(e) => setTargetForm(prev => ({ ...prev, month: e.target.value }))}
                     className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition cursor-pointer"
                     required
                   >
@@ -3575,7 +3563,7 @@ export default function SalesManagerDashboard() {
                   <input
                     type="number"
                     value={targetForm.year}
-                    onChange={(e) => setTargetForm(prev => ({...prev, year: e.target.value}))}
+                    onChange={(e) => setTargetForm(prev => ({ ...prev, year: e.target.value }))}
                     className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition"
                     required
                   />
@@ -3587,7 +3575,7 @@ export default function SalesManagerDashboard() {
                 <input
                   type="number"
                   value={targetForm.targetDeals}
-                  onChange={(e) => setTargetForm(prev => ({...prev, targetDeals: e.target.value}))}
+                  onChange={(e) => setTargetForm(prev => ({ ...prev, targetDeals: e.target.value }))}
                   placeholder="e.g. 10"
                   className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs px-4 py-2.5 rounded outline-none focus:border-teal-600 transition placeholder:text-[var(--crm-ink-faint)]"
                 />

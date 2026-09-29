@@ -112,7 +112,7 @@ export default function Sidebar({ onClose }) {
             className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em]"
             style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-accent)' }}
           >
-            <span>Role</span><span style={{ color: 'var(--crm-heading)' }}>· {user?.role || 'USER'}</span>{user?.department && <><span>·</span><span>{user.department}</span></>}
+            <span>Role</span><span className="text-white font-extrabold">· {user?.role || 'USER'}</span>{user?.department && <><span style={{ color: 'var(--crm-accent)' }}>·</span><span style={{ color: 'var(--crm-accent)' }}>{user.department}</span></>}
           </p>
         </div>
         {onClose && (

@@ -207,44 +207,73 @@ export default function EmployeeActivityMonitor({ scopeDepartment = null, showLu
   return (
     <div className="w-full space-y-6">
       {/* Header bar */}
-      <div className="border p-3.5 sm:p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 backdrop-blur-sm" style={CARD}>
-        <div className="space-y-0.5 sm:space-y-1">
-          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold text-[var(--crm-ink-faint)] uppercase tracking-wider">
-            <span className="relative flex h-2 w-2">
+      <div className="border p-4 sm:p-5 rounded-2xl flex flex-col xl:flex-row xl:items-center justify-between gap-4 backdrop-blur-sm" style={CARD}>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider">
+            <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
             <span>Real-time Shift & Activity Telemetry</span>
           </div>
-          <h2 className="text-base sm:text-2xl font-bold tracking-tight text-[var(--crm-heading)] font-sans">{title}</h2>
+          <h2 className="text-base sm:text-xl font-extrabold tracking-tight text-[var(--crm-heading)] font-sans uppercase">{title}</h2>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <div className="flex items-center overflow-x-auto max-w-full scrollbar-none p-1 rounded-xl border shrink-0" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
             <button
+              type="button"
               onClick={() => setActiveTab('live')}
-              className={`px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTab === 'live' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
+              className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wide rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'live'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-[var(--crm-heading)] hover:bg-white/10'
+              }`}
             >
               Live Telemetry
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('report6pm')}
-              className={`px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTab === 'report6pm' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
+              className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wide rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'report6pm'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-[var(--crm-heading)] hover:bg-white/10'
+              }`}
             >
               6:00 PM Report
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('analytics')}
-              className={`px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTab === 'analytics' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]'}`}
+              className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wide rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'analytics'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-[var(--crm-heading)] hover:bg-white/10'
+              }`}
             >
               Historical Reports
             </button>
           </div>
+
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={handleRefresh} disabled={refreshing} className="p-2 border rounded-xl transition-all hover:bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] cursor-pointer" style={CARD_SUNKEN} title="Refresh">
-              <FiRefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2.5 border rounded-xl transition-all hover:bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] cursor-pointer flex items-center justify-center"
+              style={CARD_SUNKEN}
+              title="Refresh Telemetry"
+            >
+              <FiRefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             </button>
-            <button onClick={handleExport} className="px-3 py-1.5 border text-[11px] sm:text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all hover:opacity-90 shadow-sm cursor-pointer whitespace-nowrap" style={{ background: 'var(--crm-positive-bg)', color: 'var(--crm-positive)', borderColor: 'rgba(86,165,135,0.3)' }}>
-              <FiDownload size={13} /> <span>Export CSV</span>
+            <button
+              type="button"
+              onClick={handleExport}
+              className="px-4 py-2 border text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 transition-all hover:brightness-110 active:scale-95 shadow-md cursor-pointer whitespace-nowrap"
+              style={{ background: '#16a34a', color: '#ffffff', borderColor: '#15803d' }}
+            >
+              <FiDownload size={14} /> <span>Export</span>
             </button>
           </div>
         </div>
@@ -556,15 +585,18 @@ export default function EmployeeActivityMonitor({ scopeDepartment = null, showLu
                       {/* Expandable Activity Logs Accordion */}
                       <div className="pt-2 border-t space-y-2" style={{ borderColor: 'var(--crm-line)' }}>
                         <button
+                          type="button"
                           onClick={() => setExpandedEmpId(expandedEmpId === emp.employeeId ? null : emp.employeeId)}
-                          className="w-full py-2 px-3 rounded-xl border text-[10px] uppercase font-semibold tracking-wider flex items-center justify-between transition-all hover:border-cyan-500/50 active:scale-[0.99] text-cyan-400"
-                          style={CARD_SUNKEN}
+                          className="w-full py-2 px-3 rounded-lg border text-[10.5px] uppercase font-bold tracking-wider flex items-center justify-between transition-all hover:border-cyan-500/50 active:scale-[0.99] text-cyan-600 dark:text-blue-900 bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                         >
-                          <span className="flex items-center gap-2">
-                            <FiFileText size={13} />
-                            <span>Activity Logs & Remarks ({emp.activityLogs?.length || 0})</span>
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <FiFileText size={13} className="shrink-0 text-blue-500 dark:text-blue-500" />
+                            <span className="truncate text-[10px] text-blue-500 dark:text-blue-500">Activity Logs & Remarks</span>
+                            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 shrink-0">
+                              ({emp.activityLogs?.length || 0})
+                            </span>
                           </span>
-                          {expandedEmpId === emp.employeeId ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                          {expandedEmpId === emp.employeeId ? <FiChevronUp size={14} className="shrink-0" /> : <FiChevronDown size={14} className="shrink-0" />}
                         </button>
 
                         <AnimatePresence>

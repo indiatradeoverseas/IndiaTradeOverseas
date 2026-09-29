@@ -747,9 +747,6 @@ export default function SalesExecutiveDashboard() {
           >
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Sync Data
           </button>
-          <div className="bg-[var(--crm-bg-sunken)] text-teal-400 border border-[var(--crm-line)] px-3 py-2 text-[10px] font-bold tracking-widest uppercase rounded flex items-center justify-center select-none shadow-sm shrink-0 whitespace-nowrap">
-            DESK MODE // ACTIVE
-          </div>
         </div>
       </motion.div>
 

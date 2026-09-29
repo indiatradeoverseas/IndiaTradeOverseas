@@ -293,67 +293,60 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
     <div className="w-full border rounded-sm overflow-hidden font-sans" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}>
       {/* Header Bar */}
       <div className="px-3 py-3 sm:px-6 sm:py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg)' }}>
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded bg-blue-500/10 text-blue-400 border border-blue-400/30 shrink-0">
-            <FiFolder size={16} />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 dark:text-cyan-400 border border-cyan-500/30 shrink-0">
+            <FiFolder size={18} />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex flex-wrap items-center gap-1.5 font-sans">
               <span>Enterprise File Sharing Center</span>
-              <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-bold whitespace-nowrap">Max 25MB</span>
+              <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-extrabold whitespace-nowrap">Max 25MB</span>
             </h2>
-            <p className="text-[9.5px] sm:text-[10px] text-[var(--crm-ink-faint)] font-sans truncate">
+            <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans leading-tight truncate">
               Share PDFs, Excel, Images & Documents securely across Founder, CEO, Admin, Managers & Staff
             </p>
           </div>
         </div>
 
         {/* Action Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 py-0.5 max-w-full scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 pb-1 sm:pb-0 max-w-full scrollbar-none w-full sm:w-auto">
           {canShare && (
             <button
+              type="button"
               onClick={() => setActiveTab('SHARE')}
-              className={`px-3 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-extrabold rounded-md whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shadow-sm ${
-                activeTab === 'SHARE'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border border-cyan-400'
-                  : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/60'
-              }`}
+              className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide transition shrink-0 cursor-pointer shadow-xs flex items-center gap-1"
+              style={{
+                borderColor: activeTab === 'SHARE' ? '#2563eb' : 'var(--crm-line)',
+                background: activeTab === 'SHARE' ? '#2563eb' : 'var(--crm-bg-sunken)',
+                color: activeTab === 'SHARE' ? '#ffffff' : 'var(--crm-ink-faint)'
+              }}
             >
-              <FiUpload size={12} /> + Share File
+              <FiUpload size={13} /> + Share File
             </button>
           )}
-          <button
-            onClick={() => setActiveTab('RECEIVED')}
-            className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'RECEIVED'
-                ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
-                : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
-            }`}
-          >
-            Received Files
-          </button>
-          <button
-            onClick={() => setActiveTab('SENT')}
-            className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'SENT'
-                ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
-                : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
-            }`}
-          >
-            Sent Files
-          </button>
-          {isLeader && (
-            <button
-              onClick={() => setActiveTab('ALL_AUDIT')}
-              className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase font-bold rounded-md whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'ALL_AUDIT'
-                  ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
-                  : 'bg-blue-50/90 hover:bg-blue-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-blue-200/80 dark:border-slate-700'
-              }`}
-            >
-              Team Audit
-            </button>
-          )}
+
+          {[
+            { id: 'RECEIVED', label: 'Received Files' },
+            { id: 'SENT', label: 'Sent Files' },
+            ...(isLeader ? [{ id: 'ALL_AUDIT', label: 'Team Audit' }] : [])
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide transition shrink-0 cursor-pointer shadow-xs"
+                style={{
+                  borderColor: active ? '#2563eb' : 'var(--crm-line)',
+                  background: active ? '#2563eb' : 'var(--crm-bg-sunken)',
+                  color: active ? '#ffffff' : 'var(--crm-ink-faint)'
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -377,7 +370,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 {/* Dropzone Box */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                  className={`border-2 border-dashed rounded-xl p-5 sm:p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
                     selectedFile
                       ? 'border-emerald-500 bg-emerald-500/10'
                       : 'bg-[var(--crm-bg-sunken)] hover:border-cyan-500'
@@ -413,7 +406,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-500">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-500">
                         <FiUpload size={20} />
                       </div>
                       <div className="text-xs font-sans text-cyan-600 dark:text-cyan-400 font-bold">Click to select file or drag & drop</div>
@@ -432,7 +425,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Add instructions, context, or summary of this file..."
-                    className="w-full px-3 py-2 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-lg focus:outline-none focus:border-cyan-500"
                   />
                 </div>
               </div>
@@ -444,7 +437,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     <label className="text-[11px] uppercase tracking-wider font-sans font-bold text-[var(--crm-heading)] flex items-center gap-1.5">
                       <FiUsers className="text-cyan-500" /> Select Recipient(s) ({selectedRecipients.length} selected)
                     </label>
-                    <span className="text-[9px] font-sans text-cyan-500 uppercase font-bold">Target Audience</span>
+                    <span className="text-[9px] font-sans text-cyan-500 uppercase font-extrabold">Target Audience</span>
                   </div>
                   <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
                     Select specific Employee(s)/Manager(s) or use quick preset buttons
@@ -452,14 +445,14 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </div>
 
                 {/* Quick Target Preset Buttons */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => handleSelectPreset('ALL')}
-                    className={`px-2.5 py-1 text-[10px] font-sans uppercase rounded border transition-all ${
+                    className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase rounded-lg border transition-all ${
                       presetTarget === 'ALL'
-                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
-                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-extrabold shadow-sm'
+                        : 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 font-bold'
                     }`}
                   >
                     All Staff ({recipients.length})
@@ -467,10 +460,10 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                   <button
                     type="button"
                     onClick={() => handleSelectPreset('MANAGERS')}
-                    className={`px-2.5 py-1 text-[10px] font-sans uppercase rounded border transition-all ${
+                    className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase rounded-lg border transition-all ${
                       presetTarget === 'MANAGERS'
-                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
-                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-extrabold shadow-sm'
+                        : 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 font-bold'
                     }`}
                   >
                     All Managers ({managersCount})
@@ -478,10 +471,10 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                   <button
                     type="button"
                     onClick={() => handleSelectPreset('EMPLOYEES')}
-                    className={`px-2.5 py-1 text-[10px] font-sans uppercase rounded border transition-all ${
+                    className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase rounded-lg border transition-all ${
                       presetTarget === 'EMPLOYEES'
-                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
-                        : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-extrabold shadow-sm'
+                        : 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 font-bold'
                     }`}
                   >
                     All Executives ({executivesCount})
@@ -490,7 +483,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     <button
                       type="button"
                       onClick={() => handleSelectPreset('')}
-                      className="px-2.5 py-1 text-[10px] font-sans uppercase rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400 hover:bg-rose-500/30 font-bold"
+                      className="px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase rounded-lg bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400 hover:bg-rose-500/30 font-bold"
                     >
                       Clear Selection
                     </button>
@@ -499,20 +492,20 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
 
                 {/* Filter & Search Recipient Bar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <div className="relative flex-1">
-                    <FiSearch className="absolute left-2.5 top-2.5 text-[var(--crm-ink-faint)]" size={13} />
+                  <div className="relative flex-1 min-w-0">
+                    <FiSearch className="absolute left-3 top-2.5 text-[var(--crm-ink-faint)]" size={14} />
                     <input
                       type="text"
                       value={recipientSearch}
                       onChange={(e) => setRecipientSearch(e.target.value)}
                       placeholder="Search employee by name, role, dept..."
-                      className="w-full pl-8 pr-3 py-1.5 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
+                      className="w-full pl-9 pr-3 py-2 text-xs font-sans bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-lg outline-none focus:border-cyan-500"
                     />
                   </div>
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="px-2.5 py-1.5 text-[10px] font-sans uppercase bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded"
+                    className="w-full sm:w-auto px-3 py-2 text-xs font-sans uppercase font-semibold bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-lg outline-none"
                   >
                     <option value="ALL">All Roles ({recipients.length})</option>
                     <option value="MANAGER">Managers ({managersCount})</option>
@@ -521,7 +514,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                 </div>
 
                 {/* Recipient Selection Scroll List */}
-                <div className="h-56 overflow-y-auto custom-scrollbar border rounded p-2 space-y-1.5 bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
+                <div className="h-48 sm:h-56 overflow-y-auto custom-scrollbar border rounded-lg p-2 space-y-1.5 bg-[var(--crm-bg-sunken)]" style={{ borderColor: 'var(--crm-line)' }}>
                   {loadingRecipients ? (
                     <div className="text-center py-8 text-xs font-sans text-[var(--crm-ink-faint)] flex items-center justify-center gap-2">
                       <FiRefreshCw className="animate-spin" /> Loading employee directory...
@@ -535,9 +528,9 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                         <div
                           key={emp._id}
                           onClick={() => toggleRecipient(emp._id)}
-                          className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all border ${
+                          className={`flex items-center justify-between p-2.5 sm:p-2 rounded-lg cursor-pointer transition-all border ${
                             isSelected
-                              ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
+                              ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-xs'
                               : 'bg-[var(--crm-bg-raised)] border-[var(--crm-line)] text-[var(--crm-heading)] hover:border-cyan-400'
                           }`}
                         >
@@ -551,7 +544,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                             </div>
                           </div>
 
-                          <span className={`text-[9px] font-sans px-2 py-0.5 rounded uppercase flex-shrink-0 border ${
+                          <span className={`text-[9px] font-sans px-2 py-0.5 rounded font-mono uppercase flex-shrink-0 border ${
                             isSelected 
                               ? 'bg-cyan-700 text-white border-cyan-300 font-bold' 
                               : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border-[var(--crm-line)]'
@@ -571,7 +564,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
               <button
                 type="submit"
                 disabled={isUploading || !selectedFile}
-                className={`px-6 py-2.5 text-xs font-sans uppercase font-extrabold rounded-lg flex items-center gap-2 transition-all shadow-md ${
+                className={`w-full sm:w-auto px-6 py-2.5 text-xs font-sans uppercase font-extrabold rounded-lg flex items-center justify-center gap-2 transition-all shadow-md ${
                   isUploading || !selectedFile
                     ? 'bg-gradient-to-r from-cyan-500/70 to-blue-600/70 text-white/80 border border-cyan-400/30 cursor-not-allowed opacity-85'
                     : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white border border-cyan-400/50 shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer'

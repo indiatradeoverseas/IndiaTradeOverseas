@@ -31,11 +31,11 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
   // Date range filter for metrics queries (when startDate & endDate are supplied)
   const dateFilter = (startDate && endDate)
     ? {
-        $or: [
-          { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } },
-          { updatedAt: { $gte: new Date(startDate), $lte: new Date(endDate) } }
-        ]
-      }
+      $or: [
+        { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } },
+        { updatedAt: { $gte: new Date(startDate), $lte: new Date(endDate) } }
+      ]
+    }
     : {};
 
   const createdDateFilter = (startDate && endDate)
@@ -121,6 +121,50 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
   const todayLeads = await Lead.countDocuments({ createdAt: { $gte: todayStart, $lte: todayEnd } });
   const aiGeneratedLeads = await Lead.countDocuments({ source: 'AI_AGENT', ...dateFilter });
   const hotLeads = await Lead.countDocuments({ priority: 'HOT', stage: { $nin: CLOSED_STAGES }, ...dateFilter });
+
+  // Keep Founder Dashboard temperature counts identical to Leads API display normalization.
+  const completedTemperatureStages = [
+    'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST', 'DELIVERED', 'COMPLETED',
+    'ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING'
+  ];
+  const { parseFlexibleDate } = require('../leads/ai-agent/aiLead.service');
+  const temperatureLeads = await Lead.find({}, 'priority stage targetDate timeline requiredDate originalPayload remarks chatSummary').lean();
+  const temperatureCounts = { hot: 0, warm: 0, cold: 0, dead: 0 };
+
+  temperatureLeads.forEach((lead) => {
+    const stage = String(lead.stage || '').toUpperCase();
+    const isCompleted = completedTemperatureStages.includes(stage);
+    const rawPriority = String(lead.priority || '').toUpperCase().trim();
+    const rawTarget = lead.targetDate || lead.originalPayload?.targetDate || lead.originalPayload?.requiredDate || lead.originalPayload?.targetTimeline || lead.originalPayload?.timeline;
+    const parsedTarget = rawTarget instanceof Date ? rawTarget : parseFlexibleDate(rawTarget);
+    const targetDate = parsedTarget && !Number.isNaN(new Date(parsedTarget).getTime()) ? new Date(parsedTarget) : null;
+    const timelineText = String(lead.timeline || lead.requiredDate || lead.originalPayload?.timeline || lead.originalPayload?.requiredDate || lead.remarks || lead.chatSummary || '').trim().toLowerCase();
+    const isImmediate = ['immediate', 'urgent', 'asap', 'today', 'now'].some((term) => timelineText.includes(term));
+    const isWithinWeek = ['1 week', 'within 7 days', 'within 7day', '7 days', '7day', 'one week', '1week'].some((term) => timelineText.includes(term));
+
+    if (rawPriority === 'DEAD' || (!isCompleted && targetDate && targetDate < todayStart)) {
+      temperatureCounts.dead += 1;
+      return;
+    }
+
+    let normalizedPriority = rawPriority;
+    if (targetDate) {
+      const diffDays = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 3 || isImmediate) normalizedPriority = 'HOT';
+      else if (diffDays <= 7 || isWithinWeek) normalizedPriority = 'WARM';
+      else normalizedPriority = 'COLD';
+    } else if (isImmediate) {
+      normalizedPriority = 'HOT';
+    } else if (isWithinWeek) {
+      normalizedPriority = 'WARM';
+    }
+
+    if (normalizedPriority === 'HOT') temperatureCounts.hot += 1;
+    else if (normalizedPriority === 'WARM') temperatureCounts.warm += 1;
+    else temperatureCounts.cold += 1;
+  });
+
+  const { hot: hotTemperature, warm: warmTemperature, cold: coldTemperature, dead: deadTemperature } = temperatureCounts;
 
   const followUpsDueToday = await Lead.countDocuments({
     nextFollowupAt: { $gte: todayStart, $lte: todayEnd },
@@ -437,6 +481,13 @@ async function getAdminCommandCenterMetrics({ startDate, endDate } = {}) {
       todayLeads,
       aiGeneratedLeads,
       hotLeads,
+      leadTemperature: {
+        hot: hotTemperature,
+        warm: warmTemperature,
+        cold: coldTemperature,
+        dead: deadTemperature,
+        total: hotTemperature + warmTemperature + coldTemperature + deadTemperature
+      },
       followUpsDueToday,
       missedFollowUps,
       quotations: {

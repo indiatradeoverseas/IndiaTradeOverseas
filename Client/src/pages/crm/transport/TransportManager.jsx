@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiTruck, FiCheckCircle, FiAlertCircle, FiClock, FiUser, FiMapPin, 
+import {
+  FiTruck, FiCheckCircle, FiAlertCircle, FiClock, FiUser, FiMapPin,
   FiPlus, FiFileText, FiMessageSquare, FiRefreshCw, FiSearch, FiFilter,
   FiSend, FiUserCheck, FiShield, FiCheckSquare, FiXCircle, FiGrid, FiPackage,
   FiDollarSign, FiNavigation, FiMic, FiVolume2, FiAlertTriangle, FiCompass,
@@ -10,17 +10,17 @@ import {
   FiX, FiExternalLink, FiMaximize2, FiBriefcase, FiTool, FiSliders, FiShare2, FiActivity,
   FiCreditCard, FiFolder, FiFile, FiCheck, FiBarChart2, FiLifeBuoy
 } from 'react-icons/fi';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  Cell, 
-  PieChart, 
-  Pie, 
-  Legend 
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  PieChart,
+  Pie,
+  Legend
 } from 'recharts';
 import toast from 'react-hot-toast';
 
@@ -45,7 +45,7 @@ const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-headi
 export default function TransportManager() {
   const { user } = useAuth();
   const location = useLocation();
-  
+
   // Navigation Sidebar Tabs
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [selectedMapOrder, setSelectedMapOrder] = useState(null);
@@ -185,8 +185,8 @@ export default function TransportManager() {
       };
 
       setChatMessages(prev => {
-        const isDup = prev.some(m => 
-          m.id === formatted.id || 
+        const isDup = prev.some(m =>
+          m.id === formatted.id ||
           ((m.text || '').trim() === cleanText && Math.abs((m.timestamp || Date.now()) - formatted.timestamp) < 8000)
         );
         if (isDup) return prev;
@@ -270,7 +270,7 @@ export default function TransportManager() {
       if (socket) {
         socket.emit('transport_chat_receive', newMsg);
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   useEffect(() => {
@@ -285,10 +285,10 @@ export default function TransportManager() {
     const podStatus = (item.podStatus || '').toUpperCase().replace(/_/g, ' ').trim();
 
     const completedKeywords = [
-      'COMPLETED', 
-      'DELIVERED', 
-      'UNLOADED', 
-      'DEAL WON', 
+      'COMPLETED',
+      'DELIVERED',
+      'UNLOADED',
+      'DEAL WON',
       'CLOSED WON',
       'DEAL_WON',
       'CLOSED_WON'
@@ -466,7 +466,7 @@ export default function TransportManager() {
           const dName = (d.name || d.fullName || '').toLowerCase();
           const driverLogs = dbFuelLogs.filter(log => (log.driver || '').toLowerCase().includes(dName));
           const driverTrips = fetchedTrips.filter(t => (t.driverName || '').toLowerCase().includes(dName));
-          
+
           const totalKm = driverLogs.reduce((sum, l) => sum + (Number(l.totalKm) || 0), 0) || (driverTrips.length * 240) || 960;
           const totalFuelCost = driverLogs.reduce((sum, l) => sum + (Number(l.fuelCost) || 0), 0);
           const totalLitres = driverLogs.reduce((sum, l) => sum + (Number(l.litres) || 0), 0);
@@ -511,7 +511,7 @@ export default function TransportManager() {
       // Total Delivery Done: Count all completed/delivered leads accurately
       const compCount = combinedAll.filter(t => isCompletedLead(t)).length;
 
-      const activeCount = combinedAll.filter(t => 
+      const activeCount = combinedAll.filter(t =>
         !isCompletedLead(t) && (
           (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('TRANSIT') ||
           (t.status || t.dispatchStatus || t.stage || '').toUpperCase().includes('LOAD') ||
@@ -672,9 +672,9 @@ export default function TransportManager() {
 
     try {
       if (dispatchesApi.verifyPOD) {
-        await dispatchesApi.verifyPOD(targetId).catch(() => {});
+        await dispatchesApi.verifyPOD(targetId).catch(() => { });
       }
-    } catch (err) {}
+    } catch (err) { }
 
     const updated = [...verifiedPodIds, targetId, item.orderNumber, item.dispatchNumber].filter(Boolean);
     setVerifiedPodIds(updated);
@@ -726,7 +726,7 @@ export default function TransportManager() {
         updateType: 'RATE ALERT',
         notes: msg,
         location: `${item.origin || 'Depot'} ➔ ${item.destination || 'Destination'}`
-      }).catch(() => {});
+      }).catch(() => { });
 
       toast.success(`Alert notification sent to Sales Manager for Lead #${code}!`, { duration: 5000 });
     } catch (err) {
@@ -749,9 +749,9 @@ export default function TransportManager() {
           totalFreightAmount: numAmt,
           freightAmount: numAmt,
           revenueRemark: revenueReasonInput
-        }).catch(() => {});
+        }).catch(() => { });
       }
-    } catch (err) {}
+    } catch (err) { }
 
     // Update local states
     setDispatchQueue(prev => prev.map(item => {
@@ -793,7 +793,7 @@ export default function TransportManager() {
       await leadsApi.assignLead(leadId, { assignedTo: targetUserId });
       const assignedEmp = allEmployeesList.find(emp => String(emp._id) === String(targetUserId)) || driversList.find(d => String(d._id) === String(targetUserId));
       const empName = assignedEmp?.fullName || assignedEmp?.name || 'Driver';
-      
+
       const targetLeadObj = [...dispatchQueue, ...trips].find(l => l._id === leadId || l.orderNumber === leadId || l.dispatchNumber === leadId) || {};
 
       // Attempt to register/update dispatch with driver information
@@ -811,14 +811,14 @@ export default function TransportManager() {
             driverId: targetUserId,
             assignedDriverId: targetUserId,
             assignedTo: targetUserId
-          }).catch(() => {});
+          }).catch(() => { });
         }
-      } catch (err) {}
+      } catch (err) { }
 
       // Update local states
       setDispatchQueue(prev => prev.map(l => (l._id === leadId || l.orderNumber === leadId) ? { ...l, assignedTo: assignedEmp, driverId: targetUserId, assignedDriverId: targetUserId, driverName: empName, salesOwner: empName } : l));
       setTrips(prev => prev.map(t => (t._id === leadId || t.orderNumber === leadId) ? { ...t, assignedTo: assignedEmp, driverId: targetUserId, assignedDriverId: targetUserId, driverName: empName } : t));
-      
+
       // Dispatch real-time events for instant driver dashboard sync
       try {
         window.dispatchEvent(new CustomEvent('ito_dispatch_updated_event', { detail: { leadId, targetUserId, empName } }));
@@ -826,7 +826,7 @@ export default function TransportManager() {
         if (socket) {
           socket.emit('task_assigned', { leadId, assignedTo: targetUserId, driverName: empName });
         }
-      } catch (err) {}
+      } catch (err) { }
 
       toast.success(`✅ Order assigned directly to ${empName}! Real-time notification sent.`);
     } catch (err) {
@@ -999,7 +999,7 @@ export default function TransportManager() {
       const destination = t.destination || t.destCity || t.city || 'Destination';
       const route = `${origin} ➔ ${destination}`;
       const amount = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.leadValue || 0) || 0;
-      
+
       // True Date calculation from lead/dispatch timestamps (prioritizes actual driver proof upload timestamp)
       const rawDate = t.proofUploadedAt || t.deliveryImages?.capturedAt || t.paymentProof?.receivedAt || t.podUploadedAt || t.actualDeliveryDate || t.completedAt || t.podVerifiedAt || t.updatedAt || t.createdAt;
       const dateObj = rawDate ? new Date(rawDate) : null;
@@ -1155,14 +1155,17 @@ export default function TransportManager() {
       if (socket) {
         socket.emit('driver_chat_message', newMsg);
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
-    return (
-      <div className="w-full space-y-6 text-left font-sans antialiased text-xs p-3 md:p-6 min-h-screen" style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}>
-      
+  return (
+    <div
+      className="transport-manager-shell w-full space-y-6 text-left font-sans antialiased text-xs p-3 md:p-6 min-h-screen"
+        style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}
+    >
+
       {/* Page Header */}
-      <div 
+      <div
         className="p-5 border border-[var(--crm-line)] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans"
         style={{ background: 'var(--crm-bg-raised)' }}
       >
@@ -1205,9 +1208,8 @@ export default function TransportManager() {
 
           <button
             onClick={() => setActiveTab(activeTab === 'SHARED_FILES' ? 'DASHBOARD' : 'SHARED_FILES')}
-            className={`text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans ${
-              activeTab === 'SHARED_FILES' ? 'bg-cyan-600 text-white' : ''
-            }`}
+            className={`text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans ${activeTab === 'SHARED_FILES' ? 'bg-cyan-600 text-white' : ''
+              }`}
             style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)', color: 'var(--crm-heading)' }}
           >
             <FiFolder size={12} /> Shared Files
@@ -1227,7 +1229,7 @@ export default function TransportManager() {
          ───────────────────────────────────────────────────────────── */}
       {activeTab === 'DASHBOARD' ? (
         <div className="space-y-4 font-sans">
-          
+
           {/* CRITICAL ALERT TICKER BANNER */}
           {expiryAlerts.length > 0 && (
             <div className="p-3.5 border rounded-xl flex items-center justify-between font-sans text-xs" style={{ borderColor: 'rgba(244, 63, 94, 0.4)', background: 'rgba(244, 63, 94, 0.08)' }}>
@@ -1244,55 +1246,55 @@ export default function TransportManager() {
 
           {/* 6 TOP STAT CARDS ROW */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-sans">
-            <div className="p-4 border rounded-xl" style={CARD}>
+            <div className="p-4 border border-t-4 border-t-blue-500 rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Total Dispatch</span>
-                <FiTruck size={16} className="text-[var(--crm-accent)]" />
+                <span className="p-2 rounded-lg bg-blue-50 text-blue-600"><FiTruck size={16} /></span>
               </div>
               <span className="text-2xl font-bold mt-2 block font-mono text-[var(--crm-heading)]">{metrics.totalDispatch}</span>
               <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>{metrics.activeTripsOnRoad} On Road</span>
             </div>
 
-            <div className="p-4 border rounded-xl" style={CARD}>
+            <div className="p-4 border border-t-4 border-t-emerald-500 rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Total Revenue</span>
-                <FiDollarSign size={16} className="text-emerald-400" />
+                <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600"><FiDollarSign size={16} /></span>
               </div>
               <span className="text-2xl font-bold text-emerald-400 mt-2 block font-mono">₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
               <span className="text-[10px] font-sans block mt-1 text-emerald-500/80">Today Earning: ₹{metrics.collectedToday.toLocaleString('en-IN')}</span>
             </div>
 
-            <div className="p-4 border rounded-xl" style={CARD}>
+            <div className="p-4 border border-t-4 border-t-sky-500 rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">Total Delivery Done</span>
-                <FiCheckCircle size={16} className="text-teal-400" />
+                <span className="p-2 rounded-lg bg-sky-50 text-sky-600"><FiCheckCircle size={16} /></span>
               </div>
               <span className="text-2xl font-bold text-teal-400 mt-2 block font-mono">{metrics.completedTrips}</span>
               <span className="text-[10px] font-sans block mt-1 text-teal-500/80">Verified PODs</span>
             </div>
 
-            <div className="p-4 border rounded-xl" style={CARD}>
+            <div className="p-4 border border-t-4 border-t-amber-500 rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">Lead</span>
-                <FiBriefcase size={16} className="text-amber-400" />
+                <span className="p-2 rounded-lg bg-amber-50 text-amber-600"><FiBriefcase size={16} /></span>
               </div>
               <span className="text-2xl font-bold text-amber-400 mt-2 block font-mono">{metrics.totalLeads}</span>
               <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Freight Orders</span>
             </div>
 
-            <div className="p-4 border rounded-xl" style={CARD}>
+            <div className="p-4 border border-t-4 border-t-purple-500 rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">Pending Lead</span>
-                <FiClock size={16} className="text-purple-400" />
+                <span className="p-2 rounded-lg bg-purple-50 text-purple-600"><FiClock size={16} /></span>
               </div>
               <span className="text-2xl font-bold text-purple-300 mt-2 block font-mono">{metrics.pendingLeads}</span>
               <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Unassigned Queue</span>
             </div>
 
-            <div className="p-4 border rounded-xl" style={CARD}>
+            <div className="p-4 border border-t-4 border-t-blue-500 rounded-xl" style={CARD}>
               <div className="flex items-start justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">Num of Drivers</span>
-                <FiUsers size={16} className="text-sky-400" />
+                <span className="p-2 rounded-lg bg-blue-50 text-blue-600"><FiUsers size={16} /></span>
               </div>
               <span className="text-2xl font-bold text-sky-400 mt-2 block font-mono">{metrics.numDrivers}</span>
               <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Active Captains</span>
@@ -1405,7 +1407,7 @@ export default function TransportManager() {
 
           {/* MIDDLE ROW 1: DRIVER WORKUPDATE LIVE FEED & LEAD ASSIGNMENT DISTRIBUTION */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
-            
+
             {/* Left (7 Cols): Driver WorkUpdate Live Feed */}
             <div className="lg:col-span-7 border rounded-sm p-4 space-y-3 flex flex-col justify-between h-[360px]" style={CARD}>
               <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
@@ -1440,7 +1442,7 @@ export default function TransportManager() {
             <div className="lg:col-span-5 border rounded-sm p-4 space-y-3 font-mono flex flex-col justify-between h-[360px]" style={CARD}>
               <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
                 <h2 className="text-xs uppercase font-bold tracking-wider flex items-center gap-2" style={HEADING}>
-                  <FiUsers className="text-amber-400" size={15} /> Lead Assignment Distribution 
+                  <FiUsers className="text-amber-400" size={15} /> Lead Assignment Distribution
                 </h2>
               </div>
 
@@ -1520,8 +1522,8 @@ export default function TransportManager() {
           {/* MIDDLE ROW 2: GOOGLE MAP LIVE GPS & TRANSPORT & DRIVER CHAT HUB */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
             <div className="lg:col-span-7 border rounded-sm overflow-hidden flex flex-col h-[420px]" style={CARD}>
-              <TransportMap 
-                trips={trips} 
+              <TransportMap
+                trips={trips}
                 activeDrivers={driversList}
                 gpsLocation={gpsLocation}
                 height="420px"
@@ -1565,11 +1567,10 @@ export default function TransportManager() {
                         className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${isManager ? 'self-end items-end' : 'self-start items-start'}`}
                       >
                         <div
-                          className={`p-3 rounded-xl text-xs space-y-1 shadow-sm ${
-                            isManager
+                          className={`p-3 rounded-xl text-xs space-y-1 shadow-sm ${isManager
                               ? 'bg-teal-600 text-white rounded-tr-none border border-teal-500'
                               : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-tl-none'
-                          }`}
+                            }`}
                         >
                           <span className={`text-[10px] font-extrabold block ${isManager ? 'text-teal-100' : 'text-amber-400'}`}>
                             {msg.sender || (isManager ? `${user?.name || user?.fullName || 'Transport Manager'} (MANAGER)` : 'Driver')}
@@ -1644,47 +1645,47 @@ export default function TransportManager() {
                       return getTs(b) - getTs(a);
                     })
                     .map((log) => (
-                    <div key={log.id} className="p-3.5 border rounded-xl space-y-2.5 font-sans shadow-xs transition hover:border-emerald-500/40" style={CARD_SUNKEN}>
-                      <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 font-sans" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="text-[var(--crm-heading)] font-extrabold text-xs flex items-center gap-1.5 font-sans">
-                          <FiUser className="text-emerald-400" size={13} /> {log.driver} <span className="text-[var(--crm-ink-faint)] font-medium">({log.vehicle})</span>
-                        </span>
-                        <div className="flex items-center gap-2 font-sans">
-                          <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1 font-semibold">
-                            <FiCalendar size={11} className="text-teal-400" /> {log.date || log.dateStr || 'Today'} {log.time ? `• ${log.time}` : ''}
+                      <div key={log.id} className="p-3.5 border rounded-xl space-y-2.5 font-sans shadow-xs transition hover:border-emerald-500/40" style={CARD_SUNKEN}>
+                        <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                          <span className="text-[var(--crm-heading)] font-extrabold text-xs flex items-center gap-1.5 font-sans">
+                            <FiUser className="text-emerald-400" size={13} /> {log.driver} <span className="text-[var(--crm-ink-faint)] font-medium">({log.vehicle})</span>
                           </span>
-                          <span className="text-[10px] text-teal-300 font-extrabold bg-teal-950/80 border border-teal-800 px-2.5 py-1 rounded-md flex items-center gap-1 font-sans shadow-xs">
-                            <FiPackage size={11} className="text-teal-400" /> Log Ref: <strong className="underline text-teal-200 font-mono font-bold">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
-                          </span>
+                          <div className="flex items-center gap-2 font-sans">
+                            <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono flex items-center gap-1 font-semibold">
+                              <FiCalendar size={11} className="text-teal-400" /> {log.date || log.dateStr || 'Today'} {log.time ? `• ${log.time}` : ''}
+                            </span>
+                            <span className="text-[10px] text-teal-300 font-extrabold bg-teal-950/80 border border-teal-800 px-2.5 py-1 rounded-md flex items-center gap-1 font-sans shadow-xs">
+                              <FiPackage size={11} className="text-teal-400" /> Log Ref: <strong className="underline text-teal-200 font-mono font-bold">{log.leadCode || log.orderCode || 'Daily Vehicle Log'}</strong> {log.leadCustomer && `(${log.leadCustomer})`}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-0.5 font-sans">
-                        <div className="font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Route Vector</span>
-                          <strong className="text-[var(--crm-heading)] font-extrabold text-xs block">📍 {log.fromLocation && log.fromLocation.trim() !== '-' ? log.fromLocation : 'Main Depot'} &rarr; 🚩 {log.toLocation || 'Destination'} ({log.totalKm || 0} KM)</strong>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-0.5 font-sans">
+                          <div className="font-sans">
+                            <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Route Vector</span>
+                            <strong className="text-[var(--crm-heading)] font-extrabold text-xs block">📍 {log.fromLocation && log.fromLocation.trim() !== '-' ? log.fromLocation : 'Main Depot'} &rarr; 🚩 {log.toLocation || 'Destination'} ({log.totalKm || 0} KM)</strong>
+                          </div>
+                          <div className="font-sans">
+                            <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Fuel Cost</span>
+                            <strong className="text-emerald-400 font-black font-mono text-xs block">₹{Number(log.fuelCost || 0).toLocaleString('en-IN')} ({log.litres || 0}L)</strong>
+                          </div>
+                          <div className="font-sans">
+                            <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Tire & Toll</span>
+                            <strong className="text-sky-400 font-black font-mono text-xs block">₹{(Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
+                          </div>
+                          <div className="text-right font-sans">
+                            <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Trip Expense</span>
+                            <strong className="text-emerald-400 font-black text-xs font-mono block">₹{(Number(log.fuelCost || 0) + Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
+                          </div>
                         </div>
-                        <div className="font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Fuel Cost</span>
-                          <strong className="text-emerald-400 font-black font-mono text-xs block">₹{Number(log.fuelCost || 0).toLocaleString('en-IN')} ({log.litres || 0}L)</strong>
-                        </div>
-                        <div className="font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Tire & Toll</span>
-                          <strong className="text-sky-400 font-black font-mono text-xs block">₹{(Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
-                        </div>
-                        <div className="text-right font-sans">
-                          <span className="text-[var(--crm-ink-faint)] block text-[9px] uppercase font-extrabold">Trip Expense</span>
-                          <strong className="text-emerald-400 font-black text-xs font-mono block">₹{(Number(log.fuelCost || 0) + Number(log.punctureCost || 0) + Number(log.otherCost || log.tollTax || 0)).toLocaleString('en-IN')}</strong>
-                        </div>
-                      </div>
 
-                      {log.remarks && (
-                        <div className="text-[10px] text-[var(--crm-ink-soft)] pt-1.5 border-t font-sans" style={{ borderColor: 'var(--crm-line)' }}>
-                          <span className="text-[var(--crm-heading)] font-bold">Remarks:</span> {log.remarks}
-                        </div>
-                      )}
-                    </div>
-                  ))
+                        {log.remarks && (
+                          <div className="text-[10px] text-[var(--crm-ink-soft)] pt-1.5 border-t font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                            <span className="text-[var(--crm-heading)] font-bold">Remarks:</span> {log.remarks}
+                          </div>
+                        )}
+                      </div>
+                    ))
                 )}
               </div>
             </div>
@@ -1925,11 +1926,10 @@ export default function TransportManager() {
             <div className="flex items-center gap-2 bg-[var(--crm-bg-sunken)] p-1 border rounded-sm shrink-0" style={{ borderColor: 'var(--crm-line)' }}>
               <button
                 onClick={() => setAssignSubTab('PENDING')}
-                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-                  assignSubTab === 'PENDING'
+                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${assignSubTab === 'PENDING'
                     ? 'bg-emerald-700 text-white border border-emerald-500/60 shadow font-bold'
                     : 'text-[var(--crm-ink-soft)] hover:text-emerald-300'
-                }`}
+                  }`}
               >
                 📌 Active & Pending Assignments ({
                   [...trips, ...dispatchQueue].filter(t => !isCompletedLead(t)).length
@@ -1938,11 +1938,10 @@ export default function TransportManager() {
 
               <button
                 onClick={() => setAssignSubTab('COMPLETED')}
-                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-                  assignSubTab === 'COMPLETED'
+                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${assignSubTab === 'COMPLETED'
                     ? 'bg-emerald-600 text-white border border-emerald-400/60 shadow font-bold'
                     : 'text-[var(--crm-ink-soft)] hover:text-emerald-300'
-                }`}
+                  }`}
               >
                 ✅ Completed / Deal Won / Closed Won ({
                   [...trips, ...dispatchQueue].filter(t => isCompletedLead(t)).length
@@ -1964,135 +1963,135 @@ export default function TransportManager() {
                 {[...trips, ...dispatchQueue]
                   .filter(t => !isCompletedLead(t))
                   .length === 0 ? (
-                    <div className="col-span-full border border-dashed rounded-sm p-12 text-center text-slate-500" style={CARD_SUNKEN}>
-                      <FiCheckCircle size={36} className="mx-auto mb-2 text-emerald-400 opacity-60" />
-                      <p className="text-xs font-bold uppercase tracking-wider">No Pending Assignments</p>
-                      <p className="text-[10px] text-slate-400 mt-1">All confirmed orders have been dispatched or completed.</p>
-                    </div>
-                  ) : (
-                    [...trips, ...dispatchQueue]
-                      .filter(t => !isCompletedLead(t))
-                      .map((item, idx) => {
-                        const targetId = item._id || item.orderNumber || item.dispatchNumber;
-                        const currAssignedName = typeof item.assignedTo === 'object' 
-                          ? (item.assignedTo?.fullName || item.assignedTo?.name)
-                          : (item.salesOwner || item.driverName || 'Unassigned');
+                  <div className="col-span-full border border-dashed rounded-sm p-12 text-center text-slate-500" style={CARD_SUNKEN}>
+                    <FiCheckCircle size={36} className="mx-auto mb-2 text-emerald-400 opacity-60" />
+                    <p className="text-xs font-bold uppercase tracking-wider">No Pending Assignments</p>
+                    <p className="text-[10px] text-slate-400 mt-1">All confirmed orders have been dispatched or completed.</p>
+                  </div>
+                ) : (
+                  [...trips, ...dispatchQueue]
+                    .filter(t => !isCompletedLead(t))
+                    .map((item, idx) => {
+                      const targetId = item._id || item.orderNumber || item.dispatchNumber;
+                      const currAssignedName = typeof item.assignedTo === 'object'
+                        ? (item.assignedTo?.fullName || item.assignedTo?.name)
+                        : (item.salesOwner || item.driverName || 'Unassigned');
 
-                        return (
-                          <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm hover:border-emerald-500/50 transition-all flex flex-col justify-between" style={CARD}>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-start gap-2 border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                                <div>
-                                  <span className="text-[9px] text-teal-300 font-bold uppercase tracking-wider block font-mono">
-                                    {item.orderNumber || item.dispatchNumber || `ORD-${idx + 1}`}
-                                  </span>
-                                  <h3 className="text-xs font-bold text-[var(--crm-heading)] truncate max-w-[180px]">
-                                    {item.customerName || 'Confirmed Client'}
-                                  </h3>
-                                </div>
-                                <span className="text-[9px] px-2 py-0.5 bg-teal-950/80 text-teal-300 border border-teal-800/80 rounded font-bold uppercase shrink-0">
-                                  {item.stage || item.status || 'ORDER CONFIRMED'}
+                      return (
+                        <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm hover:border-emerald-500/50 transition-all flex flex-col justify-between" style={CARD}>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-start gap-2 border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                              <div>
+                                <span className="text-[9px] text-teal-300 font-bold uppercase tracking-wider block font-mono">
+                                  {item.orderNumber || item.dispatchNumber || `ORD-${idx + 1}`}
+                                </span>
+                                <h3 className="text-xs font-bold text-[var(--crm-heading)] truncate max-w-[180px]">
+                                  {item.customerName || 'Confirmed Client'}
+                                </h3>
+                              </div>
+                              <span className="text-[9px] px-2 py-0.5 bg-teal-950/80 text-teal-300 border border-teal-800/80 rounded font-bold uppercase shrink-0">
+                                {item.stage || item.status || 'ORDER CONFIRMED'}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Route</span>
+                                <span className="text-[var(--crm-heading)] font-bold truncate block">
+                                  {item.origin || 'Depot'} ➔ {item.destination || 'Destination'}
                                 </span>
                               </div>
-
-                              <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Route</span>
-                                  <span className="text-[var(--crm-heading)] font-bold truncate block">
-                                    {item.origin || 'Depot'} ➔ {item.destination || 'Destination'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Material</span>
-                                  <span className="text-[var(--crm-heading)] truncate block font-bold">
-                                    {item.material || 'Cargo Goods'} ({item.weightTons || '20'} MT)
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Freight Rev</span>
-                                  {Number(item.totalFreightAmount || item.freightAmount || 0) > 0 ? (
-                                    <span className="text-emerald-400 font-bold">
-                                      ₹{Number(item.totalFreightAmount || item.freightAmount).toLocaleString('en-IN')}
-                                    </span>
-                                  ) : (
-                                    <div className="flex flex-col gap-1 mt-0.5">
-                                      <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 border border-rose-800 text-[8px] font-bold rounded uppercase w-max animate-pulse">
-                                        ⚠️ RATE MISSING (₹0)
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => handleNotifySalesManagerForRate(item, e)}
-                                          className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[8px] font-bold rounded uppercase tracking-wider cursor-pointer shadow flex items-center gap-1"
-                                          title="Send alert notification to Sales Manager to fill this rate"
-                                        >
-                                          <FiBell size={9} /> Alert Sales Manager
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => handleOpenEditRevenueModal(item, e)}
-                                          className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white text-[8px] font-bold rounded uppercase cursor-pointer"
-                                        >
-                                           Fill Rate
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Assigned To</span>
-                                  <span className="text-teal-300 font-bold truncate block">
-                                    {currAssignedName}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* ASSIGNMENT CONTROLS */}
-                            <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
                               <div>
-                                <label className="text-[8px] uppercase font-bold text-[var(--crm-ink-faint)] block mb-1">
-                                  Assign Executive / Driver:
-                                </label>
-                                <div className="flex items-center gap-1.5">
-                                  <select
-                                    id={`driver-select-${targetId}`}
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        handleDirectAssignUser(targetId, e.target.value, e);
-                                      }
-                                    }}
-                                    defaultValue=""
-                                    className="w-full p-1.5 border rounded text-[10px] bg-[var(--crm-bg-sunken)] text-slate-200 border-[var(--crm-line)] outline-none font-mono cursor-pointer focus:border-teal-500 transition"
-                                  >
-                                    <option value="" disabled>Select Transport Driver...</option>
-                                    {driversList.map(d => (
-                                      <option key={d._id} value={d._id}>🚛 {d.fullName || d.name} (Driver)</option>
-                                    ))}
-                                  </select>
-                                </div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Material</span>
+                                <span className="text-[var(--crm-heading)] truncate block font-bold">
+                                  {item.material || 'Cargo Goods'} ({item.weightTons || '20'} MT)
+                                </span>
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  const sel = document.getElementById(`driver-select-${targetId}`);
-                                  const val = sel?.value;
-                                  if (val) {
-                                    handleDirectAssignUser(targetId, val, e);
-                                  } else {
-                                    toast.error('Select a Transport Driver from the dropdown first');
-                                  }
-                                }}
-                                className="w-full py-2 bg-teal-700 hover:bg-teal-600 text-white text-[10px] font-bold uppercase rounded tracking-wider shadow cursor-pointer flex items-center justify-center gap-1 transition border border-teal-500/40"
-                              >
-                                <FiUserCheck size={12} /> Assign Driver To Lead
-                              </button>
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Freight Rev</span>
+                                {Number(item.totalFreightAmount || item.freightAmount || 0) > 0 ? (
+                                  <span className="text-emerald-400 font-bold">
+                                    ₹{Number(item.totalFreightAmount || item.freightAmount).toLocaleString('en-IN')}
+                                  </span>
+                                ) : (
+                                  <div className="flex flex-col gap-1 mt-0.5">
+                                    <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 border border-rose-800 text-[8px] font-bold rounded uppercase w-max animate-pulse">
+                                      ⚠️ RATE MISSING (₹0)
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleNotifySalesManagerForRate(item, e)}
+                                        className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[8px] font-bold rounded uppercase tracking-wider cursor-pointer shadow flex items-center gap-1"
+                                        title="Send alert notification to Sales Manager to fill this rate"
+                                      >
+                                        <FiBell size={9} /> Alert Sales Manager
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleOpenEditRevenueModal(item, e)}
+                                        className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white text-[8px] font-bold rounded uppercase cursor-pointer"
+                                      >
+                                        Fill Rate
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Assigned To</span>
+                                <span className="text-teal-300 font-bold truncate block">
+                                  {currAssignedName}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        );
-                      })
-                  )}
+
+                          {/* ASSIGNMENT CONTROLS */}
+                          <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
+                            <div>
+                              <label className="text-[8px] uppercase font-bold text-[var(--crm-ink-faint)] block mb-1">
+                                Assign Executive / Driver:
+                              </label>
+                              <div className="flex items-center gap-1.5">
+                                <select
+                                  id={`driver-select-${targetId}`}
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleDirectAssignUser(targetId, e.target.value, e);
+                                    }
+                                  }}
+                                  defaultValue=""
+                                  className="w-full p-1.5 border rounded text-[10px] bg-[var(--crm-bg-sunken)] text-slate-200 border-[var(--crm-line)] outline-none font-mono cursor-pointer focus:border-teal-500 transition"
+                                >
+                                  <option value="" disabled>Select Transport Driver...</option>
+                                  {driversList.map(d => (
+                                    <option key={d._id} value={d._id}>🚛 {d.fullName || d.name} (Driver)</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                const sel = document.getElementById(`driver-select-${targetId}`);
+                                const val = sel?.value;
+                                if (val) {
+                                  handleDirectAssignUser(targetId, val, e);
+                                } else {
+                                  toast.error('Select a Transport Driver from the dropdown first');
+                                }
+                              }}
+                              className="w-full py-2 bg-teal-700 hover:bg-teal-600 text-white text-[10px] font-bold uppercase rounded tracking-wider shadow cursor-pointer flex items-center justify-center gap-1 transition border border-teal-500/40"
+                            >
+                              <FiUserCheck size={12} /> Assign Driver To Lead
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
               </div>
             </div>
           ) : (
@@ -2108,78 +2107,77 @@ export default function TransportManager() {
                 {[...trips, ...dispatchQueue]
                   .filter(t => isCompletedLead(t))
                   .length === 0 ? (
-                    <div className="col-span-full border border-dashed rounded-sm p-12 text-center text-slate-500" style={CARD_SUNKEN}>
-                      <FiCheckSquare size={36} className="mx-auto mb-2 text-slate-600" />
-                      <p className="text-xs font-bold uppercase tracking-wider">No Completed Deals Yet</p>
-                      <p className="text-[10px] text-slate-400 mt-1">Completed dispatches and deal won leads will appear in this section.</p>
-                    </div>
-                  ) : (
-                    [...trips, ...dispatchQueue]
-                      .filter(t => isCompletedLead(t))
-                      .map((item, idx) => {
-                        return (
-                          <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm border-emerald-900/60 bg-emerald-950/10 flex flex-col justify-between" style={CARD}>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-start gap-2 border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
-                                <div>
-                                  <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider block">
-                                    {item.orderNumber || item.dispatchNumber || `COMP-${idx + 1}`}
-                                  </span>
-                                  <h3 className="text-xs font-bold text-[var(--crm-heading)] truncate max-w-[180px]">
-                                    {item.customerName || 'Client Cargo'}
-                                  </h3>
-                                </div>
-                                <div className="flex flex-col items-end gap-1">
-                                  <span className="text-[9px] px-2 py-0.5 bg-emerald-900 text-emerald-200 border border-emerald-700 rounded font-bold uppercase shrink-0">
-                                    DEAL WON ✓
-                                  </span>
-                                  <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase shrink-0 ${
-                                    String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH')
-                                      ? 'bg-amber-950/90 text-amber-300 border-amber-500'
-                                      : 'bg-emerald-950/90 text-emerald-300 border-emerald-400'
-                                  }`}>
-                                    {String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
-                                  </span>
-                                </div>
+                  <div className="col-span-full border border-dashed rounded-sm p-12 text-center text-slate-500" style={CARD_SUNKEN}>
+                    <FiCheckSquare size={36} className="mx-auto mb-2 text-slate-600" />
+                    <p className="text-xs font-bold uppercase tracking-wider">No Completed Deals Yet</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Completed dispatches and deal won leads will appear in this section.</p>
+                  </div>
+                ) : (
+                  [...trips, ...dispatchQueue]
+                    .filter(t => isCompletedLead(t))
+                    .map((item, idx) => {
+                      return (
+                        <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm border-emerald-900/60 bg-emerald-950/10 flex flex-col justify-between" style={CARD}>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-start gap-2 border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
+                              <div>
+                                <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider block">
+                                  {item.orderNumber || item.dispatchNumber || `COMP-${idx + 1}`}
+                                </span>
+                                <h3 className="text-xs font-bold text-[var(--crm-heading)] truncate max-w-[180px]">
+                                  {item.customerName || 'Client Cargo'}
+                                </h3>
                               </div>
-
-                              <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Route</span>
-                                  <span className="text-[var(--crm-heading)] font-bold truncate block">
-                                    {item.origin || 'Depot'} ➔ {item.destination || 'Destination'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Driver</span>
-                                  <span className="text-emerald-300 font-bold truncate block">
-                                    {item.driverName || item.assignedDriverName || 'Unassigned Driver'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Revenue</span>
-                                  <span className="text-emerald-400 font-bold">
-                                    ₹{(item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">POD Status</span>
-                                  <span className="text-emerald-300 font-bold uppercase">
-                                    {item.podStatus || 'VERIFIED ✓'}
-                                  </span>
-                                </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="text-[9px] px-2 py-0.5 bg-emerald-900 text-emerald-200 border border-emerald-700 rounded font-bold uppercase shrink-0">
+                                  DEAL WON ✓
+                                </span>
+                                <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase shrink-0 ${String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH')
+                                    ? 'bg-amber-950/90 text-amber-300 border-amber-500'
+                                    : 'bg-emerald-950/90 text-emerald-300 border-emerald-400'
+                                  }`}>
+                                  {String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('COD') || String(item.paymentMode || item.paymentMethod || item.paymentType || item.paymentTerms || item.paymentProof?.paymentMode || '').toUpperCase().includes('CASH') ? '💳 COD CASH' : '🌐 ONLINE PAID'}
+                                </span>
                               </div>
                             </div>
 
-                            <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: 'var(--crm-line)' }}>
-                              <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-1">
-                                <FiCheckCircle size={11} /> Order Finalized & Delivered
-                              </span>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Route</span>
+                                <span className="text-[var(--crm-heading)] font-bold truncate block">
+                                  {item.origin || 'Depot'} ➔ {item.destination || 'Destination'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Driver</span>
+                                <span className="text-emerald-300 font-bold truncate block">
+                                  {item.driverName || item.assignedDriverName || 'Unassigned Driver'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Revenue</span>
+                                <span className="text-emerald-400 font-bold">
+                                  ₹{(item.totalFreightAmount || item.freightAmount || 0).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">POD Status</span>
+                                <span className="text-emerald-300 font-bold uppercase">
+                                  {item.podStatus || 'VERIFIED ✓'}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        );
-                      })
-                  )}
+
+                          <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: 'var(--crm-line)' }}>
+                            <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-1">
+                              <FiCheckCircle size={11} /> Order Finalized & Delivered
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
               </div>
             </div>
           )}
@@ -2234,11 +2232,11 @@ export default function TransportManager() {
                   ) : (
                     teamLeaves.map((lv) => {
                       const isPending = lv.status === 'PENDING' || lv.status === 'PENDING_HR_APPROVAL';
-                      
+
                       const applicantRole = (lv.employeeId?.role || 'Executive').toUpperCase();
                       const isApplicantManager = ['MANAGER', 'SALES_MANAGER', 'TRANSPORT_MANAGER', 'HR_MANAGER', 'ADMIN', 'FOUNDER'].includes(applicantRole);
                       const isSelfRequest = String(lv.employeeId?._id || lv.employeeId) === String(user?._id);
-                      
+
                       const userRole = (user?.role || '').toUpperCase();
                       const isHRorAdmin = ['ADMIN', 'FOUNDER', 'HR', 'HR_MANAGER', 'HR_EXECUTIVE'].includes(userRole);
                       const canReview = isPending && !isSelfRequest && (isHRorAdmin || !isApplicantManager);

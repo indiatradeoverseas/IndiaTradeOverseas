@@ -26,6 +26,7 @@ const {
   assignLeadsBulk,
   bulkImportLeads,
   deleteLead,
+  deleteLeadsBulk,
 } = require('./lead.controller');
 
 
@@ -624,12 +625,12 @@ router.get(
         'pending'
       ) {
         filter.crmStatus =
-          {
-            $nin: [
-              'WON',
-              'LOST',
-            ],
-          };
+        {
+          $nin: [
+            'WON',
+            'LOST',
+          ],
+        };
       }
 
       const count =
@@ -917,6 +918,16 @@ router.patch(
 // ============================================================
 // DELETE LEAD
 // ============================================================
+
+router.post(
+  '/bulk-delete',
+  rbac(
+    'ADMIN',
+    'MANAGER',
+    'SALES_MANAGER'
+  ),
+  deleteLeadsBulk
+);
 
 router.delete(
   '/:id',
