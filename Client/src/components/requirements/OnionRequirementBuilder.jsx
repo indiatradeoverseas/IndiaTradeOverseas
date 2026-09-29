@@ -698,7 +698,7 @@ export default function OnionRequirementBuilder({
               rgba(122, 35, 50, 0.16),
               transparent 42%
             ),
-            rgba(10, 8, 8, 0.78);
+            rgba(25, 18, 20, 0.52);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
           overflow-y: auto;
@@ -715,8 +715,8 @@ export default function OnionRequirementBuilder({
           background:
             linear-gradient(
               145deg,
-              rgba(52, 23, 29, 0.98),
-              rgba(25, 18, 20, 0.99)
+              rgba(92, 43, 52, 0.96),
+              rgba(80, 32, 37, 0.97)
             );
           box-shadow:
             0 40px 100px rgba(0, 0, 0, 0.5),
@@ -997,7 +997,7 @@ export default function OnionRequirementBuilder({
           border: 1px solid rgba(255, 255, 255, 0.13);
           border-radius: 10px;
           outline: none;
-          background: rgba(0, 0, 0, 0.22);
+          background: rgba(255, 255, 255, 0.08);
           color: #fff;
           font: inherit;
         }
@@ -1043,7 +1043,7 @@ export default function OnionRequirementBuilder({
           gap: 14px;
           padding: 18px 30px;
           border-top: 1px solid rgba(255, 255, 255, 0.09);
-          background: rgba(0, 0, 0, 0.16);
+          background: rgba(74, 16, 28, 0.10);
         }
 
         .ito-onion-builder-footer-note {
