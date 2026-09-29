@@ -5922,7 +5922,7 @@ export default function Onion() {
           </div>
 
           <div>
-            <img src="/images/onion_image.png" alt="Nashik onions" className="ito-cta-image" />
+            <img src="/images/onion-images/onion-6.png" alt="Nashik onions" className="ito-cta-image" />
             <p className="ito-cta-copy ito-cta-copy-burgundy">
               Tell us the quantity, size, grade, packaging and destination. Our commercial team will check availability, logistics and applicable terms before preparing the offer.
             </p>
