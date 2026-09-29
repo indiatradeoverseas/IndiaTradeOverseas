@@ -4977,30 +4977,70 @@ export default function RicePage() {
 
             </footer>
 
-{/* Requirement Builder Modal */}
+{/* Requirement Builder Modal — UI ONLY */}
+            <style>{`
+                .ito-rice-builder-backdrop {
+                    background:
+                        radial-gradient(circle at 50% 20%, rgba(166,124,45,.16), transparent 42%),
+                        rgba(20,15,8,.80);
+                    backdrop-filter: blur(14px);
+                    -webkit-backdrop-filter: blur(14px);
+                    overflow-y: auto;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                .ito-rice-builder-backdrop::-webkit-scrollbar,
+                .ito-rice-builder-modal::-webkit-scrollbar {
+                    width: 0;
+                    height: 0;
+                    display: none;
+                }
+                .ito-rice-builder-modal {
+                    background: linear-gradient(145deg, rgba(74,56,25,.99), rgba(52,39,17,.995));
+                    box-shadow: 0 40px 100px rgba(0,0,0,.50), 0 0 0 1px rgba(255,255,255,.025);
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                @media (max-width: 700px) {
+                    .ito-rice-builder-backdrop {
+                        align-items: flex-end;
+                        padding: 0;
+                    }
+                    .ito-rice-builder-modal {
+                        width: 100%;
+                        max-height: 94vh;
+                        border-radius: 22px 22px 0 0;
+                    }
+                }
+            `}</style>
+
             <AnimatePresence>
                 {showRequirementBuilder && (
-                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
-                        onClick={() => setShowRequirementBuilder(false)}>
+                    <div
+                        className="ito-rice-builder-backdrop fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6"
+                        onClick={() => setShowRequirementBuilder(false)}
+                    >
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.97, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full sm:max-w-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
-                            onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
-                                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
-                                    Build Your Rice Requirement
-                                </h3>
-                                <button onClick={() => setShowRequirementBuilder(false)}
-                                    className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                                    <FiX size={24} />
-                                </button>
-                            </div>
+                            exit={{ opacity: 0, scale: 0.97, y: 20 }}
+                            transition={{ duration: 0.24, ease: "easeOut" }}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Build Your Rice Requirement"
+                            className="ito-rice-builder-modal relative w-full max-w-[920px] max-h-[calc(100vh-40px)] overflow-y-auto rounded-3xl border border-white/10 shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setShowRequirementBuilder(false)}
+                                aria-label="Close rice requirement builder"
+                                className="absolute right-5 top-5 z-30 w-[42px] h-[42px] flex items-center justify-center rounded-full border border-white/15 bg-white/[0.055] text-white text-[28px] leading-none transition hover:bg-white/[0.12]"
+                            >
+                                <FiX size={24} />
+                            </button>
 
-                            <div className="p-4 sm:p-6">
-                                <RiceRequirementBuilder onComplete={handleRequirementComplete} />
-                            </div>
+                            <RiceRequirementBuilder onComplete={handleRequirementComplete} />
                         </motion.div>
                     </div>
                 )}

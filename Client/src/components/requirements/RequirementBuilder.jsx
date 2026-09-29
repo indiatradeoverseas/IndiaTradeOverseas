@@ -411,23 +411,643 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-black">
-            Build Your {division} Requirement
-          </h3>
-          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
-            Step {currentStepIndex + 1} of {steps.length}
+    <div className={`ito-tea-builder w-full max-w-4xl mx-auto ${normalizedDivision === "TEA" ? "ito-tea-builder-active" : ""} ${normalizedDivision === "RICE" ? "ito-rice-builder-active" : ""} ${normalizedDivision === "STONE" ? "ito-stone-builder-active" : ""}`}>
+      
+      <style>{`
+        /* =========================================================
+           INDIA TRADE OVERSEAS — SHARED REQUIREMENT BUILDER UI
+           Onion.jsx visual structure + page-specific palettes.
+
+           IMPORTANT:
+           - UI/CSS only.
+           - No requirement state, validation, analytics, pricing,
+             submission, API or backend logic is changed here.
+           ========================================================= */
+
+        .ito-tea-builder,
+        .ito-rice-builder-active,
+        .ito-stone-builder-active {
+          --rb-bg: #37424B;
+          --rb-panel: #2B333A;
+          --rb-accent: #C5A059;
+          --rb-accent-soft: #DCCCB4;
+          --rb-deep: #20262B;
+          --rb-text: #F4F2EE;
+          --rb-muted: #A89E8E;
+          --rb-border: #4A545E;
+          --rb-pale: #DCD3C4;
+          --rb-danger: #D98C8C;
+          --rb-success: #C5A059;
+
+          width: 100% !important;
+          max-width: 920px !important;
+          height: auto;
+          max-height: min(820px, calc(100vh - 40px));
+          margin: 0 auto !important;
+          padding: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+          border: 1px solid var(--rb-border) !important;
+          border-radius: 24px !important;
+          background: linear-gradient(145deg, var(--rb-bg), var(--rb-panel) 58%, var(--rb-deep)) !important;
+          color: var(--rb-text) !important;
+          box-shadow: 0 40px 100px rgba(0,0,0,.35) !important;
+        }
+
+        /* =========================
+           PAGE PALETTES
+           ========================= */
+        .ito-tea-builder-active {
+          --rb-bg: #0B3D2E;
+          --rb-panel: #004B3B;
+          --rb-accent: #50C878;
+          --rb-accent-soft: #C5E3D3;
+          --rb-deep: #04140E;
+          --rb-text: #FAF9F5;
+          --rb-muted: #8FB5A3;
+          --rb-border: #1B4B3A;
+          --rb-pale: #C5E3D3;
+          --rb-success: #40B064;
+        }
+
+        .ito-rice-builder-active {
+          --rb-bg: #5A4422;
+          --rb-panel: #4A3819;
+          --rb-accent: #D9B85C;
+          --rb-accent-soft: #F2E3B4;
+          --rb-deep: #2E2000;
+          --rb-text: #FFF9EC;
+          --rb-muted: #C9AE81;
+          --rb-border: #6E5228;
+          --rb-pale: #F0E3C4;
+          --rb-success: #C09350;
+        }
+
+        .ito-stone-builder-active {
+          --rb-bg: #37424B;
+          --rb-panel: #2B333A;
+          --rb-accent: #C5A059;
+          --rb-accent-soft: #DCCCB4;
+          --rb-deep: #20262B;
+          --rb-text: #F4F2EE;
+          --rb-muted: #A89E8E;
+          --rb-border: #4A545E;
+          --rb-pale: #DCD3C4;
+          --rb-success: #C5A059;
+        }
+
+        /* =========================
+           ONION-STYLE HEADER
+           ========================= */
+        .ito-tea-builder .ito-rice-header,
+        .ito-rice-builder-active .ito-rice-header,
+        .ito-stone-builder-active .ito-rice-header {
+          flex: 0 0 auto !important;
+          padding: 26px 30px 20px !important;
+          border-bottom: 1px solid color-mix(in srgb, var(--rb-text) 10%, transparent) !important;
+          background: transparent !important;
+        }
+
+        .ito-tea-builder .ito-rice-header-top,
+        .ito-rice-builder-active .ito-rice-header-top,
+        .ito-stone-builder-active .ito-rice-header-top {
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: space-between !important;
+          gap: 20px !important;
+        }
+
+        .ito-tea-builder .ito-rice-kicker,
+        .ito-rice-builder-active .ito-rice-kicker,
+        .ito-stone-builder-active .ito-rice-kicker {
+          display: block !important;
+          margin-bottom: 7px !important;
+          color: var(--rb-accent) !important;
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          letter-spacing: .18em !important;
+          text-transform: uppercase !important;
+        }
+
+        .ito-tea-builder .ito-rice-header h3,
+        .ito-rice-builder-active .ito-rice-header h3,
+        .ito-stone-builder-active .ito-rice-header h3 {
+          margin: 0 !important;
+          color: var(--rb-text) !important;
+          font-family: Georgia, "Times New Roman", serif !important;
+          font-size: clamp(27px, 4vw, 42px) !important;
+          line-height: 1.05 !important;
+          font-weight: 500 !important;
+        }
+
+        /* =========================
+           PROGRESS
+           ========================= */
+        .ito-tea-builder .ito-rice-progress,
+        .ito-rice-builder-active .ito-rice-progress,
+        .ito-stone-builder-active .ito-rice-progress {
+          margin-top: 22px !important;
+        }
+
+        .ito-tea-builder .ito-rice-progress-meta,
+        .ito-rice-builder-active .ito-rice-progress-meta,
+        .ito-stone-builder-active .ito-rice-progress-meta {
+          display: flex !important;
+          justify-content: space-between !important;
+          margin-bottom: 9px !important;
+          color: var(--rb-muted) !important;
+          font-size: 12px !important;
+        }
+
+        .ito-tea-builder .ito-rice-progress-track,
+        .ito-rice-builder-active .ito-rice-progress-track,
+        .ito-stone-builder-active .ito-rice-progress-track {
+          height: 4px !important;
+          overflow: hidden !important;
+          border-radius: 999px !important;
+          background: rgba(255,255,255,.10) !important;
+        }
+
+        .ito-tea-builder .ito-rice-progress-fill,
+        .ito-rice-builder-active .ito-rice-progress-fill,
+        .ito-stone-builder-active .ito-rice-progress-fill {
+          height: 100% !important;
+          border-radius: inherit !important;
+          background: linear-gradient(90deg, var(--rb-accent-soft), var(--rb-accent)) !important;
+        }
+
+        /* =========================
+           FLAT ONION-STYLE STEP NAV
+           No large circles.
+           ========================= */
+        .ito-tea-builder .ito-rice-steps,
+        .ito-rice-builder-active .ito-rice-steps,
+        .ito-stone-builder-active .ito-rice-steps {
+          display: flex !important;
+          gap: 18px !important;
+          margin-top: 15px !important;
+          overflow-x: auto !important;
+          scrollbar-width: none !important;
+        }
+
+        .ito-tea-builder .ito-rice-steps::-webkit-scrollbar,
+        .ito-rice-builder-active .ito-rice-steps::-webkit-scrollbar,
+        .ito-stone-builder-active .ito-rice-steps::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        .ito-tea-builder .ito-rice-step,
+        .ito-rice-builder-active .ito-rice-step,
+        .ito-stone-builder-active .ito-rice-step {
+          flex: 0 0 auto !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 0 !important;
+          min-width: auto !important;
+          min-height: auto !important;
+          width: auto !important;
+          height: auto !important;
+          padding: 0 !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          outline: none !important;
+          background: transparent !important;
+          color: rgba(255,255,255,.38) !important;
+          font-size: 10px !important;
+          font-weight: 700 !important;
+          letter-spacing: .08em !important;
+          text-transform: uppercase !important;
+          cursor: pointer !important;
+          box-shadow: none !important;
+          transform: none !important;
+        }
+
+        .ito-tea-builder .ito-rice-step-number,
+        .ito-rice-builder-active .ito-rice-step-number,
+        .ito-stone-builder-active .ito-rice-step-number {
+          display: none !important;
+        }
+
+        .ito-tea-builder .ito-rice-step-label,
+        .ito-rice-builder-active .ito-rice-step-label,
+        .ito-stone-builder-active .ito-rice-step-label {
+          display: inline !important;
+          color: inherit !important;
+        }
+
+        .ito-tea-builder .ito-rice-step.active,
+        .ito-rice-builder-active .ito-rice-step.active,
+        .ito-stone-builder-active .ito-rice-step.active {
+          color: var(--rb-text) !important;
+        }
+
+        .ito-tea-builder .ito-rice-step.completed,
+        .ito-rice-builder-active .ito-rice-step.completed,
+        .ito-stone-builder-active .ito-rice-step.completed {
+          color: var(--rb-accent) !important;
+        }
+
+        /* =========================
+           SCROLLABLE CONTENT
+           ========================= */
+        .ito-tea-builder > .space-y-6,
+        .ito-rice-builder-active > .space-y-6,
+        .ito-stone-builder-active > .space-y-6 {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          padding: 30px !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: var(--rb-border) transparent !important;
+        }
+
+        .ito-tea-builder > .space-y-6::-webkit-scrollbar,
+        .ito-rice-builder-active > .space-y-6::-webkit-scrollbar,
+        .ito-stone-builder-active > .space-y-6::-webkit-scrollbar {
+          width: 7px !important;
+        }
+
+        .ito-tea-builder > .space-y-6::-webkit-scrollbar-track,
+        .ito-rice-builder-active > .space-y-6::-webkit-scrollbar-track,
+        .ito-stone-builder-active > .space-y-6::-webkit-scrollbar-track {
+          background: transparent !important;
+        }
+
+        .ito-tea-builder > .space-y-6::-webkit-scrollbar-thumb,
+        .ito-rice-builder-active > .space-y-6::-webkit-scrollbar-thumb,
+        .ito-stone-builder-active > .space-y-6::-webkit-scrollbar-thumb {
+          background: var(--rb-border) !important;
+          border-radius: 999px !important;
+        }
+
+        /* =========================
+           STEP HEADING
+           ========================= */
+        .ito-tea-builder > .space-y-6 > .text-center,
+        .ito-rice-builder-active > .space-y-6 > .text-center,
+        .ito-stone-builder-active > .space-y-6 > .text-center {
+          margin-bottom: 24px !important;
+          text-align: left !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > .text-center > div:first-child,
+        .ito-rice-builder-active > .space-y-6 > .text-center > div:first-child,
+        .ito-stone-builder-active > .space-y-6 > .text-center > div:first-child {
+          width: auto !important;
+          height: auto !important;
+          margin: 0 0 8px !important;
+          display: block !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > .text-center > div:first-child svg,
+        .ito-rice-builder-active > .space-y-6 > .text-center > div:first-child svg,
+        .ito-stone-builder-active > .space-y-6 > .text-center > div:first-child svg {
+          display: none !important;
+        }
+
+        .ito-tea-builder > .space-y-6 h4,
+        .ito-rice-builder-active > .space-y-6 h4,
+        .ito-stone-builder-active > .space-y-6 h4 {
+          margin: 0 0 8px !important;
+          color: var(--rb-text) !important;
+          font-family: Georgia, "Times New Roman", serif !important;
+          font-size: clamp(24px, 3vw, 34px) !important;
+          line-height: 1.15 !important;
+          font-weight: 500 !important;
+        }
+
+        .ito-tea-builder > .space-y-6 h4 + p,
+        .ito-rice-builder-active > .space-y-6 h4 + p,
+        .ito-stone-builder-active > .space-y-6 h4 + p {
+          max-width: 680px !important;
+          margin: 0 !important;
+          color: var(--rb-muted) !important;
+          font-size: 14px !important;
+          line-height: 1.65 !important;
+        }
+
+        /* =========================
+           OPTION CARDS
+           ========================= */
+        .ito-tea-builder .grid,
+        .ito-rice-builder-active .grid,
+        .ito-stone-builder-active .grid {
+          gap: 12px !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"],
+        .ito-rice-builder-active button[class*="border-2"],
+        .ito-stone-builder-active button[class*="border-2"] {
+          position: relative !important;
+          min-height: 94px !important;
+          padding: 17px !important;
+          border: 1px solid color-mix(in srgb, var(--rb-text) 12%, transparent) !important;
+          border-radius: 15px !important;
+          background: rgba(255,255,255,.035) !important;
+          color: var(--rb-text) !important;
+          text-align: left !important;
+          box-shadow: none !important;
+          transition: border-color .2s ease, background .2s ease, transform .2s ease !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"]:hover,
+        .ito-rice-builder-active button[class*="border-2"]:hover,
+        .ito-stone-builder-active button[class*="border-2"]:hover {
+          transform: translateY(-1px) !important;
+          border-color: var(--rb-accent) !important;
+          background: rgba(255,255,255,.06) !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"].border-blue-600,
+        .ito-rice-builder-active button[class*="border-2"].border-blue-600,
+        .ito-stone-builder-active button[class*="border-2"].border-blue-600 {
+          border-color: var(--rb-accent) !important;
+          background: color-mix(in srgb, var(--rb-accent) 14%, transparent) !important;
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rb-accent) 18%, transparent) !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"] .bg-blue-100,
+        .ito-rice-builder-active button[class*="border-2"] .bg-blue-100,
+        .ito-stone-builder-active button[class*="border-2"] .bg-blue-100 {
+          background: color-mix(in srgb, var(--rb-accent) 13%, transparent) !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"] .text-blue-600,
+        .ito-rice-builder-active button[class*="border-2"] .text-blue-600,
+        .ito-stone-builder-active button[class*="border-2"] .text-blue-600 {
+          color: var(--rb-accent) !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"] .text-sm,
+        .ito-rice-builder-active button[class*="border-2"] .text-sm,
+        .ito-stone-builder-active button[class*="border-2"] .text-sm {
+          color: var(--rb-text) !important;
+        }
+
+        .ito-tea-builder button[class*="border-2"] p,
+        .ito-rice-builder-active button[class*="border-2"] p,
+        .ito-stone-builder-active button[class*="border-2"] p {
+          color: var(--rb-muted) !important;
+        }
+
+        /* =========================
+           LABELS / FORM CONTROLS
+           ========================= */
+        .ito-tea-builder label,
+        .ito-rice-builder-active label,
+        .ito-stone-builder-active label {
+          color: var(--rb-muted) !important;
+        }
+
+        .ito-tea-builder select,
+        .ito-tea-builder input[type="text"],
+        .ito-tea-builder input[type="date"],
+        .ito-tea-builder input[type="number"],
+        .ito-rice-builder-active select,
+        .ito-rice-builder-active input[type="text"],
+        .ito-rice-builder-active input[type="date"],
+        .ito-rice-builder-active input[type="number"],
+        .ito-stone-builder-active select,
+        .ito-stone-builder-active input[type="text"],
+        .ito-stone-builder-active input[type="date"],
+        .ito-stone-builder-active input[type="number"] {
+          width: 100% !important;
+          border: 1px solid color-mix(in srgb, var(--rb-text) 14%, transparent) !important;
+          background: rgba(255,255,255,.045) !important;
+          color: var(--rb-text) !important;
+          border-radius: 10px !important;
+          outline: none !important;
+        }
+
+        .ito-tea-builder select:focus,
+        .ito-tea-builder input:focus,
+        .ito-rice-builder-active select:focus,
+        .ito-rice-builder-active input:focus,
+        .ito-stone-builder-active select:focus,
+        .ito-stone-builder-active input:focus {
+          border-color: var(--rb-accent) !important;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--rb-accent) 15%, transparent) !important;
+        }
+
+        .ito-tea-builder input::placeholder,
+        .ito-rice-builder-active input::placeholder,
+        .ito-stone-builder-active input::placeholder {
+          color: color-mix(in srgb, var(--rb-text) 46%, transparent) !important;
+        }
+
+        .ito-tea-builder option,
+        .ito-rice-builder-active option,
+        .ito-stone-builder-active option {
+          background: var(--rb-panel) !important;
+          color: var(--rb-text) !important;
+        }
+
+        /* Informational panels and validation states */
+        .ito-tea-builder .bg-blue-50,
+        .ito-rice-builder-active .bg-blue-50,
+        .ito-stone-builder-active .bg-blue-50,
+        .ito-tea-builder .bg-gray-50,
+        .ito-rice-builder-active .bg-gray-50,
+        .ito-stone-builder-active .bg-gray-50 {
+          background: rgba(255,255,255,.045) !important;
+          border-color: color-mix(in srgb, var(--rb-accent) 22%, transparent) !important;
+          color: var(--rb-text) !important;
+        }
+
+        .ito-tea-builder .text-emerald-600,
+        .ito-rice-builder-active .text-emerald-600,
+        .ito-stone-builder-active .text-emerald-600 {
+          color: var(--rb-success) !important;
+        }
+
+        .ito-tea-builder .text-red-600,
+        .ito-rice-builder-active .text-red-600,
+        .ito-stone-builder-active .text-red-600 {
+          color: var(--rb-danger) !important;
+        }
+
+        /* =========================
+           FOOTER / NAVIGATION
+           ========================= */
+        .ito-tea-builder > .space-y-6 > div:last-child,
+        .ito-rice-builder-active > .space-y-6 > div:last-child,
+        .ito-stone-builder-active > .space-y-6 > div:last-child {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 14px !important;
+          margin-top: 26px !important;
+          padding-top: 18px !important;
+          border-top: 1px solid color-mix(in srgb, var(--rb-text) 10%, transparent) !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > div:last-child button,
+        .ito-rice-builder-active > .space-y-6 > div:last-child button,
+        .ito-stone-builder-active > .space-y-6 > div:last-child button {
+          min-height: 44px !important;
+          border-radius: 10px !important;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          transition: all .2s ease !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > div:last-child button.border-gray-300,
+        .ito-rice-builder-active > .space-y-6 > div:last-child button.border-gray-300,
+        .ito-stone-builder-active > .space-y-6 > div:last-child button.border-gray-300 {
+          border-color: color-mix(in srgb, var(--rb-text) 14%, transparent) !important;
+          background: rgba(255,255,255,.05) !important;
+          color: var(--rb-text) !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > div:last-child button.border-gray-300:hover:not(:disabled),
+        .ito-rice-builder-active > .space-y-6 > div:last-child button.border-gray-300:hover:not(:disabled),
+        .ito-stone-builder-active > .space-y-6 > div:last-child button.border-gray-300:hover:not(:disabled) {
+          border-color: var(--rb-accent) !important;
+          background: rgba(255,255,255,.08) !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > div:last-child button.bg-blue-600,
+        .ito-rice-builder-active > .space-y-6 > div:last-child button.bg-blue-600,
+        .ito-stone-builder-active > .space-y-6 > div:last-child button.bg-blue-600,
+        .ito-tea-builder > .space-y-6 > div:last-child button.bg-emerald-600,
+        .ito-rice-builder-active > .space-y-6 > div:last-child button.bg-emerald-600,
+        .ito-stone-builder-active > .space-y-6 > div:last-child button.bg-emerald-600 {
+          border: 1px solid var(--rb-accent) !important;
+          background: var(--rb-accent) !important;
+          color: var(--rb-deep) !important;
+        }
+
+        .ito-tea-builder > .space-y-6 > div:last-child button.bg-blue-600:hover:not(:disabled),
+        .ito-rice-builder-active > .space-y-6 > div:last-child button.bg-blue-600:hover:not(:disabled),
+        .ito-stone-builder-active > .space-y-6 > div:last-child button.bg-blue-600:hover:not(:disabled),
+        .ito-tea-builder > .space-y-6 > div:last-child button.bg-emerald-600:hover:not(:disabled),
+        .ito-rice-builder-active > .space-y-6 > div:last-child button.bg-emerald-600:hover:not(:disabled),
+        .ito-stone-builder-active > .space-y-6 > div:last-child button.bg-emerald-600:hover:not(:disabled) {
+          background: var(--rb-accent-soft) !important;
+          color: var(--rb-deep) !important;
+          transform: translateY(-1px) !important;
+        }
+
+        /* Disabled controls remain readable. */
+        .ito-tea-builder button:disabled,
+        .ito-rice-builder-active button:disabled,
+        .ito-stone-builder-active button:disabled {
+          opacity: .45 !important;
+        }
+
+        /* =========================
+           MOBILE
+           ========================= */
+        @media (max-width: 700px) {
+          .ito-tea-builder,
+          .ito-rice-builder-active,
+          .ito-stone-builder-active {
+            width: 100% !important;
+            max-height: 94vh !important;
+            border-radius: 22px !important;
+          }
+
+          .ito-tea-builder .ito-rice-header,
+          .ito-rice-builder-active .ito-rice-header,
+          .ito-stone-builder-active .ito-rice-header {
+            padding: 20px 18px 16px !important;
+          }
+
+          .ito-tea-builder > .space-y-6,
+          .ito-rice-builder-active > .space-y-6,
+          .ito-stone-builder-active > .space-y-6 {
+            padding: 22px 18px !important;
+          }
+
+          .ito-tea-builder .ito-rice-steps,
+          .ito-rice-builder-active .ito-rice-steps,
+          .ito-stone-builder-active .ito-rice-steps {
+            gap: 14px !important;
+          }
+
+          .ito-tea-builder .grid,
+          .ito-rice-builder-active .grid,
+          .ito-stone-builder-active .grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .ito-tea-builder > .space-y-6 > div:last-child,
+          .ito-rice-builder-active > .space-y-6 > div:last-child,
+          .ito-stone-builder-active > .space-y-6 > div:last-child {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
+          .ito-tea-builder > .space-y-6 > div:last-child button,
+          .ito-rice-builder-active > .space-y-6 > div:last-child button,
+          .ito-stone-builder-active > .space-y-6 > div:last-child button {
+            width: 100% !important;
+          }
+        }
+      `}</style>
+
+      <div className="ito-rice-header">
+        <div className="ito-rice-header-top">
+          <div>
+            <span className="ito-rice-kicker">
+              Step {currentStepIndex + 1} of {steps.length}
+            </span>
+            <h3>Build Your {division} Requirement</h3>
           </div>
         </div>
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-blue-600 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          />
+
+        <div className="ito-rice-progress">
+          <div className="ito-rice-progress-meta">
+            <span>{currentStep.label}</span>
+            <span>{Math.round(((currentStepIndex + 1) / steps.length) * 100)}%</span>
+          </div>
+
+          <div className="ito-rice-progress-track">
+            <motion.div
+              className="ito-rice-progress-fill"
+              initial={{ width: 0 }}
+              animate={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
+
+          <div className="ito-rice-steps" role="tablist" aria-label="Requirement steps">
+            {steps.map((step, idx) => (
+              <button
+                key={step.key}
+                type="button"
+                role="tab"
+                aria-selected={idx === currentStepIndex}
+                aria-label={`Step ${idx + 1}: ${step.label}`}
+                onClick={() => {
+                  if (destStepIdx !== -1 && idx > destStepIdx && !isDestinationStepValid) {
+                    setCurrentStepIndex(destStepIdx);
+                    return;
+                  }
+                  if (budgetStepIdx !== -1 && idx > budgetStepIdx && !isBudgetStepValid) {
+                    setCurrentStepIndex(budgetStepIdx);
+                    return;
+                  }
+                  if (idx <= currentStepIndex) setCurrentStepIndex(idx);
+                }}
+                className={`ito-rice-step ${idx === currentStepIndex ? "active" : ""} ${idx < currentStepIndex ? "completed" : ""}`}
+              >
+                <span className="ito-rice-step-number">
+                  {idx < currentStepIndex &&
+                  (idx !== destStepIdx || isDestinationStepValid) ? (
+                    <FiCheckCircle className="w-3.5 h-3.5" />
+                  ) : (
+                    idx + 1
+                  )}
+                </span>
+                <span className="ito-rice-step-label">{step.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -469,8 +1089,7 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
               disabled={!isCurrentStepValid() || isSubmitting}
               className="px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
-              Next Step
-              <FiArrowRight />
+              Next Step <FiArrowRight />
             </button>
           ) : (
             <button
@@ -478,49 +1097,11 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
               disabled={isSubmitting}
               className="px-8 py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
-              Get Current Price & Availability
-              <FiArrowRight />
+              Get Current Price & Availability <FiArrowRight />
             </button>
           )}
         </div>
       </motion.div>
-
-      <div className="flex justify-center gap-2 mt-6" role="tablist" aria-label="Requirement steps">
-        {steps.map((step, idx) => (
-          <button
-            key={step.key}
-            role="tab"
-            aria-selected={idx === currentStepIndex}
-            aria-label={`Step ${idx + 1}: ${step.label}`}
-            onClick={() => {
-              if (destStepIdx !== -1 && idx > destStepIdx && !isDestinationStepValid) {
-                setCurrentStepIndex(destStepIdx);
-                return;
-              }
-              if (budgetStepIdx !== -1 && idx > budgetStepIdx && !isBudgetStepValid) {
-                setCurrentStepIndex(budgetStepIdx);
-                return;
-              }
-              if (idx <= currentStepIndex) {
-                setCurrentStepIndex(idx);
-              }
-            }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-              idx < currentStepIndex
-                ? 'bg-blue-600 text-white cursor-pointer'
-                : idx === currentStepIndex
-                ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-200'
-                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {idx < currentStepIndex && (idx !== destStepIdx || isDestinationStepValid) ? (
-              <FiCheckCircle className="w-5 h-5" />
-            ) : (
-              <span className="font-mono text-sm">{idx + 1}</span>
-            )}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
