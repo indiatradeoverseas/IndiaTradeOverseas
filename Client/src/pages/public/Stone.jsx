@@ -78,6 +78,14 @@ const ALTERNATING_SHOWCASE = [
     specs: ["Size: 20 Nominal", "Color: Black & White Available", "Loading: Phuentsholing / Gomtu", "Usage: RCC Roofing & RMC"]
   },
   {
+    id: "30mm-kamji",
+    title: "30 MM Kamji Stone",
+    subtitle: "High-Strength Concrete & Structural Works",
+    image: "/images/stone_images/30mm-kamji.jpg",
+    description: "Dense, angular Kamji stone aggregate suited for structural concrete, heavy-duty construction and projects requiring a dependable balance of strength, grading and compaction.",
+    specs: ["Size: 30 Nominal", "Material: Kamji Stone", "Origin: Bhutan", "Usage: RCC & Heavy Construction"]
+  },
+  {
     id: "40mm",
     title: "40 MM Stone Chips",
     subtitle: "Heavy Roadways & Site Base Development",
