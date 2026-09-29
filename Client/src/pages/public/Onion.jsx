@@ -5196,6 +5196,12 @@ export default function Onion() {
           color: var(--ivory) !important;
         }
 
+        /* Master specification quality note: keep the text white on the burgundy surface. */
+        .ito-onion-page #specifications .ito-quote-box--alt,
+        .ito-onion-page #specifications .ito-quote-box--alt strong {
+          color: var(--white) !important;
+        }
+
         /* Size / market pills inside Burgundy sections need light text. */
         .ito-onion-page .ito-section.ito-dark .ito-market,
         .ito-onion-page .ito-section.ito-dark .ito-size-card {
@@ -5261,7 +5267,132 @@ export default function Onion() {
             width: 100%;
           }
         }
-`}</style>
+
+        /* ============================================================
+           FINAL TABLE WORD-BREAK FIX
+           ============================================================ */
+        .ito-onion-page table.ito-table,
+        .ito-onion-page table.ito-rate-table {
+          display: table !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+          overflow: visible !important;
+        }
+
+        .ito-onion-page table.ito-table th,
+        .ito-onion-page table.ito-table td,
+        .ito-onion-page table.ito-rate-table th,
+        .ito-onion-page table.ito-rate-table td,
+        .ito-onion-page .ito-quality-table th,
+        .ito-onion-page .ito-quality-table td {
+          min-width: 0 !important;
+          max-width: none !important;
+          word-break: normal !important;
+          overflow-wrap: normal !important;
+          white-space: normal !important;
+          hyphens: none !important;
+          vertical-align: middle !important;
+        }
+
+        /* Two-column specification / quality tables */
+        .ito-onion-page table.ito-table:not(.ito-rate-table) th:first-child,
+        .ito-onion-page table.ito-table:not(.ito-rate-table) td:first-child {
+          width: 38% !important;
+        }
+
+        .ito-onion-page table.ito-table:not(.ito-rate-table) th:last-child,
+        .ito-onion-page table.ito-table:not(.ito-rate-table) td:last-child {
+          width: 62% !important;
+        }
+
+        /* Rate tables with 3–4 columns */
+        .ito-onion-page table.ito-rate-table th,
+        .ito-onion-page table.ito-rate-table td {
+          word-break: normal !important;
+          overflow-wrap: normal !important;
+          white-space: normal !important;
+        }
+
+        /* Override the page-wide td/th overflow-wrap:anywhere rule. */
+        .ito-onion-page td,
+        .ito-onion-page th {
+          word-break: normal !important;
+          overflow-wrap: normal !important;
+          hyphens: none !important;
+        }
+
+        @media (max-width: 800px) {
+          .ito-onion-page table.ito-table,
+          .ito-onion-page table.ito-rate-table {
+            width: 100% !important;
+            table-layout: fixed !important;
+          }
+
+          .ito-onion-page table.ito-table th,
+          .ito-onion-page table.ito-table td,
+          .ito-onion-page table.ito-rate-table th,
+          .ito-onion-page table.ito-rate-table td {
+            padding: 11px 10px !important;
+            font-size: 13px !important;
+            line-height: 1.55 !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
+            white-space: normal !important;
+            hyphens: none !important;
+          }
+
+          .ito-onion-page table.ito-table:not(.ito-rate-table) th:first-child,
+          .ito-onion-page table.ito-table:not(.ito-rate-table) td:first-child,
+          .ito-onion-page .ito-quality-table th:first-child,
+          .ito-onion-page .ito-quality-table td:first-child {
+            width: 40% !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
+          }
+
+          .ito-onion-page table.ito-table:not(.ito-rate-table) th:last-child,
+          .ito-onion-page table.ito-table:not(.ito-rate-table) td:last-child,
+          .ito-onion-page .ito-quality-table th:last-child,
+          .ito-onion-page .ito-quality-table td:last-child {
+            width: 60% !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .ito-onion-page table.ito-table th,
+          .ito-onion-page table.ito-table td,
+          .ito-onion-page table.ito-rate-table th,
+          .ito-onion-page table.ito-rate-table td {
+            padding: 10px 8px !important;
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
+            white-space: normal !important;
+            hyphens: none !important;
+          }
+
+          .ito-onion-page table.ito-table:not(.ito-rate-table) th:first-child,
+          .ito-onion-page table.ito-table:not(.ito-rate-table) td:first-child,
+          .ito-onion-page .ito-quality-table th:first-child,
+          .ito-onion-page .ito-quality-table td:first-child {
+            width: 42% !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
+          }
+
+          .ito-onion-page table.ito-table:not(.ito-rate-table) th:last-child,
+          .ito-onion-page table.ito-table:not(.ito-rate-table) td:last-child,
+          .ito-onion-page .ito-quality-table th:last-child,
+          .ito-onion-page .ito-quality-table td:last-child {
+            width: 58% !important;
+          }
+        }
+      `}</style>
 
       {/* HERO */}
       <section className="ito-hero" aria-label="Nashik onion hero">
