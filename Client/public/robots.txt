@@ -8,12 +8,21 @@ Disallow: /login
 Disallow: /client-login
 Disallow: /employee-login
 Disallow: /admin-login
+Disallow: /trial-login
+Disallow: /trial-signup
 Disallow: /signup
 Disallow: /client-signup
 Disallow: /employee-signup
 Disallow: /device-pending
 Disallow: /verify-email
 Disallow: /forgot-password
+
+# Transactional / pricing pages
+Disallow: /stone/pricing
+Disallow: /rice/pricing
+Disallow: /tea/pricing
+Disallow: /coal/pricing
+Disallow: /nashik-onion/pricing
 
 # AI crawlers
 User-agent: GPTBot

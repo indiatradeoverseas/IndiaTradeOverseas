@@ -180,6 +180,12 @@ const PUBLIC_PAGE_META = Object.freeze({
     landing_page_type: 'product'
   },
 
+    '/nashik-onion': {
+    page_type: 'commercial_landing',
+    vertical: 'onion',
+    landing_page_type: 'product'
+  },
+
   '/ito-ads': {
     page_type: 'commercial_landing',
     vertical: 'ito_ads',
@@ -194,9 +200,9 @@ const PUBLIC_PAGE_META = Object.freeze({
     page_type: 'legal'
   },
 
-  '/terms-and-conditions': {
-    page_type: 'legal'
-  },
+  // '/terms-and-conditions': {
+  //   page_type: 'legal'
+  // },
 
   '/fraud-payment-policy': {
     page_type: 'legal'
@@ -1881,43 +1887,46 @@ function AppLayout() {
 
 
           {/* =========================
-              LEGAL
-          ========================= */}
+    LEGAL
+========================= */}
 
-          <Route
-            path="/privacy-policy"
-            element={
-              <PrivacyPolicy />
-            }
-          />
+<Route
+  path="/privacy-policy"
+  element={
+    <PrivacyPolicy />
+  }
+/>
 
-          <Route
-            path="/terms"
-            element={
-              <Terms />
-            }
-          />
+<Route
+  path="/terms"
+  element={
+    <Terms />
+  }
+/>
 
-          <Route
-            path="/terms-and-conditions"
-            element={
-              <Terms />
-            }
-          />
+<Route
+  path="/terms-and-conditions"
+  element={
+    <Navigate
+      to="/terms"
+      replace
+    />
+  }
+/>
 
-          <Route
-            path="/fraud-payment-policy"
-            element={
-              <FraudPaymentPolicy />
-            }
-          />
+<Route
+  path="/fraud-payment-policy"
+  element={
+    <FraudPaymentPolicy />
+  }
+/>
 
-          <Route
-            path="/disclaimer"
-            element={
-              <Disclaimer />
-            }
-          />
+<Route
+  path="/disclaimer"
+  element={
+    <Disclaimer />
+  }
+/>
 
 
           {/* =========================

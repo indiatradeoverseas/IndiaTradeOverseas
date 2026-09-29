@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
 
@@ -16,17 +15,23 @@
     href="/images/web_icon_3.jpeg"
   />
 
-  <!-- Default / Fallback SEO -->
+  <!-- Default / Homepage SEO -->
   <title>
-    India Trade Overseas | B2B Export & Sourcing of Stone, Rice & Tea
+    India Trade Overseas | B2B Sourcing, Bulk Supply & Export from India
   </title>
 
   <meta
     name="description"
-    content="India Trade Overseas is a B2B trading and sourcing company supplying stone aggregates, bulk rice, premium tea and logistics solutions for commercial buyers and global markets."
+    content="India Trade Overseas is a B2B sourcing, bulk supply and export company for stone aggregates, rice, tea, coal and onions, with commercial logistics support for buyers in India and international markets."
   />
 
-  <!-- Canonical -->
+  <meta
+    name="robots"
+    content="index, follow"
+  />
+
+  <!-- Homepage fallback canonical.
+       Individual public pages override this through useDocumentMeta(). -->
   <link
     rel="canonical"
     href="https://www.indiatradeoverseas.com/"
@@ -44,13 +49,18 @@
   />
 
   <meta
+    property="og:locale"
+    content="en_IN"
+  />
+
+  <meta
     property="og:title"
-    content="India Trade Overseas | B2B Export & Sourcing of Stone, Rice & Tea"
+    content="India Trade Overseas | B2B Sourcing, Bulk Supply & Export from India"
   />
 
   <meta
     property="og:description"
-    content="India Trade Overseas is a B2B trading and sourcing company supplying stone aggregates, bulk rice, premium tea and logistics solutions for commercial buyers and global markets."
+    content="B2B sourcing, bulk supply and export of stone aggregates, rice, tea, coal and onions, with commercial logistics support for buyers in India and international markets."
   />
 
   <meta
@@ -71,12 +81,12 @@
 
   <meta
     name="twitter:title"
-    content="India Trade Overseas | B2B Export & Sourcing of Stone, Rice & Tea"
+    content="India Trade Overseas | B2B Sourcing, Bulk Supply & Export from India"
   />
 
   <meta
     name="twitter:description"
-    content="B2B trading, sourcing and supply of stone aggregates, bulk rice, premium tea and logistics solutions for commercial buyers and global markets."
+    content="B2B sourcing, bulk supply and export of stone aggregates, rice, tea, coal and onions, with commercial logistics support for buyers in India and international markets."
   />
 
   <meta
@@ -92,8 +102,6 @@
   <!-- =========================================================
        GLOBAL STRUCTURED DATA
        Organization + WebSite
-       Product / FAQ schemas are handled separately where
-       the relevant content actually exists.
   ========================================================== -->
 
   <script type="application/ld+json">
@@ -106,19 +114,21 @@
         "name": "India Trade Overseas",
         "url": "https://www.indiatradeoverseas.com/",
         "logo": "https://www.indiatradeoverseas.com/images/web_icon_1.jpeg",
-        "description": "India Trade Overseas is a B2B trading and sourcing company supplying stone aggregates, bulk rice, premium tea and logistics solutions for commercial buyers and global markets.",
+        "description": "India Trade Overseas is a B2B sourcing, bulk supply and export company for stone aggregates, rice, tea, coal and onions, with commercial logistics support for buyers in India and international markets.",
         "areaServed": [
           "India",
-          "Nepal",
-          "Bangladesh",
-          "Global"
+          "International Markets"
         ],
         "knowsAbout": [
-          "Bulk Rice Export",
-          "Tea Sourcing",
-          "Stone Aggregates Supply",
           "B2B Sourcing",
+          "Bulk Supply",
           "Export Trade",
+          "Stone Aggregates Supply",
+          "Bulk Rice Supply and Export",
+          "Tea Sourcing and Supply",
+          "Coal Sourcing and Supply",
+          "Onion Sourcing and Supply",
+          "Commercial Logistics",
           "Cross-Border Logistics",
           "Supply Chain Management"
         ]
@@ -138,42 +148,16 @@
 
   <!-- =========================================================
        MASTER DPR v4.0 — CONSENT MODE BOOTSTRAP
-
-       This runs BEFORE Google Tag Manager so analytics and
-       advertising storage are denied by default until the user
-       grants consent.
-
-       If a previous consent choice exists in localStorage,
-       it is restored before GTM starts.
-
-       Storage key must stay synchronized with:
-       Client/src/utils/analytics.js
   ========================================================== -->
 
   <script>
     (function () {
       window.dataLayer = window.dataLayer || [];
 
-      /*
-       * Define gtag before GTM loads.
-       *
-       * gtag commands are pushed into dataLayer and will be
-       * processed when the Google tag / GTM becomes available.
-       */
       window.gtag = window.gtag || function () {
         window.dataLayer.push(arguments);
       };
 
-      /*
-       * Privacy-safe default.
-       *
-       * Analytics and advertising storage remain denied until
-       * consent is explicitly granted.
-       *
-       * Functionality/security storage remains available because
-       * these are required for normal website operation and
-       * security rather than advertising profiling.
-       */
       var defaultConsent = {
         analytics_storage: 'denied',
         ad_storage: 'denied',
@@ -190,27 +174,12 @@
         defaultConsent
       );
 
-      /*
-       * Reduce advertising-data exposure while consent
-       * architecture is being enforced.
-       */
       window.gtag(
         'set',
         'ads_data_redaction',
         true
       );
 
-      /*
-       * Restore a previous user choice if one exists.
-       *
-       * analytics.js stores:
-       *
-       * {
-       *   analytics: true/false,
-       *   advertising: true/false,
-       *   updated_at: "..."
-       * }
-       */
       try {
         var rawConsent =
           window.localStorage.getItem(
@@ -265,11 +234,8 @@
       } catch (error) {
         /*
          * Fail closed.
-         *
-         * If localStorage is unavailable or saved JSON is
-         * corrupted, analytics/advertising consent stays denied.
-         *
-         * Website rendering must never fail because of tracking.
+         * If saved consent cannot be read,
+         * analytics/advertising remain denied.
          */
       }
     })();
@@ -278,57 +244,77 @@
   <!-- =========================================================
        GOOGLE TAG MANAGER
 
-       IMPORTANT:
-       Existing container preserved exactly:
+       Existing container preserved:
        GTM-MZKBG5Z5
   ========================================================== -->
 
   <script>
     window.__itoLoadGtm = function () {
       if (window.__itoGtmLoaded) return;
+
       window.__itoGtmLoaded = true;
+
       (function(w,d,s,l,i){
-      w[l]=w[l]||[];
+        w[l]=w[l]||[];
 
-      w[l].push({
-        'gtm.start': new Date().getTime(),
-        event:'gtm.js'
-      });
+        w[l].push({
+          'gtm.start': new Date().getTime(),
+          event:'gtm.js'
+        });
 
-      var f=d.getElementsByTagName(s)[0],
-          j=d.createElement(s),
-          dl=l!='dataLayer'
-            ? '&l='+l
-            : '';
+        var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),
+            dl=l!='dataLayer'
+              ? '&l='+l
+              : '';
 
-      j.async=true;
+        j.async=true;
 
-      j.src=
-        'https://www.googletagmanager.com/gtm.js?id='
-        +i
-        +dl;
+        j.src=
+          'https://www.googletagmanager.com/gtm.js?id='
+          +i
+          +dl;
 
-      f.parentNode.insertBefore(j,f);
+        f.parentNode.insertBefore(j,f);
 
-    })(
-      window,
-      document,
-      'script',
-      'dataLayer',
-      'GTM-MZKBG5Z5'
-    );
+      })(
+        window,
+        document,
+        'script',
+        'dataLayer',
+        'GTM-MZKBG5Z5'
+      );
     };
+
     try {
-      var savedConsent = JSON.parse(localStorage.getItem('ito_analytics_consent') || 'null');
-      if (savedConsent && (savedConsent.analytics === true || savedConsent.advertising === true)) window.__itoLoadGtm();
-    } catch (_) { /* Consent remains denied. */ }
+      var savedConsent = JSON.parse(
+        localStorage.getItem(
+          'ito_analytics_consent'
+        ) || 'null'
+      );
+
+      if (
+        savedConsent &&
+        (
+          savedConsent.analytics === true ||
+          savedConsent.advertising === true
+        )
+      ) {
+        window.__itoLoadGtm();
+      }
+    } catch (_) {
+      /* Consent remains denied. */
+    }
   </script>
 
 </head>
 
 <body>
 
-  <!-- Tracking requires a consent-capable browser; no unconsented noscript tracker. -->
+  <!--
+    Tracking requires a consent-capable browser.
+    No unconsented noscript tracker is used.
+  -->
 
   <div id="root"></div>
 
@@ -338,5 +324,4 @@
   ></script>
 
 </body>
-
 </html>
